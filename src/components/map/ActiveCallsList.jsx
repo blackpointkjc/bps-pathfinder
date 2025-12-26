@@ -71,9 +71,7 @@ export default function ActiveCallsList({ isOpen, onClose, calls, onNavigateToCa
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{ delay: index * 0.05 }}
                                             >
-                                                <Card className="p-4 hover:shadow-lg transition-shadow cursor-pointer"
-                                                    onClick={() => onNavigateToCall(call)}
-                                                >
+                                                <Card className="p-4 hover:shadow-lg transition-shadow">
                                                     <div className="flex items-start justify-between gap-4">
                                                         <div className="flex-1">
                                                             <div className="flex items-center gap-2 mb-2">

@@ -4,13 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { X, Car, Radio, CheckCircle, AlertCircle, Clock, XCircle } from 'lucide-react';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+
 
 const statusOptions = [
     { value: 'Available', icon: CheckCircle, color: 'bg-gray-100 text-gray-700', iconColor: 'text-gray-600' },
@@ -21,15 +15,13 @@ const statusOptions = [
 ];
 
 export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitName, onStatusChange, activeCall }) {
-    const [selectedStatus, setSelectedStatus] = useState(currentStatus);
-
-    const handleSave = () => {
-        onStatusChange(selectedStatus);
-        onClose();
-    };
-
     const currentOption = statusOptions.find(opt => opt.value === currentStatus) || statusOptions[0];
     const StatusIcon = currentOption.icon;
+
+    const handleStatusClick = (status) => {
+        onStatusChange(status);
+        onClose();
+    };
 
     return (
         <AnimatePresence>
@@ -84,37 +76,33 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                                 )}
 
                                 <div>
-                                    <label className="text-sm font-medium text-gray-700 mb-2 block">
-                                        Change Status
+                                    <label className="text-sm font-medium text-gray-700 mb-3 block">
+                                        Quick Status Change
                                     </label>
-                                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {statusOptions.map((option) => {
-                                                const Icon = option.icon;
-                                                return (
-                                                    <SelectItem key={option.value} value={option.value}>
-                                                        <div className="flex items-center gap-2">
-                                                            <Icon className={`w-4 h-4 ${option.iconColor}`} />
-                                                            <span>{option.value}</span>
-                                                        </div>
-                                                    </SelectItem>
-                                                );
-                                            })}
-                                        </SelectContent>
-                                    </Select>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {statusOptions.map((option) => {
+                                            const Icon = option.icon;
+                                            const isActive = option.value === currentStatus;
+                                            return (
+                                                <Button
+                                                    key={option.value}
+                                                    onClick={() => handleStatusClick(option.value)}
+                                                    variant={isActive ? "default" : "outline"}
+                                                    className={`h-auto py-3 flex flex-col items-center gap-2 ${
+                                                        isActive ? 'bg-blue-600 hover:bg-blue-700' : ''
+                                                    }`}
+                                                >
+                                                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : option.iconColor}`} />
+                                                    <span className="text-xs">{option.value}</span>
+                                                </Button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
 
-                                <div className="flex gap-2 pt-2">
-                                    <Button variant="outline" onClick={onClose} className="flex-1">
-                                        Cancel
-                                    </Button>
-                                    <Button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700">
-                                        Update Status
-                                    </Button>
-                                </div>
+                                <Button variant="outline" onClick={onClose} className="w-full mt-2">
+                                    Close
+                                </Button>
                             </div>
                         </Card>
                     </motion.div>

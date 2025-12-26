@@ -125,10 +125,12 @@ export default function Navigation() {
     }, []);
 
     useEffect(() => {
-        loadCurrentUser();
-        getCurrentLocation();
-        fetchActiveCalls();
-        initializeUnit();
+        const init = async () => {
+            await loadCurrentUser();
+            getCurrentLocation();
+            fetchActiveCalls();
+        };
+        init();
         
         // Start live tracking by default
         if (isOnline) {
@@ -171,6 +173,13 @@ export default function Navigation() {
             stopContinuousTracking();
         }
     }, [isOnline]);
+
+    // Initialize unit when user, location, and unitName are ready
+    useEffect(() => {
+        if (currentUser && currentLocation && unitName && !currentUnitId) {
+            initializeUnit();
+        }
+    }, [currentUser, currentLocation, unitName]);
 
     // Check for better routes periodically when navigating
     useEffect(() => {
@@ -296,17 +305,27 @@ export default function Navigation() {
     };
 
     const initializeUnit = async () => {
-        if (!currentUser || !unitName) return;
+        if (!currentUser || !unitName || !currentLocation) return;
         
         try {
             // Check if unit exists
             const existingUnits = await base44.entities.Unit.filter({ user_id: currentUser.id });
             
             if (existingUnits && existingUnits.length > 0) {
-                setCurrentUnitId(existingUnits[0].id);
-                setUnitStatus(existingUnits[0].status || 'Available');
-                setActiveCallInfo(existingUnits[0].current_call_info);
-            } else if (currentLocation) {
+                const unit = existingUnits[0];
+                setCurrentUnitId(unit.id);
+                setUnitStatus(unit.status || 'Available');
+                setActiveCallInfo(unit.current_call_info);
+                
+                // Update location immediately
+                await base44.entities.Unit.update(unit.id, {
+                    latitude: currentLocation[0],
+                    longitude: currentLocation[1],
+                    unit_name: unitName,
+                    show_lights: showLights,
+                    last_updated: new Date().toISOString()
+                });
+            } else {
                 // Create new unit
                 const newUnit = await base44.entities.Unit.create({
                     unit_name: unitName,
@@ -321,9 +340,14 @@ export default function Navigation() {
                     last_updated: new Date().toISOString()
                 });
                 setCurrentUnitId(newUnit.id);
+                toast.success(`Unit ${unitName} initialized`);
             }
+            
+            // Start fetching other units
+            fetchOtherUnits();
         } catch (error) {
             console.error('Error initializing unit:', error);
+            toast.error('Failed to initialize unit');
         }
     };
 
@@ -363,7 +387,13 @@ export default function Navigation() {
     const fetchOtherUnits = async () => {
         try {
             const units = await base44.entities.Unit.list('-last_updated', 100);
-            setOtherUnits(units || []);
+            // Filter out stale units (not updated in last 5 minutes)
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+            const activeUnits = units.filter(unit => {
+                const lastUpdate = new Date(unit.last_updated);
+                return lastUpdate > fiveMinutesAgo;
+            });
+            setOtherUnits(activeUnits || []);
         } catch (error) {
             console.error('Error fetching other units:', error);
         }
@@ -619,38 +649,42 @@ export default function Navigation() {
     };
 
     const handleEnrouteToCall = async (call) => {
+        if (!currentUnitId) {
+            toast.error('Please set your unit name first');
+            setShowUnitSettings(true);
+            return;
+        }
+
         const callInfo = `${call.incident} - ${call.location}`;
         setActiveCallInfo(callInfo);
         setUnitStatus('Enroute');
         
-        if (currentUnitId) {
-            try {
-                await base44.entities.Unit.update(currentUnitId, {
-                    status: 'Enroute',
-                    current_call_id: `${call.timeReceived}-${call.incident}`,
-                    current_call_info: callInfo,
-                    last_updated: new Date().toISOString()
-                });
-                
-                toast.success(`Enroute to ${call.incident}`);
-                
-                // Automatically route to call
-                const callCoords = [call.latitude, call.longitude];
-                setDestination({ coords: callCoords, name: call.location });
-                setDestinationName(call.incident);
-                
-                if (currentLocation) {
-                    const fetchedRoutes = await fetchRoutes(currentLocation, callCoords);
-                    if (fetchedRoutes && fetchedRoutes.length > 0) {
-                        setRoutes(fetchedRoutes);
-                        setSelectedRouteIndex(0);
-                        updateRouteDisplay(fetchedRoutes[0]);
-                    }
+        try {
+            await base44.entities.Unit.update(currentUnitId, {
+                status: 'Enroute',
+                current_call_id: `${call.timeReceived}-${call.incident}`,
+                current_call_info: callInfo,
+                last_updated: new Date().toISOString()
+            });
+            
+            toast.success(`Enroute to ${call.incident}`);
+            
+            // Automatically route to call
+            const callCoords = [call.latitude, call.longitude];
+            setDestination({ coords: callCoords, name: call.location });
+            setDestinationName(call.incident);
+            
+            if (currentLocation) {
+                const fetchedRoutes = await fetchRoutes(currentLocation, callCoords);
+                if (fetchedRoutes && fetchedRoutes.length > 0) {
+                    setRoutes(fetchedRoutes);
+                    setSelectedRouteIndex(0);
+                    updateRouteDisplay(fetchedRoutes[0]);
                 }
-            } catch (error) {
-                console.error('Error marking enroute:', error);
-                toast.error('Failed to update status');
             }
+        } catch (error) {
+            console.error('Error marking enroute:', error);
+            toast.error('Failed to update status');
         }
     };
 
