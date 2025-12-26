@@ -1003,29 +1003,7 @@ onCallClick={(call) => {
                 </Button>
             </motion.div>
             
-            {/* Active Calls Counter */}
-            <AnimatePresence>
-                {activeCalls.length > 0 && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-4 right-4 z-[999]"
-                    >
-                        <Button
-                            onClick={() => setShowActiveCalls(!showActiveCalls)}
-                            className={`${
-                                showActiveCalls 
-                                    ? 'bg-red-500 hover:bg-red-600' 
-                                    : 'bg-gray-500 hover:bg-gray-600'
-                            } text-white px-4 py-2 text-sm font-semibold shadow-lg rounded-full`}
-                        >
-                            <Radio className="w-4 h-4 mr-2" />
-                            {activeCalls.length} Active Calls
-                        </Button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+
 
             {!isNavigating && (
                 <>
