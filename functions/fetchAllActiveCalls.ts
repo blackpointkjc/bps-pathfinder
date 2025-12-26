@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
             });
         }
         
-        // Geocode all calls
+        // Geocode all calls with AI assistance
         const geocodedCalls = [];
         for (const call of calls) {
             try {
@@ -99,49 +99,99 @@ Deno.serve(async (req) => {
                     jurisdiction = 'Richmond, VA, USA';
                 }
                 
-                const query = `${call.location}, ${jurisdiction}`;
-                
-                const geoResponse = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
-                    {
-                        headers: {
-                            'User-Agent': 'Emergency-Dispatch-App/1.0'
+                // Use AI to clean and format the address
+                const aiAddressResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
+                    prompt: `Extract and format this address for geocoding: "${call.location}". Make it a clean, standardized US address format. If it's an intersection, format it properly. Return ONLY the cleaned address, nothing else.`,
+                    response_json_schema: {
+                        type: "object",
+                        properties: {
+                            cleaned_address: { type: "string" }
                         }
                     }
-                );
-                let geoData = await geoResponse.json();
+                });
                 
-                // Retry with better formatting if failed
+                const cleanedAddress = aiAddressResponse.cleaned_address || call.location;
+                console.log(`🧹 Cleaned: "${call.location}" → "${cleanedAddress}"`);
+                
+                // Try multiple geocoding strategies
+                let geoData = null;
+                
+                // Strategy 1: Cleaned address with jurisdiction
+                const query1 = `${cleanedAddress}, ${jurisdiction}`;
+                let geoResponse = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query1)}&limit=1&countrycodes=us`,
+                    { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
+                );
+                geoData = await geoResponse.json();
+                
+                // Strategy 2: Original address with jurisdiction
                 if (!geoData || geoData.length === 0) {
-                    const locationParts = call.location.match(/^(\d+)\s+(.+)$/);
+                    const query2 = `${call.location}, ${jurisdiction}`;
+                    geoResponse = await fetch(
+                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query2)}&limit=1&countrycodes=us`,
+                        { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
+                    );
+                    geoData = await geoResponse.json();
+                }
+                
+                // Strategy 3: Extract street number and name
+                if (!geoData || geoData.length === 0) {
+                    const locationParts = cleanedAddress.match(/^(\d+)\s+(.+)$/);
                     if (locationParts) {
                         const [_, number, street] = locationParts;
-                        const betterQuery = `${number} ${street}, ${jurisdiction}`;
-                        
-                        const retryResponse = await fetch(
-                            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(betterQuery)}&limit=1&countrycodes=us`,
-                            {
-                                headers: {
-                                    'User-Agent': 'Emergency-Dispatch-App/1.0'
-                                }
-                            }
+                        const query3 = `${number} ${street}, ${jurisdiction}`;
+                        geoResponse = await fetch(
+                            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query3)}&limit=1&countrycodes=us`,
+                            { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
                         );
-                        geoData = await retryResponse.json();
+                        geoData = await geoResponse.json();
                     }
+                }
+                
+                // Strategy 4: Just the street name in jurisdiction
+                if (!geoData || geoData.length === 0) {
+                    const streetOnly = cleanedAddress.replace(/^\d+\s+/, '');
+                    const query4 = `${streetOnly}, ${jurisdiction}`;
+                    geoResponse = await fetch(
+                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query4)}&limit=1&countrycodes=us`,
+                        { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
+                    );
+                    geoData = await geoResponse.json();
                 }
                 
                 if (geoData && geoData.length > 0) {
                     const lat = parseFloat(geoData[0].lat);
                     const lon = parseFloat(geoData[0].lon);
-                    console.log(`✓ ${call.location} → ${lat}, ${lon}`);
-                    geocodedCalls.push({
-                        ...call,
-                        latitude: lat,
-                        longitude: lon
+                    
+                    // Verify coordinates with AI
+                    const verifyResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
+                        prompt: `Verify these coordinates make sense: Address "${call.location}" in ${jurisdiction} mapped to (${lat}, ${lon}). The Richmond VA area is around (37.54, -77.43), Henrico is around (37.59, -77.37), Chesterfield is around (37.38, -77.50). Does this coordinate seem correct for this address? Respond with yes or no and a brief explanation.`,
+                        response_json_schema: {
+                            type: "object",
+                            properties: {
+                                is_valid: { type: "boolean" },
+                                explanation: { type: "string" }
+                            }
+                        }
                     });
+                    
+                    if (verifyResponse.is_valid) {
+                        console.log(`✓ ${call.location} → ${lat}, ${lon} (verified)`);
+                        geocodedCalls.push({
+                            ...call,
+                            latitude: lat,
+                            longitude: lon
+                        });
+                    } else {
+                        console.log(`⚠️ ${call.location} → ${lat}, ${lon} (rejected: ${verifyResponse.explanation})`);
+                        geocodedCalls.push({
+                            ...call,
+                            latitude: null,
+                            longitude: null
+                        });
+                    }
                 } else {
                     console.log(`✗ No geocode for ${call.location}`);
-                    // Include call even without coordinates
                     geocodedCalls.push({
                         ...call,
                         latitude: null,
@@ -150,7 +200,7 @@ Deno.serve(async (req) => {
                 }
                 
                 // Rate limit
-                await new Promise(resolve => setTimeout(resolve, 1100));
+                await new Promise(resolve => setTimeout(resolve, 1200));
             } catch (error) {
                 console.error(`Error geocoding ${call.location}:`, error);
                 geocodedCalls.push({
