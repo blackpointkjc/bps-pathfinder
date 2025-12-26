@@ -45,7 +45,8 @@ export default function Navigation() {
     
     // Active calls state
     const [activeCalls, setActiveCalls] = useState([]);
-    const [showActiveCalls, setShowActiveCalls] = useState(true);
+    const [allActiveCalls, setAllActiveCalls] = useState([]);
+    const [callFilter, setCallFilter] = useState('all'); // 'all', 'henrico', 'chesterfield', 'richmond'
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
     const [unitName, setUnitName] = useState(localStorage.getItem('unitName') || '');
     const [showUnitSettings, setShowUnitSettings] = useState(false);
@@ -710,6 +711,31 @@ export default function Navigation() {
         }
     };
 
+    const applyCallFilter = (calls, filter) => {
+        let filtered = calls;
+        
+        if (filter === 'henrico') {
+            filtered = calls.filter(call => call.agency?.includes('HPD') || call.agency?.includes('HCPD') || call.agency?.includes('Henrico'));
+        } else if (filter === 'chesterfield') {
+            filtered = calls.filter(call => call.agency?.includes('CCPD') || call.agency?.includes('CCFD') || call.agency?.includes('Chesterfield'));
+        } else if (filter === 'richmond') {
+            filtered = calls.filter(call => call.agency?.includes('RPD') || call.agency?.includes('RFD') || call.agency?.includes('BPS'));
+        }
+        
+        setActiveCalls(filtered);
+    };
+
+    const cycleCallFilter = () => {
+        const filters = ['all', 'richmond', 'henrico', 'chesterfield'];
+        const currentIndex = filters.indexOf(callFilter);
+        const nextFilter = filters[(currentIndex + 1) % filters.length];
+        setCallFilter(nextFilter);
+        applyCallFilter(allActiveCalls, nextFilter);
+        
+        const filterNames = { all: 'All Areas', richmond: 'Richmond', henrico: 'Henrico', chesterfield: 'Chesterfield' };
+        toast.info(`Showing calls: ${filterNames[nextFilter]}`);
+    };
+
     const fetchActiveCalls = async () => {
         if (!isOnline) return;
         
@@ -731,7 +757,8 @@ export default function Navigation() {
             
             console.log(`Active calls loaded: RPD/RFD=${response1.data.geocodedCalls?.length || 0}, Additional=${response2.data.geocodedCalls?.length || 0}, Henrico=${henricoResponse.data.geocodedCalls?.length || 0}`);
             
-            setActiveCalls(allCalls);
+            setAllActiveCalls(allCalls);
+            applyCallFilter(allCalls, callFilter);
             
             if (allCalls.length > 0) {
                 toast.success(`Loaded ${allCalls.length} active calls`);
@@ -771,7 +798,7 @@ export default function Navigation() {
                 route={routeCoords}
                 trafficSegments={trafficSegments}
                 useOfflineTiles={!isOnline}
-                activeCalls={showActiveCalls ? activeCalls : []}
+                activeCalls={activeCalls}
                 heading={heading}
                 locationHistory={isLiveTracking ? locationHistory : []}
                 unitName={unitName || currentUser?.unit_number}
@@ -916,30 +943,25 @@ onCallClick={(call) => {
                 </Button>
                 
                 <Button
-                    onClick={() => {
-                        setShowActiveCalls(!showActiveCalls);
-                        if (!showActiveCalls && activeCalls.length === 0) {
-                            fetchActiveCalls();
-                        }
-                    }}
-                    size="icon"
-                    className={`h-10 w-10 rounded-full backdrop-blur-xl shadow-lg border-white/20 ${
-                        showActiveCalls 
-                            ? 'bg-red-500 hover:bg-red-600 text-white' 
-                            : 'bg-white/95 hover:bg-white text-gray-600'
-                    }`}
+                    onClick={cycleCallFilter}
+                    size="sm"
+                    className="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-xl shadow-lg flex items-center gap-2"
                     disabled={isLoadingCalls}
                 >
-                    <Radio className={`w-5 h-5 ${isLoadingCalls ? 'animate-pulse' : ''}`} />
+                    <Radio className={`w-4 h-4 ${isLoadingCalls ? 'animate-pulse' : ''}`} />
+                    {callFilter === 'all' && 'All Areas'}
+                    {callFilter === 'richmond' && 'Richmond'}
+                    {callFilter === 'henrico' && 'Henrico'}
+                    {callFilter === 'chesterfield' && 'Chesterfield'}
                 </Button>
-                
-                {showActiveCalls && activeCalls.length > 0 && (
+
+                {activeCalls.length > 0 && (
                     <Button
                         onClick={() => setShowCallsList(true)}
                         size="sm"
                         className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-2 rounded-xl shadow-lg"
                     >
-                        View List
+                        View List ({activeCalls.length})
                     </Button>
                 )}
 
