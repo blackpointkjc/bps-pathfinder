@@ -223,33 +223,13 @@ Deno.serve(async (req) => {
                     const lat = parseFloat(geoData[0].lat);
                     const lon = parseFloat(geoData[0].lon);
                     
-                    // Verify coordinates with AI
-                    const verifyResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
-                        prompt: `Verify these coordinates make sense: Address "${call.location}" in ${jurisdiction} mapped to (${lat}, ${lon}). The Richmond VA area is around (37.54, -77.43), Henrico is around (37.59, -77.37), Chesterfield is around (37.38, -77.50). Does this coordinate seem correct for this address? Respond with yes or no and a brief explanation.`,
-                        response_json_schema: {
-                            type: "object",
-                            properties: {
-                                is_valid: { type: "boolean" },
-                                explanation: { type: "string" }
-                            }
-                        }
+                    // Always accept coordinates - skip AI verification to speed up
+                    console.log(`✓ ${call.location} → ${lat}, ${lon}`);
+                    geocodedCalls.push({
+                        ...call,
+                        latitude: lat,
+                        longitude: lon
                     });
-                    
-                    if (verifyResponse.is_valid) {
-                        console.log(`✓ ${call.location} → ${lat}, ${lon} (verified)`);
-                        geocodedCalls.push({
-                            ...call,
-                            latitude: lat,
-                            longitude: lon
-                        });
-                    } else {
-                        console.log(`⚠️ ${call.location} → ${lat}, ${lon} (rejected: ${verifyResponse.explanation})`);
-                        geocodedCalls.push({
-                            ...call,
-                            latitude: null,
-                            longitude: null
-                        });
-                    }
                 } else {
                     console.log(`✗ No geocode for ${call.location}`);
                     geocodedCalls.push({
