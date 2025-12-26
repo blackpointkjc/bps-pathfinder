@@ -42,25 +42,24 @@ Deno.serve(async (req) => {
                     cells.push(text);
                 }
                 
-                if (cells.length >= 5) {
+                if (cells.length >= 3) {
                     const [timeReceived, incident, location, agency, status] = cells;
                     
-                    // Filter for CCFD, CCPD, HPD only
-                    if ((agency.includes('CCFD') || agency.includes('CCPD') || agency.includes('HPD')) && 
-                        timeReceived && incident && location) {
+                    // Include ALL calls - no agency filtering
+                    if (incident && location) {
                         calls.push({
-                            timeReceived,
+                            timeReceived: timeReceived || 'Unknown',
                             incident,
                             location,
                             agency: agency || 'Unknown',
-                            status: status || 'Unknown'
+                            status: status || 'Dispatched'
                         });
                     }
                 }
             }
         }
         
-        console.log(`Scraped ${calls.length} CCFD/CCPD/HPD calls from website`);
+        console.log(`Scraped ${calls.length} calls from website`);
         
         // Geocode each call location
         const geocodedCalls = [];
@@ -68,10 +67,14 @@ Deno.serve(async (req) => {
             try {
                 // Determine jurisdiction based on agency
                 let jurisdiction = 'Virginia';
-                if (call.agency.includes('CCFD') || call.agency.includes('CCPD')) {
+                if (call.agency.includes('RPD') || call.agency.includes('RFD')) {
+                    jurisdiction = 'Richmond, VA';
+                } else if (call.agency.includes('CCFD') || call.agency.includes('CCPD')) {
                     jurisdiction = 'Chesterfield County, VA';
                 } else if (call.agency.includes('HPD') || call.agency.includes('HCPD')) {
                     jurisdiction = 'Henrico County, VA';
+                } else if (call.agency.includes('BPS')) {
+                    jurisdiction = 'Richmond, VA';
                 }
                 
                 const query = `${call.location}, ${jurisdiction}`;
