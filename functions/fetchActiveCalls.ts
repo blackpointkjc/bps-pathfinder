@@ -130,10 +130,42 @@ const query = `${call.location}, ${jurisdiction}`;
         
         console.log(`Successfully geocoded ${geocodedCalls.length} out of ${calls.length} calls`);
         
+        // Generate AI summaries for calls
+        const callsWithSummaries = await Promise.all(
+            geocodedCalls.map(async (call) => {
+                try {
+                    const summaryResponse = await fetch('https://api.base44.io/integrations/Core/InvokeLLM', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${Deno.env.get('BASE44_SERVICE_ROLE_KEY')}`
+                        },
+                        body: JSON.stringify({
+                            prompt: `Summarize this emergency call in 1-2 sentences, highlighting key details: Incident: ${call.incident}, Location: ${call.location}, Agency: ${call.agency}, Status: ${call.status}`,
+                            response_json_schema: {
+                                type: "object",
+                                properties: {
+                                    summary: { type: "string" }
+                                }
+                            }
+                        })
+                    });
+                    const summaryData = await summaryResponse.json();
+                    return {
+                        ...call,
+                        ai_summary: summaryData.summary || 'Emergency call'
+                    };
+                } catch (error) {
+                    console.error('Error generating summary:', error);
+                    return { ...call, ai_summary: `${call.incident} at ${call.location}` };
+                }
+            })
+        );
+        
         return Response.json({
             success: true,
             totalCalls: calls.length,
-            geocodedCalls: geocodedCalls,
+            geocodedCalls: callsWithSummaries,
             timestamp: new Date().toISOString()
         });
         

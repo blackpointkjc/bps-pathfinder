@@ -586,14 +586,18 @@ export default function Navigation() {
         }
     };
 
-    const handleStatusChange = async (newStatus) => {
+    const handleStatusChange = async (newStatus, eta = null) => {
         setUnitStatus(newStatus);
         if (currentUser) {
             try {
-                await base44.auth.updateMe({ 
+                const updateData = { 
                     status: newStatus,
                     last_updated: new Date().toISOString()
-                });
+                };
+                if (eta) {
+                    updateData.estimated_return = new Date(eta).toISOString();
+                }
+                await base44.auth.updateMe(updateData);
                 toast.success(`Status updated to ${newStatus}`);
             } catch (error) {
                 console.error('Error updating status:', error);
@@ -671,15 +675,26 @@ export default function Navigation() {
         
         setIsLoadingCalls(true);
         try {
-            // Fetch both sources
-            const [response1, response2] = await Promise.all([
+            // Fetch from all sources
+            const [response1, response2, dispatchCalls] = await Promise.all([
                 base44.functions.invoke('fetchActiveCalls', {}),
-                base44.functions.invoke('fetchAdditionalCalls', {})
+                base44.functions.invoke('fetchAdditionalCalls', {}),
+                base44.entities.DispatchCall.filter({ status: 'Dispatched' })
             ]);
             
             const allCalls = [
                 ...(response1.data.success ? response1.data.geocodedCalls : []),
-                ...(response2.data.success ? response2.data.geocodedCalls : [])
+                ...(response2.data.success ? response2.data.geocodedCalls : []),
+                ...(dispatchCalls || []).filter(call => call.latitude && call.longitude).map(call => ({
+                    timeReceived: new Date(call.time_received).toLocaleTimeString(),
+                    incident: call.incident,
+                    location: call.location,
+                    agency: call.agency,
+                    status: call.status,
+                    latitude: call.latitude,
+                    longitude: call.longitude,
+                    ai_summary: call.ai_summary
+                }))
             ];
             
             setActiveCalls(allCalls);
@@ -778,40 +793,25 @@ onCallClick={(call) => {
                     animate={{ opacity: 1, x: 0 }}
                     className="absolute top-1/2 -translate-y-1/2 left-4 z-[999] flex flex-col gap-2"
                 >
-                    <Button
-                        onClick={() => handleStatusChange('Available')}
-                        size="sm"
-                        className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-3 py-6 flex flex-col items-center gap-1 min-w-[80px]`}
-                    >
-                        <CheckCircle2 className={`w-5 h-5 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
-                        <span className={`text-xs font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Available</span>
+                    <Button onClick={() => handleStatusChange('Available')} size="sm" className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-2 py-4 flex flex-col items-center gap-1 min-w-[70px]`}>
+                        <CheckCircle2 className={`w-4 h-4 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
+                        <span className={`text-[10px] font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Available</span>
                     </Button>
-                    
-                    <Button
-                        onClick={() => setShowCallsList(true)}
-                        size="sm"
-                        className={`${unitStatus === 'Enroute' ? 'bg-red-600 hover:bg-red-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-3 py-6 flex flex-col items-center gap-1 min-w-[80px]`}
-                    >
-                        <NavigationIcon className={`w-5 h-5 ${unitStatus === 'Enroute' ? 'text-white' : 'text-red-600'}`} />
-                        <span className={`text-xs font-semibold ${unitStatus === 'Enroute' ? 'text-white' : 'text-gray-700'}`}>Enroute</span>
+                    <Button onClick={() => setShowCallsList(true)} size="sm" className={`${unitStatus === 'Enroute' ? 'bg-red-600 hover:bg-red-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-2 py-4 flex flex-col items-center gap-1 min-w-[70px]`}>
+                        <NavigationIcon className={`w-4 h-4 ${unitStatus === 'Enroute' ? 'text-white' : 'text-red-600'}`} />
+                        <span className={`text-[10px] font-semibold ${unitStatus === 'Enroute' ? 'text-white' : 'text-gray-700'}`}>Enroute</span>
                     </Button>
-                    
-                    <Button
-                        onClick={() => handleStatusChange('On Scene')}
-                        size="sm"
-                        className={`${unitStatus === 'On Scene' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-3 py-6 flex flex-col items-center gap-1 min-w-[80px]`}
-                    >
-                        <MapPin className={`w-5 h-5 ${unitStatus === 'On Scene' ? 'text-white' : 'text-blue-600'}`} />
-                        <span className={`text-xs font-semibold ${unitStatus === 'On Scene' ? 'text-white' : 'text-gray-700'}`}>On Scene</span>
+                    <Button onClick={() => handleStatusChange('On Scene')} size="sm" className={`${unitStatus === 'On Scene' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-2 py-4 flex flex-col items-center gap-1 min-w-[70px]`}>
+                        <MapPin className={`w-4 h-4 ${unitStatus === 'On Scene' ? 'text-white' : 'text-blue-600'}`} />
+                        <span className={`text-[10px] font-semibold ${unitStatus === 'On Scene' ? 'text-white' : 'text-gray-700'}`}>On Scene</span>
                     </Button>
-                    
-                    <Button
-                        onClick={() => handleStatusChange('Out of Service')}
-                        size="sm"
-                        className={`${unitStatus === 'Out of Service' ? 'bg-gray-600 hover:bg-gray-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-3 py-6 flex flex-col items-center gap-1 min-w-[80px]`}
-                    >
-                        <XCircle className={`w-5 h-5 ${unitStatus === 'Out of Service' ? 'text-white' : 'text-gray-600'}`} />
-                        <span className={`text-xs font-semibold ${unitStatus === 'Out of Service' ? 'text-white' : 'text-gray-700'}`}>Out</span>
+                    <Button onClick={() => handleStatusChange('On Patrol')} size="sm" className={`${unitStatus === 'On Patrol' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-2 py-4 flex flex-col items-center gap-1 min-w-[70px]`}>
+                        <Car className={`w-4 h-4 ${unitStatus === 'On Patrol' ? 'text-white' : 'text-indigo-600'}`} />
+                        <span className={`text-[10px] font-semibold ${unitStatus === 'On Patrol' ? 'text-white' : 'text-gray-700'}`}>Patrol</span>
+                    </Button>
+                    <Button onClick={() => setShowStatusPanel(true)} size="sm" className="bg-white/95 hover:bg-white shadow-lg px-2 py-4 flex flex-col items-center gap-1 min-w-[70px]">
+                        <Settings className="w-4 h-4 text-gray-600" />
+                        <span className="text-[10px] font-semibold text-gray-700">More</span>
                     </Button>
                 </motion.div>
             )}

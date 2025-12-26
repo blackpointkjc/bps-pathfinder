@@ -202,7 +202,12 @@ export default function Admin() {
                                                                 <option value="Available">Available</option>
                                                                 <option value="Enroute">Enroute</option>
                                                                 <option value="On Scene">On Scene</option>
+                                                                <option value="On Patrol">On Patrol</option>
+                                                                <option value="At Station">At Station</option>
+                                                                <option value="In Quarters">In Quarters</option>
+                                                                <option value="Training">Training</option>
                                                                 <option value="Busy">Busy</option>
+                                                                <option value="Medical Leave">Medical Leave</option>
                                                                 <option value="Out of Service">Out of Service</option>
                                                             </select>
                                                         </div>

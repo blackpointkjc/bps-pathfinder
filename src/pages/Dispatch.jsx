@@ -66,8 +66,36 @@ export default function Dispatch() {
 
         setCreating(true);
         try {
+            // Geocode the location
+            const geoResponse = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(newCall.location)}&limit=1`,
+                { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
+            );
+            const geoData = await geoResponse.json();
+            
+            let latitude = null;
+            let longitude = null;
+            if (geoData && geoData.length > 0) {
+                latitude = parseFloat(geoData[0].lat);
+                longitude = parseFloat(geoData[0].lon);
+            }
+
+            // Generate AI summary
+            const summaryResponse = await base44.integrations.Core.InvokeLLM({
+                prompt: `Summarize this emergency dispatch call in 1-2 sentences: Incident: ${newCall.incident}, Location: ${newCall.location}, Description: ${newCall.description || 'None'}, Priority: ${newCall.priority}`,
+                response_json_schema: {
+                    type: "object",
+                    properties: {
+                        summary: { type: "string" }
+                    }
+                }
+            });
+
             const callData = {
                 ...newCall,
+                latitude,
+                longitude,
+                ai_summary: summaryResponse.summary || `${newCall.incident} at ${newCall.location}`,
                 assigned_units: selectedUnits,
                 status: 'Dispatched',
                 time_received: new Date().toISOString(),

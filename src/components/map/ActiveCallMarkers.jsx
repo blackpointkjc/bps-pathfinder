@@ -113,6 +113,12 @@ export default function ActiveCallMarkers({ calls }) {
                             </div>
                             
                             <div className="space-y-2 text-xs">
+                                {call.ai_summary && (
+                                    <div className="bg-blue-50 p-2 rounded text-xs text-blue-900 font-medium mb-2">
+                                        {call.ai_summary}
+                                    </div>
+                                )}
+                                
                                 <div className="flex items-start gap-2">
                                     <MapPin className="w-3 h-3 text-gray-500 flex-shrink-0 mt-0.5" />
                                     <span className="text-gray-700">{call.location}</span>
