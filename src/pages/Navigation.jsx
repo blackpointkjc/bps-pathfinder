@@ -264,8 +264,10 @@ export default function Navigation() {
                 
                 lastPosition.current = coords;
                 
-                // Update unit location in database
-                updateUnitLocation();
+                // Update user location in database
+                if (currentUser) {
+                    updateUserLocation();
+                }
                 
                 // Update navigation progress if navigating
                 if (isNavigating && directions) {
