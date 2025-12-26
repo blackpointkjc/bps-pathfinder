@@ -722,13 +722,21 @@ export default function Navigation() {
         
         setIsLoadingCalls(true);
         try {
-            const response = await base44.functions.invoke('fetchActiveCalls', {});
-            if (response.data.success) {
-                setActiveCalls(response.data.geocodedCalls);
-                toast.success(`Loaded ${response.data.geocodedCalls.length} active calls`, {
-                    duration: 2000
-                });
-            }
+            // Fetch both sources
+            const [response1, response2] = await Promise.all([
+                base44.functions.invoke('fetchActiveCalls', {}),
+                base44.functions.invoke('fetchAdditionalCalls', {})
+            ]);
+            
+            const allCalls = [
+                ...(response1.data.success ? response1.data.geocodedCalls : []),
+                ...(response2.data.success ? response2.data.geocodedCalls : [])
+            ];
+            
+            setActiveCalls(allCalls);
+            toast.success(`Loaded ${allCalls.length} active calls`, {
+                duration: 2000
+            });
         } catch (error) {
             console.error('Error fetching active calls:', error);
             toast.error('Failed to load active calls');

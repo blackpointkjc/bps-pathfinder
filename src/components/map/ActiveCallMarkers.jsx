@@ -40,6 +40,12 @@ const createCallIcon = (agency, status, incident) => {
         iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
         </svg>`;
+    } else if (agency === 'BPS') {
+        // BPS - School badge
+        iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#FFD700" stroke="#FFD700" stroke-width="2">
+            <path d="M12 2L2 7v6c0 5.5 3.8 10.7 10 12 6.2-1.3 10-6.5 10-12V7z"></path>
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="#000"></path>
+        </svg>`;
     } else {
         // Fire/EMS - Ambulance/Fire
         iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
@@ -61,8 +67,8 @@ const createCallIcon = (agency, status, incident) => {
                 <div style="
                     width: 36px;
                     height: 36px;
-                    background: ${color};
-                    border: 3px solid white;
+                    background: ${agency === 'BPS' ? '#000000' : color};
+                    border: 3px solid ${agency === 'BPS' ? '#FFD700' : 'white'};
                     border-radius: 50%;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                     display: flex;

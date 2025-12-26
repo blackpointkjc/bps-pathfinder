@@ -32,7 +32,7 @@ export default function Admin() {
                 return;
             }
 
-            const allUsers = await base44.asServiceRole.entities.User.list();
+            const allUsers = await base44.asServiceRole.entities.User.list('-created_date', 1000);
             setUsers(allUsers || []);
         } catch (error) {
             console.error('Error loading data:', error);
