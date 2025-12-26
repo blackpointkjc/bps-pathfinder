@@ -767,6 +767,7 @@ export default function Navigation() {
                 
                 setAllActiveCalls(allCalls);
                 applyCallFilter(allCalls, callFilter);
+                setShowActiveCalls(true);
                 
                 if (allCalls.length > 0) {
                     toast.success(`Loaded ${allCalls.length} active calls`);
