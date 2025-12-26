@@ -19,6 +19,7 @@ import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
 import UnitStatusPanel from '@/components/map/UnitStatusPanel';
 import DispatchPanel from '@/components/map/DispatchPanel';
 import CallDetailView from '@/components/map/CallDetailView';
+import CallDetailSidebar from '@/components/map/CallDetailSidebar';
 import { useVoiceGuidance, useVoiceCommand } from '@/components/map/VoiceGuidance';
 import { generateTrafficData } from '@/components/map/TrafficLayer';
 
@@ -90,6 +91,8 @@ export default function Navigation() {
     const [selectedCallForDispatch, setSelectedCallForDispatch] = useState(null);
     const [showCallDetail, setShowCallDetail] = useState(false);
     const [selectedCall, setSelectedCall] = useState(null);
+    const [showCallSidebar, setShowCallSidebar] = useState(false);
+    const [mapCenter, setMapCenter] = useState(null);
     
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
@@ -741,29 +744,25 @@ export default function Navigation() {
         
         setIsLoadingCalls(true);
         try {
-            // Fetch from all sources including Henrico
-            const [response1, response2, henricoResponse] = await Promise.all([
-                base44.functions.invoke('fetchActiveCalls', {}).catch(e => ({ data: { success: false, geocodedCalls: [] } })),
-                base44.functions.invoke('fetchAdditionalCalls', {}).catch(e => ({ data: { success: false, geocodedCalls: [] } })),
-                base44.functions.invoke('fetchHenricoCalls', {}).catch(e => ({ data: { success: false, geocodedCalls: [] } }))
-            ]);
+            console.log('Fetching ALL active calls from gractivecalls.com...');
             
-            // Collect ALL calls with valid coordinates from all sources
-            const allCalls = [
-                ...(response1.data.success ? response1.data.geocodedCalls : []),
-                ...(response2.data.success ? response2.data.geocodedCalls : []),
-                ...(henricoResponse.data.success ? henricoResponse.data.geocodedCalls : [])
-            ].filter(call => call.latitude && call.longitude);
+            const response = await base44.functions.invoke('fetchAllActiveCalls', {});
             
-            console.log(`Active calls loaded: RPD/RFD=${response1.data.geocodedCalls?.length || 0}, Additional=${response2.data.geocodedCalls?.length || 0}, Henrico=${henricoResponse.data.geocodedCalls?.length || 0}`);
-            
-            setAllActiveCalls(allCalls);
-            applyCallFilter(allCalls, callFilter);
-            
-            if (allCalls.length > 0) {
-                toast.success(`Loaded ${allCalls.length} active calls`);
+            if (response.data.success) {
+                const allCalls = response.data.geocodedCalls.filter(call => call.latitude && call.longitude);
+                
+                console.log(`✅ Loaded ${allCalls.length} active calls from all agencies`);
+                
+                setAllActiveCalls(allCalls);
+                applyCallFilter(allCalls, callFilter);
+                
+                if (allCalls.length > 0) {
+                    toast.success(`Loaded ${allCalls.length} active calls from all agencies`);
+                } else {
+                    toast.info('No active calls at this time');
+                }
             } else {
-                toast.info('No active calls at this time');
+                toast.error('Failed to load active calls');
             }
         } catch (error) {
             console.error('Error fetching active calls:', error);
@@ -806,9 +805,10 @@ export default function Navigation() {
                 otherUnits={otherUnits}
                 currentUserId={currentUser?.id}
                 speed={speed}
-onCallClick={(call) => {
+                mapCenter={mapCenter}
+                onCallClick={(call) => {
                     setSelectedCall(call);
-                    setShowCallDetail(true);
+                    setShowCallSidebar(true);
                 }}
             />
 
@@ -972,10 +972,20 @@ onCallClick={(call) => {
                         onClick={() => window.location.href = '/dispatch'}
                         size="icon"
                         className="h-10 w-10 rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-lg"
+                        title="Dispatch Center"
                     >
                         <Plus className="w-5 h-5" />
                     </Button>
                 )}
+
+                <Button
+                    onClick={() => window.location.href = '/call-history'}
+                    size="icon"
+                    className="h-10 w-10 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg"
+                    title="Call History"
+                >
+                    <Radio className="w-5 h-5" />
+                </Button>
 
                 <Button
                     onClick={() => setShowRoutePreferences(true)}
@@ -1147,6 +1157,25 @@ onCallClick={(call) => {
                     onEnroute={() => {
                         handleEnrouteToCall(selectedCall);
                         setShowCallDetail(false);
+                    }}
+                />
+            )}
+
+            {showCallSidebar && selectedCall && (
+                <CallDetailSidebar
+                    call={selectedCall}
+                    onClose={() => {
+                        setShowCallSidebar(false);
+                        setSelectedCall(null);
+                    }}
+                    onEnroute={() => {
+                        handleEnrouteToCall(selectedCall);
+                        setShowCallSidebar(false);
+                    }}
+                    onCenter={() => {
+                        if (selectedCall.latitude && selectedCall.longitude) {
+                            setMapCenter([selectedCall.latitude, selectedCall.longitude]);
+                        }
                     }}
                 />
             )}

@@ -94,7 +94,7 @@ const destinationIcon = new L.DivIcon({
 });
 
 // Component to handle map center updates
-function MapController({ center, routeBounds }) {
+function MapController({ center, routeBounds, mapCenter }) {
     const map = useMap();
     const prevCenterRef = useRef(center);
     const userInteractingRef = useRef(false);
@@ -115,6 +115,13 @@ function MapController({ center, routeBounds }) {
         };
     }, [map]);
 
+    // Handle external map centering (from call detail sidebar)
+    useEffect(() => {
+        if (mapCenter) {
+            map.setView(mapCenter, 16, { animate: true, duration: 0.5 });
+        }
+    }, [mapCenter, map]);
+
     useEffect(() => {
         // Don't auto-center if user is interacting
         if (userInteractingRef.current) return;
@@ -132,7 +139,7 @@ function MapController({ center, routeBounds }) {
     return null;
 }
 
-export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed }) {
+export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter }) {
     const defaultCenter = currentLocation || [37.7749, -122.4194]; // Default to SF
     
     // Calculate route bounds if route exists
@@ -158,6 +165,7 @@ export default function MapView({ currentLocation, destination, route, trafficSe
             <MapController 
                 center={currentLocation} 
                 routeBounds={routeBounds}
+                mapCenter={mapCenter}
             />
 
             {currentLocation && (
