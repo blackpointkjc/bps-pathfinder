@@ -107,18 +107,28 @@ const createCallIcon = (agency, status, incident) => {
     });
 };
 
-export default function ActiveCallMarkers({ calls }) {
+export default function ActiveCallMarkers({ calls, onCallClick }) {
     if (!calls || calls.length === 0) return null;
     
     return (
         <>
-            {calls.map((call, index) => (
-                <Marker
-                    key={`call-${index}-${call.timeReceived}`}
-                    position={[call.latitude, call.longitude]}
-                    icon={createCallIcon(call.agency, call.status, call.incident)}
-                >
-                    <Popup maxWidth={300}>
+            {calls.map((call, index) => {
+                if (!call.latitude || !call.longitude) return null;
+                
+                return (
+                    <Marker
+                        key={`call-${index}-${call.timeReceived}-${call.incident}`}
+                        position={[call.latitude, call.longitude]}
+                        icon={createCallIcon(call.agency || 'Unknown', call.status || 'Unknown', call.incident || 'Call')}
+                        eventHandlers={{
+                            click: () => {
+                                if (onCallClick) {
+                                    onCallClick(call);
+                                }
+                            }
+                        }}
+                    >
+                        <Popup maxWidth={300}>
                         <div className="p-2">
                             <div className="flex items-start gap-2 mb-2">
                                 <Radio className="w-4 h-4 text-red-500 flex-shrink-0 mt-1" />
@@ -170,7 +180,8 @@ export default function ActiveCallMarkers({ calls }) {
                         </div>
                     </Popup>
                 </Marker>
-            ))}
+            );
+            })}
         </>
     );
 }
