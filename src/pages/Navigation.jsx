@@ -49,7 +49,7 @@ export default function Navigation() {
     const [allActiveCalls, setAllActiveCalls] = useState([]);
     const [callFilter, setCallFilter] = useState('all'); // 'all', 'henrico', 'chesterfield', 'richmond'
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
-    const [showActiveCalls, setShowActiveCalls] = useState(true);
+    const [showActiveCalls, setShowActiveCalls] = useState(false);
     const [unitName, setUnitName] = useState(localStorage.getItem('unitName') || '');
     const [showUnitSettings, setShowUnitSettings] = useState(false);
     const [showLights, setShowLights] = useState(
@@ -133,7 +133,6 @@ export default function Navigation() {
         const init = async () => {
             await loadCurrentUser();
             getCurrentLocation();
-            fetchActiveCalls();
         };
         init();
         
