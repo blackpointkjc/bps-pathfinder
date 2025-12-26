@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
@@ -12,6 +12,7 @@ import DirectionsPanel from '@/components/map/DirectionsPanel';
 import RouteOptions from '@/components/map/RouteOptions';
 import LiveNavigation from '@/components/map/LiveNavigation';
 import OfflineMapManager from '@/components/map/OfflineMapManager';
+import UnitSettings from '@/components/map/UnitSettings';
 import { generateTrafficData } from '@/components/map/TrafficLayer';
 
 export default function Navigation() {
@@ -39,6 +40,8 @@ export default function Navigation() {
     const [activeCalls, setActiveCalls] = useState([]);
     const [showActiveCalls, setShowActiveCalls] = useState(true);
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
+    const [unitName, setUnitName] = useState(localStorage.getItem('unitName') || '');
+    const [showUnitSettings, setShowUnitSettings] = useState(false);
     
     // Live tracking state
     const [heading, setHeading] = useState(null);
@@ -390,6 +393,11 @@ export default function Navigation() {
         return `${type} ${modifier || ''}`.trim();
     };
 
+    const handleSaveUnitName = (name) => {
+        setUnitName(name);
+        localStorage.setItem('unitName', name);
+    };
+
     const fetchActiveCalls = async () => {
         if (!isOnline) return;
         
@@ -438,6 +446,7 @@ export default function Navigation() {
                 activeCalls={showActiveCalls ? activeCalls : []}
                 heading={heading}
                 locationHistory={isLiveTracking ? locationHistory : []}
+                unitName={unitName}
             />
 
             {/* Online/Offline Indicator & Live Tracking Status */}
@@ -518,6 +527,16 @@ export default function Navigation() {
                     disabled={isLoadingCalls}
                 >
                     <Radio className={`w-5 h-5 ${isLoadingCalls ? 'animate-pulse' : ''}`} />
+                </Button>
+
+                <Button
+                    onClick={() => setShowUnitSettings(true)}
+                    size="icon"
+                    className={`h-10 w-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg border-white/20 hover:bg-white ${
+                        unitName ? 'text-[#007AFF]' : 'text-gray-600'
+                    }`}
+                >
+                    <Car className="w-5 h-5" />
                 </Button>
             </motion.div>
             
@@ -615,6 +634,13 @@ export default function Navigation() {
                     onClose={() => setShowOfflineManager(false)}
                 />
             )}
+
+            <UnitSettings
+                isOpen={showUnitSettings}
+                onClose={() => setShowUnitSettings(false)}
+                unitName={unitName}
+                onSave={handleSaveUnitName}
+            />
         </div>
     );
 }
