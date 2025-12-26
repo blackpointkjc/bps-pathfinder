@@ -5,6 +5,7 @@ import L from 'leaflet';
 import TrafficLayer from './TrafficLayer';
 import ActiveCallMarkers from './ActiveCallMarkers';
 import OtherUnitsLayer from './OtherUnitsLayer';
+import JurisdictionBoundaries from './JurisdictionBoundaries';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;

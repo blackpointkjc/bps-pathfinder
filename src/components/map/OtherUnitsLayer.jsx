@@ -83,29 +83,29 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                     <Car className="w-4 h-4 text-blue-600" />
                                     <div>
                                         <p className="font-bold text-base text-blue-600">
-                                            Unit {unit.unit_number || 'Unknown'}
+                                            {unit.unit_number ? `#${unit.unit_number}` : 'Unit'}
                                         </p>
                                         <p className="text-xs text-gray-600">
-                                            {unit.full_name?.split(' ').pop() || ''}
+                                            {unit.last_name || unit.full_name?.split(' ').pop() || 'Unknown'}
                                         </p>
                                     </div>
                                 </div>
-                                
+
                                 <div className="space-y-1 text-xs">
                                     <div className="flex items-center justify-between">
                                         <span className="text-gray-600">Status:</span>
                                         <Badge className={getStatusColor(unit.status)}>
-                                            {unit.status || 'Unknown'}
+                                            {unit.status || 'Available'}
                                         </Badge>
                                     </div>
-                                    
-                                    {unit.speed !== undefined && unit.speed !== null && (
+
+                                    {unit.speed !== undefined && unit.speed !== null && unit.speed > 0 && (
                                         <div className="flex items-center justify-between">
                                             <span className="text-gray-600">Speed:</span>
                                             <span className="font-semibold">{Math.round(unit.speed)} mph</span>
                                         </div>
                                     )}
-                                    
+
                                     {unit.current_call_info && (
                                         <div className="pt-1 border-t">
                                             <div className="flex items-start gap-1">
@@ -114,11 +114,13 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                             </div>
                                         </div>
                                     )}
-                                    
-                                    <div className="flex items-center gap-1 text-gray-500 pt-1">
-                                        <Clock className="w-3 h-3" />
-                                        <span>Updated: {new Date(unit.last_updated).toLocaleTimeString()}</span>
-                                    </div>
+
+                                    {unit.last_updated && (
+                                        <div className="flex items-center gap-1 text-gray-500 pt-1">
+                                            <Clock className="w-3 h-3" />
+                                            <span>Updated: {new Date(unit.last_updated).toLocaleTimeString()}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </Popup>
