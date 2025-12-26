@@ -104,7 +104,7 @@ export default function ActiveCallsList({ isOpen, onClose, calls, onNavigateToCa
 
                                                         <Button
                                                             size="icon"
-                                                            className="bg-[#007AFF] hover:bg-[#0056CC] text-white shrink-0"
+                                                            className="bg-red-600 hover:bg-red-700 text-white shrink-0"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 onNavigateToCall(call);
