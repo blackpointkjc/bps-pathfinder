@@ -49,6 +49,7 @@ export default function Navigation() {
     const [allActiveCalls, setAllActiveCalls] = useState([]);
     const [callFilter, setCallFilter] = useState('all'); // 'all', 'henrico', 'chesterfield', 'richmond'
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
+    const [showActiveCalls, setShowActiveCalls] = useState(true);
     const [unitName, setUnitName] = useState(localStorage.getItem('unitName') || '');
     const [showUnitSettings, setShowUnitSettings] = useState(false);
     const [showLights, setShowLights] = useState(
@@ -810,7 +811,7 @@ export default function Navigation() {
                 route={routeCoords}
                 trafficSegments={trafficSegments}
                 useOfflineTiles={!isOnline}
-                activeCalls={activeCalls}
+                activeCalls={showActiveCalls ? activeCalls : []}
                 heading={heading}
                 locationHistory={isLiveTracking ? locationHistory : []}
                 unitName={unitName || currentUser?.unit_number}
@@ -956,19 +957,41 @@ export default function Navigation() {
                 </Button>
                 
                 <Button
+                    onClick={() => {
+                        setShowActiveCalls(!showActiveCalls);
+                        toast.success(showActiveCalls ? 'Active calls hidden' : 'Active calls visible');
+                    }}
+                    size="sm"
+                    className={`${showActiveCalls ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-400 hover:bg-gray-500'} text-white text-xs px-3 py-2 rounded-xl shadow-lg flex items-center gap-2`}
+                >
+                    <Radio className="w-4 h-4" />
+                    {showActiveCalls ? 'Calls ON' : 'Calls OFF'}
+                </Button>
+
+                <Button
+                    onClick={fetchActiveCalls}
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-xl shadow-lg flex items-center gap-2"
+                    disabled={isLoadingCalls}
+                >
+                    <NavigationIcon className={`w-4 h-4 ${isLoadingCalls ? 'animate-spin' : ''}`} />
+                    {isLoadingCalls ? 'Loading...' : 'Refresh'}
+                </Button>
+
+                <Button
                     onClick={cycleCallFilter}
                     size="sm"
                     className="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-xl shadow-lg flex items-center gap-2"
                     disabled={isLoadingCalls}
                 >
-                    <Radio className={`w-4 h-4 ${isLoadingCalls ? 'animate-pulse' : ''}`} />
+                    <Shield className={`w-4 h-4 ${isLoadingCalls ? 'animate-pulse' : ''}`} />
                     {callFilter === 'all' && 'All Areas'}
                     {callFilter === 'richmond' && 'Richmond'}
                     {callFilter === 'henrico' && 'Henrico'}
                     {callFilter === 'chesterfield' && 'Chesterfield'}
                 </Button>
 
-                {activeCalls.length > 0 && (
+                {activeCalls.length > 0 && showActiveCalls && (
                     <Button
                         onClick={() => setShowCallsList(true)}
                         size="sm"
