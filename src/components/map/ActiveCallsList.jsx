@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { X, MapPin, Clock, AlertCircle, Navigation } from 'lucide-react';
+import { X, MapPin, Clock, AlertCircle, Navigation as NavigationIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 const getAgencyBadgeColor = (agency) => {
@@ -108,7 +108,7 @@ export default function ActiveCallsList({ isOpen, onClose, calls, onNavigateToCa
                                                                 onNavigateToCall(call);
                                                             }}
                                                         >
-                                                            <Navigation className="w-4 h-4" />
+                                                            <NavigationIcon className="w-4 h-4" />
                                                         </Button>
                                                     </div>
                                                 </Card>

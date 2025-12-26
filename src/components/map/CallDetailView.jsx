@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { X, MapPin, Clock, Radio, Navigation, AlertCircle } from 'lucide-react';
+import { X, MapPin, Clock, Radio, Navigation as NavigationIcon, AlertCircle } from 'lucide-react';
 
 const getAgencyBadgeColor = (agency) => {
     if (agency?.includes('RPD')) return 'bg-red-100 text-red-700 border-red-300';
@@ -109,7 +109,7 @@ export default function CallDetailView({ call, onClose, onEnroute, currentUnitId
                                     disabled={!currentUnitId}
                                     className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-6 text-base"
                                 >
-                                    <Navigation className="w-5 h-5 mr-2" />
+                                    <NavigationIcon className="w-5 h-5 mr-2" />
                                     Respond to Call
                                 </Button>
                                 <Button

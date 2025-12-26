@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation, MapPin, XCircle, Plus } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
@@ -837,7 +837,7 @@ onCallClick={(call) => {
                         size="sm"
                         className={`${unitStatus === 'Enroute' ? 'bg-red-600 hover:bg-red-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-3 py-6 flex flex-col items-center gap-1 min-w-[80px]`}
                     >
-                        <Navigation className={`w-5 h-5 ${unitStatus === 'Enroute' ? 'text-white' : 'text-red-600'}`} />
+                        <NavigationIcon className={`w-5 h-5 ${unitStatus === 'Enroute' ? 'text-white' : 'text-red-600'}`} />
                         <span className={`text-xs font-semibold ${unitStatus === 'Enroute' ? 'text-white' : 'text-gray-700'}`}>Enroute</span>
                     </Button>
                     
