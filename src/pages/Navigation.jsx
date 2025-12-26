@@ -149,12 +149,7 @@ export default function Navigation() {
             }
         }, 120000);
         
-        // Refresh other units every 5 seconds
-        unitsRefreshInterval.current = setInterval(() => {
-            if (isOnline) {
-                fetchOtherUnits();
-            }
-        }, 5000);
+
         
         return () => {
             stopContinuousTracking();
@@ -164,9 +159,7 @@ export default function Navigation() {
             if (callsRefreshInterval.current) {
                 clearInterval(callsRefreshInterval.current);
             }
-            if (unitsRefreshInterval.current) {
-                clearInterval(unitsRefreshInterval.current);
-            }
+
         };
     }, []);
 
@@ -185,6 +178,13 @@ export default function Navigation() {
             updateUserLocation();
         }
     }, [currentUser, currentLocation]);
+
+    // Fetch other units on mount and then every 5 seconds
+    useEffect(() => {
+        fetchOtherUnits();
+        const interval = setInterval(fetchOtherUnits, 5000);
+        return () => clearInterval(interval);
+    }, []);
 
     // Check for better routes periodically when navigating
     useEffect(() => {
@@ -334,8 +334,7 @@ export default function Navigation() {
                 setActiveCallInfo(currentUser.current_call_info);
             }
             
-            // Start fetching other units
-            fetchOtherUnits();
+
         } catch (error) {
             console.error('Error updating user location:', error);
         }
@@ -878,27 +877,27 @@ export default function Navigation() {
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="absolute top-1/2 -translate-y-1/2 left-4 z-[999] flex flex-col gap-2"
+                    className="absolute top-1/2 -translate-y-1/2 left-2 md:left-4 z-[999] flex flex-col gap-1.5 md:gap-2"
                 >
-                    <Button onClick={() => handleStatusChange('Available')} size="sm" className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-2 py-4 flex flex-col items-center gap-1 min-w-[70px]`}>
-                        <CheckCircle2 className={`w-4 h-4 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
-                        <span className={`text-[10px] font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Available</span>
+                    <Button onClick={() => handleStatusChange('Available')} size="sm" className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-1.5 md:px-2 py-3 md:py-4 flex flex-col items-center gap-0.5 md:gap-1 min-w-[56px] md:min-w-[70px]`}>
+                        <CheckCircle2 className={`w-3.5 md:w-4 h-3.5 md:h-4 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
+                        <span className={`text-[9px] md:text-[10px] font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Available</span>
                     </Button>
-                    <Button onClick={() => setShowCallsList(true)} size="sm" className={`${unitStatus === 'Enroute' ? 'bg-red-600 hover:bg-red-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-2 py-4 flex flex-col items-center gap-1 min-w-[70px]`}>
-                        <NavigationIcon className={`w-4 h-4 ${unitStatus === 'Enroute' ? 'text-white' : 'text-red-600'}`} />
-                        <span className={`text-[10px] font-semibold ${unitStatus === 'Enroute' ? 'text-white' : 'text-gray-700'}`}>Enroute</span>
+                    <Button onClick={() => setShowCallsList(true)} size="sm" className={`${unitStatus === 'Enroute' ? 'bg-red-600 hover:bg-red-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-1.5 md:px-2 py-3 md:py-4 flex flex-col items-center gap-0.5 md:gap-1 min-w-[56px] md:min-w-[70px]`}>
+                        <NavigationIcon className={`w-3.5 md:w-4 h-3.5 md:h-4 ${unitStatus === 'Enroute' ? 'text-white' : 'text-red-600'}`} />
+                        <span className={`text-[9px] md:text-[10px] font-semibold ${unitStatus === 'Enroute' ? 'text-white' : 'text-gray-700'}`}>Enroute</span>
                     </Button>
-                    <Button onClick={() => handleStatusChange('On Scene')} size="sm" className={`${unitStatus === 'On Scene' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-2 py-4 flex flex-col items-center gap-1 min-w-[70px]`}>
-                        <MapPin className={`w-4 h-4 ${unitStatus === 'On Scene' ? 'text-white' : 'text-blue-600'}`} />
-                        <span className={`text-[10px] font-semibold ${unitStatus === 'On Scene' ? 'text-white' : 'text-gray-700'}`}>On Scene</span>
+                    <Button onClick={() => handleStatusChange('On Scene')} size="sm" className={`${unitStatus === 'On Scene' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-1.5 md:px-2 py-3 md:py-4 flex flex-col items-center gap-0.5 md:gap-1 min-w-[56px] md:min-w-[70px]`}>
+                        <MapPin className={`w-3.5 md:w-4 h-3.5 md:h-4 ${unitStatus === 'On Scene' ? 'text-white' : 'text-blue-600'}`} />
+                        <span className={`text-[9px] md:text-[10px] font-semibold ${unitStatus === 'On Scene' ? 'text-white' : 'text-gray-700'}`}>On Scene</span>
                     </Button>
-                    <Button onClick={() => handleStatusChange('On Patrol')} size="sm" className={`${unitStatus === 'On Patrol' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-2 py-4 flex flex-col items-center gap-1 min-w-[70px]`}>
-                        <Car className={`w-4 h-4 ${unitStatus === 'On Patrol' ? 'text-white' : 'text-indigo-600'}`} />
-                        <span className={`text-[10px] font-semibold ${unitStatus === 'On Patrol' ? 'text-white' : 'text-gray-700'}`}>Patrol</span>
+                    <Button onClick={() => handleStatusChange('On Patrol')} size="sm" className={`${unitStatus === 'On Patrol' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-1.5 md:px-2 py-3 md:py-4 flex flex-col items-center gap-0.5 md:gap-1 min-w-[56px] md:min-w-[70px]`}>
+                        <Car className={`w-3.5 md:w-4 h-3.5 md:h-4 ${unitStatus === 'On Patrol' ? 'text-white' : 'text-indigo-600'}`} />
+                        <span className={`text-[9px] md:text-[10px] font-semibold ${unitStatus === 'On Patrol' ? 'text-white' : 'text-gray-700'}`}>Patrol</span>
                     </Button>
-                    <Button onClick={() => setShowStatusPanel(true)} size="sm" className="bg-white/95 hover:bg-white shadow-lg px-2 py-4 flex flex-col items-center gap-1 min-w-[70px]">
-                        <Settings className="w-4 h-4 text-gray-600" />
-                        <span className="text-[10px] font-semibold text-gray-700">More</span>
+                    <Button onClick={() => setShowStatusPanel(true)} size="sm" className="bg-white/95 hover:bg-white shadow-lg px-1.5 md:px-2 py-3 md:py-4 flex flex-col items-center gap-0.5 md:gap-1 min-w-[56px] md:min-w-[70px]">
+                        <Settings className="w-3.5 md:w-4 h-3.5 md:h-4 text-gray-600" />
+                        <span className="text-[9px] md:text-[10px] font-semibold text-gray-700">More</span>
                     </Button>
                 </motion.div>
             )}
@@ -907,9 +906,9 @@ export default function Navigation() {
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute top-4 left-4 z-[999] flex flex-col gap-2"
+                className="absolute top-2 md:top-4 left-2 md:left-4 z-[999] flex flex-col gap-1.5 md:gap-2"
             >
-                <div className={`px-3 py-1.5 rounded-full flex items-center gap-2 ${
+                <div className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full flex items-center gap-1.5 md:gap-2 ${
                     isOnline 
                         ? 'bg-green-100 text-green-700' 
                         : 'bg-amber-100 text-amber-700'
@@ -917,12 +916,12 @@ export default function Navigation() {
                     {isOnline ? (
                         <>
                             <Wifi className="w-3 h-3" />
-                            <span className="text-xs font-medium">Online</span>
+                            <span className="text-[10px] md:text-xs font-medium">Online</span>
                         </>
                     ) : (
                         <>
                             <WifiOff className="w-3 h-3" />
-                            <span className="text-xs font-medium">Offline</span>
+                            <span className="text-[10px] md:text-xs font-medium">Offline</span>
                         </>
                     )}
                 </div>
@@ -955,14 +954,14 @@ export default function Navigation() {
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute top-4 right-4 z-[999] flex flex-col gap-2"
+                className="absolute top-2 md:top-4 right-2 md:right-4 z-[999] flex flex-col gap-1.5 md:gap-2"
             >
                 <Button
                     onClick={() => setShowOfflineManager(true)}
                     size="icon"
-                    className="h-10 w-10 rounded-2xl bg-white/98 backdrop-blur-2xl shadow-xl border border-gray-200/50 hover:bg-white text-[#007AFF]"
+                    className="h-8 w-8 md:h-10 md:w-10 rounded-xl md:rounded-2xl bg-white/98 backdrop-blur-2xl shadow-xl border border-gray-200/50 hover:bg-white text-[#007AFF]"
                 >
-                    <MapIcon className="w-5 h-5" />
+                    <MapIcon className="w-4 md:w-5 h-4 md:h-5" />
                 </Button>
                 
                 <Button
@@ -980,24 +979,32 @@ export default function Navigation() {
                 <Button
                     onClick={fetchActiveCalls}
                     size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-xl shadow-lg flex items-center gap-2"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] md:text-xs px-2 md:px-3 py-1.5 md:py-2 rounded-lg md:rounded-xl shadow-lg flex items-center gap-1.5 md:gap-2"
                     disabled={isLoadingCalls}
                 >
-                    <NavigationIcon className={`w-4 h-4 ${isLoadingCalls ? 'animate-spin' : ''}`} />
+                    <NavigationIcon className={`w-3.5 md:w-4 h-3.5 md:h-4 ${isLoadingCalls ? 'animate-spin' : ''}`} />
                     {isLoadingCalls ? 'Loading...' : 'Refresh'}
                 </Button>
 
                 <Button
                     onClick={cycleCallFilter}
                     size="sm"
-                    className="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-2 rounded-xl shadow-lg flex items-center gap-2"
+                    className="bg-red-500 hover:bg-red-600 text-white text-[10px] md:text-xs px-2 md:px-3 py-1.5 md:py-2 rounded-lg md:rounded-xl shadow-lg flex items-center gap-1.5 md:gap-2"
                     disabled={isLoadingCalls}
                 >
-                    <Shield className={`w-4 h-4 ${isLoadingCalls ? 'animate-pulse' : ''}`} />
-                    {callFilter === 'all' && 'All Areas'}
-                    {callFilter === 'richmond' && 'Richmond'}
-                    {callFilter === 'henrico' && 'Henrico'}
-                    {callFilter === 'chesterfield' && 'Chesterfield'}
+                    <Shield className={`w-3.5 md:w-4 h-3.5 md:h-4 ${isLoadingCalls ? 'animate-pulse' : ''}`} />
+                    <span className="hidden md:inline">
+                        {callFilter === 'all' && 'All Areas'}
+                        {callFilter === 'richmond' && 'Richmond'}
+                        {callFilter === 'henrico' && 'Henrico'}
+                        {callFilter === 'chesterfield' && 'Chesterfield'}
+                    </span>
+                    <span className="md:hidden">
+                        {callFilter === 'all' && 'All'}
+                        {callFilter === 'richmond' && 'RIC'}
+                        {callFilter === 'henrico' && 'HEN'}
+                        {callFilter === 'chesterfield' && 'CHE'}
+                    </span>
                 </Button>
 
                 {activeCalls.length > 0 && showActiveCalls && (
