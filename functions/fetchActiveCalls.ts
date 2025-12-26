@@ -45,19 +45,41 @@ Deno.serve(async (req) => {
         for (let i = 0; i < Math.min(calls.length, 50); i++) {
             const call = calls[i];
             try {
-                // Add ", Richmond, VA" to improve geocoding accuracy
-                const searchQuery = `${call.location}, Richmond, VA`;
+                // Determine county/city based on agency for better geocoding
+                let region = 'Richmond, VA';
+                if (call.agency?.includes('HPD')) {
+                    region = 'Henrico County, VA';
+                } else if (call.agency?.includes('CCPD')) {
+                    region = 'Chesterfield County, VA';
+                } else if (call.agency?.includes('RPD')) {
+                    region = 'Richmond, VA';
+                }
                 
-                const geoResponse = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`,
+                // Try with specific region first
+                let searchQuery = `${call.location}, ${region}`;
+                let geoResponse = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&countrycodes=us`,
                     {
                         headers: {
                             'User-Agent': 'GRActiveCalls-Map-Integration/1.0'
                         }
                     }
                 );
+                let geoData = await geoResponse.json();
                 
-                const geoData = await geoResponse.json();
+                // If no results, try with just the location and state
+                if (!geoData || geoData.length === 0) {
+                    searchQuery = `${call.location}, Virginia, USA`;
+                    geoResponse = await fetch(
+                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&countrycodes=us`,
+                        {
+                            headers: {
+                                'User-Agent': 'GRActiveCalls-Map-Integration/1.0'
+                            }
+                        }
+                    );
+                    geoData = await geoResponse.json();
+                }
                 
                 if (geoData && geoData.length > 0) {
                     geocodedCalls.push({
