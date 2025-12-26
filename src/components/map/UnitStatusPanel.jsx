@@ -52,12 +52,12 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                         onClick={onClose}
                     />
                     <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[2001] w-full max-w-md max-h-[90vh] p-4"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            className="fixed inset-0 flex items-center justify-center z-[2001] p-4"
                         >
-                        <Card className="p-6 bg-white shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+                        <Card className="p-6 bg-white shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-xl font-bold text-gray-900">Unit Status</h3>
                                 <Button variant="ghost" size="icon" onClick={onClose}>

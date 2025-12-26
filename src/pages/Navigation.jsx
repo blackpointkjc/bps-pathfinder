@@ -682,11 +682,38 @@ export default function Navigation() {
                 base44.entities.DispatchCall.list('-created_date', 100)
             ]);
             
+            const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+            
+            // Filter calls from external sources (older than 2 hours are excluded)
+            const externalCalls1 = (response1.data.success ? response1.data.geocodedCalls : [])
+                .filter(call => {
+                    // Check if call has valid coordinates
+                    if (!call.latitude || !call.longitude) return false;
+                    // For external calls, we can't easily check age, so include all
+                    return true;
+                });
+                
+            const externalCalls2 = (response2.data.success ? response2.data.geocodedCalls : [])
+                .filter(call => {
+                    // Check if call has valid coordinates
+                    if (!call.latitude || !call.longitude) return false;
+                    // For external calls, we can't easily check age, so include all
+                    return true;
+                });
+            
             const allCalls = [
-                ...(response1.data.success ? response1.data.geocodedCalls : []),
-                ...(response2.data.success ? response2.data.geocodedCalls : []),
+                ...externalCalls1,
+                ...externalCalls2,
                 ...(dispatchCalls || [])
-                    .filter(call => call.latitude && call.longitude && call.status !== 'Resolved' && call.status !== 'Cancelled')
+                    .filter(call => {
+                        // Must have coordinates
+                        if (!call.latitude || !call.longitude) return false;
+                        // Must not be resolved or cancelled
+                        if (call.status === 'Resolved' || call.status === 'Cancelled') return false;
+                        // Must be within 2 hours
+                        const callTime = new Date(call.time_received || call.created_date);
+                        return callTime > twoHoursAgo;
+                    })
                     .map(call => ({
                         timeReceived: new Date(call.time_received).toLocaleTimeString(),
                         incident: call.incident,
@@ -698,6 +725,8 @@ export default function Navigation() {
                         ai_summary: call.ai_summary
                     }))
             ];
+            
+            console.log(`Active calls breakdown: External1=${externalCalls1.length}, External2=${externalCalls2.length}, Dispatch=${dispatchCalls?.filter(c => c.latitude && c.longitude && c.status !== 'Resolved' && c.status !== 'Cancelled').length || 0}`);
             
             setActiveCalls(allCalls);
             toast.success(`Loaded ${allCalls.length} active calls`, {
