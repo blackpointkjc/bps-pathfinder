@@ -16,6 +16,7 @@ import LiveNavigation from '@/components/map/LiveNavigation';
 import OfflineMapManager from '@/components/map/OfflineMapManager';
 import UnitSettings from '@/components/map/UnitSettings';
 import RoutePreferences from '@/components/map/RoutePreferences';
+import ActiveCallsList from '@/components/map/ActiveCallsList';
 import { useVoiceGuidance, useVoiceCommand } from '@/components/map/VoiceGuidance';
 import { generateTrafficData } from '@/components/map/TrafficLayer';
 
@@ -66,6 +67,7 @@ export default function Navigation() {
     );
     const [isListening, setIsListening] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
+    const [showCallsList, setShowCallsList] = useState(false);
     
     // Live tracking state
     const [heading, setHeading] = useState(null);
@@ -693,6 +695,16 @@ export default function Navigation() {
                 >
                     <Radio className={`w-5 h-5 ${isLoadingCalls ? 'animate-pulse' : ''}`} />
                 </Button>
+                
+                {showActiveCalls && activeCalls.length > 0 && (
+                    <Button
+                        onClick={() => setShowCallsList(true)}
+                        size="sm"
+                        className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-2 rounded-xl shadow-lg"
+                    >
+                        View List
+                    </Button>
+                )}
 
                 <Button
                     onClick={() => setShowUnitSettings(true)}
@@ -870,6 +882,28 @@ export default function Navigation() {
                 onClose={() => setShowRoutePreferences(false)}
                 preferences={routePreferences}
                 onSave={handleSaveRoutePreferences}
+            />
+
+            <ActiveCallsList
+                isOpen={showCallsList}
+                onClose={() => setShowCallsList(false)}
+                calls={activeCalls}
+                onNavigateToCall={(call) => {
+                    setShowCallsList(false);
+                    const callCoords = [call.latitude, call.longitude];
+                    setDestination({ coords: callCoords, name: call.location });
+                    setDestinationName(call.incident);
+                    toast.info(`Routing to ${call.incident}`);
+                    if (currentLocation) {
+                        fetchRoutes(currentLocation, callCoords).then(fetchedRoutes => {
+                            if (fetchedRoutes && fetchedRoutes.length > 0) {
+                                setRoutes(fetchedRoutes);
+                                setSelectedRouteIndex(0);
+                                updateRouteDisplay(fetchedRoutes[0]);
+                            }
+                        });
+                    }
+                }}
             />
         </div>
     );
