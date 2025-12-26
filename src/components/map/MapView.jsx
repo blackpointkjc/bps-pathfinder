@@ -185,7 +185,7 @@ export default function MapView({ currentLocation, destination, route, trafficSe
                 center={currentLocation} 
                 routeBounds={routeBounds}
                 mapCenter={mapCenter}
-                isNavigating={false}
+                isNavigating={isNavigating}
                 heading={heading}
             />
 

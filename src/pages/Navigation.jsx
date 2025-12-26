@@ -317,7 +317,10 @@ export default function Navigation() {
     };
 
     const updateUserLocation = async () => {
-        if (!currentUser || !currentLocation) return;
+        if (!currentUser || !currentLocation) {
+            console.log('⚠️ Cannot update location - missing user or location');
+            return;
+        }
         
         try {
             const updateData = {
@@ -325,14 +328,15 @@ export default function Navigation() {
                 longitude: currentLocation[1],
                 heading: heading || 0,
                 speed: speed || 0,
-                status: unitStatus,
-                show_lights: showLights,
-                current_call_info: activeCallInfo,
+                status: unitStatus || 'Available',
+                show_lights: showLights || false,
+                current_call_info: activeCallInfo || null,
                 last_updated: new Date().toISOString()
             };
             
-            console.log('📍 Updating location:', updateData);
+            console.log('📍 Updating location for', currentUser.email, updateData);
             await base44.auth.updateMe(updateData);
+            console.log('✅ Location updated successfully');
             
             // Load initial status from user if available
             if (currentUser.status && !unitStatus) {
@@ -342,7 +346,7 @@ export default function Navigation() {
                 setActiveCallInfo(currentUser.current_call_info);
             }
         } catch (error) {
-            console.error('Error updating user location:', error);
+            console.error('❌ Error updating user location:', error);
         }
     };
 
