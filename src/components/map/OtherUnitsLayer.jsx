@@ -72,12 +72,12 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                 <div className="flex items-center gap-2 mb-2">
                                     <Car className="w-4 h-4 text-blue-600" />
                                     <div>
-                                        <p className="font-bold text-base text-blue-600">{unit.unit_name}</p>
-                                        {(unit.rank || unit.last_name) && (
-                                            <p className="text-xs text-gray-600">
-                                                {unit.rank && `${unit.rank} `}{unit.last_name}
-                                            </p>
-                                        )}
+                                        <p className="font-bold text-base text-blue-600">
+                                            {unit.unit_number || unit.full_name?.split(' ').pop() || 'Unknown'}
+                                        </p>
+                                        <p className="text-xs text-gray-600">
+                                            {unit.full_name?.split(' ').pop()}
+                                        </p>
                                     </div>
                                 </div>
                                 
