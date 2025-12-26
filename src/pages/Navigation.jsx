@@ -671,65 +671,41 @@ export default function Navigation() {
     };
 
     const fetchActiveCalls = async () => {
-        if (!isOnline) return;
+        if (!isOnline || !currentUser) return;
         
         setIsLoadingCalls(true);
         try {
-            // Fetch from all sources - only active dispatch calls
-            const [response1, response2, dispatchCalls] = await Promise.all([
-                base44.functions.invoke('fetchActiveCalls', {}),
-                base44.functions.invoke('fetchAdditionalCalls', {}),
-                base44.entities.DispatchCall.list('-created_date', 100)
-            ]);
+            // Only fetch dispatch calls assigned to current user
+            const dispatchCalls = await base44.entities.DispatchCall.list('-created_date', 100);
             
             const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
             
-            // Filter calls from external sources (older than 2 hours are excluded)
-            const externalCalls1 = (response1.data.success ? response1.data.geocodedCalls : [])
+            // Filter to only show calls assigned to current user
+            const myCalls = (dispatchCalls || [])
                 .filter(call => {
-                    // Check if call has valid coordinates
+                    // Must have coordinates
                     if (!call.latitude || !call.longitude) return false;
-                    // For external calls, we can't easily check age, so include all
-                    return true;
-                });
-                
-            const externalCalls2 = (response2.data.success ? response2.data.geocodedCalls : [])
-                .filter(call => {
-                    // Check if call has valid coordinates
-                    if (!call.latitude || !call.longitude) return false;
-                    // For external calls, we can't easily check age, so include all
-                    return true;
-                });
+                    // Must not be resolved or cancelled
+                    if (call.status === 'Resolved' || call.status === 'Cancelled') return false;
+                    // Must be within 2 hours
+                    const callTime = new Date(call.time_received || call.created_date);
+                    if (callTime <= twoHoursAgo) return false;
+                    // Must be assigned to current user
+                    return call.assigned_units && call.assigned_units.includes(currentUser.id);
+                })
+                .map(call => ({
+                    timeReceived: new Date(call.time_received).toLocaleTimeString(),
+                    incident: call.incident,
+                    location: call.location,
+                    agency: call.agency,
+                    status: call.status,
+                    latitude: call.latitude,
+                    longitude: call.longitude,
+                    ai_summary: call.ai_summary
+                }));
             
-            const allCalls = [
-                ...externalCalls1,
-                ...externalCalls2,
-                ...(dispatchCalls || [])
-                    .filter(call => {
-                        // Must have coordinates
-                        if (!call.latitude || !call.longitude) return false;
-                        // Must not be resolved or cancelled
-                        if (call.status === 'Resolved' || call.status === 'Cancelled') return false;
-                        // Must be within 2 hours
-                        const callTime = new Date(call.time_received || call.created_date);
-                        return callTime > twoHoursAgo;
-                    })
-                    .map(call => ({
-                        timeReceived: new Date(call.time_received).toLocaleTimeString(),
-                        incident: call.incident,
-                        location: call.location,
-                        agency: call.agency,
-                        status: call.status,
-                        latitude: call.latitude,
-                        longitude: call.longitude,
-                        ai_summary: call.ai_summary
-                    }))
-            ];
-            
-            console.log(`Active calls breakdown: External1=${externalCalls1.length}, External2=${externalCalls2.length}, Dispatch=${dispatchCalls?.filter(c => c.latitude && c.longitude && c.status !== 'Resolved' && c.status !== 'Cancelled').length || 0}`);
-            
-            setActiveCalls(allCalls);
-            toast.success(`Loaded ${allCalls.length} active calls`, {
+            setActiveCalls(myCalls);
+            toast.success(`Loaded ${myCalls.length} assigned calls`, {
                 duration: 2000
             });
         } catch (error) {
