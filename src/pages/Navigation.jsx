@@ -40,9 +40,17 @@ export default function Navigation() {
     const [showActiveCalls, setShowActiveCalls] = useState(true);
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
     
+    // Live tracking state
+    const [heading, setHeading] = useState(null);
+    const [locationHistory, setLocationHistory] = useState([]);
+    const [isLiveTracking, setIsLiveTracking] = useState(false);
+    const [speed, setSpeed] = useState(0);
+    const [accuracy, setAccuracy] = useState(null);
+    
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
     const callsRefreshInterval = useRef(null);
+    const lastPosition = useRef(null);
 
     // Monitor online/offline status
     useEffect(() => {
@@ -68,6 +76,11 @@ export default function Navigation() {
         getCurrentLocation();
         fetchActiveCalls();
         
+        // Start live tracking by default
+        if (isOnline) {
+            startContinuousTracking();
+        }
+        
         // Refresh active calls every 2 minutes
         callsRefreshInterval.current = setInterval(() => {
             if (showActiveCalls && isOnline) {
@@ -76,9 +89,7 @@ export default function Navigation() {
         }, 120000);
         
         return () => {
-            if (locationWatchId.current) {
-                navigator.geolocation.clearWatch(locationWatchId.current);
-            }
+            stopContinuousTracking();
             if (rerouteCheckInterval.current) {
                 clearInterval(rerouteCheckInterval.current);
             }
@@ -87,6 +98,15 @@ export default function Navigation() {
             }
         };
     }, []);
+
+    // Toggle tracking when online status changes
+    useEffect(() => {
+        if (isOnline && !isLiveTracking) {
+            startContinuousTracking();
+        } else if (!isOnline && isLiveTracking) {
+            stopContinuousTracking();
+        }
+    }, [isOnline]);
 
     // Check for better routes periodically when navigating
     useEffect(() => {
@@ -130,6 +150,90 @@ export default function Navigation() {
         }
     };
 
+    const startContinuousTracking = () => {
+        if (!navigator.geolocation) {
+            toast.error('Geolocation is not supported');
+            return;
+        }
+
+        setIsLiveTracking(true);
+        
+        locationWatchId.current = navigator.geolocation.watchPosition(
+            (position) => {
+                const coords = [position.coords.latitude, position.coords.longitude];
+                setCurrentLocation(coords);
+                
+                // Update heading if available
+                if (position.coords.heading !== null && position.coords.heading !== undefined) {
+                    setHeading(position.coords.heading);
+                } else if (lastPosition.current) {
+                    // Calculate heading from previous position
+                    const calculatedHeading = calculateHeading(
+                        lastPosition.current,
+                        coords
+                    );
+                    if (calculatedHeading !== null) {
+                        setHeading(calculatedHeading);
+                    }
+                }
+                
+                // Update speed and accuracy
+                if (position.coords.speed !== null) {
+                    setSpeed(position.coords.speed * 2.237); // Convert m/s to mph
+                }
+                setAccuracy(position.coords.accuracy);
+                
+                // Add to location history (keep last 50 points)
+                setLocationHistory(prev => {
+                    const newHistory = [...prev, coords];
+                    return newHistory.slice(-50);
+                });
+                
+                lastPosition.current = coords;
+                
+                // Update navigation progress if navigating
+                if (isNavigating && directions) {
+                    updateNavigationProgress(coords);
+                }
+            },
+            (error) => {
+                console.error('Error tracking location:', error);
+                if (error.code === error.PERMISSION_DENIED) {
+                    toast.error('Location permission denied');
+                    setIsLiveTracking(false);
+                }
+            },
+            { 
+                enableHighAccuracy: true, 
+                maximumAge: 0,
+                timeout: 5000
+            }
+        );
+    };
+
+    const stopContinuousTracking = () => {
+        if (locationWatchId.current) {
+            navigator.geolocation.clearWatch(locationWatchId.current);
+            locationWatchId.current = null;
+        }
+        setIsLiveTracking(false);
+    };
+
+    const calculateHeading = (from, to) => {
+        const lat1 = from[0] * Math.PI / 180;
+        const lat2 = to[0] * Math.PI / 180;
+        const dLon = (to[1] - from[1]) * Math.PI / 180;
+        
+        const y = Math.sin(dLon) * Math.cos(lat2);
+        const x = Math.cos(lat1) * Math.sin(lat2) -
+                  Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+        
+        let heading = Math.atan2(y, x) * 180 / Math.PI;
+        heading = (heading + 360) % 360;
+        
+        return heading;
+    };
+
     const getCurrentLocation = useCallback(() => {
         setIsLocating(true);
         
@@ -155,24 +259,7 @@ export default function Navigation() {
         );
     }, []);
 
-    const startLiveTracking = () => {
-        if (!navigator.geolocation) return;
 
-        locationWatchId.current = navigator.geolocation.watchPosition(
-            (position) => {
-                const coords = [position.coords.latitude, position.coords.longitude];
-                setCurrentLocation(coords);
-                
-                if (isNavigating && directions) {
-                    updateNavigationProgress(coords);
-                }
-            },
-            (error) => {
-                console.error('Error tracking location:', error);
-            },
-            { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
-        );
-    };
 
     const updateNavigationProgress = (coords) => {
         // Calculate distance to next turn (simplified)
@@ -281,15 +368,11 @@ export default function Navigation() {
         setIsNavigating(true);
         setCurrentStepIndex(0);
         setRemainingDistance(distance);
-        startLiveTracking();
         toast.success('Navigation started');
     };
 
     const exitNavigation = () => {
         setIsNavigating(false);
-        if (locationWatchId.current) {
-            navigator.geolocation.clearWatch(locationWatchId.current);
-        }
         if (rerouteCheckInterval.current) {
             clearInterval(rerouteCheckInterval.current);
         }
@@ -353,13 +436,15 @@ export default function Navigation() {
                 trafficSegments={trafficSegments}
                 useOfflineTiles={!isOnline}
                 activeCalls={showActiveCalls ? activeCalls : []}
+                heading={heading}
+                locationHistory={isLiveTracking ? locationHistory : []}
             />
 
-            {/* Online/Offline Indicator */}
+            {/* Online/Offline Indicator & Live Tracking Status */}
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute top-20 left-4 z-[999]"
+                className="absolute top-20 left-4 z-[999] flex flex-col gap-2"
             >
                 <div className={`px-3 py-1.5 rounded-full flex items-center gap-2 ${
                     isOnline 
@@ -378,6 +463,29 @@ export default function Navigation() {
                         </>
                     )}
                 </div>
+                
+                {isLiveTracking && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full flex items-center gap-2"
+                    >
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                        <span className="text-xs font-medium">Live Tracking</span>
+                    </motion.div>
+                )}
+                
+                {speed > 0 && isLiveTracking && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white/95 backdrop-blur-xl shadow-md px-3 py-1.5 rounded-full"
+                    >
+                        <span className="text-xs font-semibold text-gray-700">
+                            {Math.round(speed)} mph
+                        </span>
+                    </motion.div>
+                )}
             </motion.div>
 
             {/* Offline Maps Button */}

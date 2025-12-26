@@ -13,22 +13,139 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Custom blue marker for current location
+// Custom blue marker for current location with pulse animation
 const currentLocationIcon = new L.DivIcon({
     className: 'custom-marker',
     html: `
-        <div style="
-            width: 24px;
-            height: 24px;
-            background: #007AFF;
-            border: 3px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0,122,255,0.5);
-        "></div>
+        <div style="position: relative; width: 24px; height: 24px;">
+            <div style="
+                position: absolute;
+                width: 48px;
+                height: 48px;
+                background: rgba(0, 122, 255, 0.2);
+                border-radius: 50%;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                animation: pulse-ring 2s ease-out infinite;
+            "></div>
+            <div style="
+                position: absolute;
+                width: 24px;
+                height: 24px;
+                background: #007AFF;
+                border: 4px solid white;
+                border-radius: 50%;
+                box-shadow: 0 2px 12px rgba(0,122,255,0.6);
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 2;
+            "></div>
+            <div style="
+                position: absolute;
+                width: 8px;
+                height: 8px;
+                background: white;
+                border-radius: 50%;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 3;
+            "></div>
+        </div>
+        <style>
+            @keyframes pulse-ring {
+                0% {
+                    transform: translate(-50%, -50%) scale(0.5);
+                    opacity: 1;
+                }
+                100% {
+                    transform: translate(-50%, -50%) scale(1.5);
+                    opacity: 0;
+                }
+            }
+        </style>
     `,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
 });
+
+// Custom marker with heading indicator
+const createLocationWithHeading = (heading) => {
+    return new L.DivIcon({
+        className: 'custom-marker',
+        html: `
+            <div style="position: relative; width: 48px; height: 48px;">
+                <div style="
+                    position: absolute;
+                    width: 48px;
+                    height: 48px;
+                    background: rgba(0, 122, 255, 0.2);
+                    border-radius: 50%;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    animation: pulse-ring 2s ease-out infinite;
+                "></div>
+                <div style="
+                    position: absolute;
+                    width: 24px;
+                    height: 24px;
+                    background: #007AFF;
+                    border: 4px solid white;
+                    border-radius: 50%;
+                    box-shadow: 0 2px 12px rgba(0,122,255,0.6);
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    z-index: 2;
+                "></div>
+                ${heading !== null ? `
+                <div style="
+                    position: absolute;
+                    width: 0;
+                    height: 0;
+                    border-left: 8px solid transparent;
+                    border-right: 8px solid transparent;
+                    border-bottom: 20px solid #007AFF;
+                    top: -8px;
+                    left: 50%;
+                    transform: translateX(-50%) rotate(${heading}deg);
+                    transform-origin: 8px 28px;
+                    z-index: 1;
+                    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+                "></div>
+                ` : ''}
+                <div style="
+                    position: absolute;
+                    width: 8px;
+                    height: 8px;
+                    background: white;
+                    border-radius: 50%;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    z-index: 3;
+                "></div>
+            </div>
+            <style>
+                @keyframes pulse-ring {
+                    0% {
+                        transform: translate(-50%, -50%) scale(0.5);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: translate(-50%, -50%) scale(1.5);
+                        opacity: 0;
+                    }
+                }
+            </style>
+        `,
+        iconSize: [48, 48],
+        iconAnchor: [24, 24],
+    });
+};
 
 // Custom red marker for destination
 const destinationIcon = new L.DivIcon({
@@ -67,7 +184,7 @@ function MapController({ center, routeBounds }) {
     return null;
 }
 
-export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls }) {
+export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory }) {
     const defaultCenter = currentLocation || [37.7749, -122.4194]; // Default to SF
     
     // Calculate route bounds if route exists
@@ -96,11 +213,36 @@ export default function MapView({ currentLocation, destination, route, trafficSe
             />
             
             {currentLocation && (
-                <Marker position={currentLocation} icon={currentLocationIcon}>
+                <Marker 
+                    position={currentLocation} 
+                    icon={heading !== null ? createLocationWithHeading(heading) : currentLocationIcon}
+                >
                     <Popup>
-                        <span className="font-medium">Your Location</span>
+                        <div className="p-1">
+                            <p className="font-semibold text-sm">Your Location</p>
+                            {heading !== null && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Heading: {Math.round(heading)}°
+                                </p>
+                            )}
+                        </div>
                     </Popup>
                 </Marker>
+            )}
+            
+            {/* Location History Trail */}
+            {locationHistory && locationHistory.length > 1 && (
+                <Polyline
+                    positions={locationHistory}
+                    pathOptions={{
+                        color: '#007AFF',
+                        weight: 3,
+                        opacity: 0.4,
+                        dashArray: '5, 10',
+                        lineCap: 'round',
+                        lineJoin: 'round'
+                    }}
+                />
             )}
             
             {destination && (
