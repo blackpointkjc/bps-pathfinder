@@ -9,68 +9,182 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        console.log('🔍 Fetching ALL calls from gractivecalls.com...');
-        
-        const response = await fetch('https://gractivecalls.com/', {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const html = await response.text();
-        console.log(`📄 Fetched HTML (${html.length} chars)`);
-        
-        if (html.length < 100) {
-            throw new Error('Website returned empty or invalid response');
-        }
+        console.log('🔍 Fetching calls from ALL sources...');
         
         const calls = [];
         
-        // Parse the table
-        const tableStart = html.indexOf('<table');
-        const tableEnd = html.indexOf('</table>', tableStart);
-        
-        if (tableStart !== -1 && tableEnd !== -1) {
-            const tableHtml = html.substring(tableStart, tableEnd + 8);
-            const rows = tableHtml.split(/<tr[^>]*>/i).slice(1);
-            
-            for (let i = 1; i < rows.length; i++) {
-                const row = rows[i];
-                if (!row.includes('<td')) continue;
-                
-                const cells = [];
-                const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
-                
-                for (const match of cellMatches) {
-                    const text = match[1]
-                        .replace(/<[^>]+>/g, '')
-                        .replace(/&nbsp;/g, ' ')
-                        .trim();
-                    cells.push(text);
+        // Source 1: gractivecalls.com (Richmond mainly)
+        try {
+            console.log('📡 Fetching from gractivecalls.com...');
+            const response1 = await fetch('https://gractivecalls.com/', {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                 }
+            });
+            
+            if (response1.ok) {
+                const html = await response1.text();
+                const tableStart = html.indexOf('<table');
+                const tableEnd = html.indexOf('</table>', tableStart);
                 
-                if (cells.length >= 3) {
-                    const [timeReceived, incident, location, agency, status] = cells;
+                if (tableStart !== -1 && tableEnd !== -1) {
+                    const tableHtml = html.substring(tableStart, tableEnd + 8);
+                    const rows = tableHtml.split(/<tr[^>]*>/i).slice(1);
                     
-                    // Include EVERY SINGLE CALL - no filtering
-                    if (incident && incident.trim() && location && location.trim()) {
-                        calls.push({
-                            timeReceived: timeReceived || 'Unknown',
-                            incident: incident.trim(),
-                            location: location.trim(),
-                            agency: (agency && agency.trim()) || 'Unknown',
-                            status: (status && status.trim()) || 'Dispatched'
-                        });
+                    for (let i = 1; i < rows.length; i++) {
+                        const row = rows[i];
+                        if (!row.includes('<td')) continue;
+                        
+                        const cells = [];
+                        const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
+                        
+                        for (const match of cellMatches) {
+                            const text = match[1]
+                                .replace(/<[^>]+>/g, '')
+                                .replace(/&nbsp;/g, ' ')
+                                .trim();
+                            cells.push(text);
+                        }
+                        
+                        if (cells.length >= 3) {
+                            const [timeReceived, incident, location, agency, status] = cells;
+                            
+                            if (incident && incident.trim() && location && location.trim()) {
+                                calls.push({
+                                    timeReceived: timeReceived || 'Unknown',
+                                    incident: incident.trim(),
+                                    location: location.trim(),
+                                    agency: (agency && agency.trim()) || 'Unknown',
+                                    status: (status && status.trim()) || 'Dispatched',
+                                    source: 'gractivecalls.com'
+                                });
+                            }
+                        }
                     }
                 }
+                console.log(`✅ gractivecalls.com: ${calls.length} calls`);
             }
+        } catch (error) {
+            console.error('❌ Error fetching from gractivecalls.com:', error);
         }
         
-        console.log(`✅ Scraped ${calls.length} total calls from gractivecalls.com`);
+        // Source 2: Henrico County Active Calls
+        try {
+            console.log('📡 Fetching from Henrico County...');
+            const response2 = await fetch('https://activecalls.henrico.gov/', {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                }
+            });
+            
+            if (response2.ok) {
+                const html = await response2.text();
+                const tableStart = html.indexOf('<table');
+                const tableEnd = html.indexOf('</table>', tableStart);
+                
+                if (tableStart !== -1 && tableEnd !== -1) {
+                    const tableHtml = html.substring(tableStart, tableEnd + 8);
+                    const rows = tableHtml.split(/<tr[^>]*>/i).slice(1);
+                    
+                    for (let i = 1; i < rows.length; i++) {
+                        const row = rows[i];
+                        if (!row.includes('<td')) continue;
+                        
+                        const cells = [];
+                        const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
+                        
+                        for (const match of cellMatches) {
+                            const text = match[1]
+                                .replace(/<[^>]+>/g, '')
+                                .replace(/&nbsp;/g, ' ')
+                                .trim();
+                            cells.push(text);
+                        }
+                        
+                        if (cells.length >= 2) {
+                            const timeReceived = cells[0] || 'Unknown';
+                            const incident = cells[1] || '';
+                            const location = cells[2] || '';
+                            const status = cells[3] || 'Dispatched';
+                            
+                            if (incident.trim() && location.trim()) {
+                                calls.push({
+                                    timeReceived,
+                                    incident: incident.trim(),
+                                    location: location.trim(),
+                                    agency: 'Henrico Police',
+                                    status: status.trim(),
+                                    source: 'activecalls.henrico.gov'
+                                });
+                            }
+                        }
+                    }
+                }
+                console.log(`✅ Henrico: ${calls.filter(c => c.source === 'activecalls.henrico.gov').length} calls`);
+            }
+        } catch (error) {
+            console.error('❌ Error fetching from Henrico:', error);
+        }
+        
+        // Source 3: Chesterfield County Active Calls
+        try {
+            console.log('📡 Fetching from Chesterfield County...');
+            const response3 = await fetch('https://www.chesterfield.gov/3999/Active-Police-Calls', {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                }
+            });
+            
+            if (response3.ok) {
+                const html = await response3.text();
+                const tableStart = html.indexOf('<table');
+                const tableEnd = html.indexOf('</table>', tableStart);
+                
+                if (tableStart !== -1 && tableEnd !== -1) {
+                    const tableHtml = html.substring(tableStart, tableEnd + 8);
+                    const rows = tableHtml.split(/<tr[^>]*>/i).slice(1);
+                    
+                    for (let i = 1; i < rows.length; i++) {
+                        const row = rows[i];
+                        if (!row.includes('<td')) continue;
+                        
+                        const cells = [];
+                        const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
+                        
+                        for (const match of cellMatches) {
+                            const text = match[1]
+                                .replace(/<[^>]+>/g, '')
+                                .replace(/&nbsp;/g, ' ')
+                                .trim();
+                            cells.push(text);
+                        }
+                        
+                        if (cells.length >= 2) {
+                            const timeReceived = cells[0] || 'Unknown';
+                            const incident = cells[1] || '';
+                            const location = cells[2] || '';
+                            const status = cells[3] || 'Dispatched';
+                            
+                            if (incident.trim() && location.trim()) {
+                                calls.push({
+                                    timeReceived,
+                                    incident: incident.trim(),
+                                    location: location.trim(),
+                                    agency: 'Chesterfield Police',
+                                    status: status.trim(),
+                                    source: 'chesterfield.gov'
+                                });
+                            }
+                        }
+                    }
+                }
+                console.log(`✅ Chesterfield: ${calls.filter(c => c.source === 'chesterfield.gov').length} calls`);
+            }
+        } catch (error) {
+            console.error('❌ Error fetching from Chesterfield:', error);
+        }
+        
+        console.log(`✅ Total calls from all sources: ${calls.length}`);
         
         if (calls.length === 0) {
             console.warn('⚠️ No calls found in HTML table. Check if website structure changed.');
