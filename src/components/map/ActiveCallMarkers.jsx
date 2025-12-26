@@ -9,6 +9,7 @@ import { Clock, MapPin, Radio } from 'lucide-react';
 const createCallIcon = (call) => {
     const incident = call.incident?.toLowerCase() || '';
     const agency = call.agency || '';
+    const isDispatch = call.source === 'dispatch';
     
     // Determine if it's EMS, Police, or Fire
     const isEMS = incident.includes('ems') || incident.includes('medical') || 
@@ -31,6 +32,15 @@ const createCallIcon = (call) => {
     let iconSvg = '';
     let bgColor = '#1E40AF'; // Blue for police (default)
     
+    // Special handling for dispatch calls
+    if (isDispatch) {
+        bgColor = '#000000'; // Black background
+        iconSvg = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#FFD700" stroke="#FFD700" stroke-width="2">
+                <polygon points="12,2 15,8.5 22,9.5 17,14.5 18,21.5 12,18 6,21.5 7,14.5 2,9.5 9,8.5"/>
+            </svg>
+        `;
+    } else
     if (isEMS) {
         bgColor = '#F59E0B'; // Amber for EMS
         iconSvg = `
