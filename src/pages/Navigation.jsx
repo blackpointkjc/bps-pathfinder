@@ -784,26 +784,25 @@ export default function Navigation() {
     };
 
     const fetchActiveCalls = async () => {
-        if (!isOnline) return;
+        if (!isOnline) {
+            toast.error('Cannot fetch calls while offline');
+            return;
+        }
         
         setIsLoadingCalls(true);
         try {
-            console.log('🔄 Fetching ALL active calls from gractivecalls.com...');
+            console.log('🔄 Fetching ALL active calls...');
             
             const response = await base44.functions.invoke('fetchAllActiveCalls', {});
             
-            console.log('📦 Response:', response.data);
+            console.log('📦 Full Response:', JSON.stringify(response.data, null, 2));
             
-            if (response.data.success) {
-                // DON'T filter out calls without coordinates - show ALL calls
-                const allCalls = response.data.geocodedCalls;
+            if (response.data && response.data.success) {
+                const allCalls = response.data.geocodedCalls || [];
                 
-                console.log(`✅ Loaded ${allCalls.length} calls from website (${response.data.totalCalls} total)`);
-                console.log('📊 Call breakdown by agency:', allCalls.reduce((acc, call) => {
-                    acc[call.agency] = (acc[call.agency] || 0) + 1;
-                    return acc;
-                }, {}));
-                console.log(`🎯 Current filter: ${callFilter}`);
+                console.log(`✅ Loaded ${allCalls.length} calls (${response.data.totalCalls} total scraped)`);
+                console.log('📊 Sample call:', allCalls[0]);
+                console.log('📍 Calls with coordinates:', allCalls.filter(c => c.latitude && c.longitude).length);
                 
                 setAllActiveCalls(allCalls);
                 applyCallFilter(allCalls, callFilter);
@@ -815,8 +814,9 @@ export default function Navigation() {
                     toast.warning(`Found ${response.data.totalCalls} calls but none could be geocoded`);
                 }
             } else {
-                console.error('❌ Failed to fetch calls:', response.data.error);
-                toast.error(response.data.error || 'Failed to load active calls');
+                const errorMsg = response.data?.error || 'Failed to load active calls';
+                console.error('❌ Failed:', errorMsg);
+                toast.error(errorMsg);
             }
         } catch (error) {
             console.error('❌ Error fetching active calls:', error);
