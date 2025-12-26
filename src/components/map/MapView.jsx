@@ -44,16 +44,19 @@ const createCurrentLocationIcon = (withLights = false) => {
 
 // Police car with heading and optional lights
 const createLocationWithHeading = (heading, withLights = false) => {
+    // Normalize heading to 0-360
+    const normalizedHeading = heading ? ((heading % 360) + 360) % 360 : 0;
+    
     return new L.DivIcon({
         className: 'custom-marker',
         html: `
-            <div style="position: relative; width: 50px; height: 50px; transform: rotate(${heading || 0}deg);">
+            <div style="position: relative; width: 50px; height: 50px; transform: rotate(${normalizedHeading}deg); transition: transform 0.3s ease;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" style="position: relative; z-index: 2; filter: drop-shadow(0 3px 10px rgba(0,0,0,0.4));">
                     ${withLights ? `
-                    <circle cx="8" cy="5" r="1.8" fill="#00FF00">
+                    <circle cx="8" cy="5" r="1.8" fill="#FF0000">
                         <animate attributeName="opacity" values="1;0;1" dur="0.8s" repeatCount="indefinite"/>
                     </circle>
-                    <circle cx="16" cy="5" r="1.8" fill="#00FF00">
+                    <circle cx="16" cy="5" r="1.8" fill="#0000FF">
                         <animate attributeName="opacity" values="0;1;0" dur="0.8s" repeatCount="indefinite"/>
                     </circle>
                     ` : ''}
@@ -62,7 +65,7 @@ const createLocationWithHeading = (heading, withLights = false) => {
                     <circle cx="17" cy="17" r="2.2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
                     <rect x="6" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
                     <rect x="11" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
-                    <polygon points="12,2 14,6 10,6" fill="#1E40AF" stroke="#1E3A8A" stroke-width="0.5"/>
+                    <polygon points="12,1 15,7 9,7" fill="#1E40AF" stroke="#1E3A8A" stroke-width="0.8"/>
                 </svg>
             </div>
         `,
@@ -94,7 +97,7 @@ const destinationIcon = new L.DivIcon({
 });
 
 // Component to handle map center updates
-function MapController({ center, routeBounds, mapCenter }) {
+function MapController({ center, routeBounds, mapCenter, isNavigating, heading }) {
     const map = useMap();
     const prevCenterRef = useRef(center);
     const userInteractingRef = useRef(false);
@@ -103,7 +106,7 @@ function MapController({ center, routeBounds, mapCenter }) {
         // Track user interaction
         const handleMoveStart = () => { userInteractingRef.current = true; };
         const handleMoveEnd = () => { 
-            setTimeout(() => { userInteractingRef.current = false; }, 3000);
+            setTimeout(() => { userInteractingRef.current = false; }, 5000);
         };
         
         map.on('movestart', handleMoveStart);
@@ -123,23 +126,29 @@ function MapController({ center, routeBounds, mapCenter }) {
     }, [mapCenter, map]);
 
     useEffect(() => {
-        // Don't auto-center if user is interacting
+        // Don't auto-center if user is manually panning
         if (userInteractingRef.current) return;
         
         if (routeBounds) {
             map.fitBounds(routeBounds, { padding: [50, 50] });
         } else if (center && (!prevCenterRef.current || 
-            Math.abs(center[0] - prevCenterRef.current[0]) > 0.001 || 
-            Math.abs(center[1] - prevCenterRef.current[1]) > 0.001)) {
-            map.setView(center, map.getZoom(), { animate: false });
+            Math.abs(center[0] - prevCenterRef.current[0]) > 0.0001 || 
+            Math.abs(center[1] - prevCenterRef.current[1]) > 0.0001)) {
+            
+            // When navigating, keep map centered and rotated with heading
+            if (isNavigating) {
+                map.setView(center, 18, { animate: true, duration: 0.5 });
+            } else {
+                map.setView(center, map.getZoom(), { animate: true, duration: 0.3 });
+            }
             prevCenterRef.current = center;
         }
-    }, [center, routeBounds, map]);
+    }, [center, routeBounds, map, isNavigating]);
 
     return null;
 }
 
-export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter }) {
+export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating }) {
     const defaultCenter = currentLocation || [37.7749, -122.4194]; // Default to SF
     
     // Calculate route bounds if route exists
@@ -166,6 +175,8 @@ export default function MapView({ currentLocation, destination, route, trafficSe
                 center={currentLocation} 
                 routeBounds={routeBounds}
                 mapCenter={mapCenter}
+                isNavigating={false}
+                heading={heading}
             />
 
             {currentLocation && (

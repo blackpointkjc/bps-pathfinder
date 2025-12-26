@@ -240,40 +240,42 @@ export default function Navigation() {
             (position) => {
                 const coords = [position.coords.latitude, position.coords.longitude];
                 setCurrentLocation(coords);
-                
-                // Update heading if available
-                if (position.coords.heading !== null && position.coords.heading !== undefined) {
-                    setHeading(position.coords.heading);
-                } else if (lastPosition.current) {
-                    // Calculate heading from previous position
+
+                // Update heading - prefer device heading, then calculate from movement
+                if (position.coords.heading !== null && position.coords.heading !== undefined && position.coords.heading >= 0) {
+                    setHeading(Math.round(position.coords.heading));
+                } else if (lastPosition.current && position.coords.speed && position.coords.speed > 0.5) {
+                    // Only calculate heading if moving (speed > 0.5 m/s)
                     const calculatedHeading = calculateHeading(
                         lastPosition.current,
                         coords
                     );
-                    if (calculatedHeading !== null) {
+                    if (calculatedHeading !== null && !isNaN(calculatedHeading)) {
                         setHeading(calculatedHeading);
                     }
                 }
-                
+
                 // Update speed and accuracy
-                if (position.coords.speed !== null) {
-                    setSpeed(position.coords.speed * 2.237); // Convert m/s to mph
+                if (position.coords.speed !== null && position.coords.speed >= 0) {
+                    setSpeed(Math.max(0, position.coords.speed * 2.237)); // Convert m/s to mph
+                } else {
+                    setSpeed(0);
                 }
                 setAccuracy(position.coords.accuracy);
-                
+
                 // Add to location history (keep last 50 points)
                 setLocationHistory(prev => {
                     const newHistory = [...prev, coords];
                     return newHistory.slice(-50);
                 });
-                
+
                 lastPosition.current = coords;
-                
+
                 // Update user location in database
                 if (currentUser) {
                     updateUserLocation();
                 }
-                
+
                 // Update navigation progress if navigating
                 if (isNavigating && directions) {
                     updateNavigationProgress(coords);
@@ -288,8 +290,8 @@ export default function Navigation() {
             },
             { 
                 enableHighAccuracy: true, 
-                maximumAge: 1000,
-                timeout: 10000
+                maximumAge: 0,
+                timeout: 5000
             }
         );
     };
@@ -315,7 +317,7 @@ export default function Navigation() {
         if (!currentUser || !currentLocation) return;
         
         try {
-            await base44.auth.updateMe({
+            const updateData = {
                 latitude: currentLocation[0],
                 longitude: currentLocation[1],
                 heading: heading || 0,
@@ -324,7 +326,10 @@ export default function Navigation() {
                 show_lights: showLights,
                 current_call_info: activeCallInfo,
                 last_updated: new Date().toISOString()
-            });
+            };
+            
+            console.log('📍 Updating location:', updateData);
+            await base44.auth.updateMe(updateData);
             
             // Load initial status from user if available
             if (currentUser.status && !unitStatus) {
@@ -333,8 +338,6 @@ export default function Navigation() {
             if (currentUser.current_call_info) {
                 setActiveCallInfo(currentUser.current_call_info);
             }
-            
-
         } catch (error) {
             console.error('Error updating user location:', error);
         }
@@ -343,22 +346,19 @@ export default function Navigation() {
     const fetchOtherUnits = async () => {
         try {
             const users = await base44.asServiceRole.entities.User.list('-last_updated', 100);
-            console.log('📡 Fetched users:', users);
+            console.log('📡 Fetched all users:', users.length);
             
-            // Filter out users without location (more lenient - 30 minutes)
-            const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+            // Show ALL users with location data, regardless of update time
             const activeUsers = users.filter(user => {
-                if (!user.latitude || !user.longitude) {
-                    console.log('❌ User without location:', user.full_name);
-                    return false;
+                const hasLocation = user.latitude && user.longitude;
+                const isNotCurrentUser = !currentUser || user.id !== currentUser.id;
+                if (hasLocation) {
+                    console.log('✅ User has location:', user.full_name, user.status || 'No status');
                 }
-                const lastUpdate = new Date(user.last_updated || user.updated_date || user.created_date);
-                const isRecent = lastUpdate > thirtyMinutesAgo;
-                console.log(`${isRecent ? '✅' : '❌'} User ${user.full_name}: last update ${lastUpdate.toLocaleTimeString()}`);
-                return isRecent;
+                return hasLocation && isNotCurrentUser;
             });
-            console.log('👥 Active users to display:', activeUsers.length);
-            setOtherUnits(activeUsers || []);
+            console.log('👥 Units to display on map:', activeUsers.length);
+            setOtherUnits(activeUsers);
         } catch (error) {
             console.error('Error fetching other units:', error);
         }
@@ -374,9 +374,10 @@ export default function Navigation() {
                   Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
         
         let heading = Math.atan2(y, x) * 180 / Math.PI;
+        // Normalize to 0-360
         heading = (heading + 360) % 360;
         
-        return heading;
+        return Math.round(heading);
     };
 
     const getCurrentLocation = useCallback(() => {
@@ -649,8 +650,12 @@ export default function Navigation() {
                 if (eta) {
                     updateData.estimated_return = new Date(eta).toISOString();
                 }
+                console.log('🔄 Updating status to:', newStatus);
                 await base44.auth.updateMe(updateData);
-                toast.success(`Status updated to ${newStatus}`);
+                toast.success(`Status: ${newStatus}`);
+                
+                // Immediately update location to reflect new status
+                await updateUserLocation();
             } catch (error) {
                 console.error('Error updating status:', error);
                 toast.error('Failed to update status');
@@ -828,6 +833,7 @@ export default function Navigation() {
                 currentUserId={currentUser?.id}
                 speed={speed}
                 mapCenter={mapCenter}
+                isNavigating={isNavigating}
                 onCallClick={(call) => {
                     setSelectedCall(call);
                     setShowCallSidebar(true);
