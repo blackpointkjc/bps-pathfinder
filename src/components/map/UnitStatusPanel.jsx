@@ -84,12 +84,12 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                                     </div>
                                 )}
 
-                                <div className="flex-1 overflow-hidden flex flex-col">
+                                <div className="flex-1 overflow-hidden flex flex-col min-h-0">
                                     <label className="text-sm font-medium text-gray-700 mb-3 block">
                                         Change Status
                                     </label>
-                                    <ScrollArea className="flex-1">
-                                        <div className="grid grid-cols-2 gap-3 p-1">
+                                    <div className="flex-1 overflow-y-auto pr-2">
+                                        <div className="grid grid-cols-2 gap-3 pb-4">
                                             {STATUS_OPTIONS.map((status) => {
                                                 const Icon = status.icon;
                                                 const isActive = selectedStatus === status.value;
@@ -136,7 +136,7 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                                                 </Button>
                                             </motion.div>
                                         )}
-                                    </ScrollArea>
+                                    </div>
                                 </div>
 
                                 <Button variant="outline" onClick={onClose} className="w-full mt-2">
