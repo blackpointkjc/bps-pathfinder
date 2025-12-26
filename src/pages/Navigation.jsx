@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
@@ -951,7 +951,7 @@ onCallClick={(call) => {
                     </Button>
                 )}
 
-                {currentUser?.role === 'admin' && (
+{(currentUser?.role === 'admin' || currentUser?.dispatch_role) && (
                     <Button
                         onClick={() => window.location.href = '/dispatch'}
                         size="icon"
@@ -1015,11 +1015,17 @@ onCallClick={(call) => {
 
             {!isNavigating && (
                 <>
-                    <SearchBar
-                        onSearch={searchDestination}
-                        isSearching={isSearching}
-                        onClear={clearRoute}
-                    />
+                    <motion.div 
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="absolute top-20 left-1/2 -translate-x-1/2 z-[1000] w-[90%] md:w-[480px]"
+                    >
+                        <SearchBar
+                            onSearch={searchDestination}
+                            isSearching={isSearching}
+                            onClear={clearRoute}
+                        />
+                    </motion.div>
                     <LocationButton
                         onClick={getCurrentLocation}
                         isLocating={isLocating}

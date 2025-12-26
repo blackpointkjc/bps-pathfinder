@@ -13,7 +13,6 @@ import { ArrowLeft, Plus, MapPin, Clock, User, Send, Radio } from 'lucide-react'
 
 export default function Dispatch() {
     const [currentUser, setCurrentUser] = useState(null);
-    const [users, setUsers] = useState([]);
     const [units, setUnits] = useState([]);
     const [calls, setCalls] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -25,7 +24,7 @@ export default function Dispatch() {
         priority: 'medium',
         agency: 'RPD'
     });
-    const [selectedUsers, setSelectedUsers] = useState([]);
+    const [selectedUnits, setSelectedUnits] = useState([]);
     const [creating, setCreating] = useState(false);
 
     useEffect(() => {
@@ -37,18 +36,16 @@ export default function Dispatch() {
             const user = await base44.auth.me();
             setCurrentUser(user);
             
-            if (user.role !== 'admin') {
-                toast.error('Dispatch access restricted to administrators');
+            if (user.role !== 'admin' && !user.dispatch_role) {
+                toast.error('Dispatch access restricted to administrators and dispatch users');
                 return;
             }
 
-            const [allUsers, allUnits, dispatchCalls] = await Promise.all([
-                base44.asServiceRole.entities.User.list(),
+            const [allUnits, dispatchCalls] = await Promise.all([
                 base44.entities.Unit.list(),
                 base44.entities.DispatchCall.list('-created_date', 50)
             ]);
 
-            setUsers(allUsers || []);
             setUnits(allUnits || []);
             setCalls(dispatchCalls || []);
         } catch (error) {
@@ -69,7 +66,7 @@ export default function Dispatch() {
         try {
             const callData = {
                 ...newCall,
-                assigned_users: selectedUsers,
+                assigned_units: selectedUnits,
                 status: 'Dispatched',
                 time_received: new Date().toISOString(),
                 created_by: currentUser.email
@@ -85,7 +82,7 @@ export default function Dispatch() {
                 priority: 'medium',
                 agency: 'RPD'
             });
-            setSelectedUsers([]);
+            setSelectedUnits([]);
             loadData();
         } catch (error) {
             console.error('Error creating call:', error);
@@ -95,11 +92,11 @@ export default function Dispatch() {
         }
     };
 
-    const toggleUserSelection = (userId) => {
-        setSelectedUsers(prev => 
-            prev.includes(userId) 
-                ? prev.filter(id => id !== userId)
-                : [...prev, userId]
+    const toggleUnitSelection = (unitId) => {
+        setSelectedUnits(prev => 
+            prev.includes(unitId) 
+                ? prev.filter(id => id !== unitId)
+                : [...prev, unitId]
         );
     };
 
@@ -111,14 +108,14 @@ export default function Dispatch() {
         );
     }
 
-    if (!currentUser || currentUser.role !== 'admin') {
+    if (!currentUser || (currentUser.role !== 'admin' && !currentUser.dispatch_role)) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
                 <Card className="p-8 max-w-md text-center">
                     <Radio className="w-16 h-16 text-red-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold mb-2">Access Restricted</h2>
                     <p className="text-gray-600 mb-6">
-                        Only administrators can access the dispatch panel.
+                        Only administrators and dispatch users can access the dispatch panel.
                     </p>
                     <Button onClick={() => window.location.href = '/'}>
                         <ArrowLeft className="w-4 h-4 mr-2" />
@@ -214,16 +211,16 @@ export default function Dispatch() {
                             <div>
                                 <Label className="mb-3 block">Assign Units</Label>
                                 <ScrollArea className="h-48 border rounded-lg p-3">
-                                    {users.length === 0 ? (
-                                        <p className="text-sm text-gray-500 text-center py-4">No users available</p>
+                                    {units.length === 0 ? (
+                                        <p className="text-sm text-gray-500 text-center py-4">No active units available</p>
                                     ) : (
                                         <div className="space-y-2">
-                                            {users.map(user => (
+                                            {units.map(unit => (
                                                 <div
-                                                    key={user.id}
-                                                    onClick={() => toggleUserSelection(user.id)}
+                                                    key={unit.id}
+                                                    onClick={() => toggleUnitSelection(unit.id)}
                                                     className={`p-3 rounded-lg cursor-pointer transition-all ${
-                                                        selectedUsers.includes(user.id)
+                                                        selectedUnits.includes(unit.id)
                                                             ? 'bg-red-100 border-2 border-red-500'
                                                             : 'bg-gray-50 border-2 border-transparent hover:border-gray-300'
                                                     }`}
@@ -231,13 +228,13 @@ export default function Dispatch() {
                                                     <div className="flex items-center justify-between">
                                                         <div>
                                                             <p className="font-semibold text-sm">
-                                                                {user.rank && `${user.rank} `}{user.full_name}
+                                                                {unit.unit_name}
                                                             </p>
                                                             <p className="text-xs text-gray-500">
-                                                                Unit #{user.unit_number || 'N/A'}
+                                                                {unit.rank && `${unit.rank} `}{unit.last_name || 'Officer'} • {unit.status}
                                                             </p>
                                                         </div>
-                                                        {selectedUsers.includes(user.id) && (
+                                                        {selectedUnits.includes(unit.id) && (
                                                             <Badge className="bg-red-600">Selected</Badge>
                                                         )}
                                                     </div>

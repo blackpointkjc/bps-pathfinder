@@ -97,15 +97,19 @@ const destinationIcon = new L.DivIcon({
 // Component to handle map center updates
 function MapController({ center, routeBounds }) {
     const map = useMap();
-    
+    const prevCenterRef = useRef(center);
+
     useEffect(() => {
         if (routeBounds) {
             map.fitBounds(routeBounds, { padding: [50, 50] });
-        } else if (center) {
-            map.setView(center, 15);
+        } else if (center && (!prevCenterRef.current || 
+            Math.abs(center[0] - prevCenterRef.current[0]) > 0.0001 || 
+            Math.abs(center[1] - prevCenterRef.current[1]) > 0.0001)) {
+            map.setView(center, map.getZoom(), { animate: false });
+            prevCenterRef.current = center;
         }
     }, [center, routeBounds, map]);
-    
+
     return null;
 }
 
@@ -137,8 +141,8 @@ export default function MapView({ currentLocation, destination, route, trafficSe
                 routeBounds={routeBounds}
             />
             
-            {/* Jurisdiction Boundaries - only show when active calls are enabled */}
-            {activeCalls && activeCalls.length > 0 && <JurisdictionBoundaries />}
+            {/* Jurisdiction Boundaries - disabled to show all calls */}
+            <JurisdictionBoundaries disabled={true} />
             
             {currentLocation && (
                 <>

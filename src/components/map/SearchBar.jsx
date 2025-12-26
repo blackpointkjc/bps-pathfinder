@@ -20,11 +20,7 @@ export default function SearchBar({ onSearch, isSearching, onClear }) {
     };
 
     return (
-        <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="absolute top-4 left-4 right-4 z-[1000] md:left-1/2 md:-translate-x-1/2 md:w-[480px] md:right-auto"
-        >
+        <div>
             <form onSubmit={handleSubmit} className="relative">
                 <div className="relative flex items-center bg-white/98 backdrop-blur-2xl rounded-3xl shadow-2xl shadow-black/5 border border-gray-200/50 overflow-hidden">
                     <div className="pl-4 text-gray-400">
@@ -69,6 +65,6 @@ export default function SearchBar({ onSearch, isSearching, onClear }) {
                     </Button>
                 </div>
             </form>
-        </motion.div>
+        </div>
     );
 }

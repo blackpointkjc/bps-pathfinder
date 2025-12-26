@@ -23,7 +23,8 @@ const JURISDICTIONS = [
     }
 ];
 
-export default function JurisdictionBoundaries() {
+export default function JurisdictionBoundaries({ disabled = false }) {
+    if (disabled) return null;
     const [boundaries, setBoundaries] = useState([]);
     const [loading, setLoading] = useState(true);
 
