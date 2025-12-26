@@ -717,13 +717,14 @@ export default function Navigation() {
     const applyCallFilter = (calls, filter) => {
         let filtered = calls;
         
-        if (filter === 'henrico') {
+        if (filter === 'richmond') {
+            filtered = calls.filter(call => call.agency?.includes('RPD') || call.agency?.includes('RFD') || call.agency?.includes('BPS'));
+        } else if (filter === 'henrico') {
             filtered = calls.filter(call => call.agency?.includes('HPD') || call.agency?.includes('HCPD') || call.agency?.includes('Henrico'));
         } else if (filter === 'chesterfield') {
             filtered = calls.filter(call => call.agency?.includes('CCPD') || call.agency?.includes('CCFD') || call.agency?.includes('Chesterfield'));
-        } else if (filter === 'richmond') {
-            filtered = calls.filter(call => call.agency?.includes('RPD') || call.agency?.includes('RFD') || call.agency?.includes('BPS'));
         }
+        // else filter === 'all', show all calls without filtering
         
         setActiveCalls(filtered);
     };
