@@ -13,7 +13,10 @@ import {
     Mail, 
     Trash2, 
     Settings,
-    ArrowLeft
+    ArrowLeft,
+    Edit,
+    Save,
+    X
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -27,6 +30,7 @@ export default function Dashboard() {
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState('user');
     const [inviting, setInviting] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
 
     useEffect(() => {
         loadUsers();
@@ -48,13 +52,39 @@ export default function Dashboard() {
     const loadUsers = async () => {
         setLoading(true);
         try {
-            const allUsers = await base44.entities.User.list();
+            const allUsers = await base44.asServiceRole.entities.User.list();
             setUsers(allUsers);
         } catch (error) {
             console.error('Error loading users:', error);
             toast.error('Failed to load users');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleEditUser = (user) => {
+        setEditingUser({...user});
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingUser) return;
+
+        try {
+            await base44.asServiceRole.entities.User.update(editingUser.id, {
+                full_name: editingUser.full_name,
+                last_name: editingUser.last_name,
+                rank: editingUser.rank,
+                unit_number: editingUser.unit_number,
+                role: editingUser.role
+            });
+
+            const updatedUsers = await base44.asServiceRole.entities.User.list();
+            setUsers(updatedUsers);
+            setEditingUser(null);
+            toast.success('User updated successfully');
+        } catch (error) {
+            console.error('Error updating user:', error);
+            toast.error('Failed to update user');
         }
     };
 
@@ -232,46 +262,99 @@ export default function Dashboard() {
                                             animate={{ opacity: 1, y: 0 }}
                                             className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
                                         >
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold">
-                                                        {user.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                                            {editingUser?.id === user.id ? (
+                                                <div className="space-y-3">
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <Input
+                                                            value={editingUser.full_name || ''}
+                                                            onChange={(e) => setEditingUser({...editingUser, full_name: e.target.value})}
+                                                            placeholder="Full Name"
+                                                            className="text-sm"
+                                                        />
+                                                        <Input
+                                                            value={editingUser.last_name || ''}
+                                                            onChange={(e) => setEditingUser({...editingUser, last_name: e.target.value})}
+                                                            placeholder="Last Name"
+                                                            className="text-sm"
+                                                        />
+                                                        <Input
+                                                            value={editingUser.rank || ''}
+                                                            onChange={(e) => setEditingUser({...editingUser, rank: e.target.value})}
+                                                            placeholder="Rank"
+                                                            className="text-sm"
+                                                        />
+                                                        <Input
+                                                            value={editingUser.unit_number || ''}
+                                                            onChange={(e) => setEditingUser({...editingUser, unit_number: e.target.value})}
+                                                            placeholder="Unit #"
+                                                            className="text-sm"
+                                                        />
                                                     </div>
-                                                    <div>
-                                                        <p className="font-semibold text-gray-900">
-                                                            {user.full_name || 'Unknown User'}
-                                                        </p>
-                                                        <p className="text-sm text-gray-500">{user.email}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <select
+                                                            value={editingUser.role || 'user'}
+                                                            onChange={(e) => setEditingUser({...editingUser, role: e.target.value})}
+                                                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                                                        >
+                                                            <option value="user">Officer</option>
+                                                            <option value="admin">Admin</option>
+                                                        </select>
+                                                        <Button size="sm" onClick={handleSaveEdit} className="bg-green-600 hover:bg-green-700">
+                                                            <Save className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button size="sm" variant="outline" onClick={() => setEditingUser(null)}>
+                                                            <X className="w-4 h-4" />
+                                                        </Button>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Badge
-                                                        variant="secondary"
-                                                        className={
-                                                            user.role === 'admin'
-                                                                ? 'bg-purple-100 text-purple-700'
-                                                                : 'bg-blue-100 text-blue-700'
-                                                        }
-                                                    >
-                                                        {user.role === 'admin' ? (
-                                                            <>
-                                                                <Shield className="w-3 h-3 mr-1" />
-                                                                Admin
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Users className="w-3 h-3 mr-1" />
-                                                                Officer
-                                                            </>
-                                                        )}
-                                                    </Badge>
-                                                    {user.id === currentUser.id && (
-                                                        <Badge variant="outline" className="text-green-600 border-green-300">
-                                                            You
+                                            ) : (
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-[#007AFF] flex items-center justify-center text-white font-semibold">
+                                                            {user.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-semibold text-gray-900">
+                                                                {user.rank && `${user.rank} `}{user.full_name || user.last_name || 'Unknown User'}
+                                                            </p>
+                                                            <p className="text-sm text-gray-500">{user.email}</p>
+                                                            {user.unit_number && (
+                                                                <p className="text-xs text-gray-500">Unit #{user.unit_number}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className={
+                                                                user.role === 'admin'
+                                                                    ? 'bg-purple-100 text-purple-700'
+                                                                    : 'bg-blue-100 text-blue-700'
+                                                            }
+                                                        >
+                                                            {user.role === 'admin' ? (
+                                                                <>
+                                                                    <Shield className="w-3 h-3 mr-1" />
+                                                                    Admin
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Users className="w-3 h-3 mr-1" />
+                                                                    Officer
+                                                                </>
+                                                            )}
                                                         </Badge>
-                                                    )}
+                                                        {user.id === currentUser.id && (
+                                                            <Badge variant="outline" className="text-green-600 border-green-300">
+                                                                You
+                                                            </Badge>
+                                                        )}
+                                                        <Button size="sm" variant="ghost" onClick={() => handleEditUser(user)}>
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            )}
                                         </motion.div>
                                     ))
                                 )}
