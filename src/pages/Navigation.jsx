@@ -755,9 +755,10 @@ export default function Navigation() {
             console.log('📦 Response:', response.data);
             
             if (response.data.success) {
-                const allCalls = response.data.geocodedCalls.filter(call => call.latitude && call.longitude);
+                // DON'T filter out calls without coordinates - show ALL calls
+                const allCalls = response.data.geocodedCalls;
                 
-                console.log(`✅ Loaded ${allCalls.length} geocoded calls (${response.data.totalCalls} total)`);
+                console.log(`✅ Loaded ${allCalls.length} calls from website (${response.data.totalCalls} total)`);
                 console.log('📊 Call breakdown by agency:', allCalls.reduce((acc, call) => {
                     acc[call.agency] = (acc[call.agency] || 0) + 1;
                     return acc;
