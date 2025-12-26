@@ -120,7 +120,29 @@ const createCallIcon = (call) => {
 };
 
 export default function ActiveCallMarkers({ calls, onCallClick }) {
-    if (!calls || calls.length === 0) return null;
+    console.log('🚨 ActiveCallMarkers - Received calls:', calls?.length || 0);
+    
+    if (!calls || calls.length === 0) {
+        console.log('❌ No calls to display');
+        return null;
+    }
+    
+    // Filter valid coordinates
+    const validCalls = calls.filter(call => {
+        const hasCoords = call.latitude && call.longitude && 
+                         !isNaN(call.latitude) && !isNaN(call.longitude);
+        if (!hasCoords) {
+            console.log('⚠️ Call without coords:', call.incident);
+        }
+        return hasCoords;
+    });
+    
+    console.log(`✅ Valid calls with coordinates: ${validCalls.length}/${calls.length}`);
+    
+    if (validCalls.length === 0) {
+        console.log('❌ No valid calls with coordinates');
+        return null;
+    }
     
     return (
         <MarkerClusterGroup
@@ -149,8 +171,7 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                 });
             }}
         >
-            {calls.map((call, index) => {
-                if (!call.latitude || !call.longitude) return null;
+            {validCalls.map((call, index) => {
                 
                 return (
                     <Marker
