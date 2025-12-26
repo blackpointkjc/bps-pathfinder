@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, MapPin, Clock, User, Send, Radio } from 'lucide-react';
+import { ArrowLeft, Plus, MapPin, Clock, User, Send, Radio, Trash2 } from 'lucide-react';
 
 export default function Dispatch() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -322,18 +322,61 @@ export default function Dispatch() {
                                                             <span>{call.location}</span>
                                                         </div>
                                                     </div>
-                                                    <Badge className={
-                                                        call.priority === 'critical' ? 'bg-red-600' :
-                                                        call.priority === 'high' ? 'bg-orange-500' :
-                                                        call.priority === 'medium' ? 'bg-yellow-500' :
-                                                        'bg-blue-500'
-                                                    }>
-                                                        {call.priority}
-                                                    </Badge>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge className={
+                                                            call.priority === 'critical' ? 'bg-red-600' :
+                                                            call.priority === 'high' ? 'bg-orange-500' :
+                                                            call.priority === 'medium' ? 'bg-yellow-500' :
+                                                            'bg-blue-500'
+                                                        }>
+                                                            {call.priority}
+                                                        </Badge>
+                                                    </div>
                                                 </div>
                                                 {call.description && (
                                                     <p className="text-sm text-gray-600 mb-3">{call.description}</p>
                                                 )}
+
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <select
+                                                        value={call.status}
+                                                        onChange={async (e) => {
+                                                            const newStatus = e.target.value;
+                                                            try {
+                                                                await base44.entities.DispatchCall.update(call.id, { status: newStatus });
+                                                                toast.success(`Call status updated to ${newStatus}`);
+                                                                loadData();
+                                                            } catch (error) {
+                                                                toast.error('Failed to update status');
+                                                            }
+                                                        }}
+                                                        className="flex h-8 rounded-md border border-input bg-background px-2 text-xs flex-1"
+                                                    >
+                                                        <option value="Dispatched">Dispatched</option>
+                                                        <option value="Enroute">Enroute</option>
+                                                        <option value="On Scene">On Scene</option>
+                                                        <option value="Resolved">Resolved</option>
+                                                        <option value="Cancelled">Cancelled</option>
+                                                    </select>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="destructive"
+                                                        onClick={async () => {
+                                                            if (window.confirm('Remove this call from the map?')) {
+                                                                try {
+                                                                    await base44.entities.DispatchCall.delete(call.id);
+                                                                    toast.success('Call removed');
+                                                                    loadData();
+                                                                } catch (error) {
+                                                                    toast.error('Failed to remove call');
+                                                                }
+                                                            }
+                                                        }}
+                                                    >
+                                                        Remove
+                                                    </Button>
+                                                </div>
+
                                                 <div className="flex items-center justify-between text-xs text-gray-500">
                                                     <div className="flex items-center gap-1">
                                                         <Clock className="w-3 h-3" />

@@ -67,12 +67,14 @@ Deno.serve(async (req) => {
             try {
                 // Determine jurisdiction based on agency
                 let jurisdiction = 'Virginia';
-                if (call.agency.includes('RPD')) {
+                if (call.agency.includes('RPD') || call.agency.includes('RFD')) {
                     jurisdiction = 'Richmond, VA';
                 } else if (call.agency.includes('HCPD') || call.agency.includes('HPD')) {
                     jurisdiction = 'Henrico County, VA';
-                } else if (call.agency.includes('CCPD')) {
+                } else if (call.agency.includes('CCPD') || call.agency.includes('CCFD')) {
                     jurisdiction = 'Chesterfield County, VA';
+                } else if (call.agency.includes('BPS')) {
+                    jurisdiction = 'Richmond, VA';
                 }
                 
 const query = `${call.location}, ${jurisdiction}`;

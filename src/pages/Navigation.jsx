@@ -675,26 +675,28 @@ export default function Navigation() {
         
         setIsLoadingCalls(true);
         try {
-            // Fetch from all sources
+            // Fetch from all sources - only active dispatch calls
             const [response1, response2, dispatchCalls] = await Promise.all([
                 base44.functions.invoke('fetchActiveCalls', {}),
                 base44.functions.invoke('fetchAdditionalCalls', {}),
-                base44.entities.DispatchCall.filter({ status: 'Dispatched' })
+                base44.entities.DispatchCall.list('-created_date', 100)
             ]);
             
             const allCalls = [
                 ...(response1.data.success ? response1.data.geocodedCalls : []),
                 ...(response2.data.success ? response2.data.geocodedCalls : []),
-                ...(dispatchCalls || []).filter(call => call.latitude && call.longitude).map(call => ({
-                    timeReceived: new Date(call.time_received).toLocaleTimeString(),
-                    incident: call.incident,
-                    location: call.location,
-                    agency: call.agency,
-                    status: call.status,
-                    latitude: call.latitude,
-                    longitude: call.longitude,
-                    ai_summary: call.ai_summary
-                }))
+                ...(dispatchCalls || [])
+                    .filter(call => call.latitude && call.longitude && call.status !== 'Resolved' && call.status !== 'Cancelled')
+                    .map(call => ({
+                        timeReceived: new Date(call.time_received).toLocaleTimeString(),
+                        incident: call.incident,
+                        location: call.location,
+                        agency: call.agency,
+                        status: call.status,
+                        latitude: call.latitude,
+                        longitude: call.longitude,
+                        ai_summary: call.ai_summary
+                    }))
             ];
             
             setActiveCalls(allCalls);

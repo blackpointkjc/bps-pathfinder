@@ -1,12 +1,12 @@
-import Navigation from './pages/Navigation';
-import Dispatch from './pages/Dispatch';
 import Admin from './pages/Admin';
+import Dispatch from './pages/Dispatch';
+import Navigation from './pages/Navigation';
 
 
 export const PAGES = {
-    "Navigation": Navigation,
-    "Dispatch": Dispatch,
     "Admin": Admin,
+    "Dispatch": Dispatch,
+    "Navigation": Navigation,
 }
 
 export const pagesConfig = {
