@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, LayoutDashboard } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
-import { createPageUrl } from '@/utils';
-import { Link } from 'react-router-dom';
 import MapView from '@/components/map/MapView';
 import SearchBar from '@/components/map/SearchBar';
 import LocationButton from '@/components/map/LocationButton';
@@ -943,16 +941,7 @@ export default function Navigation() {
                     <Volume2 className="w-5 h-5" />
                 </Button>
 
-                {currentUser?.role === 'admin' && (
-                    <Link to={createPageUrl('Dashboard')}>
-                        <Button
-                            size="icon"
-                            className="h-10 w-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg border-white/20 hover:bg-white text-purple-600"
-                        >
-                            <LayoutDashboard className="w-5 h-5" />
-                        </Button>
-                    </Link>
-                )}
+
             </motion.div>
             
             {/* Active Calls Counter */}
