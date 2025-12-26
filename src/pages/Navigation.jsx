@@ -498,12 +498,52 @@ export default function Navigation() {
             setDuration(`${durationMins} min`);
         }
         
-        const steps = routeData.legs[0].steps.map(step => ({
-            instruction: step.maneuver.instruction || formatManeuver(step.maneuver),
-            distance: step.distance > 1000 
-                ? `${(step.distance / 1609.34).toFixed(1)} mi` 
-                : `${Math.round(step.distance * 3.281)} ft`
-        }));
+        const steps = routeData.legs[0].steps.map(step => {
+            const maneuver = step.maneuver;
+            const streetName = step.name || '';
+
+            let instruction = '';
+            if (maneuver.type === 'depart') {
+                instruction = streetName ? `Start on ${streetName}` : 'Start your journey';
+            } else if (maneuver.type === 'arrive') {
+                instruction = 'You have arrived at your destination';
+            } else if (maneuver.type === 'turn' || maneuver.type === 'new name') {
+                const direction = maneuver.modifier || '';
+                if (streetName) {
+                    instruction = `Turn ${direction} onto ${streetName}`;
+                } else {
+                    instruction = `Turn ${direction}`;
+                }
+            } else if (maneuver.type === 'merge' || maneuver.type === 'on ramp') {
+                const direction = maneuver.modifier || '';
+                if (streetName) {
+                    instruction = `Merge ${direction} onto ${streetName}`;
+                } else {
+                    instruction = `Merge ${direction}`;
+                }
+            } else if (maneuver.type === 'off ramp') {
+                if (streetName) {
+                    instruction = `Take exit onto ${streetName}`;
+                } else {
+                    instruction = 'Take exit';
+                }
+            } else if (maneuver.type === 'continue') {
+                if (streetName) {
+                    instruction = `Continue on ${streetName}`;
+                } else {
+                    instruction = 'Continue straight';
+                }
+            } else {
+                instruction = step.maneuver.instruction || formatManeuver(step.maneuver);
+            }
+
+            return {
+                instruction,
+                distance: step.distance > 1000 
+                    ? `${(step.distance / 1609.34).toFixed(1)} mi` 
+                    : `${Math.round(step.distance * 3.281)} ft`
+            };
+        });
         setDirections(steps);
     };
 
@@ -671,26 +711,34 @@ export default function Navigation() {
     };
 
     const fetchActiveCalls = async () => {
-        if (!isOnline || !currentUser) return;
+        if (!isOnline) return;
         
         setIsLoadingCalls(true);
         try {
-            // Only fetch dispatch calls assigned to current user
-            const dispatchCalls = await base44.entities.DispatchCall.list('-created_date', 100);
+            // Fetch from all sources including Henrico
+            const [response1, response2, henricoResponse, dispatchCalls] = await Promise.all([
+                base44.functions.invoke('fetchActiveCalls', {}),
+                base44.functions.invoke('fetchAdditionalCalls', {}),
+                base44.functions.invoke('fetchHenricoCalls', {}),
+                base44.entities.DispatchCall.list('-created_date', 100)
+            ]);
             
             const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
             
-            // Filter to only show calls assigned to current user
-            const myCalls = (dispatchCalls || [])
+            // Collect all external calls with valid coordinates
+            const externalCalls = [
+                ...(response1.data.success ? response1.data.geocodedCalls : []),
+                ...(response2.data.success ? response2.data.geocodedCalls : []),
+                ...(henricoResponse.data.success ? henricoResponse.data.geocodedCalls : [])
+            ].filter(call => call.latitude && call.longitude);
+            
+            // Get dispatch calls assigned to user (if logged in)
+            const assignedCalls = currentUser ? (dispatchCalls || [])
                 .filter(call => {
-                    // Must have coordinates
                     if (!call.latitude || !call.longitude) return false;
-                    // Must not be resolved or cancelled
                     if (call.status === 'Resolved' || call.status === 'Cancelled') return false;
-                    // Must be within 2 hours
                     const callTime = new Date(call.time_received || call.created_date);
                     if (callTime <= twoHoursAgo) return false;
-                    // Must be assigned to current user
                     return call.assigned_units && call.assigned_units.includes(currentUser.id);
                 })
                 .map(call => ({
@@ -702,10 +750,14 @@ export default function Navigation() {
                     latitude: call.latitude,
                     longitude: call.longitude,
                     ai_summary: call.ai_summary
-                }));
+                })) : [];
             
-            setActiveCalls(myCalls);
-            toast.success(`Loaded ${myCalls.length} assigned calls`, {
+            const allCalls = [...externalCalls, ...assignedCalls];
+            
+            console.log(`Active calls: External=${externalCalls.length}, Assigned=${assignedCalls.length}`);
+            
+            setActiveCalls(allCalls);
+            toast.success(`Loaded ${allCalls.length} active calls`, {
                 duration: 2000
             });
         } catch (error) {
