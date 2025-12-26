@@ -720,11 +720,23 @@ export default function Navigation() {
         let filtered = calls;
         
         if (filter === 'richmond') {
-            filtered = calls.filter(call => call.agency?.includes('RPD') || call.agency?.includes('RFD') || call.agency?.includes('BPS'));
+            filtered = calls.filter(call => {
+                const agency = call.agency?.toUpperCase() || '';
+                return agency.includes('RPD') || agency.includes('RFD') || 
+                       agency.includes('BPS') || agency.includes('RICHMOND');
+            });
         } else if (filter === 'henrico') {
-            filtered = calls.filter(call => call.agency?.includes('HPD') || call.agency?.includes('HCPD') || call.agency?.includes('Henrico'));
+            filtered = calls.filter(call => {
+                const agency = call.agency?.toUpperCase() || '';
+                return agency.includes('HPD') || agency.includes('HCPD') || 
+                       agency.includes('HENRICO') || agency.includes('HFD');
+            });
         } else if (filter === 'chesterfield') {
-            filtered = calls.filter(call => call.agency?.includes('CCPD') || call.agency?.includes('CCFD') || call.agency?.includes('Chesterfield'));
+            filtered = calls.filter(call => {
+                const agency = call.agency?.toUpperCase() || '';
+                return agency.includes('CCPD') || agency.includes('CCFD') || 
+                       agency.includes('CHESTERFIELD');
+            });
         }
         // else filter === 'all', show all calls without filtering
         
