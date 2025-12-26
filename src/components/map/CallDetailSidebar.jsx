@@ -26,13 +26,22 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
     
     return (
         <AnimatePresence>
-            <motion.div
-                initial={{ x: 400 }}
-                animate={{ x: 0 }}
-                exit={{ x: 400 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed top-0 right-0 bottom-0 w-full md:w-[400px] bg-white shadow-2xl z-[2000] overflow-hidden flex flex-col"
-            >
+            {call && (
+                <>
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 z-[9998]"
+                        onClick={onClose}
+                    />
+                    <motion.div
+                        initial={{ x: 400 }}
+                        animate={{ x: 0 }}
+                        exit={{ x: 400 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        className="fixed top-0 right-0 bottom-0 w-full md:w-[400px] bg-white shadow-2xl z-[9999] overflow-hidden flex flex-col"
+                    >
                 {/* Header */}
                 <div className="bg-gradient-to-r from-red-600 to-red-700 p-6 text-white">
                     <div className="flex items-start justify-between mb-4">
@@ -141,7 +150,7 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
                         </div>
                     )}
                 </div>
-                    </motion.div>
+            </motion.div>
                 </>
             )}
         </AnimatePresence>
