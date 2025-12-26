@@ -52,12 +52,12 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                         onClick={onClose}
                     />
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[2001] w-full max-w-md p-4"
-                    >
-                        <Card className="p-6 bg-white shadow-2xl">
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[2001] w-full max-w-md max-h-[90vh] p-4"
+                        >
+                        <Card className="p-6 bg-white shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-xl font-bold text-gray-900">Unit Status</h3>
                                 <Button variant="ghost" size="icon" onClick={onClose}>
@@ -84,11 +84,11 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                                     </div>
                                 )}
 
-                                <div>
+                                <div className="flex-1 overflow-hidden flex flex-col">
                                     <label className="text-sm font-medium text-gray-700 mb-3 block">
                                         Change Status
                                     </label>
-                                    <ScrollArea className="max-h-[400px]">
+                                    <ScrollArea className="flex-1">
                                         <div className="grid grid-cols-2 gap-3 p-1">
                                             {STATUS_OPTIONS.map((status) => {
                                                 const Icon = status.icon;

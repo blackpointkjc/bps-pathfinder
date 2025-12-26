@@ -1128,7 +1128,7 @@ onCallClick={(call) => {
                 isOpen={showStatusPanel}
                 onClose={() => setShowStatusPanel(false)}
                 currentStatus={unitStatus}
-                unitName={unitName || 'Unknown Unit'}
+                unitName={unitName || currentUser?.unit_number || currentUser?.full_name || 'Unknown Unit'}
                 onStatusChange={handleStatusChange}
                 activeCall={activeCallInfo}
             />

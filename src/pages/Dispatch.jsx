@@ -49,7 +49,12 @@ export default function Dispatch() {
             // Filter users with location data (active units)
             const activeUsers = allUsers.filter(u => u.latitude && u.longitude);
             setUnits(activeUsers || []);
-            setCalls(dispatchCalls || []);
+            
+            // Filter to show only active calls (not Resolved or Cancelled)
+            const activeCalls = (dispatchCalls || []).filter(call => 
+                call.status !== 'Resolved' && call.status !== 'Cancelled'
+            );
+            setCalls(activeCalls);
         } catch (error) {
             console.error('Error loading data:', error);
             toast.error('Failed to load dispatch data');
