@@ -57,39 +57,38 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                             exit={{ opacity: 0, y: 20 }}
                             className="fixed inset-0 flex items-center justify-center z-[2001] p-4"
                         >
-                        <Card className="p-6 bg-white shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
-                            <div className="flex items-center justify-between mb-4">
+                        <Card className="p-6 bg-white shadow-2xl w-full max-w-md flex flex-col" style={{ maxHeight: '85vh' }}>
+                            <div className="flex items-center justify-between mb-4 flex-shrink-0">
                                 <h3 className="text-xl font-bold text-gray-900">Unit Status</h3>
                                 <Button variant="ghost" size="icon" onClick={onClose}>
                                     <X className="w-5 h-5" />
                                 </Button>
                             </div>
 
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                                    <Car className="w-5 h-5 text-blue-600" />
-                                    <div>
-                                        <p className="text-sm text-gray-600">Unit</p>
-                                        <p className="font-bold text-blue-600">{unitName}</p>
-                                    </div>
-                                </div>
-
-                                {activeCall && (
-                                    <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                                        <Navigation className="w-5 h-5 text-red-600 mt-0.5" />
+                            <div className="flex-1 overflow-y-auto">
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                                        <Car className="w-5 h-5 text-blue-600" />
                                         <div>
-                                            <p className="text-sm text-gray-600">Active Call</p>
-                                            <p className="text-sm font-semibold text-gray-900">{activeCall}</p>
+                                            <p className="text-sm text-gray-600">Unit</p>
+                                            <p className="font-bold text-blue-600">{unitName}</p>
                                         </div>
                                     </div>
-                                )}
 
-                                <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+                                    {activeCall && (
+                                        <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                                            <Navigation className="w-5 h-5 text-red-600 mt-0.5" />
+                                            <div>
+                                                <p className="text-sm text-gray-600">Active Call</p>
+                                                <p className="text-sm font-semibold text-gray-900">{activeCall}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <label className="text-sm font-medium text-gray-700 mb-3 block">
                                         Change Status
                                     </label>
-                                    <div className="flex-1 overflow-y-auto pr-2">
-                                        <div className="grid grid-cols-2 gap-3 pb-4">
+                                    <div className="grid grid-cols-2 gap-3 pb-4">
                                             {STATUS_OPTIONS.map((status) => {
                                                 const Icon = status.icon;
                                                 const isActive = selectedStatus === status.value;
@@ -112,15 +111,15 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                                                         <p className="text-sm font-semibold text-gray-900">{status.value}</p>
                                                     </motion.button>
                                                 );
-                                            })}
-                                        </div>
-                                        
-                                        {selectedStatus === 'Out of Service' && (
-                                            <motion.div
+                                                })}
+                                                </div>
+
+                                                {selectedStatus === 'Out of Service' && (
+                                                <motion.div
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 className="mt-4 p-4 bg-gray-50 rounded-xl"
-                                            >
+                                                >
                                                 <Label className="text-sm font-semibold mb-2">Estimated Return Time</Label>
                                                 <Input
                                                     type="datetime-local"
@@ -134,16 +133,17 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                                                 >
                                                     Confirm Out of Service
                                                 </Button>
-                                            </motion.div>
-                                        )}
-                                    </div>
-                                </div>
+                                                </motion.div>
+                                                )}
+                                                </div>
+                                                </div>
 
-                                <Button variant="outline" onClick={onClose} className="w-full mt-2">
-                                    Close
-                                </Button>
-                            </div>
-                        </Card>
+                                                <div className="pt-4 border-t flex-shrink-0">
+                                                <Button variant="outline" onClick={onClose} className="w-full">
+                                                Close
+                                                </Button>
+                                                </div>
+                                                </Card>
                     </motion.div>
                 </>
             )}

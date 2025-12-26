@@ -141,7 +141,9 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
                         </div>
                     )}
                 </div>
-            </motion.div>
+                    </motion.div>
+                </>
+            )}
         </AnimatePresence>
     );
 }
