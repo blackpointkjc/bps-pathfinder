@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { base44 } from '@/api/base44Client';
 import MapView from '@/components/map/MapView';
 import SearchBar from '@/components/map/SearchBar';
 import LocationButton from '@/components/map/LocationButton';
@@ -33,8 +35,14 @@ export default function Navigation() {
     const [isRerouting, setIsRerouting] = useState(false);
     const [trafficSegments, setTrafficSegments] = useState(null);
     
+    // Active calls state
+    const [activeCalls, setActiveCalls] = useState([]);
+    const [showActiveCalls, setShowActiveCalls] = useState(true);
+    const [isLoadingCalls, setIsLoadingCalls] = useState(false);
+    
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
+    const callsRefreshInterval = useRef(null);
 
     // Monitor online/offline status
     useEffect(() => {
@@ -58,12 +66,24 @@ export default function Navigation() {
 
     useEffect(() => {
         getCurrentLocation();
+        fetchActiveCalls();
+        
+        // Refresh active calls every 2 minutes
+        callsRefreshInterval.current = setInterval(() => {
+            if (showActiveCalls && isOnline) {
+                fetchActiveCalls();
+            }
+        }, 120000);
+        
         return () => {
             if (locationWatchId.current) {
                 navigator.geolocation.clearWatch(locationWatchId.current);
             }
             if (rerouteCheckInterval.current) {
                 clearInterval(rerouteCheckInterval.current);
+            }
+            if (callsRefreshInterval.current) {
+                clearInterval(callsRefreshInterval.current);
             }
         };
     }, []);
@@ -287,6 +307,26 @@ export default function Navigation() {
         return `${type} ${modifier || ''}`.trim();
     };
 
+    const fetchActiveCalls = async () => {
+        if (!isOnline) return;
+        
+        setIsLoadingCalls(true);
+        try {
+            const response = await base44.functions.invoke('fetchActiveCalls', {});
+            if (response.data.success) {
+                setActiveCalls(response.data.geocodedCalls);
+                toast.success(`Loaded ${response.data.geocodedCalls.length} active calls`, {
+                    duration: 2000
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching active calls:', error);
+            toast.error('Failed to load active calls');
+        } finally {
+            setIsLoadingCalls(false);
+        }
+    };
+
     const clearRoute = () => {
         setDestination(null);
         setRoutes(null);
@@ -312,6 +352,7 @@ export default function Navigation() {
                 route={routeCoords}
                 trafficSegments={trafficSegments}
                 useOfflineTiles={!isOnline}
+                activeCalls={showActiveCalls ? activeCalls : []}
             />
 
             {/* Online/Offline Indicator */}
@@ -343,7 +384,7 @@ export default function Navigation() {
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute top-20 right-4 z-[999]"
+                className="absolute top-20 right-4 z-[999] flex flex-col gap-2"
             >
                 <Button
                     onClick={() => setShowOfflineManager(true)}
@@ -352,7 +393,41 @@ export default function Navigation() {
                 >
                     <MapIcon className="w-5 h-5" />
                 </Button>
+                
+                <Button
+                    onClick={() => {
+                        setShowActiveCalls(!showActiveCalls);
+                        if (!showActiveCalls && activeCalls.length === 0) {
+                            fetchActiveCalls();
+                        }
+                    }}
+                    size="icon"
+                    className={`h-10 w-10 rounded-full backdrop-blur-xl shadow-lg border-white/20 ${
+                        showActiveCalls 
+                            ? 'bg-red-500 hover:bg-red-600 text-white' 
+                            : 'bg-white/95 hover:bg-white text-gray-600'
+                    }`}
+                    disabled={isLoadingCalls}
+                >
+                    <Radio className={`w-5 h-5 ${isLoadingCalls ? 'animate-pulse' : ''}`} />
+                </Button>
             </motion.div>
+            
+            {/* Active Calls Counter */}
+            <AnimatePresence>
+                {showActiveCalls && activeCalls.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        className="absolute top-32 right-4 z-[999]"
+                    >
+                        <Badge className="bg-red-500 text-white px-3 py-1.5 text-xs font-semibold shadow-lg">
+                            {activeCalls.length} Active Calls
+                        </Badge>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {!isNavigating && (
                 <>

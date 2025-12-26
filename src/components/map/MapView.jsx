@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import TrafficLayer from './TrafficLayer';
+import ActiveCallMarkers from './ActiveCallMarkers';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -66,7 +67,7 @@ function MapController({ center, routeBounds }) {
     return null;
 }
 
-export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles }) {
+export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls }) {
     const defaultCenter = currentLocation || [37.7749, -122.4194]; // Default to SF
     
     // Calculate route bounds if route exists
@@ -124,6 +125,9 @@ export default function MapView({ currentLocation, destination, route, trafficSe
                     }}
                 />
             ) : null}
+            
+            {/* Active Emergency Calls */}
+            <ActiveCallMarkers calls={activeCalls} />
         </MapContainer>
     );
 }
