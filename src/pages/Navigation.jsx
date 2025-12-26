@@ -140,7 +140,7 @@ export default function Navigation() {
         
         // Refresh active calls every 2 minutes
         callsRefreshInterval.current = setInterval(() => {
-            if (showActiveCalls && isOnline) {
+            if (isOnline) {
                 fetchActiveCalls();
             }
         }, 120000);
