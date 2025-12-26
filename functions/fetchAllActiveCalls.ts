@@ -143,9 +143,14 @@ Deno.serve(async (req) => {
             });
         }
         
-        // Geocode all calls with AI assistance
+        // Geocode all calls with AI assistance (skip if already has coordinates from database)
         const geocodedCalls = [];
         for (const call of calls) {
+            // Skip geocoding if call already has coordinates (from dispatch database)
+            if (call.latitude && call.longitude) {
+                geocodedCalls.push(call);
+                continue;
+            }
             try {
                 let jurisdiction = 'Virginia, USA';
                 
@@ -253,9 +258,12 @@ Deno.serve(async (req) => {
         
         console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
         
-        // Generate AI summaries
+        // Generate AI summaries (skip if already has one from dispatch database)
         const callsWithSummaries = await Promise.all(
             geocodedCalls.map(async (call) => {
+                if (call.ai_summary) {
+                    return call;
+                }
                 try {
                     const summaryResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
                         prompt: `Summarize this emergency call in 1-2 sentences: ${call.incident} at ${call.location}, ${call.agency}, Status: ${call.status}`,
