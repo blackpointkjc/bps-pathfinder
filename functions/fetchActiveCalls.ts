@@ -10,98 +10,83 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Fetch the active calls page
+        // Fetch HTML from active calls website
         const response = await fetch('https://gractivecalls.com/');
         const html = await response.text();
         
-        // Parse the HTML to extract call data
         const calls = [];
         
-        // Extract table rows - more flexible regex to catch all calls
-        const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
-        if (tableMatch) {
-            const tableContent = tableMatch[1];
-            const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-            const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+        // Parse the table more robustly
+        const tableStart = html.indexOf('<table');
+        const tableEnd = html.indexOf('</table>', tableStart);
+        
+        if (tableStart !== -1 && tableEnd !== -1) {
+            const tableHtml = html.substring(tableStart, tableEnd + 8);
             
-            let rowMatch;
-            let isFirstRow = true;
-            while ((rowMatch = rowRegex.exec(tableContent)) !== null) {
-                // Skip header row
-                if (isFirstRow || rowMatch[1].includes('<th')) {
-                    isFirstRow = false;
-                    continue;
-                }
+            // Split by rows
+            const rows = tableHtml.split(/<tr[^>]*>/i).slice(1); // Skip first empty element
+            
+            for (let i = 1; i < rows.length; i++) { // Skip header row
+                const row = rows[i];
+                if (!row.includes('<td')) continue;
                 
+                // Extract cell contents
                 const cells = [];
-                let cellMatch;
-                const rowHtml = rowMatch[1];
-                while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
-                    // Remove HTML tags and get text content
-                    const text = cellMatch[1].replace(/<[^>]+>/g, '').trim();
+                const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
+                
+                for (const match of cellMatches) {
+                    const text = match[1]
+                        .replace(/<[^>]+>/g, '') // Remove HTML tags
+                        .replace(/&nbsp;/g, ' ') // Replace &nbsp;
+                        .trim();
                     cells.push(text);
                 }
                 
                 if (cells.length >= 5) {
                     const [timeReceived, incident, location, agency, status] = cells;
                     
-                    // Only include calls with active statuses
-                    const activeStatuses = ['Dispatched', 'Enroute', 'Arrived', 'ENROUTE', 'ARRIVED', 'ARV TRNSPT', 'ARV'];
-                    
-                    if (activeStatuses.some(s => status.toUpperCase().includes(s.toUpperCase()))) {
+                    // Include all calls
+                    if (timeReceived && incident && location) {
                         calls.push({
                             timeReceived,
                             incident,
                             location,
-                            agency,
-                            status
+                            agency: agency || 'Unknown',
+                            status: status || 'Unknown'
                         });
                     }
                 }
             }
         }
         
-        // Geocode the locations (with rate limiting)
-        const geocodedCalls = [];
+        console.log(`Scraped ${calls.length} calls from website`);
         
-        for (let i = 0; i < Math.min(calls.length, 50); i++) {
-            const call = calls[i];
+        // Geocode each call location
+        const geocodedCalls = [];
+        for (const call of calls) {
             try {
-                // Determine county/city based on agency for better geocoding
-                let region = 'Richmond, VA';
-                if (call.agency?.includes('HPD')) {
-                    region = 'Henrico County, VA';
-                } else if (call.agency?.includes('CCPD')) {
-                    region = 'Chesterfield County, VA';
-                } else if (call.agency?.includes('RPD')) {
-                    region = 'Richmond, VA';
+                // Determine jurisdiction based on agency
+                let jurisdiction = 'Virginia';
+                if (call.agency.includes('RPD')) {
+                    jurisdiction = 'Richmond, VA';
+                } else if (call.agency.includes('HCPD') || call.agency.includes('HPD')) {
+                    jurisdiction = 'Henrico County, VA';
+                } else if (call.agency.includes('CCPD')) {
+                    jurisdiction = 'Chesterfield County, VA';
                 }
                 
-                // Try with specific region first
-                let searchQuery = `${call.location}, ${region}`;
-                let geoResponse = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&countrycodes=us`,
+                const query = `${call.location}, ${jurisdiction}`;
+                console.log('Geocoding:', query);
+                
+                const geoResponse = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
                     {
                         headers: {
-                            'User-Agent': 'GRActiveCalls-Map-Integration/1.0'
+                            'User-Agent': 'GRActiveCalls-Map/1.0'
                         }
                     }
                 );
-                let geoData = await geoResponse.json();
-                
-                // If no results, try with just the location and state
-                if (!geoData || geoData.length === 0) {
-                    searchQuery = `${call.location}, Virginia, USA`;
-                    geoResponse = await fetch(
-                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&countrycodes=us`,
-                        {
-                            headers: {
-                                'User-Agent': 'GRActiveCalls-Map-Integration/1.0'
-                            }
-                        }
-                    );
-                    geoData = await geoResponse.json();
-                }
+                const geoData = await geoResponse.json();
                 
                 if (geoData && geoData.length > 0) {
                     geocodedCalls.push({
@@ -109,14 +94,19 @@ Deno.serve(async (req) => {
                         latitude: parseFloat(geoData[0].lat),
                         longitude: parseFloat(geoData[0].lon)
                     });
+                    console.log('Geocoded:', call.location, '→', geoData[0].lat, geoData[0].lon);
+                } else {
+                    console.log('No geocode results for:', query);
                 }
                 
-                // Rate limiting - wait 1 second between requests
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Rate limit: 1 request per second
+                await new Promise(resolve => setTimeout(resolve, 1100));
             } catch (error) {
                 console.error(`Error geocoding ${call.location}:`, error);
             }
         }
+        
+        console.log(`Successfully geocoded ${geocodedCalls.length} out of ${calls.length} calls`);
         
         return Response.json({
             success: true,
