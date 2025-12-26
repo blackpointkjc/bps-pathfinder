@@ -42,17 +42,17 @@ Deno.serve(async (req) => {
                     cells.push(text);
                 }
                 
-                if (cells.length >= 5) {
+                if (cells.length >= 3) {
                     const [timeReceived, incident, location, agency, status] = cells;
                     
-                    // Include ALL calls without filtering
-                    if (timeReceived && incident && location && agency && status) {
+                    // Include ALL calls - minimal filtering
+                    if (incident && location) {
                         calls.push({
-                            timeReceived,
+                            timeReceived: timeReceived || 'Unknown',
                             incident,
                             location,
-                            agency,
-                            status
+                            agency: agency || 'Unknown',
+                            status: status || 'Dispatched'
                         });
                     }
                 }

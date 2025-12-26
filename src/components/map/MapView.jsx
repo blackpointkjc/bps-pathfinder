@@ -98,13 +98,33 @@ const destinationIcon = new L.DivIcon({
 function MapController({ center, routeBounds }) {
     const map = useMap();
     const prevCenterRef = useRef(center);
+    const userInteractingRef = useRef(false);
 
     useEffect(() => {
+        // Track user interaction
+        const handleMoveStart = () => { userInteractingRef.current = true; };
+        const handleMoveEnd = () => { 
+            setTimeout(() => { userInteractingRef.current = false; }, 3000);
+        };
+        
+        map.on('movestart', handleMoveStart);
+        map.on('moveend', handleMoveEnd);
+        
+        return () => {
+            map.off('movestart', handleMoveStart);
+            map.off('moveend', handleMoveEnd);
+        };
+    }, [map]);
+
+    useEffect(() => {
+        // Don't auto-center if user is interacting
+        if (userInteractingRef.current) return;
+        
         if (routeBounds) {
             map.fitBounds(routeBounds, { padding: [50, 50] });
         } else if (center && (!prevCenterRef.current || 
-            Math.abs(center[0] - prevCenterRef.current[0]) > 0.0001 || 
-            Math.abs(center[1] - prevCenterRef.current[1]) > 0.0001)) {
+            Math.abs(center[0] - prevCenterRef.current[0]) > 0.001 || 
+            Math.abs(center[1] - prevCenterRef.current[1]) > 0.001)) {
             map.setView(center, map.getZoom(), { animate: false });
             prevCenterRef.current = center;
         }
