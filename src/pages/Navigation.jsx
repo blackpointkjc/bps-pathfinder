@@ -80,7 +80,6 @@ export default function Navigation() {
     
     // Multi-user tracking state
     const [otherUnits, setOtherUnits] = useState([]);
-    const [currentUnitId, setCurrentUnitId] = useState(null);
     const [unitStatus, setUnitStatus] = useState('Available');
     const [showStatusPanel, setShowStatusPanel] = useState(false);
     const [activeCallInfo, setActiveCallInfo] = useState(null);
@@ -175,12 +174,12 @@ export default function Navigation() {
         }
     }, [isOnline]);
 
-    // Initialize unit when user, location, and unitName are ready
+    // Initialize user location when user and location are ready
     useEffect(() => {
-        if (currentUser && currentLocation && unitName && !currentUnitId) {
-            initializeUnit();
+        if (currentUser && currentLocation) {
+            updateUserLocation();
         }
-    }, [currentUser, currentLocation, unitName]);
+    }, [currentUser, currentLocation]);
 
     // Check for better routes periodically when navigating
     useEffect(() => {
@@ -305,62 +304,11 @@ export default function Navigation() {
         }
     };
 
-    const initializeUnit = async () => {
-        if (!currentUser || !unitName || !currentLocation) return;
+    const updateUserLocation = async () => {
+        if (!currentUser || !currentLocation) return;
         
         try {
-            // Check if unit exists
-            const existingUnits = await base44.entities.Unit.filter({ user_id: currentUser.id });
-            
-            if (existingUnits && existingUnits.length > 0) {
-                const unit = existingUnits[0];
-                setCurrentUnitId(unit.id);
-                setUnitStatus(unit.status || 'Available');
-                setActiveCallInfo(unit.current_call_info);
-                
-                // Update location and user info
-                await base44.entities.Unit.update(unit.id, {
-                    latitude: currentLocation[0],
-                    longitude: currentLocation[1],
-                    unit_name: unitName,
-                    rank: currentUser.rank,
-                    last_name: currentUser.last_name,
-                    show_lights: showLights,
-                    last_updated: new Date().toISOString()
-                });
-            } else {
-                // Create new unit
-                const newUnit = await base44.entities.Unit.create({
-                    unit_name: unitName,
-                    user_id: currentUser.id,
-                    user_email: currentUser.email,
-                    rank: currentUser.rank,
-                    last_name: currentUser.last_name,
-                    latitude: currentLocation[0],
-                    longitude: currentLocation[1],
-                    heading: heading || 0,
-                    speed: speed || 0,
-                    status: 'Available',
-                    show_lights: showLights,
-                    last_updated: new Date().toISOString()
-                });
-                setCurrentUnitId(newUnit.id);
-                toast.success(`Unit ${unitName} initialized`);
-            }
-            
-            // Start fetching other units
-            fetchOtherUnits();
-        } catch (error) {
-            console.error('Error initializing unit:', error);
-            toast.error('Failed to initialize unit');
-        }
-    };
-
-    const updateUnitLocation = async () => {
-        if (!currentUnitId || !currentLocation) return;
-        
-        try {
-            await base44.entities.Unit.update(currentUnitId, {
+            await base44.auth.updateMe({
                 latitude: currentLocation[0],
                 longitude: currentLocation[1],
                 heading: heading || 0,
@@ -371,34 +319,32 @@ export default function Navigation() {
                 last_updated: new Date().toISOString()
             });
             
-            // Save to location history every 10 seconds
-            if (Math.random() < 0.1) {
-                await base44.entities.LocationHistory.create({
-                    unit_id: currentUnitId,
-                    unit_name: unitName,
-                    latitude: currentLocation[0],
-                    longitude: currentLocation[1],
-                    heading: heading || 0,
-                    speed: speed || 0,
-                    status: unitStatus,
-                    timestamp: new Date().toISOString()
-                });
+            // Load initial status from user if available
+            if (currentUser.status && !unitStatus) {
+                setUnitStatus(currentUser.status);
             }
+            if (currentUser.current_call_info) {
+                setActiveCallInfo(currentUser.current_call_info);
+            }
+            
+            // Start fetching other units
+            fetchOtherUnits();
         } catch (error) {
-            console.error('Error updating unit location:', error);
+            console.error('Error updating user location:', error);
         }
     };
 
     const fetchOtherUnits = async () => {
         try {
-            const units = await base44.entities.Unit.list('-last_updated', 100);
-            // Filter out stale units (not updated in last 5 minutes)
+            const users = await base44.asServiceRole.entities.User.list('-last_updated', 100);
+            // Filter out stale users (not updated in last 5 minutes) and users without location
             const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-            const activeUnits = units.filter(unit => {
-                const lastUpdate = new Date(unit.last_updated);
+            const activeUsers = users.filter(user => {
+                if (!user.latitude || !user.longitude) return false;
+                const lastUpdate = new Date(user.last_updated || user.created_date);
                 return lastUpdate > fiveMinutesAgo;
             });
-            setOtherUnits(activeUnits || []);
+            setOtherUnits(activeUsers || []);
         } catch (error) {
             console.error('Error fetching other units:', error);
         }
@@ -627,21 +573,22 @@ export default function Navigation() {
         setUnitName(name);
         localStorage.setItem('unitName', name);
         
-        // Update or create unit if needed
-        if (currentUser && currentLocation) {
-            if (currentUnitId) {
-                await base44.entities.Unit.update(currentUnitId, { unit_name: name });
-            } else {
-                await initializeUnit();
+        // Update user with unit number
+        if (currentUser) {
+            try {
+                await base44.auth.updateMe({ unit_number: name });
+                toast.success('Unit number saved');
+            } catch (error) {
+                console.error('Error saving unit number:', error);
             }
         }
     };
 
     const handleStatusChange = async (newStatus) => {
         setUnitStatus(newStatus);
-        if (currentUnitId) {
+        if (currentUser) {
             try {
-                await base44.entities.Unit.update(currentUnitId, { 
+                await base44.auth.updateMe({ 
                     status: newStatus,
                     last_updated: new Date().toISOString()
                 });
@@ -656,13 +603,13 @@ export default function Navigation() {
     const handleEnrouteToCall = async (call) => {
         const callInfo = `${call.incident} - ${call.location}`;
         
-        // Update unit status if unit is set up
-        if (currentUnitId) {
+        // Update user status if logged in
+        if (currentUser) {
             setActiveCallInfo(callInfo);
             setUnitStatus('Enroute');
             
             try {
-                await base44.entities.Unit.update(currentUnitId, {
+                await base44.auth.updateMe({
                     status: 'Enroute',
                     current_call_id: `${call.timeReceived}-${call.incident}`,
                     current_call_info: callInfo,
@@ -670,7 +617,7 @@ export default function Navigation() {
                 });
                 toast.success(`Enroute to ${call.incident}`);
             } catch (error) {
-                console.error('Error updating unit status:', error);
+                console.error('Error updating user status:', error);
             }
         } else {
             toast.info(`Navigating to ${call.incident}`);
@@ -773,7 +720,7 @@ export default function Navigation() {
                 activeCalls={showActiveCalls ? activeCalls : []}
                 heading={heading}
                 locationHistory={isLiveTracking ? locationHistory : []}
-                unitName={unitName}
+                unitName={unitName || currentUser?.unit_number}
                 showLights={showLights}
                 otherUnits={otherUnits}
                 currentUserId={currentUser?.id}

@@ -41,12 +41,14 @@ export default function Dispatch() {
                 return;
             }
 
-            const [allUnits, dispatchCalls] = await Promise.all([
-                base44.entities.Unit.list(),
+            const [allUsers, dispatchCalls] = await Promise.all([
+                base44.asServiceRole.entities.User.list('-last_updated', 100),
                 base44.entities.DispatchCall.list('-created_date', 50)
             ]);
 
-            setUnits(allUnits || []);
+            // Filter users with location data (active units)
+            const activeUsers = allUsers.filter(u => u.latitude && u.longitude);
+            setUnits(activeUsers || []);
             setCalls(dispatchCalls || []);
         } catch (error) {
             console.error('Error loading data:', error);
@@ -229,10 +231,10 @@ export default function Dispatch() {
                                                     <div className="flex items-center justify-between">
                                                         <div>
                                                             <p className="font-semibold text-sm">
-                                                                {unit.unit_name}
+                                                                {unit.unit_number || unit.full_name}
                                                             </p>
                                                             <p className="text-xs text-gray-500">
-                                                                {unit.rank && `${unit.rank} `}{unit.last_name || 'Officer'} • {unit.status}
+                                                                {unit.rank && `${unit.rank} `}{unit.last_name || unit.full_name} • {unit.status || 'Available'}
                                                             </p>
                                                         </div>
                                                         {selectedUnits.includes(unit.id) && (

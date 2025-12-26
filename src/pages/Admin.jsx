@@ -51,7 +51,9 @@ export default function Admin() {
             rank: user.rank || '',
             last_name: user.last_name || '',
             role: user.role || 'user',
-            dispatch_role: user.dispatch_role || false
+            dispatch_role: user.dispatch_role || false,
+            status: user.status || 'Available',
+            show_lights: user.show_lights || false
         });
     };
 
@@ -190,17 +192,44 @@ export default function Admin() {
                                                                 <option value="admin">Admin</option>
                                                             </select>
                                                         </div>
+                                                        <div>
+                                                            <Label>Status</Label>
+                                                            <select
+                                                                value={editForm.status || 'Available'}
+                                                                onChange={(e) => setEditForm({...editForm, status: e.target.value})}
+                                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                                            >
+                                                                <option value="Available">Available</option>
+                                                                <option value="Enroute">Enroute</option>
+                                                                <option value="On Scene">On Scene</option>
+                                                                <option value="Busy">Busy</option>
+                                                                <option value="Out of Service">Out of Service</option>
+                                                            </select>
+                                                        </div>
                                                     </div>
                                                     
-                                                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                                        <div>
-                                                            <Label className="text-sm font-semibold">Dispatch Access</Label>
-                                                            <p className="text-xs text-gray-500">Allow user to create and manage service calls</p>
+                                                    <div className="space-y-3">
+                                                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                            <div>
+                                                                <Label className="text-sm font-semibold">Dispatch Access</Label>
+                                                                <p className="text-xs text-gray-500">Allow user to create and manage service calls</p>
+                                                            </div>
+                                                            <Switch
+                                                                checked={editForm.dispatch_role}
+                                                                onCheckedChange={(checked) => setEditForm({...editForm, dispatch_role: checked})}
+                                                            />
                                                         </div>
-                                                        <Switch
-                                                            checked={editForm.dispatch_role}
-                                                            onCheckedChange={(checked) => setEditForm({...editForm, dispatch_role: checked})}
-                                                        />
+                                                        
+                                                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                            <div>
+                                                                <Label className="text-sm font-semibold">Emergency Lights</Label>
+                                                                <p className="text-xs text-gray-500">Show lights on map marker</p>
+                                                            </div>
+                                                            <Switch
+                                                                checked={editForm.show_lights}
+                                                                onCheckedChange={(checked) => setEditForm({...editForm, show_lights: checked})}
+                                                            />
+                                                        </div>
                                                     </div>
 
                                                     <div className="flex gap-3 justify-end">
@@ -246,6 +275,16 @@ export default function Admin() {
                                                             {user.last_name && (
                                                                 <div>
                                                                     <span className="font-semibold">Last Name:</span> {user.last_name}
+                                                                </div>
+                                                            )}
+                                                            {user.status && (
+                                                                <div>
+                                                                    <span className="font-semibold">Status:</span> {user.status}
+                                                                </div>
+                                                            )}
+                                                            {user.current_call_info && (
+                                                                <div className="col-span-2">
+                                                                    <span className="font-semibold">Current Call:</span> {user.current_call_info}
                                                                 </div>
                                                             )}
                                                         </div>
