@@ -137,44 +137,41 @@ Deno.serve(async (req) => {
             
             if (response3.ok) {
                 const html = await response3.text();
-                const tableStart = html.indexOf('<table');
-                const tableEnd = html.indexOf('</table>', tableStart);
+                console.log(`📄 Chesterfield HTML fetched (${html.length} chars)`);
                 
-                if (tableStart !== -1 && tableEnd !== -1) {
-                    const tableHtml = html.substring(tableStart, tableEnd + 8);
-                    const rows = tableHtml.split(/<tr[^>]*>/i).slice(1);
-                    
-                    for (let i = 1; i < rows.length; i++) {
-                        const row = rows[i];
-                        if (!row.includes('<td')) continue;
-                        
-                        const cells = [];
-                        const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
-                        
-                        for (const match of cellMatches) {
-                            const text = match[1]
-                                .replace(/<[^>]+>/g, '')
-                                .replace(/&nbsp;/g, ' ')
-                                .trim();
-                            cells.push(text);
-                        }
-                        
-                        if (cells.length >= 2) {
-                            const timeReceived = cells[0] || 'Unknown';
-                            const incident = cells[1] || '';
-                            const location = cells[2] || '';
-                            const status = cells[3] || 'Dispatched';
-                            
-                            if (incident.trim() && location.trim()) {
-                                calls.push({
-                                    timeReceived,
-                                    incident: incident.trim(),
-                                    location: location.trim(),
-                                    agency: 'Chesterfield Police',
-                                    status: status.trim(),
-                                    source: 'chesterfield.gov'
-                                });
+                // Use AI to parse the Chesterfield table since structure may vary
+                const parseResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
+                    prompt: `Parse this HTML table from Chesterfield Police Active Calls and extract ALL active calls. Return a JSON array of calls with fields: timeReceived, incident, location, status. HTML: ${html.substring(0, 50000)}`,
+                    response_json_schema: {
+                        type: "object",
+                        properties: {
+                            calls: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        timeReceived: { type: "string" },
+                                        incident: { type: "string" },
+                                        location: { type: "string" },
+                                        status: { type: "string" }
+                                    }
+                                }
                             }
+                        }
+                    }
+                });
+                
+                if (parseResponse.calls && Array.isArray(parseResponse.calls)) {
+                    for (const call of parseResponse.calls) {
+                        if (call.incident && call.incident.trim() && call.location && call.location.trim()) {
+                            calls.push({
+                                timeReceived: call.timeReceived || 'Unknown',
+                                incident: call.incident.trim(),
+                                location: call.location.trim(),
+                                agency: 'CCPD',
+                                status: call.status?.trim() || 'Dispatched',
+                                source: 'chesterfield.gov'
+                            });
                         }
                     }
                 }
