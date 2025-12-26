@@ -133,6 +133,7 @@ export default function Navigation() {
         const init = async () => {
             await loadCurrentUser();
             getCurrentLocation();
+            fetchActiveCalls();
         };
         init();
         
