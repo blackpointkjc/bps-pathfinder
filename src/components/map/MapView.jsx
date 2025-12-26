@@ -178,6 +178,9 @@ export default function MapView({ currentLocation, destination, route, trafficSe
                 }
             />
             
+            {/* Jurisdiction Boundaries */}
+            <JurisdictionBoundaries />
+            
             <MapController 
                 center={currentLocation} 
                 routeBounds={routeBounds}
