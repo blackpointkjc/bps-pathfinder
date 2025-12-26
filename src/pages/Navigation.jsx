@@ -438,7 +438,7 @@ export default function Navigation() {
                 console.error('Error getting location:', error);
                 toast.error('Unable to get your location');
                 setIsLocating(false);
-                setCurrentLocation([37.7749, -122.4194]);
+                setCurrentLocation([37.5407, -77.4360]);
             },
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 1000 }
         );
