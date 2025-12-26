@@ -17,25 +17,47 @@ Deno.serve(async (req) => {
         // Parse the HTML to extract call data
         const calls = [];
         
-        // Use regex to extract table rows
-        const rowRegex = /<tr[^>]*>[\s\S]*?<td[^>]*>([^<]+)<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>[\s\S]*?<td[^>]*>([^<]+)<\/td>/g;
-        
-        let match;
-        while ((match = rowRegex.exec(html)) !== null) {
-            const [_, timeReceived, incident, location, agency, status] = match;
+        // Extract table rows - more flexible regex to catch all calls
+        const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
+        if (tableMatch) {
+            const tableContent = tableMatch[1];
+            const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+            const cellRegex = /<td[^>]*>([\s\S]*?)<\/td>/gi;
             
-            // Only include calls with active statuses
-            const activeStatuses = ['Dispatched', 'Enroute', 'Arrived', 'ENROUTE', 'ARRIVED', 'ARV TRNSPT'];
-            const cleanStatus = status.trim();
-            
-            if (activeStatuses.some(s => cleanStatus.includes(s))) {
-                calls.push({
-                    timeReceived: timeReceived.trim(),
-                    incident: incident.trim(),
-                    location: location.trim(),
-                    agency: agency.trim(),
-                    status: cleanStatus
-                });
+            let rowMatch;
+            let isFirstRow = true;
+            while ((rowMatch = rowRegex.exec(tableContent)) !== null) {
+                // Skip header row
+                if (isFirstRow || rowMatch[1].includes('<th')) {
+                    isFirstRow = false;
+                    continue;
+                }
+                
+                const cells = [];
+                let cellMatch;
+                const rowHtml = rowMatch[1];
+                while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
+                    // Remove HTML tags and get text content
+                    const text = cellMatch[1].replace(/<[^>]+>/g, '').trim();
+                    cells.push(text);
+                }
+                
+                if (cells.length >= 5) {
+                    const [timeReceived, incident, location, agency, status] = cells;
+                    
+                    // Only include calls with active statuses
+                    const activeStatuses = ['Dispatched', 'Enroute', 'Arrived', 'ENROUTE', 'ARRIVED', 'ARV TRNSPT', 'ARV'];
+                    
+                    if (activeStatuses.some(s => status.toUpperCase().includes(s.toUpperCase()))) {
+                        calls.push({
+                            timeReceived,
+                            incident,
+                            location,
+                            agency,
+                            status
+                        });
+                    }
+                }
             }
         }
         

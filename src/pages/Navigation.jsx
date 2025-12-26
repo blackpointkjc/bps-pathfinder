@@ -317,11 +317,13 @@ export default function Navigation() {
                 setUnitStatus(unit.status || 'Available');
                 setActiveCallInfo(unit.current_call_info);
                 
-                // Update location immediately
+                // Update location and user info
                 await base44.entities.Unit.update(unit.id, {
                     latitude: currentLocation[0],
                     longitude: currentLocation[1],
                     unit_name: unitName,
+                    rank: currentUser.rank,
+                    last_name: currentUser.last_name,
                     show_lights: showLights,
                     last_updated: new Date().toISOString()
                 });
@@ -331,6 +333,8 @@ export default function Navigation() {
                     unit_name: unitName,
                     user_id: currentUser.id,
                     user_email: currentUser.email,
+                    rank: currentUser.rank,
+                    last_name: currentUser.last_name,
                     latitude: currentLocation[0],
                     longitude: currentLocation[1],
                     heading: heading || 0,
@@ -766,6 +770,7 @@ export default function Navigation() {
                 showLights={showLights}
                 otherUnits={otherUnits}
                 currentUserId={currentUser?.id}
+                speed={speed}
                 onCallClick={(call) => {
                     setSelectedCallForDispatch(call);
                     setShowDispatchPanel(true);
@@ -952,16 +957,24 @@ export default function Navigation() {
             
             {/* Active Calls Counter */}
             <AnimatePresence>
-                {showActiveCalls && activeCalls.length > 0 && (
+                {activeCalls.length > 0 && (
                     <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        className="absolute top-32 right-4 z-[999]"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute top-4 right-4 z-[999]"
                     >
-                        <Badge className="bg-red-500 text-white px-3 py-1.5 text-xs font-semibold shadow-lg">
+                        <Button
+                            onClick={() => setShowActiveCalls(!showActiveCalls)}
+                            className={`${
+                                showActiveCalls 
+                                    ? 'bg-red-500 hover:bg-red-600' 
+                                    : 'bg-gray-500 hover:bg-gray-600'
+                            } text-white px-4 py-2 text-sm font-semibold shadow-lg rounded-full`}
+                        >
+                            <Radio className="w-4 h-4 mr-2" />
                             {activeCalls.length} Active Calls
-                        </Badge>
+                        </Button>
                     </motion.div>
                 )}
             </AnimatePresence>

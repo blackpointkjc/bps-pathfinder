@@ -71,7 +71,14 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                             <div className="p-2 min-w-[200px]">
                                 <div className="flex items-center gap-2 mb-2">
                                     <Car className="w-4 h-4 text-blue-600" />
-                                    <p className="font-bold text-base text-blue-600">{unit.unit_name}</p>
+                                    <div>
+                                        <p className="font-bold text-base text-blue-600">{unit.unit_name}</p>
+                                        {(unit.rank || unit.last_name) && (
+                                            <p className="text-xs text-gray-600">
+                                                {unit.rank && `${unit.rank} `}{unit.last_name}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                                 
                                 <div className="space-y-1 text-xs">
@@ -82,12 +89,10 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                         </Badge>
                                     </div>
                                     
-                                    {unit.speed > 0 && (
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-gray-600">Speed:</span>
-                                            <span className="font-semibold">{Math.round(unit.speed)} mph</span>
-                                        </div>
-                                    )}
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-gray-600">Speed:</span>
+                                        <span className="font-semibold">{Math.round(unit.speed || 0)} mph</span>
+                                    </div>
                                     
                                     {unit.current_call_info && (
                                         <div className="pt-1 border-t">

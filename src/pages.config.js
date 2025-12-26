@@ -1,10 +1,10 @@
-import Navigation from './pages/Navigation';
 import Dashboard from './pages/Dashboard';
+import Navigation from './pages/Navigation';
 
 
 export const PAGES = {
-    "Navigation": Navigation,
     "Dashboard": Dashboard,
+    "Navigation": Navigation,
 }
 
 export const pagesConfig = {

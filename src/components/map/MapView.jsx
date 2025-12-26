@@ -109,7 +109,7 @@ function MapController({ center, routeBounds }) {
     return null;
 }
 
-export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick }) {
+export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed }) {
     const defaultCenter = currentLocation || [37.7749, -122.4194]; // Default to SF
     
     // Calculate route bounds if route exists
@@ -149,16 +149,9 @@ export default function MapView({ currentLocation, destination, route, trafficSe
                         <Popup>
                                 <div className="p-2">
                                     <p className="font-bold text-base text-[#007AFF]">{unitName || 'Your Location'}</p>
-                                    {heading !== null && (
-                                        <p className="text-xs text-gray-600 mt-1">
-                                            Heading: {Math.round(heading)}°
-                                        </p>
-                                    )}
-                                    {unitName && (
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Click to view unit details
-                                        </p>
-                                    )}
+                                    <p className="text-xs text-gray-600 mt-1">
+                                        Speed: {Math.round(speed || 0)} mph
+                                    </p>
                                 </div>
                             </Popup>
                         </Marker>
