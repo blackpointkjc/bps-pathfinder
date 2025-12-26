@@ -44,6 +44,10 @@ export default function Navigation() {
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
     const [unitName, setUnitName] = useState(localStorage.getItem('unitName') || '');
     const [showUnitSettings, setShowUnitSettings] = useState(false);
+    const [showLights, setShowLights] = useState(
+        localStorage.getItem('showLights') === 'true'
+    );
+    const [trafficAlert, setTrafficAlert] = useState(null);
     const [showRoutePreferences, setShowRoutePreferences] = useState(false);
     const [routePreferences, setRoutePreferences] = useState(() => {
         const saved = localStorage.getItem('routePreferences');
@@ -413,6 +417,17 @@ export default function Navigation() {
         setRemainingDistance(distance);
         lastAnnouncedStep.current = -1;
         
+        // Check for traffic on selected route
+        if (routes && routes[selectedRouteIndex]?.hasTraffic) {
+            setTrafficAlert({
+                message: 'Moderate traffic detected ahead',
+                canReroute: routes.length > 1
+            });
+            if (voiceEnabled) {
+                speak('Warning: moderate traffic detected on your route');
+            }
+        }
+        
         if (voiceEnabled && directions && directions.length > 0) {
             speak(`Starting navigation to ${destinationName}. ${directions[0].instruction}`);
         }
@@ -421,9 +436,25 @@ export default function Navigation() {
 
     const exitNavigation = () => {
         setIsNavigating(false);
+        setTrafficAlert(null);
         stopSpeech();
         if (rerouteCheckInterval.current) {
             clearInterval(rerouteCheckInterval.current);
+        }
+    };
+
+    const handleAutoReroute = () => {
+        if (routes && routes.length > 1) {
+            // Find alternative route without traffic
+            const alternativeIndex = routes.findIndex((r, i) => i !== selectedRouteIndex && !r.hasTraffic);
+            if (alternativeIndex !== -1) {
+                handleRouteSelect(alternativeIndex);
+                setTrafficAlert(null);
+                toast.success('Rerouting to avoid traffic');
+                if (voiceEnabled) {
+                    speak('Rerouting to avoid traffic');
+                }
+            }
         }
     };
 
@@ -442,6 +473,11 @@ export default function Navigation() {
     const handleSaveUnitName = (name) => {
         setUnitName(name);
         localStorage.setItem('unitName', name);
+    };
+
+    const handleLightsChange = (enabled) => {
+        setShowLights(enabled);
+        localStorage.setItem('showLights', enabled);
     };
 
     const handleSaveRoutePreferences = (prefs) => {
@@ -509,6 +545,7 @@ export default function Navigation() {
                 heading={heading}
                 locationHistory={isLiveTracking ? locationHistory : []}
                 unitName={unitName}
+                showLights={showLights}
             />
 
             {/* Online/Offline Indicator & Live Tracking Status */}
@@ -747,6 +784,8 @@ export default function Navigation() {
                 onClose={() => setShowUnitSettings(false)}
                 unitName={unitName}
                 onSave={handleSaveUnitName}
+                showLights={showLights}
+                onLightsChange={handleLightsChange}
             />
 
             <RoutePreferences

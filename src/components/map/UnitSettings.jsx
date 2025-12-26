@@ -4,16 +4,19 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { X, Car, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function UnitSettings({ isOpen, onClose, unitName, onSave }) {
+export default function UnitSettings({ isOpen, onClose, unitName, onSave, showLights, onLightsChange }) {
     const [name, setName] = useState(unitName || '');
+    const [lightsEnabled, setLightsEnabled] = useState(showLights || false);
 
     const handleSave = () => {
         if (name.trim()) {
             onSave(name.trim());
-            toast.success('Unit name saved');
+            onLightsChange(lightsEnabled);
+            toast.success('Unit settings saved');
             onClose();
         } else {
             toast.error('Please enter a unit name');

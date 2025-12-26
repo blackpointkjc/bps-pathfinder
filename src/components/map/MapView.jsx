@@ -14,65 +14,95 @@ L.Icon.Default.mergeOptions({
 });
 
 // Custom blue marker for current location with pulse animation
-const currentLocationIcon = new L.DivIcon({
-    className: 'custom-marker',
-    html: `
-        <div style="position: relative; width: 24px; height: 24px;">
-            <div style="
-                position: absolute;
-                width: 48px;
-                height: 48px;
-                background: rgba(0, 122, 255, 0.2);
-                border-radius: 50%;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                animation: pulse-ring 2s ease-out infinite;
-            "></div>
-            <div style="
-                position: absolute;
-                width: 24px;
-                height: 24px;
-                background: #007AFF;
-                border: 4px solid white;
-                border-radius: 50%;
-                box-shadow: 0 2px 12px rgba(0,122,255,0.6);
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                z-index: 2;
-            "></div>
-            <div style="
-                position: absolute;
-                width: 8px;
-                height: 8px;
-                background: white;
-                border-radius: 50%;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                z-index: 3;
-            "></div>
-        </div>
-        <style>
-            @keyframes pulse-ring {
-                0% {
-                    transform: translate(-50%, -50%) scale(0.5);
-                    opacity: 1;
+const createCurrentLocationIcon = (withLights = false) => {
+    return new L.DivIcon({
+        className: 'custom-marker',
+        html: `
+            <div style="position: relative; width: 24px; height: 24px;">
+                <div style="
+                    position: absolute;
+                    width: 48px;
+                    height: 48px;
+                    background: rgba(0, 122, 255, 0.2);
+                    border-radius: 50%;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    animation: pulse-ring 2s ease-out infinite;
+                "></div>
+                ${withLights ? `
+                <div style="
+                    position: absolute;
+                    width: 6px;
+                    height: 6px;
+                    background: #00FF00;
+                    border-radius: 50%;
+                    top: -2px;
+                    left: 3px;
+                    animation: flash 1s ease-in-out infinite;
+                    box-shadow: 0 0 8px #00FF00;
+                "></div>
+                <div style="
+                    position: absolute;
+                    width: 6px;
+                    height: 6px;
+                    background: #00FF00;
+                    border-radius: 50%;
+                    top: -2px;
+                    right: 3px;
+                    animation: flash 1s ease-in-out infinite 0.5s;
+                    box-shadow: 0 0 8px #00FF00;
+                "></div>
+                ` : ''}
+                <div style="
+                    position: absolute;
+                    width: 24px;
+                    height: 24px;
+                    background: #007AFF;
+                    border: 4px solid white;
+                    border-radius: 50%;
+                    box-shadow: 0 2px 12px rgba(0,122,255,0.6);
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    z-index: 2;
+                "></div>
+                <div style="
+                    position: absolute;
+                    width: 8px;
+                    height: 8px;
+                    background: white;
+                    border-radius: 50%;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    z-index: 3;
+                "></div>
+            </div>
+            <style>
+                @keyframes pulse-ring {
+                    0% {
+                        transform: translate(-50%, -50%) scale(0.5);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: translate(-50%, -50%) scale(1.5);
+                        opacity: 0;
+                    }
                 }
-                100% {
-                    transform: translate(-50%, -50%) scale(1.5);
-                    opacity: 0;
+                @keyframes flash {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0; }
                 }
-            }
-        </style>
-    `,
-    iconSize: [48, 48],
-    iconAnchor: [24, 24],
-});
+            </style>
+        `,
+        iconSize: [48, 48],
+        iconAnchor: [24, 24],
+    });
+};
 
-// Custom marker with heading indicator
-const createLocationWithHeading = (heading) => {
+// Custom marker with heading indicator and optional lights
+const createLocationWithHeading = (heading, withLights = false) => {
     return new L.DivIcon({
         className: 'custom-marker',
         html: `
@@ -88,6 +118,32 @@ const createLocationWithHeading = (heading) => {
                     transform: translate(-50%, -50%);
                     animation: pulse-ring 2s ease-out infinite;
                 "></div>
+                ${withLights ? `
+                <div style="
+                    position: absolute;
+                    width: 6px;
+                    height: 6px;
+                    background: #00FF00;
+                    border-radius: 50%;
+                    top: -2px;
+                    left: 3px;
+                    animation: flash 1s ease-in-out infinite;
+                    box-shadow: 0 0 8px #00FF00;
+                    z-index: 4;
+                "></div>
+                <div style="
+                    position: absolute;
+                    width: 6px;
+                    height: 6px;
+                    background: #00FF00;
+                    border-radius: 50%;
+                    top: -2px;
+                    right: 3px;
+                    animation: flash 1s ease-in-out infinite 0.5s;
+                    box-shadow: 0 0 8px #00FF00;
+                    z-index: 4;
+                "></div>
+                ` : ''}
                 <div style="
                     position: absolute;
                     width: 24px;
@@ -140,6 +196,10 @@ const createLocationWithHeading = (heading) => {
                         opacity: 0;
                     }
                 }
+                @keyframes flash {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0; }
+                }
             </style>
         `,
         iconSize: [48, 48],
@@ -184,7 +244,7 @@ function MapController({ center, routeBounds }) {
     return null;
 }
 
-export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName }) {
+export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights }) {
     const defaultCenter = currentLocation || [37.7749, -122.4194]; // Default to SF
     
     // Calculate route bounds if route exists
@@ -216,7 +276,7 @@ export default function MapView({ currentLocation, destination, route, trafficSe
                 <>
                     <Marker 
                         position={currentLocation} 
-                        icon={heading !== null ? createLocationWithHeading(heading) : currentLocationIcon}
+                        icon={heading !== null ? createLocationWithHeading(heading, showLights) : createCurrentLocationIcon(showLights)}
                     >
                         <Popup>
                             <div className="p-1">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,9 @@ import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
+import { MapContainer, TileLayer, Circle, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { 
     Download, 
     MapPin, 
@@ -20,6 +23,18 @@ import {
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+
+function MapPreview({ center, radius }) {
+    const map = useMap();
+    
+    useEffect(() => {
+        if (center) {
+            map.setView(center, 11);
+        }
+    }, [center, map]);
+    
+    return null;
+}
 
 export default function OfflineMapManager({ currentLocation, onClose }) {
     const [regions, setRegions] = useState([]);
@@ -256,9 +271,38 @@ export default function OfflineMapManager({ currentLocation, onClose }) {
                                     disabled={downloading}
                                 />
                                 
+                                {/* Visual Map Preview */}
+                                {currentLocation && (
+                                    <div className="h-48 rounded-lg overflow-hidden border-2 border-gray-200">
+                                        <MapContainer
+                                            center={currentLocation}
+                                            zoom={11}
+                                            style={{ height: '100%', width: '100%' }}
+                                            zoomControl={false}
+                                            dragging={false}
+                                            scrollWheelZoom={false}
+                                        >
+                                            <TileLayer
+                                                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                                            />
+                                            <MapPreview center={currentLocation} radius={radius} />
+                                            <Circle
+                                                center={currentLocation}
+                                                radius={radius * 1000}
+                                                pathOptions={{
+                                                    color: '#007AFF',
+                                                    fillColor: '#007AFF',
+                                                    fillOpacity: 0.2,
+                                                    weight: 2
+                                                }}
+                                            />
+                                        </MapContainer>
+                                    </div>
+                                )}
+                                
                                 <div>
                                     <Label className="text-sm text-gray-700">
-                                        Radius: {radius} km
+                                        Download Radius: {radius} km
                                     </Label>
                                     <Slider
                                         value={[radius]}
@@ -269,19 +313,22 @@ export default function OfflineMapManager({ currentLocation, onClose }) {
                                         className="mt-2"
                                         disabled={downloading}
                                     />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Area: ~{Math.round(Math.PI * radius * radius)} km²
+                                    </p>
                                 </div>
 
                                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                     <div className="flex items-center gap-2">
                                         <Wifi className="w-4 h-4 text-gray-600" />
-                                        <span className="text-sm text-gray-700">Auto-download on WiFi</span>
+                                        <span className="text-sm text-gray-700">Auto-update on WiFi</span>
                                     </div>
                                     <Switch
                                         checked={autoDownload}
                                         onCheckedChange={(checked) => {
                                             setAutoDownload(checked);
                                             localStorage.setItem('autoDownloadMaps', checked);
-                                            toast.success(checked ? 'Auto-download enabled' : 'Auto-download disabled');
+                                            toast.success(checked ? 'Auto-update enabled' : 'Auto-update disabled');
                                         }}
                                     />
                                 </div>
@@ -299,7 +346,7 @@ export default function OfflineMapManager({ currentLocation, onClose }) {
                                     ) : (
                                         <>
                                             <Download className="w-4 h-4 mr-2" />
-                                            Download Area ({Math.round(radius * 2)}×{Math.round(radius * 2)}km)
+                                            Download {radius}km Radius
                                         </>
                                     )}
                                 </Button>
