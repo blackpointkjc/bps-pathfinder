@@ -344,13 +344,21 @@ export default function Navigation() {
     const fetchOtherUnits = async () => {
         try {
             const users = await base44.asServiceRole.entities.User.list('-last_updated', 100);
-            // Filter out stale users (not updated in last 5 minutes) and users without location
-            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+            console.log('📡 Fetched users:', users);
+            
+            // Filter out users without location (more lenient - 30 minutes)
+            const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
             const activeUsers = users.filter(user => {
-                if (!user.latitude || !user.longitude) return false;
-                const lastUpdate = new Date(user.last_updated || user.created_date);
-                return lastUpdate > fiveMinutesAgo;
+                if (!user.latitude || !user.longitude) {
+                    console.log('❌ User without location:', user.full_name);
+                    return false;
+                }
+                const lastUpdate = new Date(user.last_updated || user.updated_date || user.created_date);
+                const isRecent = lastUpdate > thirtyMinutesAgo;
+                console.log(`${isRecent ? '✅' : '❌'} User ${user.full_name}: last update ${lastUpdate.toLocaleTimeString()}`);
+                return isRecent;
             });
+            console.log('👥 Active users to display:', activeUsers.length);
             setOtherUnits(activeUsers || []);
         } catch (error) {
             console.error('Error fetching other units:', error);
