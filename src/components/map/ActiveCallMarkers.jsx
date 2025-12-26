@@ -4,71 +4,12 @@ import L from 'leaflet';
 import { Badge } from '@/components/ui/badge';
 import { Clock, MapPin, Radio } from 'lucide-react';
 
-// Create custom markers for different agencies and statuses
-const createCallIcon = (agency, status, incident) => {
-    // Determine color based on status and incident type
-    let color = '#FF3B30'; // Default red for enroute
-    
-    // Check for EMS calls first - always yellow
-    if (incident.includes('EMS') || incident.includes('MEDICAL') || incident.includes('HEMORRHAGE') || 
-        incident.includes('STROKE') || incident.includes('UNCONSCIOUSNESS') || incident.includes('OVERDOSE')) {
-        color = '#FFD60A'; // Yellow for EMS
-    }
-    // Status-based colors for non-EMS
-    else if (status.includes('Arrived') || status.includes('ARRIVED') || status.includes('ARV')) {
-        color = '#34C759'; // Green for arrived
-    } else if (status.includes('Enroute') || status.includes('ENROUTE') || status.includes('Dispatched')) {
-        color = '#FF3B30'; // Red for enroute
-    }
-    
-    // Agency-specific icons
-    let iconSvg = '';
-    if (agency.includes('RPD')) {
-        // Richmond Police Department - Police car
-        iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
-            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path>
-            <circle cx="7" cy="17" r="2"></circle>
-            <circle cx="17" cy="17" r="2"></circle>
-        </svg>`;
-    } else if (agency.includes('CCPD')) {
-        // Chesterfield Police - Shield badge
-        iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-        </svg>`;
-    } else if (agency.includes('HPD') || agency.includes('HCPD')) {
-        // Henrico Police - Star badge
-        iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-        </svg>`;
-    } else if (agency.includes('CCFD')) {
-        // Chesterfield Fire - Fire truck
-        iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
-            <path d="M18 17h2v-6l-3-5H6v11"></path>
-            <circle cx="7" cy="17" r="2"></circle>
-            <circle cx="17" cy="17" r="2"></circle>
-            <path d="M6 11V6h3"></path>
-        </svg>`;
-    } else if (agency.includes('BPS')) {
-        // BPS - School badge (black and gold)
-        iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#FFD700" stroke="#FFD700" stroke-width="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-        </svg>`;
-    } else if (agency.includes('RFD')) {
-        // Richmond Fire Department - Fire truck
-        iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
-            <path d="M18 17h2v-6l-3-5H6v11"></path>
-            <circle cx="7" cy="17" r="2"></circle>
-            <circle cx="17" cy="17" r="2"></circle>
-            <path d="M6 11V6h3"></path>
-        </svg>`;
-    } else {
-        // Default - Ambulance/EMS
-        iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
-            <path d="M10 17h4V5H2v12h3"></path>
-            <circle cx="7" cy="17" r="2"></circle>
-            <path d="M22 12h-5v5h3"></path>
-            <circle cx="17" cy="17" r="2"></circle>
-        </svg>`;
+// Single emergency icon for all active calls
+const createCallIcon = (status) => {
+    // Determine status color indicator
+    let statusColor = '#EF4444'; // red for enroute/dispatched (default)
+    if (status?.includes('Arrived') || status?.includes('ARRIVED') || status?.includes('ARV') || status?.includes('On Scene')) {
+        statusColor = '#10B981'; // green for arrived
     }
     
     return new L.DivIcon({
@@ -82,8 +23,8 @@ const createCallIcon = (agency, status, incident) => {
                 <div style="
                     width: 36px;
                     height: 36px;
-                    background: ${agency.includes('BPS') ? '#000000' : color};
-                    border: 3px solid ${agency.includes('BPS') ? '#FFD700' : 'white'};
+                    background: #EF4444;
+                    border: 3px solid white;
                     border-radius: 50%;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                     display: flex;
@@ -91,8 +32,22 @@ const createCallIcon = (agency, status, incident) => {
                     justify-content: center;
                     animation: pulse 2s infinite;
                 ">
-                    ${iconSvg}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 8v4m0 4h.01" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
                 </div>
+                <div style="
+                    position: absolute;
+                    top: -2px;
+                    right: -2px;
+                    width: 10px;
+                    height: 10px;
+                    background: ${statusColor};
+                    border: 2px solid white;
+                    border-radius: 50%;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                "></div>
                 <style>
                     @keyframes pulse {
                         0%, 100% { transform: scale(1); opacity: 1; }
@@ -119,7 +74,7 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                     <Marker
                         key={`call-${index}-${call.timeReceived}-${call.incident}`}
                         position={[call.latitude, call.longitude]}
-                        icon={createCallIcon(call.agency || 'Unknown', call.status || 'Unknown', call.incident || 'Call')}
+                        icon={createCallIcon(call.status || 'Unknown')}
                         eventHandlers={{
                             click: () => {
                                 if (onCallClick) {
