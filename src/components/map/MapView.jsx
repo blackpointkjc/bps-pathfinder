@@ -136,8 +136,8 @@ export default function MapView({ currentLocation, destination, route, trafficSe
                 routeBounds={routeBounds}
             />
             
-            {/* Jurisdiction Boundaries */}
-            <JurisdictionBoundaries />
+            {/* Jurisdiction Boundaries - only show when active calls are enabled */}
+            {activeCalls && activeCalls.length > 0 && <JurisdictionBoundaries />}
             
             {currentLocation && (
                 <>
@@ -146,54 +146,23 @@ export default function MapView({ currentLocation, destination, route, trafficSe
                         icon={heading !== null ? createLocationWithHeading(heading, showLights) : createCurrentLocationIcon(showLights)}
                     >
                         <Popup>
-                            <div className="p-1">
-                                <p className="font-semibold text-sm">{unitName || 'Your Location'}</p>
-                                {heading !== null && (
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Heading: {Math.round(heading)}°
-                                    </p>
-                                )}
-                            </div>
-                        </Popup>
-                    </Marker>
-                    
-                    {unitName && (
-                        <Marker
-                            position={[currentLocation[0] + 0.0003, currentLocation[1]]}
-                            icon={new L.DivIcon({
-                                className: 'unit-label',
-                                html: `
-                                    <div style="
-                                        background: white;
-                                        padding: 4px 8px;
-                                        border-radius: 12px;
-                                        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                                        display: flex;
-                                        align-items: center;
-                                        gap: 4px;
-                                        font-size: 12px;
-                                        font-weight: 600;
-                                        color: #1D1D1F;
-                                        white-space: nowrap;
-                                        border: 2px solid #007AFF;
-                                    ">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#007AFF" stroke="white" stroke-width="1">
-                                            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path>
-                                            <circle cx="7" cy="17" r="2"></circle>
-                                            <circle cx="17" cy="17" r="2"></circle>
-                                            <circle cx="10" cy="8" r="1" fill="#00FF00"/>
-                                            <circle cx="14" cy="8" r="1" fill="#00FF00"/>
-                                        </svg>
-                                        ${unitName}
-                                    </div>
-                                `,
-                                iconSize: [0, 0],
-                                iconAnchor: [-10, 30]
-                            })}
-                        />
-                    )}
-                </>
-            )}
+                                <div className="p-2">
+                                    <p className="font-bold text-base text-[#007AFF]">{unitName || 'Your Location'}</p>
+                                    {heading !== null && (
+                                        <p className="text-xs text-gray-600 mt-1">
+                                            Heading: {Math.round(heading)}°
+                                        </p>
+                                    )}
+                                    {unitName && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Click to view unit details
+                                        </p>
+                                    )}
+                                </div>
+                            </Popup>
+                        </Marker>
+                        </>
+                        )}
             
             {/* Location History Trail */}
             {locationHistory && locationHistory.length > 1 && (

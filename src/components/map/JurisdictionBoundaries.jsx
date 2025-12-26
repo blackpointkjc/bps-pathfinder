@@ -98,25 +98,27 @@ export default function JurisdictionBoundaries() {
                     positions={boundary.coordinates}
                     pathOptions={{
                         color: boundary.color,
-                        weight: 4,
-                        opacity: 0.9,
+                        weight: 5,
+                        opacity: 1,
                         fillColor: boundary.fillColor,
-                        fillOpacity: 0.15,
-                        dashArray: '10, 5',
+                        fillOpacity: 0.2,
+                        dashArray: '12, 6',
                         lineCap: 'round',
                         lineJoin: 'round'
                     }}
                 >
-                    <Tooltip permanent direction="center" className="jurisdiction-label">
+                    <Tooltip permanent direction="center" className="jurisdiction-label" opacity={1}>
                         <div style={{
                             background: 'white',
-                            padding: '4px 8px',
-                            borderRadius: '6px',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
                             fontWeight: 'bold',
                             color: boundary.color,
-                            fontSize: '12px',
-                            border: `2px solid ${boundary.color}`,
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                            fontSize: '14px',
+                            border: `3px solid ${boundary.color}`,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px'
                         }}>
                             {boundary.name}
                         </div>
