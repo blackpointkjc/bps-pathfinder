@@ -4,6 +4,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { 
     Download, 
     MapPin, 
@@ -11,7 +14,9 @@ import {
     HardDrive,
     AlertCircle,
     CheckCircle2,
-    Loader2
+    Loader2,
+    Wifi,
+    X
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
@@ -22,6 +27,11 @@ export default function OfflineMapManager({ currentLocation, onClose }) {
     const [progress, setProgress] = useState(0);
     const [regionName, setRegionName] = useState('');
     const [storageUsed, setStorageUsed] = useState(0);
+    const [radius, setRadius] = useState(5);
+    const [zoomLevels, setZoomLevels] = useState([11, 12, 13, 14]);
+    const [autoDownload, setAutoDownload] = useState(
+        localStorage.getItem('autoDownloadMaps') === 'true'
+    );
 
     useEffect(() => {
         loadRegions();
@@ -94,8 +104,7 @@ export default function OfflineMapManager({ currentLocation, onClose }) {
         setProgress(0);
 
         try {
-            const zoomLevels = [11, 12, 13, 14]; // Zoom levels to download
-            const radius = 0.05; // ~5km radius
+            const radiusInDegrees = radius / 111; // Convert km to degrees
             const lat = currentLocation[0];
             const lon = currentLocation[1];
 
@@ -239,13 +248,44 @@ export default function OfflineMapManager({ currentLocation, onClose }) {
                         {/* Download New Region */}
                         <div className="p-6 border-b border-gray-100">
                             <h3 className="font-semibold text-[#1D1D1F] mb-3">Download Region</h3>
-                            <div className="space-y-3">
+                            <div className="space-y-4">
                                 <Input
                                     placeholder="Enter region name..."
                                     value={regionName}
                                     onChange={(e) => setRegionName(e.target.value)}
                                     disabled={downloading}
                                 />
+                                
+                                <div>
+                                    <Label className="text-sm text-gray-700">
+                                        Radius: {radius} km
+                                    </Label>
+                                    <Slider
+                                        value={[radius]}
+                                        onValueChange={(val) => setRadius(val[0])}
+                                        min={2}
+                                        max={20}
+                                        step={1}
+                                        className="mt-2"
+                                        disabled={downloading}
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div className="flex items-center gap-2">
+                                        <Wifi className="w-4 h-4 text-gray-600" />
+                                        <span className="text-sm text-gray-700">Auto-download on WiFi</span>
+                                    </div>
+                                    <Switch
+                                        checked={autoDownload}
+                                        onCheckedChange={(checked) => {
+                                            setAutoDownload(checked);
+                                            localStorage.setItem('autoDownloadMaps', checked);
+                                            toast.success(checked ? 'Auto-download enabled' : 'Auto-download disabled');
+                                        }}
+                                    />
+                                </div>
+                                
                                 <Button
                                     onClick={downloadRegion}
                                     disabled={downloading || !currentLocation || !regionName.trim()}
@@ -259,7 +299,7 @@ export default function OfflineMapManager({ currentLocation, onClose }) {
                                     ) : (
                                         <>
                                             <Download className="w-4 h-4 mr-2" />
-                                            Download Current Area
+                                            Download Area ({Math.round(radius * 2)}×{Math.round(radius * 2)}km)
                                         </>
                                     )}
                                 </Button>

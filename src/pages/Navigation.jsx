@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
@@ -13,6 +13,8 @@ import RouteOptions from '@/components/map/RouteOptions';
 import LiveNavigation from '@/components/map/LiveNavigation';
 import OfflineMapManager from '@/components/map/OfflineMapManager';
 import UnitSettings from '@/components/map/UnitSettings';
+import RoutePreferences from '@/components/map/RoutePreferences';
+import { useVoiceGuidance, useVoiceCommand } from '@/components/map/VoiceGuidance';
 import { generateTrafficData } from '@/components/map/TrafficLayer';
 
 export default function Navigation() {
@@ -42,6 +44,21 @@ export default function Navigation() {
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
     const [unitName, setUnitName] = useState(localStorage.getItem('unitName') || '');
     const [showUnitSettings, setShowUnitSettings] = useState(false);
+    const [showRoutePreferences, setShowRoutePreferences] = useState(false);
+    const [routePreferences, setRoutePreferences] = useState(() => {
+        const saved = localStorage.getItem('routePreferences');
+        return saved ? JSON.parse(saved) : {
+            transportMode: 'driving',
+            avoidFerries: false,
+            avoidUnpaved: false,
+            avoidHighways: false,
+            preferScenic: false
+        };
+    });
+    const [voiceEnabled, setVoiceEnabled] = useState(
+        localStorage.getItem('voiceEnabled') === 'true'
+    );
+    const [isListening, setIsListening] = useState(false);
     
     // Live tracking state
     const [heading, setHeading] = useState(null);
@@ -54,6 +71,14 @@ export default function Navigation() {
     const rerouteCheckInterval = useRef(null);
     const callsRefreshInterval = useRef(null);
     const lastPosition = useRef(null);
+    const lastAnnouncedStep = useRef(-1);
+    
+    const { speak, stop: stopSpeech } = useVoiceGuidance(voiceEnabled);
+    const { startListening, stopListening } = useVoiceCommand((transcript) => {
+        setIsListening(false);
+        toast.info(`Heard: "${transcript}"`);
+        searchDestination(transcript);
+    });
 
     // Monitor online/offline status
     useEffect(() => {
@@ -265,15 +290,24 @@ export default function Navigation() {
 
 
     const updateNavigationProgress = (coords) => {
-        // Calculate distance to next turn (simplified)
         if (!directions || currentStepIndex >= directions.length) {
-            // Arrived at destination
             setIsNavigating(false);
+            if (voiceEnabled) {
+                speak('You have arrived at your destination');
+            }
             toast.success('You have arrived at your destination!');
             return;
         }
 
-        // Update remaining distance (simplified - in real app, use proper calculations)
+        // Voice announcement for new steps
+        if (voiceEnabled && currentStepIndex !== lastAnnouncedStep.current) {
+            const currentStep = directions[currentStepIndex];
+            if (currentStep) {
+                speak(`In ${currentStep.distance}, ${currentStep.instruction}`);
+                lastAnnouncedStep.current = currentStepIndex;
+            }
+        }
+
         const stepsRemaining = directions.length - currentStepIndex;
         if (stepsRemaining <= 3) {
             setCurrentStepIndex(currentStepIndex + 1);
@@ -316,9 +350,15 @@ export default function Navigation() {
 
     const fetchRoutes = async (start, end) => {
         try {
-            const response = await fetch(
-                `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?alternatives=2&overview=full&geometries=geojson&steps=true`
-            );
+            const mode = routePreferences.transportMode === 'cycling' ? 'bike' 
+                : routePreferences.transportMode === 'walking' ? 'foot' 
+                : 'driving';
+            
+            let url = `https://router.project-osrm.org/route/v1/${mode}/${start[1]},${start[0]};${end[1]},${end[0]}?alternatives=2&overview=full&geometries=geojson&steps=true`;
+            
+            // Note: OSRM has limited support for avoid options, but we include them in preferences for future API support
+            
+            const response = await fetch(url);
             const data = await response.json();
             
             if (data.code === 'Ok' && data.routes) {
@@ -371,11 +411,17 @@ export default function Navigation() {
         setIsNavigating(true);
         setCurrentStepIndex(0);
         setRemainingDistance(distance);
+        lastAnnouncedStep.current = -1;
+        
+        if (voiceEnabled && directions && directions.length > 0) {
+            speak(`Starting navigation to ${destinationName}. ${directions[0].instruction}`);
+        }
         toast.success('Navigation started');
     };
 
     const exitNavigation = () => {
         setIsNavigating(false);
+        stopSpeech();
         if (rerouteCheckInterval.current) {
             clearInterval(rerouteCheckInterval.current);
         }
@@ -396,6 +442,22 @@ export default function Navigation() {
     const handleSaveUnitName = (name) => {
         setUnitName(name);
         localStorage.setItem('unitName', name);
+    };
+
+    const handleSaveRoutePreferences = (prefs) => {
+        setRoutePreferences(prefs);
+        localStorage.setItem('routePreferences', JSON.stringify(prefs));
+    };
+
+    const handleVoiceCommand = () => {
+        setIsListening(true);
+        const success = startListening();
+        if (!success) {
+            toast.error('Voice commands not supported in this browser');
+            setIsListening(false);
+        } else {
+            toast.info('Listening... Say a destination');
+        }
     };
 
     const fetchActiveCalls = async () => {
@@ -538,6 +600,31 @@ export default function Navigation() {
                 >
                     <Car className="w-5 h-5" />
                 </Button>
+
+                <Button
+                    onClick={() => setShowRoutePreferences(true)}
+                    size="icon"
+                    className="h-10 w-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg border-white/20 hover:bg-white text-gray-600"
+                >
+                    <Settings className="w-5 h-5" />
+                </Button>
+
+                <Button
+                    onClick={() => {
+                        const newState = !voiceEnabled;
+                        setVoiceEnabled(newState);
+                        localStorage.setItem('voiceEnabled', newState);
+                        toast.success(newState ? 'Voice guidance enabled' : 'Voice guidance disabled');
+                    }}
+                    size="icon"
+                    className={`h-10 w-10 rounded-full backdrop-blur-xl shadow-lg border-white/20 ${
+                        voiceEnabled 
+                            ? 'bg-[#007AFF] hover:bg-[#0056CC] text-white' 
+                            : 'bg-white/95 hover:bg-white text-gray-600'
+                    }`}
+                >
+                    <Volume2 className="w-5 h-5" />
+                </Button>
             </motion.div>
             
             {/* Active Calls Counter */}
@@ -567,6 +654,26 @@ export default function Navigation() {
                         onClick={getCurrentLocation}
                         isLocating={isLocating}
                     />
+                    
+                    {/* Voice Command Button */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="absolute bottom-52 right-4 z-[999]"
+                    >
+                        <Button
+                            onClick={handleVoiceCommand}
+                            disabled={isListening}
+                            size="icon"
+                            className={`h-12 w-12 rounded-full shadow-lg ${
+                                isListening 
+                                    ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
+                                    : 'bg-white/95 hover:bg-white'
+                            }`}
+                        >
+                            <Mic className={`w-5 h-5 ${isListening ? 'text-white' : 'text-[#007AFF]'}`} />
+                        </Button>
+                    </motion.div>
                 </>
             )}
 
@@ -640,6 +747,13 @@ export default function Navigation() {
                 onClose={() => setShowUnitSettings(false)}
                 unitName={unitName}
                 onSave={handleSaveUnitName}
+            />
+
+            <RoutePreferences
+                isOpen={showRoutePreferences}
+                onClose={() => setShowRoutePreferences(false)}
+                preferences={routePreferences}
+                onSave={handleSaveRoutePreferences}
             />
         </div>
     );
