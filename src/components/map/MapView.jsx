@@ -20,23 +20,12 @@ const createCurrentLocationIcon = (withLights = false) => {
         className: 'custom-marker',
         html: `
             <div style="position: relative; width: 40px; height: 40px;">
-                <div style="
-                    position: absolute;
-                    width: 60px;
-                    height: 60px;
-                    background: rgba(0, 122, 255, 0.15);
-                    border-radius: 50%;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    animation: pulse-ring 2s ease-out infinite;
-                "></div>
                 <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" style="position: relative; z-index: 2; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));">
                     ${withLights ? `
-                    <circle cx="8" cy="6" r="1.5" fill="#00FF00" style="animation: flash 1s ease-in-out infinite;">
+                    <circle cx="8" cy="6" r="1.5" fill="#00FF00">
                         <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
                     </circle>
-                    <circle cx="16" cy="6" r="1.5" fill="#00FF00" style="animation: flash 1s ease-in-out infinite 0.5s;">
+                    <circle cx="16" cy="6" r="1.5" fill="#00FF00">
                         <animate attributeName="opacity" values="0;1;0" dur="1s" repeatCount="indefinite"/>
                     </circle>
                     ` : ''}
@@ -47,22 +36,6 @@ const createCurrentLocationIcon = (withLights = false) => {
                     <rect x="11" y="11" width="3" height="2" fill="#60A5FA" rx="0.5"/>
                 </svg>
             </div>
-            <style>
-                @keyframes pulse-ring {
-                    0% {
-                        transform: translate(-50%, -50%) scale(0.5);
-                        opacity: 1;
-                    }
-                    100% {
-                        transform: translate(-50%, -50%) scale(1.5);
-                        opacity: 0;
-                    }
-                }
-                @keyframes flash {
-                    0%, 100% { opacity: 1; }
-                    50% { opacity: 0; }
-                }
-            </style>
         `,
         iconSize: [40, 40],
         iconAnchor: [20, 20],
@@ -75,17 +48,6 @@ const createLocationWithHeading = (heading, withLights = false) => {
         className: 'custom-marker',
         html: `
             <div style="position: relative; width: 50px; height: 50px; transform: rotate(${heading || 0}deg);">
-                <div style="
-                    position: absolute;
-                    width: 60px;
-                    height: 60px;
-                    background: rgba(0, 122, 255, 0.15);
-                    border-radius: 50%;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    animation: pulse-ring 2s ease-out infinite;
-                "></div>
                 <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" style="position: relative; z-index: 2; filter: drop-shadow(0 3px 10px rgba(0,0,0,0.4));">
                     ${withLights ? `
                     <circle cx="8" cy="5" r="1.8" fill="#00FF00">
@@ -103,18 +65,6 @@ const createLocationWithHeading = (heading, withLights = false) => {
                     <polygon points="12,2 14,6 10,6" fill="#1E40AF" stroke="#1E3A8A" stroke-width="0.5"/>
                 </svg>
             </div>
-            <style>
-                @keyframes pulse-ring {
-                    0% {
-                        transform: translate(-50%, -50%) scale(0.5);
-                        opacity: 1;
-                    }
-                    100% {
-                        transform: translate(-50%, -50%) scale(1.5);
-                        opacity: 0;
-                    }
-                }
-            </style>
         `,
         iconSize: [50, 50],
         iconAnchor: [25, 25],
