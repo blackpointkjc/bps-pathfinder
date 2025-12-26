@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation, MapPin, XCircle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
@@ -18,6 +18,7 @@ import ActiveCallsList from '@/components/map/ActiveCallsList';
 import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
 import UnitStatusPanel from '@/components/map/UnitStatusPanel';
 import DispatchPanel from '@/components/map/DispatchPanel';
+import CallDetailView from '@/components/map/CallDetailView';
 import { useVoiceGuidance, useVoiceCommand } from '@/components/map/VoiceGuidance';
 import { generateTrafficData } from '@/components/map/TrafficLayer';
 
@@ -87,6 +88,8 @@ export default function Navigation() {
     // Dispatch state
     const [showDispatchPanel, setShowDispatchPanel] = useState(false);
     const [selectedCallForDispatch, setSelectedCallForDispatch] = useState(null);
+    const [showCallDetail, setShowCallDetail] = useState(false);
+    const [selectedCall, setSelectedCall] = useState(null);
     
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
@@ -769,9 +772,9 @@ export default function Navigation() {
                 otherUnits={otherUnits}
                 currentUserId={currentUser?.id}
                 speed={speed}
-                onCallClick={(call) => {
-                    setSelectedCallForDispatch(call);
-                    setShowDispatchPanel(true);
+onCallClick={(call) => {
+                    setSelectedCall(call);
+                    setShowCallDetail(true);
                 }}
             />
 
@@ -812,6 +815,51 @@ export default function Navigation() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Quick Status Buttons */}
+            {!isNavigating && (
+                <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="absolute top-1/2 -translate-y-1/2 left-4 z-[999] flex flex-col gap-2"
+                >
+                    <Button
+                        onClick={() => handleStatusChange('Available')}
+                        size="sm"
+                        className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-3 py-6 flex flex-col items-center gap-1 min-w-[80px]`}
+                    >
+                        <CheckCircle2 className={`w-5 h-5 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
+                        <span className={`text-xs font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Available</span>
+                    </Button>
+                    
+                    <Button
+                        onClick={() => setShowCallsList(true)}
+                        size="sm"
+                        className={`${unitStatus === 'Enroute' ? 'bg-red-600 hover:bg-red-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-3 py-6 flex flex-col items-center gap-1 min-w-[80px]`}
+                    >
+                        <Navigation className={`w-5 h-5 ${unitStatus === 'Enroute' ? 'text-white' : 'text-red-600'}`} />
+                        <span className={`text-xs font-semibold ${unitStatus === 'Enroute' ? 'text-white' : 'text-gray-700'}`}>Enroute</span>
+                    </Button>
+                    
+                    <Button
+                        onClick={() => handleStatusChange('On Scene')}
+                        size="sm"
+                        className={`${unitStatus === 'On Scene' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-3 py-6 flex flex-col items-center gap-1 min-w-[80px]`}
+                    >
+                        <MapPin className={`w-5 h-5 ${unitStatus === 'On Scene' ? 'text-white' : 'text-blue-600'}`} />
+                        <span className={`text-xs font-semibold ${unitStatus === 'On Scene' ? 'text-white' : 'text-gray-700'}`}>On Scene</span>
+                    </Button>
+                    
+                    <Button
+                        onClick={() => handleStatusChange('Out of Service')}
+                        size="sm"
+                        className={`${unitStatus === 'Out of Service' ? 'bg-gray-600 hover:bg-gray-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-3 py-6 flex flex-col items-center gap-1 min-w-[80px]`}
+                    >
+                        <XCircle className={`w-5 h-5 ${unitStatus === 'Out of Service' ? 'text-white' : 'text-gray-600'}`} />
+                        <span className={`text-xs font-semibold ${unitStatus === 'Out of Service' ? 'text-white' : 'text-gray-700'}`}>Out</span>
+                    </Button>
+                </motion.div>
+            )}
 
             {/* Online/Offline Indicator & Live Tracking Status */}
             <motion.div
@@ -903,18 +951,15 @@ export default function Navigation() {
                     </Button>
                 )}
 
-                <Button
-                    onClick={() => setShowStatusPanel(true)}
-                    size="icon"
-                    className={`h-10 w-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg border-white/20 hover:bg-white ${
-                        unitStatus === 'Available' ? 'text-gray-600' :
-                        unitStatus === 'Enroute' ? 'text-red-600' :
-                        unitStatus === 'On Scene' ? 'text-green-600' :
-                        unitStatus === 'Busy' ? 'text-orange-600' : 'text-gray-400'
-                    }`}
-                >
-                    <Car className="w-5 h-5" />
-                </Button>
+                {currentUser?.role === 'admin' && (
+                    <Button
+                        onClick={() => window.location.href = '/dispatch'}
+                        size="icon"
+                        className="h-10 w-10 rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-lg"
+                    >
+                        <Plus className="w-5 h-5" />
+                    </Button>
+                )}
 
                 <Button
                     onClick={() => setShowRoutePreferences(true)}
@@ -1089,9 +1134,25 @@ export default function Navigation() {
                 calls={activeCalls}
                 onNavigateToCall={(call) => {
                     setShowCallsList(false);
-                    handleEnrouteToCall(call);
+                    setSelectedCall(call);
+                    setShowCallDetail(true);
                 }}
             />
+
+            {showCallDetail && selectedCall && (
+                <CallDetailView
+                    call={selectedCall}
+                    onClose={() => {
+                        setShowCallDetail(false);
+                        setSelectedCall(null);
+                    }}
+                    onEnroute={() => {
+                        handleEnrouteToCall(selectedCall);
+                        setShowCallDetail(false);
+                    }}
+                    currentUnitId={currentUnitId}
+                />
+            )}
 
             <UnitStatusPanel
                 isOpen={showStatusPanel}

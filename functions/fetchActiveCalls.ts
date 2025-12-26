@@ -75,18 +75,39 @@ Deno.serve(async (req) => {
                     jurisdiction = 'Chesterfield County, VA';
                 }
                 
-                const query = `${call.location}, ${jurisdiction}`;
+const query = `${call.location}, ${jurisdiction}`;
                 console.log('Geocoding:', query);
                 
                 const geoResponse = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
                     {
                         headers: {
-                            'User-Agent': 'GRActiveCalls-Map/1.0'
+                            'User-Agent': 'Emergency-Dispatch-App/1.0'
                         }
                     }
                 );
-                const geoData = await geoResponse.json();
+                let geoData = await geoResponse.json();
+                
+                // If no results, try with street number extraction and better formatting
+                if (!geoData || geoData.length === 0) {
+                    // Try extracting street number and name separately
+                    const locationParts = call.location.match(/^(\d+)\s+(.+)$/);
+                    if (locationParts) {
+                        const [_, number, street] = locationParts;
+                        const betterQuery = `${number} ${street}, ${jurisdiction}, USA`;
+                        console.log('Retry with formatted query:', betterQuery);
+                        
+                        const retryResponse = await fetch(
+                            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(betterQuery)}&limit=1&countrycodes=us`,
+                            {
+                                headers: {
+                                    'User-Agent': 'Emergency-Dispatch-App/1.0'
+                                }
+                            }
+                        );
+                        geoData = await retryResponse.json();
+                    }
+                }
                 
                 if (geoData && geoData.length > 0) {
                     geocodedCalls.push({
