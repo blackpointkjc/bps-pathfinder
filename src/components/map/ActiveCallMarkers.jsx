@@ -23,31 +23,46 @@ const createCallIcon = (agency, status, incident) => {
     
     // Agency-specific icons
     let iconSvg = '';
-    if (agency === 'RPD') {
+    if (agency.includes('RPD')) {
         // Richmond Police Department - Police car
         iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
             <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path>
             <circle cx="7" cy="17" r="2"></circle>
             <circle cx="17" cy="17" r="2"></circle>
         </svg>`;
-    } else if (agency === 'CCPD') {
+    } else if (agency.includes('CCPD')) {
         // Chesterfield Police - Shield badge
         iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
         </svg>`;
-    } else if (agency === 'HPD' || agency === 'HCPD') {
+    } else if (agency.includes('HPD') || agency.includes('HCPD')) {
         // Henrico Police - Star badge
         iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
         </svg>`;
-    } else if (agency === 'BPS') {
-        // BPS - School badge
+    } else if (agency.includes('CCFD')) {
+        // Chesterfield Fire - Fire truck
+        iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
+            <path d="M18 17h2v-6l-3-5H6v11"></path>
+            <circle cx="7" cy="17" r="2"></circle>
+            <circle cx="17" cy="17" r="2"></circle>
+            <path d="M6 11V6h3"></path>
+        </svg>`;
+    } else if (agency.includes('BPS')) {
+        // BPS - School badge (black and gold)
         iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#FFD700" stroke="#FFD700" stroke-width="2">
-            <path d="M12 2L2 7v6c0 5.5 3.8 10.7 10 12 6.2-1.3 10-6.5 10-12V7z"></path>
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="#000"></path>
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>`;
+    } else if (agency.includes('RFD')) {
+        // Richmond Fire Department - Fire truck
+        iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
+            <path d="M18 17h2v-6l-3-5H6v11"></path>
+            <circle cx="7" cy="17" r="2"></circle>
+            <circle cx="17" cy="17" r="2"></circle>
+            <path d="M6 11V6h3"></path>
         </svg>`;
     } else {
-        // Fire/EMS - Ambulance/Fire
+        // Default - Ambulance/EMS
         iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
             <path d="M10 17h4V5H2v12h3"></path>
             <circle cx="7" cy="17" r="2"></circle>
@@ -67,8 +82,8 @@ const createCallIcon = (agency, status, incident) => {
                 <div style="
                     width: 36px;
                     height: 36px;
-                    background: ${agency === 'BPS' ? '#000000' : color};
-                    border: 3px solid ${agency === 'BPS' ? '#FFD700' : 'white'};
+                    background: ${agency.includes('BPS') ? '#000000' : color};
+                    border: 3px solid ${agency.includes('BPS') ? '#FFD700' : 'white'};
                     border-radius: 50%;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                     display: flex;
