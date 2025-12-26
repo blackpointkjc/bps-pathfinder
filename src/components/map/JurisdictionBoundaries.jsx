@@ -1,20 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { Polygon, useMap } from 'react-leaflet';
+import { Polygon, Tooltip } from 'react-leaflet';
+import L from 'leaflet';
 
 const JURISDICTIONS = [
     {
         name: 'Richmond City',
-        color: '#FF3B30',
+        color: '#DC2626',
+        fillColor: '#FEE2E2',
         osmId: 'relation/170945'
     },
     {
         name: 'Henrico County',
-        color: '#007AFF',
+        color: '#2563EB',
+        fillColor: '#DBEAFE',
         osmId: 'relation/170943'
     },
     {
         name: 'Chesterfield County',
-        color: '#34C759',
+        color: '#16A34A',
+        fillColor: '#DCFCE7',
         osmId: 'relation/170935'
     }
 ];
@@ -62,6 +66,7 @@ export default function JurisdictionBoundaries() {
                             return {
                                 name: jurisdiction.name,
                                 color: jurisdiction.color,
+                                fillColor: jurisdiction.fillColor,
                                 coordinates: coords
                             };
                         }
@@ -93,12 +98,30 @@ export default function JurisdictionBoundaries() {
                     positions={boundary.coordinates}
                     pathOptions={{
                         color: boundary.color,
-                        weight: 3,
-                        opacity: 0.7,
-                        fillColor: boundary.color,
-                        fillOpacity: 0.05
+                        weight: 4,
+                        opacity: 0.9,
+                        fillColor: boundary.fillColor,
+                        fillOpacity: 0.15,
+                        dashArray: '10, 5',
+                        lineCap: 'round',
+                        lineJoin: 'round'
                     }}
-                />
+                >
+                    <Tooltip permanent direction="center" className="jurisdiction-label">
+                        <div style={{
+                            background: 'white',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            fontWeight: 'bold',
+                            color: boundary.color,
+                            fontSize: '12px',
+                            border: `2px solid ${boundary.color}`,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                        }}>
+                            {boundary.name}
+                        </div>
+                    </Tooltip>
+                </Polygon>
             ))}
         </>
     );

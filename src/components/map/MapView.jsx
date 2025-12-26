@@ -14,71 +14,38 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Custom blue marker for current location with pulse animation
+// Police car icon with lights
 const createCurrentLocationIcon = (withLights = false) => {
     return new L.DivIcon({
         className: 'custom-marker',
         html: `
-            <div style="position: relative; width: 24px; height: 24px;">
+            <div style="position: relative; width: 40px; height: 40px;">
                 <div style="
                     position: absolute;
-                    width: 48px;
-                    height: 48px;
-                    background: rgba(0, 122, 255, 0.2);
+                    width: 60px;
+                    height: 60px;
+                    background: rgba(0, 122, 255, 0.15);
                     border-radius: 50%;
                     top: 50%;
                     left: 50%;
                     transform: translate(-50%, -50%);
                     animation: pulse-ring 2s ease-out infinite;
                 "></div>
-                ${withLights ? `
-                <div style="
-                    position: absolute;
-                    width: 6px;
-                    height: 6px;
-                    background: #00FF00;
-                    border-radius: 50%;
-                    top: -2px;
-                    left: 3px;
-                    animation: flash 1s ease-in-out infinite;
-                    box-shadow: 0 0 8px #00FF00;
-                "></div>
-                <div style="
-                    position: absolute;
-                    width: 6px;
-                    height: 6px;
-                    background: #00FF00;
-                    border-radius: 50%;
-                    top: -2px;
-                    right: 3px;
-                    animation: flash 1s ease-in-out infinite 0.5s;
-                    box-shadow: 0 0 8px #00FF00;
-                "></div>
-                ` : ''}
-                <div style="
-                    position: absolute;
-                    width: 24px;
-                    height: 24px;
-                    background: #007AFF;
-                    border: 4px solid white;
-                    border-radius: 50%;
-                    box-shadow: 0 2px 12px rgba(0,122,255,0.6);
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    z-index: 2;
-                "></div>
-                <div style="
-                    position: absolute;
-                    width: 8px;
-                    height: 8px;
-                    background: white;
-                    border-radius: 50%;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    z-index: 3;
-                "></div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" style="position: relative; z-index: 2; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));">
+                    ${withLights ? `
+                    <circle cx="8" cy="6" r="1.5" fill="#00FF00" style="animation: flash 1s ease-in-out infinite;">
+                        <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="16" cy="6" r="1.5" fill="#00FF00" style="animation: flash 1s ease-in-out infinite 0.5s;">
+                        <animate attributeName="opacity" values="0;1;0" dur="1s" repeatCount="indefinite"/>
+                    </circle>
+                    ` : ''}
+                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" fill="#1E40AF" stroke="#1E3A8A" stroke-width="0.5"/>
+                    <circle cx="7" cy="17" r="2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
+                    <circle cx="17" cy="17" r="2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
+                    <rect x="6" y="11" width="3" height="2" fill="#60A5FA" rx="0.5"/>
+                    <rect x="11" y="11" width="3" height="2" fill="#60A5FA" rx="0.5"/>
+                </svg>
             </div>
             <style>
                 @keyframes pulse-ring {
@@ -97,94 +64,44 @@ const createCurrentLocationIcon = (withLights = false) => {
                 }
             </style>
         `,
-        iconSize: [48, 48],
-        iconAnchor: [24, 24],
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
     });
 };
 
-// Custom marker with heading indicator and optional lights
+// Police car with heading and optional lights
 const createLocationWithHeading = (heading, withLights = false) => {
     return new L.DivIcon({
         className: 'custom-marker',
         html: `
-            <div style="position: relative; width: 48px; height: 48px;">
+            <div style="position: relative; width: 50px; height: 50px; transform: rotate(${heading || 0}deg);">
                 <div style="
                     position: absolute;
-                    width: 48px;
-                    height: 48px;
-                    background: rgba(0, 122, 255, 0.2);
+                    width: 60px;
+                    height: 60px;
+                    background: rgba(0, 122, 255, 0.15);
                     border-radius: 50%;
                     top: 50%;
                     left: 50%;
                     transform: translate(-50%, -50%);
                     animation: pulse-ring 2s ease-out infinite;
                 "></div>
-                ${withLights ? `
-                <div style="
-                    position: absolute;
-                    width: 6px;
-                    height: 6px;
-                    background: #00FF00;
-                    border-radius: 50%;
-                    top: -2px;
-                    left: 3px;
-                    animation: flash 1s ease-in-out infinite;
-                    box-shadow: 0 0 8px #00FF00;
-                    z-index: 4;
-                "></div>
-                <div style="
-                    position: absolute;
-                    width: 6px;
-                    height: 6px;
-                    background: #00FF00;
-                    border-radius: 50%;
-                    top: -2px;
-                    right: 3px;
-                    animation: flash 1s ease-in-out infinite 0.5s;
-                    box-shadow: 0 0 8px #00FF00;
-                    z-index: 4;
-                "></div>
-                ` : ''}
-                <div style="
-                    position: absolute;
-                    width: 24px;
-                    height: 24px;
-                    background: #007AFF;
-                    border: 4px solid white;
-                    border-radius: 50%;
-                    box-shadow: 0 2px 12px rgba(0,122,255,0.6);
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    z-index: 2;
-                "></div>
-                ${heading !== null ? `
-                <div style="
-                    position: absolute;
-                    width: 0;
-                    height: 0;
-                    border-left: 8px solid transparent;
-                    border-right: 8px solid transparent;
-                    border-bottom: 20px solid #007AFF;
-                    top: -8px;
-                    left: 50%;
-                    transform: translateX(-50%) rotate(${heading}deg);
-                    transform-origin: 8px 28px;
-                    z-index: 1;
-                    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-                "></div>
-                ` : ''}
-                <div style="
-                    position: absolute;
-                    width: 8px;
-                    height: 8px;
-                    background: white;
-                    border-radius: 50%;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    z-index: 3;
-                "></div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" style="position: relative; z-index: 2; filter: drop-shadow(0 3px 10px rgba(0,0,0,0.4));">
+                    ${withLights ? `
+                    <circle cx="8" cy="5" r="1.8" fill="#00FF00">
+                        <animate attributeName="opacity" values="1;0;1" dur="0.8s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="16" cy="5" r="1.8" fill="#00FF00">
+                        <animate attributeName="opacity" values="0;1;0" dur="0.8s" repeatCount="indefinite"/>
+                    </circle>
+                    ` : ''}
+                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" fill="#1E40AF" stroke="#1E3A8A" stroke-width="0.8"/>
+                    <circle cx="7" cy="17" r="2.2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
+                    <circle cx="17" cy="17" r="2.2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
+                    <rect x="6" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
+                    <rect x="11" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
+                    <polygon points="12,2 14,6 10,6" fill="#1E40AF" stroke="#1E3A8A" stroke-width="0.5"/>
+                </svg>
             </div>
             <style>
                 @keyframes pulse-ring {
@@ -197,14 +114,10 @@ const createLocationWithHeading = (heading, withLights = false) => {
                         opacity: 0;
                     }
                 }
-                @keyframes flash {
-                    0%, 100% { opacity: 1; }
-                    50% { opacity: 0; }
-                }
             </style>
         `,
-        iconSize: [48, 48],
-        iconAnchor: [24, 24],
+        iconSize: [50, 50],
+        iconAnchor: [25, 25],
     });
 };
 
@@ -264,7 +177,7 @@ export default function MapView({ currentLocation, destination, route, trafficSe
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url={useOfflineTiles 
                     ? '' 
-                    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                    : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 }
             />
             
