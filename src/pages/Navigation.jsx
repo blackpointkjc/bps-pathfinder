@@ -17,6 +17,9 @@ import OfflineMapManager from '@/components/map/OfflineMapManager';
 import UnitSettings from '@/components/map/UnitSettings';
 import RoutePreferences from '@/components/map/RoutePreferences';
 import ActiveCallsList from '@/components/map/ActiveCallsList';
+import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
+import UnitStatusPanel from '@/components/map/UnitStatusPanel';
+import DispatchPanel from '@/components/map/DispatchPanel';
 import { useVoiceGuidance, useVoiceCommand } from '@/components/map/VoiceGuidance';
 import { generateTrafficData } from '@/components/map/TrafficLayer';
 
@@ -76,9 +79,21 @@ export default function Navigation() {
     const [speed, setSpeed] = useState(0);
     const [accuracy, setAccuracy] = useState(null);
     
+    // Multi-user tracking state
+    const [otherUnits, setOtherUnits] = useState([]);
+    const [currentUnitId, setCurrentUnitId] = useState(null);
+    const [unitStatus, setUnitStatus] = useState('Available');
+    const [showStatusPanel, setShowStatusPanel] = useState(false);
+    const [activeCallInfo, setActiveCallInfo] = useState(null);
+    
+    // Dispatch state
+    const [showDispatchPanel, setShowDispatchPanel] = useState(false);
+    const [selectedCallForDispatch, setSelectedCallForDispatch] = useState(null);
+    
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
     const callsRefreshInterval = useRef(null);
+    const unitsRefreshInterval = useRef(null);
     const lastPosition = useRef(null);
     const lastAnnouncedStep = useRef(-1);
     
@@ -113,6 +128,7 @@ export default function Navigation() {
         loadCurrentUser();
         getCurrentLocation();
         fetchActiveCalls();
+        initializeUnit();
         
         // Start live tracking by default
         if (isOnline) {
@@ -126,6 +142,13 @@ export default function Navigation() {
             }
         }, 120000);
         
+        // Refresh other units every 5 seconds
+        unitsRefreshInterval.current = setInterval(() => {
+            if (isOnline) {
+                fetchOtherUnits();
+            }
+        }, 5000);
+        
         return () => {
             stopContinuousTracking();
             if (rerouteCheckInterval.current) {
@@ -133,6 +156,9 @@ export default function Navigation() {
             }
             if (callsRefreshInterval.current) {
                 clearInterval(callsRefreshInterval.current);
+            }
+            if (unitsRefreshInterval.current) {
+                clearInterval(unitsRefreshInterval.current);
             }
         };
     }, []);
@@ -229,6 +255,9 @@ export default function Navigation() {
                 
                 lastPosition.current = coords;
                 
+                // Update unit location in database
+                updateUnitLocation();
+                
                 // Update navigation progress if navigating
                 if (isNavigating && directions) {
                     updateNavigationProgress(coords);
@@ -263,6 +292,80 @@ export default function Navigation() {
             setCurrentUser(user);
         } catch (error) {
             console.error('Error loading user:', error);
+        }
+    };
+
+    const initializeUnit = async () => {
+        if (!currentUser || !unitName) return;
+        
+        try {
+            // Check if unit exists
+            const existingUnits = await base44.entities.Unit.filter({ user_id: currentUser.id });
+            
+            if (existingUnits && existingUnits.length > 0) {
+                setCurrentUnitId(existingUnits[0].id);
+                setUnitStatus(existingUnits[0].status || 'Available');
+                setActiveCallInfo(existingUnits[0].current_call_info);
+            } else if (currentLocation) {
+                // Create new unit
+                const newUnit = await base44.entities.Unit.create({
+                    unit_name: unitName,
+                    user_id: currentUser.id,
+                    user_email: currentUser.email,
+                    latitude: currentLocation[0],
+                    longitude: currentLocation[1],
+                    heading: heading || 0,
+                    speed: speed || 0,
+                    status: 'Available',
+                    show_lights: showLights,
+                    last_updated: new Date().toISOString()
+                });
+                setCurrentUnitId(newUnit.id);
+            }
+        } catch (error) {
+            console.error('Error initializing unit:', error);
+        }
+    };
+
+    const updateUnitLocation = async () => {
+        if (!currentUnitId || !currentLocation) return;
+        
+        try {
+            await base44.entities.Unit.update(currentUnitId, {
+                latitude: currentLocation[0],
+                longitude: currentLocation[1],
+                heading: heading || 0,
+                speed: speed || 0,
+                status: unitStatus,
+                show_lights: showLights,
+                current_call_info: activeCallInfo,
+                last_updated: new Date().toISOString()
+            });
+            
+            // Save to location history every 10 seconds
+            if (Math.random() < 0.1) {
+                await base44.entities.LocationHistory.create({
+                    unit_id: currentUnitId,
+                    unit_name: unitName,
+                    latitude: currentLocation[0],
+                    longitude: currentLocation[1],
+                    heading: heading || 0,
+                    speed: speed || 0,
+                    status: unitStatus,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        } catch (error) {
+            console.error('Error updating unit location:', error);
+        }
+    };
+
+    const fetchOtherUnits = async () => {
+        try {
+            const units = await base44.entities.Unit.list('-last_updated', 100);
+            setOtherUnits(units || []);
+        } catch (error) {
+            console.error('Error fetching other units:', error);
         }
     };
 
@@ -485,9 +588,75 @@ export default function Navigation() {
         return `${type} ${modifier || ''}`.trim();
     };
 
-    const handleSaveUnitName = (name) => {
+    const handleSaveUnitName = async (name) => {
         setUnitName(name);
         localStorage.setItem('unitName', name);
+        
+        // Update or create unit if needed
+        if (currentUser && currentLocation) {
+            if (currentUnitId) {
+                await base44.entities.Unit.update(currentUnitId, { unit_name: name });
+            } else {
+                await initializeUnit();
+            }
+        }
+    };
+
+    const handleStatusChange = async (newStatus) => {
+        setUnitStatus(newStatus);
+        if (currentUnitId) {
+            try {
+                await base44.entities.Unit.update(currentUnitId, { 
+                    status: newStatus,
+                    last_updated: new Date().toISOString()
+                });
+                toast.success(`Status updated to ${newStatus}`);
+            } catch (error) {
+                console.error('Error updating status:', error);
+                toast.error('Failed to update status');
+            }
+        }
+    };
+
+    const handleEnrouteToCall = async (call) => {
+        const callInfo = `${call.incident} - ${call.location}`;
+        setActiveCallInfo(callInfo);
+        setUnitStatus('Enroute');
+        
+        if (currentUnitId) {
+            try {
+                await base44.entities.Unit.update(currentUnitId, {
+                    status: 'Enroute',
+                    current_call_id: `${call.timeReceived}-${call.incident}`,
+                    current_call_info: callInfo,
+                    last_updated: new Date().toISOString()
+                });
+                
+                toast.success(`Enroute to ${call.incident}`);
+                
+                // Automatically route to call
+                const callCoords = [call.latitude, call.longitude];
+                setDestination({ coords: callCoords, name: call.location });
+                setDestinationName(call.incident);
+                
+                if (currentLocation) {
+                    const fetchedRoutes = await fetchRoutes(currentLocation, callCoords);
+                    if (fetchedRoutes && fetchedRoutes.length > 0) {
+                        setRoutes(fetchedRoutes);
+                        setSelectedRouteIndex(0);
+                        updateRouteDisplay(fetchedRoutes[0]);
+                    }
+                }
+            } catch (error) {
+                console.error('Error marking enroute:', error);
+                toast.error('Failed to update status');
+            }
+        }
+    };
+
+    const handleAssignUnit = async (call, unit) => {
+        toast.success(`${unit.unit_name} assigned to ${call.incident}`);
+        // In a real system, this would notify the assigned unit
     };
 
     const handleLightsChange = (enabled) => {
@@ -561,20 +730,11 @@ export default function Navigation() {
                 locationHistory={isLiveTracking ? locationHistory : []}
                 unitName={unitName}
                 showLights={showLights}
+                otherUnits={otherUnits}
+                currentUserId={currentUser?.id}
                 onCallClick={(call) => {
-                    const callCoords = [call.latitude, call.longitude];
-                    setDestination({ coords: callCoords, name: call.location });
-                    setDestinationName(call.incident);
-                    toast.info(`Routing to ${call.incident}`);
-                    if (currentLocation) {
-                        fetchRoutes(currentLocation, callCoords).then(fetchedRoutes => {
-                            if (fetchedRoutes && fetchedRoutes.length > 0) {
-                                setRoutes(fetchedRoutes);
-                                setSelectedRouteIndex(0);
-                                updateRouteDisplay(fetchedRoutes[0]);
-                            }
-                        });
-                    }
+                    setSelectedCallForDispatch(call);
+                    setShowDispatchPanel(true);
                 }}
             />
 
@@ -707,10 +867,13 @@ export default function Navigation() {
                 )}
 
                 <Button
-                    onClick={() => setShowUnitSettings(true)}
+                    onClick={() => setShowStatusPanel(true)}
                     size="icon"
                     className={`h-10 w-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg border-white/20 hover:bg-white ${
-                        unitName ? 'text-[#007AFF]' : 'text-gray-600'
+                        unitStatus === 'Available' ? 'text-gray-600' :
+                        unitStatus === 'Enroute' ? 'text-red-600' :
+                        unitStatus === 'On Scene' ? 'text-green-600' :
+                        unitStatus === 'Busy' ? 'text-orange-600' : 'text-gray-400'
                     }`}
                 >
                     <Car className="w-5 h-5" />
@@ -890,20 +1053,24 @@ export default function Navigation() {
                 calls={activeCalls}
                 onNavigateToCall={(call) => {
                     setShowCallsList(false);
-                    const callCoords = [call.latitude, call.longitude];
-                    setDestination({ coords: callCoords, name: call.location });
-                    setDestinationName(call.incident);
-                    toast.info(`Routing to ${call.incident}`);
-                    if (currentLocation) {
-                        fetchRoutes(currentLocation, callCoords).then(fetchedRoutes => {
-                            if (fetchedRoutes && fetchedRoutes.length > 0) {
-                                setRoutes(fetchedRoutes);
-                                setSelectedRouteIndex(0);
-                                updateRouteDisplay(fetchedRoutes[0]);
-                            }
-                        });
-                    }
+                    handleEnrouteToCall(call);
                 }}
+            />
+
+            <UnitStatusPanel
+                isOpen={showStatusPanel}
+                onClose={() => setShowStatusPanel(false)}
+                currentStatus={unitStatus}
+                unitName={unitName || 'Unknown Unit'}
+                onStatusChange={handleStatusChange}
+                activeCall={activeCallInfo}
+            />
+
+            <DispatchPanel
+                isOpen={showDispatchPanel}
+                onClose={() => setShowDispatchPanel(false)}
+                call={selectedCallForDispatch}
+                onAssignUnit={handleAssignUnit}
             />
         </div>
     );
