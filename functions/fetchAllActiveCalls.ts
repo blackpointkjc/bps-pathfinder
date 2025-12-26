@@ -126,60 +126,9 @@ Deno.serve(async (req) => {
             console.error('❌ Error fetching from Henrico:', error);
         }
         
-        // Source 3: Chesterfield County Active Calls
-        try {
-            console.log('📡 Fetching from Chesterfield County...');
-            const response3 = await fetch('https://www.chesterfield.gov/3999/Active-Police-Calls', {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                }
-            });
-            
-            if (response3.ok) {
-                const html = await response3.text();
-                console.log(`📄 Chesterfield HTML fetched (${html.length} chars)`);
-                
-                // Use AI to parse the Chesterfield table since structure may vary
-                const parseResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
-                    prompt: `Parse this HTML table from Chesterfield Police Active Calls and extract ALL active calls. Return a JSON array of calls with fields: timeReceived, incident, location, status. HTML: ${html.substring(0, 50000)}`,
-                    response_json_schema: {
-                        type: "object",
-                        properties: {
-                            calls: {
-                                type: "array",
-                                items: {
-                                    type: "object",
-                                    properties: {
-                                        timeReceived: { type: "string" },
-                                        incident: { type: "string" },
-                                        location: { type: "string" },
-                                        status: { type: "string" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-                
-                if (parseResponse.calls && Array.isArray(parseResponse.calls)) {
-                    for (const call of parseResponse.calls) {
-                        if (call.incident && call.incident.trim() && call.location && call.location.trim()) {
-                            calls.push({
-                                timeReceived: call.timeReceived || 'Unknown',
-                                incident: call.incident.trim(),
-                                location: call.location.trim(),
-                                agency: 'CCPD',
-                                status: call.status?.trim() || 'Dispatched',
-                                source: 'chesterfield.gov'
-                            });
-                        }
-                    }
-                }
-                console.log(`✅ Chesterfield: ${calls.filter(c => c.source === 'chesterfield.gov').length} calls`);
-            }
-        } catch (error) {
-            console.error('❌ Error fetching from Chesterfield:', error);
-        }
+        // Source 3: Chesterfield County Active Calls - DISABLED (requires JavaScript rendering)
+        // Note: This site uses dynamic JavaScript to load calls, which cannot be scraped with simple fetch
+        console.log('⚠️ Chesterfield County calls require JavaScript rendering - skipping for now');
         
         console.log(`✅ Total calls from all sources: ${calls.length}`);
         
