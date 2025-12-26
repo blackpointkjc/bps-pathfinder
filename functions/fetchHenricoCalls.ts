@@ -10,25 +10,65 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Fetch JSON data from Henrico active calls website
-        const response = await fetch('https://activecalls.henrico.gov/data');
-        const data = await response.json();
+        // Fetch HTML from Henrico active calls website
+        const response = await fetch('https://activecalls.henrico.gov/');
+        const html = await response.text();
         
         const calls = [];
         
-        // Process each call from the response
-        if (data && data.calls && Array.isArray(data.calls)) {
-            for (const call of data.calls) {
-                if (call.latitude && call.longitude && call.incident_type && call.location) {
-                    calls.push({
-                        timeReceived: call.dispatch_time || call.time_received || 'Unknown',
-                        incident: call.incident_type,
-                        location: call.location,
-                        agency: 'HCPD',
-                        status: call.status || 'Dispatched',
-                        latitude: parseFloat(call.latitude),
-                        longitude: parseFloat(call.longitude)
-                    });
+        // Parse the table
+        const tableStart = html.indexOf('<table');
+        const tableEnd = html.indexOf('</table>', tableStart);
+        
+        if (tableStart !== -1 && tableEnd !== -1) {
+            const tableHtml = html.substring(tableStart, tableEnd + 8);
+            const rows = tableHtml.split(/<tr[^>]*>/i).slice(1);
+            
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row.includes('<td')) continue;
+                
+                const cells = [];
+                const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
+                
+                for (const match of cellMatches) {
+                    const text = match[1]
+                        .replace(/<[^>]+>/g, '')
+                        .replace(/&nbsp;/g, ' ')
+                        .trim();
+                    cells.push(text);
+                }
+                
+                if (cells.length >= 3) {
+                    const [timeReceived, incident, location, agency, status] = cells;
+                    
+                    if (incident && incident.trim() && location && location.trim()) {
+                        // Geocode location
+                        try {
+                            const query = `${location.trim()}, Henrico County, VA`;
+                            const geoResponse = await fetch(
+                                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
+                                { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
+                            );
+                            const geoData = await geoResponse.json();
+                            
+                            if (geoData && geoData.length > 0) {
+                                calls.push({
+                                    timeReceived: timeReceived || 'Unknown',
+                                    incident: incident.trim(),
+                                    location: location.trim(),
+                                    agency: (agency && agency.trim()) || 'HCPD',
+                                    status: (status && status.trim()) || 'Dispatched',
+                                    latitude: parseFloat(geoData[0].lat),
+                                    longitude: parseFloat(geoData[0].lon)
+                                });
+                            }
+                            
+                            await new Promise(resolve => setTimeout(resolve, 1100));
+                        } catch (error) {
+                            console.error(`Error geocoding ${location}:`, error);
+                        }
+                    }
                 }
             }
         }

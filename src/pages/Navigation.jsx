@@ -716,50 +716,28 @@ export default function Navigation() {
         setIsLoadingCalls(true);
         try {
             // Fetch from all sources including Henrico
-            const [response1, response2, henricoResponse, dispatchCalls] = await Promise.all([
-                base44.functions.invoke('fetchActiveCalls', {}),
-                base44.functions.invoke('fetchAdditionalCalls', {}),
-                base44.functions.invoke('fetchHenricoCalls', {}),
-                base44.entities.DispatchCall.list('-created_date', 100)
+            const [response1, response2, henricoResponse] = await Promise.all([
+                base44.functions.invoke('fetchActiveCalls', {}).catch(e => ({ data: { success: false, geocodedCalls: [] } })),
+                base44.functions.invoke('fetchAdditionalCalls', {}).catch(e => ({ data: { success: false, geocodedCalls: [] } })),
+                base44.functions.invoke('fetchHenricoCalls', {}).catch(e => ({ data: { success: false, geocodedCalls: [] } }))
             ]);
             
-            const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
-            
-            // Collect all external calls with valid coordinates
-            const externalCalls = [
+            // Collect ALL calls with valid coordinates from all sources
+            const allCalls = [
                 ...(response1.data.success ? response1.data.geocodedCalls : []),
                 ...(response2.data.success ? response2.data.geocodedCalls : []),
                 ...(henricoResponse.data.success ? henricoResponse.data.geocodedCalls : [])
             ].filter(call => call.latitude && call.longitude);
             
-            // Get dispatch calls assigned to user (if logged in)
-            const assignedCalls = currentUser ? (dispatchCalls || [])
-                .filter(call => {
-                    if (!call.latitude || !call.longitude) return false;
-                    if (call.status === 'Resolved' || call.status === 'Cancelled') return false;
-                    const callTime = new Date(call.time_received || call.created_date);
-                    if (callTime <= twoHoursAgo) return false;
-                    return call.assigned_units && call.assigned_units.includes(currentUser.id);
-                })
-                .map(call => ({
-                    timeReceived: new Date(call.time_received).toLocaleTimeString(),
-                    incident: call.incident,
-                    location: call.location,
-                    agency: call.agency,
-                    status: call.status,
-                    latitude: call.latitude,
-                    longitude: call.longitude,
-                    ai_summary: call.ai_summary
-                })) : [];
-            
-            const allCalls = [...externalCalls, ...assignedCalls];
-            
-            console.log(`Active calls: External=${externalCalls.length}, Assigned=${assignedCalls.length}`);
+            console.log(`Active calls loaded: RPD/RFD=${response1.data.geocodedCalls?.length || 0}, Additional=${response2.data.geocodedCalls?.length || 0}, Henrico=${henricoResponse.data.geocodedCalls?.length || 0}`);
             
             setActiveCalls(allCalls);
-            toast.success(`Loaded ${allCalls.length} active calls`, {
-                duration: 2000
-            });
+            
+            if (allCalls.length > 0) {
+                toast.success(`Loaded ${allCalls.length} active calls`);
+            } else {
+                toast.info('No active calls at this time');
+            }
         } catch (error) {
             console.error('Error fetching active calls:', error);
             toast.error('Failed to load active calls');
