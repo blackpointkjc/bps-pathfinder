@@ -244,7 +244,7 @@ function MapController({ center, routeBounds }) {
     return null;
 }
 
-export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights }) {
+export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, onCallClick }) {
     const defaultCenter = currentLocation || [37.7749, -122.4194]; // Default to SF
     
     // Calculate route bounds if route exists
@@ -310,10 +310,12 @@ export default function MapView({ currentLocation, destination, route, trafficSe
                                         white-space: nowrap;
                                         border: 2px solid #007AFF;
                                     ">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#007AFF" stroke="white" stroke-width="1">
                                             <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path>
                                             <circle cx="7" cy="17" r="2"></circle>
                                             <circle cx="17" cy="17" r="2"></circle>
+                                            <circle cx="10" cy="8" r="1" fill="#00FF00"/>
+                                            <circle cx="14" cy="8" r="1" fill="#00FF00"/>
                                         </svg>
                                         ${unitName}
                                     </div>
@@ -365,7 +367,7 @@ export default function MapView({ currentLocation, destination, route, trafficSe
             ) : null}
             
             {/* Active Emergency Calls */}
-            <ActiveCallMarkers calls={activeCalls} />
+            <ActiveCallMarkers calls={activeCalls} onCallClick={onCallClick} />
         </MapContainer>
     );
 }

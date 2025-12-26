@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
+import { createPageUrl } from '@/utils';
+import { Link } from 'react-router-dom';
 import MapView from '@/components/map/MapView';
 import SearchBar from '@/components/map/SearchBar';
 import LocationButton from '@/components/map/LocationButton';
@@ -63,6 +65,7 @@ export default function Navigation() {
         localStorage.getItem('voiceEnabled') === 'true'
     );
     const [isListening, setIsListening] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
     
     // Live tracking state
     const [heading, setHeading] = useState(null);
@@ -105,6 +108,7 @@ export default function Navigation() {
     }, []);
 
     useEffect(() => {
+        loadCurrentUser();
         getCurrentLocation();
         fetchActiveCalls();
         
@@ -237,8 +241,8 @@ export default function Navigation() {
             },
             { 
                 enableHighAccuracy: true, 
-                maximumAge: 0,
-                timeout: 5000
+                maximumAge: 1000,
+                timeout: 10000
             }
         );
     };
@@ -249,6 +253,15 @@ export default function Navigation() {
             locationWatchId.current = null;
         }
         setIsLiveTracking(false);
+    };
+
+    const loadCurrentUser = async () => {
+        try {
+            const user = await base44.auth.me();
+            setCurrentUser(user);
+        } catch (error) {
+            console.error('Error loading user:', error);
+        }
     };
 
     const calculateHeading = (from, to) => {
@@ -287,7 +300,7 @@ export default function Navigation() {
                 setIsLocating(false);
                 setCurrentLocation([37.7749, -122.4194]);
             },
-            { enableHighAccuracy: true, timeout: 10000 }
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 1000 }
         );
     }, []);
 
@@ -546,6 +559,21 @@ export default function Navigation() {
                 locationHistory={isLiveTracking ? locationHistory : []}
                 unitName={unitName}
                 showLights={showLights}
+                onCallClick={(call) => {
+                    const callCoords = [call.latitude, call.longitude];
+                    setDestination({ coords: callCoords, name: call.location });
+                    setDestinationName(call.incident);
+                    toast.info(`Routing to ${call.incident}`);
+                    if (currentLocation) {
+                        fetchRoutes(currentLocation, callCoords).then(fetchedRoutes => {
+                            if (fetchedRoutes && fetchedRoutes.length > 0) {
+                                setRoutes(fetchedRoutes);
+                                setSelectedRouteIndex(0);
+                                updateRouteDisplay(fetchedRoutes[0]);
+                            }
+                        });
+                    }
+                }}
             />
 
             {/* Traffic Alert */}
@@ -643,7 +671,7 @@ export default function Navigation() {
                 <Button
                     onClick={() => setShowOfflineManager(true)}
                     size="icon"
-                    className="h-10 w-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg border-white/20 hover:bg-white text-[#007AFF]"
+                    className="h-12 w-12 rounded-2xl bg-white/98 backdrop-blur-2xl shadow-xl border border-gray-200/50 hover:bg-white text-[#007AFF] hover:scale-105 transition-transform"
                 >
                     <MapIcon className="w-5 h-5" />
                 </Button>
@@ -700,6 +728,17 @@ export default function Navigation() {
                 >
                     <Volume2 className="w-5 h-5" />
                 </Button>
+
+                {currentUser?.role === 'admin' && (
+                    <Link to={createPageUrl('Dashboard')}>
+                        <Button
+                            size="icon"
+                            className="h-10 w-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg border-white/20 hover:bg-white text-purple-600"
+                        >
+                            <LayoutDashboard className="w-5 h-5" />
+                        </Button>
+                    </Link>
+                )}
             </motion.div>
             
             {/* Active Calls Counter */}

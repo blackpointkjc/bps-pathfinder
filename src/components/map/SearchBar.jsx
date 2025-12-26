@@ -26,7 +26,7 @@ export default function SearchBar({ onSearch, isSearching, onClear }) {
             className="absolute top-4 left-4 right-4 z-[1000] md:left-1/2 md:-translate-x-1/2 md:w-[480px] md:right-auto"
         >
             <form onSubmit={handleSubmit} className="relative">
-                <div className="relative flex items-center bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg shadow-black/10 border border-white/20 overflow-hidden">
+                <div className="relative flex items-center bg-white/98 backdrop-blur-2xl rounded-3xl shadow-2xl shadow-black/5 border border-gray-200/50 overflow-hidden">
                     <div className="pl-4 text-gray-400">
                         {isSearching ? (
                             <Loader2 className="w-5 h-5 animate-spin text-[#007AFF]" />
@@ -63,7 +63,7 @@ export default function SearchBar({ onSearch, isSearching, onClear }) {
                     <Button
                         type="submit"
                         disabled={!query.trim() || isSearching}
-                        className="mr-2 h-10 px-5 rounded-xl bg-[#007AFF] hover:bg-[#0056CC] text-white font-medium"
+                        className="mr-2 h-10 px-6 rounded-2xl bg-[#007AFF] hover:bg-[#0056CC] text-white font-semibold shadow-md"
                     >
                         Go
                     </Button>
