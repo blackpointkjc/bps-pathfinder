@@ -4,7 +4,6 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import TrafficLayer from './TrafficLayer';
 import ActiveCallMarkers from './ActiveCallMarkers';
-import JurisdictionBoundaries from './JurisdictionBoundaries';
 import OtherUnitsLayer from './OtherUnitsLayer';
 
 // Fix default marker icons
@@ -140,10 +139,7 @@ export default function MapView({ currentLocation, destination, route, trafficSe
                 center={currentLocation} 
                 routeBounds={routeBounds}
             />
-            
-            {/* Jurisdiction Boundaries - disabled to show all calls */}
-            <JurisdictionBoundaries disabled={true} />
-            
+
             {currentLocation && (
                 <>
                     <Marker 
