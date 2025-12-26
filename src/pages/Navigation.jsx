@@ -965,15 +965,7 @@ onCallClick={(call) => {
                     </Button>
                 )}
 
-                {currentUser?.role === 'admin' && (
-                    <Button
-                        onClick={() => window.location.href = '/admin'}
-                        size="icon"
-                        className="h-10 w-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-                    >
-                        <Shield className="w-5 h-5" />
-                    </Button>
-                )}
+
 
                 {(currentUser?.role === 'admin' || currentUser?.dispatch_role) && (
                     <Button
