@@ -294,7 +294,7 @@ export default function Navigation() {
             { 
                 enableHighAccuracy: true, 
                 maximumAge: 0,
-                timeout: 5000
+                timeout: 10000
             }
         );
     };
@@ -317,10 +317,7 @@ export default function Navigation() {
     };
 
     const updateUserLocation = async () => {
-        if (!currentUser || !currentLocation) {
-            console.log('⚠️ Cannot update location - missing user or location');
-            return;
-        }
+        if (!currentUser || !currentLocation) return;
         
         try {
             const updateData = {
@@ -328,15 +325,14 @@ export default function Navigation() {
                 longitude: currentLocation[1],
                 heading: heading || 0,
                 speed: speed || 0,
-                status: unitStatus || 'Available',
-                show_lights: showLights || false,
-                current_call_info: activeCallInfo || null,
+                status: unitStatus,
+                show_lights: showLights,
+                current_call_info: activeCallInfo,
                 last_updated: new Date().toISOString()
             };
             
-            console.log('📍 Updating location for', currentUser.email, updateData);
+            console.log('📍 Updating location:', updateData);
             await base44.auth.updateMe(updateData);
-            console.log('✅ Location updated successfully');
             
             // Load initial status from user if available
             if (currentUser.status && !unitStatus) {
@@ -346,30 +342,52 @@ export default function Navigation() {
                 setActiveCallInfo(currentUser.current_call_info);
             }
         } catch (error) {
-            console.error('❌ Error updating user location:', error);
+            console.error('Error updating user location:', error);
         }
     };
 
     const fetchOtherUnits = async () => {
+        if (!currentUser) {
+            console.log('⏳ No current user yet, skipping fetch');
+            return;
+        }
+        
         try {
             const users = await base44.asServiceRole.entities.User.list('-last_updated', 200);
-            console.log('📡 Fetched all users:', users.length, users.map(u => ({name: u.full_name, lat: u.latitude, lng: u.longitude, status: u.status})));
+            console.log('📡 FETCHED USERS:', users.length);
+            console.table(users.map(u => ({
+                name: u.full_name || u.email,
+                unit: u.unit_number,
+                lat: u.latitude,
+                lng: u.longitude,
+                status: u.status,
+                id: u.id,
+                currentUserId: currentUser.id,
+                isCurrent: u.id === currentUser.id
+            })));
             
-            // Show ALL users with valid location data
+            // Show ALL users with valid location data EXCEPT current user
             const activeUsers = users.filter(user => {
+                if (user.id === currentUser.id) {
+                    console.log('🚫 Filtering out current user:', user.full_name);
+                    return false;
+                }
+                
                 const hasLocation = user.latitude && user.longitude && 
                                   !isNaN(user.latitude) && !isNaN(user.longitude) &&
                                   user.latitude !== 0 && user.longitude !== 0;
-                const isNotCurrentUser = !currentUser || user.id !== currentUser.id;
                 
-                console.log(`User: ${user.full_name || user.email} - Has Location: ${hasLocation}, Status: ${user.status || 'Unknown'}, ID: ${user.id}`);
+                if (hasLocation) {
+                    console.log('✅ SHOWING USER:', user.full_name, user.unit_number, user.status);
+                }
                 
-                return hasLocation && isNotCurrentUser;
+                return hasLocation;
             });
-            console.log('👥 Active units to display:', activeUsers.length, activeUsers.map(u => u.full_name || u.email));
+            
+            console.log('🗺️ FINAL UNITS TO DISPLAY:', activeUsers.length);
             setOtherUnits(activeUsers);
         } catch (error) {
-            console.error('Error fetching other units:', error);
+            console.error('❌ Error fetching other units:', error);
         }
     };
 
