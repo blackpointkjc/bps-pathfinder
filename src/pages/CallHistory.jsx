@@ -38,10 +38,21 @@ export default function CallHistory() {
     const loadHistory = async () => {
         try {
             const history = await base44.entities.CallHistory.list('-archived_date', 500);
+            console.log(`Loaded ${history?.length || 0} historical calls`);
             setCalls(history || []);
+            
+            if (!history || history.length === 0) {
+                console.log('No call history found. This is normal if no calls have been archived yet.');
+            }
         } catch (error) {
             console.error('Error loading call history:', error);
-            toast.error('Failed to load call history');
+            
+            // Don't show error if the entity just doesn't have data yet
+            if (error.message?.includes('not found') || error.message?.includes('does not exist')) {
+                console.log('CallHistory entity exists but has no records yet');
+            } else {
+                toast.error('Failed to load call history');
+            }
         } finally {
             setLoading(false);
         }

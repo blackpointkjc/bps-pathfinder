@@ -9,14 +9,24 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        console.log('Fetching ALL calls from gractivecalls.com...');
+        console.log('🔍 Fetching ALL calls from gractivecalls.com...');
         
         const response = await fetch('https://gractivecalls.com/', {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
         });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const html = await response.text();
+        console.log(`📄 Fetched HTML (${html.length} chars)`);
+        
+        if (html.length < 100) {
+            throw new Error('Website returned empty or invalid response');
+        }
         
         const calls = [];
         
@@ -61,6 +71,17 @@ Deno.serve(async (req) => {
         }
         
         console.log(`✅ Scraped ${calls.length} total calls from gractivecalls.com`);
+        
+        if (calls.length === 0) {
+            console.warn('⚠️ No calls found in HTML table. Check if website structure changed.');
+            return Response.json({
+                success: false,
+                error: 'No calls found on website',
+                totalCalls: 0,
+                geocodedCalls: [],
+                timestamp: new Date().toISOString()
+            });
+        }
         
         // Geocode all calls
         const geocodedCalls = [];
@@ -110,12 +131,16 @@ Deno.serve(async (req) => {
                 }
                 
                 if (geoData && geoData.length > 0) {
+                    const lat = parseFloat(geoData[0].lat);
+                    const lon = parseFloat(geoData[0].lon);
+                    console.log(`✓ ${call.location} → ${lat}, ${lon}`);
                     geocodedCalls.push({
                         ...call,
-                        latitude: parseFloat(geoData[0].lat),
-                        longitude: parseFloat(geoData[0].lon)
+                        latitude: lat,
+                        longitude: lon
                     });
                 } else {
+                    console.log(`✗ No geocode for ${call.location}`);
                     // Include call even without coordinates
                     geocodedCalls.push({
                         ...call,

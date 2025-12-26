@@ -744,29 +744,32 @@ export default function Navigation() {
         
         setIsLoadingCalls(true);
         try {
-            console.log('Fetching ALL active calls from gractivecalls.com...');
+            console.log('🔄 Fetching ALL active calls from gractivecalls.com...');
             
             const response = await base44.functions.invoke('fetchAllActiveCalls', {});
+            
+            console.log('📦 Response:', response.data);
             
             if (response.data.success) {
                 const allCalls = response.data.geocodedCalls.filter(call => call.latitude && call.longitude);
                 
-                console.log(`✅ Loaded ${allCalls.length} active calls from all agencies`);
+                console.log(`✅ Loaded ${allCalls.length} geocoded calls (${response.data.totalCalls} total)`);
                 
                 setAllActiveCalls(allCalls);
                 applyCallFilter(allCalls, callFilter);
                 
                 if (allCalls.length > 0) {
-                    toast.success(`Loaded ${allCalls.length} active calls from all agencies`);
+                    toast.success(`Loaded ${allCalls.length} active calls`);
                 } else {
-                    toast.info('No active calls at this time');
+                    toast.warning(`Found ${response.data.totalCalls} calls but none could be geocoded`);
                 }
             } else {
-                toast.error('Failed to load active calls');
+                console.error('❌ Failed to fetch calls:', response.data.error);
+                toast.error(response.data.error || 'Failed to load active calls');
             }
         } catch (error) {
-            console.error('Error fetching active calls:', error);
-            toast.error('Failed to load active calls');
+            console.error('❌ Error fetching active calls:', error);
+            toast.error(`Error: ${error.message}`);
         } finally {
             setIsLoadingCalls(false);
         }
