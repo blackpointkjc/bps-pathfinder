@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
                     const [timeReceived, incident, location, agency, status] = cells;
                     
                     // Include all calls
+                    // Include ALL calls without any filtering
                     if (timeReceived && incident && location) {
                         calls.push({
                             timeReceived,

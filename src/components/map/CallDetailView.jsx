@@ -21,7 +21,7 @@ const getStatusColor = (status) => {
     return 'bg-yellow-500';
 };
 
-export default function CallDetailView({ call, onClose, onEnroute, currentUnitId }) {
+export default function CallDetailView({ call, onClose, onEnroute }) {
     return (
         <AnimatePresence>
             <motion.div
@@ -106,11 +106,10 @@ export default function CallDetailView({ call, onClose, onEnroute, currentUnitId
                             <div className="pt-4 border-t border-gray-200 flex gap-3">
                                 <Button
                                     onClick={onEnroute}
-                                    disabled={!currentUnitId}
                                     className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-6 text-base"
                                 >
                                     <NavigationIcon className="w-5 h-5 mr-2" />
-                                    Respond to Call
+                                    Navigate to Call
                                 </Button>
                                 <Button
                                     onClick={onClose}
@@ -120,12 +119,6 @@ export default function CallDetailView({ call, onClose, onEnroute, currentUnitId
                                     Close
                                 </Button>
                             </div>
-
-                            {!currentUnitId && (
-                                <p className="text-sm text-amber-600 text-center">
-                                    Please set your unit name in settings to respond to calls
-                                </p>
-                            )}
                         </div>
                     </Card>
                 </motion.div>

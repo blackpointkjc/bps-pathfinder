@@ -654,42 +654,40 @@ export default function Navigation() {
     };
 
     const handleEnrouteToCall = async (call) => {
-        if (!currentUnitId) {
-            toast.error('Please set your unit name first');
-            setShowUnitSettings(true);
-            return;
-        }
-
         const callInfo = `${call.incident} - ${call.location}`;
-        setActiveCallInfo(callInfo);
-        setUnitStatus('Enroute');
         
-        try {
-            await base44.entities.Unit.update(currentUnitId, {
-                status: 'Enroute',
-                current_call_id: `${call.timeReceived}-${call.incident}`,
-                current_call_info: callInfo,
-                last_updated: new Date().toISOString()
-            });
+        // Update unit status if unit is set up
+        if (currentUnitId) {
+            setActiveCallInfo(callInfo);
+            setUnitStatus('Enroute');
             
-            toast.success(`Enroute to ${call.incident}`);
-            
-            // Automatically route to call
-            const callCoords = [call.latitude, call.longitude];
-            setDestination({ coords: callCoords, name: call.location });
-            setDestinationName(call.incident);
-            
-            if (currentLocation) {
-                const fetchedRoutes = await fetchRoutes(currentLocation, callCoords);
-                if (fetchedRoutes && fetchedRoutes.length > 0) {
-                    setRoutes(fetchedRoutes);
-                    setSelectedRouteIndex(0);
-                    updateRouteDisplay(fetchedRoutes[0]);
-                }
+            try {
+                await base44.entities.Unit.update(currentUnitId, {
+                    status: 'Enroute',
+                    current_call_id: `${call.timeReceived}-${call.incident}`,
+                    current_call_info: callInfo,
+                    last_updated: new Date().toISOString()
+                });
+                toast.success(`Enroute to ${call.incident}`);
+            } catch (error) {
+                console.error('Error updating unit status:', error);
             }
-        } catch (error) {
-            console.error('Error marking enroute:', error);
-            toast.error('Failed to update status');
+        } else {
+            toast.info(`Navigating to ${call.incident}`);
+        }
+        
+        // Automatically route to call
+        const callCoords = [call.latitude, call.longitude];
+        setDestination({ coords: callCoords, name: call.location });
+        setDestinationName(call.incident);
+        
+        if (currentLocation) {
+            const fetchedRoutes = await fetchRoutes(currentLocation, callCoords);
+            if (fetchedRoutes && fetchedRoutes.length > 0) {
+                setRoutes(fetchedRoutes);
+                setSelectedRouteIndex(0);
+                updateRouteDisplay(fetchedRoutes[0]);
+            }
         }
     };
 
@@ -913,12 +911,12 @@ onCallClick={(call) => {
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute top-20 right-4 z-[999] flex flex-col gap-2"
+                className="absolute top-4 right-4 z-[999] flex flex-col gap-2"
             >
                 <Button
                     onClick={() => setShowOfflineManager(true)}
                     size="icon"
-                    className="h-12 w-12 rounded-2xl bg-white/98 backdrop-blur-2xl shadow-xl border border-gray-200/50 hover:bg-white text-[#007AFF] hover:scale-105 transition-transform"
+                    className="h-10 w-10 rounded-2xl bg-white/98 backdrop-blur-2xl shadow-xl border border-gray-200/50 hover:bg-white text-[#007AFF]"
                 >
                     <MapIcon className="w-5 h-5" />
                 </Button>
@@ -951,7 +949,17 @@ onCallClick={(call) => {
                     </Button>
                 )}
 
-{(currentUser?.role === 'admin' || currentUser?.dispatch_role) && (
+                {currentUser?.role === 'admin' && (
+                    <Button
+                        onClick={() => window.location.href = '/admin'}
+                        size="icon"
+                        className="h-10 w-10 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                    >
+                        <Shield className="w-5 h-5" />
+                    </Button>
+                )}
+
+                {(currentUser?.role === 'admin' || currentUser?.dispatch_role) && (
                     <Button
                         onClick={() => window.location.href = '/dispatch'}
                         size="icon"
@@ -985,8 +993,6 @@ onCallClick={(call) => {
                 >
                     <Volume2 className="w-5 h-5" />
                 </Button>
-
-
             </motion.div>
             
             {/* Active Calls Counter */}
@@ -1156,7 +1162,6 @@ onCallClick={(call) => {
                         handleEnrouteToCall(selectedCall);
                         setShowCallDetail(false);
                     }}
-                    currentUnitId={currentUnitId}
                 />
             )}
 
