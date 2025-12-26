@@ -129,17 +129,19 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
         // Don't auto-center if user is manually panning
         if (userInteractingRef.current) return;
         
-        if (routeBounds) {
+        if (routeBounds && !isNavigating) {
+            // Only fit bounds when first showing route, not during navigation
             map.fitBounds(routeBounds, { padding: [50, 50] });
         } else if (center && (!prevCenterRef.current || 
-            Math.abs(center[0] - prevCenterRef.current[0]) > 0.0001 || 
-            Math.abs(center[1] - prevCenterRef.current[1]) > 0.0001)) {
+            Math.abs(center[0] - prevCenterRef.current[0]) > 0.00005 || 
+            Math.abs(center[1] - prevCenterRef.current[1]) > 0.00005)) {
             
-            // When navigating, keep map centered and rotated with heading
+            // When navigating, keep map zoomed in and centered on user
             if (isNavigating) {
-                map.setView(center, 18, { animate: true, duration: 0.5 });
+                map.setView(center, 18, { animate: true, duration: 0.3 });
             } else {
-                map.setView(center, map.getZoom(), { animate: true, duration: 0.3 });
+                // Don't auto-zoom when not navigating, just pan to follow user
+                map.panTo(center, { animate: true, duration: 0.3 });
             }
             prevCenterRef.current = center;
         }
@@ -149,19 +151,23 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
 }
 
 export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating }) {
-    const defaultCenter = currentLocation || [37.7749, -122.4194]; // Default to SF
+    const defaultCenter = currentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
     
     // Calculate route bounds if route exists
     const routeBounds = route && route.length > 0 
         ? L.latLngBounds(route.map(coord => [coord[0], coord[1]]))
         : null;
+    
+    console.log('🗺️ MapView rendering - Other units:', otherUnits?.length || 0, otherUnits);
 
     return (
         <MapContainer
             center={defaultCenter}
-            zoom={13}
+            zoom={isNavigating ? 18 : 13}
             className="h-full w-full"
             zoomControl={false}
+            minZoom={10}
+            maxZoom={19}
         >
             <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

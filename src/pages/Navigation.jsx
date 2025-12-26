@@ -179,12 +179,15 @@ export default function Navigation() {
         }
     }, [currentUser, currentLocation]);
 
-    // Fetch other units on mount and then every 5 seconds
+    // Fetch other units on mount and then every 3 seconds
     useEffect(() => {
-        fetchOtherUnits();
-        const interval = setInterval(fetchOtherUnits, 5000);
-        return () => clearInterval(interval);
-    }, []);
+        if (currentUser) {
+            console.log('🔄 Starting other units polling...');
+            fetchOtherUnits();
+            const interval = setInterval(fetchOtherUnits, 3000);
+            return () => clearInterval(interval);
+        }
+    }, [currentUser]);
 
     // Check for better routes periodically when navigating
     useEffect(() => {
@@ -241,17 +244,17 @@ export default function Navigation() {
                 const coords = [position.coords.latitude, position.coords.longitude];
                 setCurrentLocation(coords);
 
-                // Update heading - prefer device heading, then calculate from movement
+                // Update heading - prefer device heading, calculate from movement only when moving
                 if (position.coords.heading !== null && position.coords.heading !== undefined && position.coords.heading >= 0) {
-                    setHeading(Math.round(position.coords.heading));
-                } else if (lastPosition.current && position.coords.speed && position.coords.speed > 0.5) {
-                    // Only calculate heading if moving (speed > 0.5 m/s)
-                    const calculatedHeading = calculateHeading(
-                        lastPosition.current,
-                        coords
-                    );
+                    const deviceHeading = Math.round(position.coords.heading);
+                    setHeading(deviceHeading);
+                    console.log('📍 Device heading:', deviceHeading);
+                } else if (lastPosition.current && position.coords.speed && position.coords.speed > 1) {
+                    // Only calculate heading if moving faster than 1 m/s (2.2 mph)
+                    const calculatedHeading = calculateHeading(lastPosition.current, coords);
                     if (calculatedHeading !== null && !isNaN(calculatedHeading)) {
                         setHeading(calculatedHeading);
+                        console.log('🧭 Calculated heading:', calculatedHeading);
                     }
                 }
 
@@ -263,15 +266,15 @@ export default function Navigation() {
                 }
                 setAccuracy(position.coords.accuracy);
 
-                // Add to location history (keep last 50 points)
+                // Add to location history (keep last 30 points)
                 setLocationHistory(prev => {
                     const newHistory = [...prev, coords];
-                    return newHistory.slice(-50);
+                    return newHistory.slice(-30);
                 });
 
                 lastPosition.current = coords;
 
-                // Update user location in database
+                // Update user location in database every update
                 if (currentUser) {
                     updateUserLocation();
                 }
@@ -345,19 +348,21 @@ export default function Navigation() {
 
     const fetchOtherUnits = async () => {
         try {
-            const users = await base44.asServiceRole.entities.User.list('-last_updated', 100);
-            console.log('📡 Fetched all users:', users.length);
+            const users = await base44.asServiceRole.entities.User.list('-last_updated', 200);
+            console.log('📡 Fetched all users:', users.length, users.map(u => ({name: u.full_name, lat: u.latitude, lng: u.longitude, status: u.status})));
             
-            // Show ALL users with location data, regardless of update time
+            // Show ALL users with valid location data
             const activeUsers = users.filter(user => {
-                const hasLocation = user.latitude && user.longitude;
+                const hasLocation = user.latitude && user.longitude && 
+                                  !isNaN(user.latitude) && !isNaN(user.longitude) &&
+                                  user.latitude !== 0 && user.longitude !== 0;
                 const isNotCurrentUser = !currentUser || user.id !== currentUser.id;
-                if (hasLocation) {
-                    console.log('✅ User has location:', user.full_name, user.status || 'No status');
-                }
+                
+                console.log(`User: ${user.full_name || user.email} - Has Location: ${hasLocation}, Status: ${user.status || 'Unknown'}, ID: ${user.id}`);
+                
                 return hasLocation && isNotCurrentUser;
             });
-            console.log('👥 Units to display on map:', activeUsers.length);
+            console.log('👥 Active units to display:', activeUsers.length, activeUsers.map(u => u.full_name || u.email));
             setOtherUnits(activeUsers);
         } catch (error) {
             console.error('Error fetching other units:', error);

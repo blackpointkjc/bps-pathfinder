@@ -55,10 +55,16 @@ const getStatusColor = (status) => {
 };
 
 export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
-    if (!units || units.length === 0) return null;
+    console.log('🚓 OtherUnitsLayer - Units received:', units?.length || 0, units);
+    
+    if (!units || units.length === 0) {
+        console.log('❌ No units to display');
+        return null;
+    }
     
     // Filter out current user's unit
     const otherUnits = units.filter(unit => unit.id !== currentUserId);
+    console.log('✅ Other units to render:', otherUnits.length, otherUnits.map(u => ({name: u.full_name, status: u.status})));
     
     return (
         <>
