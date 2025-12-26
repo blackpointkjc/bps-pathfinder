@@ -73,10 +73,10 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                     <Car className="w-4 h-4 text-blue-600" />
                                     <div>
                                         <p className="font-bold text-base text-blue-600">
-                                            {unit.unit_number || unit.full_name?.split(' ').pop() || 'Unknown'}
+                                            Unit {unit.unit_number || 'Unknown'}
                                         </p>
                                         <p className="text-xs text-gray-600">
-                                            {unit.full_name?.split(' ').pop()}
+                                            {unit.full_name?.split(' ').pop() || ''}
                                         </p>
                                     </div>
                                 </div>
@@ -85,14 +85,16 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                     <div className="flex items-center justify-between">
                                         <span className="text-gray-600">Status:</span>
                                         <Badge className={getStatusColor(unit.status)}>
-                                            {unit.status}
+                                            {unit.status || 'Unknown'}
                                         </Badge>
                                     </div>
                                     
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-gray-600">Speed:</span>
-                                        <span className="font-semibold">{Math.round(unit.speed || 0)} mph</span>
-                                    </div>
+                                    {unit.speed !== undefined && unit.speed !== null && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-gray-600">Speed:</span>
+                                            <span className="font-semibold">{Math.round(unit.speed)} mph</span>
+                                        </div>
+                                    )}
                                     
                                     {unit.current_call_info && (
                                         <div className="pt-1 border-t">
