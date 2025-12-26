@@ -715,6 +715,8 @@ export default function Navigation() {
     };
 
     const applyCallFilter = (calls, filter) => {
+        console.log(`🔍 Applying filter: ${filter} to ${calls.length} calls`);
+        
         let filtered = calls;
         
         if (filter === 'richmond') {
@@ -726,6 +728,7 @@ export default function Navigation() {
         }
         // else filter === 'all', show all calls without filtering
         
+        console.log(`✅ Filter result: ${filtered.length} calls`);
         setActiveCalls(filtered);
     };
 
