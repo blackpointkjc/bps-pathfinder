@@ -966,14 +966,19 @@ export default function Navigation() {
                 
                 <Button
                     onClick={() => {
-                        setShowActiveCalls(!showActiveCalls);
-                        toast.success(showActiveCalls ? 'Active calls hidden' : 'Active calls visible');
+                        const newState = !showActiveCalls;
+                        setShowActiveCalls(newState);
+                        if (newState && activeCalls.length === 0) {
+                            fetchActiveCalls();
+                        }
+                        toast.success(newState ? 'Active calls visible' : 'Active calls hidden');
                     }}
                     size="sm"
-                    className={`${showActiveCalls ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-400 hover:bg-gray-500'} text-white text-xs px-3 py-2 rounded-xl shadow-lg flex items-center gap-2`}
+                    className={`${showActiveCalls ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-400 hover:bg-gray-500'} text-white text-[10px] md:text-xs px-2 md:px-3 py-1.5 md:py-2 rounded-lg md:rounded-xl shadow-lg flex items-center gap-1.5 md:gap-2`}
                 >
-                    <Radio className="w-4 h-4" />
-                    {showActiveCalls ? 'Calls ON' : 'Calls OFF'}
+                    <Radio className="w-3.5 md:w-4 h-3.5 md:h-4" />
+                    <span className="hidden md:inline">{showActiveCalls ? 'Calls ON' : 'Calls OFF'}</span>
+                    <span className="md:hidden">{showActiveCalls ? 'ON' : 'OFF'}</span>
                 </Button>
 
                 <Button
