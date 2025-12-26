@@ -3,23 +3,40 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { X, Car, Radio, CheckCircle, AlertCircle, Clock, XCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { CheckCircle2, Navigation, MapPin, Clock, XCircle, X, Car, Home, Coffee, BookOpen, Heart } from 'lucide-react';
 
-
-const statusOptions = [
-    { value: 'Available', icon: CheckCircle, color: 'bg-gray-100 text-gray-700', iconColor: 'text-gray-600' },
-    { value: 'Enroute', icon: Radio, color: 'bg-red-100 text-red-700', iconColor: 'text-red-600' },
-    { value: 'On Scene', icon: AlertCircle, color: 'bg-green-100 text-green-700', iconColor: 'text-green-600' },
-    { value: 'Busy', icon: Clock, color: 'bg-orange-100 text-orange-700', iconColor: 'text-orange-600' },
-    { value: 'Out of Service', icon: XCircle, color: 'bg-gray-100 text-gray-500', iconColor: 'text-gray-400' }
+const STATUS_OPTIONS = [
+    { value: 'Available', icon: CheckCircle2, color: 'text-green-600 bg-green-100' },
+    { value: 'Enroute', icon: Navigation, color: 'text-red-600 bg-red-100' },
+    { value: 'On Scene', icon: MapPin, color: 'text-blue-600 bg-blue-100' },
+    { value: 'On Patrol', icon: Car, color: 'text-indigo-600 bg-indigo-100' },
+    { value: 'At Station', icon: Home, color: 'text-purple-600 bg-purple-100' },
+    { value: 'In Quarters', icon: Coffee, color: 'text-cyan-600 bg-cyan-100' },
+    { value: 'Training', icon: BookOpen, color: 'text-orange-600 bg-orange-100' },
+    { value: 'Busy', icon: Clock, color: 'text-yellow-600 bg-yellow-100' },
+    { value: 'Medical Leave', icon: Heart, color: 'text-pink-600 bg-pink-100' },
+    { value: 'Out of Service', icon: XCircle, color: 'text-gray-600 bg-gray-100', needsETA: true }
 ];
 
 export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitName, onStatusChange, activeCall }) {
-    const currentOption = statusOptions.find(opt => opt.value === currentStatus) || statusOptions[0];
-    const StatusIcon = currentOption.icon;
-
+    const [selectedStatus, setSelectedStatus] = useState(currentStatus);
+    const [estimatedReturn, setEstimatedReturn] = useState('');
+    
+    if (!isOpen) return null;
+    
     const handleStatusClick = (status) => {
-        onStatusChange(status);
+        setSelectedStatus(status);
+        if (status !== 'Out of Service') {
+            onStatusChange(status);
+            onClose();
+        }
+    };
+    
+    const handleConfirmOutOfService = () => {
+        onStatusChange(selectedStatus, estimatedReturn);
         onClose();
     };
 
@@ -57,17 +74,9 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                                    <StatusIcon className={`w-5 h-5 ${currentOption.iconColor}`} />
-                                    <div>
-                                        <p className="text-sm text-gray-600">Current Status</p>
-                                        <Badge className={currentOption.color}>{currentStatus}</Badge>
-                                    </div>
-                                </div>
-
                                 {activeCall && (
                                     <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                                        <Radio className="w-5 h-5 text-red-600 mt-0.5" />
+                                        <Navigation className="w-5 h-5 text-red-600 mt-0.5" />
                                         <div>
                                             <p className="text-sm text-gray-600">Active Call</p>
                                             <p className="text-sm font-semibold text-gray-900">{activeCall}</p>
@@ -77,27 +86,57 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
 
                                 <div>
                                     <label className="text-sm font-medium text-gray-700 mb-3 block">
-                                        Quick Status Change
+                                        Change Status
                                     </label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {statusOptions.map((option) => {
-                                            const Icon = option.icon;
-                                            const isActive = option.value === currentStatus;
-                                            return (
+                                    <ScrollArea className="max-h-[400px]">
+                                        <div className="grid grid-cols-2 gap-3 p-1">
+                                            {STATUS_OPTIONS.map((status) => {
+                                                const Icon = status.icon;
+                                                const isActive = selectedStatus === status.value;
+                                                
+                                                return (
+                                                    <motion.button
+                                                        key={status.value}
+                                                        whileHover={{ scale: 1.02 }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                        onClick={() => handleStatusClick(status.value)}
+                                                        className={`p-4 rounded-xl border-2 transition-all ${
+                                                            isActive 
+                                                                ? 'border-blue-500 bg-blue-50' 
+                                                                : 'border-gray-200 hover:border-gray-300'
+                                                        }`}
+                                                    >
+                                                        <div className={`w-12 h-12 rounded-full ${status.color} mx-auto mb-2 flex items-center justify-center`}>
+                                                            <Icon className="w-6 h-6" />
+                                                        </div>
+                                                        <p className="text-sm font-semibold text-gray-900">{status.value}</p>
+                                                    </motion.button>
+                                                );
+                                            })}
+                                        </div>
+                                        
+                                        {selectedStatus === 'Out of Service' && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="mt-4 p-4 bg-gray-50 rounded-xl"
+                                            >
+                                                <Label className="text-sm font-semibold mb-2">Estimated Return Time</Label>
+                                                <Input
+                                                    type="datetime-local"
+                                                    value={estimatedReturn}
+                                                    onChange={(e) => setEstimatedReturn(e.target.value)}
+                                                    className="mb-3"
+                                                />
                                                 <Button
-                                                    key={option.value}
-                                                    onClick={() => handleStatusClick(option.value)}
-                                                    variant={isActive ? "default" : "outline"}
-                                                    className={`h-auto py-3 flex flex-col items-center gap-2 ${
-                                                        isActive ? 'bg-blue-600 hover:bg-blue-700' : ''
-                                                    }`}
+                                                    onClick={handleConfirmOutOfService}
+                                                    className="w-full bg-gray-600 hover:bg-gray-700"
                                                 >
-                                                    <Icon className={`w-5 h-5 ${isActive ? 'text-white' : option.iconColor}`} />
-                                                    <span className="text-xs">{option.value}</span>
+                                                    Confirm Out of Service
                                                 </Button>
-                                            );
-                                        })}
-                                    </div>
+                                            </motion.div>
+                                        )}
+                                    </ScrollArea>
                                 </div>
 
                                 <Button variant="outline" onClick={onClose} className="w-full mt-2">
