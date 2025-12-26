@@ -5,7 +5,6 @@ import L from 'leaflet';
 import TrafficLayer from './TrafficLayer';
 import ActiveCallMarkers from './ActiveCallMarkers';
 import OtherUnitsLayer from './OtherUnitsLayer';
-import CityBoundaries from './CityBoundaries';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -216,9 +215,6 @@ export default function MapView({ currentLocation, destination, route, trafficSe
                     }}
                 />
             ) : null}
-            
-            {/* City Boundaries */}
-            <CityBoundaries />
 
             {/* Active Emergency Calls */}
             <ActiveCallMarkers calls={activeCalls} onCallClick={onCallClick} />
