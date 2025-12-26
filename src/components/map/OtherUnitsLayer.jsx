@@ -54,7 +54,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     if (!units || units.length === 0) return null;
     
     // Filter out current user's unit
-    const otherUnits = units.filter(unit => unit.user_id !== currentUserId);
+    const otherUnits = units.filter(unit => unit.id !== currentUserId);
     
     return (
         <>
