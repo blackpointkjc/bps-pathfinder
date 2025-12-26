@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import TrafficLayer from './TrafficLayer';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -65,7 +66,7 @@ function MapController({ center, routeBounds }) {
     return null;
 }
 
-export default function MapView({ currentLocation, destination, route }) {
+export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles }) {
     const defaultCenter = currentLocation || [37.7749, -122.4194]; // Default to SF
     
     // Calculate route bounds if route exists
@@ -82,7 +83,10 @@ export default function MapView({ currentLocation, destination, route }) {
         >
             <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                url={useOfflineTiles 
+                    ? '' 
+                    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                }
             />
             
             <MapController 
@@ -106,7 +110,9 @@ export default function MapView({ currentLocation, destination, route }) {
                 </Marker>
             )}
             
-            {route && route.length > 0 && (
+            {trafficSegments && trafficSegments.length > 0 ? (
+                <TrafficLayer trafficSegments={trafficSegments} />
+            ) : route && route.length > 0 ? (
                 <Polyline
                     positions={route}
                     pathOptions={{
@@ -117,7 +123,7 @@ export default function MapView({ currentLocation, destination, route }) {
                         lineJoin: 'round'
                     }}
                 />
-            )}
+            ) : null}
         </MapContainer>
     );
 }
