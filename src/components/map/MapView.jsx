@@ -5,6 +5,7 @@ import L from 'leaflet';
 import TrafficLayer from './TrafficLayer';
 import ActiveCallMarkers from './ActiveCallMarkers';
 import JurisdictionBoundaries from './JurisdictionBoundaries';
+import OtherUnitsLayer from './OtherUnitsLayer';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -108,7 +109,7 @@ function MapController({ center, routeBounds }) {
     return null;
 }
 
-export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, onCallClick }) {
+export default function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick }) {
     const defaultCenter = currentLocation || [37.7749, -122.4194]; // Default to SF
     
     // Calculate route bounds if route exists
@@ -204,6 +205,9 @@ export default function MapView({ currentLocation, destination, route, trafficSe
             
             {/* Active Emergency Calls */}
             <ActiveCallMarkers calls={activeCalls} onCallClick={onCallClick} />
+            
+            {/* Other Units */}
+            <OtherUnitsLayer units={otherUnits} currentUserId={currentUserId} />
         </MapContainer>
     );
 }
