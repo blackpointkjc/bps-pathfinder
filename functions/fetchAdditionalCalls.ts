@@ -45,14 +45,14 @@ Deno.serve(async (req) => {
                 if (cells.length >= 3) {
                     const [timeReceived, incident, location, agency, status] = cells;
                     
-                    // Include ALL calls - no agency filtering
-                    if (incident && location) {
+                    // Include ALL calls - NO filtering whatsoever
+                    if (incident && incident.trim() && location && location.trim()) {
                         calls.push({
                             timeReceived: timeReceived || 'Unknown',
-                            incident,
-                            location,
-                            agency: agency || 'Unknown',
-                            status: status || 'Dispatched'
+                            incident: incident.trim(),
+                            location: location.trim(),
+                            agency: (agency && agency.trim()) || 'Unknown',
+                            status: (status && status.trim()) || 'Dispatched'
                         });
                     }
                 }
@@ -119,6 +119,12 @@ Deno.serve(async (req) => {
                     console.log('Geocoded:', call.location, '→', geoData[0].lat, geoData[0].lon);
                 } else {
                     console.log('No geocode results for:', query);
+                    // Still include the call even without coordinates
+                    geocodedCalls.push({
+                        ...call,
+                        latitude: null,
+                        longitude: null
+                    });
                 }
                 
                 // Rate limit: 1 request per second
