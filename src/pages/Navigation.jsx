@@ -467,20 +467,32 @@ export default function Navigation() {
                 `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`
             );
             const data = await response.json();
-            
+
+            console.log('🔍 Search results:', data);
+
             if (data && data.length > 0) {
                 const result = data[0];
                 const destCoords = [parseFloat(result.lat), parseFloat(result.lon)];
+                console.log('📍 Destination coords:', destCoords);
+
                 setDestination({ coords: destCoords, name: result.display_name });
                 setDestinationName(result.display_name.split(',')[0]);
-                
+
                 if (currentLocation) {
+                    console.log('🗺️ Fetching route from', currentLocation, 'to', destCoords);
                     const fetchedRoutes = await fetchRoutes(currentLocation, destCoords);
                     if (fetchedRoutes && fetchedRoutes.length > 0) {
+                        console.log('✅ Routes found:', fetchedRoutes.length);
                         setRoutes(fetchedRoutes);
                         setSelectedRouteIndex(0);
                         updateRouteDisplay(fetchedRoutes[0]);
+                    } else {
+                        console.error('❌ No routes returned');
+                        toast.error('Could not find route');
                     }
+                } else {
+                    console.warn('⚠️ No current location available');
+                    toast.error('Current location not available');
                 }
             } else {
                 toast.error('Location not found');
@@ -495,26 +507,36 @@ export default function Navigation() {
 
     const fetchRoutes = async (start, end) => {
         try {
+            if (!start || !end || start.length !== 2 || end.length !== 2) {
+                console.error('❌ Invalid coordinates:', { start, end });
+                return null;
+            }
+
             const mode = routePreferences.transportMode === 'cycling' ? 'bike' 
                 : routePreferences.transportMode === 'walking' ? 'foot' 
-                : 'driving';
-            
+                : 'driving-car';
+
             let url = `https://router.project-osrm.org/route/v1/${mode}/${start[1]},${start[0]};${end[1]},${end[0]}?alternatives=2&overview=full&geometries=geojson&steps=true`;
-            
-            // Note: OSRM has limited support for avoid options, but we include them in preferences for future API support
-            
+
+            console.log('🛣️ Fetching route:', url);
+
             const response = await fetch(url);
             const data = await response.json();
-            
-            if (data.code === 'Ok' && data.routes) {
+
+            console.log('📦 Route response:', data);
+
+            if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                console.log('✅ Found', data.routes.length, 'routes');
                 return data.routes.map((route, index) => ({
                     ...route,
-                    hasTraffic: Math.random() > 0.5 // Simulate traffic
+                    hasTraffic: Math.random() > 0.5
                 }));
+            } else {
+                console.error('❌ Route error:', data.message || data.code);
+                return null;
             }
-            return null;
         } catch (error) {
-            console.error('Routing error:', error);
+            console.error('❌ Routing error:', error);
             return null;
         }
     };
@@ -795,18 +817,21 @@ export default function Navigation() {
             
             const response = await base44.functions.invoke('fetchAllActiveCalls', {});
             
-            console.log('📦 Full Response:', JSON.stringify(response.data, null, 2));
+            console.log('📦 Full Response:', response.data);
             
             if (response.data && response.data.success) {
                 const allCalls = response.data.geocodedCalls || [];
                 
                 console.log(`✅ Loaded ${allCalls.length} calls (${response.data.totalCalls} total scraped)`);
-                console.log('📊 Sample call:', allCalls[0]);
-                console.log('📍 Calls with coordinates:', allCalls.filter(c => c.latitude && c.longitude).length);
+                if (allCalls.length > 0) {
+                    console.log('📊 Sample call:', allCalls[0]);
+                    console.log('📍 Calls with coordinates:', allCalls.filter(c => c.latitude && c.longitude).length);
+                }
                 
+                // Always set to true to show calls layer
+                setShowActiveCalls(true);
                 setAllActiveCalls(allCalls);
                 applyCallFilter(allCalls, callFilter);
-                setShowActiveCalls(true);
                 
                 if (allCalls.length > 0) {
                     toast.success(`Loaded ${allCalls.length} active calls`);

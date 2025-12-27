@@ -159,7 +159,12 @@ export default function MapView({ currentLocation, destination, route, trafficSe
         ? L.latLngBounds(route.map(coord => [coord[0], coord[1]]))
         : null;
     
-    console.log('🗺️ MapView rendering - Other units:', otherUnits?.length || 0, otherUnits);
+    console.log('🗺️ MapView rendering:');
+    console.log('  - Other units:', otherUnits?.length || 0);
+    console.log('  - Active calls:', activeCalls?.length || 0);
+    console.log('  - Current location:', currentLocation);
+    console.log('  - Destination:', destination);
+    console.log('  - Route:', route?.length || 0, 'points');
 
     return (
         <MapContainer
