@@ -164,8 +164,11 @@ Deno.serve(async (req) => {
                     jurisdiction = 'Richmond, VA, USA';
                 }
                 
-                // Clean address format (handle intersections like "N 19TH ST/E FRANKLIN ST")
+                // Clean address format (handle intersections, blocks, etc.)
                 let cleanedAddress = call.location.trim();
+                
+                // Remove "Block" text (e.g., "8800 Block THREE CHOPT RD" -> "8800 THREE CHOPT RD")
+                cleanedAddress = cleanedAddress.replace(/\s+Block\s+/gi, ' ');
                 
                 // Convert intersection format "STREET1/STREET2" to "STREET1 and STREET2"
                 if (cleanedAddress.includes('/')) {
