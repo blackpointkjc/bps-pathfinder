@@ -250,7 +250,9 @@ export default function MapView({ currentLocation, destination, route, trafficSe
             ) : null}
 
             {/* Active Emergency Calls */}
-            <ActiveCallMarkers calls={activeCalls} onCallClick={onCallClick} />
+            {activeCalls && activeCalls.length > 0 && (
+                <ActiveCallMarkers calls={activeCalls} onCallClick={onCallClick} />
+            )}
 
             {/* Other Units */}
             {otherUnits && otherUnits.length > 0 && (
