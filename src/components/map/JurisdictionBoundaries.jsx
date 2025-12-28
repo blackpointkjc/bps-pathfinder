@@ -126,12 +126,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
     };
 
     const onEachChesterfieldBoundaryFeature = (feature, layer) => {
-        layer.bindPopup(`
-            <div class="p-2">
-                <p class="font-bold text-green-600">Chesterfield County</p>
-                <p class="text-sm">County Boundary</p>
-            </div>
-        `);
+        // Don't bind popup to county boundary - let clicks go through to districts
     };
 
     const onEachHenricoFeature = (feature, layer) => {
