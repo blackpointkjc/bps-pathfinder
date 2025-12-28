@@ -17,7 +17,12 @@ import {
 export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterChange }) {
     const [searchAddress, setSearchAddress] = useState('');
 
-    const richmondBeats = ['1', '2', '3', '4', '5', '6', '7', '8'];
+    const richmondBeats = {
+        '1st Precinct': ['11', '12', '13', '14', '15'],
+        '2nd Precinct': ['21', '22', '23', '24', '25'],
+        '3rd Precinct': ['31', '32', '33', '34', '35'],
+        '4th Precinct': ['41', '42', '43', '44', '45']
+    };
     const henricoDistricts = ['Brookland', 'Fairfield', 'Three Chopt', 'Tuckahoe', 'Varina'];
     const baseMapTypes = [
         { value: 'street', label: 'Street Map' },
@@ -82,9 +87,17 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                         value={searchAddress}
                                         onChange={(e) => setSearchAddress(e.target.value)}
                                         onKeyPress={(e) => e.key === 'Enter' && handleAddressSearch()}
-                                        className="flex-1"
+                                        className="flex-1 pointer-events-auto"
                                     />
-                                    <Button onClick={handleAddressSearch} size="sm">
+                                    <Button 
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleAddressSearch();
+                                        }} 
+                                        size="sm"
+                                        className="pointer-events-auto"
+                                    >
                                         Search
                                     </Button>
                                 </div>
@@ -95,14 +108,16 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                 <Label className="text-sm font-semibold text-gray-700 mb-2">Base Map</Label>
                                 <Select
                                     value={filters.baseMapType}
-                                    onValueChange={(value) => onFilterChange({ ...filters, baseMapType: value })}
+                                    onValueChange={(value) => {
+                                        onFilterChange({ ...filters, baseMapType: value });
+                                    }}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="pointer-events-auto">
                                         <SelectValue placeholder="Select map type" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="pointer-events-auto z-[1200]">
                                         {baseMapTypes.map((type) => (
-                                            <SelectItem key={type.value} value={type.value}>
+                                            <SelectItem key={type.value} value={type.value} className="pointer-events-auto">
                                                 {type.label}
                                             </SelectItem>
                                         ))}
@@ -113,27 +128,41 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                             {/* Richmond Beats Filter */}
                             <div className="mb-6 p-4 bg-blue-50 rounded-xl">
                                 <Label className="text-sm font-semibold text-blue-700 mb-3">Richmond Police Beats</Label>
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                     <Button
                                         variant={filters.richmondBeat === 'all' ? 'default' : 'outline'}
                                         size="sm"
-                                        onClick={() => onFilterChange({ ...filters, richmondBeat: 'all' })}
-                                        className="w-full"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onFilterChange({ ...filters, richmondBeat: 'all' });
+                                        }}
+                                        className="w-full pointer-events-auto"
                                     >
                                         Show All Beats
                                     </Button>
-                                    <div className="grid grid-cols-4 gap-2">
-                                        {richmondBeats.map((beat) => (
-                                            <Button
-                                                key={beat}
-                                                variant={filters.richmondBeat === beat ? 'default' : 'outline'}
-                                                size="sm"
-                                                onClick={() => onFilterChange({ ...filters, richmondBeat: beat })}
-                                            >
-                                                {beat}
-                                            </Button>
-                                        ))}
-                                    </div>
+                                    {Object.entries(richmondBeats).map(([precinct, beats]) => (
+                                        <div key={precinct} className="space-y-2">
+                                            <p className="text-xs font-semibold text-blue-600">{precinct}</p>
+                                            <div className="grid grid-cols-5 gap-2">
+                                                {beats.map((beat) => (
+                                                    <Button
+                                                        key={beat}
+                                                        variant={filters.richmondBeat === beat ? 'default' : 'outline'}
+                                                        size="sm"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            onFilterChange({ ...filters, richmondBeat: beat });
+                                                        }}
+                                                        className="pointer-events-auto"
+                                                    >
+                                                        {beat}
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 
@@ -144,8 +173,12 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                     <Button
                                         variant={filters.henricoDistrict === 'all' ? 'default' : 'outline'}
                                         size="sm"
-                                        onClick={() => onFilterChange({ ...filters, henricoDistrict: 'all' })}
-                                        className="w-full"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onFilterChange({ ...filters, henricoDistrict: 'all' });
+                                        }}
+                                        className="w-full pointer-events-auto"
                                     >
                                         Show All Districts
                                     </Button>
@@ -155,8 +188,12 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                                 key={district}
                                                 variant={filters.henricoDistrict === district ? 'default' : 'outline'}
                                                 size="sm"
-                                                onClick={() => onFilterChange({ ...filters, henricoDistrict: district })}
-                                                className="w-full text-left justify-start"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    onFilterChange({ ...filters, henricoDistrict: district });
+                                                }}
+                                                className="w-full text-left justify-start pointer-events-auto"
                                             >
                                                 {district}
                                             </Button>
@@ -180,14 +217,18 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                             {/* Reset Filters */}
                             <Button
                                 variant="outline"
-                                onClick={() => onFilterChange({
-                                    richmondBeat: 'all',
-                                    henricoDistrict: 'all',
-                                    showChesterfield: true,
-                                    baseMapType: 'street',
-                                    searchAddress: ''
-                                })}
-                                className="w-full"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onFilterChange({
+                                        richmondBeat: 'all',
+                                        henricoDistrict: 'all',
+                                        showChesterfield: true,
+                                        baseMapType: 'street',
+                                        searchAddress: ''
+                                    });
+                                }}
+                                className="w-full pointer-events-auto"
                             >
                                 Reset All Filters
                             </Button>
