@@ -132,73 +132,7 @@ Deno.serve(async (req) => {
             console.error('❌ Error fetching from Henrico:', error);
         }
         
-        // Source 3: Chesterfield County Active Calls
-        try {
-            console.log('📡 Fetching from Chesterfield County...');
-            const response3 = await fetch('https://webapps.chesterfield.gov/activecalls/', {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                }
-            });
-            
-            if (response3.ok) {
-                const html = await response3.text();
-                const tableStart = html.indexOf('<table');
-                const tableEnd = html.indexOf('</table>', tableStart);
-                
-                if (tableStart !== -1 && tableEnd !== -1) {
-                    const tableHtml = html.substring(tableStart, tableEnd + 8);
-                    const rows = tableHtml.split(/<tr[^>]*>/i).slice(1);
-                    
-                    for (let i = 1; i < rows.length; i++) {
-                        const row = rows[i];
-                        if (!row.includes('<td')) continue;
-                        
-                        const cells = [];
-                        const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
-                        
-                        for (const match of cellMatches) {
-                            const text = match[1]
-                                .replace(/<[^>]+>/g, '')
-                                .replace(/&nbsp;/g, ' ')
-                                .trim();
-                            cells.push(text);
-                        }
-                        
-                        if (cells.length >= 2) {
-                            const timeReceived = cells[0] || 'Unknown';
-                            const incident = cells[1] || '';
-                            const location = cells[2] || '';
-                            const status = cells[3] || 'Dispatched';
-                            
-                            const isTimeValue = /^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(location?.trim());
-                            
-                            if (incident.trim() && location.trim() && !isTimeValue) {
-                                // Determine agency based on incident type
-                                let agency = 'CCPD';
-                                if (incident.toLowerCase().includes('fire') || 
-                                    incident.toLowerCase().includes('ems') || 
-                                    incident.toLowerCase().includes('medical')) {
-                                    agency = 'CCFD';
-                                }
-                                
-                                calls.push({
-                                    timeReceived,
-                                    incident: incident.trim(),
-                                    location: location.trim(),
-                                    agency: agency,
-                                    status: status.trim(),
-                                    source: 'chesterfield.gov'
-                                });
-                            }
-                        }
-                    }
-                }
-                console.log(`✅ Chesterfield: ${calls.filter(c => c.source === 'chesterfield.gov').length} calls`);
-            }
-        } catch (error) {
-            console.error('❌ Error fetching from Chesterfield:', error.message);
-        }
+        // Note: Chesterfield calls (CCPD, CCFD) are included in gractivecalls.com source above
         
         // Auto-archive old dispatch calls to history
         try {
