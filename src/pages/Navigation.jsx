@@ -1122,7 +1122,7 @@ export default function Navigation() {
                 )}
 
                 <Button
-                    onClick={() => window.location.href = '/call-history'}
+                    onClick={() => window.location.href = '/callhistory'}
                     size="icon"
                     className="h-10 w-10 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg"
                     title="Call History"
