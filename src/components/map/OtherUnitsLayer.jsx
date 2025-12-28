@@ -1,8 +1,9 @@
 import React from 'react';
-import { Marker, Popup, Polyline } from 'react-leaflet';
+import { Marker, Popup } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import { Badge } from '@/components/ui/badge';
-import { Car, Radio, Clock, MapPin } from 'lucide-react';
+import { Car, Radio, Clock } from 'lucide-react';
 
 // Create icons for other units based on status
 const createOtherUnitIcon = (status, heading, showLights, isSupervisor) => {
@@ -63,16 +64,49 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     if (!units || units.length === 0) return null;
     
     // Filter out current user and units with show_on_map = false
-    const otherUnits = units.filter(unit => unit.id !== currentUserId && unit.show_on_map !== false);
+    const otherUnits = units.filter(unit => {
+        if (unit.id === currentUserId) return false;
+        if (unit.show_on_map === false) return false;
+        return true;
+    });
+
+    if (otherUnits.length === 0) return null;
     
     return (
-        <>
+        <MarkerClusterGroup
+            chunkedLoading
+            maxClusterRadius={50}
+            spiderfyOnMaxZoom={true}
+            showCoverageOnHover={false}
+            zoomToBoundsOnClick={true}
+            iconCreateFunction={(cluster) => {
+                const count = cluster.getChildCount();
+                return L.divIcon({
+                    html: `<div style="
+                        background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+                        color: white;
+                        border-radius: 50%;
+                        width: 40px;
+                        height: 40px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: bold;
+                        font-size: 14px;
+                        border: 3px solid white;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                    ">${count}</div>`,
+                    className: 'custom-cluster-icon',
+                    iconSize: [40, 40]
+                });
+            }}
+        >
             {otherUnits.map((unit) => (
-                <React.Fragment key={unit.id}>
-                    <Marker
-                        position={[unit.latitude, unit.longitude]}
-                        icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor)}
-                    >
+                <Marker
+                    key={unit.id}
+                    position={[unit.latitude, unit.longitude]}
+                    icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor)}
+                >
                         <Popup>
                             <div className="p-3 min-w-[240px]">
                                 <div className="flex items-start gap-3 mb-3 pb-3 border-b">
@@ -123,9 +157,8 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                 </div>
                             </div>
                         </Popup>
-                    </Marker>
-                </React.Fragment>
-            ))}
-        </>
-    );
-}
+                        </Marker>
+                        ))}
+                        </MarkerClusterGroup>
+                        );
+                        }

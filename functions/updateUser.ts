@@ -16,50 +16,55 @@ Deno.serve(async (req) => {
         }
 
         console.log('Updating user:', userId, 'with:', updates);
-        
-        // Get all users to find the target
-        const allUsersResponse = await base44.asServiceRole.functions.invoke('fetchAllUsers', {});
-        const allUsers = allUsersResponse.data?.users || [];
-        const targetUser = allUsers.find(u => u.id === userId);
-        
-        if (!targetUser) {
-            return Response.json({ error: 'User not found' }, { status: 404 });
-        }
 
-        // Merge updates with existing user data
-        const updatedData = {
-            ...targetUser,
-            ...updates
-        };
-
-        // Update via direct database call (User is a special entity that stores in auth.users)
-        const supabaseUrl = Deno.env.get('SUPABASE_URL');
-        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        // Update user metadata directly using Base44 SDK
+        const updatePayload = {};
         
-        const response = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
-            method: 'PUT',
+        // Handle user metadata fields
+        if (updates.rank !== undefined) updatePayload.rank = updates.rank;
+        if (updates.last_name !== undefined) updatePayload.last_name = updates.last_name;
+        if (updates.unit_number !== undefined) updatePayload.unit_number = updates.unit_number;
+        if (updates.dispatch_role !== undefined) updatePayload.dispatch_role = updates.dispatch_role;
+        if (updates.is_supervisor !== undefined) updatePayload.is_supervisor = updates.is_supervisor;
+        if (updates.show_on_map !== undefined) updatePayload.show_on_map = updates.show_on_map;
+        if (updates.full_name !== undefined) updatePayload.full_name = updates.full_name;
+        
+        // Update the user using internal user update endpoint
+        const appId = Deno.env.get('BASE44_APP_ID');
+        const serviceToken = Deno.env.get('BASE44_SERVICE_ROLE_KEY');
+        
+        const response = await fetch(`https://api.base44.com/v1/apps/${appId}/users/${userId}`, {
+            method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${supabaseKey}`,
-                'apikey': supabaseKey
+                'Authorization': `Bearer ${serviceToken}`
             },
-            body: JSON.stringify({
-                user_metadata: {
-                    rank: updates.rank,
-                    last_name: updates.last_name,
-                    unit_number: updates.unit_number,
-                    dispatch_role: updates.dispatch_role,
-                    is_supervisor: updates.is_supervisor,
-                    show_on_map: updates.show_on_map
-                },
-                role: updates.role
-            })
+            body: JSON.stringify(updatePayload)
         });
 
         if (!response.ok) {
             const error = await response.text();
-            console.error('Update failed:', error);
-            return Response.json({ error: 'Failed to update user', details: error }, { status: response.status });
+            console.error('Update failed:', response.status, error);
+            return Response.json({ 
+                error: 'Failed to update user', 
+                details: error 
+            }, { status: response.status });
+        }
+
+        // Handle role update separately if needed
+        if (updates.role && updates.role !== user.role) {
+            const roleResponse = await fetch(`https://api.base44.com/v1/apps/${appId}/users/${userId}/role`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${serviceToken}`
+                },
+                body: JSON.stringify({ role: updates.role })
+            });
+
+            if (!roleResponse.ok) {
+                console.error('Role update failed:', await roleResponse.text());
+            }
         }
         
         console.log('User updated successfully');
