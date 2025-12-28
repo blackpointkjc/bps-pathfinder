@@ -1193,16 +1193,25 @@ Format the response as a concise bullet list. If information is not available, s
             if (response.data && response.data.success) {
                 const allCalls = response.data.geocodedCalls || [];
 
-                console.log(`✅ Loaded ${allCalls.length} calls (${response.data.totalCalls} total scraped)`);
-                if (allCalls.length > 0) {
-                    console.log('📊 Sample call:', allCalls[0]);
-                    console.log('📍 Calls with coordinates:', allCalls.filter(c => c.latitude && c.longitude).length);
+                // Filter out calls older than 30 minutes
+                const now = new Date();
+                const filteredCalls = allCalls.filter(call => {
+                    if (!call.time_received) return true; // Keep if no timestamp
+                    const callTime = new Date(call.time_received);
+                    const ageMinutes = (now - callTime) / 1000 / 60;
+                    return ageMinutes <= 30;
+                });
+
+                console.log(`✅ Loaded ${filteredCalls.length} calls (${allCalls.length - filteredCalls.length} filtered as old)`);
+                if (filteredCalls.length > 0) {
+                    console.log('📊 Sample call:', filteredCalls[0]);
+                    console.log('📍 Calls with coordinates:', filteredCalls.filter(c => c.latitude && c.longitude).length);
                 }
 
                 // Always set to true to show calls layer
                 setShowActiveCalls(true);
-                setAllActiveCalls(allCalls);
-                applyCallFilter(allCalls, callFilter);
+                setAllActiveCalls(filteredCalls);
+                applyCallFilter(filteredCalls, callFilter);
 
                 if (allCalls.length > 0 && !silent) {
                     toast.success(`Loaded ${allCalls.length} active calls`);
