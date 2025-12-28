@@ -1175,7 +1175,7 @@ export default function Navigation() {
                     <motion.div 
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="absolute top-32 left-4 z-[1000] w-[400px] max-w-[calc(100vw-32px)]"
+                        className="absolute top-20 left-1/2 -translate-x-1/2 z-[1000] w-[500px] max-w-[calc(100vw-32px)]"
                     >
                         <SearchBarWithHistory
                             onSearch={searchDestination}
