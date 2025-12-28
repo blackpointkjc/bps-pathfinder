@@ -104,7 +104,7 @@ export default function Navigation() {
     const [jurisdictionFilters, setJurisdictionFilters] = useState({
         richmondBeat: 'all',
         henricoDistrict: 'all',
-        showChesterfield: true,
+        chesterfieldDistrict: 'all',
         baseMapType: 'street',
         searchAddress: ''
     });

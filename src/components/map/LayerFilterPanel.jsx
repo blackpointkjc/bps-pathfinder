@@ -24,6 +24,7 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
         '4th Precinct': ['41', '42', '43', '44', '45']
     };
     const henricoDistricts = ['Brookland', 'Fairfield', 'Three Chopt', 'Tuckahoe', 'Varina'];
+    const chesterfieldDistricts = ['Bermuda', 'Clover Hill', 'Dale', 'Matoaca', 'Midlothian'];
     const baseMapTypes = [
         { value: 'street', label: 'Street Map' },
         { value: 'satellite', label: 'Satellite' },
@@ -202,15 +203,39 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                 </div>
                             </div>
 
-                            {/* Chesterfield County */}
+                            {/* Chesterfield Districts Filter */}
                             <div className="mb-6 p-4 bg-green-50 rounded-xl">
-                                <Label className="text-sm font-semibold text-green-700 mb-3">Chesterfield County</Label>
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-sm text-gray-700">Show County Boundary</Label>
-                                    <Switch
-                                        checked={filters.showChesterfield}
-                                        onCheckedChange={(checked) => onFilterChange({ ...filters, showChesterfield: checked })}
-                                    />
+                                <Label className="text-sm font-semibold text-green-700 mb-3">Chesterfield Districts</Label>
+                                <div className="space-y-2">
+                                    <Button
+                                        variant={filters.chesterfieldDistrict === 'all' ? 'default' : 'outline'}
+                                        size="sm"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onFilterChange({ ...filters, chesterfieldDistrict: 'all' });
+                                        }}
+                                        className="w-full pointer-events-auto"
+                                    >
+                                        Show All Districts
+                                    </Button>
+                                    <div className="space-y-2">
+                                        {chesterfieldDistricts.map((district) => (
+                                            <Button
+                                                key={district}
+                                                variant={filters.chesterfieldDistrict === district ? 'default' : 'outline'}
+                                                size="sm"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    onFilterChange({ ...filters, chesterfieldDistrict: district });
+                                                }}
+                                                className="w-full text-left justify-start pointer-events-auto"
+                                            >
+                                                {district}
+                                            </Button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 
@@ -223,7 +248,7 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                     onFilterChange({
                                         richmondBeat: 'all',
                                         henricoDistrict: 'all',
-                                        showChesterfield: true,
+                                        chesterfieldDistrict: 'all',
                                         baseMapType: 'street',
                                         searchAddress: ''
                                     });

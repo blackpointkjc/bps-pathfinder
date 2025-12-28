@@ -3,7 +3,7 @@ import { GeoJSON } from 'react-leaflet';
 import { useQuery } from '@tanstack/react-query';
 
 export default function JurisdictionBoundaries({ filters = {} }) {
-    const { richmondBeat = 'all', henricoDistrict = 'all', showChesterfield = true } = filters;
+    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all' } = filters;
     // Fetch Richmond beats
     const { data: richmondBeats } = useQuery({
         queryKey: ['richmondBeats'],
@@ -16,12 +16,12 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         staleTime: Infinity,
     });
 
-    // Fetch Chesterfield County boundary from official source
-    const { data: chesterfieldBoundary } = useQuery({
-        queryKey: ['chesterfieldBoundary'],
+    // Fetch Chesterfield County magisterial districts
+    const { data: chesterfieldDistricts } = useQuery({
+        queryKey: ['chesterfieldDistricts'],
         queryFn: async () => {
             const response = await fetch(
-                'https://services3.arcgis.com/TsynfzBSE6sXfoLq/ArcGIS/rest/services/Administrative_ProdA/FeatureServer/13/query?outFields=*&where=1%3D1&f=geojson'
+                'https://services3.arcgis.com/TsynfzBSE6sXfoLq/ArcGIS/rest/services/Administrative_ProdA/FeatureServer/15/query?outFields=*&where=1%3D1&f=geojson'
             );
             return response.json();
         },
@@ -87,12 +87,21 @@ export default function JurisdictionBoundaries({ filters = {} }) {
     };
 
     const onEachChesterfieldFeature = (feature, layer) => {
-        layer.bindPopup(`
-            <div class="p-2">
-                <p class="font-bold text-green-600">Chesterfield County PD</p>
-                <p class="text-sm">County Boundary</p>
-            </div>
-        `);
+        if (feature.properties) {
+            const districtName = feature.properties.NAME || feature.properties.DISTRICT || 'Unknown';
+            
+            // Filter by district name if specified
+            if (chesterfieldDistrict !== 'all' && districtName !== chesterfieldDistrict) {
+                return;
+            }
+            
+            layer.bindPopup(`
+                <div class="p-2">
+                    <p class="font-bold text-green-600">Chesterfield County</p>
+                    <p class="text-sm">${districtName} District</p>
+                </div>
+            `);
+        }
     };
 
     const onEachHenricoFeature = (feature, layer) => {
@@ -131,13 +140,23 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         }
         : henricoDistricts;
 
+    const filteredChesterfieldDistricts = chesterfieldDistricts && chesterfieldDistrict !== 'all'
+        ? {
+            ...chesterfieldDistricts,
+            features: chesterfieldDistricts.features.filter(f => {
+                const name = f.properties?.NAME || f.properties?.DISTRICT;
+                return name === chesterfieldDistrict;
+            })
+        }
+        : chesterfieldDistricts;
+
     return (
         <>
-            {/* Chesterfield County Boundary */}
-            {showChesterfield && chesterfieldBoundary && (
+            {/* Chesterfield County Districts */}
+            {filteredChesterfieldDistricts && (
                 <GeoJSON
-                    key="chesterfield"
-                    data={chesterfieldBoundary}
+                    key={`chesterfield-${chesterfieldDistrict}`}
+                    data={filteredChesterfieldDistricts}
                     style={chesterfieldStyle}
                     onEachFeature={onEachChesterfieldFeature}
                 />
