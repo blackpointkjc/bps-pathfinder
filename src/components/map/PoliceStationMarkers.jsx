@@ -26,13 +26,13 @@ const POLICE_STATIONS = {
             name: 'Central Station',
             address: '7850 Villa Park Drive, Henrico, VA 23228',
             hours: 'Monday – Friday 8:00 AM – 4:30 PM',
-            coords: [37.5897, -77.5024]
+            coords: [37.62811679494957, -77.46510437303036]
         },
         {
             name: 'South Station',
             address: '640 N. Airport Drive, Henrico, VA 23075',
             hours: 'Monday – Friday 8:00 AM – 4:30 PM',
-            coords: [37.5086, -77.3193]
+            coords: [37.54718345767878, -77.30586710327077]
         }
     ],
     chesterfield: [
@@ -40,31 +40,31 @@ const POLICE_STATIONS = {
             name: 'Police Department Headquarters',
             address: '10001 Iron Bridge Road, Chesterfield, VA 23832',
             hours: 'Open 24/7',
-            coords: [37.3775, -77.5248]
+            coords: [37.37655545346001, -77.50774145590032]
         },
         {
             name: 'Appomattox Police Station',
             address: '2920 W Hundred Road, Chester, VA 23831',
             hours: 'Monday – Friday 8:00 AM – 4:30 PM',
-            coords: [37.3567, -77.4186]
+            coords: [37.35687122622971, -77.41931798390023]
         },
         {
             name: 'Falling Creek Police Station',
             address: '20 N Providence Road, North Chesterfield, VA 23235',
             hours: 'Monday – Friday 8:00 AM – 4:30 PM',
-            coords: [37.4893, -77.4973]
+            coords: [37.498369571122886, -77.54790702883547]
         },
         {
             name: 'Hicks Road Police Station',
             address: '2730 Hicks Road, North Chesterfield, VA 23235',
             hours: 'Monday – Friday 8:00 AM – 4:30 PM',
-            coords: [37.4757, -77.5322]
+            coords: [37.45985328501191, -77.55158670184836]
         },
         {
             name: 'Swift Creek Police Station',
             address: '6812 Woodlake Commons Loop, Midlothian, VA 23112',
             hours: 'Monday – Friday 8:00 AM – 4:30 PM',
-            coords: [37.4888, -77.6445]
+            coords: [37.405807788612144, -77.68557607116452]
         }
     ]
 };
