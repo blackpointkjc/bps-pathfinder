@@ -388,7 +388,7 @@ export default function Navigation() {
 
     const getCurrentLocation = useCallback(() => {
         setIsLocating(true);
-        
+
         if (!navigator.geolocation) {
             toast.error('Geolocation is not supported by your browser');
             setIsLocating(false);
@@ -401,15 +401,26 @@ export default function Navigation() {
                 console.log('📍 Got location:', coords, 'Accuracy:', position.coords.accuracy, 'm');
                 setCurrentLocation(coords);
                 setIsLocating(false);
-                toast.success(`Location found (±${Math.round(position.coords.accuracy)}m accuracy)`);
+
+                // Only show accuracy if it's reasonable
+                if (position.coords.accuracy < 100) {
+                    toast.success(`Location found (±${Math.round(position.coords.accuracy)}m accuracy)`);
+                } else {
+                    toast.warning(`Location found but low accuracy (±${Math.round(position.coords.accuracy)}m). Enable high accuracy in settings.`);
+                }
             },
             (error) => {
                 console.error('Error getting location:', error);
-                toast.error('Unable to get your location');
+                if (error.code === error.PERMISSION_DENIED) {
+                    toast.error('Location permission denied. Enable location in browser settings.');
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    toast.error('Location unavailable. Check GPS/location services.');
+                } else {
+                    toast.error('Unable to get your location');
+                }
                 setIsLocating(false);
-                setCurrentLocation([37.5407, -77.4360]);
             },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+            { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
         );
     }, []);
 

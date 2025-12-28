@@ -132,62 +132,14 @@ Deno.serve(async (req) => {
             console.error('❌ Error fetching from Henrico:', error);
         }
         
-        // Source 3: Chesterfield County Active Calls
+        // Source 3: Chesterfield County Active Calls - Skipping (website not reliably accessible)
+        // Note: Website may be down or blocking programmatic access
+        
+        // Auto-archive old dispatch calls to history
         try {
-            const response3 = await fetch('https://webapps.chesterfield.gov/activecalls/', {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            });
-            
-            if (response3.ok) {
-                const html = await response3.text();
-                const tableStart = html.indexOf('<table');
-                const tableEnd = html.indexOf('</table>', tableStart);
-                
-                if (tableStart !== -1 && tableEnd !== -1) {
-                    const tableHtml = html.substring(tableStart, tableEnd + 8);
-                    const rows = tableHtml.split(/<tr[^>]*>/i).slice(1);
-                    
-                    for (let i = 1; i < rows.length; i++) {
-                        const row = rows[i];
-                        if (!row.includes('<td')) continue;
-                        
-                        const cells = [];
-                        const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
-                        
-                        for (const match of cellMatches) {
-                            const text = match[1]
-                                .replace(/<[^>]+>/g, '')
-                                .replace(/&nbsp;/g, ' ')
-                                .trim();
-                            cells.push(text);
-                        }
-                        
-                        if (cells.length >= 2) {
-                            const timeReceived = cells[0] || 'Unknown';
-                            const incident = cells[1] || '';
-                            const location = cells[2] || '';
-                            const status = cells[3] || 'Dispatched';
-                            
-                            const isTimeValue = /^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(location?.trim());
-                            
-                            if (incident.trim() && location.trim() && !isTimeValue) {
-                                calls.push({
-                                    timeReceived,
-                                    incident: incident.trim(),
-                                    location: location.trim(),
-                                    agency: 'CCPD',
-                                    status: status.trim(),
-                                    source: 'chesterfield.gov'
-                                });
-                            }
-                        }
-                    }
-                }
-            }
+            await base44.asServiceRole.functions.invoke('archiveOldCalls', {});
         } catch (error) {
-            console.error('❌ Error fetching from Chesterfield:', error);
+            // Silently fail if archiving fails
         }
         
         console.log(`✅ Total calls from all sources: ${calls.length}`);
@@ -239,14 +191,27 @@ Deno.serve(async (req) => {
                 // Remove trailing jurisdiction indicators
                 cleanedAddress = cleanedAddress.replace(/\s+(RICH|CHES|HENR|VA|RICHMOND|HENRICO|CHESTERFIELD)$/i, '').trim();
                 
-                // Try geocoding with cleaned address
+                // Try geocoding with cleaned address - try multiple strategies
                 let geoData = null;
-                const query = `${cleanedAddress}, ${jurisdiction}`;
-                const geoResponse = await fetch(
+                
+                // Strategy 1: Try with full cleaned address
+                let query = `${cleanedAddress}, ${jurisdiction}`;
+                let geoResponse = await fetch(
                     `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
                     { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
                 );
                 geoData = await geoResponse.json();
+                
+                // Strategy 2: If no results and has "and" (intersection), try without "and"
+                if ((!geoData || geoData.length === 0) && cleanedAddress.includes(' and ')) {
+                    const firstStreet = cleanedAddress.split(' and ')[0].trim();
+                    query = `${firstStreet}, ${jurisdiction}`;
+                    geoResponse = await fetch(
+                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
+                        { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
+                    );
+                    geoData = await geoResponse.json();
+                }
                 
                 if (geoData && geoData.length > 0) {
                     const lat = parseFloat(geoData[0].lat);

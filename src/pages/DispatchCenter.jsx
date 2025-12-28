@@ -44,12 +44,14 @@ export default function DispatchCenter() {
             const user = await base44.auth.me();
             setCurrentUser(user);
             
+            // Officers (non-dispatch) should see external calls only
             if (user.role !== 'admin' && !user.dispatch_role) {
-                toast.error('Dispatch access restricted');
-                window.location.href = '/navigation';
+                await loadExternalCalls();
+                setLoading(false);
                 return;
             }
 
+            // Dispatch users see everything
             await Promise.all([
                 loadUnits(),
                 loadActiveCalls(),
@@ -163,6 +165,48 @@ export default function DispatchCenter() {
         );
     }
 
+    // Officer View (non-dispatch users)
+    if (currentUser && currentUser.role !== 'admin' && !currentUser.dispatch_role) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+                <div className="max-w-7xl mx-auto">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
+                                <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center">
+                                    <AlertCircle className="w-8 h-8 text-white" />
+                                </div>
+                                Active Calls
+                            </h1>
+                            <p className="text-slate-400">View live emergency calls from all agencies</p>
+                        </div>
+                        <Button variant="outline" className="border-slate-600 text-white hover:bg-slate-800" onClick={() => window.location.href = '/navigation'}>
+                            Back to Navigation
+                        </Button>
+                    </div>
+
+                    <Card className="p-6 bg-slate-800/50 border-slate-700 backdrop-blur">
+                        <ScrollArea className="h-[calc(100vh-240px)]">
+                            {externalCalls.length === 0 ? (
+                                <div className="text-center py-16">
+                                    <AlertCircle className="w-16 h-16 mx-auto mb-4 text-slate-600" />
+                                    <p className="text-slate-500">No active calls</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {externalCalls.map((call, idx) => (
+                                        <ExternalCallCard key={idx} call={call} />
+                                    ))}
+                                </div>
+                            )}
+                        </ScrollArea>
+                    </Card>
+                </div>
+            </div>
+        );
+    }
+
+    // Dispatch View (admin and dispatch_role users)
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
             <div className="max-w-7xl mx-auto">
