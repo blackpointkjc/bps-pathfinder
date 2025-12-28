@@ -340,6 +340,14 @@ export default function Navigation() {
         try {
             const user = await base44.auth.me();
             setCurrentUser(user);
+            
+            // Load user's saved status
+            if (user.status) {
+                setUnitStatus(user.status);
+            }
+            if (user.current_call_info) {
+                setActiveCallInfo(user.current_call_info);
+            }
         } catch (error) {
             console.error('Error loading user:', error);
         }
@@ -369,14 +377,6 @@ export default function Navigation() {
 
             console.log('📍 Updating location:', updateData);
             await base44.auth.updateMe(updateData);
-
-            // Load initial status from user if available
-            if (currentUser.status && !unitStatus) {
-                setUnitStatus(currentUser.status);
-            }
-            if (currentUser.current_call_info) {
-                setActiveCallInfo(currentUser.current_call_info);
-            }
         } catch (error) {
             console.error('Error updating user location:', error);
         }
@@ -395,6 +395,12 @@ export default function Navigation() {
                 // Check show_on_map flag - hide if explicitly set to false
                 if (user.show_on_map === false) {
                     console.log('🚫 Hiding user from map:', user.unit_number || user.full_name);
+                    return false;
+                }
+                
+                // Hide users who are Out of Service
+                if (user.status === 'Out of Service') {
+                    console.log('🚫 Hiding Out of Service unit:', user.unit_number || user.full_name);
                     return false;
                 }
                 
