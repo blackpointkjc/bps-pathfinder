@@ -674,7 +674,7 @@ export default function Navigation() {
             // Find alternative route without traffic
             const alternativeIndex = routes.findIndex((r, i) => i !== selectedRouteIndex && !r.hasTraffic);
             if (alternativeIndex !== -1) {
-                handleRouteSelect(alternativeIndex);
+                handleSelectRoute(alternativeIndex);
                 setTrafficAlert(null);
                 toast.success('Rerouting to avoid traffic');
                 if (voiceEnabled) {
