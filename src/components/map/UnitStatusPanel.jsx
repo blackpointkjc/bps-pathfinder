@@ -32,9 +32,22 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
     
     if (!isOpen) return null;
     
-    const handleStatusClick = (status) => {
+    const handleStatusClick = async (status) => {
         setSelectedStatus(status);
         if (status !== 'Out of Service') {
+            // If changing from On Scene to Available, clear the active call
+            if (currentStatus === 'On Scene' && status === 'Available') {
+                try {
+                    const { base44 } = await import('@/api/base44Client');
+                    await base44.auth.updateMe({
+                        current_call_id: null,
+                        current_call_info: null
+                    });
+                    toast.success('Cleared from call');
+                } catch (error) {
+                    console.error('Error clearing call:', error);
+                }
+            }
             onStatusChange(status);
             onClose();
         }
