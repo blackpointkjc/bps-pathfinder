@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { X, Filter, Layers, Search } from 'lucide-react';
 import {
     Select,
@@ -167,15 +168,13 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
 
                             {/* Chesterfield County */}
                             <div className="mb-6 p-4 bg-green-50 rounded-xl">
-                                <Label className="text-sm font-semibold text-green-700 mb-2">Chesterfield County</Label>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={filters.showChesterfield}
-                                        onChange={(e) => onFilterChange({ ...filters, showChesterfield: e.target.checked })}
-                                        className="w-4 h-4"
-                                    />
+                                <Label className="text-sm font-semibold text-green-700 mb-3">Chesterfield County</Label>
+                                <div className="flex items-center justify-between">
                                     <Label className="text-sm text-gray-700">Show County Boundary</Label>
+                                    <Switch
+                                        checked={filters.showChesterfield}
+                                        onCheckedChange={(checked) => onFilterChange({ ...filters, showChesterfield: checked })}
+                                    />
                                 </div>
                             </div>
 
