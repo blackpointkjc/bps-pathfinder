@@ -15,21 +15,45 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'userId and updates required' }, { status: 400 });
         }
 
-        // Update user - need to fetch first, then update
-        const targetUser = await base44.asServiceRole.entities.User.filter({ id: userId });
+        console.log('Updating user:', userId, 'with:', updates);
         
-        if (!targetUser || targetUser.length === 0) {
+        // Get all users to find the target
+        const allUsersResponse = await base44.asServiceRole.functions.invoke('fetchAllUsers', {});
+        const allUsers = allUsersResponse.data?.users || [];
+        const targetUser = allUsers.find(u => u.id === userId);
+        
+        if (!targetUser) {
             return Response.json({ error: 'User not found' }, { status: 404 });
         }
 
-        // Use auth update for the target user
-        const response = await fetch(`${Deno.env.get('BASE44_API_URL') || 'https://api.base44.com'}/v1/apps/${Deno.env.get('BASE44_APP_ID')}/users/${userId}`, {
-            method: 'PATCH',
+        // Merge updates with existing user data
+        const updatedData = {
+            ...targetUser,
+            ...updates
+        };
+
+        // Update via direct database call (User is a special entity that stores in auth.users)
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        
+        const response = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+            method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${Deno.env.get('BASE44_SERVICE_ROLE_KEY')}`
+                'Authorization': `Bearer ${supabaseKey}`,
+                'apikey': supabaseKey
             },
-            body: JSON.stringify(updates)
+            body: JSON.stringify({
+                user_metadata: {
+                    rank: updates.rank,
+                    last_name: updates.last_name,
+                    unit_number: updates.unit_number,
+                    dispatch_role: updates.dispatch_role,
+                    is_supervisor: updates.is_supervisor,
+                    show_on_map: updates.show_on_map
+                },
+                role: updates.role
+            })
         });
 
         if (!response.ok) {
@@ -37,6 +61,8 @@ Deno.serve(async (req) => {
             console.error('Update failed:', error);
             return Response.json({ error: 'Failed to update user', details: error }, { status: response.status });
         }
+        
+        console.log('User updated successfully');
         
         return Response.json({
             success: true,
