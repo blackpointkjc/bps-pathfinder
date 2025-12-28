@@ -41,16 +41,16 @@ export default function Dispatch() {
                 return;
             }
 
-            const [allUsers, dispatchCalls] = await Promise.all([
-                base44.asServiceRole.entities.User.list('-last_updated', 100),
-                base44.asServiceRole.entities.DispatchCall.list('-created_date', 50)
+            const [usersResponse, dispatchCalls] = await Promise.all([
+                base44.functions.invoke('fetchAllUsers', {}),
+                base44.entities.DispatchCall.list('-created_date', 100)
             ]);
 
             // Filter users with location data (active units)
+            const allUsers = usersResponse.data?.users || [];
             const activeUsers = allUsers.filter(u => u.latitude && u.longitude);
             setUnits(activeUsers || []);
             
-            // Show all dispatch calls (not just active ones within 2 hours)
             setCalls(dispatchCalls || []);
         } catch (error) {
             console.error('Error loading data:', error);
@@ -261,10 +261,10 @@ export default function Dispatch() {
                                                     <div className="flex items-center justify-between">
                                                         <div>
                                                             <p className="font-semibold text-sm">
-                                                                {unit.unit_number || unit.full_name}
+                                                                Unit {unit.unit_number || 'N/A'}
                                                             </p>
                                                             <p className="text-xs text-gray-500">
-                                                                {unit.rank && `${unit.rank} `}{unit.last_name || unit.full_name} • {unit.status || 'Available'}
+                                                                {unit.rank && `${unit.rank} `}{unit.last_name || unit.full_name?.split(' ').pop() || 'Unknown'} • {unit.status || 'Available'}
                                                             </p>
                                                         </div>
                                                         {selectedUnits.includes(unit.id) && (

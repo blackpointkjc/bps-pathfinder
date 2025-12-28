@@ -1113,12 +1113,23 @@ export default function Navigation() {
 
                 {(currentUser?.role === 'admin' || currentUser?.dispatch_role) && (
                     <Button
-                        onClick={() => window.location.href = '/dispatch'}
+                        onClick={() => window.location.href = '/dispatchcenter'}
                         size="icon"
                         className="h-10 w-10 rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-lg"
                         title="Dispatch Center"
                     >
                         <Plus className="w-5 h-5" />
+                    </Button>
+                )}
+
+                {currentUser?.role === 'admin' && (
+                    <Button
+                        onClick={() => window.location.href = '/adminportal'}
+                        size="icon"
+                        className="h-10 w-10 rounded-full bg-slate-800 hover:bg-slate-900 text-white shadow-lg"
+                        title="Admin Portal"
+                    >
+                        <Shield className="w-5 h-5" />
                     </Button>
                 )}
 
