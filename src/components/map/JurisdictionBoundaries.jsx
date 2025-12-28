@@ -111,6 +111,15 @@ export default function JurisdictionBoundaries() {
                 />
             )}
 
+            {/* Henrico County Districts */}
+            {henricoDistricts && (
+                <GeoJSON
+                    data={henricoDistricts}
+                    style={henricoDistrictStyle}
+                    onEachFeature={onEachHenricoFeature}
+                />
+            )}
+
             {/* Richmond Beats */}
             {richmondBeats && (
                 <GeoJSON
