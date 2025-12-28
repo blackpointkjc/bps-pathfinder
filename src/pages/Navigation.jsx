@@ -969,7 +969,7 @@ export default function Navigation() {
     return (
         <div className="h-screen w-screen relative overflow-hidden bg-[#F5F5F7]">
             <MapView
-                currentLocation={currentLocation}
+                currentLocation={unitStatus === 'Out of Service' ? null : currentLocation}
                 destination={destination}
                 route={routeCoords}
                 trafficSegments={trafficSegments}
