@@ -49,7 +49,10 @@ Deno.serve(async (req) => {
                         if (cells.length >= 3) {
                             const [timeReceived, incident, location, agency, status] = cells;
                             
-                            if (incident && incident.trim() && location && location.trim()) {
+                            // Validate that location is not a time value
+                            const isTimeValue = /^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(location?.trim());
+                            
+                            if (incident && incident.trim() && location && location.trim() && !isTimeValue) {
                                 calls.push({
                                     timeReceived: timeReceived || 'Unknown',
                                     incident: incident.trim(),
@@ -107,7 +110,10 @@ Deno.serve(async (req) => {
                             const location = cells[2] || '';
                             const status = cells[3] || 'Dispatched';
                             
-                            if (incident.trim() && location.trim()) {
+                            // Validate that location is not a time value
+                            const isTimeValue = /^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(location?.trim());
+                            
+                            if (incident.trim() && location.trim() && !isTimeValue) {
                                 calls.push({
                                     timeReceived,
                                     incident: incident.trim(),
@@ -179,8 +185,6 @@ Deno.serve(async (req) => {
                 // Remove trailing jurisdiction indicators
                 cleanedAddress = cleanedAddress.replace(/\s+(RICH|CHES|HENR|VA|RICHMOND|HENRICO|CHESTERFIELD)$/i, '').trim();
                 
-                console.log(`🧹 Cleaned: "${call.location}" → "${cleanedAddress}, ${jurisdiction}"`);
-                
                 // Try geocoding with cleaned address
                 let geoData = null;
                 const query = `${cleanedAddress}, ${jurisdiction}`;
@@ -193,14 +197,13 @@ Deno.serve(async (req) => {
                 if (geoData && geoData.length > 0) {
                     const lat = parseFloat(geoData[0].lat);
                     const lon = parseFloat(geoData[0].lon);
-                    console.log(`✅ ${call.location} → ${lat}, ${lon}`);
                     geocodedCalls.push({
                         ...call,
                         latitude: lat,
                         longitude: lon
                     });
                 } else {
-                    console.warn(`❌ Failed to geocode: ${call.location}`);
+                    // Still add the call even without GPS
                     geocodedCalls.push({
                         ...call,
                         latitude: null,
