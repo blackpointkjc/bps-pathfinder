@@ -988,30 +988,32 @@ export default function Navigation() {
         : null;
 
     return (
-        <div className="h-screen w-screen relative overflow-hidden bg-[#F5F5F7]">
-            <MapView
-                currentLocation={unitStatus === 'Out of Service' ? null : currentLocation}
-                destination={destination}
-                route={routeCoords}
-                trafficSegments={trafficSegments}
-                useOfflineTiles={!isOnline}
-                activeCalls={activeCalls}
-                heading={heading}
-                locationHistory={isLiveTracking ? locationHistory : []}
-                unitName={unitName || currentUser?.unit_number}
-                showLights={showLights}
-                otherUnits={otherUnits}
-                currentUserId={currentUser?.id}
-                speed={speed}
-                mapCenter={mapCenter}
-                isNavigating={isNavigating}
-                baseMapType={jurisdictionFilters.baseMapType}
-                jurisdictionFilters={jurisdictionFilters}
-                onCallClick={(call) => {
-                    setSelectedCall(call);
-                    setShowCallSidebar(true);
-                }}
-            />
+        <div className="h-screen w-screen relative overflow-hidden bg-[#F5F5F7] pointer-events-none">
+            <div className="pointer-events-auto w-full h-full">
+                <MapView
+                    currentLocation={unitStatus === 'Out of Service' ? null : currentLocation}
+                    destination={destination}
+                    route={routeCoords}
+                    trafficSegments={trafficSegments}
+                    useOfflineTiles={!isOnline}
+                    activeCalls={activeCalls}
+                    heading={heading}
+                    locationHistory={isLiveTracking ? locationHistory : []}
+                    unitName={unitName || currentUser?.unit_number}
+                    showLights={showLights}
+                    otherUnits={otherUnits}
+                    currentUserId={currentUser?.id}
+                    speed={speed}
+                    mapCenter={mapCenter}
+                    isNavigating={isNavigating}
+                    baseMapType={jurisdictionFilters.baseMapType}
+                    jurisdictionFilters={jurisdictionFilters}
+                    onCallClick={(call) => {
+                        setSelectedCall(call);
+                        setShowCallSidebar(true);
+                    }}
+                />
+            </div>
 
             {/* Traffic Alert */}
             <AnimatePresence>
@@ -1056,7 +1058,7 @@ export default function Navigation() {
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="absolute top-1/2 -translate-y-1/2 left-2 z-[999] flex flex-col gap-1.5"
+                    className="absolute top-1/2 -translate-y-1/2 left-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
                 >
                     <Button onClick={() => handleStatusChange('Available')} size="sm" className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg`}>
                         <CheckCircle2 className={`w-4 h-4 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
@@ -1133,7 +1135,7 @@ export default function Navigation() {
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute top-2 right-2 z-[999] flex flex-col gap-1.5"
+                className="absolute top-2 right-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
             >
                 <Button
                     onClick={() => setShowOfflineManager(true)}
@@ -1260,7 +1262,7 @@ export default function Navigation() {
                     <motion.div 
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-[400px] max-w-[calc(100vw-32px)]"
+                        className="absolute top-4 left-1/2 -translate-x-1/2 z-[1002] w-[400px] max-w-[calc(100vw-32px)] pointer-events-auto"
                     >
                         <SearchBarWithHistory
                             onSearch={searchDestination}
@@ -1277,7 +1279,7 @@ export default function Navigation() {
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="absolute bottom-52 right-4 z-[999]"
+                        className="absolute bottom-52 right-4 z-[1002] pointer-events-auto"
                     >
                         <Button
                             onClick={handleVoiceCommand}
