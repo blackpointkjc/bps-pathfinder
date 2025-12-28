@@ -89,6 +89,17 @@ export default function JurisdictionBoundaries() {
         `);
     };
 
+    const onEachHenricoFeature = (feature, layer) => {
+        if (feature.properties && feature.properties.DISTRICT) {
+            layer.bindPopup(`
+                <div class="p-2">
+                    <p class="font-bold text-orange-600">Henrico County PD</p>
+                    <p class="text-sm">District ${feature.properties.DISTRICT}</p>
+                </div>
+            `);
+        }
+    };
+
     return (
         <>
             {/* Chesterfield County Boundary */}
