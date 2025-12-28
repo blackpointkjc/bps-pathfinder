@@ -46,6 +46,7 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
             fetchHistoricalCalls();
             fetchNearbyUnits();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [call]);
 
     const fetchHistoricalCalls = async () => {
