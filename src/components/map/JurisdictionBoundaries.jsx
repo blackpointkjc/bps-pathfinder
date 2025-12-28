@@ -59,6 +59,16 @@ export default function JurisdictionBoundaries() {
         };
     };
 
+    const henricoDistrictStyle = (feature) => {
+        return {
+            fillColor: '#F59E0B',
+            fillOpacity: 0.15,
+            color: '#D97706',
+            weight: 2,
+            opacity: 0.7
+        };
+    };
+
     const onEachRichmondFeature = (feature, layer) => {
         if (feature.properties && feature.properties.Name) {
             layer.bindPopup(`
