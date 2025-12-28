@@ -142,12 +142,12 @@ export default function Navigation() {
             startContinuousTracking();
         }
         
-        // Refresh active calls every 30 seconds for real-time updates (silent mode)
+        // Refresh active calls every 60 seconds for real-time updates (silent mode)
         callsRefreshInterval.current = setInterval(() => {
             if (isOnline) {
                 fetchActiveCalls(true); // Silent refresh
             }
-        }, 30000);
+        }, 60000);
         
 
         
@@ -177,13 +177,13 @@ export default function Navigation() {
         if (currentUser && currentLocation) {
             updateUserLocation();
         }
-    }, [currentUser, currentLocation]);
+    }, [currentUser, currentLocation, heading, speed, unitStatus, showLights, activeCallInfo]);
 
-    // Fetch other units on mount and then every 3 seconds for real-time tracking
+    // Fetch other units on mount and then every 10 seconds for real-time tracking
     useEffect(() => {
         if (currentUser) {
             fetchOtherUnits();
-            const interval = setInterval(fetchOtherUnits, 3000);
+            const interval = setInterval(fetchOtherUnits, 10000);
             return () => clearInterval(interval);
         }
     }, [currentUser]);
@@ -274,10 +274,7 @@ export default function Navigation() {
 
                 lastPosition.current = coords;
 
-                // Update user location in database every update
-                if (currentUser) {
-                    updateUserLocation();
-                }
+                // Throttled location updates happen in updateUserLocation function
 
                 // Update navigation progress if navigating
                 if (isNavigating && directions) {
@@ -316,9 +313,16 @@ export default function Navigation() {
         }
     };
 
+    const lastLocationUpdateRef = useRef(0);
+
     const updateUserLocation = async () => {
         if (!currentUser || !currentLocation) return;
-        
+
+        // Throttle updates to once every 5 seconds
+        const now = Date.now();
+        if (now - lastLocationUpdateRef.current < 5000) return;
+        lastLocationUpdateRef.current = now;
+
         try {
             const updateData = {
                 latitude: currentLocation[0],
@@ -330,10 +334,10 @@ export default function Navigation() {
                 current_call_info: activeCallInfo,
                 last_updated: new Date().toISOString()
             };
-            
+
             console.log('📍 Updating location:', updateData);
             await base44.auth.updateMe(updateData);
-            
+
             // Load initial status from user if available
             if (currentUser.status && !unitStatus) {
                 setUnitStatus(currentUser.status);
