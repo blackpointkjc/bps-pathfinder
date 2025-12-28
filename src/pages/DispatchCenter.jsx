@@ -10,6 +10,10 @@ import CallDetailPanel from '@/components/dispatch/CallDetailPanel';
 import UnitsPanel from '@/components/dispatch/UnitsPanel';
 import CreateCallDialog from '@/components/dispatch/CreateCallDialog';
 import PriorCallsView from '@/components/dispatch/PriorCallsView';
+import MessagingPanel from '@/components/dispatch/MessagingPanel';
+import UnitScheduling from '@/components/dispatch/UnitScheduling';
+import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
+import QuickActions from '@/components/dispatch/QuickActions';
 
 export default function DispatchCenter() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -19,6 +23,9 @@ export default function DispatchCenter() {
     const [loading, setLoading] = useState(true);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showPriorCalls, setShowPriorCalls] = useState(false);
+    const [showMessaging, setShowMessaging] = useState(false);
+    const [showScheduling, setShowScheduling] = useState(false);
+    const [showMaintenance, setShowMaintenance] = useState(false);
 
     useEffect(() => {
         init();
@@ -89,6 +96,11 @@ export default function DispatchCenter() {
         toast.success('Call created and dispatched');
     };
 
+    const handleQuickDispatch = (callType) => {
+        setShowCreateDialog(true);
+        // Pre-fill form data would be passed here if needed
+    };
+
     const handleUpdate = async () => {
         await loadActiveCalls();
         await loadUnits();
@@ -136,14 +148,35 @@ export default function DispatchCenter() {
                             className="border-slate-600 text-white hover:bg-slate-800"
                         >
                             <AlertCircle className="w-4 h-4 mr-2" />
-                            {showPriorCalls ? 'Active Calls' : 'Prior Calls'}
+                            {showPriorCalls ? 'Active' : 'Prior'}
+                        </Button>
+                        <Button
+                            onClick={() => setShowScheduling(!showScheduling)}
+                            variant="outline"
+                            className="border-slate-600 text-white hover:bg-slate-800"
+                        >
+                            Scheduling
+                        </Button>
+                        <Button
+                            onClick={() => setShowMaintenance(!showMaintenance)}
+                            variant="outline"
+                            className="border-slate-600 text-white hover:bg-slate-800"
+                        >
+                            Maintenance
+                        </Button>
+                        <Button
+                            onClick={() => setShowMessaging(!showMessaging)}
+                            variant="outline"
+                            className="border-slate-600 text-white hover:bg-slate-800"
+                        >
+                            Messages
                         </Button>
                         <Button
                             onClick={() => setShowCreateDialog(true)}
                             className="bg-red-600 hover:bg-red-700"
                         >
                             <Plus className="w-4 h-4 mr-2" />
-                            Create Call
+                            Call
                         </Button>
                         {currentUser?.role === 'admin' && (
                             <Button
@@ -160,14 +193,23 @@ export default function DispatchCenter() {
                             className="border-slate-600 text-white hover:bg-slate-800"
                             onClick={() => window.location.href = '/navigation'}
                         >
-                            Map View
+                            Map
                         </Button>
                     </div>
                 </div>
 
                 {showPriorCalls ? (
                     <PriorCallsView currentUser={currentUser} units={units} />
+                ) : showScheduling ? (
+                    <UnitScheduling units={units} currentUser={currentUser} />
+                ) : showMaintenance ? (
+                    <MaintenanceTracking units={units} />
                 ) : (
+                    <>
+                    {/* Quick Actions Bar */}
+                    <div className="mb-4">
+                        <QuickActions onCreateCall={handleQuickDispatch} />
+                    </div>
                     /* 3-Panel Layout */
                     <div className="grid grid-cols-12 gap-4 h-[calc(100vh-140px)]">
                         {/* Left: Active Calls Queue */}
@@ -200,8 +242,17 @@ export default function DispatchCenter() {
                             />
                         </div>
                     </div>
+                    </>
                 )}
             </div>
+
+            {/* Messaging Panel */}
+            <MessagingPanel
+                currentUser={currentUser}
+                units={units}
+                isOpen={showMessaging}
+                onClose={() => setShowMessaging(false)}
+            />
 
             {/* Create Call Dialog */}
             {showCreateDialog && (
