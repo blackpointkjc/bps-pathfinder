@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import MapView from '@/components/map/MapView';
-import SearchBar from '@/components/map/SearchBar';
+import SearchBarWithHistory from '@/components/map/SearchBarWithHistory';
 import LocationButton from '@/components/map/LocationButton';
 import DirectionsPanel from '@/components/map/DirectionsPanel';
 import RouteOptions from '@/components/map/RouteOptions';
@@ -350,7 +350,8 @@ export default function Navigation() {
         if (!currentUser) return;
         
         try {
-            const users = await base44.asServiceRole.entities.User.list('-last_updated', 200);
+            const response = await base44.functions.invoke('fetchAllUsers', {});
+            const users = response.data?.users || [];
             
             const activeUsers = users.filter(user => {
                 if (user.id === currentUser.id) return false;
@@ -963,27 +964,27 @@ export default function Navigation() {
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="absolute top-1/2 -translate-y-1/2 left-2 md:left-4 z-[999] flex flex-col gap-1.5 md:gap-2"
+                    className="absolute top-1/2 -translate-y-1/2 left-2 md:left-4 z-[999] flex flex-col gap-2"
                 >
-                    <Button onClick={() => handleStatusChange('Available')} size="sm" className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-1.5 md:px-2 py-3 md:py-4 flex flex-col items-center gap-0.5 md:gap-1 min-w-[56px] md:min-w-[70px]`}>
-                        <CheckCircle2 className={`w-3.5 md:w-4 h-3.5 md:h-4 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
-                        <span className={`text-[9px] md:text-[10px] font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Available</span>
+                    <Button onClick={() => handleStatusChange('Available')} size="sm" className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-16 h-16 md:w-20 md:h-20 flex flex-col items-center justify-center gap-1 rounded-xl`}>
+                        <CheckCircle2 className={`w-5 md:w-6 h-5 md:h-6 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
+                        <span className={`text-[10px] md:text-xs font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Available</span>
                     </Button>
-                    <Button onClick={() => setShowCallsList(true)} size="sm" className={`${unitStatus === 'Enroute' ? 'bg-red-600 hover:bg-red-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-1.5 md:px-2 py-3 md:py-4 flex flex-col items-center gap-0.5 md:gap-1 min-w-[56px] md:min-w-[70px]`}>
-                        <NavigationIcon className={`w-3.5 md:w-4 h-3.5 md:h-4 ${unitStatus === 'Enroute' ? 'text-white' : 'text-red-600'}`} />
-                        <span className={`text-[9px] md:text-[10px] font-semibold ${unitStatus === 'Enroute' ? 'text-white' : 'text-gray-700'}`}>Enroute</span>
+                    <Button onClick={() => setShowCallsList(true)} size="sm" className={`${unitStatus === 'Enroute' ? 'bg-red-600 hover:bg-red-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-16 h-16 md:w-20 md:h-20 flex flex-col items-center justify-center gap-1 rounded-xl`}>
+                        <NavigationIcon className={`w-5 md:w-6 h-5 md:h-6 ${unitStatus === 'Enroute' ? 'text-white' : 'text-red-600'}`} />
+                        <span className={`text-[10px] md:text-xs font-semibold ${unitStatus === 'Enroute' ? 'text-white' : 'text-gray-700'}`}>Enroute</span>
                     </Button>
-                    <Button onClick={() => handleStatusChange('On Scene')} size="sm" className={`${unitStatus === 'On Scene' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-1.5 md:px-2 py-3 md:py-4 flex flex-col items-center gap-0.5 md:gap-1 min-w-[56px] md:min-w-[70px]`}>
-                        <MapPin className={`w-3.5 md:w-4 h-3.5 md:h-4 ${unitStatus === 'On Scene' ? 'text-white' : 'text-blue-600'}`} />
-                        <span className={`text-[9px] md:text-[10px] font-semibold ${unitStatus === 'On Scene' ? 'text-white' : 'text-gray-700'}`}>On Scene</span>
+                    <Button onClick={() => handleStatusChange('On Scene')} size="sm" className={`${unitStatus === 'On Scene' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-16 h-16 md:w-20 md:h-20 flex flex-col items-center justify-center gap-1 rounded-xl`}>
+                        <MapPin className={`w-5 md:w-6 h-5 md:h-6 ${unitStatus === 'On Scene' ? 'text-white' : 'text-blue-600'}`} />
+                        <span className={`text-[10px] md:text-xs font-semibold ${unitStatus === 'On Scene' ? 'text-white' : 'text-gray-700'}`}>On Scene</span>
                     </Button>
-                    <Button onClick={() => handleStatusChange('On Patrol')} size="sm" className={`${unitStatus === 'On Patrol' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-white/95 hover:bg-white'} shadow-lg px-1.5 md:px-2 py-3 md:py-4 flex flex-col items-center gap-0.5 md:gap-1 min-w-[56px] md:min-w-[70px]`}>
-                        <Car className={`w-3.5 md:w-4 h-3.5 md:h-4 ${unitStatus === 'On Patrol' ? 'text-white' : 'text-indigo-600'}`} />
-                        <span className={`text-[9px] md:text-[10px] font-semibold ${unitStatus === 'On Patrol' ? 'text-white' : 'text-gray-700'}`}>Patrol</span>
+                    <Button onClick={() => handleStatusChange('On Patrol')} size="sm" className={`${unitStatus === 'On Patrol' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-16 h-16 md:w-20 md:h-20 flex flex-col items-center justify-center gap-1 rounded-xl`}>
+                        <Car className={`w-5 md:w-6 h-5 md:h-6 ${unitStatus === 'On Patrol' ? 'text-white' : 'text-indigo-600'}`} />
+                        <span className={`text-[10px] md:text-xs font-semibold ${unitStatus === 'On Patrol' ? 'text-white' : 'text-gray-700'}`}>Patrol</span>
                     </Button>
-                    <Button onClick={() => setShowStatusPanel(true)} size="sm" className="bg-white/95 hover:bg-white shadow-lg px-1.5 md:px-2 py-3 md:py-4 flex flex-col items-center gap-0.5 md:gap-1 min-w-[56px] md:min-w-[70px]">
-                        <Settings className="w-3.5 md:w-4 h-3.5 md:h-4 text-gray-600" />
-                        <span className="text-[9px] md:text-[10px] font-semibold text-gray-700">More</span>
+                    <Button onClick={() => setShowStatusPanel(true)} size="sm" className="bg-white/95 hover:bg-white shadow-lg w-16 h-16 md:w-20 md:h-20 flex flex-col items-center justify-center gap-1 rounded-xl">
+                        <Settings className="w-5 md:w-6 h-5 md:h-6 text-gray-600" />
+                        <span className="text-[10px] md:text-xs font-semibold text-gray-700">More</span>
                     </Button>
                 </motion.div>
             )}
@@ -1165,7 +1166,7 @@ export default function Navigation() {
                         animate={{ opacity: 1, y: 0 }}
                         className="absolute top-32 left-4 z-[1000] w-[400px] max-w-[calc(100vw-32px)]"
                     >
-                        <SearchBar
+                        <SearchBarWithHistory
                             onSearch={searchDestination}
                             isSearching={isSearching}
                             onClear={clearRoute}

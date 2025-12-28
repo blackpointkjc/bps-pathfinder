@@ -68,47 +68,49 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                         icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights)}
                     >
                         <Popup>
-                            <div className="p-2 min-w-[200px]">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Car className="w-4 h-4 text-blue-600" />
-                                    <div>
-                                        <p className="font-bold text-base text-blue-600">
-                                            {unit.unit_number ? `#${unit.unit_number}` : 'Unit'}
+                            <div className="p-3 min-w-[240px]">
+                                <div className="flex items-start gap-3 mb-3 pb-3 border-b">
+                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                        <Car className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="font-bold text-sm text-gray-900">
+                                            {unit.rank || 'Officer'} {unit.last_name || unit.full_name?.split(' ').pop() || 'Unknown'}
                                         </p>
-                                        <p className="text-xs text-gray-600">
-                                            {unit.last_name || unit.full_name?.split(' ').pop() || 'Unknown'}
+                                        <p className="text-xs text-blue-600 font-semibold">
+                                            {unit.unit_number ? `Unit ${unit.unit_number}` : 'No Unit ID'}
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="space-y-1 text-xs">
+                                <div className="space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-gray-600">Status:</span>
+                                        <span className="text-xs text-gray-600">Status:</span>
                                         <Badge className={getStatusColor(unit.status)}>
                                             {unit.status || 'Available'}
                                         </Badge>
                                     </div>
 
-                                    {unit.speed !== undefined && unit.speed !== null && unit.speed > 0 && (
+                                    {unit.speed !== undefined && unit.speed !== null && (
                                         <div className="flex items-center justify-between">
-                                            <span className="text-gray-600">Speed:</span>
-                                            <span className="font-semibold">{Math.round(unit.speed)} mph</span>
+                                            <span className="text-xs text-gray-600">Speed:</span>
+                                            <span className="text-sm font-bold text-gray-900">{Math.round(unit.speed)} mph</span>
                                         </div>
                                     )}
 
                                     {unit.current_call_info && (
-                                        <div className="pt-1 border-t">
-                                            <div className="flex items-start gap-1">
-                                                <Radio className="w-3 h-3 text-red-500 mt-0.5 flex-shrink-0" />
-                                                <span className="text-gray-700 text-xs">{unit.current_call_info}</span>
+                                        <div className="pt-2 border-t">
+                                            <div className="flex items-start gap-2">
+                                                <Radio className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                                                <span className="text-xs text-gray-700 leading-relaxed">{unit.current_call_info}</span>
                                             </div>
                                         </div>
                                     )}
 
                                     {unit.last_updated && (
-                                        <div className="flex items-center gap-1 text-gray-500 pt-1">
+                                        <div className="flex items-center gap-1.5 text-gray-500 pt-2 border-t">
                                             <Clock className="w-3 h-3" />
-                                            <span>Updated: {new Date(unit.last_updated).toLocaleTimeString()}</span>
+                                            <span className="text-xs">Last seen: {new Date(unit.last_updated).toLocaleTimeString()}</span>
                                         </div>
                                     )}
                                 </div>

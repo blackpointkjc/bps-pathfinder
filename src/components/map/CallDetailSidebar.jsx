@@ -86,7 +86,8 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
         
         setIsLoadingUnits(true);
         try {
-            const users = await base44.asServiceRole.entities.User.list('-last_updated', 100);
+            const response = await base44.functions.invoke('fetchAllUsers', {});
+            const users = response.data?.users || [];
             
             const nearby = users.filter(u => {
                 if (!u.latitude || !u.longitude) return false;
