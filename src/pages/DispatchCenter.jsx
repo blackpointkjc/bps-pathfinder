@@ -24,7 +24,6 @@ export default function DispatchCenter() {
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showPriorCalls, setShowPriorCalls] = useState(false);
     const [showMessaging, setShowMessaging] = useState(false);
-    const [showScheduling, setShowScheduling] = useState(false);
     const [showMaintenance, setShowMaintenance] = useState(false);
 
     useEffect(() => {
@@ -150,13 +149,7 @@ export default function DispatchCenter() {
                             <AlertCircle className="w-4 h-4 mr-2" />
                             {showPriorCalls ? 'Active' : 'Prior'}
                         </Button>
-                        <Button
-                            onClick={() => setShowScheduling(!showScheduling)}
-                            variant="outline"
-                            className="border-slate-600 text-black bg-white hover:bg-slate-100"
-                        >
-                            Scheduling
-                        </Button>
+
                         <Button
                             onClick={() => setShowMaintenance(!showMaintenance)}
                             variant="outline"
@@ -200,8 +193,6 @@ export default function DispatchCenter() {
 
                 {showPriorCalls ? (
                     <PriorCallsView currentUser={currentUser} units={units} />
-                ) : showScheduling ? (
-                    <UnitScheduling units={units} currentUser={currentUser} />
                 ) : showMaintenance ? (
                     <MaintenanceTracking units={units} />
                 ) : (

@@ -24,14 +24,9 @@ export default function MessagingPanel({ currentUser, units, isOpen, onClose }) 
 
     const loadMessages = async () => {
         try {
-            const sent = await base44.entities.Message.filter({ sender_id: currentUser.id });
-            const received = await base44.entities.Message.filter({ recipient_id: currentUser.id });
-            const dispatchMessages = await base44.entities.Message.filter({ recipient_id: 'dispatch' });
-            
-            const all = [...sent, ...received, ...dispatchMessages].sort(
-                (a, b) => new Date(b.created_date) - new Date(a.created_date)
-            );
-            setMessages(all);
+            // Load ALL messages - everyone can see all communications
+            const allMessages = await base44.entities.Message.list('-created_date', 200);
+            setMessages(allMessages || []);
         } catch (error) {
             console.error('Error loading messages:', error);
         }
