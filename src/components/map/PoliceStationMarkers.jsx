@@ -20,7 +20,7 @@ const POLICE_STATIONS = {
             name: 'West Station (Headquarters)',
             address: '7721 E. Parham Rd., Henrico, VA 23294',
             hours: 'Open 24/7',
-            coords: [37.6413, -77.4885]
+            coords: [37.63043349090483, -77.52872767487804]
         },
         {
             name: 'Central Station',
