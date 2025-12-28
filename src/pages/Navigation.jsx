@@ -158,15 +158,33 @@ export default function Navigation() {
     useEffect(() => {
         const init = async () => {
             await loadCurrentUser();
-            getCurrentLocation();
+            // Get location immediately and forcefully
+            if (navigator.geolocation) {
+                toast.info('Getting your location...');
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const coords = [position.coords.latitude, position.coords.longitude];
+                        console.log('📍 Initial location:', coords);
+                        setCurrentLocation(coords);
+                        setIsLocating(false);
+                        toast.success('Location ready');
+                        
+                        // Start live tracking after initial location
+                        if (isOnline) {
+                            startContinuousTracking();
+                        }
+                    },
+                    (error) => {
+                        console.error('Location error:', error);
+                        toast.error('Please enable location services');
+                        setIsLocating(false);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            }
             fetchActiveCalls();
         };
         init();
-        
-        // Start live tracking by default
-        if (isOnline) {
-            startContinuousTracking();
-        }
         
         // Refresh active calls every 60 seconds for real-time updates (silent mode)
         callsRefreshInterval.current = setInterval(() => {
@@ -693,19 +711,29 @@ export default function Navigation() {
 
                 if (currentLocation) {
                     console.log('🗺️ Fetching route from', currentLocation, 'to', destCoords);
+                    toast.info('Calculating route...');
                     const fetchedRoutes = await fetchRoutes(currentLocation, destCoords);
                     if (fetchedRoutes && fetchedRoutes.length > 0) {
                         console.log('✅ Routes found:', fetchedRoutes.length);
                         setRoutes(fetchedRoutes);
                         setSelectedRouteIndex(0);
                         updateRouteDisplay(fetchedRoutes[0]);
+                        toast.success('Route ready - tap Start Navigation');
                     } else {
                         console.error('❌ No routes returned');
                         toast.error('Could not find route');
                     }
                 } else {
                     console.warn('⚠️ No current location available');
-                    toast.error('Current location not available');
+                    toast.error('Getting your location first...');
+                    // Try to get location again
+                    getCurrentLocation();
+                    // Retry route after 2 seconds
+                    setTimeout(() => {
+                        if (currentLocation) {
+                            searchDestination(query);
+                        }
+                    }, 2000);
                 }
             } else {
                 toast.error('Location not found');
@@ -1561,14 +1589,15 @@ Format the response as a concise bullet list. If information is not available, s
 
             {!isNavigating && directions && (
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute bottom-[52vh] left-1/2 -translate-x-1/2 z-[1001]"
+                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    className="absolute bottom-[52vh] left-1/2 -translate-x-1/2 z-[1001] pointer-events-auto"
                 >
                     <Button
                         onClick={startNavigation}
-                        className="bg-[#007AFF] hover:bg-[#0056CC] text-white px-8 py-6 text-lg font-semibold rounded-2xl shadow-2xl"
+                        className="bg-[#007AFF] hover:bg-[#0056CC] text-white px-10 py-7 text-xl font-bold rounded-2xl shadow-2xl animate-pulse"
                     >
+                        <NavigationIcon className="w-6 h-6 mr-2" />
                         Start Navigation
                     </Button>
                 </motion.div>
