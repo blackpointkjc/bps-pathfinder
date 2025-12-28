@@ -164,79 +164,40 @@ Deno.serve(async (req) => {
                     jurisdiction = 'Richmond, VA, USA';
                 }
                 
-                // Use AI to clean and format the address
-                const aiAddressResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
-                    prompt: `Extract and format this address for geocoding: "${call.location}". Make it a clean, standardized US address format. If it's an intersection, format it properly. Return ONLY the cleaned address, nothing else.`,
-                    response_json_schema: {
-                        type: "object",
-                        properties: {
-                            cleaned_address: { type: "string" }
-                        }
-                    }
-                });
+                // Clean address format (handle intersections like "N 19TH ST/E FRANKLIN ST")
+                let cleanedAddress = call.location.trim();
                 
-                const cleanedAddress = aiAddressResponse.cleaned_address || call.location;
-                console.log(`🧹 Cleaned: "${call.location}" → "${cleanedAddress}"`);
+                // Convert intersection format "STREET1/STREET2" to "STREET1 and STREET2"
+                if (cleanedAddress.includes('/')) {
+                    const parts = cleanedAddress.split('/').map(s => s.trim());
+                    cleanedAddress = `${parts[0]} and ${parts[1]}`;
+                }
                 
-                // Try multiple geocoding strategies
+                // Remove trailing jurisdiction indicators
+                cleanedAddress = cleanedAddress.replace(/\s+(RICH|CHES|HENR|VA|RICHMOND|HENRICO|CHESTERFIELD)$/i, '').trim();
+                
+                console.log(`🧹 Cleaned: "${call.location}" → "${cleanedAddress}, ${jurisdiction}"`);
+                
+                // Try geocoding with cleaned address
                 let geoData = null;
-                
-                // Strategy 1: Cleaned address with jurisdiction
-                const query1 = `${cleanedAddress}, ${jurisdiction}`;
-                let geoResponse = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query1)}&limit=1&countrycodes=us`,
+                const query = `${cleanedAddress}, ${jurisdiction}`;
+                const geoResponse = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
                     { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
                 );
                 geoData = await geoResponse.json();
                 
-                // Strategy 2: Original address with jurisdiction
-                if (!geoData || geoData.length === 0) {
-                    const query2 = `${call.location}, ${jurisdiction}`;
-                    geoResponse = await fetch(
-                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query2)}&limit=1&countrycodes=us`,
-                        { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
-                    );
-                    geoData = await geoResponse.json();
-                }
-                
-                // Strategy 3: Extract street number and name
-                if (!geoData || geoData.length === 0) {
-                    const locationParts = cleanedAddress.match(/^(\d+)\s+(.+)$/);
-                    if (locationParts) {
-                        const [_, number, street] = locationParts;
-                        const query3 = `${number} ${street}, ${jurisdiction}`;
-                        geoResponse = await fetch(
-                            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query3)}&limit=1&countrycodes=us`,
-                            { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
-                        );
-                        geoData = await geoResponse.json();
-                    }
-                }
-                
-                // Strategy 4: Just the street name in jurisdiction
-                if (!geoData || geoData.length === 0) {
-                    const streetOnly = cleanedAddress.replace(/^\d+\s+/, '');
-                    const query4 = `${streetOnly}, ${jurisdiction}`;
-                    geoResponse = await fetch(
-                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query4)}&limit=1&countrycodes=us`,
-                        { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
-                    );
-                    geoData = await geoResponse.json();
-                }
-                
                 if (geoData && geoData.length > 0) {
                     const lat = parseFloat(geoData[0].lat);
                     const lon = parseFloat(geoData[0].lon);
-                    
-                    // Always accept coordinates - skip AI verification to speed up
-                    console.log(`✓ ${call.location} → ${lat}, ${lon}`);
+                    console.log(`✅ ${call.location} → ${lat}, ${lon}`);
                     geocodedCalls.push({
                         ...call,
                         latitude: lat,
                         longitude: lon
                     });
                 } else {
-                    console.log(`✗ No geocode for ${call.location}`);
+                    console.warn(`❌ Failed to geocode: ${call.location}`);
                     geocodedCalls.push({
                         ...call,
                         latitude: null,
@@ -244,8 +205,8 @@ Deno.serve(async (req) => {
                     });
                 }
                 
-                // Rate limit
-                await new Promise(resolve => setTimeout(resolve, 1200));
+                // Rate limit to avoid hitting Nominatim too hard
+                await new Promise(resolve => setTimeout(resolve, 1000));
             } catch (error) {
                 console.error(`Error geocoding ${call.location}:`, error);
                 geocodedCalls.push({
@@ -258,31 +219,11 @@ Deno.serve(async (req) => {
         
         console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
         
-        // Generate AI summaries (skip if already has one from dispatch database)
-        const callsWithSummaries = await Promise.all(
-            geocodedCalls.map(async (call) => {
-                if (call.ai_summary) {
-                    return call;
-                }
-                try {
-                    const summaryResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
-                        prompt: `Summarize this emergency call in 1-2 sentences: ${call.incident} at ${call.location}, ${call.agency}, Status: ${call.status}`,
-                        response_json_schema: {
-                            type: "object",
-                            properties: {
-                                summary: { type: "string" }
-                            }
-                        }
-                    });
-                    return {
-                        ...call,
-                        ai_summary: summaryResponse.summary || `${call.incident} at ${call.location}`
-                    };
-                } catch (error) {
-                    return { ...call, ai_summary: `${call.incident} at ${call.location}` };
-                }
-            })
-        );
+        // Generate AI summaries for geocoded calls only (skip if no coordinates)
+        const callsWithSummaries = geocodedCalls.map(call => ({
+            ...call,
+            ai_summary: call.ai_summary || `${call.incident} at ${call.location}`
+        }));
         
         return Response.json({
             success: true,
