@@ -219,8 +219,11 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             {/* Jurisdiction Boundaries */}
             <JurisdictionBoundaries filters={jurisdictionFilters} />
 
-            {/* Precinct Markers */}
+            {/* Richmond precinct markers */}
             <PrecinctMarkers />
+            
+            {/* Police station markers */}
+            <PoliceStationMarkers showStations={showPoliceStations} />
             
             <MapController 
                 center={currentLocation} 
