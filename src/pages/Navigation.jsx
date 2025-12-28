@@ -1243,7 +1243,7 @@ Format the response as a concise bullet list. If information is not available, s
         <div className="h-screen w-screen relative overflow-hidden bg-[#F5F5F7] pointer-events-none">
             <div className="pointer-events-auto w-full h-full">
                 <MapView
-                    currentLocation={unitStatus === 'Out of Service' ? null : currentLocation}
+                    currentLocation={currentLocation}
                     destination={destination}
                     route={routeCoords}
                     trafficSegments={trafficSegments}
