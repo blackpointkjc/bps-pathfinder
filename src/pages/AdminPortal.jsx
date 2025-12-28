@@ -196,12 +196,16 @@ export default function AdminPortal() {
                                         <SelectValue placeholder="Select rank" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Officer">Officer</SelectItem>
-                                        <SelectItem value="Corporal">Corporal</SelectItem>
-                                        <SelectItem value="Sergeant">Sergeant</SelectItem>
-                                        <SelectItem value="Lieutenant">Lieutenant</SelectItem>
+                                        <SelectItem value="Colonel">Colonel</SelectItem>
+                                        <SelectItem value="Lieutenant Colonel">Lieutenant Colonel</SelectItem>
+                                        <SelectItem value="Major">Major</SelectItem>
                                         <SelectItem value="Captain">Captain</SelectItem>
-                                        <SelectItem value="Chief">Chief</SelectItem>
+                                        <SelectItem value="Lieutenant">Lieutenant</SelectItem>
+                                        <SelectItem value="First Sergeant">First Sergeant</SelectItem>
+                                        <SelectItem value="Sergeant">Sergeant</SelectItem>
+                                        <SelectItem value="Corporal">Corporal</SelectItem>
+                                        <SelectItem value="Senior Officer">Senior Officer</SelectItem>
+                                        <SelectItem value="Officer">Officer</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
