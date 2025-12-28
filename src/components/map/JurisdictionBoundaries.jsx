@@ -100,7 +100,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
     const onEachChesterfieldDistrictFeature = (feature, layer) => {
         if (feature.properties) {
-            const districtName = feature.properties.NAME || feature.properties.DISTRICT || 'Unknown';
+            const districtName = feature.properties.MAG_DIST || feature.properties.NAME || feature.properties.DISTRICT || feature.properties.Magisterial_District || 'Unknown';
             
             // Filter by district name if specified
             if (chesterfieldDistrict !== 'all' && districtName !== chesterfieldDistrict) {
@@ -165,7 +165,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         ? {
             ...chesterfieldDistricts,
             features: chesterfieldDistricts.features.filter(f => {
-                const name = f.properties?.NAME || f.properties?.DISTRICT;
+                const name = f.properties?.MAG_DIST || f.properties?.NAME || f.properties?.DISTRICT || f.properties?.Magisterial_District;
                 return name === chesterfieldDistrict;
             })
         }
