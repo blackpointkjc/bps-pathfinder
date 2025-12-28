@@ -21,7 +21,7 @@ export default function DirectionsPanel({ directions, destination, onClose, dist
                     animate={{ y: 0 }}
                     exit={{ y: "100%" }}
                     transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                    className="absolute bottom-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-xl rounded-t-3xl shadow-2xl shadow-black/20 max-h-[50vh] md:max-h-[60vh]"
+                    className="absolute bottom-0 left-0 right-0 z-[2000] bg-white/95 backdrop-blur-xl rounded-t-3xl shadow-2xl shadow-black/20 max-h-[50vh] md:max-h-[60vh] pointer-events-auto"
                 >
                     {/* Handle bar */}
                     <div className="flex justify-center pt-3 pb-1">

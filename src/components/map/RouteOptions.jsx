@@ -43,7 +43,7 @@ export default function RouteOptions({ routes, onSelectRoute, selectedRouteIndex
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className="absolute bottom-4 left-4 right-4 md:left-4 md:right-auto md:w-[400px] z-[1000]"
+                className="absolute bottom-4 left-4 right-4 md:left-4 md:right-auto md:w-[400px] z-[2000] pointer-events-auto"
             >
                 <Card className="bg-white/95 backdrop-blur-xl shadow-2xl border-white/20 overflow-hidden">
                     <div className="p-4 border-b border-gray-100">

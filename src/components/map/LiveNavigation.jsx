@@ -39,7 +39,7 @@ export default function LiveNavigation({
                 initial={{ y: -100 }}
                 animate={{ y: 0 }}
                 exit={{ y: -100 }}
-                className="absolute top-4 left-4 right-4 z-[1000] md:left-1/2 md:-translate-x-1/2 md:w-[480px] md:right-auto"
+                className="absolute top-4 left-4 right-4 z-[2000] md:left-1/2 md:-translate-x-1/2 md:w-[480px] md:right-auto pointer-events-auto"
             >
                 <Card className="bg-white/95 backdrop-blur-xl shadow-2xl border-white/20 overflow-hidden">
                     {/* Rerouting Banner */}
