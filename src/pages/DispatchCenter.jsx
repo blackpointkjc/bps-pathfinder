@@ -145,7 +145,7 @@ export default function DispatchCenter() {
                         <Button
                             onClick={() => setShowPriorCalls(!showPriorCalls)}
                             variant="outline"
-                            className="border-slate-600 text-white hover:bg-slate-800"
+                            className="border-slate-600 text-black bg-white hover:bg-slate-100"
                         >
                             <AlertCircle className="w-4 h-4 mr-2" />
                             {showPriorCalls ? 'Active' : 'Prior'}
@@ -153,21 +153,21 @@ export default function DispatchCenter() {
                         <Button
                             onClick={() => setShowScheduling(!showScheduling)}
                             variant="outline"
-                            className="border-slate-600 text-white hover:bg-slate-800"
+                            className="border-slate-600 text-black bg-white hover:bg-slate-100"
                         >
                             Scheduling
                         </Button>
                         <Button
                             onClick={() => setShowMaintenance(!showMaintenance)}
                             variant="outline"
-                            className="border-slate-600 text-white hover:bg-slate-800"
+                            className="border-slate-600 text-black bg-white hover:bg-slate-100"
                         >
                             Maintenance
                         </Button>
                         <Button
                             onClick={() => setShowMessaging(!showMessaging)}
                             variant="outline"
-                            className="border-slate-600 text-white hover:bg-slate-800"
+                            className="border-slate-600 text-black bg-white hover:bg-slate-100"
                         >
                             Messages
                         </Button>
@@ -175,13 +175,13 @@ export default function DispatchCenter() {
                             onClick={() => setShowCreateDialog(true)}
                             className="bg-red-600 hover:bg-red-700"
                         >
-                            <Plus className="w-4 h-4 mr-2" />
+                            <Radio className="w-4 h-4 mr-2" />
                             Call
                         </Button>
                         {currentUser?.role === 'admin' && (
                             <Button
                                 variant="outline"
-                                className="border-slate-600 text-white hover:bg-slate-800"
+                                className="border-slate-600 text-black bg-white hover:bg-slate-100"
                                 onClick={() => window.location.href = '/adminportal'}
                             >
                                 <Shield className="w-4 h-4 mr-2" />
@@ -190,7 +190,7 @@ export default function DispatchCenter() {
                         )}
                         <Button
                             variant="outline"
-                            className="border-slate-600 text-white hover:bg-slate-800"
+                            className="border-slate-600 text-black bg-white hover:bg-slate-100"
                             onClick={() => window.location.href = '/navigation'}
                         >
                             Map
