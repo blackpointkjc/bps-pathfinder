@@ -15,8 +15,28 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'userId and updates required' }, { status: 400 });
         }
 
-        // Update user with service role
-        await base44.asServiceRole.entities.User.update(userId, updates);
+        // Update user - need to fetch first, then update
+        const targetUser = await base44.asServiceRole.entities.User.filter({ id: userId });
+        
+        if (!targetUser || targetUser.length === 0) {
+            return Response.json({ error: 'User not found' }, { status: 404 });
+        }
+
+        // Use auth update for the target user
+        const response = await fetch(`${Deno.env.get('BASE44_API_URL') || 'https://api.base44.com'}/v1/apps/${Deno.env.get('BASE44_APP_ID')}/users/${userId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get('BASE44_SERVICE_ROLE_KEY')}`
+            },
+            body: JSON.stringify(updates)
+        });
+
+        if (!response.ok) {
+            const error = await response.text();
+            console.error('Update failed:', error);
+            return Response.json({ error: 'Failed to update user', details: error }, { status: response.status });
+        }
         
         return Response.json({
             success: true,
