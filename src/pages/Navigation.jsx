@@ -520,21 +520,35 @@ export default function Navigation() {
 
     const updateRouteDisplay = (routeData) => {
         const coordinates = routeData.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-        
-        // Generate traffic data
+
+        // Generate traffic data with delay estimation
         const traffic = generateTrafficData(coordinates);
         setTrafficSegments(traffic);
 
+        // Calculate traffic delay
+        let trafficDelayMins = 0;
+        traffic.forEach(seg => {
+            if (seg.condition === 'heavy') trafficDelayMins += 5;
+            else if (seg.condition === 'moderate') trafficDelayMins += 2;
+        });
+
         const distanceMiles = (routeData.distance / 1609.34).toFixed(1);
         setDistance(`${distanceMiles} mi`);
-        
-        const durationMins = Math.round(routeData.duration / 60);
-        if (durationMins >= 60) {
-            const hours = Math.floor(durationMins / 60);
-            const mins = durationMins % 60;
+
+        const baseDurationMins = Math.round(routeData.duration / 60);
+        const totalDurationMins = baseDurationMins + trafficDelayMins;
+
+        if (totalDurationMins >= 60) {
+            const hours = Math.floor(totalDurationMins / 60);
+            const mins = totalDurationMins % 60;
             setDuration(`${hours}h ${mins}m`);
         } else {
-            setDuration(`${durationMins} min`);
+            setDuration(`${totalDurationMins} min`);
+        }
+
+        // Show traffic warning if significant delay
+        if (trafficDelayMins > 5) {
+            toast.warning(`Traffic adding ~${trafficDelayMins} min to route`);
         }
         
         const steps = routeData.legs[0].steps.map(step => {
@@ -1279,6 +1293,7 @@ export default function Navigation() {
                 unitName={unitName || currentUser?.unit_number || currentUser?.full_name || 'Unknown Unit'}
                 onStatusChange={handleStatusChange}
                 activeCall={activeCallInfo}
+                currentLocation={currentLocation}
             />
 
             <DispatchPanel

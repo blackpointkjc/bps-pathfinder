@@ -6,24 +6,29 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle2, Navigation, MapPin, Clock, XCircle, X, Car, Home, Coffee, BookOpen, Heart } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { CheckCircle2, Navigation as NavigationIcon, MapPin, Clock, XCircle, X, Car, Home, Coffee, BookOpen, Heart, Crosshair } from 'lucide-react';
+import { toast } from 'sonner';
 
 const STATUS_OPTIONS = [
-    { value: 'Available', icon: CheckCircle2, color: 'text-green-600 bg-green-100' },
-    { value: 'Enroute', icon: Navigation, color: 'text-red-600 bg-red-100' },
-    { value: 'On Scene', icon: MapPin, color: 'text-blue-600 bg-blue-100' },
-    { value: 'On Patrol', icon: Car, color: 'text-indigo-600 bg-indigo-100' },
-    { value: 'At Station', icon: Home, color: 'text-purple-600 bg-purple-100' },
-    { value: 'In Quarters', icon: Coffee, color: 'text-cyan-600 bg-cyan-100' },
-    { value: 'Training', icon: BookOpen, color: 'text-orange-600 bg-orange-100' },
-    { value: 'Busy', icon: Clock, color: 'text-yellow-600 bg-yellow-100' },
-    { value: 'Medical Leave', icon: Heart, color: 'text-pink-600 bg-pink-100' },
-    { value: 'Out of Service', icon: XCircle, color: 'text-gray-600 bg-gray-100', needsETA: true }
+    { value: 'Available', icon: CheckCircle2, color: 'text-green-600 bg-green-100', description: 'Ready for calls' },
+    { value: 'Enroute', icon: NavigationIcon, color: 'text-red-600 bg-red-100', description: 'En route to call' },
+    { value: 'On Scene', icon: MapPin, color: 'text-blue-600 bg-blue-100', description: 'Arrived at scene' },
+    { value: 'On Patrol', icon: Car, color: 'text-indigo-600 bg-indigo-100', description: 'Patrolling area' },
+    { value: 'At Station', icon: Home, color: 'text-purple-600 bg-purple-100', description: 'At station/base' },
+    { value: 'In Quarters', icon: Coffee, color: 'text-cyan-600 bg-cyan-100', description: 'Resting/break' },
+    { value: 'Training', icon: BookOpen, color: 'text-orange-600 bg-orange-100', description: 'In training' },
+    { value: 'Busy', icon: Clock, color: 'text-yellow-600 bg-yellow-100', description: 'Occupied/busy' },
+    { value: 'Medical Leave', icon: Heart, color: 'text-pink-600 bg-pink-100', description: 'Medical leave' },
+    { value: 'Out of Service', icon: XCircle, color: 'text-gray-600 bg-gray-100', description: 'Not available', needsETA: true }
 ];
 
-export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitName, onStatusChange, activeCall }) {
+export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitName, onStatusChange, activeCall, currentLocation }) {
     const [selectedStatus, setSelectedStatus] = useState(currentStatus);
     const [estimatedReturn, setEstimatedReturn] = useState('');
+    const [manualLat, setManualLat] = useState('');
+    const [manualLng, setManualLng] = useState('');
+    const [showManualLocation, setShowManualLocation] = useState(false);
     
     if (!isOpen) return null;
     
@@ -38,6 +43,31 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
     const handleConfirmOutOfService = () => {
         onStatusChange(selectedStatus, estimatedReturn);
         onClose();
+    };
+
+    const handleSetManualLocation = async () => {
+        const lat = parseFloat(manualLat);
+        const lng = parseFloat(manualLng);
+        
+        if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            toast.error('Invalid coordinates');
+            return;
+        }
+        
+        try {
+            const { base44 } = await import('@/api/base44Client');
+            await base44.auth.updateMe({
+                latitude: lat,
+                longitude: lng,
+                last_updated: new Date().toISOString()
+            });
+            toast.success('Location updated manually');
+            setShowManualLocation(false);
+            setManualLat('');
+            setManualLng('');
+        } catch (error) {
+            toast.error('Failed to update location');
+        }
     };
 
     return (
@@ -109,6 +139,7 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                                                             <Icon className="w-6 h-6" />
                                                         </div>
                                                         <p className="text-sm font-semibold text-gray-900">{status.value}</p>
+                                                        <p className="text-xs text-gray-500 mt-1">{status.description}</p>
                                                     </motion.button>
                                                 );
                                                 })}

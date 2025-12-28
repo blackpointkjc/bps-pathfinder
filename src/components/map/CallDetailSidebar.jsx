@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { X, MapPin, Clock, Radio, Navigation as NavigationIcon, AlertCircle, Crosshair } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { X, MapPin, Clock, Radio, Navigation as NavigationIcon, AlertCircle, Crosshair, Users, History, Car, TrendingUp } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { MapContainer, TileLayer, Marker, Circle } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 const getAgencyColor = (agency) => {
     if (agency?.includes('RPD')) return 'bg-blue-600 text-white';
@@ -21,7 +27,97 @@ const getStatusColor = (status) => {
     return 'bg-yellow-500';
 };
 
+const callMarkerIcon = new L.Icon({
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+});
+
 export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }) {
+    const [historicalCalls, setHistoricalCalls] = useState([]);
+    const [nearbyUnits, setNearbyUnits] = useState([]);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [isLoadingUnits, setIsLoadingUnits] = useState(false);
+
+    useEffect(() => {
+        if (call) {
+            fetchHistoricalCalls();
+            fetchNearbyUnits();
+        }
+    }, [call]);
+
+    const fetchHistoricalCalls = async () => {
+        if (!call.latitude || !call.longitude) return;
+        
+        setIsLoadingHistory(true);
+        try {
+            // Fetch calls from history within 0.5 mile radius (~0.01 lat/lng)
+            const calls = await base44.entities.CallHistory.filter({}, '-archived_date', 50);
+            
+            // Filter by proximity and incident type
+            const nearby = calls.filter(c => {
+                if (!c.latitude || !c.longitude) return false;
+                const distance = calculateDistance(
+                    call.latitude, call.longitude,
+                    c.latitude, c.longitude
+                );
+                return distance < 0.5; // Within 0.5 miles
+            });
+            
+            // Filter by similar incident type
+            const similar = nearby.filter(c => 
+                c.incident?.toLowerCase().includes(call.incident?.toLowerCase().split(' ')[0]) ||
+                call.incident?.toLowerCase().includes(c.incident?.toLowerCase().split(' ')[0])
+            );
+            
+            setHistoricalCalls(similar.slice(0, 5));
+        } catch (error) {
+            console.error('Error fetching historical calls:', error);
+        } finally {
+            setIsLoadingHistory(false);
+        }
+    };
+
+    const fetchNearbyUnits = async () => {
+        if (!call.latitude || !call.longitude) return;
+        
+        setIsLoadingUnits(true);
+        try {
+            const users = await base44.asServiceRole.entities.User.list('-last_updated', 100);
+            
+            const nearby = users.filter(u => {
+                if (!u.latitude || !u.longitude) return false;
+                const distance = calculateDistance(
+                    call.latitude, call.longitude,
+                    u.latitude, u.longitude
+                );
+                return distance < 5; // Within 5 miles
+            }).map(u => ({
+                ...u,
+                distance: calculateDistance(call.latitude, call.longitude, u.latitude, u.longitude)
+            })).sort((a, b) => a.distance - b.distance).slice(0, 5);
+            
+            setNearbyUnits(nearby);
+        } catch (error) {
+            console.error('Error fetching nearby units:', error);
+        } finally {
+            setIsLoadingUnits(false);
+        }
+    };
+
+    const calculateDistance = (lat1, lon1, lat2, lon2) => {
+        const R = 3959; // Earth's radius in miles
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    };
+
     if (!call) return null;
     
     return (
@@ -69,58 +165,158 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    {/* Incident Type */}
-                    <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">
-                            Incident Type
-                        </label>
-                        <p className="text-2xl font-bold text-gray-900">{call.incident}</p>
-                    </div>
-
-                    {/* AI Summary */}
-                    {call.ai_summary && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                            <p className="text-sm text-blue-900 font-medium leading-relaxed">
-                                {call.ai_summary}
-                            </p>
+                <ScrollArea className="flex-1">
+                    <div className="p-6 space-y-6">
+                        {/* Incident Type */}
+                        <div>
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">
+                                Incident Type
+                            </label>
+                            <p className="text-2xl font-bold text-gray-900">{call.incident}</p>
                         </div>
-                    )}
 
-                    {/* Location */}
-                    <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                            <MapPin className="w-4 h-4" />
-                            Location
-                        </label>
-                        <p className="text-base text-gray-900 font-medium">{call.location}</p>
-                        {call.latitude && call.longitude && (
-                            <p className="text-xs text-gray-500 mt-1">
-                                {call.latitude.toFixed(6)}, {call.longitude.toFixed(6)}
-                            </p>
+                        {/* AI Summary */}
+                        {call.ai_summary && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                                <div className="flex items-start gap-2">
+                                    <TrendingUp className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                                    <p className="text-sm text-blue-900 font-medium leading-relaxed">
+                                        {call.ai_summary}
+                                    </p>
+                                </div>
+                            </div>
                         )}
-                    </div>
 
-                    {/* Time & Agency */}
-                    <div className="grid grid-cols-2 gap-4">
+                        {/* Location */}
                         <div>
                             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                <Clock className="w-4 h-4" />
-                                Time
+                                <MapPin className="w-4 h-4" />
+                                Location
                             </label>
-                            <p className="text-sm text-gray-900 font-medium">{call.timeReceived}</p>
+                            <p className="text-base text-gray-900 font-medium">{call.location}</p>
+                            {call.latitude && call.longitude && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {call.latitude.toFixed(6)}, {call.longitude.toFixed(6)}
+                                </p>
+                            )}
                         </div>
+
+                        {/* Map Preview */}
+                        {call.latitude && call.longitude && (
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">
+                                    Area Map
+                                </label>
+                                <div className="h-48 rounded-xl overflow-hidden border border-gray-200">
+                                    <MapContainer
+                                        center={[call.latitude, call.longitude]}
+                                        zoom={15}
+                                        zoomControl={false}
+                                        dragging={false}
+                                        scrollWheelZoom={false}
+                                        className="h-full w-full"
+                                    >
+                                        <TileLayer
+                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        />
+                                        <Marker position={[call.latitude, call.longitude]} icon={callMarkerIcon} />
+                                        <Circle
+                                            center={[call.latitude, call.longitude]}
+                                            radius={400}
+                                            pathOptions={{ color: 'red', fillColor: 'red', fillOpacity: 0.1 }}
+                                        />
+                                    </MapContainer>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Time & Agency */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                    <Clock className="w-4 h-4" />
+                                    Time
+                                </label>
+                                <p className="text-sm text-gray-900 font-medium">{call.timeReceived}</p>
+                            </div>
+                            <div>
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                    <Radio className="w-4 h-4" />
+                                    Agency
+                                </label>
+                                <Badge className={getAgencyColor(call.agency)}>
+                                    {call.agency}
+                                </Badge>
+                            </div>
+                        </div>
+
+                        <Separator />
+
+                        {/* Nearby Units */}
                         <div>
-                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                <Radio className="w-4 h-4" />
-                                Agency
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <Users className="w-4 h-4" />
+                                Nearby Units ({nearbyUnits.length})
                             </label>
-                            <Badge className={getAgencyColor(call.agency)}>
-                                {call.agency}
-                            </Badge>
+                            {isLoadingUnits ? (
+                                <p className="text-sm text-gray-500">Loading units...</p>
+                            ) : nearbyUnits.length > 0 ? (
+                                <div className="space-y-2">
+                                    {nearbyUnits.map((unit, idx) => (
+                                        <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                            <div className="flex items-center gap-2">
+                                                <Car className="w-4 h-4 text-blue-600" />
+                                                <div>
+                                                    <p className="text-sm font-semibold text-gray-900">
+                                                        {unit.unit_number || unit.full_name || 'Unknown Unit'}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">{unit.status || 'Available'}</p>
+                                                </div>
+                                            </div>
+                                            <Badge variant="outline" className="text-xs">
+                                                {unit.distance.toFixed(1)} mi
+                                            </Badge>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-gray-500">No units nearby</p>
+                            )}
+                        </div>
+
+                        <Separator />
+
+                        {/* Historical Calls */}
+                        <div>
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <History className="w-4 h-4" />
+                                Similar Calls in Area ({historicalCalls.length})
+                            </label>
+                            {isLoadingHistory ? (
+                                <p className="text-sm text-gray-500">Loading history...</p>
+                            ) : historicalCalls.length > 0 ? (
+                                <div className="space-y-2">
+                                    {historicalCalls.map((histCall, idx) => (
+                                        <div key={idx} className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                            <p className="text-sm font-semibold text-gray-900">{histCall.incident}</p>
+                                            <p className="text-xs text-gray-600 mt-1">{histCall.location}</p>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <Badge variant="outline" className="text-xs">
+                                                    {new Date(histCall.archived_date).toLocaleDateString()}
+                                                </Badge>
+                                                <Badge variant="outline" className="text-xs">
+                                                    {histCall.agency}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-gray-500">No similar calls in area</p>
+                            )}
                         </div>
                     </div>
-                </div>
+                </ScrollArea>
 
                 {/* Actions */}
                 <div className="p-6 border-t border-gray-200 space-y-3 bg-gray-50">
