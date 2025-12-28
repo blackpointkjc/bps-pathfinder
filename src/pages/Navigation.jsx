@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
@@ -23,6 +23,7 @@ import CallDetailSidebar from '@/components/map/CallDetailSidebar';
 import CallNotification from '@/components/dispatch/CallNotification';
 import { useVoiceGuidance, useVoiceCommand } from '@/components/map/VoiceGuidance';
 import { generateTrafficData } from '@/components/map/TrafficLayer';
+import LayerFilterPanel from '@/components/map/LayerFilterPanel';
 
 export default function Navigation() {
     const [currentLocation, setCurrentLocation] = useState(null);
@@ -97,6 +98,16 @@ export default function Navigation() {
     const [mapCenter, setMapCenter] = useState(null);
     const [pendingCallNotification, setPendingCallNotification] = useState(null);
     const lastCheckedCallIdRef = useRef(null);
+    
+    // Layer filter state
+    const [showLayerFilters, setShowLayerFilters] = useState(false);
+    const [jurisdictionFilters, setJurisdictionFilters] = useState({
+        richmondBeat: 'all',
+        henricoDistrict: 'all',
+        showChesterfield: true,
+        baseMapType: 'street',
+        searchAddress: ''
+    });
     
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
@@ -898,10 +909,20 @@ export default function Navigation() {
         const nextFilter = filters[(currentIndex + 1) % filters.length];
         setCallFilter(nextFilter);
         applyCallFilter(allActiveCalls, nextFilter);
-        
+
         const filterNames = { all: 'All Areas', richmond: 'Richmond', henrico: 'Henrico', chesterfield: 'Chesterfield' };
         toast.info(`Showing calls: ${filterNames[nextFilter]}`);
-    };
+        };
+
+        const handleLayerFilterChange = (newFilters) => {
+        setJurisdictionFilters(newFilters);
+
+        // Handle address search if provided
+        if (newFilters.searchAddress && newFilters.searchAddress !== jurisdictionFilters.searchAddress) {
+            searchDestination(newFilters.searchAddress);
+            toast.success('Searching for address...');
+        }
+        };
 
     const fetchActiveCalls = async (silent = false) => {
         if (!isOnline) {
@@ -984,6 +1005,8 @@ export default function Navigation() {
                 speed={speed}
                 mapCenter={mapCenter}
                 isNavigating={isNavigating}
+                baseMapType={jurisdictionFilters.baseMapType}
+                jurisdictionFilters={jurisdictionFilters}
                 onCallClick={(call) => {
                     setSelectedCall(call);
                     setShowCallSidebar(true);
@@ -1196,6 +1219,15 @@ export default function Navigation() {
                 </Button>
 
                 <Button
+                    onClick={() => setShowLayerFilters(true)}
+                    size="icon"
+                    className="h-8 w-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg"
+                    title="Layer Filters & Search"
+                >
+                    <Filter className="w-4 h-4" />
+                </Button>
+
+                <Button
                     onClick={() => setShowRoutePreferences(true)}
                     size="icon"
                     className="h-8 w-8 rounded-lg bg-white/95 backdrop-blur-xl shadow-lg border-white/20 hover:bg-white text-gray-600"
@@ -1342,6 +1374,13 @@ export default function Navigation() {
                 onClose={() => setShowRoutePreferences(false)}
                 preferences={routePreferences}
                 onSave={handleSaveRoutePreferences}
+            />
+
+            <LayerFilterPanel
+                isOpen={showLayerFilters}
+                onClose={() => setShowLayerFilters(false)}
+                filters={jurisdictionFilters}
+                onFilterChange={handleLayerFilterChange}
             />
 
             <ActiveCallsList

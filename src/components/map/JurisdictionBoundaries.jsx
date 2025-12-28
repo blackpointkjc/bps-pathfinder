@@ -2,7 +2,8 @@ import React from 'react';
 import { GeoJSON } from 'react-leaflet';
 import { useQuery } from '@tanstack/react-query';
 
-export default function JurisdictionBoundaries() {
+export default function JurisdictionBoundaries({ filters = {} }) {
+    const { richmondBeat = 'all', henricoDistrict = 'all', showChesterfield = true } = filters;
     // Fetch Richmond beats
     const { data: richmondBeats } = useQuery({
         queryKey: ['richmondBeats'],
@@ -71,6 +72,11 @@ export default function JurisdictionBoundaries() {
 
     const onEachRichmondFeature = (feature, layer) => {
         if (feature.properties && feature.properties.Name) {
+            // Filter by beat number if specified
+            if (richmondBeat !== 'all' && feature.properties.Name !== richmondBeat) {
+                return; // Skip this feature
+            }
+            
             layer.bindPopup(`
                 <div class="p-2">
                     <p class="font-bold text-blue-600">Richmond PD</p>
@@ -92,6 +98,12 @@ export default function JurisdictionBoundaries() {
     const onEachHenricoFeature = (feature, layer) => {
         if (feature.properties) {
             const districtName = feature.properties.MAG_DIST_NAME || feature.properties.NAME || feature.properties.DISTRICT || 'Unknown';
+            
+            // Filter by district name if specified
+            if (henricoDistrict !== 'all' && districtName !== henricoDistrict) {
+                return; // Skip this feature
+            }
+            
             layer.bindPopup(`
                 <div class="p-2">
                     <p class="font-bold text-purple-600">Henrico County</p>
@@ -101,11 +113,30 @@ export default function JurisdictionBoundaries() {
         }
     };
 
+    // Filter GeoJSON data based on filters
+    const filteredRichmondBeats = richmondBeats && richmondBeat !== 'all'
+        ? {
+            ...richmondBeats,
+            features: richmondBeats.features.filter(f => f.properties?.Name === richmondBeat)
+        }
+        : richmondBeats;
+
+    const filteredHenricoDistricts = henricoDistricts && henricoDistrict !== 'all'
+        ? {
+            ...henricoDistricts,
+            features: henricoDistricts.features.filter(f => {
+                const name = f.properties?.MAG_DIST_NAME || f.properties?.NAME || f.properties?.DISTRICT;
+                return name === henricoDistrict;
+            })
+        }
+        : henricoDistricts;
+
     return (
         <>
             {/* Chesterfield County Boundary */}
-            {chesterfieldBoundary && (
+            {showChesterfield && chesterfieldBoundary && (
                 <GeoJSON
+                    key="chesterfield"
                     data={chesterfieldBoundary}
                     style={chesterfieldStyle}
                     onEachFeature={onEachChesterfieldFeature}
@@ -113,18 +144,20 @@ export default function JurisdictionBoundaries() {
             )}
 
             {/* Henrico County Districts */}
-            {henricoDistricts && (
+            {filteredHenricoDistricts && (
                 <GeoJSON
-                    data={henricoDistricts}
+                    key={`henrico-${henricoDistrict}`}
+                    data={filteredHenricoDistricts}
                     style={henricoDistrictStyle}
                     onEachFeature={onEachHenricoFeature}
                 />
             )}
 
             {/* Richmond Beats */}
-            {richmondBeats && (
+            {filteredRichmondBeats && (
                 <GeoJSON
-                    data={richmondBeats}
+                    key={`richmond-${richmondBeat}`}
+                    data={filteredRichmondBeats}
                     style={richmondBeatStyle}
                     onEachFeature={onEachRichmondFeature}
                 />

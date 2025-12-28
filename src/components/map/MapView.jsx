@@ -158,7 +158,7 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
     return null;
 }
 
-const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating }) {
+const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters }) {
     const defaultCenter = currentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
     
     // Calculate route bounds if route exists
@@ -172,6 +172,33 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
         console.log('  - Sample call:', activeCalls[0]);
     }
 
+    // Determine tile layer URL based on base map type
+    const getTileLayerUrl = () => {
+        if (useOfflineTiles) return '';
+
+        switch (baseMapType) {
+            case 'satellite':
+                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+            case 'topo':
+                return 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
+            case 'street':
+            default:
+                return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        }
+    };
+
+    const getTileAttribution = () => {
+        switch (baseMapType) {
+            case 'satellite':
+                return '&copy; <a href="https://www.esri.com/">Esri</a>';
+            case 'topo':
+                return '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>';
+            case 'street':
+            default:
+                return '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+        }
+    };
+
     return (
         <MapContainer
             center={defaultCenter}
@@ -182,15 +209,14 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             maxZoom={19}
         >
             <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url={useOfflineTiles 
-                    ? '' 
-                    : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                }
+                key={baseMapType}
+                attribution={getTileAttribution()}
+                url={getTileLayerUrl()}
+                maxZoom={baseMapType === 'satellite' ? 19 : 17}
             />
-            
+
             {/* Jurisdiction Boundaries */}
-            <JurisdictionBoundaries />
+            <JurisdictionBoundaries filters={jurisdictionFilters} />
 
             {/* Precinct Markers */}
             <PrecinctMarkers />
