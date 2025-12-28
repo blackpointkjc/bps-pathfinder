@@ -17,8 +17,34 @@ Deno.serve(async (req) => {
 
         console.log('📝 Updating user:', userId, 'with:', updates);
 
-        // Use Base44 SDK to update user - this is the proper way
-        await base44.asServiceRole.entities.User.update(userId, updates);
+        // Separate role from other updates
+        const { role, ...otherUpdates } = updates;
+
+        // Update user metadata (everything except role)
+        if (Object.keys(otherUpdates).length > 0) {
+            await base44.asServiceRole.entities.User.update(userId, otherUpdates);
+        }
+
+        // Update role separately if needed
+        if (role) {
+            const appId = Deno.env.get('BASE44_APP_ID');
+            const serviceToken = Deno.env.get('BASE44_SERVICE_ROLE_KEY');
+            
+            const roleResponse = await fetch(`https://api.base44.com/v1/apps/${appId}/users/${userId}/role`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${serviceToken}`
+                },
+                body: JSON.stringify({ role })
+            });
+
+            if (!roleResponse.ok) {
+                const error = await roleResponse.text();
+                console.error('Role update failed:', error);
+                return Response.json({ error: 'Failed to update role', details: error }, { status: roleResponse.status });
+            }
+        }
         
         console.log('✅ User updated successfully');
         
