@@ -449,7 +449,19 @@ export default function Navigation() {
 
             if (data && data.length > 0) {
                 const result = data[0];
+                
+                if (!result.lat || !result.lon) {
+                    toast.error('Location coordinates not available');
+                    return;
+                }
+                
                 const destCoords = [parseFloat(result.lat), parseFloat(result.lon)];
+                
+                if (isNaN(destCoords[0]) || isNaN(destCoords[1])) {
+                    toast.error('Invalid location coordinates');
+                    return;
+                }
+                
                 console.log('📍 Destination coords:', destCoords);
 
                 setDestination({ coords: destCoords, name: result.display_name });
@@ -704,6 +716,11 @@ export default function Navigation() {
     };
 
     const handleEnrouteToCall = async (call) => {
+        if (!call.latitude || !call.longitude || isNaN(call.latitude) || isNaN(call.longitude)) {
+            toast.error('Call location not available for navigation');
+            return;
+        }
+        
         const callInfo = `${call.incident} - ${call.location}`;
         
         // Update user status if logged in
