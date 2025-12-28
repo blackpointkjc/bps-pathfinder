@@ -91,7 +91,7 @@ export default function JurisdictionBoundaries() {
 
     const onEachHenricoFeature = (feature, layer) => {
         if (feature.properties) {
-            const districtName = feature.properties.NAME || feature.properties.DISTRICT || 'Unknown';
+            const districtName = feature.properties.MAG_DIST_NAME || feature.properties.NAME || feature.properties.DISTRICT || 'Unknown';
             layer.bindPopup(`
                 <div class="p-2">
                     <p class="font-bold text-purple-600">Henrico County</p>
