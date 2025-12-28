@@ -68,7 +68,9 @@ export default function AdminPortal() {
                     rank: editingUser.rank,
                     last_name: editingUser.last_name,
                     unit_number: editingUser.unit_number,
-                    dispatch_role: editingUser.dispatch_role
+                    dispatch_role: editingUser.dispatch_role,
+                    is_supervisor: editingUser.is_supervisor,
+                    show_on_map: editingUser.show_on_map
                 }
             });
             
@@ -148,6 +150,16 @@ export default function AdminPortal() {
                                                     {user.dispatch_role && (
                                                         <Badge className="bg-blue-100 text-blue-700">
                                                             Dispatch
+                                                        </Badge>
+                                                    )}
+                                                    {user.is_supervisor && (
+                                                        <Badge className="bg-yellow-100 text-yellow-700">
+                                                            Supervisor
+                                                        </Badge>
+                                                    )}
+                                                    {!user.show_on_map && (
+                                                        <Badge className="bg-red-100 text-red-700">
+                                                            Hidden
                                                         </Badge>
                                                     )}
                                                 </div>
@@ -247,6 +259,22 @@ export default function AdminPortal() {
                                 <Switch
                                     checked={editingUser.dispatch_role || false}
                                     onCheckedChange={(checked) => setEditingUser({ ...editingUser, dispatch_role: checked })}
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                                <Label>Supervisor Role</Label>
+                                <Switch
+                                    checked={editingUser.is_supervisor || false}
+                                    onCheckedChange={(checked) => setEditingUser({ ...editingUser, is_supervisor: checked })}
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                                <Label>Show on Map</Label>
+                                <Switch
+                                    checked={editingUser.show_on_map !== false}
+                                    onCheckedChange={(checked) => setEditingUser({ ...editingUser, show_on_map: checked })}
                                 />
                             </div>
 

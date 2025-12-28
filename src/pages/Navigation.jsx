@@ -20,6 +20,7 @@ import UnitStatusPanel from '@/components/map/UnitStatusPanel';
 import DispatchPanel from '@/components/map/DispatchPanel';
 import CallDetailView from '@/components/map/CallDetailView';
 import CallDetailSidebar from '@/components/map/CallDetailSidebar';
+import CallNotification from '@/components/dispatch/CallNotification';
 import { useVoiceGuidance, useVoiceCommand } from '@/components/map/VoiceGuidance';
 import { generateTrafficData } from '@/components/map/TrafficLayer';
 
@@ -94,6 +95,8 @@ export default function Navigation() {
     const [selectedCall, setSelectedCall] = useState(null);
     const [showCallSidebar, setShowCallSidebar] = useState(false);
     const [mapCenter, setMapCenter] = useState(null);
+    const [pendingCallNotification, setPendingCallNotification] = useState(null);
+    const lastCheckedCallIdRef = useRef(null);
     
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
@@ -186,6 +189,35 @@ export default function Navigation() {
             const interval = setInterval(fetchOtherUnits, 10000);
             return () => clearInterval(interval);
         }
+    }, [currentUser]);
+
+    // Check for new dispatch calls assigned to this user
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const checkForNewCalls = async () => {
+            try {
+                const calls = await base44.entities.DispatchCall.filter({
+                    assigned_units: currentUser.id
+                });
+
+                if (calls && calls.length > 0) {
+                    const latestCall = calls[0];
+                    // Only show notification if it's a new call
+                    if (lastCheckedCallIdRef.current !== latestCall.id) {
+                        lastCheckedCallIdRef.current = latestCall.id;
+                        setPendingCallNotification(latestCall);
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking for new calls:', error);
+            }
+        };
+
+        checkForNewCalls();
+        const interval = setInterval(checkForNewCalls, 10000); // Check every 10 seconds
+
+        return () => clearInterval(interval);
     }, [currentUser]);
 
     // Check for better routes periodically when navigating
@@ -756,18 +788,19 @@ export default function Navigation() {
             toast.error('Call location not available for navigation');
             return;
         }
-        
+
         const callInfo = `${call.incident} - ${call.location}`;
-        
+        const callId = call.id || `${call.timeReceived}-${call.incident}`;
+
         // Update user status if logged in
         if (currentUser) {
             setActiveCallInfo(callInfo);
             setUnitStatus('Enroute');
-            
+
             try {
                 await base44.auth.updateMe({
                     status: 'Enroute',
-                    current_call_id: `${call.timeReceived}-${call.incident}`,
+                    current_call_id: callId,
                     current_call_info: callInfo,
                     last_updated: new Date().toISOString()
                 });
@@ -778,12 +811,12 @@ export default function Navigation() {
         } else {
             toast.info(`Navigating to ${call.incident}`);
         }
-        
+
         // Automatically route to call
         const callCoords = [call.latitude, call.longitude];
         setDestination({ coords: callCoords, name: call.location });
         setDestinationName(call.incident);
-        
+
         if (currentLocation) {
             const fetchedRoutes = await fetchRoutes(currentLocation, callCoords);
             if (fetchedRoutes && fetchedRoutes.length > 0) {
@@ -792,6 +825,15 @@ export default function Navigation() {
                 updateRouteDisplay(fetchedRoutes[0]);
             }
         }
+    };
+
+    const handleAcceptCall = (call) => {
+        setPendingCallNotification(null);
+        handleEnrouteToCall(call);
+    };
+
+    const handleDismissNotification = () => {
+        setPendingCallNotification(null);
     };
 
     const handleAssignUnit = async (call, unit) => {
@@ -1350,6 +1392,15 @@ export default function Navigation() {
                 call={selectedCallForDispatch}
                 onAssignUnit={handleAssignUnit}
             />
+
+            {/* Call Notification */}
+            {pendingCallNotification && (
+                <CallNotification
+                    call={pendingCallNotification}
+                    onAccept={handleAcceptCall}
+                    onDismiss={handleDismissNotification}
+                />
+            )}
         </div>
     );
 }

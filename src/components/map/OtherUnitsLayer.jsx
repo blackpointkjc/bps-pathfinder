@@ -5,13 +5,18 @@ import { Badge } from '@/components/ui/badge';
 import { Car, Radio, Clock, MapPin } from 'lucide-react';
 
 // Create icons for other units based on status
-const createOtherUnitIcon = (status, heading, showLights) => {
+const createOtherUnitIcon = (status, heading, showLights, isSupervisor) => {
     let color = '#6B7280'; // Gray for Available
     if (status === 'Enroute') color = '#EF4444'; // Red
     else if (status === 'On Scene') color = '#10B981'; // Green
     else if (status === 'On Patrol') color = '#6366F1'; // Indigo
     else if (status === 'Busy') color = '#F59E0B'; // Orange
     else if (status === 'Out of Service') color = '#9CA3AF'; // Light gray
+
+    // Use gold/yellow for supervisors
+    if (isSupervisor) {
+        color = '#EAB308'; // Gold/Yellow
+    }
 
     // Normalize heading to 0-360
     const normalizedHeading = heading ? ((heading % 360) + 360) % 360 : 0;
@@ -57,7 +62,8 @@ const getStatusColor = (status) => {
 export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     if (!units || units.length === 0) return null;
     
-    const otherUnits = units.filter(unit => unit.id !== currentUserId);
+    // Filter out current user and units with show_on_map = false
+    const otherUnits = units.filter(unit => unit.id !== currentUserId && unit.show_on_map !== false);
     
     return (
         <>
@@ -65,17 +71,18 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                 <React.Fragment key={unit.id}>
                     <Marker
                         position={[unit.latitude, unit.longitude]}
-                        icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights)}
+                        icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor)}
                     >
                         <Popup>
                             <div className="p-3 min-w-[240px]">
                                 <div className="flex items-start gap-3 mb-3 pb-3 border-b">
-                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                        <Car className="w-5 h-5 text-blue-600" />
+                                    <div className={`w-10 h-10 rounded-full ${unit.is_supervisor ? 'bg-yellow-100' : 'bg-blue-100'} flex items-center justify-center flex-shrink-0`}>
+                                        <Car className={`w-5 h-5 ${unit.is_supervisor ? 'text-yellow-600' : 'text-blue-600'}`} />
                                     </div>
                                     <div className="flex-1">
                                         <p className="font-bold text-sm text-gray-900">
                                             {unit.rank || 'Officer'} {unit.last_name || unit.full_name?.split(' ').pop() || 'Unknown'}
+                                            {unit.is_supervisor && <span className="ml-2 text-yellow-600">★</span>}
                                         </p>
                                         <p className="text-xs text-blue-600 font-semibold">
                                             {unit.unit_number ? `Unit ${unit.unit_number}` : 'No Unit ID'}
