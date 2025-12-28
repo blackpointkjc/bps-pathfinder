@@ -60,21 +60,28 @@ export default function AdminPortal() {
 
     const handleSaveUser = async () => {
         try {
-            await base44.users.updateUser(editingUser.id, {
-                full_name: editingUser.full_name,
-                role: editingUser.role,
-                rank: editingUser.rank,
-                last_name: editingUser.last_name,
-                unit_number: editingUser.unit_number,
-                dispatch_role: editingUser.dispatch_role
+            const response = await base44.functions.invoke('updateUser', {
+                userId: editingUser.id,
+                updates: {
+                    full_name: editingUser.full_name,
+                    role: editingUser.role,
+                    rank: editingUser.rank,
+                    last_name: editingUser.last_name,
+                    unit_number: editingUser.unit_number,
+                    dispatch_role: editingUser.dispatch_role
+                }
             });
             
-            toast.success('User updated successfully');
-            setShowEditDialog(false);
-            await loadUsers();
+            if (response.data?.success) {
+                toast.success('User updated successfully');
+                setShowEditDialog(false);
+                await loadUsers();
+            } else {
+                throw new Error(response.data?.error || 'Update failed');
+            }
         } catch (error) {
             console.error('Error updating user:', error);
-            toast.error('Failed to update user');
+            toast.error(error.message || 'Failed to update user');
         }
     };
 
