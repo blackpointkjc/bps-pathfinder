@@ -160,11 +160,10 @@ export default function MapView({ currentLocation, destination, route, trafficSe
         : null;
     
     console.log('🗺️ MapView rendering:');
-    console.log('  - Other units:', otherUnits?.length || 0);
-    console.log('  - Active calls:', activeCalls?.length || 0);
-    console.log('  - Current location:', currentLocation);
-    console.log('  - Destination:', destination);
-    console.log('  - Route:', route?.length || 0, 'points');
+    console.log('  - Active calls to render:', activeCalls?.length || 0);
+    if (activeCalls && activeCalls.length > 0) {
+        console.log('  - Sample call:', activeCalls[0]);
+    }
 
     return (
         <MapContainer
