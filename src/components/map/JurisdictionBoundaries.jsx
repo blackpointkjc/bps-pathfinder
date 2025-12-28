@@ -100,7 +100,16 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
     const onEachChesterfieldDistrictFeature = (feature, layer) => {
         if (feature.properties) {
-            const districtName = feature.properties.MAG_DIST || feature.properties.NAME || feature.properties.DISTRICT || feature.properties.Magisterial_District || 'Unknown';
+            // Check all possible property names for district name
+            const districtName = feature.properties.MAG_DIST || 
+                                feature.properties.NAME || 
+                                feature.properties.DISTRICT || 
+                                feature.properties.Magisterial_District ||
+                                feature.properties.MagDist ||
+                                feature.properties.MAG_DIST_NAME ||
+                                'Unknown';
+            
+            console.log('Chesterfield District Properties:', feature.properties);
             
             // Filter by district name if specified
             if (chesterfieldDistrict !== 'all' && districtName !== chesterfieldDistrict) {
@@ -165,7 +174,12 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         ? {
             ...chesterfieldDistricts,
             features: chesterfieldDistricts.features.filter(f => {
-                const name = f.properties?.MAG_DIST || f.properties?.NAME || f.properties?.DISTRICT || f.properties?.Magisterial_District;
+                const name = f.properties?.MAG_DIST || 
+                           f.properties?.NAME || 
+                           f.properties?.DISTRICT || 
+                           f.properties?.Magisterial_District ||
+                           f.properties?.MagDist ||
+                           f.properties?.MAG_DIST_NAME;
                 return name === chesterfieldDistrict;
             })
         }
