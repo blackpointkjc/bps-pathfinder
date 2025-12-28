@@ -146,7 +146,12 @@ export default function JurisdictionBoundaries({ filters = {} }) {
     const filteredRichmondBeats = richmondBeats && richmondBeat !== 'all'
         ? {
             ...richmondBeats,
-            features: richmondBeats.features.filter(f => f.properties?.Name === richmondBeat)
+            features: richmondBeats.features.filter(f => {
+                const beatName = f.properties?.Name;
+                if (!beatName) return false;
+                // Match beat prefix (e.g., 111 matches 111A, 111B, 111C)
+                return beatName.startsWith(richmondBeat);
+            })
         }
         : richmondBeats;
 

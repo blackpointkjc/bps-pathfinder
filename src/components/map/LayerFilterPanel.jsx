@@ -18,10 +18,10 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
     const [searchAddress, setSearchAddress] = useState('');
 
     const richmondBeats = {
-        '1st Precinct': ['11', '12', '13', '14', '15'],
-        '2nd Precinct': ['21', '22', '23', '24', '25'],
-        '3rd Precinct': ['31', '32', '33', '34', '35'],
-        '4th Precinct': ['41', '42', '43', '44', '45']
+        '1st Precinct': ['111', '112', '113'],
+        '2nd Precinct': ['211', '212', '213'],
+        '3rd Precinct': ['311', '312', '313'],
+        '4th Precinct': ['411', '412', '413']
     };
     const henricoDistricts = ['Brookland', 'Fairfield', 'Three Chopt', 'Tuckahoe', 'Varina'];
     const chesterfieldDistricts = ['Bermuda', 'Clover Hill', 'Dale', 'Matoaca', 'Midlothian'];
@@ -156,7 +156,7 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                     {Object.entries(richmondBeats).map(([precinct, beats]) => (
                                         <div key={precinct} className="space-y-2">
                                             <p className="text-xs font-semibold text-blue-600">{precinct}</p>
-                                            <div className="grid grid-cols-5 gap-2">
+                                            <div className="grid grid-cols-3 gap-2">
                                                 {beats.map((beat) => (
                                                     <Button
                                                         key={beat}
