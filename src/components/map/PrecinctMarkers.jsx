@@ -2,20 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 
-const precinctIcon = new L.DivIcon({
-    className: 'custom-marker',
-    html: `
-        <div style="position: relative; width: 36px; height: 36px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" style="filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));">
-                <path d="M12 1L14 7L12 9L10 7L12 1Z" fill="#1E40AF" stroke="white" stroke-width="1"/>
-                <circle cx="12" cy="12" r="9" fill="#1E40AF" stroke="#FFD700" stroke-width="1.5"/>
-                <circle cx="12" cy="12" r="6" fill="white" opacity="0.9"/>
-                <text x="12" y="15" text-anchor="middle" font-size="8" font-weight="bold" fill="#1E40AF">PD</text>
-            </svg>
-        </div>
-    `,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
+const precinctIcon = new L.Icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32">
+            <circle cx="12" cy="12" r="11" fill="#1E40AF" stroke="white" stroke-width="2"/>
+            <text x="12" y="17" font-size="14" font-weight="bold" text-anchor="middle" fill="white">PD</text>
+        </svg>
+    `),
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16]
 });
 
 const precincts = [
@@ -51,8 +47,10 @@ const precincts = [
     }
 ];
 
-export default function PrecinctMarkers() {
+export default function PrecinctMarkers({ showStations = true }) {
     const [geocodedPrecincts, setGeocodedPrecincts] = useState([]);
+    
+    if (!showStations) return null;
 
     useEffect(() => {
         geocodePrecincts();
