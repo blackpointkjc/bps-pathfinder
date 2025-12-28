@@ -20,19 +20,19 @@ const POLICE_STATIONS = {
             name: 'West Station (Headquarters)',
             address: '7721 E. Parham Rd., Henrico, VA 23294',
             hours: 'Open 24/7',
-            coords: [37.6419, -77.4884]
+            coords: [37.6409, -77.4872]
         },
         {
             name: 'Central Station',
             address: '7850 Villa Park Drive, Henrico, VA 23228',
             hours: 'Monday – Friday 8:00 AM – 4:30 PM',
-            coords: [37.5903, -77.5023]
+            coords: [37.5895, -77.5017]
         },
         {
             name: 'South Station',
             address: '640 N. Airport Drive, Henrico, VA 23075',
             hours: 'Monday – Friday 8:00 AM – 4:30 PM',
-            coords: [37.5089, -77.3197]
+            coords: [37.5083, -77.3194]
         }
     ],
     chesterfield: [
@@ -40,31 +40,31 @@ const POLICE_STATIONS = {
             name: 'Police Department Headquarters',
             address: '10001 Iron Bridge Road, Chesterfield, VA 23832',
             hours: 'Open 24/7',
-            coords: [37.3774, -77.5246]
+            coords: [37.3776, -77.5235]
         },
         {
             name: 'Appomattox Police Station',
             address: '2920 W Hundred Road, Chester, VA 23831',
             hours: 'Monday – Friday 8:00 AM – 4:30 PM',
-            coords: [37.3566, -77.4168]
+            coords: [37.3565, -77.4180]
         },
         {
             name: 'Falling Creek Police Station',
             address: '20 N Providence Road, North Chesterfield, VA 23235',
             hours: 'Monday – Friday 8:00 AM – 4:30 PM',
-            coords: [37.4889, -77.4962]
+            coords: [37.4891, -77.4970]
         },
         {
             name: 'Hicks Road Police Station',
             address: '2730 Hicks Road, North Chesterfield, VA 23235',
             hours: 'Monday – Friday 8:00 AM – 4:30 PM',
-            coords: [37.4756, -77.5329]
+            coords: [37.4755, -77.5324]
         },
         {
             name: 'Swift Creek Police Station',
             address: '6812 Woodlake Commons Loop, Midlothian, VA 23112',
             hours: 'Monday – Friday 8:00 AM – 4:30 PM',
-            coords: [37.4892, -77.6447]
+            coords: [37.4890, -77.6440]
         }
     ]
 };
