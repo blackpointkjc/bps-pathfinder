@@ -931,23 +931,35 @@ export default function Navigation() {
                     const result = data[0];
                     const coords = [parseFloat(result.lat), parseFloat(result.lon)];
                     
-                    // Just center the map on the location and drop a pin
+                    // Just center the map on the location and drop a pin with loading state
                     setMapCenter(coords);
-                    setSearchPin({ coords, address: result.display_name });
+                    setSearchPin({ coords, address: result.display_name, propertyInfo: 'Loading property information...' });
                     toast.success(`Found: ${result.display_name.split(',')[0]}`);
                     
                     // Get property info using AI
                     try {
                         const propertyInfo = await base44.integrations.Core.InvokeLLM({
-                            prompt: `Search the internet for property ownership information for this address: ${result.display_name}. Try to find the property owner's name, property value, and any public records. Be concise.`,
+                            prompt: `I need property ownership information for: ${result.display_name}
+
+Search public records, county assessor databases, and real estate listings to find:
+1. Current property owner name(s)
+2. Property value/assessed value
+3. Year built
+4. Property type (residential, commercial, etc.)
+5. Last sale date and price if available
+
+Format the response as a concise bullet list. If information is not available, say "Information not found" for that item.`,
                             add_context_from_internet: true
                         });
                         
                         if (propertyInfo) {
-                            toast.info(propertyInfo, { duration: 8000 });
+                            setSearchPin({ coords, address: result.display_name, propertyInfo });
+                        } else {
+                            setSearchPin({ coords, address: result.display_name, propertyInfo: 'Property information not available' });
                         }
                     } catch (error) {
                         console.error('Error getting property info:', error);
+                        setSearchPin({ coords, address: result.display_name, propertyInfo: 'Error loading property information' });
                     }
                 } else {
                     toast.error('Address not found');
