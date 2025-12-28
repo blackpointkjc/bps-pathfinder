@@ -254,7 +254,9 @@ export default function MapView({ currentLocation, destination, route, trafficSe
             <ActiveCallMarkers calls={activeCalls} onCallClick={onCallClick} />
 
             {/* Other Units */}
-            <OtherUnitsLayer units={otherUnits} currentUserId={currentUserId} />
+            {otherUnits && otherUnits.length > 0 && (
+                <OtherUnitsLayer units={otherUnits} currentUserId={currentUserId} />
+            )}
         </MapContainer>
     );
 }

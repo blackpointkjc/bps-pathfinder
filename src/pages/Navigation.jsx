@@ -142,12 +142,12 @@ export default function Navigation() {
             startContinuousTracking();
         }
         
-        // Refresh active calls every 2 minutes
+        // Refresh active calls every 5 minutes
         callsRefreshInterval.current = setInterval(() => {
             if (isOnline) {
                 fetchActiveCalls();
             }
-        }, 120000);
+        }, 300000);
         
 
         
@@ -179,12 +179,11 @@ export default function Navigation() {
         }
     }, [currentUser, currentLocation]);
 
-    // Fetch other units on mount and then every 3 seconds
+    // Fetch other units on mount and then every 5 seconds
     useEffect(() => {
         if (currentUser) {
-            console.log('🔄 Starting other units polling...');
             fetchOtherUnits();
-            const interval = setInterval(fetchOtherUnits, 3000);
+            const interval = setInterval(fetchOtherUnits, 5000);
             return () => clearInterval(interval);
         }
     }, [currentUser]);
@@ -347,44 +346,22 @@ export default function Navigation() {
     };
 
     const fetchOtherUnits = async () => {
-        if (!currentUser) {
-            console.log('⏳ No current user yet, skipping fetch');
-            return;
-        }
+        if (!currentUser) return;
         
         try {
             const users = await base44.asServiceRole.entities.User.list('-last_updated', 200);
-            console.log('📡 FETCHED USERS:', users.length);
-            console.table(users.map(u => ({
-                name: u.full_name || u.email,
-                unit: u.unit_number,
-                lat: u.latitude,
-                lng: u.longitude,
-                status: u.status,
-                id: u.id,
-                currentUserId: currentUser.id,
-                isCurrent: u.id === currentUser.id
-            })));
             
-            // Show ALL users with valid location data EXCEPT current user
             const activeUsers = users.filter(user => {
-                if (user.id === currentUser.id) {
-                    console.log('🚫 Filtering out current user:', user.full_name);
-                    return false;
-                }
+                if (user.id === currentUser.id) return false;
                 
                 const hasLocation = user.latitude && user.longitude && 
                                   !isNaN(user.latitude) && !isNaN(user.longitude) &&
                                   user.latitude !== 0 && user.longitude !== 0;
                 
-                if (hasLocation) {
-                    console.log('✅ SHOWING USER:', user.full_name, user.unit_number, user.status);
-                }
-                
                 return hasLocation;
             });
             
-            console.log('🗺️ FINAL UNITS TO DISPLAY:', activeUsers.length);
+            console.log('🗺️ Other units on map:', activeUsers.length);
             setOtherUnits(activeUsers);
         } catch (error) {
             console.error('❌ Error fetching other units:', error);

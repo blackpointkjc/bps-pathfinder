@@ -55,16 +55,9 @@ const getStatusColor = (status) => {
 };
 
 export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
-    console.log('🚓 OtherUnitsLayer - Units received:', units?.length || 0, units);
+    if (!units || units.length === 0) return null;
     
-    if (!units || units.length === 0) {
-        console.log('❌ No units to display');
-        return null;
-    }
-    
-    // Filter out current user's unit
     const otherUnits = units.filter(unit => unit.id !== currentUserId);
-    console.log('✅ Other units to render:', otherUnits.length, otherUnits.map(u => ({name: u.full_name, status: u.status})));
     
     return (
         <>
@@ -73,9 +66,6 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                     <Marker
                         position={[unit.latitude, unit.longitude]}
                         icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights)}
-                        eventHandlers={{
-                            click: () => onUnitClick && onUnitClick(unit)
-                        }}
                     >
                         <Popup>
                             <div className="p-2 min-w-[200px]">
