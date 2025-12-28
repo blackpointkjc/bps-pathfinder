@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield, Filter } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield, Filter, MapPinOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
@@ -82,6 +82,16 @@ export default function Navigation() {
     const [isLiveTracking, setIsLiveTracking] = useState(false);
     const [speed, setSpeed] = useState(0);
     const [accuracy, setAccuracy] = useState(null);
+    const [smoothedLocation, setSmoothedLocation] = useState(null);
+    const [isOffRoute, setIsOffRoute] = useState(false);
+    const [offRouteTimer, setOffRouteTimer] = useState(null);
+    
+    // Kalman filter state
+    const kalmanState = useRef({
+        lat: null,
+        lng: null,
+        variance: 1000
+    });
     
     // Multi-user tracking state
     const [otherUnits, setOtherUnits] = useState([]);
@@ -275,6 +285,107 @@ export default function Navigation() {
         }
     };
 
+    // Kalman filter for GPS smoothing
+    const applyKalmanFilter = (lat, lng, accuracy) => {
+        const Q = 0.001; // Process noise
+        const R = accuracy ? Math.pow(accuracy, 2) : 25; // Measurement noise
+        
+        if (kalmanState.current.lat === null) {
+            kalmanState.current = { lat, lng, variance: R };
+            return [lat, lng];
+        }
+        
+        // Prediction
+        const predictedVariance = kalmanState.current.variance + Q;
+        
+        // Update
+        const K = predictedVariance / (predictedVariance + R); // Kalman gain
+        const newLat = kalmanState.current.lat + K * (lat - kalmanState.current.lat);
+        const newLng = kalmanState.current.lng + K * (lng - kalmanState.current.lng);
+        const newVariance = (1 - K) * predictedVariance;
+        
+        kalmanState.current = { lat: newLat, lng: newLng, variance: newVariance };
+        return [newLat, newLng];
+    };
+    
+    // Snap position to route
+    const snapToRoute = (position, routeCoordinates) => {
+        if (!routeCoordinates || routeCoordinates.length === 0) return position;
+        
+        let minDist = Infinity;
+        let closestPoint = position;
+        
+        for (let i = 0; i < routeCoordinates.length; i++) {
+            const dist = getDistanceMeters(position, routeCoordinates[i]);
+            if (dist < minDist) {
+                minDist = dist;
+                closestPoint = routeCoordinates[i];
+            }
+        }
+        
+        // Only snap if within 30m and accuracy is good
+        if (minDist < 30 && accuracy && accuracy <= 50) {
+            return closestPoint;
+        }
+        
+        // Check if off-route
+        if (minDist > 60) {
+            if (!offRouteTimer) {
+                const timer = setTimeout(() => {
+                    setIsOffRoute(true);
+                    toast.warning('Off route - recalculating...');
+                    checkForBetterRoute();
+                }, 6000);
+                setOffRouteTimer(timer);
+            }
+        } else {
+            if (offRouteTimer) {
+                clearTimeout(offRouteTimer);
+                setOffRouteTimer(null);
+            }
+            setIsOffRoute(false);
+        }
+        
+        return position;
+    };
+    
+    const getDistanceMeters = (coord1, coord2) => {
+        const R = 6371000; // Earth radius in meters
+        const lat1 = coord1[0] * Math.PI / 180;
+        const lat2 = coord2[0] * Math.PI / 180;
+        const dLat = (coord2[0] - coord1[0]) * Math.PI / 180;
+        const dLon = (coord2[1] - coord1[1]) * Math.PI / 180;
+        
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1) * Math.cos(lat2) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        
+        return R * c;
+    };
+    
+    // Smooth heading with easing
+    const lastHeadingRef = useRef(null);
+    const smoothHeading = (newHeading, currentSpeed) => {
+        if (lastHeadingRef.current === null) {
+            lastHeadingRef.current = newHeading;
+            return newHeading;
+        }
+        
+        // Calculate shortest angular distance
+        let diff = newHeading - lastHeadingRef.current;
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+        
+        // Easing factor (higher speed = more responsive)
+        const easingFactor = currentSpeed > 10 ? 0.3 : 0.15;
+        const smoothed = lastHeadingRef.current + diff * easingFactor;
+        const normalized = ((smoothed % 360) + 360) % 360;
+        
+        lastHeadingRef.current = normalized;
+        return normalized;
+    };
+
     const startContinuousTracking = () => {
         if (!navigator.geolocation) {
             toast.error('Geolocation is not supported');
@@ -283,47 +394,88 @@ export default function Navigation() {
 
         setIsLiveTracking(true);
         
+        // Use high accuracy while navigating, normal otherwise
+        const trackingOptions = {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: isNavigating ? 5000 : 10000
+        };
+        
         locationWatchId.current = navigator.geolocation.watchPosition(
             (position) => {
-                const coords = [position.coords.latitude, position.coords.longitude];
-                console.log('📍 Location update:', coords, 'Accuracy:', position.coords.accuracy, 'm', 'Speed:', position.coords.speed, 'm/s');
-                setCurrentLocation(coords);
-
-                // Update heading - prefer device heading, calculate from movement only when moving
-                if (position.coords.heading !== null && position.coords.heading !== undefined && position.coords.heading >= 0) {
-                    const deviceHeading = Math.round(position.coords.heading);
-                    setHeading(deviceHeading);
-                    console.log('📍 Device heading:', deviceHeading);
-                } else if (lastPosition.current && position.coords.speed && position.coords.speed > 1) {
-                    // Only calculate heading if moving faster than 1 m/s (2.2 mph)
-                    const calculatedHeading = calculateHeading(lastPosition.current, coords);
-                    if (calculatedHeading !== null && !isNaN(calculatedHeading)) {
-                        setHeading(calculatedHeading);
-                        console.log('🧭 Calculated heading:', calculatedHeading);
+                const rawCoords = [position.coords.latitude, position.coords.longitude];
+                const rawSpeed = position.coords.speed !== null && position.coords.speed >= 0 
+                    ? Math.max(0, position.coords.speed * 2.237) 
+                    : 0;
+                
+                // Ignore impossible jumps (> 120 mph between updates)
+                if (lastPosition.current) {
+                    const dist = getDistanceMeters(lastPosition.current, rawCoords);
+                    const timeDiff = 1; // assume 1 second between updates
+                    const impliedSpeed = (dist / timeDiff) * 2.237; // m/s to mph
+                    
+                    if (impliedSpeed > 120) {
+                        console.warn('🚫 Ignoring impossible GPS jump:', impliedSpeed, 'mph');
+                        return;
                     }
                 }
-
-                // Update speed and accuracy
-                if (position.coords.speed !== null && position.coords.speed >= 0) {
-                    setSpeed(Math.max(0, position.coords.speed * 2.237)); // Convert m/s to mph
-                } else {
-                    setSpeed(0);
+                
+                // Apply Kalman filter for smoothing
+                const smoothedCoords = applyKalmanFilter(
+                    rawCoords[0], 
+                    rawCoords[1], 
+                    position.coords.accuracy
+                );
+                
+                // Snap to route if navigating
+                let finalCoords = smoothedCoords;
+                if (isNavigating && routeCoords) {
+                    finalCoords = snapToRoute(smoothedCoords, routeCoords);
                 }
-                setAccuracy(position.coords.accuracy);
+                
+                setCurrentLocation(finalCoords);
+                setSmoothedLocation(finalCoords);
+                
+                // Smart heading: use GPS course when moving, compass when stationary
+                let newHeading = null;
+                if (rawSpeed > 3) {
+                    // Use GPS course when moving > 3 mph
+                    if (position.coords.heading !== null && position.coords.heading >= 0) {
+                        newHeading = position.coords.heading;
+                    } else if (lastPosition.current) {
+                        newHeading = calculateHeading(lastPosition.current, finalCoords);
+                    }
+                } else {
+                    // Use compass heading when stationary/slow
+                    if (position.coords.heading !== null && position.coords.heading >= 0) {
+                        newHeading = position.coords.heading;
+                    }
+                }
+                
+                if (newHeading !== null && !isNaN(newHeading)) {
+                    const smoothed = smoothHeading(newHeading, rawSpeed);
+                    setHeading(smoothed);
+                }
 
-                // Add to location history (keep last 30 points)
+                setSpeed(rawSpeed);
+                setAccuracy(position.coords.accuracy);
+                
+                // Show accuracy warning
+                if (position.coords.accuracy > 50) {
+                    console.warn('⚠️ Low GPS accuracy:', position.coords.accuracy, 'm');
+                }
+
+                // Add to location history
                 setLocationHistory(prev => {
-                    const newHistory = [...prev, coords];
+                    const newHistory = [...prev, finalCoords];
                     return newHistory.slice(-30);
                 });
 
-                lastPosition.current = coords;
-
-                // Throttled location updates happen in updateUserLocation function
+                lastPosition.current = finalCoords;
 
                 // Update navigation progress if navigating
                 if (isNavigating && directions) {
-                    updateNavigationProgress(coords);
+                    updateNavigationProgress(finalCoords);
                 }
             },
             (error) => {
@@ -333,11 +485,7 @@ export default function Navigation() {
                     setIsLiveTracking(false);
                 }
             },
-            { 
-                enableHighAccuracy: true, 
-                maximumAge: 0,
-                timeout: 10000
-            }
+            trackingOptions
         );
     };
 
@@ -1164,6 +1312,28 @@ Format the response as a concise bullet list. If information is not available, s
                     >
                         <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
                         <span className="text-xs font-medium">Live Tracking</span>
+                    </motion.div>
+                )}
+                
+                {accuracy && accuracy > 50 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full flex items-center gap-2"
+                    >
+                        <MapPinOff className="w-3 h-3" />
+                        <span className="text-xs font-medium">Low GPS</span>
+                    </motion.div>
+                )}
+                
+                {isOffRoute && isNavigating && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-red-100 text-red-700 px-3 py-1.5 rounded-full flex items-center gap-2"
+                    >
+                        <AlertCircle className="w-3 h-3 animate-pulse" />
+                        <span className="text-xs font-medium">Off Route</span>
                     </motion.div>
                 )}
                 

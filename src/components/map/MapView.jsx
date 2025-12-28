@@ -9,6 +9,7 @@ import JurisdictionBoundaries from './JurisdictionBoundaries';
 import PrecinctMarkers from './PrecinctMarkers';
 import PoliceStationMarkers from './PoliceStationMarkers';
 import SearchPinMarker from './SearchPinMarker';
+import NavigationCamera from './NavigationCamera';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -226,13 +227,22 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             {/* Police station markers */}
             <PoliceStationMarkers showStations={showPoliceStations} />
             
-            <MapController 
-                center={currentLocation} 
-                routeBounds={routeBounds}
-                mapCenter={mapCenter}
-                isNavigating={isNavigating}
-                heading={heading}
-            />
+            {!isNavigating ? (
+                <MapController 
+                    center={currentLocation} 
+                    routeBounds={routeBounds}
+                    mapCenter={mapCenter}
+                    isNavigating={isNavigating}
+                    heading={heading}
+                />
+            ) : (
+                <NavigationCamera
+                    isNavigating={isNavigating}
+                    currentLocation={currentLocation}
+                    heading={heading}
+                    speed={speed}
+                />
+            )}
 
             {currentLocation && (
                 <>
