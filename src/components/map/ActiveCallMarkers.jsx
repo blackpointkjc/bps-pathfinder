@@ -145,14 +145,18 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
     return (
         <>
             {validCalls.map((call, index) => {
+                const position = [call.latitude, call.longitude];
+                const icon = createCallIcon(call);
+                console.log(`🎯 Rendering marker ${index}:`, call.incident, 'at', position);
                 
                 return (
                     <Marker
                         key={`call-${index}-${call.timeReceived}-${call.incident}`}
-                        position={[call.latitude, call.longitude]}
-                        icon={createCallIcon(call)}
+                        position={position}
+                        icon={icon}
                         eventHandlers={{
                             click: () => {
+                                console.log('📍 Marker clicked:', call.incident);
                                 if (onCallClick) {
                                     onCallClick(call);
                                 }
