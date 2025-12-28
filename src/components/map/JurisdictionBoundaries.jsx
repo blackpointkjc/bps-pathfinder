@@ -15,12 +15,12 @@ export default function JurisdictionBoundaries() {
         staleTime: Infinity,
     });
 
-    // Fetch Chesterfield County boundary
+    // Fetch Chesterfield County boundary from official source
     const { data: chesterfieldBoundary } = useQuery({
         queryKey: ['chesterfieldBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/Virginia_County_Boundaries/FeatureServer/0/query?where=NAME%3D%27CHESTERFIELD%27&outFields=*&f=geojson'
+                'https://services3.arcgis.com/TsynfzBSE6sXfoLq/ArcGIS/rest/services/Administrative_ProdA/FeatureServer/13/query?outFields=*&where=1%3D1&f=geojson'
             );
             return response.json();
         },
