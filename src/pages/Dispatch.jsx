@@ -50,14 +50,8 @@ export default function Dispatch() {
             const activeUsers = allUsers.filter(u => u.latitude && u.longitude);
             setUnits(activeUsers || []);
             
-            // Filter to show only active calls (not Resolved or Cancelled, and within 2 hours)
-            const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
-            const activeCalls = (dispatchCalls || []).filter(call => {
-                if (call.status === 'Resolved' || call.status === 'Cancelled') return false;
-                const callTime = new Date(call.time_received || call.created_date);
-                return callTime > twoHoursAgo;
-            });
-            setCalls(activeCalls);
+            // Show all dispatch calls (not just active ones within 2 hours)
+            setCalls(dispatchCalls || []);
         } catch (error) {
             console.error('Error loading data:', error);
             toast.error('Failed to load dispatch data');
