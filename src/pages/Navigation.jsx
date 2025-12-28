@@ -241,6 +241,7 @@ export default function Navigation() {
         locationWatchId.current = navigator.geolocation.watchPosition(
             (position) => {
                 const coords = [position.coords.latitude, position.coords.longitude];
+                console.log('📍 Location update:', coords, 'Accuracy:', position.coords.accuracy, 'm', 'Speed:', position.coords.speed, 'm/s');
                 setCurrentLocation(coords);
 
                 // Update heading - prefer device heading, calculate from movement only when moving
@@ -396,8 +397,10 @@ export default function Navigation() {
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const coords = [position.coords.latitude, position.coords.longitude];
+                console.log('📍 Got location:', coords, 'Accuracy:', position.coords.accuracy, 'm');
                 setCurrentLocation(coords);
                 setIsLocating(false);
+                toast.success(`Location found (±${Math.round(position.coords.accuracy)}m accuracy)`);
             },
             (error) => {
                 console.error('Error getting location:', error);
@@ -405,7 +408,7 @@ export default function Navigation() {
                 setIsLocating(false);
                 setCurrentLocation([37.5407, -77.4360]);
             },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 1000 }
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
     }, []);
 
@@ -550,12 +553,21 @@ export default function Navigation() {
         const baseDurationMins = Math.round(routeData.duration / 60);
         const totalDurationMins = baseDurationMins + trafficDelayMins;
 
+        // Calculate ETA as actual time
+        const now = new Date();
+        const etaTime = new Date(now.getTime() + totalDurationMins * 60000);
+        const etaFormatted = etaTime.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+        });
+
         if (totalDurationMins >= 60) {
             const hours = Math.floor(totalDurationMins / 60);
             const mins = totalDurationMins % 60;
-            setDuration(`${hours}h ${mins}m`);
+            setDuration(`${hours}h ${mins}m (ETA ${etaFormatted})`);
         } else {
-            setDuration(`${totalDurationMins} min`);
+            setDuration(`${totalDurationMins} min (ETA ${etaFormatted})`);
         }
 
         // Show traffic warning if significant delay
