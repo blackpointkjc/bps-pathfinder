@@ -964,27 +964,27 @@ export default function Navigation() {
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="absolute top-1/2 -translate-y-1/2 left-2 md:left-4 z-[999] flex flex-col gap-2"
+                    className="absolute top-1/2 -translate-y-1/2 left-2 z-[999] flex flex-col gap-1.5"
                 >
-                    <Button onClick={() => handleStatusChange('Available')} size="sm" className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-16 h-16 md:w-20 md:h-20 flex flex-col items-center justify-center gap-1 rounded-xl`}>
-                        <CheckCircle2 className={`w-5 md:w-6 h-5 md:h-6 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
-                        <span className={`text-[10px] md:text-xs font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Available</span>
+                    <Button onClick={() => handleStatusChange('Available')} size="sm" className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg`}>
+                        <CheckCircle2 className={`w-4 h-4 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
+                        <span className={`text-[8px] font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Avail</span>
                     </Button>
-                    <Button onClick={() => setShowCallsList(true)} size="sm" className={`${unitStatus === 'Enroute' ? 'bg-red-600 hover:bg-red-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-16 h-16 md:w-20 md:h-20 flex flex-col items-center justify-center gap-1 rounded-xl`}>
-                        <NavigationIcon className={`w-5 md:w-6 h-5 md:h-6 ${unitStatus === 'Enroute' ? 'text-white' : 'text-red-600'}`} />
-                        <span className={`text-[10px] md:text-xs font-semibold ${unitStatus === 'Enroute' ? 'text-white' : 'text-gray-700'}`}>Enroute</span>
+                    <Button onClick={() => setShowCallsList(true)} size="sm" className={`${unitStatus === 'Enroute' ? 'bg-red-600 hover:bg-red-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg`}>
+                        <NavigationIcon className={`w-4 h-4 ${unitStatus === 'Enroute' ? 'text-white' : 'text-red-600'}`} />
+                        <span className={`text-[8px] font-semibold ${unitStatus === 'Enroute' ? 'text-white' : 'text-gray-700'}`}>Route</span>
                     </Button>
-                    <Button onClick={() => handleStatusChange('On Scene')} size="sm" className={`${unitStatus === 'On Scene' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-16 h-16 md:w-20 md:h-20 flex flex-col items-center justify-center gap-1 rounded-xl`}>
-                        <MapPin className={`w-5 md:w-6 h-5 md:h-6 ${unitStatus === 'On Scene' ? 'text-white' : 'text-blue-600'}`} />
-                        <span className={`text-[10px] md:text-xs font-semibold ${unitStatus === 'On Scene' ? 'text-white' : 'text-gray-700'}`}>On Scene</span>
+                    <Button onClick={() => handleStatusChange('On Scene')} size="sm" className={`${unitStatus === 'On Scene' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg`}>
+                        <MapPin className={`w-4 h-4 ${unitStatus === 'On Scene' ? 'text-white' : 'text-blue-600'}`} />
+                        <span className={`text-[8px] font-semibold ${unitStatus === 'On Scene' ? 'text-white' : 'text-gray-700'}`}>Scene</span>
                     </Button>
-                    <Button onClick={() => handleStatusChange('On Patrol')} size="sm" className={`${unitStatus === 'On Patrol' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-16 h-16 md:w-20 md:h-20 flex flex-col items-center justify-center gap-1 rounded-xl`}>
-                        <Car className={`w-5 md:w-6 h-5 md:h-6 ${unitStatus === 'On Patrol' ? 'text-white' : 'text-indigo-600'}`} />
-                        <span className={`text-[10px] md:text-xs font-semibold ${unitStatus === 'On Patrol' ? 'text-white' : 'text-gray-700'}`}>Patrol</span>
+                    <Button onClick={() => handleStatusChange('On Patrol')} size="sm" className={`${unitStatus === 'On Patrol' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg`}>
+                        <Car className={`w-4 h-4 ${unitStatus === 'On Patrol' ? 'text-white' : 'text-indigo-600'}`} />
+                        <span className={`text-[8px] font-semibold ${unitStatus === 'On Patrol' ? 'text-white' : 'text-gray-700'}`}>Patrol</span>
                     </Button>
-                    <Button onClick={() => setShowStatusPanel(true)} size="sm" className="bg-white/95 hover:bg-white shadow-lg w-16 h-16 md:w-20 md:h-20 flex flex-col items-center justify-center gap-1 rounded-xl">
-                        <Settings className="w-5 md:w-6 h-5 md:h-6 text-gray-600" />
-                        <span className="text-[10px] md:text-xs font-semibold text-gray-700">More</span>
+                    <Button onClick={() => setShowStatusPanel(true)} size="sm" className="bg-white/95 hover:bg-white shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg">
+                        <Settings className="w-4 h-4 text-gray-600" />
+                        <span className="text-[8px] font-semibold text-gray-700">More</span>
                     </Button>
                 </motion.div>
             )}
@@ -1041,16 +1041,16 @@ export default function Navigation() {
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute top-2 md:top-4 right-2 md:right-4 z-[999] flex flex-col gap-1.5 md:gap-2"
+                className="absolute top-2 right-2 z-[999] flex flex-col gap-1.5"
             >
                 <Button
                     onClick={() => setShowOfflineManager(true)}
                     size="icon"
-                    className="h-8 w-8 md:h-10 md:w-10 rounded-xl md:rounded-2xl bg-white/98 backdrop-blur-2xl shadow-xl border border-gray-200/50 hover:bg-white text-[#007AFF]"
+                    className="h-8 w-8 rounded-lg bg-white/98 backdrop-blur-2xl shadow-lg border border-gray-200/50 hover:bg-white text-[#007AFF]"
                 >
-                    <MapIcon className="w-4 md:w-5 h-4 md:h-5" />
+                    <MapIcon className="w-4 h-4" />
                 </Button>
-                
+
                 <Button
                     onClick={() => {
                         const newState = !showActiveCalls;
@@ -1061,64 +1061,48 @@ export default function Navigation() {
                         toast.success(newState ? 'Active calls visible' : 'Active calls hidden');
                     }}
                     size="sm"
-                    className={`${showActiveCalls ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-400 hover:bg-gray-500'} text-white text-[10px] md:text-xs px-2 md:px-3 py-1.5 md:py-2 rounded-lg md:rounded-xl shadow-lg flex items-center gap-1.5 md:gap-2`}
+                    className={`${showActiveCalls ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-400 hover:bg-gray-500'} text-white text-[10px] px-2 py-1.5 rounded-lg shadow-lg flex items-center gap-1`}
                 >
-                    <Radio className="w-3.5 md:w-4 h-3.5 md:h-4" />
-                    <span className="hidden md:inline">{showActiveCalls ? 'Calls ON' : 'Calls OFF'}</span>
-                    <span className="md:hidden">{showActiveCalls ? 'ON' : 'OFF'}</span>
+                    <Radio className="w-3 h-3" />
+                    <span>{showActiveCalls ? 'ON' : 'OFF'}</span>
                 </Button>
 
                 <Button
                     onClick={fetchActiveCalls}
                     size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] md:text-xs px-2 md:px-3 py-1.5 md:py-2 rounded-lg md:rounded-xl shadow-lg flex items-center gap-1.5 md:gap-2"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] px-2 py-1.5 rounded-lg shadow-lg"
                     disabled={isLoadingCalls}
                 >
-                    <NavigationIcon className={`w-3.5 md:w-4 h-3.5 md:h-4 ${isLoadingCalls ? 'animate-spin' : ''}`} />
-                    {isLoadingCalls ? 'Loading...' : 'Refresh'}
+                    <NavigationIcon className={`w-3 h-3 ${isLoadingCalls ? 'animate-spin' : ''}`} />
                 </Button>
 
                 <Button
                     onClick={cycleCallFilter}
                     size="sm"
-                    className="bg-red-500 hover:bg-red-600 text-white text-[10px] md:text-xs px-2 md:px-3 py-1.5 md:py-2 rounded-lg md:rounded-xl shadow-lg flex items-center gap-1.5 md:gap-2"
+                    className="bg-red-500 hover:bg-red-600 text-white text-[10px] px-2 py-1.5 rounded-lg shadow-lg"
                     disabled={isLoadingCalls}
                 >
-                    <Shield className={`w-3.5 md:w-4 h-3.5 md:h-4 ${isLoadingCalls ? 'animate-pulse' : ''}`} />
-                    <span className="hidden md:inline">
-                        {callFilter === 'all' && 'All Areas'}
-                        {callFilter === 'richmond' && 'Richmond'}
-                        {callFilter === 'henrico' && 'Henrico'}
-                        {callFilter === 'chesterfield' && 'Chesterfield'}
-                    </span>
-                    <span className="md:hidden">
-                        {callFilter === 'all' && 'All'}
-                        {callFilter === 'richmond' && 'RIC'}
-                        {callFilter === 'henrico' && 'HEN'}
-                        {callFilter === 'chesterfield' && 'CHE'}
-                    </span>
+                    <Shield className="w-3 h-3" />
                 </Button>
 
                 {activeCalls.length > 0 && showActiveCalls && (
                     <Button
                         onClick={() => setShowCallsList(true)}
                         size="sm"
-                        className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-2 rounded-xl shadow-lg"
+                        className="bg-red-600 hover:bg-red-700 text-white text-[9px] px-2 py-1.5 rounded-lg shadow-lg"
                     >
-                        View List ({activeCalls.length})
+                        ({activeCalls.length})
                     </Button>
                 )}
-
-
 
                 {(currentUser?.role === 'admin' || currentUser?.dispatch_role) && (
                     <Button
                         onClick={() => window.location.href = '/dispatchcenter'}
                         size="icon"
-                        className="h-10 w-10 rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-lg"
+                        className="h-8 w-8 rounded-lg bg-purple-600 hover:bg-purple-700 text-white shadow-lg"
                         title="Dispatch Center"
                     >
-                        <Plus className="w-5 h-5" />
+                        <Plus className="w-4 h-4" />
                     </Button>
                 )}
 
@@ -1126,28 +1110,28 @@ export default function Navigation() {
                     <Button
                         onClick={() => window.location.href = '/adminportal'}
                         size="icon"
-                        className="h-10 w-10 rounded-full bg-slate-800 hover:bg-slate-900 text-white shadow-lg"
+                        className="h-8 w-8 rounded-lg bg-slate-800 hover:bg-slate-900 text-white shadow-lg"
                         title="Admin Portal"
                     >
-                        <Shield className="w-5 h-5" />
+                        <Shield className="w-4 h-4" />
                     </Button>
                 )}
 
                 <Button
                     onClick={() => window.location.href = '/callhistory'}
                     size="icon"
-                    className="h-10 w-10 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg"
+                    className="h-8 w-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg"
                     title="Call History"
                 >
-                    <Radio className="w-5 h-5" />
+                    <Radio className="w-4 h-4" />
                 </Button>
 
                 <Button
                     onClick={() => setShowRoutePreferences(true)}
                     size="icon"
-                    className="h-10 w-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg border-white/20 hover:bg-white text-gray-600"
+                    className="h-8 w-8 rounded-lg bg-white/95 backdrop-blur-xl shadow-lg border-white/20 hover:bg-white text-gray-600"
                 >
-                    <Settings className="w-5 h-5" />
+                    <Settings className="w-4 h-4" />
                 </Button>
 
                 <Button
@@ -1158,13 +1142,13 @@ export default function Navigation() {
                         toast.success(newState ? 'Voice guidance enabled' : 'Voice guidance disabled');
                     }}
                     size="icon"
-                    className={`h-10 w-10 rounded-full backdrop-blur-xl shadow-lg border-white/20 ${
+                    className={`h-8 w-8 rounded-lg backdrop-blur-xl shadow-lg border-white/20 ${
                         voiceEnabled 
                             ? 'bg-[#007AFF] hover:bg-[#0056CC] text-white' 
                             : 'bg-white/95 hover:bg-white text-gray-600'
                     }`}
                 >
-                    <Volume2 className="w-5 h-5" />
+                    <Volume2 className="w-4 h-4" />
                 </Button>
             </motion.div>
             
@@ -1175,7 +1159,7 @@ export default function Navigation() {
                     <motion.div 
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="absolute top-20 left-1/2 -translate-x-1/2 z-[1000] w-[500px] max-w-[calc(100vw-32px)]"
+                        className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-[400px] max-w-[calc(100vw-32px)]"
                     >
                         <SearchBarWithHistory
                             onSearch={searchDestination}
