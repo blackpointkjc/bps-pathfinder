@@ -27,6 +27,18 @@ export default function JurisdictionBoundaries() {
         staleTime: Infinity,
     });
 
+    // Fetch Henrico County police districts
+    const { data: henricoDistricts } = useQuery({
+        queryKey: ['henricoDistricts'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://services1.arcgis.com/too0avLFyP6imin5/arcgis/rest/services/Police_Districts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
     const richmondBeatStyle = (feature) => {
         return {
             fillColor: '#3B82F6',
