@@ -43,7 +43,7 @@ export default function Dispatch() {
 
             const [allUsers, dispatchCalls] = await Promise.all([
                 base44.asServiceRole.entities.User.list('-last_updated', 100),
-                base44.entities.DispatchCall.list('-created_date', 50)
+                base44.asServiceRole.entities.DispatchCall.list('-created_date', 50)
             ]);
 
             // Filter users with location data (active units)
