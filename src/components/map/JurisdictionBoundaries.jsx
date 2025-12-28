@@ -16,12 +16,24 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         staleTime: Infinity,
     });
 
+    // Fetch Chesterfield County boundary
+    const { data: chesterfieldBoundary } = useQuery({
+        queryKey: ['chesterfieldBoundary'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://services3.arcgis.com/TsynfzBSE6sXfoLq/ArcGIS/rest/services/Administrative_ProdA/FeatureServer/13/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
     // Fetch Chesterfield County magisterial districts
     const { data: chesterfieldDistricts } = useQuery({
         queryKey: ['chesterfieldDistricts'],
         queryFn: async () => {
             const response = await fetch(
-                'https://services3.arcgis.com/TsynfzBSE6sXfoLq/ArcGIS/rest/services/Administrative_ProdA/FeatureServer/15/query?outFields=*&where=1%3D1&f=geojson'
+                'https://services3.arcgis.com/TsynfzBSE6sXfoLq/ArcGIS/rest/services/Administrative_ProdA/FeatureServer/9/query?outFields=*&where=1%3D1&f=geojson'
             );
             return response.json();
         },
@@ -86,7 +98,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         }
     };
 
-    const onEachChesterfieldFeature = (feature, layer) => {
+    const onEachChesterfieldDistrictFeature = (feature, layer) => {
         if (feature.properties) {
             const districtName = feature.properties.NAME || feature.properties.DISTRICT || 'Unknown';
             
@@ -102,6 +114,15 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                 </div>
             `);
         }
+    };
+
+    const onEachChesterfieldBoundaryFeature = (feature, layer) => {
+        layer.bindPopup(`
+            <div class="p-2">
+                <p class="font-bold text-green-600">Chesterfield County</p>
+                <p class="text-sm">County Boundary</p>
+            </div>
+        `);
     };
 
     const onEachHenricoFeature = (feature, layer) => {
@@ -152,13 +173,23 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
     return (
         <>
+            {/* Chesterfield County Boundary */}
+            {chesterfieldBoundary && (
+                <GeoJSON
+                    key="chesterfield-boundary"
+                    data={chesterfieldBoundary}
+                    style={chesterfieldStyle}
+                    onEachFeature={onEachChesterfieldBoundaryFeature}
+                />
+            )}
+
             {/* Chesterfield County Districts */}
             {filteredChesterfieldDistricts && (
                 <GeoJSON
-                    key={`chesterfield-${chesterfieldDistrict}`}
+                    key={`chesterfield-districts-${chesterfieldDistrict}`}
                     data={filteredChesterfieldDistricts}
                     style={chesterfieldStyle}
-                    onEachFeature={onEachChesterfieldFeature}
+                    onEachFeature={onEachChesterfieldDistrictFeature}
                 />
             )}
 

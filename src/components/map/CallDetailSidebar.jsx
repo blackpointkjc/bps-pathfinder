@@ -130,7 +130,7 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 z-[9998]"
+                        className="fixed inset-0 bg-black/50 z-[9998] pointer-events-auto"
                         onClick={onClose}
                     />
                     <motion.div
@@ -138,7 +138,7 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
                         animate={{ x: 0 }}
                         exit={{ x: 400 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="fixed top-0 right-0 bottom-0 w-full md:w-[400px] bg-white shadow-2xl z-[9999] overflow-hidden flex flex-col"
+                        className="fixed top-0 right-0 bottom-0 w-full md:w-[400px] bg-white shadow-2xl z-[9999] overflow-hidden flex flex-col pointer-events-auto"
                     >
                 {/* Header */}
                 <div className="bg-gradient-to-r from-red-600 to-red-700 p-6 text-white">
@@ -159,7 +159,7 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
                             variant="ghost" 
                             size="icon" 
                             onClick={onClose}
-                            className="text-white hover:bg-white/20"
+                            className="text-white hover:bg-white/20 pointer-events-auto"
                         >
                             <X className="w-5 h-5" />
                         </Button>
@@ -327,14 +327,14 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
                             <Button
                                 onClick={onCenter}
                                 variant="outline"
-                                className="w-full border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold py-6"
+                                className="w-full border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold py-6 pointer-events-auto"
                             >
                                 <Crosshair className="w-5 h-5 mr-2" />
                                 Center on Map
                             </Button>
                             <Button
                                 onClick={onEnroute}
-                                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-6 text-base"
+                                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-6 text-base pointer-events-auto"
                             >
                                 <NavigationIcon className="w-5 h-5 mr-2" />
                                 Navigate to Call

@@ -78,19 +78,19 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 z-[2000]"
+                        className="fixed inset-0 bg-black/50 z-[2000] pointer-events-auto"
                         onClick={onClose}
                     />
                     <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
-                            className="fixed inset-0 flex items-center justify-center z-[2001] p-4"
+                            className="fixed inset-0 flex items-center justify-center z-[2001] p-4 pointer-events-none"
                         >
-                        <Card className="p-6 bg-white shadow-2xl w-full max-w-md flex flex-col" style={{ maxHeight: '85vh' }}>
+                        <Card className="p-6 bg-white shadow-2xl w-full max-w-md flex flex-col pointer-events-auto" style={{ maxHeight: '85vh' }}>
                             <div className="flex items-center justify-between mb-4 flex-shrink-0">
                                 <h3 className="text-xl font-bold text-gray-900">Unit Status</h3>
-                                <Button variant="ghost" size="icon" onClick={onClose}>
+                                <Button variant="ghost" size="icon" onClick={onClose} className="pointer-events-auto">
                                     <X className="w-5 h-5" />
                                 </Button>
                             </div>
@@ -129,7 +129,7 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                                                         whileHover={{ scale: 1.02 }}
                                                         whileTap={{ scale: 0.98 }}
                                                         onClick={() => handleStatusClick(status.value)}
-                                                        className={`p-4 rounded-xl border-2 transition-all ${
+                                                        className={`p-4 rounded-xl border-2 transition-all pointer-events-auto ${
                                                             isActive 
                                                                 ? 'border-blue-500 bg-blue-50' 
                                                                 : 'border-gray-200 hover:border-gray-300'
@@ -170,7 +170,7 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                                                 </div>
 
                                                 <div className="pt-4 border-t flex-shrink-0">
-                                                <Button variant="outline" onClick={onClose} className="w-full">
+                                                <Button variant="outline" onClick={onClose} className="w-full pointer-events-auto">
                                                 Close
                                                 </Button>
                                                 </div>
