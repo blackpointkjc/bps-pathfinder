@@ -904,7 +904,7 @@ export default function Navigation() {
                 route={routeCoords}
                 trafficSegments={trafficSegments}
                 useOfflineTiles={!isOnline}
-                activeCalls={showActiveCalls ? activeCalls : []}
+                activeCalls={activeCalls}
                 heading={heading}
                 locationHistory={isLiveTracking ? locationHistory : []}
                 unitName={unitName || currentUser?.unit_number}
