@@ -16,40 +16,50 @@ export default function NavigationCamera({
         // Calculate zoom based on speed and upcoming maneuver
         let targetZoom;
         
-        if (upcomingManeuverDistance && upcomingManeuverDistance < 1200) {
-            // Zoom in when approaching maneuver
+        if (upcomingManeuverDistance && upcomingManeuverDistance < 400) {
+            // Very close to maneuver - zoom in tight
+            targetZoom = 19;
+        } else if (upcomingManeuverDistance && upcomingManeuverDistance < 1200) {
+            // Approaching maneuver
             targetZoom = 18;
         } else if (speed < 25) {
             // City streets - closer zoom
             targetZoom = 17;
         } else if (speed < 55) {
-            // Medium speed - medium zoom
-            targetZoom = 15;
+            // Medium speed roads
+            targetZoom = 16;
         } else {
-            // Highway - farther zoom
-            targetZoom = 14;
+            // Highway - farther zoom for overview
+            targetZoom = 15;
         }
 
         // Smooth zoom transition
         const currentZoom = map.getZoom();
         const zoomDiff = Math.abs(targetZoom - currentZoom);
         
-        if (zoomDiff > 0.5) {
-            map.setZoom(targetZoom, { animate: true, duration: 1 });
+        if (zoomDiff > 0.3) {
+            map.setZoom(targetZoom, { animate: true, duration: 0.8 });
         }
 
-        // Keep user centered slightly lower on screen for look-ahead
-        const mapSize = map.getSize();
-        const offset = [0, mapSize.y * 0.15]; // Shift down 15% for look-ahead
-        
+        // Keep user positioned lower on screen for look-ahead (Waze-style)
         map.panTo(currentLocation, {
             animate: true,
-            duration: 0.5,
-            easeLinearity: 0.5,
+            duration: 0.3,
+            easeLinearity: 0.25,
             noMoveStart: true
         });
 
-    }, [map, isNavigating, currentLocation, speed, upcomingManeuverDistance]);
+        // Set map bearing to follow heading for turn-by-turn
+        if (heading !== null && heading !== undefined) {
+            try {
+                // Leaflet doesn't support bearing natively, but we rotate via CSS if needed
+                // For now, keep north-up but this could be enhanced with a plugin
+            } catch (e) {
+                console.warn('Map rotation not supported');
+            }
+        }
+
+    }, [map, isNavigating, currentLocation, speed, upcomingManeuverDistance, heading]);
 
     return null;
 }

@@ -412,11 +412,12 @@ export default function Navigation() {
 
         setIsLiveTracking(true);
         
-        // Use high accuracy while navigating, normal otherwise
+        // High accuracy and frequent updates while navigating
+        const updateInterval = isNavigating ? 1000 : 5000; // 1s while navigating, 5s otherwise
         const trackingOptions = {
             enableHighAccuracy: true,
             maximumAge: 0,
-            timeout: isNavigating ? 5000 : 10000
+            timeout: 5000
         };
         
         locationWatchId.current = navigator.geolocation.watchPosition(
@@ -654,27 +655,55 @@ export default function Navigation() {
 
 
     const updateNavigationProgress = (coords) => {
-        if (!directions || currentStepIndex >= directions.length) {
+        if (!directions || currentStepIndex >= directions.length - 1) {
+            // Arrived at destination
             setIsNavigating(false);
             if (voiceEnabled) {
                 speak('You have arrived at your destination');
             }
             toast.success('You have arrived at your destination!');
+            handleStatusChange('On Scene');
             return;
         }
 
-        // Voice announcement for new steps
-        if (voiceEnabled && currentStepIndex !== lastAnnouncedStep.current) {
-            const currentStep = directions[currentStepIndex];
-            if (currentStep) {
-                speak(`In ${currentStep.distance}, ${currentStep.instruction}`);
-                lastAnnouncedStep.current = currentStepIndex;
+        // Calculate distance to next maneuver
+        if (routeCoords && routeCoords.length > 0) {
+            // Find closest point on route
+            let minDist = Infinity;
+            let closestIndex = 0;
+            
+            for (let i = 0; i < routeCoords.length; i++) {
+                const dist = getDistanceMeters(coords, routeCoords[i]);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestIndex = i;
+                }
             }
-        }
-
-        const stepsRemaining = directions.length - currentStepIndex;
-        if (stepsRemaining <= 3) {
-            setCurrentStepIndex(currentStepIndex + 1);
+            
+            // Calculate remaining distance
+            let remainingDist = 0;
+            for (let i = closestIndex; i < routeCoords.length - 1; i++) {
+                remainingDist += getDistanceMeters(routeCoords[i], routeCoords[i + 1]);
+            }
+            
+            const remainingMiles = (remainingDist / 1609.34).toFixed(1);
+            setRemainingDistance(`${remainingMiles} mi`);
+            
+            // Auto-advance to next step when close enough
+            // Simplified: advance every ~500m of progress
+            const stepProgress = Math.floor(closestIndex / (routeCoords.length / directions.length));
+            if (stepProgress > currentStepIndex && stepProgress < directions.length) {
+                setCurrentStepIndex(stepProgress);
+                
+                // Voice announcement for new step
+                if (voiceEnabled && stepProgress !== lastAnnouncedStep.current) {
+                    const newStep = directions[stepProgress];
+                    if (newStep) {
+                        speak(`In ${newStep.distance}, ${newStep.instruction}`);
+                        lastAnnouncedStep.current = stepProgress;
+                    }
+                }
+            }
         }
     };
 
@@ -1589,15 +1618,16 @@ Format the response as a concise bullet list. If information is not available, s
 
             {!isNavigating && directions && (
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    className="absolute bottom-[52vh] left-1/2 -translate-x-1/2 z-[1001] pointer-events-auto"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[2100] pointer-events-auto"
                 >
                     <Button
                         onClick={startNavigation}
-                        className="bg-[#007AFF] hover:bg-[#0056CC] text-white px-10 py-7 text-xl font-bold rounded-2xl shadow-2xl animate-pulse"
+                        size="lg"
+                        className="bg-[#007AFF] hover:bg-[#0056CC] text-white px-12 py-8 text-2xl font-bold rounded-3xl shadow-2xl animate-pulse"
                     >
-                        <NavigationIcon className="w-6 h-6 mr-2" />
+                        <NavigationIcon className="w-8 h-8 mr-3" />
                         Start Navigation
                     </Button>
                 </motion.div>
