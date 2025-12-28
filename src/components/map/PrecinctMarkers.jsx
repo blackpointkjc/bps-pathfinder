@@ -7,8 +7,10 @@ const precinctIcon = new L.DivIcon({
     html: `
         <div style="position: relative; width: 36px; height: 36px;">
             <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" style="filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));">
-                <circle cx="12" cy="12" r="11" fill="#1E40AF" stroke="white" stroke-width="2"/>
-                <path d="M12 2L14 8H18L14.5 11L16 17L12 14L8 17L9.5 11L6 8H10L12 2Z" fill="white"/>
+                <path d="M12 1L14 7L12 9L10 7L12 1Z" fill="#1E40AF" stroke="white" stroke-width="1"/>
+                <circle cx="12" cy="12" r="9" fill="#1E40AF" stroke="#FFD700" stroke-width="1.5"/>
+                <circle cx="12" cy="12" r="6" fill="white" opacity="0.9"/>
+                <text x="12" y="15" text-anchor="middle" font-size="8" font-weight="bold" fill="#1E40AF">PD</text>
             </svg>
         </div>
     `,
