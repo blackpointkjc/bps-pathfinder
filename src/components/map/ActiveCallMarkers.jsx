@@ -1,7 +1,6 @@
 import React from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
 import { Badge } from '@/components/ui/badge';
 import { Clock, MapPin, Radio } from 'lucide-react';
 
@@ -144,32 +143,7 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
     }
     
     return (
-        <MarkerClusterGroup
-            chunkedLoading
-            maxClusterRadius={60}
-            spiderfyOnMaxZoom={true}
-            showCoverageOnHover={false}
-            zoomToBoundsOnClick={true}
-            iconCreateFunction={(cluster) => {
-                const count = cluster.getChildCount();
-                let size = 'small';
-                let bgColor = 'bg-red-500';
-                
-                if (count > 20) {
-                    size = 'large';
-                    bgColor = 'bg-red-700';
-                } else if (count > 10) {
-                    size = 'medium';
-                    bgColor = 'bg-red-600';
-                }
-                
-                return new L.DivIcon({
-                    html: `<div class="flex items-center justify-center w-full h-full ${bgColor} text-white rounded-full font-bold border-4 border-white shadow-lg">${count}</div>`,
-                    className: `marker-cluster marker-cluster-${size}`,
-                    iconSize: new L.Point(50, 50)
-                });
-            }}
-        >
+        <>
             {validCalls.map((call, index) => {
                 
                 return (
@@ -239,6 +213,6 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                     </Marker>
                 );
             })}
-        </MarkerClusterGroup>
+        </>
     );
 }
