@@ -27,12 +27,12 @@ export default function JurisdictionBoundaries() {
         staleTime: Infinity,
     });
 
-    // Fetch Henrico County police districts
+    // Fetch Henrico County magisterial districts
     const { data: henricoDistricts } = useQuery({
         queryKey: ['henricoDistricts'],
         queryFn: async () => {
             const response = await fetch(
-                'https://services1.arcgis.com/too0avLFyP6imin5/arcgis/rest/services/Police_Districts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+                'https://portal.henrico.gov/mapping/rest/services/Layers/Magisterial_Districts_2021/MapServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
             return response.json();
         },
@@ -61,9 +61,9 @@ export default function JurisdictionBoundaries() {
 
     const henricoDistrictStyle = (feature) => {
         return {
-            fillColor: '#F59E0B',
+            fillColor: '#A855F7',
             fillOpacity: 0.15,
-            color: '#D97706',
+            color: '#7C3AED',
             weight: 2,
             opacity: 0.7
         };
@@ -90,11 +90,12 @@ export default function JurisdictionBoundaries() {
     };
 
     const onEachHenricoFeature = (feature, layer) => {
-        if (feature.properties && feature.properties.DISTRICT) {
+        if (feature.properties) {
+            const districtName = feature.properties.NAME || feature.properties.DISTRICT || 'Unknown';
             layer.bindPopup(`
                 <div class="p-2">
-                    <p class="font-bold text-orange-600">Henrico County PD</p>
-                    <p class="text-sm">District ${feature.properties.DISTRICT}</p>
+                    <p class="font-bold text-purple-600">Henrico County</p>
+                    <p class="text-sm">${districtName} District</p>
                 </div>
             `);
         }
