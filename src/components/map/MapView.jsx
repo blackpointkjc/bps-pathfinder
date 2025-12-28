@@ -301,7 +301,7 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             )}
             
             {/* Search Pin */}
-            {searchPin && <SearchPinMarker position={searchPin.coords} address={searchPin.address} />}
+            {searchPin && <SearchPinMarker position={searchPin.coords} address={searchPin.address} propertyInfo={searchPin.propertyInfo} />}
         </MapContainer>
         );
         });
