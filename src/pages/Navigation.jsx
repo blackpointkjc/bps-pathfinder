@@ -106,7 +106,8 @@ export default function Navigation() {
         henricoDistrict: 'all',
         chesterfieldDistrict: 'all',
         baseMapType: 'street',
-        searchAddress: ''
+        searchAddress: '',
+        showPoliceStations: true
     });
     
     const locationWatchId = useRef(null);
@@ -1008,6 +1009,7 @@ export default function Navigation() {
                     isNavigating={isNavigating}
                     baseMapType={jurisdictionFilters.baseMapType}
                     jurisdictionFilters={jurisdictionFilters}
+                    showPoliceStations={jurisdictionFilters.showPoliceStations}
                     onCallClick={(call) => {
                         setSelectedCall(call);
                         setShowCallSidebar(true);

@@ -126,7 +126,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
     };
 
     const onEachChesterfieldBoundaryFeature = (feature, layer) => {
-        // Don't bind popup to county boundary - let clicks go through to districts
+        // No popup for county boundary to avoid overlap with districts
     };
 
     const onEachHenricoFeature = (feature, layer) => {

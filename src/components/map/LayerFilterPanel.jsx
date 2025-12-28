@@ -78,10 +78,21 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
 
                             {/* Address Search */}
                             <div className="mb-6 p-4 bg-gray-50 rounded-xl">
-                                <Label className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                    <Search className="w-4 h-4" />
-                                    Search Address or Place
-                                </Label>
+                                <div className="flex items-center justify-between mb-2">
+                                                  <Label className="text-sm font-semibold text-gray-700">Show Police Stations</Label>
+                                                  <Switch
+                                                      checked={filters.showPoliceStations ?? true}
+                                                      onCheckedChange={(checked) => onFilterChange({ ...filters, showPoliceStations: checked })}
+                                                  />
+                                              </div>
+                                          </div>
+
+                                          {/* Address Search */}
+                                          <div className="mb-6 p-4 bg-gray-50 rounded-xl">
+                                              <Label className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                                  <Search className="w-4 h-4" />
+                                                  Search Address or Place
+                                              </Label>
                                 <div className="flex gap-2 mt-2">
                                     <Input
                                         placeholder="Enter address..."

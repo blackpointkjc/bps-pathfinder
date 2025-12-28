@@ -7,6 +7,7 @@ import ActiveCallMarkers from './ActiveCallMarkers';
 import OtherUnitsLayer from './OtherUnitsLayer';
 import JurisdictionBoundaries from './JurisdictionBoundaries';
 import PrecinctMarkers from './PrecinctMarkers';
+import PoliceStationMarkers from './PoliceStationMarkers';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;

@@ -1,0 +1,100 @@
+import React from 'react';
+import { Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+
+const policeStationIcon = new L.Icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32">
+            <circle cx="12" cy="12" r="11" fill="#1E40AF" stroke="white" stroke-width="2"/>
+            <text x="12" y="17" font-size="14" font-weight="bold" text-anchor="middle" fill="white">PD</text>
+        </svg>
+    `),
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16]
+});
+
+const POLICE_STATIONS = {
+    henrico: [
+        {
+            name: 'West Station (Headquarters)',
+            address: '7721 E. Parham Rd., Henrico, VA 23294',
+            hours: 'Open 24/7',
+            coords: [37.6419, -77.4884]
+        },
+        {
+            name: 'Central Station',
+            address: '7850 Villa Park Drive, Henrico, VA 23228',
+            hours: 'Monday – Friday 8:00 AM – 4:30 PM',
+            coords: [37.5903, -77.5023]
+        },
+        {
+            name: 'South Station',
+            address: '640 N. Airport Drive, Henrico, VA 23075',
+            hours: 'Monday – Friday 8:00 AM – 4:30 PM',
+            coords: [37.5089, -77.3197]
+        }
+    ],
+    chesterfield: [
+        {
+            name: 'Police Department Headquarters',
+            address: '10001 Iron Bridge Road, Chesterfield, VA 23832',
+            hours: 'Open 24/7',
+            coords: [37.3774, -77.5246]
+        },
+        {
+            name: 'Appomattox Police Station',
+            address: '2920 W Hundred Road, Chester, VA 23831',
+            hours: 'Monday – Friday 8:00 AM – 4:30 PM',
+            coords: [37.3566, -77.4168]
+        },
+        {
+            name: 'Falling Creek Police Station',
+            address: '20 N Providence Road, North Chesterfield, VA 23235',
+            hours: 'Monday – Friday 8:00 AM – 4:30 PM',
+            coords: [37.4889, -77.4962]
+        },
+        {
+            name: 'Hicks Road Police Station',
+            address: '2730 Hicks Road, North Chesterfield, VA 23235',
+            hours: 'Monday – Friday 8:00 AM – 4:30 PM',
+            coords: [37.4756, -77.5329]
+        },
+        {
+            name: 'Swift Creek Police Station',
+            address: '6812 Woodlake Commons Loop, Midlothian, VA 23112',
+            hours: 'Monday – Friday 8:00 AM – 4:30 PM',
+            coords: [37.4892, -77.6447]
+        }
+    ]
+};
+
+export default function PoliceStationMarkers({ showStations = true }) {
+    if (!showStations) return null;
+
+    const allStations = [
+        ...POLICE_STATIONS.henrico.map(s => ({ ...s, county: 'Henrico' })),
+        ...POLICE_STATIONS.chesterfield.map(s => ({ ...s, county: 'Chesterfield' }))
+    ];
+
+    return (
+        <>
+            {allStations.map((station, idx) => (
+                <Marker
+                    key={idx}
+                    position={station.coords}
+                    icon={policeStationIcon}
+                >
+                    <Popup>
+                        <div className="p-2 min-w-[200px]">
+                            <p className="font-bold text-blue-900">{station.name}</p>
+                            <p className="text-xs text-blue-600 mb-2">{station.county} County Police</p>
+                            <p className="text-xs text-gray-700">{station.address}</p>
+                            <p className="text-xs text-gray-600 mt-1 italic">{station.hours}</p>
+                        </div>
+                    </Popup>
+                </Marker>
+            ))}
+        </>
+    );
+}
