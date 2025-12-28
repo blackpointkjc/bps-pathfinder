@@ -49,12 +49,12 @@ const precincts = [
 
 export default function PrecinctMarkers({ showStations = true }) {
     const [geocodedPrecincts, setGeocodedPrecincts] = useState([]);
-    
-    if (!showStations) return null;
 
     useEffect(() => {
         geocodePrecincts();
     }, []);
+    
+    if (!showStations) return null;
 
     const geocodePrecincts = async () => {
         const geocoded = [];
