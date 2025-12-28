@@ -142,12 +142,12 @@ export default function Navigation() {
             startContinuousTracking();
         }
         
-        // Refresh active calls every 5 minutes
+        // Refresh active calls every 30 seconds for real-time updates (silent mode)
         callsRefreshInterval.current = setInterval(() => {
             if (isOnline) {
-                fetchActiveCalls();
+                fetchActiveCalls(true); // Silent refresh
             }
-        }, 300000);
+        }, 30000);
         
 
         
@@ -179,11 +179,11 @@ export default function Navigation() {
         }
     }, [currentUser, currentLocation]);
 
-    // Fetch other units on mount and then every 5 seconds
+    // Fetch other units on mount and then every 3 seconds for real-time tracking
     useEffect(() => {
         if (currentUser) {
             fetchOtherUnits();
-            const interval = setInterval(fetchOtherUnits, 5000);
+            const interval = setInterval(fetchOtherUnits, 3000);
             return () => clearInterval(interval);
         }
     }, [currentUser]);
@@ -845,47 +845,47 @@ export default function Navigation() {
         toast.info(`Showing calls: ${filterNames[nextFilter]}`);
     };
 
-    const fetchActiveCalls = async () => {
+    const fetchActiveCalls = async (silent = false) => {
         if (!isOnline) {
-            toast.error('Cannot fetch calls while offline');
+            if (!silent) toast.error('Cannot fetch calls while offline');
             return;
         }
-        
+
         setIsLoadingCalls(true);
         try {
             console.log('🔄 Fetching ALL active calls...');
-            
+
             const response = await base44.functions.invoke('fetchAllActiveCalls', {});
-            
+
             console.log('📦 Full Response:', response.data);
-            
+
             if (response.data && response.data.success) {
                 const allCalls = response.data.geocodedCalls || [];
-                
+
                 console.log(`✅ Loaded ${allCalls.length} calls (${response.data.totalCalls} total scraped)`);
                 if (allCalls.length > 0) {
                     console.log('📊 Sample call:', allCalls[0]);
                     console.log('📍 Calls with coordinates:', allCalls.filter(c => c.latitude && c.longitude).length);
                 }
-                
+
                 // Always set to true to show calls layer
                 setShowActiveCalls(true);
                 setAllActiveCalls(allCalls);
                 applyCallFilter(allCalls, callFilter);
-                
-                if (allCalls.length > 0) {
+
+                if (allCalls.length > 0 && !silent) {
                     toast.success(`Loaded ${allCalls.length} active calls`);
-                } else {
+                } else if (!silent) {
                     toast.warning(`Found ${response.data.totalCalls} calls but none could be geocoded`);
                 }
             } else {
                 const errorMsg = response.data?.error || 'Failed to load active calls';
                 console.error('❌ Failed:', errorMsg);
-                toast.error(errorMsg);
+                if (!silent) toast.error(errorMsg);
             }
         } catch (error) {
             console.error('❌ Error fetching active calls:', error);
-            toast.error(`Error: ${error.message}`);
+            if (!silent) toast.error(`Error: ${error.message}`);
         } finally {
             setIsLoadingCalls(false);
         }

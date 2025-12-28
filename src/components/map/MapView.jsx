@@ -102,6 +102,7 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
     const map = useMap();
     const prevCenterRef = useRef(center);
     const userInteractingRef = useRef(false);
+    const lastUpdateTimeRef = useRef(0);
 
     useEffect(() => {
         // Track user interaction
@@ -109,10 +110,10 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
         const handleMoveEnd = () => { 
             setTimeout(() => { userInteractingRef.current = false; }, 5000);
         };
-        
+
         map.on('movestart', handleMoveStart);
         map.on('moveend', handleMoveEnd);
-        
+
         return () => {
             map.off('movestart', handleMoveStart);
             map.off('moveend', handleMoveEnd);
@@ -129,14 +130,19 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
     useEffect(() => {
         // Don't auto-center if user is manually panning
         if (userInteractingRef.current) return;
-        
+
+        // Throttle updates to improve performance
+        const now = Date.now();
+        if (now - lastUpdateTimeRef.current < 1000) return;
+        lastUpdateTimeRef.current = now;
+
         if (routeBounds && !isNavigating) {
             // Only fit bounds when first showing route, not during navigation
             map.fitBounds(routeBounds, { padding: [50, 50] });
         } else if (center && (!prevCenterRef.current || 
             Math.abs(center[0] - prevCenterRef.current[0]) > 0.00005 || 
             Math.abs(center[1] - prevCenterRef.current[1]) > 0.00005)) {
-            
+
             // When navigating, keep map zoomed in and centered on user
             if (isNavigating) {
                 map.setView(center, 18, { animate: true, duration: 0.3 });
