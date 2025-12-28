@@ -15,38 +15,47 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'userId and updates required' }, { status: 400 });
         }
 
-        console.log('📝 Updating user:', userId, 'with:', updates);
+        console.log('📝 Updating user:', userId);
+        console.log('📝 Updates:', JSON.stringify(updates, null, 2));
 
-        // Separate role from other updates
-        const { role, ...otherUpdates } = updates;
+        // Update user via Supabase Admin API to ensure metadata persists
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-        // Update user metadata (everything except role)
-        if (Object.keys(otherUpdates).length > 0) {
-            await base44.asServiceRole.entities.User.update(userId, otherUpdates);
+        if (!supabaseUrl || !supabaseKey) {
+            return Response.json({ error: 'Missing Supabase credentials' }, { status: 500 });
         }
 
-        // Update role separately if needed
-        if (role) {
-            const appId = Deno.env.get('BASE44_APP_ID');
-            const serviceToken = Deno.env.get('BASE44_SERVICE_ROLE_KEY');
-            
-            const roleResponse = await fetch(`https://api.base44.com/v1/apps/${appId}/users/${userId}/role`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${serviceToken}`
+        const response = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseKey}`,
+                'apikey': supabaseKey
+            },
+            body: JSON.stringify({
+                user_metadata: {
+                    rank: updates.rank,
+                    last_name: updates.last_name,
+                    unit_number: updates.unit_number,
+                    dispatch_role: updates.dispatch_role === true,
+                    is_supervisor: updates.is_supervisor === true,
+                    show_on_map: updates.show_on_map !== false
                 },
-                body: JSON.stringify({ role })
-            });
+                app_metadata: {
+                    role: updates.role || 'user'
+                }
+            })
+        });
 
-            if (!roleResponse.ok) {
-                const error = await roleResponse.text();
-                console.error('Role update failed:', error);
-                return Response.json({ error: 'Failed to update role', details: error }, { status: roleResponse.status });
-            }
+        if (!response.ok) {
+            const error = await response.text();
+            console.error('❌ Update failed:', response.status, error);
+            return Response.json({ error: 'Failed to update user', details: error }, { status: response.status });
         }
-        
-        console.log('✅ User updated successfully');
+
+        const result = await response.json();
+        console.log('✅ User updated successfully:', result.id);
         
         return Response.json({
             success: true,

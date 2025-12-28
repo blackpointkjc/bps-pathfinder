@@ -392,6 +392,12 @@ export default function Navigation() {
             const activeUsers = users.filter(user => {
                 if (user.id === currentUser.id) return false;
                 
+                // Check show_on_map flag - hide if explicitly set to false
+                if (user.show_on_map === false) {
+                    console.log('🚫 Hiding user from map:', user.unit_number || user.full_name);
+                    return false;
+                }
+                
                 const hasLocation = user.latitude && user.longitude && 
                                   !isNaN(user.latitude) && !isNaN(user.longitude) &&
                                   user.latitude !== 0 && user.longitude !== 0;
