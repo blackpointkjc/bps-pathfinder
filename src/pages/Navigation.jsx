@@ -540,12 +540,20 @@ export default function Navigation() {
         const traffic = generateTrafficData(coordinates);
         setTrafficSegments(traffic);
 
-        // Calculate traffic delay
+        // Calculate realistic traffic delay based on distance and severity
         let trafficDelayMins = 0;
-        traffic.forEach(seg => {
-            if (seg.condition === 'heavy') trafficDelayMins += 5;
-            else if (seg.condition === 'moderate') trafficDelayMins += 2;
-        });
+        const totalDistanceKm = routeData.distance / 1000;
+        const heavySegments = traffic.filter(s => s.condition === 'heavy').length;
+        const moderateSegments = traffic.filter(s => s.condition === 'moderate').length;
+        const totalSegments = traffic.length;
+
+        // Estimate delay: heavy traffic adds ~30% delay, moderate adds ~15% delay
+        if (totalSegments > 0) {
+            const heavyPercent = heavySegments / totalSegments;
+            const moderatePercent = moderateSegments / totalSegments;
+            const baseTimeMinutes = routeData.duration / 60;
+            trafficDelayMins = Math.round(baseTimeMinutes * (heavyPercent * 0.3 + moderatePercent * 0.15));
+        }
 
         const distanceMiles = (routeData.distance / 1609.34).toFixed(1);
         setDistance(`${distanceMiles} mi`);
