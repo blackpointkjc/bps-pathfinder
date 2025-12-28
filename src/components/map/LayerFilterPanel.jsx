@@ -129,7 +129,6 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                                 variant={filters.richmondBeat === beat ? 'default' : 'outline'}
                                                 size="sm"
                                                 onClick={() => onFilterChange({ ...filters, richmondBeat: beat })}
-                                                className="bg-blue-600 hover:bg-blue-700"
                                             >
                                                 {beat}
                                             </Button>
@@ -157,7 +156,7 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                                 variant={filters.henricoDistrict === district ? 'default' : 'outline'}
                                                 size="sm"
                                                 onClick={() => onFilterChange({ ...filters, henricoDistrict: district })}
-                                                className="w-full bg-purple-600 hover:bg-purple-700 text-left justify-start"
+                                                className="w-full text-left justify-start"
                                             >
                                                 {district}
                                             </Button>
