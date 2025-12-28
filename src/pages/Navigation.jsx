@@ -109,6 +109,7 @@ export default function Navigation() {
         searchAddress: '',
         showPoliceStations: true
     });
+    const [searchPin, setSearchPin] = useState(null);
     
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
@@ -915,15 +916,48 @@ export default function Navigation() {
         toast.info(`Showing calls: ${filterNames[nextFilter]}`);
         };
 
-        const handleLayerFilterChange = (newFilters) => {
+        const handleLayerFilterChange = async (newFilters) => {
         setJurisdictionFilters(newFilters);
 
-        // Handle address search if provided
+        // Handle address search if provided - just drop a pin, don't navigate
         if (newFilters.searchAddress && newFilters.searchAddress !== jurisdictionFilters.searchAddress) {
-            searchDestination(newFilters.searchAddress);
-            toast.success('Searching for address...');
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(newFilters.searchAddress)}&limit=1`
+                );
+                const data = await response.json();
+
+                if (data && data.length > 0) {
+                    const result = data[0];
+                    const coords = [parseFloat(result.lat), parseFloat(result.lon)];
+                    
+                    // Just center the map on the location and drop a pin
+                    setMapCenter(coords);
+                    setSearchPin({ coords, address: result.display_name });
+                    toast.success(`Found: ${result.display_name.split(',')[0]}`);
+                    
+                    // Get property info using AI
+                    try {
+                        const propertyInfo = await base44.integrations.Core.InvokeLLM({
+                            prompt: `Search the internet for property ownership information for this address: ${result.display_name}. Try to find the property owner's name, property value, and any public records. Be concise.`,
+                            add_context_from_internet: true
+                        });
+                        
+                        if (propertyInfo) {
+                            toast.info(propertyInfo, { duration: 8000 });
+                        }
+                    } catch (error) {
+                        console.error('Error getting property info:', error);
+                    }
+                } else {
+                    toast.error('Address not found');
+                }
+            } catch (error) {
+                console.error('Error searching address:', error);
+                toast.error('Failed to search address');
+            }
         }
-        };
+    };
 
     const fetchActiveCalls = async (silent = false) => {
         if (!isOnline) {
@@ -1010,6 +1044,7 @@ export default function Navigation() {
                     baseMapType={jurisdictionFilters.baseMapType}
                     jurisdictionFilters={jurisdictionFilters}
                     showPoliceStations={jurisdictionFilters.showPoliceStations}
+                    searchPin={searchPin}
                     onCallClick={(call) => {
                         setSelectedCall(call);
                         setShowCallSidebar(true);

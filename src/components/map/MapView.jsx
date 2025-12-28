@@ -8,6 +8,7 @@ import OtherUnitsLayer from './OtherUnitsLayer';
 import JurisdictionBoundaries from './JurisdictionBoundaries';
 import PrecinctMarkers from './PrecinctMarkers';
 import PoliceStationMarkers from './PoliceStationMarkers';
+import SearchPinMarker from './SearchPinMarker';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -159,7 +160,7 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
     return null;
 }
 
-const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true }) {
+const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, searchPin = null }) {
     const defaultCenter = currentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
     
     // Calculate route bounds if route exists
@@ -298,6 +299,9 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             {otherUnits && otherUnits.length > 0 && (
                 <OtherUnitsLayer units={otherUnits} currentUserId={currentUserId} />
             )}
+            
+            {/* Search Pin */}
+            {searchPin && <SearchPinMarker position={searchPin.coords} address={searchPin.address} />}
         </MapContainer>
         );
         });

@@ -84,11 +84,6 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
     const onEachRichmondFeature = (feature, layer) => {
         if (feature.properties && feature.properties.Name) {
-            // Filter by beat number if specified
-            if (richmondBeat !== 'all' && feature.properties.Name !== richmondBeat) {
-                return; // Skip this feature
-            }
-            
             layer.bindPopup(`
                 <div class="p-2">
                     <p class="font-bold text-blue-600">Richmond PD</p>
