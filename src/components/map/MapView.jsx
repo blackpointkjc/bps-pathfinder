@@ -159,7 +159,7 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
     return null;
 }
 
-const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters }) {
+const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true }) {
     const defaultCenter = currentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
     
     // Calculate route bounds if route exists
