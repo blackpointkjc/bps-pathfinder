@@ -8,6 +8,7 @@ import OtherUnitsLayer from './OtherUnitsLayer';
 import JurisdictionBoundaries from './JurisdictionBoundaries';
 import PrecinctMarkers from './PrecinctMarkers';
 import PoliceStationMarkers from './PoliceStationMarkers';
+import JailMarkers from './JailMarkers';
 import SearchPinMarker from './SearchPinMarker';
 import NavigationCamera from './NavigationCamera';
 
@@ -226,6 +227,9 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             
             {/* Police station markers */}
             <PoliceStationMarkers showStations={showPoliceStations} />
+
+            {/* Jail markers */}
+            <JailMarkers showJails={showPoliceStations} />
             
             {!isNavigating ? (
                 <MapController 
