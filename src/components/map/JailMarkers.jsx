@@ -25,7 +25,7 @@ const jails = [
     {
         name: 'Richmond City Jail',
         address: '1701 Fairfield Way, Richmond, VA 23223',
-        coords: [37.5425, -77.4396],
+        coords: [37.54655, -77.42289],
         jurisdiction: 'Richmond'
     },
     {
@@ -43,7 +43,7 @@ const jails = [
     {
         name: 'Riverside Regional Jail Authority',
         address: '500 Folar Trail North, Prince George, VA 23860',
-        coords: [37.2347, -77.3754],
+        coords: [37.30761, -77.34173],
         jurisdiction: 'Chesterfield'
     }
 ];
