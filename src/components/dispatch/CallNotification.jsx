@@ -32,23 +32,13 @@ export default function CallNotification({ call, onAccept, onDismiss }) {
                 initial={{ opacity: 0, y: -100, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -100, scale: 0.9 }}
-                className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000] w-full max-w-md px-4"
+                className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000] w-full max-w-md px-4 pointer-events-auto"
             >
                 <Card className="bg-red-600 border-red-700 shadow-2xl overflow-hidden">
                     {/* Pulsing header */}
-                    <div className="bg-red-700 px-4 py-3 flex items-center justify-between animate-pulse">
-                        <div className="flex items-center gap-2">
-                            <AlertCircle className="w-5 h-5 text-white" />
-                            <span className="font-bold text-white">DISPATCH ALERT</span>
-                        </div>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onDismiss}
-                            className="text-white hover:bg-red-600"
-                        >
-                            <X className="w-5 h-5" />
-                        </Button>
+                    <div className="bg-red-700 px-4 py-3 flex items-center gap-2 animate-pulse">
+                        <AlertCircle className="w-5 h-5 text-white" />
+                        <span className="font-bold text-white">DISPATCH ALERT</span>
                     </div>
 
                     <div className="p-4 bg-white">
@@ -86,18 +76,14 @@ export default function CallNotification({ call, onAccept, onDismiss }) {
                         {/* Actions */}
                         <div className="flex gap-2">
                             <Button
-                                onClick={onAccept}
-                                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-6 text-lg"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onAccept(call);
+                                }}
+                                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-6 text-lg pointer-events-auto"
                             >
                                 <Navigation className="w-5 h-5 mr-2" />
                                 Accept & Navigate
-                            </Button>
-                            <Button
-                                onClick={onDismiss}
-                                variant="outline"
-                                className="px-4 border-gray-300"
-                            >
-                                Dismiss
                             </Button>
                         </div>
                     </div>
