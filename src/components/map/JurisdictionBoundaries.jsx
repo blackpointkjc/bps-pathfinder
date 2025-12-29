@@ -101,6 +101,9 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
     const onEachChesterfieldDistrictFeature = (feature, layer) => {
         if (feature.properties) {
+            // Log all properties to find the correct key
+            console.log('Chesterfield District Properties:', feature.properties);
+            
             // Check all possible property names for district name
             const districtName = feature.properties.MAG_DIST || 
                                 feature.properties.NAME || 
@@ -108,9 +111,11 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                                 feature.properties.Magisterial_District ||
                                 feature.properties.MagDist ||
                                 feature.properties.MAG_DIST_NAME ||
-                                'Unknown';
-            
-            console.log('Chesterfield District Properties:', feature.properties);
+                                feature.properties.DISTRICTNAME ||
+                                feature.properties.District_Name ||
+                                feature.properties.Mag_Dist ||
+                                feature.properties.District ||
+                                (Object.values(feature.properties).find(v => typeof v === 'string' && v.length > 0 && v.length < 30) || 'Unknown');
             
             // Filter by district name if specified
             if (chesterfieldDistrict !== 'all' && districtName !== chesterfieldDistrict) {
@@ -186,7 +191,12 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                            f.properties?.DISTRICT || 
                            f.properties?.Magisterial_District ||
                            f.properties?.MagDist ||
-                           f.properties?.MAG_DIST_NAME;
+                           f.properties?.MAG_DIST_NAME ||
+                           f.properties?.DISTRICTNAME ||
+                           f.properties?.District_Name ||
+                           f.properties?.Mag_Dist ||
+                           f.properties?.District ||
+                           (Object.values(f.properties || {}).find(v => typeof v === 'string' && v.length > 0 && v.length < 30));
                 return name === chesterfieldDistrict;
             })
         }
