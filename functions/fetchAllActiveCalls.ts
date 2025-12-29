@@ -13,6 +13,33 @@ Deno.serve(async (req) => {
         
         const calls = [];
         
+        // Load dispatch-created calls from database
+        try {
+            console.log('📡 Fetching from dispatch database...');
+            const dispatchCalls = await base44.entities.DispatchCall.filter({
+                status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene'] }
+            });
+            
+            if (dispatchCalls && dispatchCalls.length > 0) {
+                for (const dbCall of dispatchCalls) {
+                    calls.push({
+                        timeReceived: dbCall.time_received || new Date(dbCall.created_date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+                        incident: dbCall.incident,
+                        location: dbCall.location,
+                        agency: dbCall.agency || 'Unknown',
+                        status: dbCall.status || 'Dispatched',
+                        latitude: dbCall.latitude,
+                        longitude: dbCall.longitude,
+                        source: 'dispatch',
+                        id: dbCall.id
+                    });
+                }
+                console.log(`✅ Database: ${dispatchCalls.length} dispatch calls`);
+            }
+        } catch (error) {
+            console.error('❌ Error fetching from dispatch database:', error);
+        }
+        
         // Source 1: gractivecalls.com (Richmond mainly)
         try {
             console.log('📡 Fetching from gractivecalls.com...');
@@ -169,9 +196,9 @@ Deno.serve(async (req) => {
                     jurisdiction = 'Richmond, VA, USA';
                 } else if (call.agency.includes('HCPD') || call.agency.includes('HPD') || call.agency.includes('Henrico')) {
                     jurisdiction = 'Henrico County, VA, USA';
-                } else if (call.agency.includes('CCPD') || call.agency.includes('CCFD') || call.agency.includes('Chesterfield')) {
+                } else if (call.agency.includes('CCPD') || call.agency.includes('CCFD') || call.agency.includes('Chesterfield') || call.agency.includes('CC')) {
                     jurisdiction = 'Chesterfield County, VA, USA';
-                } else if (call.agency.includes('BPS')) {
+                } else if (call.agency.includes('BPS') || call.agency.includes('BSP')) {
                     jurisdiction = 'Richmond, VA, USA';
                 }
                 
@@ -215,12 +242,14 @@ Deno.serve(async (req) => {
                 if (geoData && geoData.length > 0) {
                     const lat = parseFloat(geoData[0].lat);
                     const lon = parseFloat(geoData[0].lon);
+                    console.log(`✅ Geocoded ${call.agency} - ${call.incident} at ${call.location}: [${lat}, ${lon}]`);
                     geocodedCalls.push({
                         ...call,
                         latitude: lat,
                         longitude: lon
                     });
                 } else {
+                    console.log(`❌ Failed to geocode ${call.agency} - ${call.incident} at ${call.location}`);
                     // Still add the call even without GPS
                     geocodedCalls.push({
                         ...call,
