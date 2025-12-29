@@ -128,9 +128,10 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
     
     const validCalls = calls.filter(call => {
         const isValid = call.latitude && call.longitude && 
-                       !isNaN(call.latitude) && !isNaN(call.longitude);
+                       !isNaN(call.latitude) && !isNaN(call.longitude) &&
+                       call.latitude !== 0 && call.longitude !== 0;
         if (!isValid) {
-            console.log('⚠️ Invalid call:', call.incident, 'lat:', call.latitude, 'lng:', call.longitude);
+            console.log('⚠️ Invalid call:', call.incident, 'agency:', call.agency, 'lat:', call.latitude, 'lng:', call.longitude);
         }
         return isValid;
     });

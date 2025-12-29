@@ -58,7 +58,8 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             fillOpacity: 0.15,
             color: '#1E40AF',
             weight: 2,
-            opacity: 0.7
+            opacity: 0.7,
+            className: 'clickable-boundary'
         };
     };
 
@@ -68,7 +69,8 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             fillOpacity: 0.15,
             color: '#16A34A',
             weight: 2,
-            opacity: 0.7
+            opacity: 0.7,
+            className: 'clickable-boundary'
         };
     };
 
@@ -78,7 +80,8 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             fillOpacity: 0.15,
             color: '#7C3AED',
             weight: 2,
-            opacity: 0.7
+            opacity: 0.7,
+            className: 'clickable-boundary'
         };
     };
 
@@ -90,6 +93,9 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                     <p class="text-sm">Beat ${feature.properties.Name}</p>
                 </div>
             `);
+            layer.on('click', () => {
+                layer.openPopup();
+            });
         }
     };
 
@@ -117,6 +123,9 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                     <p class="text-sm">${districtName} District</p>
                 </div>
             `);
+            layer.on('click', () => {
+                layer.openPopup();
+            });
         }
     };
 
@@ -139,6 +148,9 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                     <p class="text-sm">${districtName} District</p>
                 </div>
             `);
+            layer.on('click', () => {
+                layer.openPopup();
+            });
         }
     };
 

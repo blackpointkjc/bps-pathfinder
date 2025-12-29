@@ -1486,7 +1486,7 @@ Format the response as a concise bullet list. If information is not available, s
                 </Button>
 
                 <Button
-                    onClick={fetchActiveCalls}
+                    onClick={() => fetchActiveCalls(false)}
                     size="sm"
                     className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] px-2 py-1.5 rounded-lg shadow-lg"
                     disabled={isLoadingCalls}
