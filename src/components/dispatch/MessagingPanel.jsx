@@ -24,9 +24,24 @@ export default function MessagingPanel({ currentUser, units, isOpen, onClose }) 
 
     const loadMessages = async () => {
         try {
-            // Load ALL messages - everyone can see all communications
+            // Load only messages where user is sender, recipient, or recipient is 'dispatch'
             const allMessages = await base44.entities.Message.list('-created_date', 200);
-            setMessages(allMessages || []);
+            
+            const filteredMessages = allMessages.filter(msg => {
+                // Show if user is the sender
+                if (msg.sender_id === currentUser.id) return true;
+                
+                // Show if message is to/from dispatch (broadcast)
+                if (msg.recipient_id === 'dispatch' || msg.sender_id === 'dispatch') return true;
+                
+                // Show if user is the recipient
+                if (msg.recipient_id === currentUser.id) return true;
+                
+                // Otherwise hide
+                return false;
+            });
+            
+            setMessages(filteredMessages || []);
         } catch (error) {
             console.error('Error loading messages:', error);
         }

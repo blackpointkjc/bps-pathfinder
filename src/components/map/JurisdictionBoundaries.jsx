@@ -194,6 +194,17 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
     return (
         <>
+            {/* Chesterfield County Districts - render first so they're on top */}
+            {filteredChesterfieldDistricts && (
+                <GeoJSON
+                    key={`chesterfield-districts-${chesterfieldDistrict}`}
+                    data={filteredChesterfieldDistricts}
+                    style={chesterfieldStyle}
+                    onEachFeature={onEachChesterfieldDistrictFeature}
+                    interactive={true}
+                />
+            )}
+
             {/* Chesterfield County Boundary */}
             {chesterfieldBoundary && (
                 <GeoJSON
@@ -201,16 +212,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                     data={chesterfieldBoundary}
                     style={chesterfieldStyle}
                     onEachFeature={onEachChesterfieldBoundaryFeature}
-                />
-            )}
-
-            {/* Chesterfield County Districts */}
-            {filteredChesterfieldDistricts && (
-                <GeoJSON
-                    key={`chesterfield-districts-${chesterfieldDistrict}`}
-                    data={filteredChesterfieldDistricts}
-                    style={chesterfieldStyle}
-                    onEachFeature={onEachChesterfieldDistrictFeature}
+                    interactive={false}
                 />
             )}
 

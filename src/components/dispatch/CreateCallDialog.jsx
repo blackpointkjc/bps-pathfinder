@@ -49,9 +49,16 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                 longitude = parseFloat(geoData[0].lon);
             }
 
+            // Generate CAD number in format: YYYY-NNNNNN (e.g., 2025-000123)
+            const now = new Date();
+            const year = now.getFullYear();
+            const dayOfYear = Math.floor((now - new Date(year, 0, 0)) / 86400000);
+            const sequenceNumber = Math.floor(now.getTime() / 1000) % 1000000;
+            const cadNumber = `${year}-${String(dayOfYear).padStart(3, '0')}${String(sequenceNumber).padStart(3, '0')}`;
+            
             const callData = {
                 ...formData,
-                call_id: `CALL-${Date.now()}`,
+                call_id: cadNumber,
                 latitude,
                 longitude,
                 assigned_units: selectedUnits,
