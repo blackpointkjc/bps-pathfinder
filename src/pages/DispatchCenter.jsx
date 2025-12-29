@@ -201,7 +201,7 @@ export default function DispatchCenter() {
                     <div className="mb-4">
                         <QuickActions onCreateCall={handleQuickDispatch} />
                     </div>
-                    /* 3-Panel Layout */
+                    
                     <div className="grid grid-cols-12 gap-4 h-[calc(100vh-140px)]">
                         {/* Left: Active Calls Queue */}
                         <div className="col-span-3">

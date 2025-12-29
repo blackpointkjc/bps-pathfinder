@@ -54,42 +54,42 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
                 </h2>
 
                 {/* Stats */}
-                <div className="grid grid-cols-4 gap-2 mb-3">
+                <div className="grid grid-cols-4 gap-1 mb-3">
                     <Button
                         size="sm"
                         variant={statusFilter === 'all' ? 'default' : 'outline'}
                         onClick={() => setStatusFilter('all')}
-                        className="flex flex-col h-auto py-2"
+                        className="flex flex-col h-auto py-1 px-1"
                     >
-                        <span className="text-xs text-slate-400">All</span>
-                        <span className="text-lg font-bold">{counts.all}</span>
+                        <span className="text-[10px] text-slate-400">All</span>
+                        <span className="text-sm font-bold">{counts.all}</span>
                     </Button>
                     <Button
                         size="sm"
                         variant={statusFilter === 'active' ? 'default' : 'outline'}
                         onClick={() => setStatusFilter('active')}
-                        className="flex flex-col h-auto py-2"
+                        className="flex flex-col h-auto py-1 px-1"
                     >
-                        <span className="text-xs text-slate-400">Active</span>
-                        <span className="text-lg font-bold">{counts.active}</span>
+                        <span className="text-[10px] text-slate-400">Active</span>
+                        <span className="text-sm font-bold">{counts.active}</span>
                     </Button>
                     <Button
                         size="sm"
                         variant={statusFilter === 'pending' ? 'default' : 'outline'}
                         onClick={() => setStatusFilter('pending')}
-                        className="flex flex-col h-auto py-2"
+                        className="flex flex-col h-auto py-1 px-1"
                     >
-                        <span className="text-xs text-slate-400">Pending</span>
-                        <span className="text-lg font-bold">{counts.pending}</span>
+                        <span className="text-[10px] text-slate-400">Pend</span>
+                        <span className="text-sm font-bold">{counts.pending}</span>
                     </Button>
                     <Button
                         size="sm"
                         variant={statusFilter === 'unassigned' ? 'default' : 'outline'}
                         onClick={() => setStatusFilter('unassigned')}
-                        className="flex flex-col h-auto py-2"
+                        className="flex flex-col h-auto py-1 px-1"
                     >
-                        <span className="text-xs text-slate-400">Unassigned</span>
-                        <span className="text-lg font-bold text-red-500">{counts.unassigned}</span>
+                        <span className="text-[10px] text-slate-400">Unsgn</span>
+                        <span className="text-sm font-bold text-red-500">{counts.unassigned}</span>
                     </Button>
                 </div>
 

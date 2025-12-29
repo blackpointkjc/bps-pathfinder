@@ -24,14 +24,12 @@ export default function SearchPinMarker({ position, address, propertyInfo }) {
                     <p className="font-bold text-green-600 mb-2 text-sm">📍 Search Result</p>
                     <p className="text-xs text-gray-700 mb-3 border-b pb-2">{address}</p>
                     
-                    {propertyInfo && (
-                        <div className="mt-2">
-                            <p className="font-semibold text-blue-700 text-xs mb-1">🏠 Property Information:</p>
-                            <div className="text-xs text-gray-800 whitespace-pre-wrap leading-relaxed">
-                                {propertyInfo}
-                            </div>
+                    <div className="mt-2">
+                        <p className="font-semibold text-blue-700 text-xs mb-1">🏠 Property Information:</p>
+                        <div className="text-xs text-gray-800 whitespace-pre-wrap leading-relaxed">
+                            {propertyInfo || 'Loading property information...'}
                         </div>
-                    )}
+                    </div>
                 </div>
             </Popup>
         </Marker>
