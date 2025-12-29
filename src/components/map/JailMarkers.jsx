@@ -31,13 +31,13 @@ const jails = [
     {
         name: 'Henrico County Regional Jail West',
         address: '4317 East Parham Road, Henrico, VA 23228',
-        coords: [37.6391, -77.4756],
+        coords: [37.62881, -77.51821],
         jurisdiction: 'Henrico'
     },
     {
         name: 'Henrico County Regional Jail East',
         address: '17320 New Kent Highway, Barhamsville, VA 23011',
-        coords: [37.4795, -76.9452],
+        coords: [37.49537, -76.86185],
         jurisdiction: 'Henrico'
     },
     {
@@ -48,7 +48,7 @@ const jails = [
     }
 ];
 
-export default function JailMarkers({ showJails = true }) {
+export default function JailMarkers({ showJails = true, onNavigateToJail }) {
     if (!showJails) return null;
 
     return (
@@ -58,12 +58,25 @@ export default function JailMarkers({ showJails = true }) {
                     key={index}
                     position={jail.coords}
                     icon={jailIcon}
+                    eventHandlers={{
+                        click: () => {
+                            if (onNavigateToJail) {
+                                onNavigateToJail(jail);
+                            }
+                        }
+                    }}
                 >
                     <Popup>
                         <div className="p-2">
                             <p className="font-bold text-red-600 mb-1">{jail.name}</p>
                             <p className="text-xs text-gray-600 mb-1">{jail.address}</p>
-                            <p className="text-xs text-gray-500">Serves: {jail.jurisdiction}</p>
+                            <p className="text-xs text-gray-500 mb-2">Serves: {jail.jurisdiction}</p>
+                            <button
+                                onClick={() => onNavigateToJail && onNavigateToJail(jail)}
+                                className="w-full bg-red-600 hover:bg-red-700 text-white text-xs py-1 px-2 rounded"
+                            >
+                                Navigate Here
+                            </button>
                         </div>
                     </Popup>
                 </Marker>

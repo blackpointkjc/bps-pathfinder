@@ -1314,6 +1314,19 @@ Format the response as a concise bullet list. If information is not available, s
                         setSelectedCall(call);
                         setShowCallSidebar(true);
                     }}
+                    onNavigateToJail={async (jail) => {
+                        setDestination({ coords: jail.coords, name: jail.name });
+                        setDestinationName(jail.name);
+                        
+                        if (currentLocation) {
+                            const fetchedRoutes = await fetchRoutes(currentLocation, jail.coords);
+                            if (fetchedRoutes && fetchedRoutes.length > 0) {
+                                setRoutes(fetchedRoutes);
+                                setSelectedRouteIndex(0);
+                                updateRouteDisplay(fetchedRoutes[0]);
+                            }
+                        }
+                    }}
                 />
             </div>
 
@@ -1655,30 +1668,30 @@ Format the response as a concise bullet list. If information is not available, s
             ) : null}
 
             {!isNavigating && directions && (
-                <DirectionsPanel
-                    directions={directions}
-                    destination={destinationName}
-                    distance={distance}
-                    duration={duration}
-                    onClose={clearRoute}
-                />
-            )}
-
-            {!isNavigating && directions && (
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[2100] pointer-events-auto"
-                >
-                    <Button
-                        onClick={startNavigation}
-                        size="lg"
-                        className="bg-[#007AFF] hover:bg-[#0056CC] text-white px-12 py-8 text-2xl font-bold rounded-3xl shadow-2xl animate-pulse"
+                <>
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="absolute bottom-[420px] left-1/2 -translate-x-1/2 z-[1002] pointer-events-auto"
                     >
-                        <NavigationIcon className="w-8 h-8 mr-3" />
-                        Start Navigation
-                    </Button>
-                </motion.div>
+                        <Button
+                            onClick={startNavigation}
+                            size="lg"
+                            className="bg-[#007AFF] hover:bg-[#0056CC] text-white px-8 py-6 text-xl font-bold rounded-2xl shadow-2xl animate-pulse"
+                        >
+                            <NavigationIcon className="w-6 h-6 mr-2" />
+                            Start Navigation
+                        </Button>
+                    </motion.div>
+                    
+                    <DirectionsPanel
+                        directions={directions}
+                        destination={destinationName}
+                        distance={distance}
+                        duration={duration}
+                        onClose={clearRoute}
+                    />
+                </>
             )}
 
             {showOfflineManager && (
