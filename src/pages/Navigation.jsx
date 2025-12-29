@@ -238,15 +238,23 @@ export default function Navigation() {
 
         const checkForNewCalls = async () => {
             try {
-                const calls = await base44.entities.DispatchCall.filter({
-                    assigned_units: currentUser.id
-                });
+                // Check DispatchCall entity for assigned calls
+                const calls = await base44.entities.DispatchCall.list('-created_date', 50);
+                
+                // Filter for calls that have this user in assigned_units
+                const assignedCalls = calls.filter(call => 
+                    call.assigned_units && 
+                    Array.isArray(call.assigned_units) && 
+                    call.assigned_units.includes(currentUser.id)
+                );
 
-                if (calls && calls.length > 0) {
-                    const latestCall = calls[0];
-                    // Only show notification if it's a new call
-                    if (lastCheckedCallIdRef.current !== latestCall.id) {
+                if (assignedCalls && assignedCalls.length > 0) {
+                    const latestCall = assignedCalls[0];
+                    // Only show notification if it's a new call and has coordinates
+                    if (lastCheckedCallIdRef.current !== latestCall.id && 
+                        latestCall.latitude && latestCall.longitude) {
                         lastCheckedCallIdRef.current = latestCall.id;
+                        console.log('📞 New call assigned:', latestCall);
                         setPendingCallNotification(latestCall);
                     }
                 }
@@ -1057,9 +1065,16 @@ export default function Navigation() {
         }
     };
 
-    const handleAcceptCall = (call) => {
+    const handleAcceptCall = async (call) => {
         setPendingCallNotification(null);
-        handleEnrouteToCall(call);
+        
+        // Ensure call has proper coordinates
+        if (!call.latitude || !call.longitude) {
+            toast.error('Call location not available');
+            return;
+        }
+        
+        await handleEnrouteToCall(call);
     };
 
     const handleDismissNotification = () => {
