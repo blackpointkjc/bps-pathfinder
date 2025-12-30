@@ -280,21 +280,35 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                                     ) : (
                                         <div className="space-y-2">
                                             {(() => {
-                                                // Group units by union
+                                                // Group units by union and hide OOS solo units
+                                                const [activeUnions, setActiveUnions] = React.useState(new Set());
+                                                
+                                                React.useEffect(() => {
+                                                    const fetchUnions = async () => {
+                                                        try {
+                                                            const unions = await base44.entities.UnitUnion.filter({ status: 'active' });
+                                                            setActiveUnions(new Set(unions.map(u => u.union_name)));
+                                                        } catch (error) {
+                                                            console.error('Error fetching unions:', error);
+                                                        }
+                                                    };
+                                                    fetchUnions();
+                                                }, [units]);
+                                                
                                                 const grouped = [];
-                                                const processedUnions = new Set();
                                                 const processedUnitIds = new Set();
                                                 
                                                 units.forEach(unit => {
-                                                    if (unit.union_id && !processedUnions.has(unit.union_id)) {
-                                                        processedUnions.add(unit.union_id);
-                                                        const unionMembers = units.filter(u => u.union_id === unit.union_id)
+                                                    if (unit.union_id && activeUnions.has(unit.union_id) && !processedUnitIds.has(unit.union_id)) {
+                                                        const unionMembers = units
+                                                            .filter(u => u.union_id === unit.union_id)
                                                             .sort((a, b) => {
                                                                 const aNum = parseInt(a.unit_number) || 999;
                                                                 const bNum = parseInt(b.unit_number) || 999;
                                                                 return aNum - bNum;
                                                             });
                                                         unionMembers.forEach(m => processedUnitIds.add(m.id));
+                                                        processedUnitIds.add(unit.union_id);
                                                         grouped.push({
                                                             isUnion: true,
                                                             id: unit.union_id,
@@ -302,7 +316,7 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                                                             members: unionMembers,
                                                             status: unionMembers[0]?.status || 'Available'
                                                         });
-                                                    } else if (!unit.union_id && !processedUnitIds.has(unit.id)) {
+                                                    } else if ((!unit.union_id || !activeUnions.has(unit.union_id)) && !processedUnitIds.has(unit.id) && unit.status !== 'Out of Service') {
                                                         processedUnitIds.add(unit.id);
                                                         grouped.push(unit);
                                                     }
@@ -326,14 +340,19 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                                                                         {item.status}
                                                                     </Badge>
                                                                 </div>
-                                                                <div className="text-xs opacity-80 space-y-0.5 ml-2">
+                                                                <div className="text-sm space-y-1 ml-2 mt-2">
                                                                     {item.members.map((member, idx) => (
-                                                                        <div key={member.id} className="flex items-center gap-1">
-                                                                            <div className={`w-1 h-1 rounded-full ${idx === 0 ? 'bg-yellow-400' : 'bg-indigo-400'}`} />
-                                                                            <span>
-                                                                                {member.unit_number || 'N/A'} - {member.rank && member.last_name ? `${member.rank} ${member.last_name}` : member.full_name}
-                                                                                {idx === 0 && ' (Lead)'}
-                                                                            </span>
+                                                                        <div key={member.id} className="flex items-start gap-2">
+                                                                            <span className={isSelected ? 'text-white/70' : 'text-slate-500'}>•</span>
+                                                                            <div>
+                                                                                <span className={idx === 0 ? 'font-semibold' : ''}>
+                                                                                    {member.unit_number || 'N/A'}
+                                                                                </span>
+                                                                                <span className={isSelected ? 'text-white/80 ml-2' : 'text-slate-400 ml-2'}>
+                                                                                    {member.rank && member.last_name ? `${member.rank} ${member.last_name}` : member.full_name}
+                                                                                </span>
+                                                                                {idx === 0 && <span className="text-yellow-400 ml-2">(Lead)</span>}
+                                                                            </div>
                                                                         </div>
                                                                     ))}
                                                                 </div>
