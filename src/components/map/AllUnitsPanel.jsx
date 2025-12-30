@@ -259,6 +259,23 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
                                                                                         </div>
                                                                                     ))}
                                                                                 </div>
+
+                                                                                <div className="flex items-center gap-4 text-xs text-gray-600 mt-2 ml-6">
+                                                                                    {unitAddresses[item.id] && (
+                                                                                        <div className="flex items-center gap-1">
+                                                                                            <MapPin className="w-3 h-3" />
+                                                                                            <span>{unitAddresses[item.id]}</span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {item.members[0]?.last_updated && (
+                                                                                        <div className="flex items-center gap-1">
+                                                                                            <Clock className="w-3 h-3" />
+                                                                                            <span>
+                                                                                                {formatDistanceToNow(new Date(item.members[0].last_updated), { addSuffix: true })}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
                                                                             </div>
                                                                         </div>
                                                                     </Card>
