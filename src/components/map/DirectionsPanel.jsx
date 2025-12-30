@@ -21,7 +21,7 @@ export default function DirectionsPanel({ directions, destination, onClose, dist
                     animate={{ y: 0 }}
                     exit={{ y: "100%" }}
                     transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                    className="absolute bottom-0 left-0 right-0 z-[2000] bg-white/95 backdrop-blur-xl rounded-t-3xl shadow-2xl shadow-black/20 max-h-[50vh] md:max-h-[60vh] pointer-events-auto"
+                    className="absolute bottom-0 left-0 right-0 z-[1000] bg-white/95 backdrop-blur-xl rounded-t-3xl shadow-2xl shadow-black/20 max-h-[40vh] md:max-h-[45vh] pointer-events-auto"
                 >
                     {/* Handle bar */}
                     <div className="flex justify-center pt-3 pb-1">
@@ -61,7 +61,7 @@ export default function DirectionsPanel({ directions, destination, onClose, dist
                     </div>
 
                     {/* Directions List */}
-                    <ScrollArea className="h-[calc(50vh-120px)] md:h-[calc(60vh-120px)]">
+                    <ScrollArea className="h-[calc(40vh-120px)] md:h-[calc(45vh-120px)]">
                         <div className="p-4 space-y-1">
                             {directions.map((step, index) => {
                                 const Icon = getDirectionIcon(step.instruction);
