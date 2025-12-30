@@ -45,7 +45,28 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
             setLoading(true);
             const response = await base44.functions.invoke('fetchAllUsers', {});
             const users = response.data?.users || [];
-            setUnits(users);
+            
+            // Group users by union
+            const grouped = [];
+            const processedUnions = new Set();
+            
+            users.forEach(user => {
+                if (user.union_id && !processedUnions.has(user.union_id)) {
+                    processedUnions.add(user.union_id);
+                    const unionMembers = users.filter(u => u.union_id === user.union_id);
+                    grouped.push({
+                        isUnionGroup: true,
+                        id: user.union_id,
+                        union_id: user.union_id,
+                        members: unionMembers,
+                        status: unionMembers[0]?.status || 'Available'
+                    });
+                } else if (!user.union_id) {
+                    grouped.push(user);
+                }
+            });
+            
+            setUnits(grouped);
         } catch (error) {
             console.error('Error fetching units:', error);
         } finally {
@@ -53,20 +74,27 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
         }
     };
 
-    const filteredUnits = units.filter(unit => {
+    const filteredUnits = units.filter(item => {
         const query = searchQuery.toLowerCase();
+        if (item.isUnionGroup) {
+            return item.union_id?.toLowerCase().includes(query) ||
+                   item.members.some(m => 
+                       m.unit_number?.toLowerCase().includes(query) ||
+                       m.full_name?.toLowerCase().includes(query)
+                   );
+        }
         return (
-            unit.unit_number?.toLowerCase().includes(query) ||
-            unit.full_name?.toLowerCase().includes(query) ||
-            unit.status?.toLowerCase().includes(query)
+            item.unit_number?.toLowerCase().includes(query) ||
+            item.full_name?.toLowerCase().includes(query) ||
+            item.status?.toLowerCase().includes(query)
         );
     });
 
     // Group by status
-    const unitsByStatus = filteredUnits.reduce((acc, unit) => {
-        const status = unit.status || 'Unknown';
+    const unitsByStatus = filteredUnits.reduce((acc, item) => {
+        const status = item.status || 'Unknown';
         if (!acc[status]) acc[status] = [];
-        acc[status].push(unit);
+        acc[status].push(item);
         return acc;
     }, {});
 
@@ -80,7 +108,7 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 z-[2100] flex items-center justify-center p-4"
+                className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 pointer-events-auto"
                 onClick={onClose}
             >
                 <motion.div
@@ -88,7 +116,7 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full max-w-3xl z-[2101]"
+                    className="w-full max-w-3xl z-[10000] pointer-events-auto"
                 >
                     <Card className="bg-white">
                         <div className="p-6">
@@ -149,55 +177,88 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
                                                         </Badge>
                                                     </div>
                                                     <div className="space-y-2">
-                                                        {statusUnits.map((unit) => (
-                                                            <Card key={unit.id} className="p-4 hover:shadow-md transition-shadow">
+                                                        {statusUnits.map((item) => {
+                                                            if (item.isUnionGroup) {
+                                                                return (
+                                                                    <Card key={item.id} className="p-4 bg-indigo-50 border-2 border-indigo-200 hover:shadow-md transition-shadow">
+                                                                        <div className="flex items-start justify-between gap-4">
+                                                                            <div className="flex-1">
+                                                                                <div className="flex items-center gap-2 mb-2">
+                                                                                    <Users className="w-4 h-4 text-indigo-600" />
+                                                                                    <h4 className="font-bold text-indigo-900">
+                                                                                        {item.union_id}
+                                                                                    </h4>
+                                                                                    <Badge className="bg-indigo-600 text-white">
+                                                                                        {item.members.length} Units
+                                                                                    </Badge>
+                                                                                </div>
+                                                                                <div className="ml-6 space-y-1 mt-2">
+                                                                                    {item.members.map((member, idx) => (
+                                                                                        <div key={member.id} className="flex items-center gap-2 text-sm">
+                                                                                            <div className={`w-1.5 h-1.5 rounded-full ${idx === 0 ? 'bg-yellow-500' : 'bg-indigo-400'}`} />
+                                                                                            <span className={idx === 0 ? 'font-semibold text-indigo-900' : 'text-indigo-700'}>
+                                                                                                {member.unit_number || member.full_name}
+                                                                                                {idx === 0 && ' (Lead)'}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </Card>
+                                                                );
+                                                            }
+                                                            
+                                                            return (
+                                                            <Card key={item.id} className="p-4 hover:shadow-md transition-shadow">
                                                                 <div className="flex items-start justify-between gap-4">
                                                                     <div className="flex-1">
                                                                         <div className="flex items-center gap-2 mb-2">
                                                                             <Car className="w-4 h-4 text-gray-600" />
                                                                             <h4 className="font-bold text-gray-900">
-                                                                                {unit.unit_number || unit.full_name}
+                                                                                {item.unit_number || item.full_name}
                                                                             </h4>
                                                                             <Badge 
                                                                                 variant="outline" 
-                                                                                className={getStatusColor(unit.status)}
+                                                                                className={getStatusColor(item.status)}
                                                                             >
-                                                                                {unit.status}
+                                                                                {item.status}
                                                                             </Badge>
                                                                         </div>
 
-                                                                        {unit.current_call_info && unit.status !== 'Available' && (
+                                                                        {item.current_call_info && item.status !== 'Available' && (
                                                                             <div className="text-sm text-gray-600 mb-2 bg-red-50 p-2 rounded">
                                                                                 <span className="font-semibold">Active: </span>
-                                                                                {unit.current_call_info}
+                                                                                {item.current_call_info}
                                                                             </div>
                                                                         )}
 
                                                                         <div className="flex items-center gap-4 text-xs text-gray-500">
-                                                                            {unit.latitude && unit.longitude && (
+                                                                            {item.latitude && item.longitude && (
                                                                                 <div className="flex items-center gap-1">
                                                                                     <MapPin className="w-3 h-3" />
                                                                                     <span>
-                                                                                        {unit.latitude.toFixed(4)}, {unit.longitude.toFixed(4)}
+                                                                                        {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}
                                                                                     </span>
                                                                                 </div>
                                                                             )}
-                                                                            {unit.last_updated && (
+                                                                            {item.last_updated && (
                                                                                 <div className="flex items-center gap-1">
                                                                                     <Clock className="w-3 h-3" />
                                                                                     <span>
-                                                                                        {formatDistanceToNow(new Date(unit.last_updated), { addSuffix: true })}
+                                                                                        {formatDistanceToNow(new Date(item.last_updated), { addSuffix: true })}
                                                                                     </span>
                                                                                 </div>
                                                                             )}
-                                                                            {unit.speed > 0 && (
-                                                                                <span>{Math.round(unit.speed)} mph</span>
+                                                                            {item.speed > 0 && (
+                                                                                <span>{Math.round(item.speed)} mph</span>
                                                                             )}
                                                                         </div>
                                                                     </div>
                                                                 </div>
                                                             </Card>
-                                                        ))}
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             );
