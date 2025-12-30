@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield, Filter, MapPinOff, Users, History } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield, Filter, MapPinOff, Users, History, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
@@ -25,6 +25,7 @@ import CallNotification from '@/components/dispatch/CallNotification';
 import { useVoiceGuidance, useVoiceCommand } from '@/components/map/VoiceGuidance';
 import { generateTrafficData } from '@/components/map/TrafficLayer';
 import LayerFilterPanel from '@/components/map/LayerFilterPanel';
+import AddressLookupTool from '@/components/map/AddressLookupTool';
 
 export default function Navigation() {
     const [currentLocation, setCurrentLocation] = useState(null);
@@ -123,6 +124,7 @@ export default function Navigation() {
     });
     const [searchPin, setSearchPin] = useState(null);
     const [currentStreet, setCurrentStreet] = useState('Locating...');
+    const [showAddressLookup, setShowAddressLookup] = useState(false);
     const [mapTheme, setMapTheme] = useState(() => {
         const saved = localStorage.getItem('mapTheme');
         if (saved) return saved;
@@ -1836,6 +1838,15 @@ Be thorough and search multiple sources.`,
                 </Button>
 
                 <Button
+                    onClick={() => setShowAddressLookup(true)}
+                    size="icon"
+                    className="h-8 w-8 rounded-lg bg-green-600 hover:bg-green-700 text-white shadow-lg"
+                    title="AI Address Lookup"
+                >
+                    <Search className="w-4 h-4" />
+                </Button>
+
+                <Button
                     onClick={() => {
                         const newTheme = mapTheme === 'day' ? 'night' : 'day';
                         setMapTheme(newTheme);
@@ -2090,6 +2101,20 @@ Be thorough and search multiple sources.`,
                 isOpen={showUnitGrouping}
                 onClose={() => setShowUnitGrouping(false)}
                 currentUser={currentUser}
+            />
+
+            {/* AI Address Lookup Tool */}
+            <AddressLookupTool
+                isOpen={showAddressLookup}
+                onClose={() => setShowAddressLookup(false)}
+                onLocationFound={(coords, address) => {
+                    setMapCenter(coords);
+                    setSearchPin({ 
+                        coords, 
+                        address, 
+                        propertyInfo: 'See Address Lookup Tool for full details'
+                    });
+                }}
             />
             </div>
             );
