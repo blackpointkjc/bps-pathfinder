@@ -70,11 +70,7 @@ const POLICE_STATIONS = {
 };
 
 export default function PoliceStationMarkers({ showStations = true, onNavigateToStation }) {
-    console.log('👮 Police station markers - showStations:', showStations);
-    if (!showStations) {
-        console.log('👮 Police stations hidden by filter');
-        return null;
-    }
+    if (!showStations) return null;
 
     const allStations = [
         ...POLICE_STATIONS.henrico.map(s => ({ ...s, county: 'Henrico' })),

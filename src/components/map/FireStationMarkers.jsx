@@ -3,8 +3,8 @@ import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Flame, Phone, MapPin } from 'lucide-react';
 
-// Fire station icon with HFD label
-const createFireStationIcon = () => {
+// Fire station icon with agency label
+const createFireStationIcon = (agencyLabel = 'FD') => {
     return new L.DivIcon({
         className: 'custom-fire-station-marker',
         html: `
@@ -27,9 +27,9 @@ const createFireStationIcon = () => {
                     <span style="
                         color: white;
                         font-weight: bold;
-                        font-size: 12px;
+                        font-size: 11px;
                         font-family: system-ui, -apple-system, sans-serif;
-                    ">HFD</span>
+                    ">${agencyLabel}</span>
                 </div>
             </div>
         `,
@@ -49,13 +49,11 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
 
     const fetchFireStations = async () => {
         try {
-            console.log('🔥 Fetching Henrico fire stations...');
             const henricoResponse = await fetch(
                 'https://portal.henrico.gov/mapping/rest/services/Layers/Fire_Stations_and_Rescue_Squads/MapServer/0/query?outFields=*&where=1%3D1&f=json&outSR=4326'
             );
             const henricoData = await henricoResponse.json();
 
-            console.log('🔥 Fetching Richmond fire stations...');
             const richmondResponse = await fetch(
                 'https://services1.arcgis.com/k3vhq11XkBNeeOfM/arcgis/rest/services/FireStation/FeatureServer/0/query?outFields=*&where=1%3D1&f=json&outSR=4326'
             );
@@ -63,61 +61,45 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
 
             const allStations = [];
 
-            // Process Henrico stations - coords now in WGS84 (outSR=4326)
             if (henricoData.features && henricoData.features.length > 0) {
                 const henricoStations = henricoData.features.map(feature => {
                     return {
                         name: feature.attributes.NAME || 'Fire Station',
                         address: feature.attributes.ADDRESS || '',
                         type: 'Henrico Fire',
+                        agency: 'HFD',
                         lat: feature.geometry.y,
                         lng: feature.geometry.x
                     };
                 });
                 allStations.push(...henricoStations);
-                console.log('🔥 Loaded', henricoStations.length, 'Henrico fire stations');
             }
 
-            // Process Richmond stations - coords now in WGS84 (outSR=4326)
             if (richmondData.features && richmondData.features.length > 0) {
                 const richmondStations = richmondData.features.map(feature => {
                     return {
                         name: feature.attributes.NAME || feature.attributes.STATION || 'Fire Station',
                         address: feature.attributes.ADDRESS || feature.attributes.FULLADDR || '',
                         type: 'Richmond Fire',
+                        agency: 'RFD',
                         lat: feature.geometry.y,
                         lng: feature.geometry.x
                     };
                 });
                 allStations.push(...richmondStations);
-                console.log('🔥 Loaded', richmondStations.length, 'Richmond fire stations');
             }
 
-            console.log('🔥 Total fire stations:', allStations.length);
             setStations(allStations);
         } catch (error) {
-            console.error('❌ Error fetching fire stations:', error);
+            // Silently fail
         } finally {
             setLoading(false);
         }
     };
 
-    if (!showStations) {
-        console.log('🔥 Fire stations hidden by filter');
+    if (!showStations || loading || stations.length === 0) {
         return null;
     }
-    
-    if (loading) {
-        console.log('🔥 Fire stations loading...');
-        return null;
-    }
-    
-    if (stations.length === 0) {
-        console.log('🔥 No fire stations to display');
-        return null;
-    }
-
-    console.log('🔥 Rendering', stations.length, 'fire station markers');
 
     return (
         <>
@@ -125,7 +107,7 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
                 <Marker
                     key={`fire-station-${index}`}
                     position={[station.lat, station.lng]}
-                    icon={createFireStationIcon()}
+                    icon={createFireStationIcon(station.agency)}
                     eventHandlers={{
                         click: (e) => {
                             e.originalEvent.stopPropagation();

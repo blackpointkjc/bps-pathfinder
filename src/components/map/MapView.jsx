@@ -172,12 +172,6 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
     const routeBounds = route && route.length > 0 
         ? L.latLngBounds(route.map(coord => [coord[0], coord[1]]))
         : null;
-    
-    console.log('🗺️ MapView rendering:');
-    console.log('  - Active calls to render:', activeCalls?.length || 0);
-    if (activeCalls && activeCalls.length > 0) {
-        console.log('  - Sample call:', activeCalls[0]);
-    }
 
     // Determine tile layer URL based on base map type and theme
     const getTileLayerUrl = () => {

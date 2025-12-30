@@ -19,75 +19,40 @@ const precincts = [
         name: 'Richmond Police Headquarters',
         precinctNumber: 'HQ',
         address: '200 W Grace St, Richmond, VA',
-        coords: null
+        coords: [37.5419, -77.4440]
     },
     {
         name: 'First Precinct',
         precinctNumber: '1',
         address: '2501 Q St, Richmond, VA',
-        coords: null
-    },
-    {
-        name: 'Third Precinct',
-        precinctNumber: '3',
-        address: '301 S Meadow St, Richmond, VA',
-        coords: null
+        coords: [37.5257, -77.4109]
     },
     {
         name: 'Second Precinct',
         precinctNumber: '2',
         address: '177 Belt Blvd, Richmond, VA',
-        coords: null
+        coords: [37.5586, -77.5012]
+    },
+    {
+        name: 'Third Precinct',
+        precinctNumber: '3',
+        address: '301 S Meadow St, Richmond, VA',
+        coords: [37.5336, -77.4047]
     },
     {
         name: 'Fourth Precinct',
         precinctNumber: '4',
         address: '2219 Chamberlayne Ave, Richmond, VA',
-        coords: null
+        coords: [37.5798, -77.4375]
     }
 ];
 
 export default function PrecinctMarkers({ showStations = true, onNavigateToPrecinct }) {
-    const [geocodedPrecincts, setGeocodedPrecincts] = useState([]);
-
-    useEffect(() => {
-        geocodePrecincts();
-    }, []);
-    
     if (!showStations) return null;
-
-    const geocodePrecincts = async () => {
-        const geocoded = [];
-        
-        for (const precinct of precincts) {
-            try {
-                const response = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(precinct.address)}&limit=1`,
-                    { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
-                );
-                const data = await response.json();
-                
-                if (data && data.length > 0) {
-                    geocoded.push({
-                        ...precinct,
-                        coords: [parseFloat(data[0].lat), parseFloat(data[0].lon)]
-                    });
-                }
-                
-                // Rate limit
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            } catch (error) {
-                console.error(`Error geocoding ${precinct.name}:`, error);
-            }
-        }
-        
-        setGeocodedPrecincts(geocoded);
-    };
 
     return (
         <>
-            {geocodedPrecincts.map((precinct, idx) => (
-                precinct.coords && (
+            {precincts.map((precinct, idx) => (
                     <Marker
                         key={idx}
                         position={precinct.coords}

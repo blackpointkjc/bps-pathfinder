@@ -171,7 +171,6 @@ export default function Navigation() {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         const coords = [position.coords.latitude, position.coords.longitude];
-                        console.log('📍 Initial location:', coords);
                         setCurrentLocation(coords);
                         setIsLocating(false);
                         toast.success('Location ready');
@@ -182,7 +181,6 @@ export default function Navigation() {
                         }
                     },
                     (error) => {
-                        console.error('Location error:', error);
                         toast.error('Please enable location services');
                         setIsLocating(false);
                     },
@@ -257,16 +255,14 @@ export default function Navigation() {
 
                 if (assignedCalls && assignedCalls.length > 0) {
                     const latestCall = assignedCalls[0];
-                    // Only show notification if it's a new call and has coordinates
                     if (lastCheckedCallIdRef.current !== latestCall.id && 
-                        latestCall.latitude && latestCall.longitude) {
-                        lastCheckedCallIdRef.current = latestCall.id;
-                        console.log('📞 New call assigned:', latestCall);
-                        setPendingCallNotification(latestCall);
+                    latestCall.latitude && latestCall.longitude) {
+                    lastCheckedCallIdRef.current = latestCall.id;
+                    setPendingCallNotification(latestCall);
                     }
                 }
             } catch (error) {
-                console.error('Error checking for new calls:', error);
+                // Silent fail
             }
         };
 
@@ -430,8 +426,6 @@ export default function Navigation() {
                     ? Math.max(0, position.coords.speed * 2.237) 
                     : 0;
 
-                console.log('📍 Raw GPS:', rawCoords, 'Accuracy:', position.coords.accuracy, 'm', 'Speed:', rawSpeed, 'mph');
-
                 // Reverse geocode to get street name (throttled)
                 const now = Date.now();
                 if (!window.lastStreetUpdate || now - window.lastStreetUpdate > 5000) {
@@ -460,7 +454,6 @@ export default function Navigation() {
                     const impliedSpeed = (dist / timeDiff) * 2.237;
 
                     if (impliedSpeed > 150) {
-                        console.warn('🚫 Ignoring GPS jump:', impliedSpeed, 'mph');
                         return;
                     }
                 }
@@ -470,7 +463,6 @@ export default function Navigation() {
                     ? applySmoothing(rawCoords[0], rawCoords[1], position.coords.accuracy, rawSpeed)
                     : rawCoords;
 
-                console.log('✅ Using location:', finalCoords, 'Speed:', rawSpeed, 'mph');
                 setCurrentLocation(finalCoords);
                 setSmoothedLocation(finalCoords);
 
@@ -499,11 +491,6 @@ export default function Navigation() {
                 const displaySpeed = Math.max(0, Math.round(rawSpeed));
                 setSpeed(displaySpeed);
                 setAccuracy(position.coords.accuracy);
-                
-                // Show accuracy warning
-                if (position.coords.accuracy > 50) {
-                    console.warn('⚠️ Low GPS accuracy:', position.coords.accuracy, 'm');
-                }
 
                 // Add to location history
                 setLocationHistory(prev => {
@@ -524,7 +511,6 @@ export default function Navigation() {
                 }
             },
             (error) => {
-                console.error('Error tracking location:', error);
                 if (error.code === error.PERMISSION_DENIED) {
                     toast.error('Location permission denied');
                     setIsLiveTracking(false);
@@ -555,7 +541,7 @@ export default function Navigation() {
                 setActiveCallInfo(user.current_call_info);
             }
         } catch (error) {
-            console.error('Error loading user:', error);
+            // Silent fail
         }
     };
 
@@ -579,10 +565,9 @@ export default function Navigation() {
                 show_lights: showLights,
                 current_call_info: activeCallInfo,
                 last_updated: new Date().toISOString()
-            };
+                };
 
-            console.log('📍 Updating location:', updateData);
-            await base44.auth.updateMe(updateData);
+                await base44.auth.updateMe(updateData);
         } catch (error) {
             console.error('Error updating user location:', error);
         }
@@ -598,15 +583,11 @@ export default function Navigation() {
             const activeUsers = users.filter(user => {
                 if (user.id === currentUser.id) return false;
                 
-                // Check show_on_map flag - hide if explicitly set to false
                 if (user.show_on_map === false) {
-                    console.log('🚫 Hiding user from map:', user.unit_number || user.full_name);
                     return false;
                 }
-                
-                // Hide users who are Out of Service
+
                 if (user.status === 'Out of Service') {
-                    console.log('🚫 Hiding Out of Service unit:', user.unit_number || user.full_name);
                     return false;
                 }
                 
@@ -615,12 +596,11 @@ export default function Navigation() {
                                   user.latitude !== 0 && user.longitude !== 0;
                 
                 return hasLocation;
-            });
-            
-            console.log('🗺️ Other units on map:', activeUsers.length);
-            setOtherUnits(activeUsers);
+                });
+
+                setOtherUnits(activeUsers);
         } catch (error) {
-            console.error('❌ Error fetching other units:', error);
+            // Silent fail
         }
     };
 
@@ -652,7 +632,6 @@ export default function Navigation() {
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const coords = [position.coords.latitude, position.coords.longitude];
-                console.log('📍 Got location:', coords, 'Accuracy:', position.coords.accuracy, 'm');
                 setCurrentLocation(coords);
                 setIsLocating(false);
 
@@ -664,7 +643,6 @@ export default function Navigation() {
                 }
             },
             (error) => {
-                console.error('Error getting location:', error);
                 if (error.code === error.PERMISSION_DENIED) {
                     toast.error('Location permission denied. Enable location in browser settings.');
                 } else if (error.code === error.POSITION_UNAVAILABLE) {
@@ -749,52 +727,34 @@ export default function Navigation() {
         }
 
         setIsSearching(true);
-        console.log('🔍 STEP 1: Searching for:', query);
-        console.log('📍 Current location:', currentLocation);
-        
+
         try {
             const response = await fetch(
                 `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Virginia, USA')}&limit=5`,
                 { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' } }
             );
             const data = await response.json();
-            console.log('📦 STEP 2: Search results:', data);
 
             if (data && data.length > 0) {
-                // Prefer Virginia results
                 const result = data.find(r => r.display_name.toLowerCase().includes('virginia')) || data[0];
                 const destCoords = [parseFloat(result.lat), parseFloat(result.lon)];
-                
-                console.log('📍 STEP 3: Setting destination');
-                console.log('  FROM:', currentLocation);
-                console.log('  TO:', destCoords);
-                
+
                 setDestination({ coords: destCoords, name: result.display_name });
                 setDestinationName(result.display_name.split(',')[0]);
-                
-                console.log('🗺️ STEP 4: Fetching routes...');
+
                 const fetchedRoutes = await fetchRoutes(currentLocation, destCoords);
-                
+
                 if (fetchedRoutes && fetchedRoutes.length > 0) {
-                    console.log('✅ STEP 5: Routes received:', fetchedRoutes.length, 'routes');
-                    console.log('📏 First route:', fetchedRoutes[0]);
-                    
                     setRoutes(fetchedRoutes);
                     setSelectedRouteIndex(0);
-                    
-                    console.log('📋 STEP 6: Generating directions...');
                     updateRouteDisplay(fetchedRoutes[0]);
-                    
-                    console.log('✅ STEP 7: Complete - directions should be visible');
                 } else {
-                    console.error('❌ STEP 5 FAILED: No routes returned');
                     toast.error('Could not calculate route');
                 }
             } else {
                 toast.error('Location not found');
             }
         } catch (error) {
-            console.error('❌ ERROR:', error);
             toast.error('Search failed: ' + error.message);
         } finally {
             setIsSearching(false);
@@ -804,60 +764,39 @@ export default function Navigation() {
     const fetchRoutes = async (start, end) => {
         try {
             if (!start || !end || start.length !== 2 || end.length !== 2) {
-                console.error('❌ Invalid coordinates:', { start, end });
                 toast.error('Invalid coordinates');
                 return null;
             }
 
-            console.log('🛣️ Calculating route from', start, 'to', end);
-            
             const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?alternatives=2&overview=full&geometries=geojson&steps=true`;
-            console.log('🌐 URL:', url);
 
             const response = await fetch(url);
             const data = await response.json();
-            console.log('📦 OSRM Response:', data);
 
             if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-                console.log('✅ SUCCESS: Routes found');
-                console.log('  Routes:', data.routes.length);
-                console.log('  Distance:', (data.routes[0].distance / 1609.34).toFixed(1), 'mi');
-                console.log('  Duration:', Math.round(data.routes[0].duration / 60), 'min');
-                console.log('  Steps:', data.routes[0].legs[0].steps.length);
-                
                 const processedRoutes = data.routes.map((route) => ({
                     ...route,
                     hasTraffic: Math.random() > 0.5
                 }));
-                
-                console.log('  Returning', processedRoutes.length, 'processed routes');
+
                 return processedRoutes;
             } else {
-                console.error('❌ ROUTING FAILED');
-                console.error('  Code:', data.code);
-                console.error('  Message:', data.message);
-                console.error('  Full response:', data);
                 toast.error('Routing error: ' + (data.message || data.code));
                 return null;
             }
         } catch (error) {
-            console.error('❌ Fetch error:', error);
             toast.error('Network error: ' + error.message);
             return null;
         }
     };
 
     const updateRouteDisplay = (routeData) => {
-        console.log('📋 Updating route display with:', routeData);
-        
         if (!routeData || !routeData.geometry || !routeData.legs || !routeData.legs[0]) {
-            console.error('❌ Invalid route data:', routeData);
             toast.error('Invalid route data received');
             return;
         }
 
         const coordinates = routeData.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-        console.log('📍 Route has', coordinates.length, 'points');
 
         // Generate traffic data
         const traffic = generateTrafficData(coordinates);
@@ -913,27 +852,14 @@ export default function Navigation() {
                 ? `${(step.distance / 1609.34).toFixed(1)} mi` 
                 : `${Math.round(step.distance * 3.281)} ft`;
 
-            console.log(`Step ${idx}: ${instruction} - ${distText}`);
-
             return { instruction, distance: distText };
         });
 
-        console.log('✅ DIRECTIONS GENERATED:', steps.length, 'steps');
-        console.log('  First step:', steps[0]);
-        console.log('  Last step:', steps[steps.length - 1]);
-        
         setDirections(steps);
-        console.log('✅ setDirections() called with', steps.length, 'steps');
-        
-        // Force a re-render check
-        setTimeout(() => {
-            console.log('🔍 Checking directions state after 100ms...');
-        }, 100);
-        
+
         if (steps.length > 0) {
             toast.success(`Route ready: ${distanceMiles} mi, ${baseDurationMins} min - Tap Start Navigation`);
         } else {
-            console.error('❌ NO STEPS GENERATED');
             toast.error('No directions generated');
         }
     };
@@ -946,15 +872,9 @@ export default function Navigation() {
     const startNavigation = () => {
         if (!directions || directions.length === 0) {
             toast.error('No directions available');
-            console.error('❌ Cannot start - no directions');
             return;
         }
-        
-        console.log('🚀 Starting navigation');
-        console.log('📍 Current:', currentLocation);
-        console.log('🎯 Destination:', destination);
-        console.log('📋 Steps:', directions.length);
-        
+
         setIsNavigating(true);
         setCurrentStepIndex(0);
         setRemainingDistance(distance);
@@ -1016,13 +936,12 @@ export default function Navigation() {
         setUnitName(name);
         localStorage.setItem('unitName', name);
         
-        // Update user with unit number
         if (currentUser) {
             try {
                 await base44.auth.updateMe({ unit_number: name });
                 toast.success('Unit number saved');
             } catch (error) {
-                console.error('Error saving unit number:', error);
+                // Silent fail
             }
         }
     };
@@ -1051,10 +970,9 @@ export default function Navigation() {
                 if (newStatus === 'Available' || newStatus === 'Out of Service') {
                     updateData.current_call_id = null;
                     updateData.current_call_info = null;
-                }
-                
-                console.log('🔄 Updating status to:', newStatus);
-                await base44.auth.updateMe(updateData);
+                    }
+
+                    await base44.auth.updateMe(updateData);
                 toast.success(`Status: ${newStatus}`);
                 
                 // Log status change
@@ -1117,7 +1035,7 @@ export default function Navigation() {
                             }
                         }
                     } catch (error) {
-                        console.error('Error auto-updating call status:', error);
+                        // Silent fail
                     }
                 }
                 
@@ -1129,7 +1047,6 @@ export default function Navigation() {
                 // Immediately update location to reflect new status
                 await updateUserLocation();
             } catch (error) {
-                console.error('Error updating status:', error);
                 toast.error('Failed to update status');
             }
         }
@@ -1170,7 +1087,7 @@ export default function Navigation() {
                 eta: `${eta} min`
             });
         } catch (error) {
-            console.error('Error checking auto-dispatch:', error);
+            // Silent fail
         }
     };
 
@@ -1331,8 +1248,6 @@ export default function Navigation() {
     };
 
     const applyCallFilter = (calls, filter) => {
-        console.log(`🔍 Applying filter: ${filter} to ${calls.length} calls`);
-        
         let filtered = calls;
         
         if (filter === 'richmond') {
@@ -1342,9 +1257,7 @@ export default function Navigation() {
         } else if (filter === 'chesterfield') {
             filtered = calls.filter(call => call.agency?.includes('CCPD') || call.agency?.includes('CCFD') || call.agency?.includes('Chesterfield'));
         }
-        // else filter === 'all', show all calls without filtering
-        
-        console.log(`✅ Filter result: ${filtered.length} calls`);
+
         setActiveCalls(filtered);
     };
 
@@ -1357,7 +1270,7 @@ export default function Navigation() {
 
         const filterNames = { all: 'All Areas', richmond: 'Richmond', henrico: 'Henrico', chesterfield: 'Chesterfield' };
         toast.info(`Showing calls: ${filterNames[nextFilter]}`);
-        };
+    };
 
         const handleLayerFilterChange = async (newFilters) => {
         setJurisdictionFilters(newFilters);
@@ -1401,14 +1314,12 @@ Format the response as a concise bullet list. If information is not available, s
                             setSearchPin({ coords, address: result.display_name, propertyInfo: 'Property information not available' });
                         }
                     } catch (error) {
-                        console.error('Error getting property info:', error);
                         setSearchPin({ coords, address: result.display_name, propertyInfo: 'Error loading property information' });
                     }
                 } else {
                     toast.error('Address not found');
                 }
             } catch (error) {
-                console.error('Error searching address:', error);
                 toast.error('Failed to search address');
             }
         }
@@ -1422,11 +1333,7 @@ Format the response as a concise bullet list. If information is not available, s
 
         setIsLoadingCalls(true);
         try {
-            console.log('🔄 Fetching ALL active calls...');
-
             const response = await base44.functions.invoke('fetchAllActiveCalls', {});
-
-            console.log('📦 Full Response:', response.data);
 
             if (response.data && response.data.success) {
                 const allCalls = response.data.geocodedCalls || [];
@@ -1462,16 +1369,9 @@ Format the response as a concise bullet list. If information is not available, s
 
                     const ageMinutes = (now - callTime) / 1000 / 60;
                     return ageMinutes <= 30;
-                });
+                    });
 
-                console.log(`✅ Loaded ${filteredCalls.length} calls (${allCalls.length - filteredCalls.length} filtered as old)`);
-                if (filteredCalls.length > 0) {
-                    console.log('📊 Sample call:', filteredCalls[0]);
-                    console.log('📍 Calls with coordinates:', filteredCalls.filter(c => c.latitude && c.longitude).length);
-                }
-
-                // Always set to true to show calls layer
-                setShowActiveCalls(true);
+                    setShowActiveCalls(true);
                 setAllActiveCalls(filteredCalls);
                 applyCallFilter(filteredCalls, callFilter);
 
@@ -1480,13 +1380,11 @@ Format the response as a concise bullet list. If information is not available, s
                 } else if (!silent) {
                     toast.warning(`Found ${response.data.totalCalls} calls but none could be geocoded`);
                 }
-            } else {
+                } else {
                 const errorMsg = response.data?.error || 'Failed to load active calls';
-                console.error('❌ Failed:', errorMsg);
                 if (!silent) toast.error(errorMsg);
             }
         } catch (error) {
-            console.error('❌ Error fetching active calls:', error);
             if (!silent) toast.error(`Error: ${error.message}`);
         } finally {
             setIsLoadingCalls(false);
@@ -1984,13 +1882,7 @@ Format the response as a concise bullet list. If information is not available, s
                         className="absolute bottom-[420px] left-1/2 -translate-x-1/2 z-[1002] pointer-events-auto"
                     >
                         <Button
-                            onClick={() => {
-                                console.log('🚀 START NAVIGATION CLICKED');
-                                console.log('  Directions available:', directions?.length);
-                                console.log('  Current location:', currentLocation);
-                                console.log('  Destination:', destination);
-                                startNavigation();
-                            }}
+                            onClick={startNavigation}
                             size="lg"
                             className="bg-[#007AFF] hover:bg-[#0056CC] text-white px-8 py-6 text-xl font-bold rounded-2xl shadow-2xl animate-pulse"
                         >
