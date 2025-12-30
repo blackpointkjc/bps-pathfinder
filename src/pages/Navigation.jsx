@@ -694,13 +694,17 @@ export default function Navigation() {
 
     const searchDestination = async (query) => {
         if (!currentLocation) {
-            toast.error('Please wait for your location first');
+            toast.error('Getting your location first...');
             getCurrentLocation();
+            setTimeout(() => {
+                if (currentLocation) searchDestination(query);
+            }, 3000);
             return;
         }
 
         setIsSearching(true);
-        console.log('🔍 Searching for:', query);
+        console.log('🔍 STEP 1: Searching for:', query);
+        console.log('📍 Current location:', currentLocation);
         
         try {
             const response = await fetch(
@@ -708,34 +712,42 @@ export default function Navigation() {
                 { headers: { 'User-Agent': 'Emergency-Dispatch-CAD/1.0' } }
             );
             const data = await response.json();
-            console.log('📦 Search results:', data);
+            console.log('📦 STEP 2: Search results:', data);
 
             if (data && data.length > 0) {
                 const result = data[0];
                 const destCoords = [parseFloat(result.lat), parseFloat(result.lon)];
                 
-                console.log('📍 From:', currentLocation, 'To:', destCoords);
+                console.log('📍 STEP 3: Setting destination');
+                console.log('  FROM:', currentLocation);
+                console.log('  TO:', destCoords);
                 
                 setDestination({ coords: destCoords, name: result.display_name });
                 setDestinationName(result.display_name.split(',')[0]);
-                toast.info('Calculating route...');
-
+                
+                console.log('🗺️ STEP 4: Fetching routes...');
                 const fetchedRoutes = await fetchRoutes(currentLocation, destCoords);
-                console.log('🗺️ Routes received:', fetchedRoutes);
                 
                 if (fetchedRoutes && fetchedRoutes.length > 0) {
+                    console.log('✅ STEP 5: Routes received:', fetchedRoutes.length, 'routes');
+                    console.log('📏 First route:', fetchedRoutes[0]);
+                    
                     setRoutes(fetchedRoutes);
                     setSelectedRouteIndex(0);
+                    
+                    console.log('📋 STEP 6: Generating directions...');
                     updateRouteDisplay(fetchedRoutes[0]);
-                    toast.success(`Route ready: ${distance || 'calculating...'}`);
+                    
+                    console.log('✅ STEP 7: Complete - directions should be visible');
                 } else {
+                    console.error('❌ STEP 5 FAILED: No routes returned');
                     toast.error('Could not calculate route');
                 }
             } else {
                 toast.error('Location not found');
             }
         } catch (error) {
-            console.error('❌ Search error:', error);
+            console.error('❌ ERROR:', error);
             toast.error('Search failed: ' + error.message);
         } finally {
             setIsSearching(false);
@@ -760,15 +772,24 @@ export default function Navigation() {
             console.log('📦 OSRM Response:', data);
 
             if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-                console.log('✅ Success:', data.routes.length, 'routes found');
-                console.log('📏 First route distance:', (data.routes[0].distance / 1609.34).toFixed(1), 'mi');
-                console.log('⏱️ First route duration:', Math.round(data.routes[0].duration / 60), 'min');
-                return data.routes.map((route) => ({
+                console.log('✅ SUCCESS: Routes found');
+                console.log('  Routes:', data.routes.length);
+                console.log('  Distance:', (data.routes[0].distance / 1609.34).toFixed(1), 'mi');
+                console.log('  Duration:', Math.round(data.routes[0].duration / 60), 'min');
+                console.log('  Steps:', data.routes[0].legs[0].steps.length);
+                
+                const processedRoutes = data.routes.map((route) => ({
                     ...route,
                     hasTraffic: Math.random() > 0.5
                 }));
+                
+                console.log('  Returning', processedRoutes.length, 'processed routes');
+                return processedRoutes;
             } else {
-                console.error('❌ Routing failed:', data.message || data.code);
+                console.error('❌ ROUTING FAILED');
+                console.error('  Code:', data.code);
+                console.error('  Message:', data.message);
+                console.error('  Full response:', data);
                 toast.error('Routing error: ' + (data.message || data.code));
                 return null;
             }
@@ -850,12 +871,22 @@ export default function Navigation() {
             return { instruction, distance: distText };
         });
 
-        console.log('✅ Generated', steps.length, 'direction steps');
+        console.log('✅ DIRECTIONS GENERATED:', steps.length, 'steps');
+        console.log('  First step:', steps[0]);
+        console.log('  Last step:', steps[steps.length - 1]);
+        
         setDirections(steps);
+        console.log('✅ setDirections() called with', steps.length, 'steps');
+        
+        // Force a re-render check
+        setTimeout(() => {
+            console.log('🔍 Checking directions state after 100ms...');
+        }, 100);
         
         if (steps.length > 0) {
-            toast.success(`Route ready: ${distanceMiles} mi, ${baseDurationMins} min`);
+            toast.success(`Route ready: ${distanceMiles} mi, ${baseDurationMins} min - Tap Start Navigation`);
         } else {
+            console.error('❌ NO STEPS GENERATED');
             toast.error('No directions generated');
         }
     };
@@ -1619,7 +1650,7 @@ Format the response as a concise bullet list. If information is not available, s
                 />
             ) : null}
 
-            {!isNavigating && directions && (
+            {!isNavigating && directions && directions.length > 0 && (
                 <>
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
@@ -1627,7 +1658,13 @@ Format the response as a concise bullet list. If information is not available, s
                         className="absolute bottom-[420px] left-1/2 -translate-x-1/2 z-[1002] pointer-events-auto"
                     >
                         <Button
-                            onClick={startNavigation}
+                            onClick={() => {
+                                console.log('🚀 START NAVIGATION CLICKED');
+                                console.log('  Directions available:', directions?.length);
+                                console.log('  Current location:', currentLocation);
+                                console.log('  Destination:', destination);
+                                startNavigation();
+                            }}
                             size="lg"
                             className="bg-[#007AFF] hover:bg-[#0056CC] text-white px-8 py-6 text-xl font-bold rounded-2xl shadow-2xl animate-pulse"
                         >
