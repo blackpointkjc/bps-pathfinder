@@ -110,10 +110,10 @@ Format as organized sections with bullet points. If information is unavailable, 
                         onClick={onClose}
                     />
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] md:w-[600px] max-h-[85vh] bg-white rounded-2xl shadow-2xl z-[10000] overflow-hidden pointer-events-auto"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="fixed left-16 top-24 w-[400px] max-h-[calc(100vh-8rem)] bg-white rounded-2xl shadow-2xl z-[10000] overflow-hidden pointer-events-auto"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}
