@@ -139,7 +139,7 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 z-[3000] flex items-center justify-center p-4"
+                className="fixed inset-0 bg-black/50 z-[3000] flex items-center justify-center p-4 pointer-events-auto"
                 onClick={(e) => {
                     if (e.target === e.currentTarget) onClose();
                 }}
@@ -149,7 +149,7 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full max-w-2xl"
+                    className="w-full max-w-2xl pointer-events-auto"
                 >
                     <Card className="bg-white">
                         <div className="p-6">
@@ -163,10 +163,15 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                                         <p className="text-sm text-gray-500">Form tactical units</p>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={(e) => {
-                                    e.stopPropagation();
-                                    onClose();
-                                }}>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onClose();
+                                    }}
+                                    className="pointer-events-auto"
+                                >
                                     <X className="w-5 h-5" />
                                 </Button>
                             </div>
@@ -192,7 +197,7 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                                             }}
                                             disabled={loading}
                                             variant="outline"
-                                            className="border-red-300 text-red-600 hover:bg-red-50"
+                                            className="border-red-300 text-red-600 hover:bg-red-50 pointer-events-auto"
                                         >
                                             <UserMinus className="w-4 h-4 mr-2" />
                                             Leave
@@ -222,10 +227,10 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                                                                     setSelectedUnits([...selectedUnits, unit.id]);
                                                                 }
                                                             }}
-                                                            className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                                                                selectedUnits.includes(unit.id)
-                                                                    ? 'border-indigo-500 bg-indigo-50'
-                                                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                            className={`p-3 rounded-lg border-2 cursor-pointer transition-all pointer-events-auto ${
+                                                               selectedUnits.includes(unit.id)
+                                                                   ? 'border-indigo-500 bg-indigo-50'
+                                                                   : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                                             }`}
                                                         >
                                                             <div className="flex items-center justify-between">
@@ -250,7 +255,7 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                                                 createUnion();
                                             }}
                                             disabled={loading || selectedUnits.length === 0}
-                                            className="w-full bg-indigo-600 hover:bg-indigo-700"
+                                            className="w-full bg-indigo-600 hover:bg-indigo-700 pointer-events-auto"
                                         >
                                             <UserPlus className="w-4 h-4 mr-2" />
                                             Create Union ({selectedUnits.length + 1} units)
