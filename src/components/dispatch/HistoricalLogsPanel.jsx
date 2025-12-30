@@ -87,10 +87,15 @@ export default function HistoricalLogsPanel({ isOpen, onClose }) {
                                         <p className="text-sm text-gray-500">Unit status & call activity history</p>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={(e) => {
-                                    e.stopPropagation();
-                                    onClose();
-                                }}>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onClose();
+                                    }}
+                                    className="pointer-events-auto"
+                                >
                                     <X className="w-5 h-5" />
                                 </Button>
                             </div>
