@@ -120,6 +120,7 @@ export default function Navigation() {
         showJails: true
     });
     const [searchPin, setSearchPin] = useState(null);
+    const [currentStreet, setCurrentStreet] = useState('Locating...');
     
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
@@ -424,6 +425,21 @@ export default function Navigation() {
                     : 0;
 
                 console.log('📍 Raw GPS:', rawCoords, 'Accuracy:', position.coords.accuracy, 'm', 'Speed:', rawSpeed, 'mph');
+
+                // Reverse geocode to get street name
+                if (rawSpeed > 1) {
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${rawCoords[0]}&lon=${rawCoords[1]}&zoom=18`, {
+                        headers: { 'User-Agent': 'Emergency-Dispatch-CAD/1.0' }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.address) {
+                            const street = data.address.road || data.address.street || 'Unknown Street';
+                            setCurrentStreet(street);
+                        }
+                    })
+                    .catch(err => console.error('Street lookup error:', err));
+                }
 
                 // Ignore impossible jumps
                 if (lastPosition.current) {
@@ -1640,11 +1656,33 @@ Format the response as a concise bullet list. If information is not available, s
                 </motion.div>
             )}
 
+            {/* Compass */}
+            {heading !== null && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="absolute top-2 left-2 z-[999] pointer-events-none"
+                >
+                    <div className="w-16 h-16 rounded-full bg-white/95 backdrop-blur-xl shadow-lg border-2 border-gray-200 flex items-center justify-center relative">
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="text-[10px] font-bold text-gray-400 absolute" style={{ top: '4px' }}>N</div>
+                            <div className="text-[10px] font-bold text-gray-300 absolute" style={{ right: '4px' }}>E</div>
+                            <div className="text-[10px] font-bold text-gray-300 absolute" style={{ bottom: '4px' }}>S</div>
+                            <div className="text-[10px] font-bold text-gray-300 absolute" style={{ left: '4px' }}>W</div>
+                        </div>
+                        <svg width="40" height="40" viewBox="0 0 40 40" style={{ transform: `rotate(${heading}deg)`, transition: 'transform 0.3s ease' }}>
+                            <polygon points="20,5 22,18 20,16 18,18" fill="#EF4444" stroke="#DC2626" strokeWidth="1"/>
+                            <polygon points="20,35 22,22 20,24 18,22" fill="#9CA3AF" stroke="#6B7280" strokeWidth="1"/>
+                        </svg>
+                    </div>
+                </motion.div>
+            )}
+
             {/* Online/Offline Indicator & Live Tracking Status */}
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute top-2 md:top-4 left-2 md:left-4 z-[999] flex flex-wrap gap-1.5 md:gap-2"
+                className="absolute top-2 md:top-4 left-20 md:left-24 z-[999] flex flex-wrap gap-1.5 md:gap-2"
             >
                 <div className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full flex items-center gap-1.5 md:gap-2 ${
                     isOnline 
@@ -1835,6 +1873,15 @@ Format the response as a concise bullet list. If information is not available, s
                             isSearching={isSearching}
                             onClear={clearRoute}
                         />
+                        {speed > 1 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="mt-2 bg-white/95 backdrop-blur-xl rounded-xl shadow-lg px-4 py-2 text-center"
+                            >
+                                <p className="text-sm font-semibold text-gray-700">{currentStreet}</p>
+                            </motion.div>
+                        )}
                     </motion.div>
 
                     {/* Voice Command Button */}
