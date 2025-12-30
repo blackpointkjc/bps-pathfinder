@@ -11,6 +11,7 @@ import PoliceStationMarkers from './PoliceStationMarkers';
 import JailMarkers from './JailMarkers';
 import SearchPinMarker from './SearchPinMarker';
 import NavigationCamera from './NavigationCamera';
+import FireStationMarkers from './FireStationMarkers';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -230,6 +231,9 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
 
             {/* Jail markers */}
             <JailMarkers showJails={showPoliceStations} onNavigateToJail={onNavigateToJail} />
+
+            {/* Fire station markers */}
+            <FireStationMarkers showStations={showFireStations} onNavigateToStation={onNavigateToJail} />
             
             {!isNavigating ? (
                 <MapController 

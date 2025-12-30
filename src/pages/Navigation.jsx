@@ -130,7 +130,8 @@ export default function Navigation() {
         chesterfieldDistrict: 'all',
         baseMapType: 'street',
         searchAddress: '',
-        showPoliceStations: true
+        showPoliceStations: true,
+        showFireStations: true
     });
     const [searchPin, setSearchPin] = useState(null);
     
@@ -1437,6 +1438,7 @@ Format the response as a concise bullet list. If information is not available, s
                     baseMapType={jurisdictionFilters.baseMapType}
                     jurisdictionFilters={jurisdictionFilters}
                     showPoliceStations={jurisdictionFilters.showPoliceStations}
+                    showFireStations={jurisdictionFilters.showFireStations}
                     searchPin={searchPin}
                     onCallClick={(call) => {
                         setSelectedCall(call);

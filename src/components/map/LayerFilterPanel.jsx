@@ -76,16 +76,23 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                 </Button>
                             </div>
 
-                            {/* Address Search */}
-                            <div className="mb-6 p-4 bg-gray-50 rounded-xl">
-                                <div className="flex items-center justify-between mb-2">
-                                                  <Label className="text-sm font-semibold text-gray-700">Show Police Stations</Label>
-                                                  <Switch
-                                                      checked={filters.showPoliceStations ?? true}
-                                                      onCheckedChange={(checked) => onFilterChange({ ...filters, showPoliceStations: checked })}
-                                                  />
-                                              </div>
-                                          </div>
+                            {/* Toggles */}
+                            <div className="mb-6 p-4 bg-gray-50 rounded-xl space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-semibold text-gray-700">Show Police Stations</Label>
+                                    <Switch
+                                        checked={filters.showPoliceStations ?? true}
+                                        onCheckedChange={(checked) => onFilterChange({ ...filters, showPoliceStations: checked })}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-semibold text-gray-700">Show Fire Stations</Label>
+                                    <Switch
+                                        checked={filters.showFireStations ?? true}
+                                        onCheckedChange={(checked) => onFilterChange({ ...filters, showFireStations: checked })}
+                                    />
+                                </div>
+                            </div>
 
                                           {/* Address Search */}
                                           <div className="mb-6 p-4 bg-gray-50 rounded-xl">
