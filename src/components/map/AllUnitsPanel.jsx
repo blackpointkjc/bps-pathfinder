@@ -107,11 +107,19 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
             for (const item of grouped) {
                 if (item.isUnionGroup) {
                     const firstMember = item.members[0];
-                    if (firstMember?.latitude && firstMember?.longitude) {
-                        addresses[item.id] = await getAddressFromCoords(firstMember.latitude, firstMember.longitude);
+                    if (firstMember?.latitude && firstMember?.longitude && 
+                        firstMember.latitude !== 0 && firstMember.longitude !== 0) {
+                        const address = await getAddressFromCoords(firstMember.latitude, firstMember.longitude);
+                        if (address && !address.includes('Unknown') && !address.includes('unavailable')) {
+                            addresses[item.id] = address;
+                        }
                     }
-                } else if (item.latitude && item.longitude) {
-                    addresses[item.id] = await getAddressFromCoords(item.latitude, item.longitude);
+                } else if (item.latitude && item.longitude && 
+                           item.latitude !== 0 && item.longitude !== 0) {
+                    const address = await getAddressFromCoords(item.latitude, item.longitude);
+                    if (address && !address.includes('Unknown') && !address.includes('unavailable')) {
+                        addresses[item.id] = address;
+                    }
                 }
             }
             setUnitAddresses(addresses);

@@ -220,8 +220,12 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
             const addresses = {};
             for (const group of filteredUnits) {
                 const primaryUnit = group.members[0];
-                if (primaryUnit?.latitude && primaryUnit?.longitude) {
-                    addresses[group.id] = await getAddressFromCoords(primaryUnit.latitude, primaryUnit.longitude);
+                if (primaryUnit?.latitude && primaryUnit?.longitude && 
+                    primaryUnit.latitude !== 0 && primaryUnit.longitude !== 0) {
+                    const address = await getAddressFromCoords(primaryUnit.latitude, primaryUnit.longitude);
+                    if (address && !address.includes('Unknown') && !address.includes('unavailable')) {
+                        addresses[group.id] = address;
+                    }
                 }
             }
             setUnitAddresses(addresses);
