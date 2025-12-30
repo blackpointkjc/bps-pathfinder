@@ -23,12 +23,9 @@ const createCFDIcon = () => {
                     align-items: center;
                     justify-content: center;
                 ">
-                    <span style="
-                        color: white;
-                        font-weight: bold;
-                        font-size: 11px;
-                        font-family: system-ui, -apple-system, sans-serif;
-                    ">CFD</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                        <path d="M4 18l2.5-6h11L20 18H4zm15-8.5l-1.4-1.4-2.6 2.6-2.6-2.6-1.4 1.4 2.6 2.6-2.6 2.6 1.4 1.4 2.6-2.6 2.6 2.6 1.4-1.4-2.6-2.6L19 9.5zM2 21h20v2H2v-2zm1-3h18v2H3v-2z"/>
+                    </svg>
                 </div>
             </div>
         `,

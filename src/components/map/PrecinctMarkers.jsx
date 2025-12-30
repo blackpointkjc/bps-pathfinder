@@ -4,9 +4,9 @@ import L from 'leaflet';
 
 const precinctIcon = new L.Icon({
     iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32">
-            <circle cx="12" cy="12" r="11" fill="#1E40AF" stroke="white" stroke-width="2"/>
-            <text x="12" y="17" font-size="14" font-weight="bold" text-anchor="middle" fill="white">PD</text>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+            <circle cx="16" cy="16" r="15" fill="#1E40AF" stroke="white" stroke-width="2"/>
+            <path d="M16 6L9 10v5c0 4.33 3 8.38 7 9.4 4-1.02 7-5.07 7-9.4v-5l-7-4z" fill="white"/>
         </svg>
     `),
     iconSize: [32, 32],

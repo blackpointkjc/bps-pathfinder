@@ -23,12 +23,9 @@ const createCCPDIcon = () => {
                     align-items: center;
                     justify-content: center;
                 ">
-                    <span style="
-                        color: white;
-                        font-weight: bold;
-                        font-size: 11px;
-                        font-family: system-ui, -apple-system, sans-serif;
-                    ">PD</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+                    </svg>
                 </div>
             </div>
         `,
