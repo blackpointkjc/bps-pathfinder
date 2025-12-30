@@ -101,6 +101,7 @@ export default function Navigation() {
     const [showHistoricalLogs, setShowHistoricalLogs] = useState(false);
     const [autoDispatchSuggestion, setAutoDispatchSuggestion] = useState(null);
     const [showUnitGrouping, setShowUnitGrouping] = useState(false);
+    const [userPannedAway, setUserPannedAway] = useState(false);
     const [criticalAlertSound] = useState(() => {
         const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDWH0fPTgjMGHm7A7+OZUQ4PVKbh8LFVGA5On+DvwGMbBzaE0fPReiYEI3DC7+GTUAwQWK3l7q5XFAxAnN/zv2kdBDWH0PPTgyEEI3DD7+CTUQ0RWKzl7q5ZEwtCnN/zvmgdBDWH0fPRfiYEI3DE7+CTTw0PVqfj8K9VFg1Mnt/zv2kbBDOGz/PSfyYEJHPD7t+NTA0PWK3l761ZEgxBm9/zu2MbBDKGzvLPfSUEJXfE7t6OTQ0RW7Hl7ahVFQ5NneDvvWMbBjOGzvLP');
         audio.volume = 0.8;
@@ -1698,6 +1699,30 @@ Format the response as a concise bullet list. If information is not available, s
                     </motion.div>
                 )}
             </motion.div>
+
+            {/* Recenter Button - shown when navigating and user panned away */}
+            <AnimatePresence>
+                {isNavigating && userPannedAway && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="absolute bottom-40 right-4 z-[1002] pointer-events-auto"
+                    >
+                        <Button
+                            onClick={() => {
+                                setUserPannedAway(false);
+                                toast.success('Recentered on your location');
+                            }}
+                            size="lg"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-6 rounded-2xl shadow-2xl flex items-center gap-2"
+                        >
+                            <Navigation className="w-6 h-6" />
+                            <span className="font-semibold">Recenter</span>
+                        </Button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Top Right Controls */}
             <motion.div
