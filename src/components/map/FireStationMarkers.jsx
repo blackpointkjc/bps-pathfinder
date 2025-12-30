@@ -47,60 +47,50 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
         fetchFireStations();
     }, []);
 
-    // Convert Web Mercator (EPSG:3857) to WGS84 Lat/Lng (EPSG:4326)
-    const webMercatorToLatLng = (x, y) => {
-        const lng = (x * 180) / 20037508.34;
-        const lat = (Math.atan(Math.exp((y * Math.PI) / 20037508.34)) * 360) / Math.PI - 90;
-        return [lat, lng];
-    };
-
     const fetchFireStations = async () => {
         try {
             console.log('🔥 Fetching Henrico fire stations...');
             const henricoResponse = await fetch(
-                'https://portal.henrico.gov/mapping/rest/services/Layers/Fire_Stations_and_Rescue_Squads/MapServer/0/query?outFields=*&where=1%3D1&f=json'
+                'https://portal.henrico.gov/mapping/rest/services/Layers/Fire_Stations_and_Rescue_Squads/MapServer/0/query?outFields=*&where=1%3D1&f=json&outSR=4326'
             );
             const henricoData = await henricoResponse.json();
 
             console.log('🔥 Fetching Richmond fire stations...');
             const richmondResponse = await fetch(
-                'https://services1.arcgis.com/k3vhq11XkBNeeOfM/arcgis/rest/services/FireStation/FeatureServer/0/query?outFields=*&where=1%3D1&f=json'
+                'https://services1.arcgis.com/k3vhq11XkBNeeOfM/arcgis/rest/services/FireStation/FeatureServer/0/query?outFields=*&where=1%3D1&f=json&outSR=4326'
             );
             const richmondData = await richmondResponse.json();
 
             const allStations = [];
 
-            // Process Henrico stations
+            // Process Henrico stations - coords now in WGS84 (outSR=4326)
             if (henricoData.features && henricoData.features.length > 0) {
                 const henricoStations = henricoData.features.map(feature => {
-                    const [lat, lng] = webMercatorToLatLng(feature.geometry.x, feature.geometry.y);
                     return {
                         name: feature.attributes.NAME || 'Fire Station',
                         address: feature.attributes.ADDRESS || '',
                         type: 'Henrico Fire',
-                        lat,
-                        lng
+                        lat: feature.geometry.y,
+                        lng: feature.geometry.x
                     };
                 });
                 allStations.push(...henricoStations);
                 console.log('🔥 Loaded', henricoStations.length, 'Henrico fire stations');
             }
 
-            // Process Richmond stations
+            // Process Richmond stations - coords now in WGS84 (outSR=4326)
             if (richmondData.features && richmondData.features.length > 0) {
                 const richmondStations = richmondData.features.map(feature => {
-                    const [lat, lng] = webMercatorToLatLng(feature.geometry.x, feature.geometry.y);
                     return {
                         name: feature.attributes.NAME || feature.attributes.STATION || 'Fire Station',
                         address: feature.attributes.ADDRESS || feature.attributes.FULLADDR || '',
                         type: 'Richmond Fire',
-                        lat,
-                        lng
+                        lat: feature.geometry.y,
+                        lng: feature.geometry.x
                     };
                 });
                 allStations.push(...richmondStations);
                 console.log('🔥 Loaded', richmondStations.length, 'Richmond fire stations');
-                console.log('🔥 Sample Richmond station coords:', richmondStations[0]);
             }
 
             console.log('🔥 Total fire stations:', allStations.length);
