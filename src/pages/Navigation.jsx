@@ -780,102 +780,84 @@ export default function Navigation() {
     };
 
     const updateRouteDisplay = (routeData) => {
-        const coordinates = routeData.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+        console.log('📋 Updating route display with:', routeData);
+        
+        if (!routeData || !routeData.geometry || !routeData.legs || !routeData.legs[0]) {
+            console.error('❌ Invalid route data:', routeData);
+            toast.error('Invalid route data received');
+            return;
+        }
 
-        // Generate traffic data with delay estimation
+        const coordinates = routeData.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+        console.log('📍 Route has', coordinates.length, 'points');
+
+        // Generate traffic data
         const traffic = generateTrafficData(coordinates);
         setTrafficSegments(traffic);
 
-        // Calculate realistic traffic delay based on distance and severity
-        let trafficDelayMins = 0;
-        const totalDistanceKm = routeData.distance / 1000;
-        const heavySegments = traffic.filter(s => s.condition === 'heavy').length;
-        const moderateSegments = traffic.filter(s => s.condition === 'moderate').length;
-        const totalSegments = traffic.length;
-
-        // Estimate delay: heavy traffic adds ~30% delay, moderate adds ~15% delay
-        if (totalSegments > 0) {
-            const heavyPercent = heavySegments / totalSegments;
-            const moderatePercent = moderateSegments / totalSegments;
-            const baseTimeMinutes = routeData.duration / 60;
-            trafficDelayMins = Math.round(baseTimeMinutes * (heavyPercent * 0.3 + moderatePercent * 0.15));
-        }
-
+        // Calculate distance and duration
         const distanceMiles = (routeData.distance / 1609.34).toFixed(1);
         setDistance(`${distanceMiles} mi`);
 
         const baseDurationMins = Math.round(routeData.duration / 60);
-        const totalDurationMins = baseDurationMins + trafficDelayMins;
-
-        // Calculate ETA as actual time
         const now = new Date();
-        const etaTime = new Date(now.getTime() + totalDurationMins * 60000);
+        const etaTime = new Date(now.getTime() + baseDurationMins * 60000);
         const etaFormatted = etaTime.toLocaleTimeString('en-US', { 
             hour: 'numeric', 
             minute: '2-digit',
             hour12: true 
         });
 
-        if (totalDurationMins >= 60) {
-            const hours = Math.floor(totalDurationMins / 60);
-            const mins = totalDurationMins % 60;
+        if (baseDurationMins >= 60) {
+            const hours = Math.floor(baseDurationMins / 60);
+            const mins = baseDurationMins % 60;
             setDuration(`${hours}h ${mins}m (ETA ${etaFormatted})`);
         } else {
-            setDuration(`${totalDurationMins} min (ETA ${etaFormatted})`);
+            setDuration(`${baseDurationMins} min (ETA ${etaFormatted})`);
         }
 
-        // Show traffic warning if significant delay
-        if (trafficDelayMins > 5) {
-            toast.warning(`Traffic adding ~${trafficDelayMins} min to route`);
-        }
-        
-        const steps = routeData.legs[0].steps.map(step => {
-            const maneuver = step.maneuver;
+        // Generate turn-by-turn directions
+        const steps = routeData.legs[0].steps.map((step, idx) => {
+            const maneuver = step.maneuver || {};
             const streetName = step.name || '';
+            const type = maneuver.type || '';
+            const modifier = maneuver.modifier || '';
 
             let instruction = '';
-            if (maneuver.type === 'depart') {
-                instruction = streetName ? `Start on ${streetName}` : 'Start your journey';
-            } else if (maneuver.type === 'arrive') {
-                instruction = 'You have arrived at your destination';
-            } else if (maneuver.type === 'turn' || maneuver.type === 'new name') {
-                const direction = maneuver.modifier || '';
-                if (streetName) {
-                    instruction = `Turn ${direction} onto ${streetName}`;
-                } else {
-                    instruction = `Turn ${direction}`;
-                }
-            } else if (maneuver.type === 'merge' || maneuver.type === 'on ramp') {
-                const direction = maneuver.modifier || '';
-                if (streetName) {
-                    instruction = `Merge ${direction} onto ${streetName}`;
-                } else {
-                    instruction = `Merge ${direction}`;
-                }
-            } else if (maneuver.type === 'off ramp') {
-                if (streetName) {
-                    instruction = `Take exit onto ${streetName}`;
-                } else {
-                    instruction = 'Take exit';
-                }
-            } else if (maneuver.type === 'continue') {
-                if (streetName) {
-                    instruction = `Continue on ${streetName}`;
-                } else {
-                    instruction = 'Continue straight';
-                }
+            
+            if (type === 'depart') {
+                instruction = streetName ? `Head ${modifier || 'forward'} on ${streetName}` : 'Start your journey';
+            } else if (type === 'arrive') {
+                instruction = 'Arrive at your destination';
+            } else if (type === 'turn') {
+                instruction = streetName ? `Turn ${modifier} onto ${streetName}` : `Turn ${modifier}`;
+            } else if (type === 'merge' || type === 'on ramp') {
+                instruction = streetName ? `Merge onto ${streetName}` : 'Merge';
+            } else if (type === 'off ramp') {
+                instruction = streetName ? `Take exit onto ${streetName}` : 'Take exit';
+            } else if (type === 'continue' || type === 'new name') {
+                instruction = streetName ? `Continue on ${streetName}` : 'Continue straight';
             } else {
-                instruction = step.maneuver.instruction || formatManeuver(step.maneuver);
+                instruction = maneuver.instruction || `Continue for ${Math.round(step.distance * 3.281)} ft`;
             }
 
-            return {
-                instruction,
-                distance: step.distance > 1000 
-                    ? `${(step.distance / 1609.34).toFixed(1)} mi` 
-                    : `${Math.round(step.distance * 3.281)} ft`
-            };
+            const distText = step.distance > 1000 
+                ? `${(step.distance / 1609.34).toFixed(1)} mi` 
+                : `${Math.round(step.distance * 3.281)} ft`;
+
+            console.log(`Step ${idx}: ${instruction} - ${distText}`);
+
+            return { instruction, distance: distText };
         });
+
+        console.log('✅ Generated', steps.length, 'direction steps');
         setDirections(steps);
+        
+        if (steps.length > 0) {
+            toast.success(`Route ready: ${distanceMiles} mi, ${baseDurationMins} min`);
+        } else {
+            toast.error('No directions generated');
+        }
     };
 
     const handleSelectRoute = (index) => {
