@@ -47,7 +47,7 @@ const precincts = [
     }
 ];
 
-export default function PrecinctMarkers({ showStations = true }) {
+export default function PrecinctMarkers({ showStations = true, onNavigateToPrecinct }) {
     const [geocodedPrecincts, setGeocodedPrecincts] = useState([]);
 
     useEffect(() => {
@@ -92,6 +92,16 @@ export default function PrecinctMarkers({ showStations = true }) {
                         key={idx}
                         position={precinct.coords}
                         icon={precinctIcon}
+                        eventHandlers={{
+                            click: () => {
+                                if (onNavigateToPrecinct) {
+                                    onNavigateToPrecinct({
+                                        coords: precinct.coords,
+                                        name: precinct.name
+                                    });
+                                }
+                            }
+                        }}
                     >
                         <Popup>
                             <div className="p-3 min-w-[200px]">
@@ -106,6 +116,14 @@ export default function PrecinctMarkers({ showStations = true }) {
                                     </div>
                                 </div>
                                 <p className="text-xs text-gray-600 mt-2">{precinct.address}</p>
+                                {onNavigateToPrecinct && (
+                                    <button
+                                        onClick={() => onNavigateToPrecinct({ coords: precinct.coords, name: precinct.name })}
+                                        className="mt-2 w-full bg-blue-600 text-white text-xs py-1.5 rounded hover:bg-blue-700"
+                                    >
+                                        Navigate Here
+                                    </button>
+                                )}
                             </div>
                         </Popup>
                     </Marker>

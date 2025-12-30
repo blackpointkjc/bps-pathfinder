@@ -69,7 +69,7 @@ const POLICE_STATIONS = {
     ]
 };
 
-export default function PoliceStationMarkers({ showStations = true }) {
+export default function PoliceStationMarkers({ showStations = true, onNavigateToStation }) {
     if (!showStations) return null;
 
     const allStations = [
@@ -84,6 +84,16 @@ export default function PoliceStationMarkers({ showStations = true }) {
                     key={idx}
                     position={station.coords}
                     icon={policeStationIcon}
+                    eventHandlers={{
+                        click: () => {
+                            if (onNavigateToStation) {
+                                onNavigateToStation({
+                                    coords: station.coords,
+                                    name: station.name
+                                });
+                            }
+                        }
+                    }}
                 >
                     <Popup>
                         <div className="p-2 min-w-[200px]">
@@ -91,6 +101,14 @@ export default function PoliceStationMarkers({ showStations = true }) {
                             <p className="text-xs text-blue-600 mb-2">{station.county} County Police</p>
                             <p className="text-xs text-gray-700">{station.address}</p>
                             <p className="text-xs text-gray-600 mt-1 italic">{station.hours}</p>
+                            {onNavigateToStation && (
+                                <button
+                                    onClick={() => onNavigateToStation({ coords: station.coords, name: station.name })}
+                                    className="mt-2 w-full bg-blue-600 text-white text-xs py-1.5 rounded hover:bg-blue-700"
+                                >
+                                    Navigate Here
+                                </button>
+                            )}
                         </div>
                     </Popup>
                 </Marker>
