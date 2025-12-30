@@ -1010,6 +1010,13 @@ export default function Navigation() {
                 if (eta) {
                     updateData.estimated_return = new Date(eta).toISOString();
                 }
+                
+                // Clear call info when going Available or OOS
+                if (newStatus === 'Available' || newStatus === 'Out of Service') {
+                    updateData.current_call_id = null;
+                    updateData.current_call_info = null;
+                }
+                
                 console.log('🔄 Updating status to:', newStatus);
                 await base44.auth.updateMe(updateData);
                 toast.success(`Status: ${newStatus}`);
@@ -1024,6 +1031,58 @@ export default function Navigation() {
                     location_lng: currentLocation?.[1],
                     notes: activeCallInfo
                 });
+                
+                // Auto-update related call status
+                if (currentUser.current_call_id) {
+                    try {
+                        const calls = await base44.entities.DispatchCall.filter({ 
+                            id: currentUser.current_call_id 
+                        });
+                        
+                        if (calls && calls.length > 0) {
+                            const call = calls[0];
+                            let callStatus = call.status;
+                            let timeField = null;
+                            
+                            // Map officer status to call status
+                            if (newStatus === 'Enroute' && call.status !== 'Enroute') {
+                                callStatus = 'Enroute';
+                                timeField = { time_enroute: new Date().toISOString() };
+                            } else if (newStatus === 'On Scene' && call.status !== 'On Scene') {
+                                callStatus = 'On Scene';
+                                timeField = { time_on_scene: new Date().toISOString() };
+                            } else if ((newStatus === 'Available' || newStatus === 'Out of Service') && 
+                                     call.status !== 'Cleared') {
+                                callStatus = 'Cleared';
+                                timeField = { time_cleared: new Date().toISOString() };
+                            }
+                            
+                            // Update call if status changed
+                            if (callStatus !== call.status) {
+                                await base44.entities.DispatchCall.update(call.id, {
+                                    status: callStatus,
+                                    ...timeField
+                                });
+                                
+                                // Log call status change
+                                await base44.entities.CallStatusLog.create({
+                                    call_id: call.id,
+                                    incident_type: call.incident,
+                                    location: call.location,
+                                    old_status: call.status,
+                                    new_status: callStatus,
+                                    unit_id: currentUser.id,
+                                    unit_name: unitName || currentUser.full_name,
+                                    latitude: call.latitude,
+                                    longitude: call.longitude,
+                                    notes: `Status auto-updated from ${newStatus}`
+                                });
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error auto-updating call status:', error);
+                    }
+                }
                 
                 // Auto-dispatch logic when becoming available
                 if ((newStatus === 'Available' || newStatus === 'Returning to Station') && activeCalls.length > 0) {

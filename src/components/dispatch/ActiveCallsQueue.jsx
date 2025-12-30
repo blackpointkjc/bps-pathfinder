@@ -4,13 +4,16 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search, Filter, AlertCircle, Clock, MapPin } from 'lucide-react';
+import { Search, Filter, AlertCircle, Clock, MapPin, Target } from 'lucide-react';
 import { motion } from 'framer-motion';
+import OptimalDispatchPanel from './OptimalDispatchPanel';
 
-export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, units }) {
+export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, units, onUpdate }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [priorityFilter, setPriorityFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [showOptimalDispatch, setShowOptimalDispatch] = useState(false);
+    const [selectedCallForDispatch, setSelectedCallForDispatch] = useState(null);
 
     const filteredCalls = calls.filter(call => {
         const matchesSearch = searchQuery === '' || 
@@ -136,15 +139,14 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
                                     key={call.id}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    onClick={() => onSelectCall(call)}
-                                    className={`p-3 rounded-lg cursor-pointer transition-all ${
+                                    className={`p-3 rounded-lg transition-all ${
                                         selectedCallId === call.id
                                             ? 'bg-red-600 border-2 border-red-400'
                                             : 'bg-slate-800 hover:bg-slate-700 border-2 border-transparent'
                                     }`}
                                 >
                                     <div className="flex items-start justify-between mb-2">
-                                        <div className="flex-1 min-w-0">
+                                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelectCall(call)}>
                                             <h3 className="font-bold text-white text-sm truncate">
                                                 {call.incident}
                                             </h3>
@@ -153,9 +155,24 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
                                                 <span className="truncate">{call.location}</span>
                                             </div>
                                         </div>
-                                        <Badge className={`${getPriorityColor(call.priority)} text-white text-xs ml-2`}>
-                                            {call.priority}
-                                        </Badge>
+                                        <div className="flex flex-col gap-1 ml-2">
+                                            <Badge className={`${getPriorityColor(call.priority)} text-white text-xs`}>
+                                                {call.priority}
+                                            </Badge>
+                                            {(!call.assigned_units || call.assigned_units.length === 0) && (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedCallForDispatch(call);
+                                                        setShowOptimalDispatch(true);
+                                                    }}
+                                                    className="h-6 px-2 bg-blue-600 hover:bg-blue-700 text-white"
+                                                >
+                                                    <Target className="w-3 h-3" />
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="flex items-center justify-between">
@@ -189,6 +206,18 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
                     </div>
                 )}
             </ScrollArea>
+
+            <OptimalDispatchPanel
+                isOpen={showOptimalDispatch}
+                onClose={() => {
+                    setShowOptimalDispatch(false);
+                    setSelectedCallForDispatch(null);
+                }}
+                call={selectedCallForDispatch}
+                onUnitAssigned={() => {
+                    if (onUpdate) onUpdate();
+                }}
+            />
         </Card>
     );
 }

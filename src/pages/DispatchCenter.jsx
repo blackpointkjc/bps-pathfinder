@@ -35,7 +35,19 @@ export default function DispatchCenter() {
             loadUnits();
         }, 10000);
         
-        return () => clearInterval(interval);
+        // Auto-close old calls every minute
+        const autoCloseInterval = setInterval(async () => {
+            try {
+                await base44.functions.invoke('autoCloseOldCalls', {});
+            } catch (error) {
+                console.error('Error auto-closing calls:', error);
+            }
+        }, 60000); // Every minute
+        
+        return () => {
+            clearInterval(interval);
+            clearInterval(autoCloseInterval);
+        };
     }, []);
 
     const init = async () => {
@@ -212,6 +224,7 @@ export default function DispatchCenter() {
                                 selectedCallId={selectedCall?.id}
                                 onSelectCall={handleSelectCall}
                                 units={units}
+                                onUpdate={handleUpdate}
                             />
                         </div>
 
