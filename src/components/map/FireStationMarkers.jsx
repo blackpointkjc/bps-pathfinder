@@ -49,9 +49,8 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
 
     // Convert Web Mercator (EPSG:3857) to WGS84 Lat/Lng (EPSG:4326)
     const webMercatorToLatLng = (x, y) => {
-        const R = 6378137; // Earth's radius in meters
-        const lng = (x / R) * (180 / Math.PI);
-        const lat = (2 * Math.atan(Math.exp(y / R)) - Math.PI / 2) * (180 / Math.PI);
+        const lng = (x * 180) / 20037508.34;
+        const lat = (Math.atan(Math.exp((y * Math.PI) / 20037508.34)) * 360) / Math.PI - 90;
         return [lat, lng];
     };
 
@@ -132,9 +131,7 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
 
     return (
         <>
-            {stations.map((station, index) => {
-                console.log(`🔥 Rendering station ${index}:`, station.name, 'at', [station.lat, station.lng]);
-                return (
+            {stations.map((station, index) => (
                 <Marker
                     key={`fire-station-${index}`}
                     position={[station.lat, station.lng]}
@@ -169,8 +166,7 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
                         </div>
                     </Popup>
                 </Marker>
-            );
-            })}
+            ))}
         </>
     );
 }

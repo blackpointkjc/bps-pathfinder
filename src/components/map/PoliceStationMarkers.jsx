@@ -81,13 +81,9 @@ export default function PoliceStationMarkers({ showStations = true, onNavigateTo
         ...POLICE_STATIONS.chesterfield.map(s => ({ ...s, county: 'Chesterfield' }))
     ];
 
-    console.log('👮 Rendering', allStations.length, 'police station markers');
-
     return (
         <>
-            {allStations.map((station, idx) => {
-                console.log(`👮 Police station ${idx}:`, station.name, 'at', station.coords);
-                return (
+            {allStations.map((station, idx) => (
                 <Marker
                     key={idx}
                     position={station.coords}
@@ -120,8 +116,7 @@ export default function PoliceStationMarkers({ showStations = true, onNavigateTo
                         </div>
                     </Popup>
                 </Marker>
-            );
-            })}
+            ))}
         </>
     );
 }
