@@ -186,7 +186,10 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                                             </p>
                                         </div>
                                         <Button
-                                            onClick={() => leaveUnion(currentUnion)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                leaveUnion(currentUnion);
+                                            }}
                                             disabled={loading}
                                             variant="outline"
                                             className="border-red-300 text-red-600 hover:bg-red-50"
@@ -205,13 +208,14 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                                         <h3 className="font-semibold text-gray-900 mb-3">Create New Unit Group</h3>
                                         
                                         <ScrollArea className="h-48 mb-4">
-                                            <div className="space-y-2">
+                                            <div className="space-y-2 pr-4">
                                                 {availableUnits
                                                     .filter(u => !u.union_id)
                                                     .map((unit) => (
                                                         <div
                                                             key={unit.id}
-                                                            onClick={() => {
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
                                                                 if (selectedUnits.includes(unit.id)) {
                                                                     setSelectedUnits(selectedUnits.filter(id => id !== unit.id));
                                                                 } else {
@@ -221,7 +225,7 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                                                             className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
                                                                 selectedUnits.includes(unit.id)
                                                                     ? 'border-indigo-500 bg-indigo-50'
-                                                                    : 'border-gray-200 hover:border-gray-300'
+                                                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                                             }`}
                                                         >
                                                             <div className="flex items-center justify-between">
@@ -241,7 +245,10 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                                         </ScrollArea>
 
                                         <Button
-                                            onClick={createUnion}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                createUnion();
+                                            }}
                                             disabled={loading || selectedUnits.length === 0}
                                             className="w-full bg-indigo-600 hover:bg-indigo-700"
                                         >

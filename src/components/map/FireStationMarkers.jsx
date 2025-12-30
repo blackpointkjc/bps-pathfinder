@@ -49,12 +49,13 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
 
     const fetchFireStations = async () => {
         try {
+            console.log('🔥 Fetching fire stations...');
             const response = await fetch(
                 'https://portal.henrico.gov/mapping/rest/services/Layers/Fire_Stations_and_Rescue_Squads/MapServer/0/query?outFields=*&where=1%3D1&f=json'
             );
             const data = await response.json();
 
-            if (data.features) {
+            if (data.features && data.features.length > 0) {
                 const stationsData = data.features.map(feature => ({
                     name: feature.attributes.NAME || 'Fire Station',
                     address: feature.attributes.ADDRESS || '',
@@ -62,23 +63,40 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
                     lat: feature.geometry.y,
                     lng: feature.geometry.x
                 }));
+                console.log('🔥 Loaded', stationsData.length, 'fire stations:', stationsData[0]);
                 setStations(stationsData);
-                console.log('🔥 Loaded', stationsData.length, 'fire stations');
+            } else {
+                console.warn('⚠️ No fire station data found');
             }
         } catch (error) {
-            console.error('Error fetching fire stations:', error);
+            console.error('❌ Error fetching fire stations:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    if (!showStations || loading || stations.length === 0) {
+    if (!showStations) {
+        console.log('🔥 Fire stations hidden by filter');
+        return null;
+    }
+    
+    if (loading) {
+        console.log('🔥 Fire stations loading...');
+        return null;
+    }
+    
+    if (stations.length === 0) {
+        console.log('🔥 No fire stations to display');
         return null;
     }
 
+    console.log('🔥 Rendering', stations.length, 'fire station markers');
+
     return (
         <>
-            {stations.map((station, index) => (
+            {stations.map((station, index) => {
+                console.log(`🔥 Rendering station ${index}:`, station.name, 'at', [station.lat, station.lng]);
+                return (
                 <Marker
                     key={`fire-station-${index}`}
                     position={[station.lat, station.lng]}
@@ -112,7 +130,8 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
                         </div>
                     </Popup>
                 </Marker>
-            ))}
+            );
+            })}
         </>
     );
 }
