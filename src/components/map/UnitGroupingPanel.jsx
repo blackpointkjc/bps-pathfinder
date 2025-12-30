@@ -65,7 +65,8 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
             const newUnitNumber = `${currentUser.unit_number || currentUser.full_name} ${unionId}`;
             await base44.auth.updateMe({
                 unit_number: newUnitNumber,
-                union_id: unionId
+                union_id: unionId,
+                show_on_map: true // Lead unit shows on map
             });
 
             for (const unitId of selectedUnits) {
@@ -75,7 +76,8 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                         user_id: unitId,
                         data: {
                             unit_number: `${unit.unit_number || unit.full_name} ${unionId}`,
-                            union_id: unionId
+                            union_id: unionId,
+                            show_on_map: false // Hide non-lead units
                         }
                     });
                 }
@@ -96,10 +98,11 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
     const leaveUnion = async (union) => {
         setLoading(true);
         try {
-            // Remove union from user
+            // Remove union from user and restore visibility
             await base44.auth.updateMe({
                 unit_number: currentUser.unit_number?.split(' Union')[0] || currentUser.full_name,
-                union_id: null
+                union_id: null,
+                show_on_map: true
             });
 
             // Update union
@@ -215,13 +218,14 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                                                                 disbanded_date: new Date().toISOString()
                                                             });
                                                             
-                                                            // Clear union_id from all members
+                                                            // Clear union_id from all members and restore visibility
                                                             for (const unitId of currentUnion.member_unit_ids) {
                                                                 await base44.functions.invoke('updateUser', {
                                                                     user_id: unitId,
                                                                     data: {
                                                                         unit_number: availableUnits.find(u => u.id === unitId)?.unit_number?.split(' Union')[0],
-                                                                        union_id: null
+                                                                        union_id: null,
+                                                                        show_on_map: true
                                                                     }
                                                                 });
                                                             }
