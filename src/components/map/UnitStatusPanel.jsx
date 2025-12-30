@@ -99,12 +99,20 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
-                            className="fixed inset-0 flex items-center justify-center z-[2001] p-4 pointer-events-none"
+                            className="fixed inset-0 flex items-center justify-center z-[2001] p-4"
+                            onClick={(e) => e.stopPropagation()}
                         >
-                        <Card className="p-6 bg-white shadow-2xl w-full max-w-md flex flex-col pointer-events-auto" style={{ maxHeight: '85vh' }}>
+                        <Card className="p-6 bg-white shadow-2xl w-full max-w-md flex flex-col" style={{ maxHeight: '85vh' }}>
                             <div className="flex items-center justify-between mb-4 flex-shrink-0">
                                 <h3 className="text-xl font-bold text-gray-900">Unit Status</h3>
-                                <Button variant="ghost" size="icon" onClick={onClose} className="pointer-events-auto">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onClose();
+                                    }}
+                                >
                                     <X className="w-5 h-5" />
                                 </Button>
                             </div>
@@ -146,7 +154,7 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                                                             e.stopPropagation();
                                                             handleStatusClick(status.value);
                                                         }}
-                                                        className={`p-4 rounded-xl border-2 transition-all pointer-events-auto ${
+                                                        className={`p-4 rounded-xl border-2 transition-all ${
                                                             isActive 
                                                                 ? 'border-blue-500 bg-blue-50' 
                                                                 : 'border-gray-200 hover:border-gray-300'
@@ -190,8 +198,15 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                                                 </div>
 
                                                 <div className="pt-4 border-t flex-shrink-0">
-                                                <Button variant="outline" onClick={onClose} className="w-full pointer-events-auto">
-                                                Close
+                                                <Button 
+                                                    variant="outline" 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onClose();
+                                                    }} 
+                                                    className="w-full"
+                                                >
+                                                    Close
                                                 </Button>
                                                 </div>
                                                 </Card>

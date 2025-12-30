@@ -47,10 +47,11 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
         fetchFireStations();
     }, []);
 
-    // Convert Web Mercator to Lat/Lng
+    // Convert Web Mercator (EPSG:3857) to WGS84 Lat/Lng (EPSG:4326)
     const webMercatorToLatLng = (x, y) => {
-        const lng = (x / 20037508.34) * 180;
-        const lat = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+        const lng = (x * 180) / 20037508.34;
+        let lat = (y * 180) / 20037508.34;
+        lat = (Math.atan(Math.exp(lat * (Math.PI / 180))) * 360) / Math.PI - 90;
         return [lat, lng];
     };
 
