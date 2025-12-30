@@ -14,6 +14,7 @@ import { X, Send, MapPin, AlertCircle } from 'lucide-react';
 export default function CreateCallDialog({ units, currentUser, onClose, onCreated, initialCallType, initialPriority }) {
     const [creating, setCreating] = useState(false);
     const [selectedUnits, setSelectedUnits] = useState([]);
+    const [activeUnions, setActiveUnions] = useState(new Set());
     const [formData, setFormData] = useState({
         incident: initialCallType || '',
         location: '',
@@ -27,6 +28,18 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
         caller_phone: '',
         hazards: ''
     });
+
+    React.useEffect(() => {
+        const fetchUnions = async () => {
+            try {
+                const unions = await base44.entities.UnitUnion.filter({ status: 'active' });
+                setActiveUnions(new Set(unions.map(u => u.union_name)));
+            } catch (error) {
+                console.error('Error fetching unions:', error);
+            }
+        };
+        fetchUnions();
+    }, []);
 
     const handleCreate = async () => {
         if (!formData.incident || !formData.location) {
@@ -281,25 +294,13 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                                         <div className="space-y-2">
                                             {(() => {
                                                 // Group units by union and hide OOS solo units
-                                                const [activeUnions, setActiveUnions] = React.useState(new Set());
-                                                
-                                                React.useEffect(() => {
-                                                    const fetchUnions = async () => {
-                                                        try {
-                                                            const unions = await base44.entities.UnitUnion.filter({ status: 'active' });
-                                                            setActiveUnions(new Set(unions.map(u => u.union_name)));
-                                                        } catch (error) {
-                                                            console.error('Error fetching unions:', error);
-                                                        }
-                                                    };
-                                                    fetchUnions();
-                                                }, [units]);
-                                                
                                                 const grouped = [];
                                                 const processedUnitIds = new Set();
+                                                const processedUnionIds = new Set();
                                                 
                                                 units.forEach(unit => {
-                                                    if (unit.union_id && activeUnions.has(unit.union_id) && !processedUnitIds.has(unit.union_id)) {
+                                                    if (unit.union_id && activeUnions.has(unit.union_id) && !processedUnionIds.has(unit.union_id)) {
+                                                        processedUnionIds.add(unit.union_id);
                                                         const unionMembers = units
                                                             .filter(u => u.union_id === unit.union_id)
                                                             .sort((a, b) => {
@@ -308,7 +309,6 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                                                                 return aNum - bNum;
                                                             });
                                                         unionMembers.forEach(m => processedUnitIds.add(m.id));
-                                                        processedUnitIds.add(unit.union_id);
                                                         grouped.push({
                                                             isUnion: true,
                                                             id: unit.union_id,
