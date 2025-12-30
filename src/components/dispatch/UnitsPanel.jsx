@@ -311,18 +311,37 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                                                 )}
                                             </h3>
                                             {group.isUnion ? (
-                                                <div className="text-xs mt-1 space-y-1 bg-slate-900/50 rounded p-2">
-                                                    <div className="text-indigo-400 font-semibold mb-1">Units in {group.displayName}:</div>
-                                                    {group.members.map((member, idx) => (
-                                                        <div key={member.id} className="flex items-center gap-2">
-                                                            <div className={`w-1.5 h-1.5 rounded-full ${idx === 0 ? 'bg-yellow-500' : 'bg-indigo-400'}`} />
-                                                            <span className={idx === 0 ? 'text-slate-200 font-medium' : 'text-slate-400'}>
-                                                                {member.unit_number || member.full_name}
-                                                                {idx === 0 && ' (Lead)'}
+                                                <>
+                                                    <div className="text-xs mt-1 space-y-1 bg-slate-900/50 rounded p-2">
+                                                        <div className="text-indigo-400 font-semibold mb-1">Units in {group.displayName}:</div>
+                                                        {group.members.map((member, idx) => (
+                                                            <div key={member.id} className="flex items-center gap-2">
+                                                                <div className={`w-1.5 h-1.5 rounded-full ${idx === 0 ? 'bg-yellow-500' : 'bg-indigo-400'}`} />
+                                                                <span className={idx === 0 ? 'text-slate-200 font-medium' : 'text-slate-400'}>
+                                                                    {member.unit_number || member.full_name}
+                                                                    {idx === 0 && ' (Lead)'}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs text-slate-400 mt-2">
+                                                        {unitAddresses[group.id] && (
+                                                            <span className="flex items-center gap-1">
+                                                                <MapPin className="w-3 h-3" />
+                                                                {unitAddresses[group.id]}
                                                             </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
+                                                        )}
+                                                        {primaryUnit.speed !== undefined && primaryUnit.speed > 0 && (
+                                                            <span>{Math.round(primaryUnit.speed)} mph</span>
+                                                        )}
+                                                        {primaryUnit.last_updated && (
+                                                            <span className="flex items-center gap-1">
+                                                                <Clock className="w-3 h-3" />
+                                                                {new Date(primaryUnit.last_updated).toLocaleTimeString()}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </>
                                             ) : (
                                                 <p className="text-xs text-slate-400">
                                                     {primaryUnit.rank && primaryUnit.last_name 
@@ -343,23 +362,25 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                                         </div>
                                     )}
 
-                                    <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
-                                        {unitAddresses[group.id] && (
-                                            <span className="flex items-center gap-1">
-                                                <MapPin className="w-3 h-3" />
-                                                {unitAddresses[group.id]}
-                                            </span>
-                                        )}
-                                        {primaryUnit.speed !== undefined && (
-                                            <span>{Math.round(primaryUnit.speed)} mph</span>
-                                        )}
-                                        {primaryUnit.last_updated && (
-                                            <span className="flex items-center gap-1">
-                                                <Clock className="w-3 h-3" />
-                                                {new Date(primaryUnit.last_updated).toLocaleTimeString()}
-                                            </span>
-                                        )}
-                                    </div>
+                                    {!group.isUnion && (
+                                        <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
+                                            {unitAddresses[group.id] && (
+                                                <span className="flex items-center gap-1">
+                                                    <MapPin className="w-3 h-3" />
+                                                    {unitAddresses[group.id]}
+                                                </span>
+                                            )}
+                                            {primaryUnit.speed !== undefined && primaryUnit.speed > 0 && (
+                                                <span>{Math.round(primaryUnit.speed)} mph</span>
+                                            )}
+                                            {primaryUnit.last_updated && (
+                                                <span className="flex items-center gap-1">
+                                                    <Clock className="w-3 h-3" />
+                                                    {new Date(primaryUnit.last_updated).toLocaleTimeString()}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
 
                                     <div className="flex gap-2">
                                         {selectedCall && (
