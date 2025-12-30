@@ -51,7 +51,7 @@ export default function LiveNavigation({ currentStep, nextStep, remainingDistanc
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="absolute top-4 left-1/2 -translate-x-1/2 z-[1002] w-[calc(100%-32px)] max-w-[560px] pointer-events-auto"
+            className="absolute top-4 left-1/2 -translate-x-1/2 z-[1003] w-[calc(100%-32px)] max-w-[560px] pointer-events-auto"
         >
             {/* Main Navigation Card */}
             <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
