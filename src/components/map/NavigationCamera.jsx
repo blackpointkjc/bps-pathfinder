@@ -47,37 +47,32 @@ export default function NavigationCamera({
     }, [map, onUserInteraction]);
 
     useEffect(() => {
-        if (!isNavigating || !currentLocation || userInteractingRef.current) return;
-
-        let targetZoom;
+        if (!isNavigating || !currentLocation) return;
         
-        if (upcomingManeuverDistance && upcomingManeuverDistance < 400) {
-            targetZoom = 19;
-        } else if (upcomingManeuverDistance && upcomingManeuverDistance < 1200) {
-            targetZoom = 18;
-        } else if (speed < 25) {
-            targetZoom = 17;
-        } else if (speed < 55) {
+        // If user is manually panning, don't auto-follow
+        if (userInteractingRef.current) return;
+
+        // Dynamic zoom based on speed
+        let targetZoom = 18;
+        if (speed > 45) {
             targetZoom = 16;
-        } else {
-            targetZoom = 15;
+        } else if (speed > 25) {
+            targetZoom = 17;
         }
 
+        // Smooth zoom transition
         const currentZoom = map.getZoom();
-        const zoomDiff = Math.abs(targetZoom - currentZoom);
-        
-        if (zoomDiff > 0.3) {
-            map.setZoom(targetZoom, { animate: true, duration: 0.8 });
+        if (Math.abs(targetZoom - currentZoom) > 0.5) {
+            map.setZoom(targetZoom, { animate: true });
         }
 
-        map.panTo(currentLocation, {
+        // Always center on car location during navigation
+        map.setView(currentLocation, map.getZoom(), {
             animate: true,
-            duration: 0.3,
-            easeLinearity: 0.25,
-            noMoveStart: true
+            duration: 0.3
         });
 
-    }, [map, isNavigating, currentLocation, speed, upcomingManeuverDistance, heading]);
+    }, [map, isNavigating, currentLocation, speed]);
 
     return null;
 }
