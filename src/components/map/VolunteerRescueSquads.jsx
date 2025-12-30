@@ -8,30 +8,21 @@ const createVRSIcon = () => {
         className: 'custom-vrs-marker',
         html: `
             <div style="
-                position: relative;
-                width: 44px;
-                height: 44px;
-            ">
-                <div style="
-                    width: 44px;
-                    height: 44px;
-                    background: #F59E0B;
-                    border: 3px solid white;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.5);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                ">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
-                        <path d="M18 18.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5 1.5.67 1.5 1.5 1.5zm1.5-9H17V12h4.46L19.5 9.5zM6 18.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5 1.5.67 1.5 1.5 1.5zM20 8l3 4v5h-2c0 1.66-1.34 3-3 3s-3-1.34-3-3H9c0 1.66-1.34 3-3 3s-3-1.34-3-3H1V6c0-1.11.89-2 2-2h14v4h3zM8 6H4v6h4V6z"/>
-                    </svg>
-                </div>
-            </div>
+                width: 32px;
+                height: 32px;
+                background: #F59E0B;
+                border: 2px solid white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 18px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            ">🚑</div>
         `,
-        iconSize: [44, 44],
-        iconAnchor: [22, 22],
-        popupAnchor: [0, -22]
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16]
     });
 };
 
