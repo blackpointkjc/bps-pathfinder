@@ -275,7 +275,7 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                                         </Badge>
                                     </div>
 
-                                    {group.current_call_info && (
+                                    {group.current_call_info && (group.status === 'Enroute' || group.status === 'On Scene') && (
                                         <div className="mb-2 p-2 bg-slate-900 rounded text-xs">
                                             <p className="text-slate-400">Current Call:</p>
                                             <p className="text-white">{group.current_call_info}</p>

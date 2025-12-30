@@ -198,6 +198,14 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
                                                                                         {item.members.length} Units
                                                                                     </Badge>
                                                                                 </div>
+
+                                                                                {item.members[0]?.current_call_info && (item.status === 'Enroute' || item.status === 'On Scene') && (
+                                                                                    <div className="text-sm text-gray-600 mb-2 bg-red-50 p-2 rounded ml-6">
+                                                                                        <span className="font-semibold">Active: </span>
+                                                                                        {item.members[0].current_call_info}
+                                                                                    </div>
+                                                                                )}
+
                                                                                 <div className="ml-6 space-y-1 mt-2">
                                                                                     {item.members.map((member, idx) => (
                                                                                         <div key={member.id} className="flex items-center gap-2 text-sm">
@@ -232,7 +240,7 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
                                                                             </Badge>
                                                                         </div>
 
-                                                                        {item.current_call_info && item.status !== 'Available' && (
+                                                                        {item.current_call_info && (item.status === 'Enroute' || item.status === 'On Scene') && (
                                                                             <div className="text-sm text-gray-600 mb-2 bg-red-50 p-2 rounded">
                                                                                 <span className="font-semibold">Active: </span>
                                                                                 {item.current_call_info}
