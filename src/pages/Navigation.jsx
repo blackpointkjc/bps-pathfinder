@@ -995,10 +995,16 @@ export default function Navigation() {
         const oldStatus = unitStatus;
         setUnitStatus(newStatus);
         
+        // Auto-manage lights based on status
+        const shouldShowLights = newStatus === 'Enroute' || newStatus === 'On Scene' || newStatus === 'Dispatched';
+        setShowLights(shouldShowLights);
+        localStorage.setItem('showLights', shouldShowLights);
+        
         if (currentUser) {
             try {
                 const updateData = { 
                     status: newStatus,
+                    show_lights: shouldShowLights,
                     last_updated: new Date().toISOString()
                 };
                 if (eta) {
