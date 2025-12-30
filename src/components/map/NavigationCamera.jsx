@@ -52,24 +52,20 @@ export default function NavigationCamera({
         // If user is manually panning, don't auto-follow
         if (userInteractingRef.current) return;
 
-        // Dynamic zoom based on speed
+        // Dynamic zoom based on speed - closer zoom for navigation
         let targetZoom = 18;
         if (speed > 45) {
-            targetZoom = 16;
-        } else if (speed > 25) {
             targetZoom = 17;
+        } else if (speed > 25) {
+            targetZoom = 18;
+        } else {
+            targetZoom = 19;
         }
 
-        // Smooth zoom transition
-        const currentZoom = map.getZoom();
-        if (Math.abs(targetZoom - currentZoom) > 0.5) {
-            map.setZoom(targetZoom, { animate: true });
-        }
-
-        // Always center on car location during navigation
-        map.setView(currentLocation, map.getZoom(), {
+        // Always center on car location with proper zoom during navigation
+        map.setView(currentLocation, targetZoom, {
             animate: true,
-            duration: 0.3
+            duration: 0.5
         });
 
     }, [map, isNavigating, currentLocation, speed]);

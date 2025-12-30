@@ -54,7 +54,7 @@ export default function LiveNavigation({ currentStep, nextStep, remainingDistanc
             className="absolute top-4 left-1/2 -translate-x-1/2 z-[1002] w-[calc(100%-32px)] max-w-[560px] pointer-events-auto"
         >
             {/* Main Navigation Card */}
-            <div className="bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
+            <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
                 {/* Top Status Bar */}
                 <div className="bg-white px-6 py-3 flex items-center justify-between border-b border-gray-200">
                     <div className="flex items-center gap-4">

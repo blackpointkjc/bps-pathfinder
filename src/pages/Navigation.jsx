@@ -1923,12 +1923,6 @@ Format the response as a concise bullet list. If information is not available, s
                     onExit={exitNavigation}
                     isRerouting={isRerouting}
                 />
-            ) : routes && routes.length > 1 ? (
-                <RouteOptions
-                    routes={routes}
-                    onSelectRoute={handleSelectRoute}
-                    selectedRouteIndex={selectedRouteIndex}
-                />
             ) : null}
 
             {!isNavigating && directions && directions.length > 0 && (
@@ -1954,6 +1948,9 @@ Format the response as a concise bullet list. If information is not available, s
                         distance={distance}
                         duration={duration}
                         onClose={clearRoute}
+                        routes={routes}
+                        onSelectRoute={handleSelectRoute}
+                        selectedRouteIndex={selectedRouteIndex}
                     />
                 </>
             )}

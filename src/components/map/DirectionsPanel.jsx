@@ -12,7 +12,7 @@ const getDirectionIcon = (instruction) => {
     return ArrowUp;
 };
 
-export default function DirectionsPanel({ directions, destination, onClose, distance, duration }) {
+export default function DirectionsPanel({ directions, destination, onClose, distance, duration, routes, onSelectRoute, selectedRouteIndex }) {
     return (
         <AnimatePresence>
             {directions && directions.length > 0 && (
@@ -58,6 +58,25 @@ export default function DirectionsPanel({ directions, destination, onClose, dist
                                 <X className="w-4 h-4 text-gray-500" />
                             </Button>
                         </div>
+
+                        {/* Route Options */}
+                        {routes && routes.length > 1 && (
+                            <div className="mt-4 flex gap-2 overflow-x-auto">
+                                {routes.map((route, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => onSelectRoute(index)}
+                                        className={`px-3 py-2 rounded-lg text-xs whitespace-nowrap ${
+                                            selectedRouteIndex === index
+                                                ? 'bg-[#007AFF] text-white'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        Route {index + 1}: {(route.distance / 1609.34).toFixed(1)} mi • {Math.round(route.duration / 60)} min
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Directions List */}
