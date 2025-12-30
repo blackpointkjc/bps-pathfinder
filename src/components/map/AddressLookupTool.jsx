@@ -46,36 +46,44 @@ export default function AddressLookupTool({ isOpen, onClose, onLocationFound }) 
 
             // Get comprehensive property information using AI
             const aiResponse = await base44.integrations.Core.InvokeLLM({
-                prompt: `Provide comprehensive information about this address: ${location.display_name}
+                prompt: `Search COUNTY PROPERTY RECORDS and OFFICIAL COUNTY ASSESSOR WEBSITES for this address: ${location.display_name}
 
-Search public records, school district databases, county assessor records, real estate listings, and other public sources to find:
+CRITICAL: Go directly to the county website (Henrico County, Chesterfield County, or Richmond City property records) and search their official property database. Look for parcel information, tax records, and deed records.
 
-**PROPERTY OWNERSHIP & VALUE**
-• Current Owner Name(s)
-• Property Value / Assessed Value
-• Last Sale Date & Price
-• Annual Property Tax
+Find the following from OFFICIAL COUNTY RECORDS:
 
-**PROPERTY DETAILS**
-• Year Built
-• Property Type (Single Family, Commercial, etc.)
-• Square Footage
-• Lot Size
-• Number of Bedrooms/Bathrooms (if residential)
+**## PROPERTY OWNERSHIP (From County Records)**
+• **Current Owner Name(s):** [Search county property records database]
+• **Mailing Address:** [From tax records]
+• **Deed Book/Page:** [From county clerk records]
+• **Property Value/Assessed Value:** [From county assessor]
+• **Last Sale Date & Price:** [From county deed records]
+• **Annual Property Tax:** [From county tax records]
 
-**LOCATION & SCHOOLS**
-• Neighborhood Name
-• School District
-• Elementary School (with rating if available)
-• Middle School (with rating if available)
-• High School (with rating if available)
+**## PROPERTY DETAILS (From County Assessor)**
+• **Year Built:** [County assessor data]
+• **Property Type:** [Residential/Commercial from county]
+• **Square Footage:** [From assessor records]
+• **Lot Size:** [From county parcel data]
+• **Bedrooms/Bathrooms:** [If residential, from assessor]
+• **Parcel ID/Tax Map Number:** [From county records]
 
-**AREA INFORMATION**
-• Crime Rate / Safety Rating
-• Nearby Amenities (parks, shopping, hospitals)
-• Public Transportation Access
+**## LOCATION & SCHOOLS**
+• **School District:** [From county/school district website]
+• **Elementary School:** [with rating]
+• **Middle School:** [with rating]
+• **High School:** [with rating]
 
-Format as organized sections with bullet points. If information is unavailable, state "Not available" for that item.`,
+**## ADDITIONAL INFO**
+• **Neighborhood/Subdivision:** [From county or public records]
+• **Nearby Amenities:** [Brief list]
+
+**IMPORTANT:** 
+- Search the actual county website property records (e.g., henricoproperty.com, chesterfield.gov/property, richmondgov.com/property)
+- Provide direct links to the county property record page using format: [View Official County Record](actual_url)
+- If unable to find specific info, state "Not found in county records"
+
+Format with markdown headings (##), bullet points, and **bold** for labels. Include clickable links.`,
                 add_context_from_internet: true
             });
 
