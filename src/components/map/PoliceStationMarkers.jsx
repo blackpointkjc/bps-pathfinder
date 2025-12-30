@@ -2,13 +2,22 @@ import React from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 
-const policeStationIcon = new L.Icon({
-    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-            <circle cx="16" cy="16" r="15" fill="#1E40AF" stroke="white" stroke-width="2"/>
-            <path d="M16 6L9 10v5c0 4.33 3 8.38 7 9.4 4-1.02 7-5.07 7-9.4v-5l-7-4z" fill="white"/>
-        </svg>
-    `),
+const policeStationIcon = new L.DivIcon({
+    className: 'custom-marker',
+    html: `
+        <div style="
+            width: 32px;
+            height: 32px;
+            background: #1E40AF;
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        ">🚓</div>
+    `,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
     popupAnchor: [0, -16]
