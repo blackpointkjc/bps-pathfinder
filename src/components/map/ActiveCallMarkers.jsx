@@ -31,26 +31,16 @@ const createCallIcon = (call, isHighPriority = false) => {
     let icon = '';
     let bgColor = '#1E40AF'; // Blue for police (default)
     
-    // Active/dispatched calls get emergency light icon
-    const isActiveOrDispatched = call.status?.toLowerCase().includes('dispatch') || 
-                                  call.status?.toLowerCase().includes('enroute') ||
-                                  call.status?.toLowerCase().includes('active');
-    
-    // Special handling for dispatch calls or active calls
-    if (isDispatch || isActiveOrDispatched) {
-        bgColor = '#DC2626'; // Red background
-        icon = '🚨';
-    } else
     if (isEMS) {
         bgColor = '#F59E0B'; // Amber for EMS
-        icon = '🚑';
+        icon = '🚨';
     } else if (isFire) {
         bgColor = '#DC2626'; // Red for fire
-        icon = '🔥';
+        icon = '🚨';
     } else {
         // Police
         bgColor = '#1E40AF';
-        icon = '🚓';
+        icon = '👮';
     }
     
     const pulseAnimation = isHighPriority ? `

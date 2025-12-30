@@ -38,6 +38,12 @@ const jails = [
         jurisdiction: 'Henrico'
     },
     {
+        name: 'Henrico County Jail East',
+        address: '7600 Durnford Ct, Richmond, VA 23231',
+        coords: [37.51789, -77.36245],
+        jurisdiction: 'Henrico'
+    },
+    {
         name: 'Henrico County Regional Jail East',
         address: '17320 New Kent Highway, Barhamsville, VA 23011',
         coords: [37.49537, -76.86185],
