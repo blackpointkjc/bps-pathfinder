@@ -176,8 +176,8 @@ Format as organized sections with bullet points. If information is unavailable, 
                         </div>
 
                         {/* Results */}
-                        <ScrollArea className="flex-1">
-                            <div className="p-6">
+                        <ScrollArea className="flex-1 overflow-y-auto">
+                            <div className="p-6 min-h-full">
                                 {isSearching && (
                                     <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                                         <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
