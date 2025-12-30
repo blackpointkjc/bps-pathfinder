@@ -35,8 +35,7 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
     const [statusFilter, setStatusFilter] = useState('all');
     const [unitAddresses, setUnitAddresses] = useState({});
 
-    // Group units by union - only show union once, not individual members
-    // But first check which unions are actually active
+    // Group units by union
     const [activeUnionIds, setActiveUnionIds] = React.useState(new Set());
     
     React.useEffect(() => {
@@ -51,21 +50,20 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
         fetchActiveUnions();
     }, [units]);
     
+    // Filter and group units
+    const visibleUnits = units.filter(u => u.status !== 'Out of Service');
+    
     const groupedUnits = {};
     const processedUnitIds = new Set();
     
-    units.forEach(unit => {
-        // Only group if union is active
+    visibleUnits.forEach(unit => {
         if (unit.union_id && activeUnionIds.has(unit.union_id)) {
-            // If this union hasn't been added yet, add it with all members
             if (!groupedUnits[unit.union_id]) {
-                const unionMembers = units.filter(u => u.union_id === unit.union_id);
+                const unionMembers = visibleUnits.filter(u => u.union_id === unit.union_id);
                 groupedUnits[unit.union_id] = unionMembers;
-                // Mark all members as processed so they don't appear individually
                 unionMembers.forEach(m => processedUnitIds.add(m.id));
             }
-        } else if ((!unit.union_id || !activeUnionIds.has(unit.union_id)) && unit.status !== 'Out of Service' && !processedUnitIds.has(unit.id)) {
-            // Individual unit (not in active union, not OOS, not already processed)
+        } else if (!processedUnitIds.has(unit.id)) {
             groupedUnits[unit.id] = [unit];
             processedUnitIds.add(unit.id);
         }
@@ -74,7 +72,6 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
     const filteredUnits = Object.entries(groupedUnits)
         .filter(([key, members]) => {
             const isUnion = members.length > 1;
-            const firstUnit = members[0];
             
             const matchesSearch = searchQuery === '' || 
                 (isUnion && key.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -89,7 +86,6 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
             return matchesSearch && matchesStatus;
         })
         .map(([key, members]) => {
-            // Sort members by unit number
             const sortedMembers = [...members].sort((a, b) => {
                 const aNum = parseInt(a.unit_number) || 999;
                 const bNum = parseInt(b.unit_number) || 999;
