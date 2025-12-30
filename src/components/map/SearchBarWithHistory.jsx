@@ -52,8 +52,8 @@ export default function SearchBarWithHistory({ onSearch, isSearching, onClear })
     };
 
     return (
-        <div className="relative">
-            <form onSubmit={handleSubmit} className="relative">
+        <div className="relative pointer-events-auto">
+            <form onSubmit={handleSubmit} className="relative pointer-events-auto">
                 <div className="relative bg-white/98 backdrop-blur-xl shadow-xl rounded-2xl border border-gray-200/50">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <Input
