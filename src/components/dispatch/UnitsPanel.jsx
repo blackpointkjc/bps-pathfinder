@@ -239,12 +239,17 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                                                 )}
                                             </h3>
                                             {group.isUnion ? (
-                                                <div className="text-xs text-slate-400 mt-1 space-y-0.5">
-                                                    {group.members.map(member => (
-                                                        <div key={member.id}>
-                                                            {member.rank && member.last_name 
-                                                                ? `${member.rank} ${member.last_name}` 
-                                                                : member.full_name || member.unit_number}
+                                                <div className="text-xs mt-1 space-y-1 bg-slate-900/50 rounded p-2">
+                                                    <div className="text-indigo-400 font-semibold mb-1">Union Members:</div>
+                                                    {group.members.map((member, idx) => (
+                                                        <div key={member.id} className="flex items-center gap-2">
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${idx === 0 ? 'bg-yellow-500' : 'bg-slate-500'}`} />
+                                                            <span className={idx === 0 ? 'text-slate-200 font-medium' : 'text-slate-400'}>
+                                                                {member.rank && member.last_name 
+                                                                    ? `${member.rank} ${member.last_name}` 
+                                                                    : member.full_name || member.unit_number}
+                                                                {idx === 0 && ' (Lead)'}
+                                                            </span>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -308,21 +313,22 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                                                     try {
                                                         const unions = await base44.entities.UnitUnion.filter({ union_name: group.unionName, status: 'active' });
                                                         if (unions && unions.length > 0) {
-                                                            const union = unions[0];
-                                                            await base44.entities.UnitUnion.update(union.id, {
-                                                                status: 'disbanded',
-                                                                disbanded_date: new Date().toISOString()
-                                                            });
-                                                            
-                                                            for (const member of group.members) {
-                                                                await base44.functions.invoke('updateUser', {
-                                                                    user_id: member.id,
-                                                                    data: {
-                                                                        unit_number: member.unit_number?.split(' Union')[0],
-                                                                        union_id: null
-                                                                    }
-                                                                });
-                                                            }
+                                                           const union = unions[0];
+                                                           await base44.entities.UnitUnion.update(union.id, {
+                                                               status: 'disbanded',
+                                                               disbanded_date: new Date().toISOString()
+                                                           });
+
+                                                           for (const member of group.members) {
+                                                               await base44.functions.invoke('updateUser', {
+                                                                   user_id: member.id,
+                                                                   data: {
+                                                                       unit_number: member.unit_number?.split(' Union')[0],
+                                                                       union_id: null,
+                                                                       show_on_map: true
+                                                                   }
+                                                               });
+                                                           }
                                                             
                                                             toast.success('Union disbanded');
                                                             onUpdate();
