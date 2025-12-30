@@ -76,7 +76,7 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                 longitude,
                 assigned_units: selectedUnits,
                 status: selectedUnits.length > 0 ? 'Dispatched' : 'Pending',
-                time_received: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+                time_received: new Date().toISOString(),
                 time_dispatched: selectedUnits.length > 0 ? new Date().toISOString() : null,
                 source: 'dispatch'
             };
