@@ -432,19 +432,25 @@ export default function Navigation() {
 
                 console.log('📍 Raw GPS:', rawCoords, 'Accuracy:', position.coords.accuracy, 'm', 'Speed:', rawSpeed, 'mph');
 
-                // Reverse geocode to get street name
-                if (rawSpeed > 1) {
+                // Reverse geocode to get street name (throttled)
+                const now = Date.now();
+                if (!window.lastStreetUpdate || now - window.lastStreetUpdate > 5000) {
+                    window.lastStreetUpdate = now;
                     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${rawCoords[0]}&lon=${rawCoords[1]}&zoom=18`, {
-                        headers: { 'User-Agent': 'Emergency-Dispatch-CAD/1.0' }
+                        headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' }
                     })
                     .then(res => res.json())
                     .then(data => {
                         if (data && data.address) {
                             const street = data.address.road || data.address.street || 'Unknown Street';
-                            setCurrentStreet(street);
+                            const city = data.address.city || data.address.town || '';
+                            setCurrentStreet(city ? `${street}, ${city}` : street);
                         }
                     })
-                    .catch(err => console.error('Street lookup error:', err));
+                    .catch(err => {
+                        console.error('Street lookup error:', err);
+                        setCurrentStreet('Location unavailable');
+                    });
                 }
 
                 // Ignore impossible jumps
@@ -464,10 +470,10 @@ export default function Navigation() {
                     ? applySmoothing(rawCoords[0], rawCoords[1], position.coords.accuracy, rawSpeed)
                     : rawCoords;
 
-                console.log('✅ Using location:', finalCoords);
+                console.log('✅ Using location:', finalCoords, 'Speed:', rawSpeed, 'mph');
                 setCurrentLocation(finalCoords);
                 setSmoothedLocation(finalCoords);
-                
+
                 // Smart heading: use GPS course when moving, compass when stationary
                 let newHeading = null;
                 if (rawSpeed > 3) {
@@ -483,13 +489,15 @@ export default function Navigation() {
                         newHeading = position.coords.heading;
                     }
                 }
-                
+
                 if (newHeading !== null && !isNaN(newHeading)) {
                     const smoothed = smoothHeading(newHeading, rawSpeed);
                     setHeading(smoothed);
                 }
 
-                setSpeed(rawSpeed);
+                // Ensure speed is set correctly
+                const displaySpeed = Math.max(0, Math.round(rawSpeed));
+                setSpeed(displaySpeed);
                 setAccuracy(position.coords.accuracy);
                 
                 // Show accuracy warning
@@ -726,6 +734,11 @@ export default function Navigation() {
     };
 
     const searchDestination = async (query) => {
+        if (!query || !query.trim()) {
+            toast.error('Please enter a destination');
+            return;
+        }
+
         if (!currentLocation) {
             toast.error('Getting your location first...');
             getCurrentLocation();
@@ -741,14 +754,15 @@ export default function Navigation() {
         
         try {
             const response = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
-                { headers: { 'User-Agent': 'Emergency-Dispatch-CAD/1.0' } }
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Virginia, USA')}&limit=5`,
+                { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' } }
             );
             const data = await response.json();
             console.log('📦 STEP 2: Search results:', data);
 
             if (data && data.length > 0) {
-                const result = data[0];
+                // Prefer Virginia results
+                const result = data.find(r => r.display_name.toLowerCase().includes('virginia')) || data[0];
                 const destCoords = [parseFloat(result.lat), parseFloat(result.lon)];
                 
                 console.log('📍 STEP 3: Setting destination');

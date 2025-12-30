@@ -22,7 +22,7 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
         landmark: '',
         description: '',
         priority: initialPriority || 'medium',
-        agency: 'RPD',
+        agency: 'BPS',
         zone: '',
         caller_name: '',
         caller_phone: '',
@@ -229,12 +229,10 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                                                 onChange={(e) => setFormData({...formData, agency: e.target.value})}
                                                 className="flex h-10 w-full rounded-md border bg-slate-800 border-slate-700 text-white px-3 py-2 text-sm"
                                             >
-                                                <option value="RPD">RPD</option>
-                                                <option value="RFD">RFD</option>
-                                                <option value="BSP">BSP</option>
-                                                <option value="HPD">HPD</option>
-                                                <option value="CCPD">CCPD</option>
-                                                <option value="CCFD">CCFD</option>
+                                                <option value="BPS">BPS - Black Point Security</option>
+                                                <option value="RPD">RPD - Richmond Police</option>
+                                                <option value="HPD">HPD - Henrico Police</option>
+                                                <option value="CCPD">CCPD - Chesterfield Police</option>
                                             </select>
                                         </div>
                                         <div>

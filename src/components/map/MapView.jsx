@@ -183,11 +183,12 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
     const getTileLayerUrl = () => {
         if (useOfflineTiles) return '';
 
-        // Night mode uses CartoDB Dark Matter for all map types
+        // Night mode uses dark tactical style
         if (mapTheme === 'night') {
             if (baseMapType === 'satellite') {
                 return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
             }
+            // Dark tactical map
             return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
         }
 
