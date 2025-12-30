@@ -98,7 +98,7 @@ export default function ActiveCallsList({ isOpen, onClose, calls, onNavigateToCa
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 z-[3000] flex items-center justify-center p-4"
+                className="fixed inset-0 bg-black/50 z-[2100] flex items-center justify-center p-4"
                 onClick={onClose}
             >
                 <motion.div
@@ -106,7 +106,7 @@ export default function ActiveCallsList({ isOpen, onClose, calls, onNavigateToCa
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full max-w-2xl"
+                    className="w-full max-w-2xl z-[2101]"
                 >
                     <Card className="bg-white">
                         <div className="p-6">
@@ -120,7 +120,10 @@ export default function ActiveCallsList({ isOpen, onClose, calls, onNavigateToCa
                                         <p className="text-sm text-gray-500">{calls.length} calls for service</p>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={onClose}>
+                                <Button variant="ghost" size="icon" onClick={(e) => {
+                                    e.stopPropagation();
+                                    onClose();
+                                }}>
                                     <X className="w-5 h-5" />
                                 </Button>
                             </div>
