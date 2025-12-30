@@ -80,7 +80,7 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 z-[3000] flex items-center justify-center p-4"
+                className="fixed inset-0 bg-black/50 z-[2100] flex items-center justify-center p-4"
                 onClick={onClose}
             >
                 <motion.div
@@ -88,7 +88,7 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full max-w-3xl"
+                    className="w-full max-w-3xl z-[2101]"
                 >
                     <Card className="bg-white">
                         <div className="p-6">
