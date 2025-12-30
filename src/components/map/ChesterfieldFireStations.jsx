@@ -7,7 +7,7 @@ const cfdIcon = new L.Icon({
     iconUrl: 'data:image/svg+xml;base64,' + btoa(`
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
             <circle cx="16" cy="16" r="15" fill="#DC2626" stroke="white" stroke-width="2"/>
-            <path d="M16 6c-2 3-3.5 5-3.5 7.5 0 2 1.5 3.5 3.5 3.5s3.5-1.5 3.5-3.5c0-2.5-1.5-4.5-3.5-7.5zm-4 8c-1.5 2-2.5 3.5-2.5 5.5 0 1.5 1 2.5 2.5 2.5s2.5-1 2.5-2.5c0-2-1-3.5-2.5-5.5zm8 0c-1.5 2-2.5 3.5-2.5 5.5 0 1.5 1 2.5 2.5 2.5s2.5-1 2.5-2.5c0-2-1-3.5-2.5-5.5z" fill="white"/>
+            <text x="16" y="22" font-size="18" text-anchor="middle" fill="white">🔥</text>
         </svg>
     `),
     iconSize: [32, 32],
