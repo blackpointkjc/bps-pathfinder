@@ -311,68 +311,45 @@ export default function Navigation() {
         }
     };
 
-    // Kalman filter for GPS smoothing
-    const applyKalmanFilter = (lat, lng, accuracy) => {
-        const Q = 0.001; // Process noise
-        const R = accuracy ? Math.pow(accuracy, 2) : 25; // Measurement noise
-        
-        if (kalmanState.current.lat === null) {
-            kalmanState.current = { lat, lng, variance: R };
+    // Simplified smoothing - only apply when moving fast
+    const applySmoothing = (lat, lng, accuracy, speed) => {
+        // Don't smooth if stationary or accuracy is very good
+        if (speed < 1 || (accuracy && accuracy < 10)) {
+            kalmanState.current = { lat, lng, variance: 100 };
             return [lat, lng];
         }
         
-        // Prediction
-        const predictedVariance = kalmanState.current.variance + Q;
+        if (kalmanState.current.lat === null) {
+            kalmanState.current = { lat, lng, variance: 100 };
+            return [lat, lng];
+        }
         
-        // Update
-        const K = predictedVariance / (predictedVariance + R); // Kalman gain
-        const newLat = kalmanState.current.lat + K * (lat - kalmanState.current.lat);
-        const newLng = kalmanState.current.lng + K * (lng - kalmanState.current.lng);
-        const newVariance = (1 - K) * predictedVariance;
+        // Simple weighted average
+        const weight = Math.min(0.3, speed / 20); // More weight to new position when faster
+        const newLat = kalmanState.current.lat * (1 - weight) + lat * weight;
+        const newLng = kalmanState.current.lng * (1 - weight) + lng * weight;
         
-        kalmanState.current = { lat: newLat, lng: newLng, variance: newVariance };
+        kalmanState.current = { lat: newLat, lng: newLng, variance: 100 };
         return [newLat, newLng];
     };
     
-    // Snap position to route
-    const snapToRoute = (position, routeCoordinates) => {
-        if (!routeCoordinates || routeCoordinates.length === 0) return position;
+    // Simplified route checking
+    const checkIfOffRoute = (position, routeCoordinates) => {
+        if (!routeCoordinates || routeCoordinates.length === 0 || !isNavigating) return;
         
         let minDist = Infinity;
-        let closestPoint = position;
-        
         for (let i = 0; i < routeCoordinates.length; i++) {
             const dist = getDistanceMeters(position, routeCoordinates[i]);
-            if (dist < minDist) {
-                minDist = dist;
-                closestPoint = routeCoordinates[i];
-            }
+            if (dist < minDist) minDist = dist;
         }
         
-        // Only snap if within 30m and accuracy is good
-        if (minDist < 30 && accuracy && accuracy <= 50) {
-            return closestPoint;
-        }
-        
-        // Check if off-route
-        if (minDist > 60) {
-            if (!offRouteTimer) {
-                const timer = setTimeout(() => {
-                    setIsOffRoute(true);
-                    toast.warning('Off route - recalculating...');
-                    checkForBetterRoute();
-                }, 6000);
-                setOffRouteTimer(timer);
-            }
+        if (minDist > 100) {
+            setIsOffRoute(true);
+            toast.warning('Off route - recalculating...');
+            setTimeout(() => checkForBetterRoute(), 2000);
         } else {
-            if (offRouteTimer) {
-                clearTimeout(offRouteTimer);
-                setOffRouteTimer(null);
-            }
             setIsOffRoute(false);
         }
-        
-        return position;
     };
     
     const getDistanceMeters = (coord1, coord2) => {
@@ -434,32 +411,27 @@ export default function Navigation() {
                 const rawSpeed = position.coords.speed !== null && position.coords.speed >= 0 
                     ? Math.max(0, position.coords.speed * 2.237) 
                     : 0;
-                
-                // Ignore impossible jumps (> 120 mph between updates)
+
+                console.log('📍 Raw GPS:', rawCoords, 'Accuracy:', position.coords.accuracy, 'm', 'Speed:', rawSpeed, 'mph');
+
+                // Ignore impossible jumps
                 if (lastPosition.current) {
                     const dist = getDistanceMeters(lastPosition.current, rawCoords);
-                    const timeDiff = 1; // assume 1 second between updates
-                    const impliedSpeed = (dist / timeDiff) * 2.237; // m/s to mph
-                    
-                    if (impliedSpeed > 120) {
-                        console.warn('🚫 Ignoring impossible GPS jump:', impliedSpeed, 'mph');
+                    const timeDiff = 1;
+                    const impliedSpeed = (dist / timeDiff) * 2.237;
+
+                    if (impliedSpeed > 150) {
+                        console.warn('🚫 Ignoring GPS jump:', impliedSpeed, 'mph');
                         return;
                     }
                 }
-                
-                // Apply Kalman filter for smoothing
-                const smoothedCoords = applyKalmanFilter(
-                    rawCoords[0], 
-                    rawCoords[1], 
-                    position.coords.accuracy
-                );
-                
-                // Snap to route if navigating
-                let finalCoords = smoothedCoords;
-                if (isNavigating && routeCoords) {
-                    finalCoords = snapToRoute(smoothedCoords, routeCoords);
-                }
-                
+
+                // Only smooth when moving
+                const finalCoords = rawSpeed > 5 
+                    ? applySmoothing(rawCoords[0], rawCoords[1], position.coords.accuracy, rawSpeed)
+                    : rawCoords;
+
+                console.log('✅ Using location:', finalCoords);
                 setCurrentLocation(finalCoords);
                 setSmoothedLocation(finalCoords);
                 
@@ -499,6 +471,11 @@ export default function Navigation() {
                 });
 
                 lastPosition.current = finalCoords;
+
+                // Check if off route
+                if (isNavigating && routeCoords) {
+                    checkIfOffRoute(finalCoords, routeCoords);
+                }
 
                 // Update navigation progress if navigating
                 if (isNavigating && directions) {
@@ -716,68 +693,50 @@ export default function Navigation() {
     };
 
     const searchDestination = async (query) => {
+        if (!currentLocation) {
+            toast.error('Please wait for your location first');
+            getCurrentLocation();
+            return;
+        }
+
         setIsSearching(true);
+        console.log('🔍 Searching for:', query);
         
         try {
             const response = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
+                { headers: { 'User-Agent': 'Emergency-Dispatch-CAD/1.0' } }
             );
             const data = await response.json();
-
-            console.log('🔍 Search results:', data);
+            console.log('📦 Search results:', data);
 
             if (data && data.length > 0) {
                 const result = data[0];
-                
-                if (!result.lat || !result.lon) {
-                    toast.error('Location coordinates not available');
-                    return;
-                }
-                
                 const destCoords = [parseFloat(result.lat), parseFloat(result.lon)];
                 
-                if (isNaN(destCoords[0]) || isNaN(destCoords[1])) {
-                    toast.error('Invalid location coordinates');
-                    return;
-                }
+                console.log('📍 From:', currentLocation, 'To:', destCoords);
                 
-                console.log('📍 Destination coords:', destCoords);
-
                 setDestination({ coords: destCoords, name: result.display_name });
                 setDestinationName(result.display_name.split(',')[0]);
+                toast.info('Calculating route...');
 
-                if (currentLocation) {
-                    console.log('🗺️ Fetching route from', currentLocation, 'to', destCoords);
-                    toast.info('Calculating route...');
-                    const fetchedRoutes = await fetchRoutes(currentLocation, destCoords);
-                    if (fetchedRoutes && fetchedRoutes.length > 0) {
-                        console.log('✅ Routes found:', fetchedRoutes.length);
-                        setRoutes(fetchedRoutes);
-                        setSelectedRouteIndex(0);
-                        updateRouteDisplay(fetchedRoutes[0]);
-                        toast.success('Route ready - tap Start Navigation');
-                    } else {
-                        console.error('❌ No routes returned');
-                        toast.error('Could not find route');
-                    }
+                const fetchedRoutes = await fetchRoutes(currentLocation, destCoords);
+                console.log('🗺️ Routes received:', fetchedRoutes);
+                
+                if (fetchedRoutes && fetchedRoutes.length > 0) {
+                    setRoutes(fetchedRoutes);
+                    setSelectedRouteIndex(0);
+                    updateRouteDisplay(fetchedRoutes[0]);
+                    toast.success(`Route ready: ${distance || 'calculating...'}`);
                 } else {
-                    console.warn('⚠️ No current location available');
-                    toast.error('Getting your location first...');
-                    // Try to get location again
-                    getCurrentLocation();
-                    // Retry route after 2 seconds
-                    setTimeout(() => {
-                        if (currentLocation) {
-                            searchDestination(query);
-                        }
-                    }, 2000);
+                    toast.error('Could not calculate route');
                 }
             } else {
                 toast.error('Location not found');
             }
         } catch (error) {
-            console.error('Search error:', error);
-            toast.error('Failed to search location');
+            console.error('❌ Search error:', error);
+            toast.error('Search failed: ' + error.message);
         } finally {
             setIsSearching(false);
         }
@@ -787,34 +746,35 @@ export default function Navigation() {
         try {
             if (!start || !end || start.length !== 2 || end.length !== 2) {
                 console.error('❌ Invalid coordinates:', { start, end });
+                toast.error('Invalid coordinates');
                 return null;
             }
 
-            const mode = routePreferences.transportMode === 'cycling' ? 'bike' 
-                : routePreferences.transportMode === 'walking' ? 'foot' 
-                : 'driving-car';
-
-            let url = `https://router.project-osrm.org/route/v1/${mode}/${start[1]},${start[0]};${end[1]},${end[0]}?alternatives=2&overview=full&geometries=geojson&steps=true`;
-
-            console.log('🛣️ Fetching route:', url);
+            console.log('🛣️ Calculating route from', start, 'to', end);
+            
+            const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?alternatives=2&overview=full&geometries=geojson&steps=true`;
+            console.log('🌐 URL:', url);
 
             const response = await fetch(url);
             const data = await response.json();
-
-            console.log('📦 Route response:', data);
+            console.log('📦 OSRM Response:', data);
 
             if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-                console.log('✅ Found', data.routes.length, 'routes');
-                return data.routes.map((route, index) => ({
+                console.log('✅ Success:', data.routes.length, 'routes found');
+                console.log('📏 First route distance:', (data.routes[0].distance / 1609.34).toFixed(1), 'mi');
+                console.log('⏱️ First route duration:', Math.round(data.routes[0].duration / 60), 'min');
+                return data.routes.map((route) => ({
                     ...route,
                     hasTraffic: Math.random() > 0.5
                 }));
             } else {
-                console.error('❌ Route error:', data.message || data.code);
+                console.error('❌ Routing failed:', data.message || data.code);
+                toast.error('Routing error: ' + (data.message || data.code));
                 return null;
             }
         } catch (error) {
-            console.error('❌ Routing error:', error);
+            console.error('❌ Fetch error:', error);
+            toast.error('Network error: ' + error.message);
             return null;
         }
     };
@@ -924,12 +884,22 @@ export default function Navigation() {
     };
 
     const startNavigation = () => {
+        if (!directions || directions.length === 0) {
+            toast.error('No directions available');
+            console.error('❌ Cannot start - no directions');
+            return;
+        }
+        
+        console.log('🚀 Starting navigation');
+        console.log('📍 Current:', currentLocation);
+        console.log('🎯 Destination:', destination);
+        console.log('📋 Steps:', directions.length);
+        
         setIsNavigating(true);
         setCurrentStepIndex(0);
         setRemainingDistance(distance);
         lastAnnouncedStep.current = -1;
         
-        // Check for traffic on selected route
         if (routes && routes[selectedRouteIndex]?.hasTraffic) {
             setTrafficAlert({
                 message: 'Moderate traffic detected ahead',
@@ -943,7 +913,7 @@ export default function Navigation() {
         if (voiceEnabled && directions && directions.length > 0) {
             speak(`Starting navigation to ${destinationName}. ${directions[0].instruction}`);
         }
-        toast.success('Navigation started');
+        toast.success('Navigation started - Follow the route');
     };
 
     const exitNavigation = () => {
