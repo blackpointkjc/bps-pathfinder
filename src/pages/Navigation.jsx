@@ -1051,8 +1051,9 @@ export default function Navigation() {
                             } else if (newStatus === 'On Scene' && call.status !== 'On Scene') {
                                 callStatus = 'On Scene';
                                 timeField = { time_on_scene: new Date().toISOString() };
-                            } else if ((newStatus === 'Available' || newStatus === 'Out of Service') && 
-                                     call.status !== 'Cleared') {
+                            } else if ((newStatus === 'Available' || newStatus === 'On Patrol' || newStatus === 'Out of Service') && 
+                                     call.status !== 'Cleared' && call.status !== 'Closed') {
+                                // Clear call when officer goes available, on patrol, or OOS after being assigned
                                 callStatus = 'Cleared';
                                 timeField = { time_cleared: new Date().toISOString() };
                             }
@@ -1075,7 +1076,7 @@ export default function Navigation() {
                                     unit_name: unitName || currentUser.full_name,
                                     latitude: call.latitude,
                                     longitude: call.longitude,
-                                    notes: `Status auto-updated from ${newStatus}`
+                                    notes: `Officer went ${newStatus} - call cleared`
                                 });
                             }
                         }
