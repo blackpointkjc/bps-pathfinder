@@ -101,11 +101,23 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
             const updatedMembers = union.member_unit_ids.filter(id => id !== currentUser.id);
             
             if (updatedMembers.length <= 1) {
-                // Disband if only 1 or fewer members
+                // Disband if only 1 or fewer members - clear all members
                 await base44.entities.UnitUnion.update(union.id, {
                     status: 'disbanded',
                     disbanded_date: new Date().toISOString()
                 });
+                
+                // Clear union_id from remaining member
+                if (updatedMembers.length === 1) {
+                    await base44.functions.invoke('updateUser', {
+                        user_id: updatedMembers[0],
+                        data: {
+                            union_id: null,
+                            show_on_map: true
+                        }
+                    });
+                }
+                
                 toast.success('Union disbanded');
             } else {
                 await base44.entities.UnitUnion.update(union.id, {
