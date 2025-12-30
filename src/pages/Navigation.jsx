@@ -7,13 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import MapView from '@/components/map/MapView';
 import SearchBarWithHistory from '@/components/map/SearchBarWithHistory';
-import LocationButton from '@/components/map/LocationButton';
 import DirectionsPanel from '@/components/map/DirectionsPanel';
 import RouteOptions from '@/components/map/RouteOptions';
 import LiveNavigation from '@/components/map/LiveNavigation';
-import OfflineMapManager from '@/components/map/OfflineMapManager';
 import UnitSettings from '@/components/map/UnitSettings';
-import RoutePreferences from '@/components/map/RoutePreferences';
 import ActiveCallsList from '@/components/map/ActiveCallsList';
 import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
 import UnitStatusPanel from '@/components/map/UnitStatusPanel';
@@ -40,7 +37,6 @@ export default function Navigation() {
     const [distance, setDistance] = useState('');
     const [duration, setDuration] = useState('');
     const [destinationName, setDestinationName] = useState('');
-    const [showOfflineManager, setShowOfflineManager] = useState(false);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     
     // Live navigation state
@@ -62,17 +58,6 @@ export default function Navigation() {
         localStorage.getItem('showLights') === 'true'
     );
     const [trafficAlert, setTrafficAlert] = useState(null);
-    const [showRoutePreferences, setShowRoutePreferences] = useState(false);
-    const [routePreferences, setRoutePreferences] = useState(() => {
-        const saved = localStorage.getItem('routePreferences');
-        return saved ? JSON.parse(saved) : {
-            transportMode: 'driving',
-            avoidFerries: false,
-            avoidUnpaved: false,
-            avoidHighways: false,
-            preferScenic: false
-        };
-    });
     const [voiceEnabled, setVoiceEnabled] = useState(
         localStorage.getItem('voiceEnabled') === 'true'
     );
@@ -326,6 +311,17 @@ export default function Navigation() {
         }
     };
 
+    // Auto location update every 30 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (!isNavigating) {
+                getCurrentLocation();
+            }
+        }, 30000);
+
+        return () => clearInterval(interval);
+    }, [isNavigating]);
+
     // Simplified smoothing - only apply when moving fast
     const applySmoothing = (lat, lng, accuracy, speed) => {
         // Don't smooth if stationary or accuracy is very good
@@ -333,17 +329,17 @@ export default function Navigation() {
             kalmanState.current = { lat, lng, variance: 100 };
             return [lat, lng];
         }
-        
+
         if (kalmanState.current.lat === null) {
             kalmanState.current = { lat, lng, variance: 100 };
             return [lat, lng];
         }
-        
+
         // Simple weighted average
         const weight = Math.min(0.3, speed / 20); // More weight to new position when faster
         const newLat = kalmanState.current.lat * (1 - weight) + lat * weight;
         const newLng = kalmanState.current.lng * (1 - weight) + lng * weight;
-        
+
         kalmanState.current = { lat: newLat, lng: newLng, variance: 100 };
         return [newLat, newLng];
     };
@@ -1221,11 +1217,6 @@ export default function Navigation() {
         localStorage.setItem('showLights', enabled);
     };
 
-    const handleSaveRoutePreferences = (prefs) => {
-        setRoutePreferences(prefs);
-        localStorage.setItem('routePreferences', JSON.stringify(prefs));
-    };
-
     const handleVoiceCommand = () => {
         setIsListening(true);
         const success = startListening();
@@ -1643,19 +1634,12 @@ Format the response as a concise bullet list. If information is not available, s
                 )}
             </motion.div>
 
-            {/* Offline Maps Button */}
+            {/* Top Right Controls */}
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute top-2 right-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
+                className="absolute top-16 right-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
             >
-                <Button
-                    onClick={() => setShowOfflineManager(true)}
-                    size="icon"
-                    className="h-8 w-8 rounded-lg bg-white/98 backdrop-blur-2xl shadow-lg border border-gray-200/50 hover:bg-white text-[#007AFF]"
-                >
-                    <MapIcon className="w-4 h-4" />
-                </Button>
 
                 <Button
                     onClick={() => {
@@ -1741,13 +1725,7 @@ Format the response as a concise bullet list. If information is not available, s
                     <Filter className="w-4 h-4" />
                 </Button>
 
-                <Button
-                    onClick={() => setShowRoutePreferences(true)}
-                    size="icon"
-                    className="h-8 w-8 rounded-lg bg-white/95 backdrop-blur-xl shadow-lg border-white/20 hover:bg-white text-gray-600"
-                >
-                    <Settings className="w-4 h-4" />
-                </Button>
+
 
                 <Button
                     onClick={() => {
@@ -1782,11 +1760,7 @@ Format the response as a concise bullet list. If information is not available, s
                             onClear={clearRoute}
                         />
                     </motion.div>
-                    <LocationButton
-                        onClick={getCurrentLocation}
-                        isLocating={isLocating}
-                    />
-                    
+
                     {/* Voice Command Button */}
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -1875,13 +1849,6 @@ Format the response as a concise bullet list. If information is not available, s
                 </>
             )}
 
-            {showOfflineManager && (
-                <OfflineMapManager
-                    currentLocation={currentLocation}
-                    onClose={() => setShowOfflineManager(false)}
-                />
-            )}
-
             <UnitSettings
                 isOpen={showUnitSettings}
                 onClose={() => setShowUnitSettings(false)}
@@ -1889,13 +1856,6 @@ Format the response as a concise bullet list. If information is not available, s
                 onSave={handleSaveUnitName}
                 showLights={showLights}
                 onLightsChange={handleLightsChange}
-            />
-
-            <RoutePreferences
-                isOpen={showRoutePreferences}
-                onClose={() => setShowRoutePreferences(false)}
-                preferences={routePreferences}
-                onSave={handleSaveRoutePreferences}
             />
 
             <LayerFilterPanel

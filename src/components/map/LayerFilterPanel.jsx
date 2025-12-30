@@ -135,7 +135,7 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                     <SelectTrigger className="pointer-events-auto">
                                         <SelectValue placeholder="Select map type" />
                                     </SelectTrigger>
-                                    <SelectContent className="pointer-events-auto z-[1200]">
+                                    <SelectContent className="pointer-events-auto z-[10001]">
                                         {baseMapTypes.map((type) => (
                                             <SelectItem key={type.value} value={type.value} className="pointer-events-auto">
                                                 {type.label}
