@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 
 export default function NavigationCamera({ 
@@ -6,34 +6,63 @@ export default function NavigationCamera({
     currentLocation, 
     heading, 
     speed = 0,
-    upcomingManeuverDistance = null 
+    upcomingManeuverDistance = null,
+    onUserInteraction
 }) {
     const map = useMap();
+    const userInteractingRef = useRef(false);
+    const interactionTimeoutRef = useRef(null);
 
     useEffect(() => {
-        if (!isNavigating || !currentLocation) return;
+        const handleInteractionStart = () => {
+            userInteractingRef.current = true;
+            if (onUserInteraction) onUserInteraction(true);
+            
+            if (interactionTimeoutRef.current) {
+                clearTimeout(interactionTimeoutRef.current);
+            }
+        };
+        
+        const handleInteractionEnd = () => {
+            interactionTimeoutRef.current = setTimeout(() => {
+                userInteractingRef.current = false;
+                if (onUserInteraction) onUserInteraction(false);
+            }, 8000);
+        };
+        
+        map.on('dragstart', handleInteractionStart);
+        map.on('zoomstart', handleInteractionStart);
+        map.on('dragend', handleInteractionEnd);
+        map.on('zoomend', handleInteractionEnd);
+        
+        return () => {
+            map.off('dragstart', handleInteractionStart);
+            map.off('zoomstart', handleInteractionStart);
+            map.off('dragend', handleInteractionEnd);
+            map.off('zoomend', handleInteractionEnd);
+            if (interactionTimeoutRef.current) {
+                clearTimeout(interactionTimeoutRef.current);
+            }
+        };
+    }, [map, onUserInteraction]);
 
-        // Calculate zoom based on speed and upcoming maneuver
+    useEffect(() => {
+        if (!isNavigating || !currentLocation || userInteractingRef.current) return;
+
         let targetZoom;
         
         if (upcomingManeuverDistance && upcomingManeuverDistance < 400) {
-            // Very close to maneuver - zoom in tight
             targetZoom = 19;
         } else if (upcomingManeuverDistance && upcomingManeuverDistance < 1200) {
-            // Approaching maneuver
             targetZoom = 18;
         } else if (speed < 25) {
-            // City streets - closer zoom
             targetZoom = 17;
         } else if (speed < 55) {
-            // Medium speed roads
             targetZoom = 16;
         } else {
-            // Highway - farther zoom for overview
             targetZoom = 15;
         }
 
-        // Smooth zoom transition
         const currentZoom = map.getZoom();
         const zoomDiff = Math.abs(targetZoom - currentZoom);
         
@@ -41,23 +70,12 @@ export default function NavigationCamera({
             map.setZoom(targetZoom, { animate: true, duration: 0.8 });
         }
 
-        // Keep user positioned lower on screen for look-ahead (Waze-style)
         map.panTo(currentLocation, {
             animate: true,
             duration: 0.3,
             easeLinearity: 0.25,
             noMoveStart: true
         });
-
-        // Set map bearing to follow heading for turn-by-turn
-        if (heading !== null && heading !== undefined) {
-            try {
-                // Leaflet doesn't support bearing natively, but we rotate via CSS if needed
-                // For now, keep north-up but this could be enhanced with a plugin
-            } catch (e) {
-                console.warn('Map rotation not supported');
-            }
-        }
 
     }, [map, isNavigating, currentLocation, speed, upcomingManeuverDistance, heading]);
 

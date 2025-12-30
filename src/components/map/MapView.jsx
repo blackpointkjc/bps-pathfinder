@@ -280,6 +280,7 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
                     currentLocation={currentLocation}
                     heading={heading}
                     speed={speed}
+                    onUserInteraction={otherUnits ? undefined : undefined}
                 />
             )}
 
