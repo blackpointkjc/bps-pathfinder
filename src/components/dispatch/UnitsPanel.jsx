@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,9 +9,31 @@ import { toast } from 'sonner';
 import { Users, Search, MapPin, Clock, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+// Reverse geocode coordinates to address
+const getAddressFromCoords = async (lat, lng) => {
+    try {
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+            { headers: { 'User-Agent': 'Emergency-Dispatch-CAD/1.0' } }
+        );
+        const data = await response.json();
+        if (data && data.address) {
+            const { house_number, road, city, town, village } = data.address;
+            const street = house_number && road ? `${house_number} ${road}` : road;
+            const locality = city || town || village;
+            return street && locality ? `${street}, ${locality}` : street || locality || 'Unknown location';
+        }
+        return 'Unknown location';
+    } catch (error) {
+        console.error('Geocoding error:', error);
+        return 'Location unavailable';
+    }
+};
+
 export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [unitAddresses, setUnitAddresses] = useState({});
 
     // Group units by union - only show union once, not individual members
     const groupedUnits = {};
@@ -180,6 +202,24 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
         return selectedCall && selectedCall.assigned_units?.includes(unit.id);
     };
 
+    // Fetch addresses for units
+    useEffect(() => {
+        const fetchAddresses = async () => {
+            const addresses = {};
+            for (const group of filteredUnits) {
+                const primaryUnit = group.members[0];
+                if (primaryUnit?.latitude && primaryUnit?.longitude) {
+                    addresses[group.id] = await getAddressFromCoords(primaryUnit.latitude, primaryUnit.longitude);
+                }
+            }
+            setUnitAddresses(addresses);
+        };
+        
+        if (filteredUnits.length > 0) {
+            fetchAddresses();
+        }
+    }, [filteredUnits.length]);
+
     return (
         <Card className="h-full bg-slate-900/95 border-slate-700 flex flex-col">
             {/* Header */}
@@ -288,6 +328,12 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                                     )}
 
                                     <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
+                                        {unitAddresses[group.id] && (
+                                            <span className="flex items-center gap-1">
+                                                <MapPin className="w-3 h-3" />
+                                                {unitAddresses[group.id]}
+                                            </span>
+                                        )}
                                         {primaryUnit.speed !== undefined && (
                                             <span>{Math.round(primaryUnit.speed)} mph</span>
                                         )}

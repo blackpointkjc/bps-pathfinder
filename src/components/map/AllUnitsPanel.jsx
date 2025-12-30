@@ -9,6 +9,27 @@ import { X, Users, MapPin, Clock, CheckCircle2, Navigation as NavigationIcon, XC
 import { formatDistanceToNow } from 'date-fns';
 import { base44 } from '@/api/base44Client';
 
+// Reverse geocode coordinates to address
+const getAddressFromCoords = async (lat, lng) => {
+    try {
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+            { headers: { 'User-Agent': 'Emergency-Dispatch-CAD/1.0' } }
+        );
+        const data = await response.json();
+        if (data && data.address) {
+            const { house_number, road, city, town, village } = data.address;
+            const street = house_number && road ? `${house_number} ${road}` : road;
+            const locality = city || town || village;
+            return street && locality ? `${street}, ${locality}` : street || locality || 'Unknown location';
+        }
+        return 'Unknown location';
+    } catch (error) {
+        console.error('Geocoding error:', error);
+        return 'Location unavailable';
+    }
+};
+
 const getStatusIcon = (status) => {
     if (status === 'Available') return CheckCircle2;
     if (status === 'Enroute') return NavigationIcon;
@@ -31,6 +52,7 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
     const [units, setUnits] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
+    const [unitAddresses, setUnitAddresses] = useState({});
 
     useEffect(() => {
         if (isOpen) {
@@ -248,12 +270,10 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
                                                                         )}
 
                                                                         <div className="flex items-center gap-4 text-xs text-gray-500">
-                                                                            {item.latitude && item.longitude && (
+                                                                            {unitAddresses[item.id] && (
                                                                                 <div className="flex items-center gap-1">
                                                                                     <MapPin className="w-3 h-3" />
-                                                                                    <span>
-                                                                                        {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}
-                                                                                    </span>
+                                                                                    <span>{unitAddresses[item.id]}</span>
                                                                                 </div>
                                                                             )}
                                                                             {item.last_updated && (
