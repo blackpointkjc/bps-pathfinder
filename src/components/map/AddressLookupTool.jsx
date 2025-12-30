@@ -46,44 +46,62 @@ export default function AddressLookupTool({ isOpen, onClose, onLocationFound }) 
 
             // Get comprehensive property information using AI
             const aiResponse = await base44.integrations.Core.InvokeLLM({
-                prompt: `Search COUNTY PROPERTY RECORDS and OFFICIAL COUNTY ASSESSOR WEBSITES for this address: ${location.display_name}
+                prompt: `You are a property records researcher. Search the internet extensively for property ownership and details for: ${location.display_name}
 
-CRITICAL: Go directly to the county website (Henrico County, Chesterfield County, or Richmond City property records) and search their official property database. Look for parcel information, tax records, and deed records.
+SEARCH THESE SPECIFIC SOURCES:
+1. **County Tax Assessor Databases:**
+   - Henrico County: realestateview.henricowebapps.com
+   - Chesterfield County: chesterfield.gov/government/departments/finance/real-estate-assessments
+   - Richmond City: richmondgov.com/AssessorRealEstate/search.aspx
+   - Search by address to find parcel records
 
-Find the following from OFFICIAL COUNTY RECORDS:
+2. **Public Property Records:**
+   - Zillow, Trulia, Redfin for ownership history
+   - County GIS/mapping systems
+   - Virginia State Corporation Commission
+   - Recent real estate transactions
 
-**## PROPERTY OWNERSHIP (From County Records)**
-• **Current Owner Name(s):** [Search county property records database]
-• **Mailing Address:** [From tax records]
-• **Deed Book/Page:** [From county clerk records]
-• **Property Value/Assessed Value:** [From county assessor]
-• **Last Sale Date & Price:** [From county deed records]
-• **Annual Property Tax:** [From county tax records]
+3. **Title/Deed Records:**
+   - County clerk of court records
+   - Deed transfer databases
+   - Property sale records
 
-**## PROPERTY DETAILS (From County Assessor)**
-• **Year Built:** [County assessor data]
-• **Property Type:** [Residential/Commercial from county]
-• **Square Footage:** [From assessor records]
-• **Lot Size:** [From county parcel data]
-• **Bedrooms/Bathrooms:** [If residential, from assessor]
-• **Parcel ID/Tax Map Number:** [From county records]
+**EXTRACT THIS INFORMATION:**
 
-**## LOCATION & SCHOOLS**
-• **School District:** [From county/school district website]
-• **Elementary School:** [with rating]
-• **Middle School:** [with rating]
-• **High School:** [with rating]
+## 🏠 Property Ownership
+• **Owner Name:** [Full legal owner name from tax records or deed]
+• **Owner Mailing Address:** [From tax records if different from property]
+• **Ownership Type:** [Individual, LLC, Trust, etc.]
+• **Purchase Date:** [Last sale date]
+• **Purchase Price:** [Last sale amount]
 
-**## ADDITIONAL INFO**
-• **Neighborhood/Subdivision:** [From county or public records]
-• **Nearby Amenities:** [Brief list]
+## 💰 Property Value & Tax
+• **Assessed Value:** [Current tax assessment]
+• **Market Value:** [Recent estimate]
+• **Annual Property Tax:** [Amount from tax records]
+• **Tax Year:** [Most recent year]
+• **Parcel/Tax ID:** [Parcel number]
 
-**IMPORTANT:** 
-- Search the actual county website property records (e.g., henricoproperty.com, chesterfield.gov/property, richmondgov.com/property)
-- Provide direct links to the county property record page using format: [View Official County Record](actual_url)
-- If unable to find specific info, state "Not found in county records"
+## 🏗️ Property Details
+• **Year Built:** 
+• **Property Type:** [Single Family, Condo, Commercial, etc.]
+• **Building Square Footage:**
+• **Lot Size:** [Acres or sq ft]
+• **Bedrooms/Bathrooms:** [If residential]
+• **Stories/Floors:**
 
-Format with markdown headings (##), bullet points, and **bold** for labels. Include clickable links.`,
+## 🎓 Schools & Area
+• **School District:**
+• **Elementary School:** [with rating if available]
+• **Middle School:** [with rating if available]  
+• **High School:** [with rating if available]
+• **Neighborhood:**
+
+## 🔗 Official Links
+[View County Tax Record](insert actual URL if found)
+[View on Zillow/Trulia](insert URL if available)
+
+**IMPORTANT:** Search real county databases and real estate sites. Extract ACTUAL data, not placeholders. If truly not available after searching, say "Information not publicly available" but try your best to find it first.`,
                 add_context_from_internet: true
             });
 
