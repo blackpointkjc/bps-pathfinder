@@ -102,7 +102,10 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
                                         <p className="text-sm text-gray-500">{filteredUnits.length} units online</p>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={onClose}>
+                                <Button variant="ghost" size="icon" onClick={(e) => {
+                                    e.stopPropagation();
+                                    onClose();
+                                }}>
                                     <X className="w-5 h-5" />
                                 </Button>
                             </div>

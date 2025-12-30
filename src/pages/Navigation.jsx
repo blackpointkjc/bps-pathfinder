@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield, Filter, MapPinOff, Users } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield, Filter, MapPinOff, Users, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
@@ -18,6 +18,8 @@ import ActiveCallsList from '@/components/map/ActiveCallsList';
 import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
 import UnitStatusPanel from '@/components/map/UnitStatusPanel';
 import AllUnitsPanel from '@/components/map/AllUnitsPanel';
+import HistoricalLogsPanel from '@/components/dispatch/HistoricalLogsPanel';
+import AutoDispatchSuggestion from '@/components/map/AutoDispatchSuggestion';
 import DispatchPanel from '@/components/map/DispatchPanel';
 import CallDetailView from '@/components/map/CallDetailView';
 import CallDetailSidebar from '@/components/map/CallDetailSidebar';
@@ -110,6 +112,13 @@ export default function Navigation() {
     const [pendingCallNotification, setPendingCallNotification] = useState(null);
     const lastCheckedCallIdRef = useRef(null);
     const [showAllUnitsPanel, setShowAllUnitsPanel] = useState(false);
+    const [showHistoricalLogs, setShowHistoricalLogs] = useState(false);
+    const [autoDispatchSuggestion, setAutoDispatchSuggestion] = useState(null);
+    const [criticalAlertSound] = useState(() => {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDWH0fPTgjMGHm7A7+OZUQ4PVKbh8LFVGA5On+DvwGMbBzaE0fPReiYEI3DC7+GTUAwQWK3l7q5XFAxAnN/zv2kdBDWH0PPTgyEEI3DD7+CTUQ0RWKzl7q5ZEwtCnN/zvmgdBDWH0fPRfiYEI3DE7+CTTw0PVqfj8K9VFg1Mnt/zv2kbBDOGz/PSfyYEJHPD7t+NTA0PWK3l761ZEgxBm9/zu2MbBDKGzvLPfSUEJXfE7t6OTQ0RW7Hl7ahVFQ5NneDvvWMbBjOGzvLP');
+        audio.volume = 0.8;
+        return audio;
+    });
     
     // Layer filter state
     const [showLayerFilters, setShowLayerFilters] = useState(false);
@@ -983,7 +992,9 @@ export default function Navigation() {
     };
 
     const handleStatusChange = async (newStatus, eta = null) => {
+        const oldStatus = unitStatus;
         setUnitStatus(newStatus);
+        
         if (currentUser) {
             try {
                 const updateData = { 
@@ -997,6 +1008,22 @@ export default function Navigation() {
                 await base44.auth.updateMe(updateData);
                 toast.success(`Status: ${newStatus}`);
                 
+                // Log status change
+                await base44.entities.UnitStatusLog.create({
+                    unit_id: currentUser.id,
+                    unit_name: unitName || currentUser.full_name,
+                    old_status: oldStatus,
+                    new_status: newStatus,
+                    location_lat: currentLocation?.[0],
+                    location_lng: currentLocation?.[1],
+                    notes: activeCallInfo
+                });
+                
+                // Auto-dispatch logic when becoming available
+                if ((newStatus === 'Available' || newStatus === 'Returning to Station') && activeCalls.length > 0) {
+                    checkAutoDispatch();
+                }
+                
                 // Immediately update location to reflect new status
                 await updateUserLocation();
             } catch (error) {
@@ -1004,6 +1031,87 @@ export default function Navigation() {
                 toast.error('Failed to update status');
             }
         }
+    };
+
+    const checkAutoDispatch = async () => {
+        if (!currentLocation || !activeCalls || activeCalls.length === 0) return;
+
+        try {
+            // Find highest priority call
+            const sortedCalls = [...activeCalls].sort((a, b) => {
+                const aPriority = assessCallPriority(a).score;
+                const bPriority = assessCallPriority(b).score;
+                return bPriority - aPriority;
+            });
+
+            const highestPriorityCall = sortedCalls[0];
+            
+            // Calculate distance to call
+            const distance = calculateDistance(
+                currentLocation[0],
+                currentLocation[1],
+                highestPriorityCall.latitude,
+                highestPriorityCall.longitude
+            );
+
+            const distanceMiles = (distance * 0.621371).toFixed(1);
+            const eta = Math.ceil((distance / 60) * 60); // Rough ETA in minutes
+
+            setAutoDispatchSuggestion({
+                call: { ...highestPriorityCall, priority: assessCallPriority(highestPriorityCall) },
+                unit: {
+                    id: currentUser.id,
+                    unit_number: unitName || currentUser.full_name,
+                    status: unitStatus
+                },
+                distance: `${distanceMiles} mi`,
+                eta: `${eta} min`
+            });
+        } catch (error) {
+            console.error('Error checking auto-dispatch:', error);
+        }
+    };
+
+    const calculateDistance = (lat1, lon1, lat2, lon2) => {
+        const R = 6371; // Earth radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    };
+
+    const assessCallPriority = (call) => {
+        const incident = call.incident?.toLowerCase() || '';
+        const description = call.description?.toLowerCase() || '';
+        const combined = `${incident} ${description}`;
+
+        if (
+            combined.includes('shooting') || combined.includes('stabbing') ||
+            combined.includes('officer down') || combined.includes('shots fired') ||
+            combined.includes('active shooter') || combined.includes('code 3')
+        ) {
+            return { level: 'critical', score: 4, label: 'CRITICAL' };
+        }
+
+        if (
+            combined.includes('assault') || combined.includes('robbery') ||
+            combined.includes('burglary in progress') || combined.includes('domestic') ||
+            combined.includes('pursuit') || combined.includes('accident with injury')
+        ) {
+            return { level: 'high', score: 3, label: 'HIGH' };
+        }
+
+        if (
+            combined.includes('suspicious') || combined.includes('disturbance') ||
+            combined.includes('trespass') || combined.includes('alarm')
+        ) {
+            return { level: 'medium', score: 2, label: 'MEDIUM' };
+        }
+
+        return { level: 'low', score: 1, label: 'LOW' };
     };
 
     const handleEnrouteToCall = async (call) => {
@@ -1027,6 +1135,39 @@ export default function Navigation() {
                     current_call_info: callInfo,
                     last_updated: new Date().toISOString()
                 });
+                
+                // Log unit status change
+                await base44.entities.UnitStatusLog.create({
+                    unit_id: currentUser.id,
+                    unit_name: unitName || currentUser.full_name,
+                    old_status: unitStatus,
+                    new_status: 'Enroute',
+                    location_lat: currentLocation?.[0],
+                    location_lng: currentLocation?.[1],
+                    call_id: callId,
+                    notes: `Responding to ${call.incident}`
+                });
+
+                // Log call status change
+                await base44.entities.CallStatusLog.create({
+                    call_id: callId,
+                    incident_type: call.incident,
+                    location: call.location,
+                    old_status: call.status,
+                    new_status: 'Enroute',
+                    unit_id: currentUser.id,
+                    unit_name: unitName || currentUser.full_name,
+                    latitude: call.latitude,
+                    longitude: call.longitude,
+                    notes: `${unitName || currentUser.full_name} enroute`
+                });
+
+                // Play alert sound for high-priority calls
+                const priority = assessCallPriority(call);
+                if (priority.score >= 3) {
+                    criticalAlertSound.play().catch(err => console.log('Audio play failed:', err));
+                }
+
                 toast.success(`Enroute to ${call.incident}`);
             } catch (error) {
                 console.error('Error updating user status:', error);
@@ -1538,12 +1679,12 @@ Format the response as a concise bullet list. If information is not available, s
                 )}
 
                 <Button
-                    onClick={() => window.location.href = '/callhistory'}
+                    onClick={() => setShowHistoricalLogs(true)}
                     size="icon"
-                    className="h-8 w-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg"
-                    title="Call History"
+                    className="h-8 w-8 rounded-lg bg-purple-600 hover:bg-purple-700 text-white shadow-lg"
+                    title="Historical Logs"
                 >
-                    <Radio className="w-4 h-4" />
+                    <History className="w-4 h-4" />
                 </Button>
 
                 <Button
@@ -1794,6 +1935,24 @@ Format the response as a concise bullet list. If information is not available, s
                 isOpen={showAllUnitsPanel}
                 onClose={() => setShowAllUnitsPanel(false)}
             />
+
+            {/* Historical Logs Panel */}
+            <HistoricalLogsPanel
+                isOpen={showHistoricalLogs}
+                onClose={() => setShowHistoricalLogs(false)}
+            />
+
+            {/* Auto-Dispatch Suggestion */}
+            {autoDispatchSuggestion && (
+                <AutoDispatchSuggestion
+                    suggestion={autoDispatchSuggestion}
+                    onAccept={async () => {
+                        await handleEnrouteToCall(autoDispatchSuggestion.call);
+                        setAutoDispatchSuggestion(null);
+                    }}
+                    onDismiss={() => setAutoDispatchSuggestion(null)}
+                />
+            )}
             </div>
             );
             }

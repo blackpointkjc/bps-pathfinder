@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, MapPin, Radio } from 'lucide-react';
 
 // Icon based on incident type and agency
-const createCallIcon = (call) => {
+const createCallIcon = (call, isHighPriority = false) => {
     const incident = call.incident?.toLowerCase() || '';
     const agency = call.agency || '';
     const isDispatch = call.source === 'dispatch';
@@ -71,6 +71,18 @@ const createCallIcon = (call) => {
         `;
     }
     
+    const pulseAnimation = isHighPriority ? `
+        @keyframes flashPulse {
+            0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { transform: scale(1.2); opacity: 0.9; box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        }
+    ` : `
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+    `;
+
     return new L.DivIcon({
         className: 'custom-call-marker',
         html: `
@@ -83,13 +95,13 @@ const createCallIcon = (call) => {
                     width: 36px;
                     height: 36px;
                     background: ${bgColor};
-                    border: 3px solid white;
+                    border: 3px solid ${isHighPriority ? '#EF4444' : 'white'};
                     border-radius: 50%;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    animation: pulse 2s infinite;
+                    animation: ${isHighPriority ? 'flashPulse 1.5s infinite' : 'pulse 2s infinite'};
                 ">
                     ${iconSvg}
                 </div>
@@ -105,10 +117,7 @@ const createCallIcon = (call) => {
                     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
                 "></div>
                 <style>
-                    @keyframes pulse {
-                        0%, 100% { transform: scale(1); opacity: 1; }
-                        50% { transform: scale(1.1); opacity: 0.8; }
-                    }
+                    ${pulseAnimation}
                 </style>
             </div>
         `,
@@ -116,6 +125,42 @@ const createCallIcon = (call) => {
         iconAnchor: [18, 18],
         popupAnchor: [0, -18]
     });
+};
+
+// Priority assessment
+const assessCallPriority = (call) => {
+    const incident = call.incident?.toLowerCase() || '';
+    const description = call.description?.toLowerCase() || '';
+    const combined = `${incident} ${description}`;
+
+    if (
+        combined.includes('shooting') ||
+        combined.includes('stabbing') ||
+        combined.includes('officer down') ||
+        combined.includes('shots fired') ||
+        combined.includes('active shooter') ||
+        combined.includes('code 3') ||
+        combined.includes('10-00') ||
+        incident.includes('cardiac arrest') ||
+        incident.includes('person with gun')
+    ) {
+        return { level: 'critical', score: 4 };
+    }
+
+    if (
+        combined.includes('assault') ||
+        combined.includes('robbery') ||
+        combined.includes('burglary in progress') ||
+        combined.includes('domestic') ||
+        combined.includes('pursuit') ||
+        combined.includes('accident with injury') ||
+        combined.includes('fire') ||
+        incident.includes('weapons')
+    ) {
+        return { level: 'high', score: 3 };
+    }
+
+    return { level: 'low', score: 1 };
 };
 
 export default function ActiveCallMarkers({ calls, onCallClick }) {
@@ -147,7 +192,9 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
         <>
             {validCalls.map((call, index) => {
                 const position = [call.latitude, call.longitude];
-                const icon = createCallIcon(call);
+                const priority = assessCallPriority(call);
+                const isHighPriority = priority.score >= 3;
+                const icon = createCallIcon(call, isHighPriority);
                 console.log(`🎯 Rendering marker ${index}:`, call.incident, 'at', position);
                 
                 return (
