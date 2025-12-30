@@ -13,15 +13,15 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
 
-    // Group units by union
+    // Group units by union and filter out OOS non-union units
     const groupedUnits = units.reduce((acc, unit) => {
         if (unit.union_id) {
             if (!acc[unit.union_id]) {
                 acc[unit.union_id] = [];
             }
             acc[unit.union_id].push(unit);
-        } else {
-            acc[unit.id] = [unit]; // Individual unit
+        } else if (unit.status !== 'Out of Service') {
+            acc[unit.id] = [unit]; // Individual unit (excluding OOS)
         }
         return acc;
     }, {});
@@ -43,15 +43,24 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
             
             return matchesSearch && matchesStatus;
         })
-        .map(([key, members]) => ({
-            id: key,
-            isUnion: members.length > 1,
-            unionName: members.length > 1 ? key : null,
-            members: members,
-            displayName: members.length > 1 ? key : (members[0].unit_number || members[0].full_name),
-            status: members[0].status,
-            current_call_info: members[0].current_call_info
-        }));
+        .map(([key, members]) => {
+            // Sort members by unit number
+            const sortedMembers = [...members].sort((a, b) => {
+                const aNum = parseInt(a.unit_number) || 999;
+                const bNum = parseInt(b.unit_number) || 999;
+                return aNum - bNum;
+            });
+            
+            return {
+                id: key,
+                isUnion: members.length > 1,
+                unionName: members.length > 1 ? key : null,
+                members: sortedMembers,
+                displayName: members.length > 1 ? key : (members[0].unit_number || members[0].full_name),
+                status: sortedMembers[0].status,
+                current_call_info: sortedMembers[0].current_call_info
+            };
+        });
 
     const statusCounts = {
         all: units.length,
@@ -323,7 +332,6 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                                                                await base44.functions.invoke('updateUser', {
                                                                    user_id: member.id,
                                                                    data: {
-                                                                       unit_number: member.unit_number?.split(' Union')[0],
                                                                        union_id: null,
                                                                        show_on_map: true
                                                                    }
