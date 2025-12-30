@@ -1,119 +1,161 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
-    Navigation2, 
-    ArrowUp, 
-    CornerUpRight, 
-    CornerUpLeft, 
-    RotateCcw,
+    Navigation, 
+    ArrowRight, 
+    ArrowLeft, 
+    ArrowUp,
+    ArrowUpRight,
+    ArrowUpLeft,
+    ArrowBigRight,
+    ArrowBigLeft,
+    RotateCw,
+    Merge,
     X,
-    AlertTriangle
+    Clock,
+    MapPin
 } from 'lucide-react';
 
 const getDirectionIcon = (instruction) => {
-    const lower = instruction.toLowerCase();
-    if (lower.includes('left')) return CornerUpLeft;
-    if (lower.includes('right')) return CornerUpRight;
-    if (lower.includes('u-turn') || lower.includes('uturn')) return RotateCcw;
-    return ArrowUp;
+    const text = instruction.toLowerCase();
+    if (text.includes('sharp left') || text.includes('turn left')) return ArrowBigLeft;
+    if (text.includes('sharp right') || text.includes('turn right')) return ArrowBigRight;
+    if (text.includes('slight left')) return ArrowUpLeft;
+    if (text.includes('slight right')) return ArrowUpRight;
+    if (text.includes('left')) return ArrowLeft;
+    if (text.includes('right')) return ArrowRight;
+    if (text.includes('merge') || text.includes('ramp')) return Merge;
+    if (text.includes('straight') || text.includes('continue')) return ArrowUp;
+    if (text.includes('arrive')) return MapPin;
+    return Navigation;
 };
 
-export default function LiveNavigation({ 
-    currentStep, 
-    nextStep, 
-    remainingDistance, 
-    remainingTime,
-    onExit,
-    isRerouting 
-}) {
-    if (!currentStep) return null;
-
-    const Icon = getDirectionIcon(currentStep.instruction);
-    const NextIcon = nextStep ? getDirectionIcon(nextStep.instruction) : null;
+export default function LiveNavigation({ currentStep, nextStep, remainingDistance, remainingTime, onExit, isRerouting, speed = 0, eta }) {
+    const DirectionIcon = currentStep ? getDirectionIcon(currentStep.instruction) : Navigation;
+    const NextIcon = nextStep ? getDirectionIcon(nextStep.instruction) : ArrowRight;
+    
+    // Parse ETA from remainingTime if available
+    const getETA = () => {
+        if (eta) return eta;
+        if (remainingTime) {
+            const match = remainingTime.match(/ETA (\d+:\d+\s*[AP]M)/i);
+            return match ? match[1] : null;
+        }
+        return null;
+    };
 
     return (
-        <AnimatePresence>
-            <motion.div
-                initial={{ y: -100 }}
-                animate={{ y: 0 }}
-                exit={{ y: -100 }}
-                className="absolute top-4 left-4 right-4 z-[2000] md:left-1/2 md:-translate-x-1/2 md:w-[480px] md:right-auto pointer-events-auto"
-            >
-                <Card className="bg-white/95 backdrop-blur-xl shadow-2xl border-white/20 overflow-hidden">
-                    {/* Rerouting Banner */}
-                    <AnimatePresence>
-                        {isRerouting && (
-                            <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="bg-[#007AFF] text-white px-4 py-2 flex items-center gap-2 text-sm"
-                            >
-                                <AlertTriangle className="w-4 h-4 animate-pulse" />
-                                <span>Finding better route...</span>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    <div className="p-4">
-                        {/* Current Instruction */}
-                        <div className="flex items-start gap-4 mb-4">
-                            <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-[#007AFF] flex items-center justify-center">
-                                <Icon className="w-8 h-8 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-2xl font-bold text-[#1D1D1F] leading-tight mb-1">
-                                    {currentStep.distance}
-                                </p>
-                                <p className="text-base text-gray-600">
-                                    {currentStep.instruction}
-                                </p>
-                            </div>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={onExit}
-                                className="flex-shrink-0 h-8 w-8 rounded-full"
-                            >
-                                <X className="w-4 h-4" />
-                            </Button>
+        <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-4 left-1/2 -translate-x-1/2 z-[1002] w-[calc(100%-32px)] max-w-[560px]"
+        >
+            {/* Main Navigation Card */}
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl shadow-2xl border border-slate-700 overflow-hidden">
+                {/* Top Status Bar */}
+                <div className="bg-slate-950/50 px-6 py-3 flex items-center justify-between border-b border-slate-700">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-blue-400" />
+                            <span className="text-sm font-semibold text-blue-400">
+                                {getETA() || 'Calculating...'}
+                            </span>
                         </div>
-
-                        {/* Next Turn Preview */}
-                        {nextStep && (
-                            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-white flex items-center justify-center">
-                                    {NextIcon && <NextIcon className="w-4 h-4 text-gray-600" />}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs text-gray-500">Then</p>
-                                    <p className="text-sm text-gray-700 truncate">
-                                        {nextStep.instruction}
-                                    </p>
-                                </div>
-                            </div>
+                        <div className="h-4 w-px bg-slate-600" />
+                        <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-green-400" />
+                            <span className="text-sm font-semibold text-green-400">{remainingDistance}</span>
+                        </div>
+                        {speed > 0 && (
+                            <>
+                                <div className="h-4 w-px bg-slate-600" />
+                                <span className="text-sm font-semibold text-slate-300">{Math.round(speed)} mph</span>
+                            </>
                         )}
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onExit}
+                        className="text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl h-8 w-8"
+                    >
+                        <X className="w-4 h-4" />
+                    </Button>
+                </div>
 
-                        {/* Trip Info */}
-                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                            <div>
-                                <p className="text-xs text-gray-500">Distance</p>
-                                <p className="text-sm font-semibold text-[#1D1D1F]">{remainingDistance}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-500">ETA</p>
-                                <p className="text-sm font-semibold text-[#1D1D1F]">{remainingTime}</p>
-                            </div>
-                            <div className="flex items-center gap-1 text-green-600">
-                                <Navigation2 className="w-4 h-4" />
-                                <span className="text-xs font-medium">On route</span>
-                            </div>
+                {/* Main Instruction */}
+                <div className="p-6">
+                    <div className="flex items-center gap-5">
+                        <motion.div 
+                            key={currentStep?.instruction}
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg"
+                        >
+                            <DirectionIcon className="w-10 h-10 text-white" strokeWidth={2.5} />
+                        </motion.div>
+                        <div className="flex-1">
+                            <motion.div 
+                                key={currentStep?.distance}
+                                initial={{ x: -10, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                className="text-4xl font-bold text-white mb-2"
+                            >
+                                {currentStep?.distance || '---'}
+                            </motion.div>
+                            <motion.p 
+                                key={currentStep?.instruction}
+                                initial={{ x: -10, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                transition={{ delay: 0.1 }}
+                                className="text-lg text-slate-200 leading-snug"
+                            >
+                                {currentStep?.instruction || 'Continue on route'}
+                            </motion.p>
                         </div>
                     </div>
-                </Card>
-            </motion.div>
-        </AnimatePresence>
+                </div>
+
+                {/* Next Turn Preview */}
+                <AnimatePresence mode="wait">
+                    {nextStep && (
+                        <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="border-t border-slate-700 bg-slate-800/50"
+                        >
+                            <div className="px-6 py-4 flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-slate-700/50 flex items-center justify-center">
+                                    <NextIcon className="w-6 h-6 text-slate-300" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-xs text-slate-500 uppercase tracking-wide mb-1 font-semibold">Then in {nextStep.distance}</p>
+                                    <p className="text-sm text-slate-200 font-medium">{nextStep.instruction}</p>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            {/* Rerouting Banner */}
+            <AnimatePresence>
+                {isRerouting && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="mt-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl py-3 px-5 flex items-center gap-3 shadow-lg"
+                    >
+                        <RotateCw className="w-5 h-5 animate-spin" />
+                        <span className="font-semibold text-base">Recalculating fastest route...</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
     );
 }
