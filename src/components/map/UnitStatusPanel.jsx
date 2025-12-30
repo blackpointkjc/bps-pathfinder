@@ -92,14 +92,14 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 z-[2000] pointer-events-auto"
+                        className="fixed inset-0 bg-black/50 z-[2100]"
                         onClick={onClose}
                     />
                     <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
-                            className="fixed inset-0 flex items-center justify-center z-[2001] p-4"
+                            className="fixed inset-0 flex items-center justify-center z-[2101] p-4"
                             onClick={(e) => e.stopPropagation()}
                         >
                         <Card className="p-6 bg-white shadow-2xl w-full max-w-md flex flex-col" style={{ maxHeight: '85vh' }}>

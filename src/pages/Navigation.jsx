@@ -1508,9 +1508,10 @@ Format the response as a concise bullet list. If information is not available, s
                     className="absolute top-1/2 -translate-y-1/2 left-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
                 >
                     <Button 
-                        onClick={async () => {
+                        onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
                             await handleStatusChange('Available');
-                            // Clear active call
                             if (currentUser) {
                                 try {
                                     await base44.auth.updateMe({
@@ -1526,7 +1527,7 @@ Format the response as a concise bullet list. If information is not available, s
                             }
                         }} 
                         size="sm" 
-                        className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg`}
+                        className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg pointer-events-auto`}
                     >
                         <CheckCircle2 className={`w-4 h-4 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
                         <span className={`text-[8px] font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Clear</span>
@@ -1551,7 +1552,15 @@ Format the response as a concise bullet list. If information is not available, s
                         <Shield className="w-4 h-4 text-indigo-600" />
                         <span className="text-[8px] font-semibold text-gray-700">Group</span>
                     </Button>
-                    <Button onClick={() => setShowStatusPanel(true)} size="sm" className="bg-white/95 hover:bg-white shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg">
+                    <Button 
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowStatusPanel(true);
+                        }} 
+                        size="sm" 
+                        className="bg-white/95 hover:bg-white shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg pointer-events-auto"
+                    >
                         <Settings className="w-4 h-4 text-gray-600" />
                         <span className="text-[8px] font-semibold text-gray-700">More</span>
                     </Button>

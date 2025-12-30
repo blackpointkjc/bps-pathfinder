@@ -280,26 +280,64 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                                         )}
                                     </div>
 
-                                    {selectedCall && (
-                                        <Button
-                                            size="sm"
-                                            onClick={() => isAssigned ? unassignUnit(primaryUnit) : assignUnit(primaryUnit)}
-                                            className={`w-full ${
-                                                isAssigned 
-                                                    ? 'bg-red-600 hover:bg-red-700' 
-                                                    : 'bg-green-600 hover:bg-green-700'
-                                            }`}
-                                        >
-                                            {isAssigned ? (
-                                                <>
-                                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                                    Unassign
-                                                </>
-                                            ) : (
-                                                'Assign to Call'
-                                            )}
-                                        </Button>
-                                    )}
+                                    <div className="flex gap-2">
+                                        {selectedCall && (
+                                            <Button
+                                                size="sm"
+                                                onClick={() => isAssigned ? unassignUnit(primaryUnit) : assignUnit(primaryUnit)}
+                                                className={`flex-1 ${
+                                                    isAssigned 
+                                                        ? 'bg-red-600 hover:bg-red-700' 
+                                                        : 'bg-green-600 hover:bg-green-700'
+                                                }`}
+                                            >
+                                                {isAssigned ? (
+                                                    <>
+                                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                                        Unassign
+                                                    </>
+                                                ) : (
+                                                    'Assign to Call'
+                                                )}
+                                            </Button>
+                                        )}
+                                        {group.isUnion && currentUser?.role === 'admin' && (
+                                            <Button
+                                                size="sm"
+                                                onClick={async () => {
+                                                    try {
+                                                        const unions = await base44.entities.UnitUnion.filter({ union_name: group.unionName, status: 'active' });
+                                                        if (unions && unions.length > 0) {
+                                                            const union = unions[0];
+                                                            await base44.entities.UnitUnion.update(union.id, {
+                                                                status: 'disbanded',
+                                                                disbanded_date: new Date().toISOString()
+                                                            });
+                                                            
+                                                            for (const member of group.members) {
+                                                                await base44.functions.invoke('updateUser', {
+                                                                    user_id: member.id,
+                                                                    data: {
+                                                                        unit_number: member.unit_number?.split(' Union')[0],
+                                                                        union_id: null
+                                                                    }
+                                                                });
+                                                            }
+                                                            
+                                                            toast.success('Union disbanded');
+                                                            onUpdate();
+                                                        }
+                                                    } catch (error) {
+                                                        console.error('Error disbanding:', error);
+                                                        toast.error('Failed to disband');
+                                                    }
+                                                }}
+                                                className="bg-orange-600 hover:bg-orange-700"
+                                            >
+                                                Disband
+                                            </Button>
+                                        )}
+                                    </div>
                                 </motion.div>
                             );
                         })}

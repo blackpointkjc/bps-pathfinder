@@ -45,14 +45,15 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[1100] pointer-events-auto"
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[2100]"
                         onClick={onClose}
                     />
                     <motion.div
                         initial={{ opacity: 0, x: 300 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 300 }}
-                        className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-[1101] overflow-y-auto pointer-events-auto"
+                        className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl z-[2101] overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
                     >
                         <div className="p-6">
                             {/* Header */}
