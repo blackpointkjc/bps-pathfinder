@@ -196,15 +196,23 @@ Deno.serve(async (req) => {
                     jurisdiction = 'Richmond, VA, USA';
                 } else if (call.agency.includes('HCPD') || call.agency.includes('HPD') || call.agency.includes('Henrico')) {
                     jurisdiction = 'Henrico County, VA, USA';
-                } else if (call.agency.includes('CCPD') || call.agency.includes('CCFD') || call.agency.includes('Chesterfield') || call.agency.includes('CC') || call.agency.includes('Chester')) {
+                } else if (call.agency.toLowerCase().includes('ccpd') || 
+                           call.agency.toLowerCase().includes('ccfd') || 
+                           call.agency.toLowerCase().includes('chesterfield') || 
+                           call.agency.toLowerCase().includes('cfrd') ||
+                           call.agency.toLowerCase().includes('cfd')) {
                     jurisdiction = 'Chesterfield County, VA, USA';
                 } else if (call.agency.includes('BPS') || call.agency.includes('BSP')) {
                     jurisdiction = 'Richmond, VA, USA';
                 }
                 
                 // Additional check for Chesterfield-specific locations
-                if (call.location.includes('Chester') || call.location.includes('Midlothian') || 
-                    call.location.includes('Bon Air') || call.location.includes('Ettrick')) {
+                const locationLower = call.location.toLowerCase();
+                if (locationLower.includes('chester') || locationLower.includes('midlothian') || 
+                    locationLower.includes('bon air') || locationLower.includes('ettrick') ||
+                    locationLower.includes('colonial heights') || locationLower.includes('matoaca') ||
+                    locationLower.includes('woodlake') || locationLower.includes('beach road') ||
+                    locationLower.includes('ironbridge') || locationLower.includes('iron bridge')) {
                     jurisdiction = 'Chesterfield County, VA, USA';
                 }
                 
