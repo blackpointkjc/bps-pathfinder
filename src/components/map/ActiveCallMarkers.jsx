@@ -164,27 +164,17 @@ const assessCallPriority = (call) => {
 };
 
 export default function ActiveCallMarkers({ calls, onCallClick }) {
-    console.log('🚨 ActiveCallMarkers rendering with', calls?.length || 0, 'calls');
-    
     if (!calls || calls.length === 0) {
-        console.log('❌ No calls provided to ActiveCallMarkers');
         return null;
     }
     
     const validCalls = calls.filter(call => {
-        const isValid = call.latitude && call.longitude && 
-                       !isNaN(call.latitude) && !isNaN(call.longitude) &&
-                       call.latitude !== 0 && call.longitude !== 0;
-        if (!isValid) {
-            console.log('⚠️ Invalid call:', call.incident, 'agency:', call.agency, 'lat:', call.latitude, 'lng:', call.longitude);
-        }
-        return isValid;
+        return call.latitude && call.longitude && 
+               !isNaN(call.latitude) && !isNaN(call.longitude) &&
+               call.latitude !== 0 && call.longitude !== 0;
     });
     
-    console.log(`✅ ${validCalls.length} valid calls out of ${calls.length} total`);
-    
     if (validCalls.length === 0) {
-        console.log('❌ No valid calls with coordinates');
         return null;
     }
     
@@ -195,7 +185,6 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                 const priority = assessCallPriority(call);
                 const isHighPriority = priority.score >= 3;
                 const icon = createCallIcon(call, isHighPriority);
-                console.log(`🎯 Rendering marker ${index}:`, call.incident, 'at', position);
                 
                 return (
                     <Marker
@@ -204,7 +193,6 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                         icon={icon}
                         eventHandlers={{
                             click: () => {
-                                console.log('📍 Marker clicked:', call.incident);
                                 if (onCallClick) {
                                     onCallClick(call);
                                 }
