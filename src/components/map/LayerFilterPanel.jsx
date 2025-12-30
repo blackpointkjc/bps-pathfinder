@@ -16,6 +16,7 @@ import {
 
 export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterChange }) {
     const [searchAddress, setSearchAddress] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
 
     const richmondBeats = {
         '1st Precinct': ['111', '112', '113'],
@@ -31,9 +32,17 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
         { value: 'topo', label: 'Topographic' },
     ];
 
-    const handleAddressSearch = () => {
-        if (searchAddress.trim()) {
+    const handleAddressSearch = async () => {
+        if (!searchAddress.trim()) return;
+        
+        setIsSearching(true);
+        try {
             onFilterChange({ ...filters, searchAddress: searchAddress.trim() });
+            setSearchAddress(''); // Clear input after search
+        } catch (error) {
+            console.error('Search error:', error);
+        } finally {
+            setIsSearching(false);
         }
     };
 
@@ -130,9 +139,10 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                             handleAddressSearch();
                                         }} 
                                         size="sm"
+                                        disabled={isSearching}
                                         className="pointer-events-auto"
                                     >
-                                        Search
+                                        {isSearching ? 'Searching...' : 'Search'}
                                     </Button>
                                 </div>
                             </div>

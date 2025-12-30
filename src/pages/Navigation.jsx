@@ -1310,8 +1310,10 @@ export default function Navigation() {
         // Handle address search if provided - just drop a pin, don't navigate
         if (newFilters.searchAddress && newFilters.searchAddress !== jurisdictionFilters.searchAddress) {
             try {
+                toast.info('Searching...');
                 const response = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(newFilters.searchAddress)}&limit=1`
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(newFilters.searchAddress + ', Virginia')}&limit=1`,
+                    { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' } }
                 );
                 const data = await response.json();
 
@@ -1324,35 +1326,45 @@ export default function Navigation() {
                     setSearchPin({ coords, address: result.display_name, propertyInfo: 'Loading property information...' });
                     toast.success(`Found: ${result.display_name.split(',')[0]}`);
                     
-                    // Get property info using AI
+                    // Get property info using AI with detailed instructions
                     try {
                         const propertyInfo = await base44.integrations.Core.InvokeLLM({
-                            prompt: `I need property ownership information for: ${result.display_name}
+                            prompt: `Search for property ownership and detailed information for this address: ${result.display_name}
 
-Search public records, county assessor databases, and real estate listings to find:
-1. Current property owner name(s)
-2. Property value/assessed value
-3. Year built
-4. Property type (residential, commercial, etc.)
-5. Last sale date and price if available
+Using public records, county assessor databases, property tax records, and real estate data, find:
 
-Format the response as a concise bullet list. If information is not available, say "Information not found" for that item.`,
+1. **Property Owner**: Full legal name(s) of current owner(s)
+2. **Property Value**: Current assessed value or market value
+3. **Year Built**: Construction year
+4. **Property Type**: Residential/Commercial/etc.
+5. **Lot Size**: Parcel size in acres or sq ft
+6. **Last Sale**: Date and price of most recent sale
+7. **Tax Information**: Annual property tax amount if available
+
+Format as a clear, organized list with bullet points.
+If specific data is not available, indicate "Not found" for that item.
+Be thorough and search multiple sources.`,
                             add_context_from_internet: true
                         });
                         
                         if (propertyInfo) {
                             setSearchPin({ coords, address: result.display_name, propertyInfo });
+                            toast.success('Property information loaded');
                         } else {
                             setSearchPin({ coords, address: result.display_name, propertyInfo: 'Property information not available' });
                         }
                     } catch (error) {
-                        setSearchPin({ coords, address: result.display_name, propertyInfo: 'Error loading property information' });
+                        console.error('Property info error:', error);
+                        setSearchPin({ coords, address: result.display_name, propertyInfo: 'Error loading property information. Try again.' });
                     }
                 } else {
                     toast.error('Address not found');
+                    setSearchPin(null);
                 }
             } catch (error) {
+                console.error('Search error:', error);
                 toast.error('Failed to search address');
+                setSearchPin(null);
             }
         }
     };
