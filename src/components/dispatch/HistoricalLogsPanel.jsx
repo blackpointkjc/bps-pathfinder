@@ -73,10 +73,10 @@ export default function HistoricalLogsPanel({ isOpen, onClose }) {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full max-w-4xl z-[2101] pointer-events-auto"
+                    className="w-full max-w-6xl max-h-[90vh] z-[2101] pointer-events-auto"
                 >
-                    <Card className="bg-white pointer-events-auto">
-                        <div className="p-6">
+                    <Card className="bg-white pointer-events-auto h-full flex flex-col">
+                        <div className="p-6 flex flex-col h-full overflow-hidden">
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-2xl bg-purple-100 flex items-center justify-center">
@@ -110,14 +110,14 @@ export default function HistoricalLogsPanel({ isOpen, onClose }) {
                                 />
                             </div>
 
-                            <Tabs defaultValue="units" className="w-full pointer-events-auto">
-                                <TabsList className="grid w-full grid-cols-2 pointer-events-auto">
+                            <Tabs defaultValue="units" className="w-full pointer-events-auto flex-1 flex flex-col overflow-hidden">
+                                <TabsList className="grid w-full grid-cols-2 pointer-events-auto flex-shrink-0">
                                     <TabsTrigger value="units" className="pointer-events-auto">Unit Status Changes</TabsTrigger>
                                     <TabsTrigger value="calls" className="pointer-events-auto">Call Activity</TabsTrigger>
                                 </TabsList>
 
-                                <TabsContent value="units" className="mt-4 pointer-events-auto">
-                                    <ScrollArea className="h-[600px] pointer-events-auto overflow-y-auto">
+                                <TabsContent value="units" className="mt-4 pointer-events-auto flex-1 overflow-hidden">
+                                    <ScrollArea className="h-full pointer-events-auto overflow-y-auto">
                                         {loading ? (
                                             <div className="text-center py-12 text-gray-500">
                                                 <Clock className="w-12 h-12 mx-auto mb-2 text-gray-300 animate-spin" />
@@ -175,8 +175,8 @@ export default function HistoricalLogsPanel({ isOpen, onClose }) {
                                     </ScrollArea>
                                 </TabsContent>
 
-                                <TabsContent value="calls" className="mt-4 pointer-events-auto">
-                                    <ScrollArea className="h-[600px] pointer-events-auto overflow-y-auto">
+                                <TabsContent value="calls" className="mt-4 pointer-events-auto flex-1 overflow-hidden">
+                                    <ScrollArea className="h-full pointer-events-auto overflow-y-auto">
                                         {loading ? (
                                             <div className="text-center py-12 text-gray-500">
                                                 <Clock className="w-12 h-12 mx-auto mb-2 text-gray-300 animate-spin" />
