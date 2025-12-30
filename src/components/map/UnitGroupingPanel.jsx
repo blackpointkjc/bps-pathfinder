@@ -61,32 +61,26 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                 formed_date: new Date().toISOString()
             });
 
-            // Update all units with union name
-            const newUnitNumber = `${currentUser.unit_number || currentUser.full_name} ${unionId}`;
+            // Update all units with union ID (don't change unit_number)
             await base44.auth.updateMe({
-                unit_number: newUnitNumber,
                 union_id: unionId,
                 show_on_map: true // Lead unit shows on map
             });
 
             for (const unitId of selectedUnits) {
-                const unit = availableUnits.find(u => u.id === unitId);
-                if (unit) {
-                    await base44.functions.invoke('updateUser', {
-                        user_id: unitId,
-                        data: {
-                            unit_number: `${unit.unit_number || unit.full_name} ${unionId}`,
-                            union_id: unionId,
-                            show_on_map: false // Hide non-lead units
-                        }
-                    });
-                }
+                await base44.functions.invoke('updateUser', {
+                    user_id: unitId,
+                    data: {
+                        union_id: unionId,
+                        show_on_map: false // Hide non-lead units
+                    }
+                });
             }
 
             toast.success(`Created ${unionId} with ${selectedUnits.length + 1} units`);
             setSelectedUnits([]);
-            fetchUnions();
-            fetchAvailableUnits();
+            await fetchUnions();
+            await fetchAvailableUnits();
         } catch (error) {
             console.error('Error creating union:', error);
             toast.error('Failed to create union');
@@ -100,7 +94,6 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
         try {
             // Remove union from user and restore visibility
             await base44.auth.updateMe({
-                unit_number: currentUser.unit_number?.split(' Union')[0] || currentUser.full_name,
                 union_id: null,
                 show_on_map: true
             });
@@ -223,7 +216,6 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                                                                 await base44.functions.invoke('updateUser', {
                                                                     user_id: unitId,
                                                                     data: {
-                                                                        unit_number: availableUnits.find(u => u.id === unitId)?.unit_number?.split(' Union')[0],
                                                                         union_id: null,
                                                                         show_on_map: true
                                                                     }
@@ -365,21 +357,34 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                                         <div className="space-y-2">
                                             {unions.map((union) => (
                                                 <Card key={union.id} className="p-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <Shield className="w-4 h-4 text-indigo-600" />
-                                                                <span className="font-semibold text-gray-900">
-                                                                    {union.union_name}
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-xs text-gray-600">
-                                                                {union.member_unit_ids?.length || 0} units
-                                                            </p>
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <Shield className="w-4 h-4 text-indigo-600" />
+                                                            <span className="font-semibold text-gray-900">
+                                                                {union.union_name}
+                                                            </span>
+                                                            <Badge variant="outline" className="bg-green-50 text-green-700">
+                                                                Active
+                                                            </Badge>
                                                         </div>
-                                                        <Badge variant="outline" className="bg-green-50 text-green-700">
-                                                            Active
-                                                        </Badge>
+                                                    </div>
+                                                    <div className="ml-6 space-y-1">
+                                                        {union.member_unit_ids
+                                                            ?.map(id => availableUnits.find(u => u.id === id))
+                                                            .filter(Boolean)
+                                                            .sort((a, b) => {
+                                                                const aNum = parseInt(a.unit_number) || 999;
+                                                                const bNum = parseInt(b.unit_number) || 999;
+                                                                return aNum - bNum;
+                                                            })
+                                                            .map((member, idx) => (
+                                                                <div key={member.id} className="flex items-center gap-2 text-sm">
+                                                                    <div className="w-1 h-1 rounded-full bg-indigo-400" />
+                                                                    <span className="text-gray-700">
+                                                                        {member.unit_number || member.full_name}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
                                                     </div>
                                                 </Card>
                                             ))}

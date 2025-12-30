@@ -46,14 +46,20 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
             const response = await base44.functions.invoke('fetchAllUsers', {});
             const users = response.data?.users || [];
             
-            // Group users by union
+            // Group users by union and filter out OOS non-union units
             const grouped = [];
             const processedUnions = new Set();
             
             users.forEach(user => {
                 if (user.union_id && !processedUnions.has(user.union_id)) {
                     processedUnions.add(user.union_id);
-                    const unionMembers = users.filter(u => u.union_id === user.union_id);
+                    const unionMembers = users
+                        .filter(u => u.union_id === user.union_id)
+                        .sort((a, b) => {
+                            const aNum = parseInt(a.unit_number) || 999;
+                            const bNum = parseInt(b.unit_number) || 999;
+                            return aNum - bNum;
+                        });
                     grouped.push({
                         isUnionGroup: true,
                         id: user.union_id,
@@ -61,7 +67,7 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
                         members: unionMembers,
                         status: unionMembers[0]?.status || 'Available'
                     });
-                } else if (!user.union_id) {
+                } else if (!user.union_id && user.status !== 'Out of Service') {
                     grouped.push(user);
                 }
             });

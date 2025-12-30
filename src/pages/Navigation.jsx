@@ -1496,7 +1496,7 @@ Format the response as a concise bullet list. If information is not available, s
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="absolute top-1/2 -translate-y-1/2 left-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
+                    className="absolute top-24 left-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
                 >
                     <Button 
                         onClick={async (e) => {
