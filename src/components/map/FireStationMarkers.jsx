@@ -49,9 +49,9 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
 
     // Convert Web Mercator (EPSG:3857) to WGS84 Lat/Lng (EPSG:4326)
     const webMercatorToLatLng = (x, y) => {
-        const lng = (x * 180) / 20037508.34;
-        let lat = (y * 180) / 20037508.34;
-        lat = (Math.atan(Math.exp(lat * (Math.PI / 180))) * 360) / Math.PI - 90;
+        const R = 6378137; // Earth's radius in meters
+        const lng = (x / R) * (180 / Math.PI);
+        const lat = (2 * Math.atan(Math.exp(y / R)) - Math.PI / 2) * (180 / Math.PI);
         return [lat, lng];
     };
 
@@ -101,6 +101,7 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
                 });
                 allStations.push(...richmondStations);
                 console.log('🔥 Loaded', richmondStations.length, 'Richmond fire stations');
+                console.log('🔥 Sample Richmond station coords:', richmondStations[0]);
             }
 
             console.log('🔥 Total fire stations:', allStations.length);
