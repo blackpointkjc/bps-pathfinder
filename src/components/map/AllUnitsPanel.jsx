@@ -95,6 +95,20 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
             });
             
             setUnits(grouped);
+            
+            // Fetch addresses for units with coordinates
+            const addresses = {};
+            for (const item of grouped) {
+                if (item.isUnionGroup) {
+                    const firstMember = item.members[0];
+                    if (firstMember?.latitude && firstMember?.longitude) {
+                        addresses[item.id] = await getAddressFromCoords(firstMember.latitude, firstMember.longitude);
+                    }
+                } else if (item.latitude && item.longitude) {
+                    addresses[item.id] = await getAddressFromCoords(item.latitude, item.longitude);
+                }
+            }
+            setUnitAddresses(addresses);
         } catch (error) {
             console.error('Error fetching units:', error);
         } finally {
