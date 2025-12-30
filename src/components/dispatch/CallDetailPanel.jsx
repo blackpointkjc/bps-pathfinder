@@ -208,31 +208,31 @@ export default function CallDetailPanel({ call, currentUser, onUpdate, units }) 
                         {call.time_received && (
                             <div className="flex justify-between text-slate-300">
                                 <span>Received:</span>
-                                <span>{new Date(call.time_received).toLocaleString()}</span>
+                                <span>{new Date(call.time_received).toLocaleString('en-US', { timeZone: 'America/New_York' })}</span>
                             </div>
                         )}
                         {call.time_dispatched && (
                             <div className="flex justify-between text-slate-300">
                                 <span>Dispatched:</span>
-                                <span>{new Date(call.time_dispatched).toLocaleString()}</span>
+                                <span>{new Date(call.time_dispatched).toLocaleString('en-US', { timeZone: 'America/New_York' })}</span>
                             </div>
                         )}
                         {call.time_enroute && (
                             <div className="flex justify-between text-slate-300">
                                 <span>Enroute:</span>
-                                <span>{new Date(call.time_enroute).toLocaleString()}</span>
+                                <span>{new Date(call.time_enroute).toLocaleString('en-US', { timeZone: 'America/New_York' })}</span>
                             </div>
                         )}
                         {call.time_on_scene && (
                             <div className="flex justify-between text-slate-300">
                                 <span>On Scene:</span>
-                                <span>{new Date(call.time_on_scene).toLocaleString()}</span>
+                                <span>{new Date(call.time_on_scene).toLocaleString('en-US', { timeZone: 'America/New_York' })}</span>
                             </div>
                         )}
                         {call.time_cleared && (
                             <div className="flex justify-between text-slate-300">
                                 <span>Cleared:</span>
-                                <span>{new Date(call.time_cleared).toLocaleString()}</span>
+                                <span>{new Date(call.time_cleared).toLocaleString('en-US', { timeZone: 'America/New_York' })}</span>
                             </div>
                         )}
                     </div>

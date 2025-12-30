@@ -34,38 +34,29 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
     const normalizedHeading = heading ? ((heading % 360) + 360) % 360 : 0;
     const agencyLabel = getAgencyLabel(unitNumber);
 
-    // Union leaders get green flashing lights
-    const unionLights = isUnionLead ? `
-        <div style="position: absolute; top: 3px; left: 10px; width: 6px; height: 6px; background: #00FF00; border-radius: 50%; animation: blink1 0.8s infinite;"></div>
-        <div style="position: absolute; top: 3px; right: 10px; width: 6px; height: 6px; background: #00FF00; border-radius: 50%; animation: blink2 0.8s infinite;"></div>
-    ` : '';
+    // Determine if unit should show lights - green for dispatched/enroute/on scene
+    const shouldShowLights = status === 'Dispatched' || status === 'Enroute' || status === 'On Scene';
+    const lightsColor = shouldShowLights ? '#00FF00' : null;
 
     return new L.DivIcon({
         className: 'custom-marker',
         html: `
             <div style="position: relative; width: 50px; height: 50px; transform: rotate(${normalizedHeading}deg); transition: transform 0.3s ease;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" style="position: relative; z-index: 2; filter: drop-shadow(0 3px 10px rgba(0,0,0,0.4));">
-                    ${isUnionLead ? `
-                    <circle cx="8" cy="5" r="1.8" fill="#00FF00">
+                    ${lightsColor ? `
+                    <circle cx="8" cy="5" r="1.8" fill="${lightsColor}">
                         <animate attributeName="opacity" values="1;0;1" dur="0.8s" repeatCount="indefinite"/>
                     </circle>
-                    <circle cx="16" cy="5" r="1.8" fill="#00FF00">
+                    <circle cx="16" cy="5" r="1.8" fill="${lightsColor}">
                         <animate attributeName="opacity" values="0;1;0" dur="0.8s" repeatCount="indefinite"/>
                     </circle>
-                    ` : (showLights ? `
-                    <circle cx="8" cy="5" r="1.8" fill="#FF0000">
-                        <animate attributeName="opacity" values="1;0;1" dur="0.8s" repeatCount="indefinite"/>
-                    </circle>
-                    <circle cx="16" cy="5" r="1.8" fill="#0000FF">
-                        <animate attributeName="opacity" values="0;1;0" dur="0.8s" repeatCount="indefinite"/>
-                    </circle>
-                    ` : '')}
-                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" fill="${color}" stroke="${isSupervisor ? '#FFD700' : (isUnionLead ? '#00FF00' : '#1E3A8A')}" stroke-width="0.8"/>
+                    ` : ''}
+                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" fill="${color}" stroke="${isSupervisor ? '#FFD700' : (lightsColor ? lightsColor : '#1E3A8A')}" stroke-width="0.8"/>
                     <circle cx="7" cy="17" r="2.2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
                     <circle cx="17" cy="17" r="2.2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
                     <rect x="6" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
                     <rect x="11" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
-                    <polygon points="12,1 15,7 9,7" fill="${color}" stroke="${isSupervisor ? '#FFD700' : (isUnionLead ? '#00FF00' : '#1E3A8A')}" stroke-width="0.8"/>
+                    <polygon points="12,1 15,7 9,7" fill="${color}" stroke="${isSupervisor ? '#FFD700' : (lightsColor ? lightsColor : '#1E3A8A')}" stroke-width="0.8"/>
                 </svg>
             </div>
         `,

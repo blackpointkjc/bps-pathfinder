@@ -176,10 +176,15 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
                                     </div>
 
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1 text-xs text-slate-400">
-                                            <Clock className="w-3 h-3" />
-                                            {new Date(call.time_received || call.created_date).toLocaleTimeString()}
-                                        </div>
+                                    <div className="flex items-center gap-1 text-xs text-slate-400">
+                                        <Clock className="w-3 h-3" />
+                                        {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { 
+                                            timeZone: 'America/New_York',
+                                            hour: 'numeric',
+                                            minute: '2-digit',
+                                            hour12: true
+                                        })}
+                                    </div>
                                         <Badge variant="outline" className="border-slate-600 text-slate-300 text-xs">
                                             {call.status}
                                         </Badge>

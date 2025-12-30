@@ -88,34 +88,60 @@ export default function MessagingPanel({ currentUser, units, isOpen, onClose }) 
                         </Button>
                     </div>
 
-                    <ScrollArea className="flex-1 p-4">
-                        <div className="space-y-3">
-                            {messages.map(msg => (
-                                <div
-                                    key={msg.id}
-                                    className={`p-3 rounded-lg ${
-                                        msg.sender_id === currentUser.id
-                                            ? 'bg-blue-900/30 ml-8'
-                                            : 'bg-slate-800 mr-8'
-                                    }`}
-                                >
-                                    <div className="flex items-start justify-between mb-1">
-                                        <span className="text-xs font-semibold text-white">{msg.sender_name}</span>
-                                        <span className="text-xs text-slate-500">
-                                            {new Date(msg.created_date).toLocaleTimeString()}
-                                        </span>
+                    <ScrollArea className="flex-1 p-4 bg-slate-950">
+                        <div className="space-y-2">
+                            {messages.map(msg => {
+                                const isOwnMessage = msg.sender_id === currentUser.id;
+                                // Generate consistent color based on sender ID
+                                const senderHue = msg.sender_id === 'dispatch' ? 200 : 
+                                    Array.from(msg.sender_id).reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
+                                
+                                return (
+                                    <div
+                                        key={msg.id}
+                                        className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                                    >
+                                        <div className={`max-w-[75%] ${isOwnMessage ? 'ml-12' : 'mr-12'}`}>
+                                            {!isOwnMessage && (
+                                                <div className="text-xs font-semibold mb-1 px-1"
+                                                    style={{ color: `hsl(${senderHue}, 60%, 60%)` }}>
+                                                    {msg.sender_name}
+                                                </div>
+                                            )}
+                                            <div
+                                                className={`rounded-2xl px-4 py-2 shadow-sm ${
+                                                    isOwnMessage
+                                                        ? 'bg-blue-500 text-white rounded-br-sm'
+                                                        : 'text-white rounded-bl-sm'
+                                                }`}
+                                                style={!isOwnMessage ? {
+                                                    background: `hsl(${senderHue}, 40%, 35%)`
+                                                } : {}}
+                                            >
+                                                <p className="text-sm leading-relaxed">{msg.message}</p>
+                                            </div>
+                                            <div className={`text-[10px] text-slate-500 mt-1 px-1 ${
+                                                isOwnMessage ? 'text-right' : 'text-left'
+                                            }`}>
+                                                {new Date(msg.created_date).toLocaleTimeString('en-US', { 
+                                                    timeZone: 'America/New_York',
+                                                    hour: 'numeric',
+                                                    minute: '2-digit',
+                                                    hour12: true
+                                                })}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <p className="text-sm text-slate-300">{msg.message}</p>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </ScrollArea>
 
-                    <div className="p-4 border-t border-slate-700">
+                    <div className="p-4 border-t border-slate-700 bg-slate-900">
                         <select
                             value={selectedRecipient}
                             onChange={(e) => setSelectedRecipient(e.target.value)}
-                            className="flex h-9 w-full rounded-md border bg-slate-800 border-slate-700 text-white px-3 py-1 text-sm mb-2"
+                            className="flex h-9 w-full rounded-xl border bg-slate-800 border-slate-700 text-white px-3 py-1 text-sm mb-2"
                         >
                             <option value="dispatch">Dispatch</option>
                             {units.map(unit => (
@@ -129,10 +155,10 @@ export default function MessagingPanel({ currentUser, units, isOpen, onClose }) 
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
                                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                                placeholder="Type message..."
-                                className="bg-slate-800 border-slate-700 text-white"
+                                placeholder="iMessage"
+                                className="bg-slate-800 border-slate-700 text-white rounded-full px-4"
                             />
-                            <Button onClick={sendMessage} size="sm">
+                            <Button onClick={sendMessage} size="icon" className="rounded-full bg-blue-500 hover:bg-blue-600">
                                 <Send className="w-4 h-4" />
                             </Button>
                         </div>
