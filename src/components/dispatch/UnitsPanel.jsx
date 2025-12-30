@@ -297,30 +297,27 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                                     className="p-3 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-600 transition-all"
                                 >
                                     <div className="flex items-start justify-between mb-2">
-                                        <div>
-                                            <h3 className="font-bold text-white flex items-center gap-2">
-                                                {group.displayName}
-                                                {group.isUnion && (
-                                                    <Badge className="bg-indigo-600 text-white text-xs">
-                                                        {group.members.length} Units
-                                                    </Badge>
-                                                )}
-                                            </h3>
+                                        <div className="flex-1">
                                             {group.isUnion ? (
                                                 <>
-                                                    <div className="text-xs mt-1 space-y-1 bg-slate-900/50 rounded p-2">
-                                                        <div className="text-indigo-400 font-semibold mb-1">Units in {group.displayName}:</div>
+                                                    <h3 className="font-bold text-white text-lg mb-2">{group.displayName}</h3>
+                                                    <div className="space-y-1 text-sm text-slate-300">
                                                         {group.members.map((member, idx) => (
-                                                            <div key={member.id} className="flex items-center gap-2">
-                                                                <div className={`w-1.5 h-1.5 rounded-full ${idx === 0 ? 'bg-yellow-500' : 'bg-indigo-400'}`} />
-                                                                <span className={idx === 0 ? 'text-slate-200 font-medium' : 'text-slate-400'}>
-                                                                    {member.unit_number || member.full_name}
-                                                                    {idx === 0 && ' (Lead)'}
-                                                                </span>
+                                                            <div key={member.id} className="flex items-start gap-2">
+                                                                <span className="text-slate-500">•</span>
+                                                                <div>
+                                                                    <span className={idx === 0 ? 'font-semibold text-white' : ''}>
+                                                                        {member.unit_number || 'N/A'}
+                                                                    </span>
+                                                                    <span className="text-slate-400 ml-2">
+                                                                        {member.rank && member.last_name ? `${member.rank} ${member.last_name}` : member.full_name}
+                                                                    </span>
+                                                                    {idx === 0 && <span className="text-yellow-400 ml-2">(Lead)</span>}
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-xs text-slate-400 mt-2">
+                                                    <div className="flex items-center gap-3 text-xs text-slate-400 mt-2">
                                                         {unitAddresses[group.id] && (
                                                             <span className="flex items-center gap-1">
                                                                 <MapPin className="w-3 h-3" />
@@ -339,11 +336,14 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                                                     </div>
                                                 </>
                                             ) : (
-                                                <p className="text-xs text-slate-400">
-                                                    {primaryUnit.rank && primaryUnit.last_name 
-                                                        ? `${primaryUnit.rank} ${primaryUnit.last_name}` 
-                                                        : primaryUnit.full_name}
-                                                </p>
+                                                <>
+                                                    <h3 className="font-bold text-white text-lg">{group.displayName}</h3>
+                                                    <p className="text-sm text-slate-400">
+                                                        {primaryUnit.rank && primaryUnit.last_name 
+                                                            ? `${primaryUnit.rank} ${primaryUnit.last_name}` 
+                                                            : primaryUnit.full_name}
+                                                    </p>
+                                                </>
                                             )}
                                         </div>
                                         <Badge className={`${getStatusColor(group.status)} text-white text-xs`}>
