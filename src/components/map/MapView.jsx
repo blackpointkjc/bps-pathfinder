@@ -49,7 +49,7 @@ const createCurrentLocationIcon = (withLights = false) => {
     });
 };
 
-// Police car with heading and optional lights
+// Police car with heading arrow (no rotation, just directional arrow)
 const createLocationWithHeading = (heading, withLights = false) => {
     // Normalize heading to 0-360
     const normalizedHeading = heading ? ((heading % 360) + 360) % 360 : 0;
@@ -57,7 +57,7 @@ const createLocationWithHeading = (heading, withLights = false) => {
     return new L.DivIcon({
         className: 'custom-marker',
         html: `
-            <div style="position: relative; width: 50px; height: 50px; transform: rotate(${normalizedHeading}deg); transition: transform 0.3s ease;">
+            <div style="position: relative; width: 50px; height: 50px;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" style="position: relative; z-index: 2; filter: drop-shadow(0 3px 10px rgba(0,0,0,0.4));">
                     ${withLights ? `
                     <circle cx="8" cy="5" r="1.8" fill="#FF0000">
@@ -72,7 +72,9 @@ const createLocationWithHeading = (heading, withLights = false) => {
                     <circle cx="17" cy="17" r="2.2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
                     <rect x="6" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
                     <rect x="11" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
-                    <polygon points="12,1 15,7 9,7" fill="#1E40AF" stroke="#1E3A8A" stroke-width="0.8"/>
+                </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50" style="position: absolute; top: 0; left: 0; transform: rotate(${normalizedHeading}deg); transform-origin: center; transition: transform 0.3s ease;">
+                    <polygon points="25,8 30,23 20,23" fill="#FBBF24" stroke="#F59E0B" stroke-width="1.5"/>
                 </svg>
             </div>
         `,
