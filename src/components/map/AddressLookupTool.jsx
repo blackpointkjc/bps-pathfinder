@@ -46,62 +46,48 @@ export default function AddressLookupTool({ isOpen, onClose, onLocationFound }) 
 
             // Get comprehensive property information using AI
             const aiResponse = await base44.integrations.Core.InvokeLLM({
-                prompt: `You are a property records researcher. Search the internet extensively for property ownership and details for: ${location.display_name}
+                prompt: `Search the internet and find REAL property information for: ${location.display_name}
 
-SEARCH THESE SPECIFIC SOURCES:
-1. **County Tax Assessor Databases:**
-   - Henrico County: realestateview.henricowebapps.com
-   - Chesterfield County: chesterfield.gov/government/departments/finance/real-estate-assessments
-   - Richmond City: richmondgov.com/AssessorRealEstate/search.aspx
-   - Search by address to find parcel records
+YOU MUST search Zillow, Redfin, Realtor.com, county property records, and public databases. DO NOT return "not available" unless you've exhausted all sources.
 
-2. **Public Property Records:**
-   - Zillow, Trulia, Redfin for ownership history
-   - County GIS/mapping systems
-   - Virginia State Corporation Commission
-   - Recent real estate transactions
-
-3. **Title/Deed Records:**
-   - County clerk of court records
-   - Deed transfer databases
-   - Property sale records
-
-**EXTRACT THIS INFORMATION:**
+Search specifically:
+- zillow.com (search the address to find owner, value, year built, property details)
+- redfin.com (property facts, sale history, tax records)
+- realtor.com (property details and ownership)
+- County tax assessor websites for Virginia
+- Public property records and deed databases
 
 ## 🏠 Property Ownership
-• **Owner Name:** [Full legal owner name from tax records or deed]
-• **Owner Mailing Address:** [From tax records if different from property]
-• **Ownership Type:** [Individual, LLC, Trust, etc.]
-• **Purchase Date:** [Last sale date]
-• **Purchase Price:** [Last sale amount]
+• **Owner Name:** [Search Zillow, Redfin, county records - find the actual name]
+• **Ownership Type:** [Individual, LLC, Trust - from public records]
+• **Purchase Date:** [From Zillow/Redfin sale history]
+• **Purchase Price:** [From Zillow/Redfin sale history]
 
 ## 💰 Property Value & Tax
-• **Assessed Value:** [Current tax assessment]
-• **Market Value:** [Recent estimate]
-• **Annual Property Tax:** [Amount from tax records]
-• **Tax Year:** [Most recent year]
-• **Parcel/Tax ID:** [Parcel number]
+• **Current Value:** [From Zillow Zestimate or Redfin Estimate]
+• **Assessed Value:** [From county tax records]
+• **Annual Property Tax:** [From Zillow or county records]
+• **Tax ID/Parcel #:** [From property records]
 
 ## 🏗️ Property Details
-• **Year Built:** 
-• **Property Type:** [Single Family, Condo, Commercial, etc.]
-• **Building Square Footage:**
-• **Lot Size:** [Acres or sq ft]
-• **Bedrooms/Bathrooms:** [If residential]
-• **Stories/Floors:**
+• **Year Built:** [Find this on Zillow/Redfin - it's always listed]
+• **Property Type:** [Single Family, Townhouse, Condo, etc.]
+• **Square Footage:** [From Zillow/Redfin]
+• **Lot Size:** [From property listings]
+• **Bedrooms:** [From Zillow/Redfin]
+• **Bathrooms:** [From Zillow/Redfin]
 
-## 🎓 Schools & Area
-• **School District:**
-• **Elementary School:** [with rating if available]
-• **Middle School:** [with rating if available]  
-• **High School:** [with rating if available]
-• **Neighborhood:**
+## 🎓 Schools
+• **Elementary:** [School name and rating from GreatSchools.org]
+• **Middle School:** [School name and rating]
+• **High School:** [School name and rating]
+• **School District:** [District name]
 
-## 🔗 Official Links
-[View County Tax Record](insert actual URL if found)
-[View on Zillow/Trulia](insert URL if available)
+## 📍 Location
+• **Neighborhood:** [Subdivision or area name]
+• **County:** [Henrico, Chesterfield, Richmond City, etc.]
 
-**IMPORTANT:** Search real county databases and real estate sites. Extract ACTUAL data, not placeholders. If truly not available after searching, say "Information not publicly available" but try your best to find it first.`,
+**CRITICAL:** Find ACTUAL data from Zillow, Redfin, or county sites. These sites have nearly all US properties. If you can't find ANY information, the property might not exist - but try multiple spellings and nearby addresses.`,
                 add_context_from_internet: true
             });
 
