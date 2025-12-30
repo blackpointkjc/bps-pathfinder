@@ -196,10 +196,16 @@ Deno.serve(async (req) => {
                     jurisdiction = 'Richmond, VA, USA';
                 } else if (call.agency.includes('HCPD') || call.agency.includes('HPD') || call.agency.includes('Henrico')) {
                     jurisdiction = 'Henrico County, VA, USA';
-                } else if (call.agency.includes('CCPD') || call.agency.includes('CCFD') || call.agency.includes('Chesterfield') || call.agency.includes('CC')) {
+                } else if (call.agency.includes('CCPD') || call.agency.includes('CCFD') || call.agency.includes('Chesterfield') || call.agency.includes('CC') || call.agency.includes('Chester')) {
                     jurisdiction = 'Chesterfield County, VA, USA';
                 } else if (call.agency.includes('BPS') || call.agency.includes('BSP')) {
                     jurisdiction = 'Richmond, VA, USA';
+                }
+                
+                // Additional check for Chesterfield-specific locations
+                if (call.location.includes('Chester') || call.location.includes('Midlothian') || 
+                    call.location.includes('Bon Air') || call.location.includes('Ettrick')) {
+                    jurisdiction = 'Chesterfield County, VA, USA';
                 }
                 
                 // Clean address format (handle intersections, blocks, etc.)

@@ -12,6 +12,11 @@ import JailMarkers from './JailMarkers';
 import SearchPinMarker from './SearchPinMarker';
 import NavigationCamera from './NavigationCamera';
 import FireStationMarkers from './FireStationMarkers';
+import ChesterfieldFireStations from './ChesterfieldFireStations';
+import VolunteerRescueSquads from './VolunteerRescueSquads';
+import VolunteerFireCompanies from './VolunteerFireCompanies';
+import RAAStations from './RAAStations';
+import CCPDStation from './CCPDStation';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -245,6 +250,21 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
 
             {/* Fire station markers */}
             <FireStationMarkers showStations={showFireStations} onNavigateToStation={onNavigateToJail} />
+
+            {/* Chesterfield Fire Department */}
+            <ChesterfieldFireStations showStations={showFireStations} onNavigateToStation={onNavigateToJail} />
+
+            {/* Volunteer Rescue Squads */}
+            <VolunteerRescueSquads showStations={jurisdictionFilters?.showEMS} onNavigateToStation={onNavigateToJail} />
+
+            {/* Volunteer Fire Companies */}
+            <VolunteerFireCompanies showStations={showFireStations} onNavigateToStation={onNavigateToJail} />
+
+            {/* Richmond Ambulance Authority */}
+            <RAAStations showStations={jurisdictionFilters?.showEMS} onNavigateToStation={onNavigateToJail} />
+
+            {/* Chesterfield County Police */}
+            <CCPDStation showStations={showPoliceStations} onNavigateToStation={onNavigateToJail} />
             
             {!isNavigating ? (
                 <MapController 

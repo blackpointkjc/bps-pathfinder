@@ -87,6 +87,20 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                     />
                                 </div>
                                 <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-semibold text-gray-700">Show Fire Stations</Label>
+                                    <Switch
+                                        checked={filters.showFireStations ?? false}
+                                        onCheckedChange={(checked) => onFilterChange({ ...filters, showFireStations: checked })}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-semibold text-gray-700">Show EMS/Rescue</Label>
+                                    <Switch
+                                        checked={filters.showEMS ?? false}
+                                        onCheckedChange={(checked) => onFilterChange({ ...filters, showEMS: checked })}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between">
                                     <Label className="text-sm font-semibold text-gray-700">Show Jails</Label>
                                     <Switch
                                         checked={filters.showJails ?? true}

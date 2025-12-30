@@ -116,7 +116,8 @@ export default function Navigation() {
         baseMapType: 'street',
         searchAddress: '',
         showPoliceStations: true,
-        showFireStations: true,
+        showFireStations: false,
+        showEMS: false,
         showJails: true
     });
     const [searchPin, setSearchPin] = useState(null);
@@ -228,11 +229,13 @@ export default function Navigation() {
         }
     }, [currentUser, currentLocation, heading, speed, unitStatus, showLights, activeCallInfo]);
 
-    // Fetch other units on mount and then every 10 seconds for real-time tracking
+    // Fetch other units on mount and then every 5 seconds for real-time tracking with push notifications
     useEffect(() => {
         if (currentUser) {
             fetchOtherUnits();
-            const interval = setInterval(fetchOtherUnits, 10000);
+            const interval = setInterval(() => {
+                fetchOtherUnits(true); // Silent mode - check for status changes
+            }, 5000);
             return () => clearInterval(interval);
         }
     }, [currentUser]);
@@ -573,16 +576,18 @@ export default function Navigation() {
         }
     };
 
-    const fetchOtherUnits = async () => {
+    const lastUnitStatesRef = useRef({});
+
+    const fetchOtherUnits = async (silentMode = false) => {
         if (!currentUser) return;
-        
+
         try {
             const response = await base44.functions.invoke('fetchAllUsers', {});
             const users = response.data?.users || [];
-            
+
             const activeUsers = users.filter(user => {
                 if (user.id === currentUser.id) return false;
-                
+
                 if (user.show_on_map === false) {
                     return false;
                 }
@@ -590,15 +595,41 @@ export default function Navigation() {
                 if (user.status === 'Out of Service') {
                     return false;
                 }
-                
+
                 const hasLocation = user.latitude && user.longitude && 
                                   !isNaN(user.latitude) && !isNaN(user.longitude) &&
                                   user.latitude !== 0 && user.longitude !== 0;
-                
-                return hasLocation;
-                });
 
-                setOtherUnits(activeUsers);
+                return hasLocation;
+            });
+
+            // Check for status changes and trigger notifications
+            if (silentMode) {
+                activeUsers.forEach(user => {
+                    const lastState = lastUnitStatesRef.current[user.id];
+                    if (lastState && lastState.status !== user.status) {
+                        const unitName = user.unit_number || user.full_name;
+                        toast.info(`${unitName}: ${lastState.status} → ${user.status}`, {
+                            duration: 3000,
+                            position: 'bottom-right'
+                        });
+                    }
+                    lastUnitStatesRef.current[user.id] = {
+                        status: user.status,
+                        call_info: user.current_call_info
+                    };
+                });
+            } else {
+                // Initialize on first load
+                activeUsers.forEach(user => {
+                    lastUnitStatesRef.current[user.id] = {
+                        status: user.status,
+                        call_info: user.current_call_info
+                    };
+                });
+            }
+
+            setOtherUnits(activeUsers);
         } catch (error) {
             // Silent fail
         }
@@ -1432,6 +1463,7 @@ Format the response as a concise bullet list. If information is not available, s
                     showPoliceStations={jurisdictionFilters.showPoliceStations}
                     showFireStations={jurisdictionFilters.showFireStations}
                     showJails={jurisdictionFilters.showJails}
+                    jurisdictionFilters={jurisdictionFilters}
                     searchPin={searchPin}
                     mapTheme={mapTheme}
                     onCallClick={(call) => {
