@@ -5,8 +5,21 @@ import L from 'leaflet';
 import { Badge } from '@/components/ui/badge';
 import { Car, Radio, Clock } from 'lucide-react';
 
-// Create icons for other units based on status
-const createOtherUnitIcon = (status, heading, showLights, isSupervisor) => {
+// Get agency label from unit data
+const getAgencyLabel = (unitNumber) => {
+    if (!unitNumber) return 'UNIT';
+    const num = unitNumber.toString().toUpperCase();
+    
+    if (num.includes('HENRICO') || num.includes('HPD')) return 'HPD';
+    if (num.includes('RICHMOND') || num.includes('RPD')) return 'RPD';
+    if (num.includes('CHESTERFIELD') || num.includes('CCPD')) return 'CCPD';
+    if (num.includes('HFD')) return 'HFD';
+    
+    return num.slice(0, 4) || 'UNIT';
+};
+
+// Create icons for other units based on status with agency labels
+const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumber) => {
     let color = '#6B7280'; // Gray for Available
     if (status === 'Enroute') color = '#EF4444'; // Red
     else if (status === 'On Scene') color = '#10B981'; // Green
@@ -14,38 +27,64 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor) => {
     else if (status === 'Busy') color = '#F59E0B'; // Orange
     else if (status === 'Out of Service') color = '#9CA3AF'; // Light gray
 
-    // Use gold/yellow for supervisors
     if (isSupervisor) {
         color = '#EAB308'; // Gold/Yellow
     }
 
-    // Normalize heading to 0-360
     const normalizedHeading = heading ? ((heading % 360) + 360) % 360 : 0;
+    const agencyLabel = getAgencyLabel(unitNumber);
 
     return new L.DivIcon({
         className: 'custom-marker',
         html: `
-            <div style="position: relative; width: 36px; height: 36px; transform: rotate(${normalizedHeading}deg); transition: transform 0.3s ease;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" style="filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));">
+            <div style="position: relative; width: 50px; height: 50px; transform: rotate(${normalizedHeading}deg); transition: transform 0.3s ease;">
+                <div style="
+                    width: 50px;
+                    height: 50px;
+                    background: ${color};
+                    border: 3px solid ${isSupervisor ? '#FFD700' : 'white'};
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    position: relative;
+                ">
                     ${showLights ? `
-                    <circle cx="8" cy="5" r="1.5" fill="#FF0000">
-                        <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
-                    </circle>
-                    <circle cx="16" cy="5" r="1.5" fill="#0000FF">
-                        <animate attributeName="opacity" values="0;1;0" dur="1s" repeatCount="indefinite"/>
-                    </circle>
+                        <div style="position: absolute; top: 3px; left: 10px; width: 6px; height: 6px; background: #FF0000; border-radius: 50%; animation: blink1 0.8s infinite;"></div>
+                        <div style="position: absolute; top: 3px; right: 10px; width: 6px; height: 6px; background: #0000FF; border-radius: 50%; animation: blink2 0.8s infinite;"></div>
                     ` : ''}
-                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" fill="${color}" stroke="white" stroke-width="1"/>
-                    <circle cx="7" cy="17" r="2" fill="#1F2937" stroke="white" stroke-width="0.5"/>
-                    <circle cx="17" cy="17" r="2" fill="#1F2937" stroke="white" stroke-width="0.5"/>
-                    <rect x="6" y="10.5" width="3" height="2" fill="white" opacity="0.7" rx="0.5"/>
-                    <rect x="11" y="10.5" width="3" height="2" fill="white" opacity="0.7" rx="0.5"/>
-                    <polygon points="12,1 14,7 10,7" fill="${color}" stroke="white" stroke-width="0.8"/>
-                </svg>
+                    <span style="
+                        color: white;
+                        font-weight: bold;
+                        font-size: 10px;
+                        font-family: system-ui, -apple-system, sans-serif;
+                        text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+                    ">${agencyLabel}</span>
+                    <div style="
+                        position: absolute;
+                        top: -5px;
+                        width: 0;
+                        height: 0;
+                        border-left: 8px solid transparent;
+                        border-right: 8px solid transparent;
+                        border-bottom: 12px solid ${color};
+                    "></div>
+                </div>
+                <style>
+                    @keyframes blink1 {
+                        0%, 100% { opacity: 1; }
+                        50% { opacity: 0; }
+                    }
+                    @keyframes blink2 {
+                        0%, 100% { opacity: 0; }
+                        50% { opacity: 1; }
+                    }
+                </style>
             </div>
         `,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
+        iconSize: [50, 50],
+        iconAnchor: [25, 25],
     });
 };
 
@@ -105,7 +144,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                 <Marker
                     key={unit.id}
                     position={[unit.latitude, unit.longitude]}
-                    icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor)}
+                    icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor, unit.unit_number)}
                 >
                         <Popup>
                             <div className="p-3 min-w-[240px]">
