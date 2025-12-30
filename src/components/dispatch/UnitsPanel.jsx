@@ -266,7 +266,7 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                             onClick={() => setStatusFilter(status)}
                             className="text-xs"
                         >
-                            {status} ({statusCounts[status] || 0})
+                            {status === 'all' ? 'All' : status} ({statusCounts[status] || 0})
                         </Button>
                     ))}
                 </div>
