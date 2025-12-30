@@ -47,27 +47,63 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
         fetchFireStations();
     }, []);
 
+    // Convert Web Mercator to Lat/Lng
+    const webMercatorToLatLng = (x, y) => {
+        const lng = (x / 20037508.34) * 180;
+        const lat = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+        return [lat, lng];
+    };
+
     const fetchFireStations = async () => {
         try {
-            console.log('🔥 Fetching fire stations...');
-            const response = await fetch(
+            console.log('🔥 Fetching Henrico fire stations...');
+            const henricoResponse = await fetch(
                 'https://portal.henrico.gov/mapping/rest/services/Layers/Fire_Stations_and_Rescue_Squads/MapServer/0/query?outFields=*&where=1%3D1&f=json'
             );
-            const data = await response.json();
+            const henricoData = await henricoResponse.json();
 
-            if (data.features && data.features.length > 0) {
-                const stationsData = data.features.map(feature => ({
-                    name: feature.attributes.NAME || 'Fire Station',
-                    address: feature.attributes.ADDRESS || '',
-                    type: feature.attributes.TYPE || 'Fire Station',
-                    lat: feature.geometry.y,
-                    lng: feature.geometry.x
-                }));
-                console.log('🔥 Loaded', stationsData.length, 'fire stations:', stationsData[0]);
-                setStations(stationsData);
-            } else {
-                console.warn('⚠️ No fire station data found');
+            console.log('🔥 Fetching Richmond fire stations...');
+            const richmondResponse = await fetch(
+                'https://services1.arcgis.com/k3vhq11XkBNeeOfM/arcgis/rest/services/FireStation/FeatureServer/0/query?outFields=*&where=1%3D1&f=json'
+            );
+            const richmondData = await richmondResponse.json();
+
+            const allStations = [];
+
+            // Process Henrico stations
+            if (henricoData.features && henricoData.features.length > 0) {
+                const henricoStations = henricoData.features.map(feature => {
+                    const [lat, lng] = webMercatorToLatLng(feature.geometry.x, feature.geometry.y);
+                    return {
+                        name: feature.attributes.NAME || 'Fire Station',
+                        address: feature.attributes.ADDRESS || '',
+                        type: 'Henrico Fire',
+                        lat,
+                        lng
+                    };
+                });
+                allStations.push(...henricoStations);
+                console.log('🔥 Loaded', henricoStations.length, 'Henrico fire stations');
             }
+
+            // Process Richmond stations
+            if (richmondData.features && richmondData.features.length > 0) {
+                const richmondStations = richmondData.features.map(feature => {
+                    const [lat, lng] = webMercatorToLatLng(feature.geometry.x, feature.geometry.y);
+                    return {
+                        name: feature.attributes.NAME || feature.attributes.STATION || 'Fire Station',
+                        address: feature.attributes.ADDRESS || feature.attributes.FULLADDR || '',
+                        type: 'Richmond Fire',
+                        lat,
+                        lng
+                    };
+                });
+                allStations.push(...richmondStations);
+                console.log('🔥 Loaded', richmondStations.length, 'Richmond fire stations');
+            }
+
+            console.log('🔥 Total fire stations:', allStations.length);
+            setStations(allStations);
         } catch (error) {
             console.error('❌ Error fetching fire stations:', error);
         } finally {

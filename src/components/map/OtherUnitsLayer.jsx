@@ -154,11 +154,11 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                     </div>
                                     <div className="flex-1">
                                         <p className="font-bold text-sm text-gray-900">
-                                            {unit.rank || 'Officer'} {unit.last_name || unit.full_name?.split(' ').pop() || 'Unknown'}
+                                            {unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name || 'Unknown'}
                                             {unit.is_supervisor && <span className="ml-2 text-yellow-600">★</span>}
                                         </p>
                                         <p className="text-xs text-blue-600 font-semibold">
-                                            {unit.unit_number ? `Unit ${unit.unit_number}` : 'No Unit ID'}
+                                            {unit.unit_number || 'No Unit ID'}
                                         </p>
                                     </div>
                                 </div>

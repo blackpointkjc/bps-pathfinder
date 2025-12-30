@@ -131,7 +131,8 @@ export default function Navigation() {
         baseMapType: 'street',
         searchAddress: '',
         showPoliceStations: true,
-        showFireStations: true
+        showFireStations: true,
+        showJails: true
     });
     const [searchPin, setSearchPin] = useState(null);
     
@@ -1439,6 +1440,7 @@ Format the response as a concise bullet list. If information is not available, s
                     jurisdictionFilters={jurisdictionFilters}
                     showPoliceStations={jurisdictionFilters.showPoliceStations}
                     showFireStations={jurisdictionFilters.showFireStations}
+                    showJails={jurisdictionFilters.showJails}
                     searchPin={searchPin}
                     onCallClick={(call) => {
                         setSelectedCall(call);

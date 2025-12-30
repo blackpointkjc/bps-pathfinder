@@ -92,6 +92,13 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                         onCheckedChange={(checked) => onFilterChange({ ...filters, showFireStations: checked })}
                                     />
                                 </div>
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-semibold text-gray-700">Show Jails</Label>
+                                    <Switch
+                                        checked={filters.showJails ?? true}
+                                        onCheckedChange={(checked) => onFilterChange({ ...filters, showJails: checked })}
+                                    />
+                                </div>
                             </div>
 
                                           {/* Address Search */}

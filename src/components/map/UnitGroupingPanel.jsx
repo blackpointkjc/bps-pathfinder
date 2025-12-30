@@ -51,7 +51,7 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
         setLoading(true);
         try {
             const unionNumber = unions.length + 1;
-            const unionId = `union-${String(unionNumber).padStart(2, '0')}`;
+            const unionId = `Union ${String(unionNumber).padStart(2, '0')}`;
 
             await base44.entities.UnitUnion.create({
                 union_name: unionId,
@@ -98,7 +98,7 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
         try {
             // Remove union from user
             await base44.auth.updateMe({
-                unit_number: currentUser.unit_number?.split(' union-')[0] || currentUser.full_name,
+                unit_number: currentUser.unit_number?.split(' Union')[0] || currentUser.full_name,
                 union_id: null
             });
 
