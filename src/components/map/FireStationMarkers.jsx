@@ -3,36 +3,39 @@ import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Flame, Phone, MapPin } from 'lucide-react';
 
-// Fire station icon
+// Fire station icon with HFD label
 const createFireStationIcon = () => {
     return new L.DivIcon({
         className: 'custom-fire-station-marker',
         html: `
             <div style="
                 position: relative;
-                width: 32px;
-                height: 32px;
+                width: 44px;
+                height: 44px;
             ">
                 <div style="
-                    width: 32px;
-                    height: 32px;
+                    width: 44px;
+                    height: 44px;
                     background: #DC2626;
                     border: 3px solid white;
-                    border-radius: 50%;
-                    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.5);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                 ">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
-                        <path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 2.5z"/>
-                    </svg>
+                    <span style="
+                        color: white;
+                        font-weight: bold;
+                        font-size: 12px;
+                        font-family: system-ui, -apple-system, sans-serif;
+                    ">HFD</span>
                 </div>
             </div>
         `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-        popupAnchor: [0, -16]
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
+        popupAnchor: [0, -22]
     });
 };
 
