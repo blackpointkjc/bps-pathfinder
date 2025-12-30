@@ -7,6 +7,7 @@ import { Search, X, MapPin, Loader2, Home, School, DollarSign, Calendar, Users, 
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import ReactMarkdown from 'react-markdown';
 
 export default function AddressLookupTool({ isOpen, onClose, onLocationFound }) {
     const [address, setAddress] = useState('');
@@ -113,7 +114,7 @@ Format as organized sections with bullet points. If information is unavailable, 
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
-                        className="fixed left-16 top-24 w-[400px] max-h-[calc(100vh-8rem)] bg-white rounded-2xl shadow-2xl z-[10000] overflow-hidden pointer-events-auto"
+                        className="fixed left-16 top-24 w-[420px] max-h-[calc(100vh-8rem)] bg-white rounded-2xl shadow-2xl z-[10000] flex flex-col pointer-events-auto"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}
@@ -175,7 +176,7 @@ Format as organized sections with bullet points. If information is unavailable, 
                         </div>
 
                         {/* Results */}
-                        <ScrollArea className="h-[calc(90vh-280px)]">
+                        <ScrollArea className="flex-1">
                             <div className="p-6">
                                 {isSearching && (
                                     <div className="flex flex-col items-center justify-center py-12 text-gray-500">
@@ -201,42 +202,73 @@ Format as organized sections with bullet points. If information is unavailable, 
                                     >
                                         {/* Address Header */}
                                         <Card className="border-2 border-blue-200 bg-blue-50">
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center gap-2 text-blue-900">
+                                            <CardHeader className="pb-3">
+                                                <CardTitle className="flex items-center gap-2 text-blue-900 text-base">
                                                     <MapPin className="w-5 h-5" />
                                                     {results.address.split(',').slice(0, 2).join(',')}
                                                 </CardTitle>
-                                                <p className="text-sm text-blue-700">{results.address.split(',').slice(2).join(',')}</p>
+                                                <p className="text-xs text-blue-700">{results.address.split(',').slice(2).join(',')}</p>
                                             </CardHeader>
                                         </Card>
 
-                                        {/* Information Display */}
+                                        {/* Information Display with Markdown */}
                                         <Card>
                                             <CardContent className="pt-6">
-                                                <div className="prose prose-sm max-w-none">
-                                                    <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-                                                        {results.information}
-                                                    </div>
-                                                </div>
+                                                <ReactMarkdown
+                                                    className="prose prose-sm max-w-none"
+                                                    components={{
+                                                        a: ({ node, ...props }) => (
+                                                            <a 
+                                                                {...props} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer"
+                                                                className="text-blue-600 hover:text-blue-800 underline font-medium"
+                                                            />
+                                                        ),
+                                                        h1: ({ node, ...props }) => (
+                                                            <h1 {...props} className="text-xl font-bold text-gray-900 mt-4 mb-2" />
+                                                        ),
+                                                        h2: ({ node, ...props }) => (
+                                                            <h2 {...props} className="text-lg font-bold text-gray-900 mt-4 mb-2" />
+                                                        ),
+                                                        h3: ({ node, ...props }) => (
+                                                            <h3 {...props} className="text-base font-bold text-gray-800 mt-3 mb-1" />
+                                                        ),
+                                                        p: ({ node, ...props }) => (
+                                                            <p {...props} className="text-gray-700 leading-relaxed mb-2" />
+                                                        ),
+                                                        ul: ({ node, ...props }) => (
+                                                            <ul {...props} className="list-disc pl-5 space-y-1 mb-3" />
+                                                        ),
+                                                        li: ({ node, ...props }) => (
+                                                            <li {...props} className="text-gray-700" />
+                                                        ),
+                                                        strong: ({ node, ...props }) => (
+                                                            <strong {...props} className="font-bold text-gray-900" />
+                                                        ),
+                                                    }}
+                                                >
+                                                    {results.information}
+                                                </ReactMarkdown>
                                             </CardContent>
                                         </Card>
 
                                         {/* Quick Stats Icons */}
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        <div className="grid grid-cols-2 gap-3">
                                             <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-                                                <Users className="w-6 h-6 text-green-600 mx-auto mb-1" />
+                                                <Users className="w-5 h-5 text-green-600 mx-auto mb-1" />
                                                 <p className="text-xs font-medium text-green-900">Owner Info</p>
                                             </div>
                                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                                                <School className="w-6 h-6 text-blue-600 mx-auto mb-1" />
+                                                <School className="w-5 h-5 text-blue-600 mx-auto mb-1" />
                                                 <p className="text-xs font-medium text-blue-900">Schools</p>
                                             </div>
                                             <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-center">
-                                                <DollarSign className="w-6 h-6 text-purple-600 mx-auto mb-1" />
+                                                <DollarSign className="w-5 h-5 text-purple-600 mx-auto mb-1" />
                                                 <p className="text-xs font-medium text-purple-900">Value</p>
                                             </div>
                                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
-                                                <Calendar className="w-6 h-6 text-amber-600 mx-auto mb-1" />
+                                                <Calendar className="w-5 h-5 text-amber-600 mx-auto mb-1" />
                                                 <p className="text-xs font-medium text-amber-900">Year Built</p>
                                             </div>
                                         </div>
