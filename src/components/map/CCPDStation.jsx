@@ -26,9 +26,9 @@ const createCCPDIcon = () => {
                     <span style="
                         color: white;
                         font-weight: bold;
-                        font-size: 9px;
+                        font-size: 11px;
                         font-family: system-ui, -apple-system, sans-serif;
-                    ">CCPD</span>
+                    ">PD</span>
                 </div>
             </div>
         `,
