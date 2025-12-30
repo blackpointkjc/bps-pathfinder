@@ -1520,7 +1520,7 @@ Format the response as a concise bullet list. If information is not available, s
                                     });
                                     setActiveCallInfo(null);
                                     clearRoute();
-                                    toast.success('Cleared from call');
+                                    toast.success('Available');
                                 } catch (error) {
                                     console.error('Error clearing call:', error);
                                 }
@@ -1530,7 +1530,7 @@ Format the response as a concise bullet list. If information is not available, s
                         className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg pointer-events-auto`}
                     >
                         <CheckCircle2 className={`w-4 h-4 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
-                        <span className={`text-[8px] font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Clear</span>
+                        <span className={`text-[8px] font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Avil</span>
                     </Button>
                     <Button onClick={() => setShowCallsList(true)} size="sm" className={`${unitStatus === 'Enroute' ? 'bg-red-600 hover:bg-red-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg`}>
                         <NavigationIcon className={`w-4 h-4 ${unitStatus === 'Enroute' ? 'text-white' : 'text-red-600'}`} />
@@ -1553,16 +1553,22 @@ Format the response as a concise bullet list. If information is not available, s
                         <span className="text-[8px] font-semibold text-gray-700">Group</span>
                     </Button>
                     <Button 
-                        onClick={(e) => {
+                        onClick={async (e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            setShowStatusPanel(true);
+                            await handleStatusChange('Out of Service');
+                            if (currentUser) {
+                                await base44.auth.updateMe({
+                                    show_on_map: false
+                                });
+                                toast.success('Out of Service - Hidden from map');
+                            }
                         }} 
                         size="sm" 
-                        className="bg-white/95 hover:bg-white shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg pointer-events-auto"
+                        className={`${unitStatus === 'Out of Service' ? 'bg-gray-600 hover:bg-gray-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg pointer-events-auto`}
                     >
-                        <Settings className="w-4 h-4 text-gray-600" />
-                        <span className="text-[8px] font-semibold text-gray-700">More</span>
+                        <XCircle className={`w-4 h-4 ${unitStatus === 'Out of Service' ? 'text-white' : 'text-gray-600'}`} />
+                        <span className={`text-[8px] font-semibold ${unitStatus === 'Out of Service' ? 'text-white' : 'text-gray-700'}`}>OOS</span>
                     </Button>
                 </motion.div>
             )}
