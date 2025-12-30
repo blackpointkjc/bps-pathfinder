@@ -165,7 +165,7 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
     return null;
 }
 
-const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail }) {
+const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail, mapTheme = 'day' }) {
     const defaultCenter = currentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
     
     // Calculate route bounds if route exists
@@ -179,10 +179,19 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
         console.log('  - Sample call:', activeCalls[0]);
     }
 
-    // Determine tile layer URL based on base map type
+    // Determine tile layer URL based on base map type and theme
     const getTileLayerUrl = () => {
         if (useOfflineTiles) return '';
 
+        // Night mode uses CartoDB Dark Matter for all map types
+        if (mapTheme === 'night') {
+            if (baseMapType === 'satellite') {
+                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+            }
+            return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+        }
+
+        // Day mode
         switch (baseMapType) {
             case 'satellite':
                 return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
@@ -195,6 +204,10 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
     };
 
     const getTileAttribution = () => {
+        if (mapTheme === 'night' && baseMapType !== 'satellite') {
+            return '&copy; <a href="https://carto.com/">CARTO</a>';
+        }
+        
         switch (baseMapType) {
             case 'satellite':
                 return '&copy; <a href="https://www.esri.com/">Esri</a>';
@@ -216,10 +229,11 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             maxZoom={baseMapType === 'satellite' ? 18 : 17}
         >
             <TileLayer
-                key={baseMapType}
+                key={`${baseMapType}-${mapTheme}`}
                 attribution={getTileAttribution()}
                 url={getTileLayerUrl()}
                 maxZoom={baseMapType === 'satellite' ? 19 : 17}
+                className={mapTheme === 'night' ? 'map-night-mode' : ''}
             />
 
             {/* Jurisdiction Boundaries */}

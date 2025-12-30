@@ -121,6 +121,12 @@ export default function Navigation() {
     });
     const [searchPin, setSearchPin] = useState(null);
     const [currentStreet, setCurrentStreet] = useState('Locating...');
+    const [mapTheme, setMapTheme] = useState(() => {
+        const saved = localStorage.getItem('mapTheme');
+        if (saved) return saved;
+        const hour = new Date().getHours();
+        return hour >= 6 && hour < 19 ? 'day' : 'night';
+    });
     
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
@@ -1515,6 +1521,7 @@ Format the response as a concise bullet list. If information is not available, s
                     showFireStations={jurisdictionFilters.showFireStations}
                     showJails={jurisdictionFilters.showJails}
                     searchPin={searchPin}
+                    mapTheme={mapTheme}
                     onCallClick={(call) => {
                         setSelectedCall(call);
                         setShowCallSidebar(true);
@@ -1522,7 +1529,7 @@ Format the response as a concise bullet list. If information is not available, s
                     onNavigateToJail={async (jail) => {
                         setDestination({ coords: jail.coords, name: jail.name });
                         setDestinationName(jail.name);
-                        
+
                         if (currentLocation) {
                             const fetchedRoutes = await fetchRoutes(currentLocation, jail.coords);
                             if (fetchedRoutes && fetchedRoutes.length > 0) {
@@ -1839,7 +1846,23 @@ Format the response as a concise bullet list. If information is not available, s
                     <Filter className="w-4 h-4" />
                 </Button>
 
-
+                <Button
+                    onClick={() => {
+                        const newTheme = mapTheme === 'day' ? 'night' : 'day';
+                        setMapTheme(newTheme);
+                        localStorage.setItem('mapTheme', newTheme);
+                        toast.success(`${newTheme === 'day' ? '☀️ Day' : '🌙 Night'} mode`);
+                    }}
+                    size="icon"
+                    className={`h-8 w-8 rounded-lg shadow-lg ${
+                        mapTheme === 'night' 
+                            ? 'bg-slate-800 hover:bg-slate-900 text-yellow-400' 
+                            : 'bg-white hover:bg-gray-100 text-blue-600'
+                    }`}
+                    title="Toggle Day/Night Mode"
+                >
+                    {mapTheme === 'night' ? '🌙' : '☀️'}
+                </Button>
 
                 <Button
                     onClick={() => {
