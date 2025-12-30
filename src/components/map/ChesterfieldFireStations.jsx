@@ -3,13 +3,22 @@ import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Flame, MapPin } from 'lucide-react';
 
-const cfdIcon = new L.Icon({
-    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-            <circle cx="16" cy="16" r="15" fill="#DC2626" stroke="white" stroke-width="2"/>
-            <text x="16" y="22" font-size="18" text-anchor="middle" fill="white">🔥</text>
-        </svg>
-    `),
+const cfdIcon = new L.DivIcon({
+    className: 'custom-marker',
+    html: `
+        <div style="
+            width: 32px;
+            height: 32px;
+            background: #DC2626;
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        ">🔥</div>
+    `,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
     popupAnchor: [0, -16]
