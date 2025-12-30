@@ -20,6 +20,7 @@ import UnitStatusPanel from '@/components/map/UnitStatusPanel';
 import AllUnitsPanel from '@/components/map/AllUnitsPanel';
 import HistoricalLogsPanel from '@/components/dispatch/HistoricalLogsPanel';
 import AutoDispatchSuggestion from '@/components/map/AutoDispatchSuggestion';
+import UnitGroupingPanel from '@/components/map/UnitGroupingPanel';
 import DispatchPanel from '@/components/map/DispatchPanel';
 import CallDetailView from '@/components/map/CallDetailView';
 import CallDetailSidebar from '@/components/map/CallDetailSidebar';
@@ -114,6 +115,7 @@ export default function Navigation() {
     const [showAllUnitsPanel, setShowAllUnitsPanel] = useState(false);
     const [showHistoricalLogs, setShowHistoricalLogs] = useState(false);
     const [autoDispatchSuggestion, setAutoDispatchSuggestion] = useState(null);
+    const [showUnitGrouping, setShowUnitGrouping] = useState(false);
     const [criticalAlertSound] = useState(() => {
         const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDWH0fPTgjMGHm7A7+OZUQ4PVKbh8LFVGA5On+DvwGMbBzaE0fPReiYEI3DC7+GTUAwQWK3l7q5XFAxAnN/zv2kdBDWH0PPTgyEEI3DD7+CTUQ0RWKzl7q5ZEwtCnN/zvmgdBDWH0fPRfiYEI3DE7+CTTw0PVqfj8K9VFg1Mnt/zv2kbBDOGz/PSfyYEJHPD7t+NTA0PWK3l761ZEgxBm9/zu2MbBDKGzvLPfSUEJXfE7t6OTQ0RW7Hl7ahVFQ5NneDvvWMbBjOGzvLP');
         audio.volume = 0.8;
@@ -1521,6 +1523,10 @@ Format the response as a concise bullet list. If information is not available, s
                         <Users className="w-4 h-4 text-gray-600" />
                         <span className="text-[8px] font-semibold text-gray-700">Units</span>
                     </Button>
+                    <Button onClick={() => setShowUnitGrouping(true)} size="sm" className="bg-white/95 hover:bg-white shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg">
+                        <Shield className="w-4 h-4 text-indigo-600" />
+                        <span className="text-[8px] font-semibold text-gray-700">Group</span>
+                    </Button>
                     <Button onClick={() => setShowStatusPanel(true)} size="sm" className="bg-white/95 hover:bg-white shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg">
                         <Settings className="w-4 h-4 text-gray-600" />
                         <span className="text-[8px] font-semibold text-gray-700">More</span>
@@ -1953,6 +1959,13 @@ Format the response as a concise bullet list. If information is not available, s
                     onDismiss={() => setAutoDispatchSuggestion(null)}
                 />
             )}
+
+            {/* Unit Grouping Panel */}
+            <UnitGroupingPanel
+                isOpen={showUnitGrouping}
+                onClose={() => setShowUnitGrouping(false)}
+                currentUser={currentUser}
+            />
             </div>
             );
             }

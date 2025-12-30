@@ -166,7 +166,7 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
                                                                             </Badge>
                                                                         </div>
 
-                                                                        {unit.current_call_info && (
+                                                                        {unit.current_call_info && unit.status !== 'Available' && (
                                                                             <div className="text-sm text-gray-600 mb-2 bg-red-50 p-2 rounded">
                                                                                 <span className="font-semibold">Active: </span>
                                                                                 {unit.current_call_info}

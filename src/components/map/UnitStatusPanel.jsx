@@ -35,13 +35,14 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
     const handleStatusClick = async (status) => {
         setSelectedStatus(status);
         if (status !== 'Out of Service') {
-            // If changing from On Scene to Available, clear the active call
-            if (currentStatus === 'On Scene' && status === 'Available') {
+            // If changing to Available, clear the active call
+            if (status === 'Available') {
                 try {
                     const { base44 } = await import('@/api/base44Client');
                     await base44.auth.updateMe({
                         current_call_id: null,
-                        current_call_info: null
+                        current_call_info: null,
+                        status: status
                     });
                     toast.success('Cleared from call');
                 } catch (error) {
@@ -141,7 +142,10 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                                                         key={status.value}
                                                         whileHover={{ scale: 1.02 }}
                                                         whileTap={{ scale: 0.98 }}
-                                                        onClick={() => handleStatusClick(status.value)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleStatusClick(status.value);
+                                                        }}
                                                         className={`p-4 rounded-xl border-2 transition-all pointer-events-auto ${
                                                             isActive 
                                                                 ? 'border-blue-500 bg-blue-50' 
@@ -172,10 +176,13 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
                                                     className="mb-3"
                                                 />
                                                 <Button
-                                                    onClick={handleConfirmOutOfService}
-                                                    className="w-full bg-gray-600 hover:bg-gray-700"
+                                                onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleConfirmOutOfService();
+                                                }}
+                                                className="w-full bg-gray-600 hover:bg-gray-700"
                                                 >
-                                                    Confirm Out of Service
+                                                Confirm Out of Service
                                                 </Button>
                                                 </motion.div>
                                                 )}
