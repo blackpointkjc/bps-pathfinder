@@ -13,18 +13,25 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
 
-    // Group units by union and filter out OOS non-union units
-    const groupedUnits = units.reduce((acc, unit) => {
+    // Group units by union - only show union once, not individual members
+    const groupedUnits = {};
+    const processedUnitIds = new Set();
+    
+    units.forEach(unit => {
         if (unit.union_id) {
-            if (!acc[unit.union_id]) {
-                acc[unit.union_id] = [];
+            // If this union hasn't been added yet, add it with all members
+            if (!groupedUnits[unit.union_id]) {
+                const unionMembers = units.filter(u => u.union_id === unit.union_id);
+                groupedUnits[unit.union_id] = unionMembers;
+                // Mark all members as processed so they don't appear individually
+                unionMembers.forEach(m => processedUnitIds.add(m.id));
             }
-            acc[unit.union_id].push(unit);
-        } else if (unit.status !== 'Out of Service') {
-            acc[unit.id] = [unit]; // Individual unit (excluding OOS)
+        } else if (unit.status !== 'Out of Service' && !processedUnitIds.has(unit.id)) {
+            // Individual unit (not in union, not OOS, not already processed)
+            groupedUnits[unit.id] = [unit];
+            processedUnitIds.add(unit.id);
         }
-        return acc;
-    }, {});
+    });
 
     const filteredUnits = Object.entries(groupedUnits)
         .filter(([key, members]) => {
