@@ -1312,24 +1312,32 @@ export default function Navigation() {
             try {
                 toast.info('Searching...');
                 const response = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(newFilters.searchAddress + ', Virginia')}&limit=1`,
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(newFilters.searchAddress + ', Virginia, USA')}&limit=5`,
                     { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' } }
                 );
                 const data = await response.json();
 
                 if (data && data.length > 0) {
-                    const result = data[0];
-                    const coords = [parseFloat(result.lat), parseFloat(result.lon)];
+                    // Prefer results in Virginia
+                    const virginiaResult = data.find(r => r.display_name.toLowerCase().includes('virginia')) || data[0];
+                    const coords = [parseFloat(virginiaResult.lat), parseFloat(virginiaResult.lon)];
                     
                     // Just center the map on the location and drop a pin with loading state
                     setMapCenter(coords);
-                    setSearchPin({ coords, address: result.display_name, propertyInfo: 'Loading property information...' });
-                    toast.success(`Found: ${result.display_name.split(',')[0]}`);
+                    setSearchPin({ coords, address: virginiaResult.display_name, propertyInfo: 'Loading property information...' });
+                    
+                    // Show closest match notification if not exact
+                    const isExactMatch = virginiaResult.display_name.toLowerCase().includes(newFilters.searchAddress.toLowerCase());
+                    if (!isExactMatch && data.length > 1) {
+                        toast.success(`Closest match: ${virginiaResult.display_name.split(',').slice(0, 2).join(',')}`);
+                    } else {
+                        toast.success(`Found: ${virginiaResult.display_name.split(',')[0]}`);
+                    }
                     
                     // Get property info using AI with detailed instructions
                     try {
                         const propertyInfo = await base44.integrations.Core.InvokeLLM({
-                            prompt: `Search for property ownership and detailed information for this address: ${result.display_name}
+                            prompt: `Search for property ownership and detailed information for this address: ${virginiaResult.display_name}
 
 Using public records, county assessor databases, property tax records, and real estate data, find:
 
@@ -1348,17 +1356,17 @@ Be thorough and search multiple sources.`,
                         });
                         
                         if (propertyInfo) {
-                            setSearchPin({ coords, address: result.display_name, propertyInfo });
+                            setSearchPin({ coords, address: virginiaResult.display_name, propertyInfo });
                             toast.success('Property information loaded');
                         } else {
-                            setSearchPin({ coords, address: result.display_name, propertyInfo: 'Property information not available' });
+                            setSearchPin({ coords, address: virginiaResult.display_name, propertyInfo: 'Property information not available' });
                         }
                     } catch (error) {
                         console.error('Property info error:', error);
-                        setSearchPin({ coords, address: result.display_name, propertyInfo: 'Error loading property information. Try again.' });
+                        setSearchPin({ coords, address: virginiaResult.display_name, propertyInfo: 'Error loading property information. Try again.' });
                     }
                 } else {
-                    toast.error('Address not found');
+                    toast.error('Address not found - try entering city and state');
                     setSearchPin(null);
                 }
             } catch (error) {
