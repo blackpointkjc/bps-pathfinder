@@ -210,7 +210,7 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             className="h-full w-full"
             zoomControl={false}
             minZoom={10}
-            maxZoom={19}
+            maxZoom={baseMapType === 'satellite' ? 18 : 17}
         >
             <TileLayer
                 key={baseMapType}

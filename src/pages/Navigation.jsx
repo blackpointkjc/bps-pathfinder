@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield, Filter, MapPinOff } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield, Filter, MapPinOff, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
@@ -17,6 +17,7 @@ import RoutePreferences from '@/components/map/RoutePreferences';
 import ActiveCallsList from '@/components/map/ActiveCallsList';
 import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
 import UnitStatusPanel from '@/components/map/UnitStatusPanel';
+import AllUnitsPanel from '@/components/map/AllUnitsPanel';
 import DispatchPanel from '@/components/map/DispatchPanel';
 import CallDetailView from '@/components/map/CallDetailView';
 import CallDetailSidebar from '@/components/map/CallDetailSidebar';
@@ -108,6 +109,7 @@ export default function Navigation() {
     const [mapCenter, setMapCenter] = useState(null);
     const [pendingCallNotification, setPendingCallNotification] = useState(null);
     const lastCheckedCallIdRef = useRef(null);
+    const [showAllUnitsPanel, setShowAllUnitsPanel] = useState(false);
     
     // Layer filter state
     const [showLayerFilters, setShowLayerFilters] = useState(false);
@@ -1374,6 +1376,10 @@ Format the response as a concise bullet list. If information is not available, s
                         <Car className={`w-4 h-4 ${unitStatus === 'On Patrol' ? 'text-white' : 'text-indigo-600'}`} />
                         <span className={`text-[8px] font-semibold ${unitStatus === 'On Patrol' ? 'text-white' : 'text-gray-700'}`}>Patrol</span>
                     </Button>
+                    <Button onClick={() => setShowAllUnitsPanel(true)} size="sm" className="bg-white/95 hover:bg-white shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg">
+                        <Users className="w-4 h-4 text-gray-600" />
+                        <span className="text-[8px] font-semibold text-gray-700">Units</span>
+                    </Button>
                     <Button onClick={() => setShowStatusPanel(true)} size="sm" className="bg-white/95 hover:bg-white shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg">
                         <Settings className="w-4 h-4 text-gray-600" />
                         <span className="text-[8px] font-semibold text-gray-700">More</span>
@@ -1782,6 +1788,12 @@ Format the response as a concise bullet list. If information is not available, s
                     onDismiss={handleDismissNotification}
                 />
             )}
-        </div>
-    );
-}
+
+            {/* All Units Panel */}
+            <AllUnitsPanel
+                isOpen={showAllUnitsPanel}
+                onClose={() => setShowAllUnitsPanel(false)}
+            />
+            </div>
+            );
+            }
