@@ -1502,15 +1502,16 @@ Format the response as a concise bullet list. If information is not available, s
                         onClick={async (e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            await handleStatusChange('Available');
+                            setActiveCallInfo(null);
+                            clearRoute();
                             if (currentUser) {
                                 try {
                                     await base44.auth.updateMe({
                                         current_call_id: null,
-                                        current_call_info: null
+                                        current_call_info: null,
+                                        status: 'Available'
                                     });
-                                    setActiveCallInfo(null);
-                                    clearRoute();
+                                    setUnitStatus('Available');
                                     toast.success('Available');
                                 } catch (error) {
                                     console.error('Error clearing call:', error);
@@ -1547,12 +1548,21 @@ Format the response as a concise bullet list. If information is not available, s
                         onClick={async (e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            await handleStatusChange('Out of Service');
+                            setActiveCallInfo(null);
+                            clearRoute();
                             if (currentUser) {
-                                await base44.auth.updateMe({
-                                    show_on_map: false
-                                });
-                                toast.success('Out of Service - Hidden from map');
+                                try {
+                                    await base44.auth.updateMe({
+                                        show_on_map: false,
+                                        current_call_id: null,
+                                        current_call_info: null,
+                                        status: 'Out of Service'
+                                    });
+                                    setUnitStatus('Out of Service');
+                                    toast.success('Out of Service - Hidden from map');
+                                } catch (error) {
+                                    console.error('Error updating status:', error);
+                                }
                             }
                         }} 
                         size="sm" 
