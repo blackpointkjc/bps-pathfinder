@@ -216,23 +216,18 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
 
     // Fetch addresses for units
     useEffect(() => {
-        const fetchAddresses = async () => {
-            const addresses = {};
-            for (const group of filteredUnits) {
-                const primaryUnit = group.members[0];
-                if (primaryUnit?.latitude && primaryUnit?.longitude && 
-                    primaryUnit.latitude !== 0 && primaryUnit.longitude !== 0) {
-                    const address = await getAddressFromCoords(primaryUnit.latitude, primaryUnit.longitude);
-                    if (address && !address.includes('Unknown') && !address.includes('unavailable')) {
-                        addresses[group.id] = address;
-                    }
-                }
-            }
-            setUnitAddresses(addresses);
-        };
-        
         if (filteredUnits.length > 0) {
-            fetchAddresses();
+            filteredUnits.forEach(async (group) => {
+                try {
+                    const primaryUnit = group.members[0];
+                    if (primaryUnit?.latitude && primaryUnit?.longitude) {
+                        const address = await getAddressFromCoords(primaryUnit.latitude, primaryUnit.longitude);
+                        setUnitAddresses(prev => ({ ...prev, [group.id]: address }));
+                    }
+                } catch (err) {
+                    console.error('Address fetch error:', err);
+                }
+            });
         }
     }, [filteredUnits.length]);
 

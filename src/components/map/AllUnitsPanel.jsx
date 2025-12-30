@@ -68,16 +68,15 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
             const response = await base44.functions.invoke('fetchAllUsers', {});
             const users = response.data?.users || [];
             
-            // Fetch active unions to verify which unions are actually active
+            // Fetch active unions
             const activeUnions = await base44.entities.UnitUnion.filter({ status: 'active' });
             const activeUnionIds = new Set(activeUnions.map(u => u.union_name));
             
-            // Group users by union and filter out OOS non-union units
+            // Group users by union
             const grouped = [];
             const processedUnions = new Set();
             
             users.forEach(user => {
-                // Only group if union is active
                 if (user.union_id && activeUnionIds.has(user.union_id) && !processedUnions.has(user.union_id)) {
                     processedUnions.add(user.union_id);
                     const unionMembers = users
@@ -94,35 +93,30 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
                         members: unionMembers,
                         status: unionMembers[0]?.status || 'Available'
                     });
-                } else if ((!user.union_id || !activeUnionIds.has(user.union_id)) && user.status !== 'Out of Service') {
-                    // Show as individual unit if no union or union is disbanded
+                } else if (!user.union_id || !activeUnionIds.has(user.union_id)) {
                     grouped.push(user);
                 }
             });
             
             setUnits(grouped);
             
-            // Fetch addresses for units with coordinates
-            const addresses = {};
-            for (const item of grouped) {
-                if (item.isUnionGroup) {
-                    const firstMember = item.members[0];
-                    if (firstMember?.latitude && firstMember?.longitude && 
-                        firstMember.latitude !== 0 && firstMember.longitude !== 0) {
-                        const address = await getAddressFromCoords(firstMember.latitude, firstMember.longitude);
-                        if (address && !address.includes('Unknown') && !address.includes('unavailable')) {
-                            addresses[item.id] = address;
+            // Fetch addresses in background
+            grouped.forEach(async (item) => {
+                try {
+                    if (item.isUnionGroup) {
+                        const firstMember = item.members[0];
+                        if (firstMember?.latitude && firstMember?.longitude) {
+                            const address = await getAddressFromCoords(firstMember.latitude, firstMember.longitude);
+                            setUnitAddresses(prev => ({ ...prev, [item.id]: address }));
                         }
+                    } else if (item.latitude && item.longitude) {
+                        const address = await getAddressFromCoords(item.latitude, item.longitude);
+                        setUnitAddresses(prev => ({ ...prev, [item.id]: address }));
                     }
-                } else if (item.latitude && item.longitude && 
-                           item.latitude !== 0 && item.longitude !== 0) {
-                    const address = await getAddressFromCoords(item.latitude, item.longitude);
-                    if (address && !address.includes('Unknown') && !address.includes('unavailable')) {
-                        addresses[item.id] = address;
-                    }
+                } catch (err) {
+                    console.error('Address fetch error:', err);
                 }
-            }
-            setUnitAddresses(addresses);
+            });
         } catch (error) {
             console.error('Error fetching units:', error);
         } finally {
