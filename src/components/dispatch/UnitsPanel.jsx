@@ -13,15 +13,45 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
 
-    const filteredUnits = units.filter(unit => {
-        const matchesSearch = searchQuery === '' || 
-            unit.unit_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            unit.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
-        
-        const matchesStatus = statusFilter === 'all' || unit.status === statusFilter;
-        
-        return matchesSearch && matchesStatus;
-    });
+    // Group units by union
+    const groupedUnits = units.reduce((acc, unit) => {
+        if (unit.union_id) {
+            if (!acc[unit.union_id]) {
+                acc[unit.union_id] = [];
+            }
+            acc[unit.union_id].push(unit);
+        } else {
+            acc[unit.id] = [unit]; // Individual unit
+        }
+        return acc;
+    }, {});
+
+    const filteredUnits = Object.entries(groupedUnits)
+        .filter(([key, members]) => {
+            const isUnion = members.length > 1;
+            const firstUnit = members[0];
+            
+            const matchesSearch = searchQuery === '' || 
+                (isUnion && key.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                members.some(u => 
+                    u.unit_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (u.rank && u.last_name && `${u.rank} ${u.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()))
+                );
+            
+            const matchesStatus = statusFilter === 'all' || members.some(u => u.status === statusFilter);
+            
+            return matchesSearch && matchesStatus;
+        })
+        .map(([key, members]) => ({
+            id: key,
+            isUnion: members.length > 1,
+            unionName: members.length > 1 ? key : null,
+            members: members,
+            displayName: members.length > 1 ? key : (members[0].unit_number || members[0].full_name),
+            status: members[0].status,
+            current_call_info: members[0].current_call_info
+        }));
 
     const statusCounts = {
         all: units.length,
@@ -187,42 +217,65 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                     </div>
                 ) : (
                     <div className="space-y-2">
-                        {filteredUnits.map(unit => {
-                            const isAssigned = isAssignedToSelectedCall(unit);
+                        {filteredUnits.map(group => {
+                            const primaryUnit = group.members[0];
+                            const isAssigned = isAssignedToSelectedCall(primaryUnit);
+                            
                             return (
                                 <motion.div
-                                    key={unit.id}
+                                    key={group.id}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     className="p-3 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-600 transition-all"
                                 >
                                     <div className="flex items-start justify-between mb-2">
                                         <div>
-                                            <h3 className="font-bold text-white">
-                                                {unit.unit_number || 'N/A'}
+                                            <h3 className="font-bold text-white flex items-center gap-2">
+                                                {group.displayName}
+                                                {group.isUnion && (
+                                                    <Badge className="bg-indigo-600 text-white text-xs">
+                                                        {group.members.length} Units
+                                                    </Badge>
+                                                )}
                                             </h3>
-                                            <p className="text-xs text-slate-400">{unit.full_name}</p>
+                                            {group.isUnion ? (
+                                                <div className="text-xs text-slate-400 mt-1 space-y-0.5">
+                                                    {group.members.map(member => (
+                                                        <div key={member.id}>
+                                                            {member.rank && member.last_name 
+                                                                ? `${member.rank} ${member.last_name}` 
+                                                                : member.full_name || member.unit_number}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-slate-400">
+                                                    {primaryUnit.rank && primaryUnit.last_name 
+                                                        ? `${primaryUnit.rank} ${primaryUnit.last_name}` 
+                                                        : primaryUnit.full_name}
+                                                </p>
+                                            )}
                                         </div>
-                                        <Badge className={`${getStatusColor(unit.status)} text-white text-xs`}>
-                                            {unit.status || 'Unknown'}
+                                        <Badge className={`${getStatusColor(group.status)} text-white text-xs`}>
+                                            {group.status || 'Unknown'}
                                         </Badge>
                                     </div>
 
-                                    {unit.current_call_info && (
+                                    {group.current_call_info && (
                                         <div className="mb-2 p-2 bg-slate-900 rounded text-xs">
                                             <p className="text-slate-400">Current Call:</p>
-                                            <p className="text-white">{unit.current_call_info}</p>
+                                            <p className="text-white">{group.current_call_info}</p>
                                         </div>
                                     )}
 
                                     <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
-                                        {unit.speed !== undefined && (
-                                            <span>{Math.round(unit.speed)} mph</span>
+                                        {primaryUnit.speed !== undefined && (
+                                            <span>{Math.round(primaryUnit.speed)} mph</span>
                                         )}
-                                        {unit.last_updated && (
+                                        {primaryUnit.last_updated && (
                                             <span className="flex items-center gap-1">
                                                 <Clock className="w-3 h-3" />
-                                                {new Date(unit.last_updated).toLocaleTimeString()}
+                                                {new Date(primaryUnit.last_updated).toLocaleTimeString()}
                                             </span>
                                         )}
                                     </div>
@@ -230,7 +283,7 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                                     {selectedCall && (
                                         <Button
                                             size="sm"
-                                            onClick={() => isAssigned ? unassignUnit(unit) : assignUnit(unit)}
+                                            onClick={() => isAssigned ? unassignUnit(primaryUnit) : assignUnit(primaryUnit)}
                                             className={`w-full ${
                                                 isAssigned 
                                                     ? 'bg-red-600 hover:bg-red-700' 
