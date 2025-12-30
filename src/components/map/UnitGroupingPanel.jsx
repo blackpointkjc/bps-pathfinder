@@ -79,8 +79,7 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
 
             toast.success(`Created ${unionId} with ${selectedUnits.length + 1} units`);
             setSelectedUnits([]);
-            await fetchUnions();
-            await fetchAvailableUnits();
+            await Promise.all([fetchUnions(), fetchAvailableUnits()]);
         } catch (error) {
             console.error('Error creating union:', error);
             toast.error('Failed to create union');
@@ -115,8 +114,7 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                 toast.success('Left union');
             }
 
-            fetchUnions();
-            fetchAvailableUnits();
+            await Promise.all([fetchUnions(), fetchAvailableUnits()]);
         } catch (error) {
             console.error('Error leaving union:', error);
             toast.error('Failed to leave union');
@@ -329,8 +327,7 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                                                         }
                                                     }
                                                     toast.success('All unions disbanded');
-                                                    fetchUnions();
-                                                    fetchAvailableUnits();
+                                                    await Promise.all([fetchUnions(), fetchAvailableUnits()]);
                                                 } catch (error) {
                                                     console.error('Error disbanding all:', error);
                                                     toast.error('Failed to disband all');

@@ -53,7 +53,16 @@ export default function CallDetailView({ call, onClose, onEnroute }) {
                                         </div>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={onClose} className="text-white hover:bg-white/20">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onClose();
+                                    }} 
+                                    className="text-white hover:bg-white/20 pointer-events-auto"
+                                >
                                     <X className="w-5 h-5" />
                                 </Button>
                             </div>
@@ -105,16 +114,24 @@ export default function CallDetailView({ call, onClose, onEnroute }) {
                             {/* Actions */}
                             <div className="pt-4 border-t border-gray-200 flex gap-3">
                                 <Button
-                                    onClick={onEnroute}
-                                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-6 text-base"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onEnroute();
+                                    }}
+                                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-6 text-base pointer-events-auto"
                                 >
                                     <NavigationIcon className="w-5 h-5 mr-2" />
                                     Navigate to Call
                                 </Button>
                                 <Button
-                                    onClick={onClose}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onClose();
+                                    }}
                                     variant="outline"
-                                    className="px-6"
+                                    className="px-6 pointer-events-auto"
                                 >
                                     Close
                                 </Button>

@@ -158,7 +158,11 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
                         <Button 
                             variant="ghost" 
                             size="icon" 
-                            onClick={onClose}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onClose();
+                            }}
                             className="text-white hover:bg-white/20 pointer-events-auto"
                         >
                             <X className="w-5 h-5" />
@@ -325,7 +329,11 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
                     {call.latitude && call.longitude && (
                         <>
                             <Button
-                                onClick={onCenter}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onCenter();
+                                }}
                                 variant="outline"
                                 className="w-full border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold py-6 pointer-events-auto"
                             >
@@ -333,7 +341,11 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
                                 Center on Map
                             </Button>
                             <Button
-                                onClick={onEnroute}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onEnroute();
+                                }}
                                 className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-6 text-base pointer-events-auto"
                             >
                                 <NavigationIcon className="w-5 h-5 mr-2" />
