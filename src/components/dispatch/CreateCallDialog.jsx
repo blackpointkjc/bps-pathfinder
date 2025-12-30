@@ -302,20 +302,24 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                                                     if (unit.union_id && activeUnions.has(unit.union_id) && !processedUnionIds.has(unit.union_id)) {
                                                         processedUnionIds.add(unit.union_id);
                                                         const unionMembers = units
-                                                            .filter(u => u.union_id === unit.union_id)
+                                                            .filter(u => u.union_id === unit.union_id && u.status !== 'Out of Service')
                                                             .sort((a, b) => {
                                                                 const aNum = parseInt(a.unit_number) || 999;
                                                                 const bNum = parseInt(b.unit_number) || 999;
                                                                 return aNum - bNum;
                                                             });
-                                                        unionMembers.forEach(m => processedUnitIds.add(m.id));
-                                                        grouped.push({
-                                                            isUnion: true,
-                                                            id: unit.union_id,
-                                                            name: unit.union_id,
-                                                            members: unionMembers,
-                                                            status: unionMembers[0]?.status || 'Available'
-                                                        });
+                                                        
+                                                        // Only add union if it has available members
+                                                        if (unionMembers.length > 0) {
+                                                            unionMembers.forEach(m => processedUnitIds.add(m.id));
+                                                            grouped.push({
+                                                                isUnion: true,
+                                                                id: unit.union_id,
+                                                                name: unit.union_id,
+                                                                members: unionMembers,
+                                                                status: unionMembers[0]?.status || 'Available'
+                                                            });
+                                                        }
                                                     } else if ((!unit.union_id || !activeUnions.has(unit.union_id)) && !processedUnitIds.has(unit.id) && unit.status !== 'Out of Service') {
                                                         processedUnitIds.add(unit.id);
                                                         grouped.push(unit);
