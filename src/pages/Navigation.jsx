@@ -1724,6 +1724,30 @@ Format the response as a concise bullet list. If information is not available, s
                 )}
             </AnimatePresence>
 
+            {/* Recenter Button - shown when navigating and user panned away */}
+            <AnimatePresence>
+                {isNavigating && userPannedAway && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="absolute bottom-40 right-4 z-[1002] pointer-events-auto"
+                    >
+                        <Button
+                            onClick={() => {
+                                setUserPannedAway(false);
+                                toast.success('Recentered on your location');
+                            }}
+                            size="lg"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-6 rounded-2xl shadow-2xl flex items-center gap-2"
+                        >
+                            <NavigationIcon className="w-6 h-6" />
+                            <span className="font-semibold">Recenter</span>
+                        </Button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Top Right Controls */}
             <motion.div
                 initial={{ opacity: 0 }}
