@@ -138,7 +138,8 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
                     position={[station.lat, station.lng]}
                     icon={createFireStationIcon()}
                     eventHandlers={{
-                        click: () => {
+                        click: (e) => {
+                            e.originalEvent.stopPropagation();
                             if (onNavigateToStation) {
                                 onNavigateToStation({
                                     name: station.name,

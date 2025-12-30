@@ -19,7 +19,7 @@ const getAgencyLabel = (unitNumber) => {
 };
 
 // Create icons for other units based on status with agency labels
-const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumber) => {
+const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumber, isUnionLead) => {
     let color = '#6B7280'; // Gray for Available
     if (status === 'Enroute') color = '#EF4444'; // Red
     else if (status === 'On Scene') color = '#10B981'; // Green
@@ -34,6 +34,12 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
     const normalizedHeading = heading ? ((heading % 360) + 360) % 360 : 0;
     const agencyLabel = getAgencyLabel(unitNumber);
 
+    // Union leaders get green flashing lights
+    const unionLights = isUnionLead ? `
+        <div style="position: absolute; top: 3px; left: 10px; width: 6px; height: 6px; background: #00FF00; border-radius: 50%; animation: blink1 0.8s infinite;"></div>
+        <div style="position: absolute; top: 3px; right: 10px; width: 6px; height: 6px; background: #00FF00; border-radius: 50%; animation: blink2 0.8s infinite;"></div>
+    ` : '';
+
     return new L.DivIcon({
         className: 'custom-marker',
         html: `
@@ -42,7 +48,7 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
                     width: 50px;
                     height: 50px;
                     background: ${color};
-                    border: 3px solid ${isSupervisor ? '#FFD700' : 'white'};
+                    border: 3px solid ${isSupervisor ? '#FFD700' : (isUnionLead ? '#00FF00' : 'white')};
                     border-radius: 8px;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.4);
                     display: flex;
@@ -50,10 +56,10 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
                     justify-content: center;
                     position: relative;
                 ">
-                    ${showLights ? `
+                    ${isUnionLead ? unionLights : (showLights ? `
                         <div style="position: absolute; top: 3px; left: 10px; width: 6px; height: 6px; background: #FF0000; border-radius: 50%; animation: blink1 0.8s infinite;"></div>
                         <div style="position: absolute; top: 3px; right: 10px; width: 6px; height: 6px; background: #0000FF; border-radius: 50%; animation: blink2 0.8s infinite;"></div>
-                    ` : ''}
+                    ` : '')}
                     <span style="
                         color: white;
                         font-weight: bold;
@@ -102,14 +108,43 @@ const getStatusColor = (status) => {
 export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     if (!units || units.length === 0) return null;
     
-    // Filter out current user and units with show_on_map = false
-    const otherUnits = units.filter(unit => {
-        if (unit.id === currentUserId) return false;
-        if (unit.show_on_map === false) return false;
-        return true;
+    // Group units by union and filter
+    const unitsToShow = [];
+    const processedUnionIds = new Set();
+    
+    units.forEach(unit => {
+        // Skip current user and hidden units
+        if (unit.id === currentUserId || unit.show_on_map === false) return;
+        
+        // If unit is in a union
+        if (unit.union_id) {
+            // Only process each union once
+            if (processedUnionIds.has(unit.union_id)) return;
+            processedUnionIds.add(unit.union_id);
+            
+            // Find all members of this union
+            const unionMembers = units.filter(u => u.union_id === unit.union_id);
+            
+            // Find highest ranking officer (lowest unit number or first alphabetically)
+            const leadUnit = unionMembers.sort((a, b) => {
+                const aNum = parseInt(a.unit_number) || 999;
+                const bNum = parseInt(b.unit_number) || 999;
+                return aNum - bNum;
+            })[0];
+            
+            // Mark as union leader
+            unitsToShow.push({
+                ...leadUnit,
+                isUnionLead: true,
+                unionMembers: unionMembers.length
+            });
+        } else {
+            // Regular unit, not in union
+            unitsToShow.push(unit);
+        }
     });
 
-    if (otherUnits.length === 0) return null;
+    if (unitsToShow.length === 0) return null;
     
     return (
         <MarkerClusterGroup
@@ -140,11 +175,11 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                 });
             }}
         >
-            {otherUnits.map((unit) => (
+            {unitsToShow.map((unit) => (
                 <Marker
                     key={unit.id}
                     position={[unit.latitude, unit.longitude]}
-                    icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor, unit.unit_number)}
+                    icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor, unit.unit_number, unit.isUnionLead)}
                 >
                         <Popup>
                             <div className="p-3 min-w-[240px]">
@@ -156,9 +191,14 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                         <p className="font-bold text-sm text-gray-900">
                                             {unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name || 'Unknown'}
                                             {unit.is_supervisor && <span className="ml-2 text-yellow-600">★</span>}
+                                            {unit.isUnionLead && (
+                                                <Badge className="ml-2 bg-green-600 text-white text-xs">
+                                                    {unit.unionMembers} Unit Group
+                                                </Badge>
+                                            )}
                                         </p>
                                         <p className="text-xs text-blue-600 font-semibold">
-                                            {unit.unit_number || 'No Unit ID'}
+                                            {unit.union_id || unit.unit_number || 'No Unit ID'}
                                         </p>
                                     </div>
                                 </div>

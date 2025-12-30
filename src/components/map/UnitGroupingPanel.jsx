@@ -190,18 +190,59 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
                                                 {currentUnion.member_unit_ids?.length || 0} units in this group
                                             </p>
                                         </div>
-                                        <Button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                leaveUnion(currentUnion);
-                                            }}
-                                            disabled={loading}
-                                            variant="outline"
-                                            className="border-red-300 text-red-600 hover:bg-red-50 pointer-events-auto"
-                                        >
-                                            <UserMinus className="w-4 h-4 mr-2" />
-                                            Leave
-                                        </Button>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    leaveUnion(currentUnion);
+                                                }}
+                                                disabled={loading}
+                                                variant="outline"
+                                                className="border-red-300 text-red-600 hover:bg-red-50 pointer-events-auto flex-1"
+                                            >
+                                                <UserMinus className="w-4 h-4 mr-2" />
+                                                Leave
+                                            </Button>
+                                            {currentUnion.lead_unit_id === currentUser?.id && (
+                                                <Button
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        setLoading(true);
+                                                        try {
+                                                            // Disband entire union
+                                                            await base44.entities.UnitUnion.update(currentUnion.id, {
+                                                                status: 'disbanded',
+                                                                disbanded_date: new Date().toISOString()
+                                                            });
+                                                            
+                                                            // Clear union_id from all members
+                                                            for (const unitId of currentUnion.member_unit_ids) {
+                                                                await base44.functions.invoke('updateUser', {
+                                                                    user_id: unitId,
+                                                                    data: {
+                                                                        unit_number: availableUnits.find(u => u.id === unitId)?.unit_number?.split(' Union')[0],
+                                                                        union_id: null
+                                                                    }
+                                                                });
+                                                            }
+                                                            
+                                                            toast.success('Union disbanded - all units returned to patrol');
+                                                            fetchUnions();
+                                                            fetchAvailableUnits();
+                                                        } catch (error) {
+                                                            console.error('Error disbanding union:', error);
+                                                            toast.error('Failed to disband union');
+                                                        } finally {
+                                                            setLoading(false);
+                                                        }
+                                                    }}
+                                                    disabled={loading}
+                                                    className="bg-red-600 hover:bg-red-700 text-white pointer-events-auto flex-1"
+                                                >
+                                                    Disband All
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
                                 </Card>
                             )}

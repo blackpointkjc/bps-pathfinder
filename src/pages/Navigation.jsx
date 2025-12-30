@@ -1507,9 +1507,29 @@ Format the response as a concise bullet list. If information is not available, s
                     animate={{ opacity: 1, x: 0 }}
                     className="absolute top-1/2 -translate-y-1/2 left-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
                 >
-                    <Button onClick={() => handleStatusChange('Available')} size="sm" className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg`}>
+                    <Button 
+                        onClick={async () => {
+                            await handleStatusChange('Available');
+                            // Clear active call
+                            if (currentUser) {
+                                try {
+                                    await base44.auth.updateMe({
+                                        current_call_id: null,
+                                        current_call_info: null
+                                    });
+                                    setActiveCallInfo(null);
+                                    clearRoute();
+                                    toast.success('Cleared from call');
+                                } catch (error) {
+                                    console.error('Error clearing call:', error);
+                                }
+                            }
+                        }} 
+                        size="sm" 
+                        className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg`}
+                    >
                         <CheckCircle2 className={`w-4 h-4 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
-                        <span className={`text-[8px] font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Avail</span>
+                        <span className={`text-[8px] font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Clear</span>
                     </Button>
                     <Button onClick={() => setShowCallsList(true)} size="sm" className={`${unitStatus === 'Enroute' ? 'bg-red-600 hover:bg-red-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg`}>
                         <NavigationIcon className={`w-4 h-4 ${unitStatus === 'Enroute' ? 'text-white' : 'text-red-600'}`} />
