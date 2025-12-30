@@ -1578,7 +1578,7 @@ Format the response as a concise bullet list. If information is not available, s
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute top-2 md:top-4 left-2 md:left-4 z-[999] flex flex-col gap-1.5 md:gap-2"
+                className="absolute top-2 md:top-4 left-2 md:left-4 z-[999] flex flex-wrap gap-1.5 md:gap-2"
             >
                 <div className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full flex items-center gap-1.5 md:gap-2 ${
                     isOnline 
@@ -1598,6 +1598,17 @@ Format the response as a concise bullet list. If information is not available, s
                     )}
                 </div>
                 
+                {accuracy && accuracy > 50 && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-amber-100 text-amber-700 px-2 md:px-3 py-1 md:py-1.5 rounded-full flex items-center gap-1.5 md:gap-2"
+                    >
+                        <MapPinOff className="w-3 h-3" />
+                        <span className="text-[10px] md:text-xs font-medium">Low GPS</span>
+                    </motion.div>
+                )}
+                
                 {isLiveTracking && (
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
@@ -1606,17 +1617,6 @@ Format the response as a concise bullet list. If information is not available, s
                     >
                         <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
                         <span className="text-xs font-medium">Live Tracking</span>
-                    </motion.div>
-                )}
-                
-                {accuracy && accuracy > 50 && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full flex items-center gap-2"
-                    >
-                        <MapPinOff className="w-3 h-3" />
-                        <span className="text-xs font-medium">Low GPS</span>
                     </motion.div>
                 )}
                 

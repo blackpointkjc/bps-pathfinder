@@ -249,14 +249,12 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                                             </h3>
                                             {group.isUnion ? (
                                                 <div className="text-xs mt-1 space-y-1 bg-slate-900/50 rounded p-2">
-                                                    <div className="text-indigo-400 font-semibold mb-1">Union Members:</div>
+                                                    <div className="text-indigo-400 font-semibold mb-1">Units in {group.displayName}:</div>
                                                     {group.members.map((member, idx) => (
                                                         <div key={member.id} className="flex items-center gap-2">
-                                                            <div className={`w-1.5 h-1.5 rounded-full ${idx === 0 ? 'bg-yellow-500' : 'bg-slate-500'}`} />
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${idx === 0 ? 'bg-yellow-500' : 'bg-indigo-400'}`} />
                                                             <span className={idx === 0 ? 'text-slate-200 font-medium' : 'text-slate-400'}>
-                                                                {member.rank && member.last_name 
-                                                                    ? `${member.rank} ${member.last_name}` 
-                                                                    : member.full_name || member.unit_number}
+                                                                {member.unit_number || member.full_name}
                                                                 {idx === 0 && ' (Lead)'}
                                                             </span>
                                                         </div>
