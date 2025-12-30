@@ -3,37 +3,17 @@ import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Shield, MapPin } from 'lucide-react';
 
-const createCCPDIcon = () => {
-    return new L.DivIcon({
-        className: 'custom-ccpd-marker',
-        html: `
-            <div style="
-                position: relative;
-                width: 44px;
-                height: 44px;
-            ">
-                <div style="
-                    width: 44px;
-                    height: 44px;
-                    background: #1E40AF;
-                    border: 3px solid white;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 8px rgba(30, 64, 175, 0.5);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                ">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
-                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
-                    </svg>
-                </div>
-            </div>
-        `,
-        iconSize: [44, 44],
-        iconAnchor: [22, 22],
-        popupAnchor: [0, -22]
-    });
-};
+const ccpdIcon = new L.Icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+            <circle cx="16" cy="16" r="15" fill="#1E40AF" stroke="white" stroke-width="2"/>
+            <path d="M16 6L9 10v5c0 4.33 3 8.38 7 9.4 4-1.02 7-5.07 7-9.4v-5l-7-4z" fill="white"/>
+        </svg>
+    `),
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16]
+});
 
 export default function CCPDStation({ showStations = true, onNavigateToStation }) {
     if (!showStations) return null;
@@ -48,7 +28,7 @@ export default function CCPDStation({ showStations = true, onNavigateToStation }
     return (
         <Marker
             position={[station.lat, station.lng]}
-            icon={createCCPDIcon()}
+            icon={ccpdIcon}
             eventHandlers={{
                 click: (e) => {
                     e.originalEvent.stopPropagation();
