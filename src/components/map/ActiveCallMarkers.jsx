@@ -28,47 +28,29 @@ const createCallIcon = (call, isHighPriority = false) => {
     }
     
     // Choose icon and color
-    let iconSvg = '';
+    let icon = '';
     let bgColor = '#1E40AF'; // Blue for police (default)
     
-    // Special handling for dispatch calls
-    if (isDispatch) {
-        bgColor = '#000000'; // Black background
-        iconSvg = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#FFD700" stroke="#FFD700" stroke-width="2">
-                <polygon points="12,2 15,8.5 22,9.5 17,14.5 18,21.5 12,18 6,21.5 7,14.5 2,9.5 9,8.5"/>
-            </svg>
-        `;
+    // Active/dispatched calls get emergency light icon
+    const isActiveOrDispatched = call.status?.toLowerCase().includes('dispatch') || 
+                                  call.status?.toLowerCase().includes('enroute') ||
+                                  call.status?.toLowerCase().includes('active');
+    
+    // Special handling for dispatch calls or active calls
+    if (isDispatch || isActiveOrDispatched) {
+        bgColor = '#DC2626'; // Red background
+        icon = '🚨';
     } else
     if (isEMS) {
         bgColor = '#F59E0B'; // Amber for EMS
-        iconSvg = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
-                <path d="M10 17h4V5H2v12h3"/>
-                <circle cx="7" cy="17" r="2"/>
-                <path d="M22 12h-5v5h3"/>
-                <circle cx="17" cy="17" r="2"/>
-            </svg>
-        `;
+        icon = '🚑';
     } else if (isFire) {
         bgColor = '#DC2626'; // Red for fire
-        iconSvg = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
-                <path d="M18 17h2v-6l-3-5H6v11"/>
-                <circle cx="7" cy="17" r="2"/>
-                <circle cx="17" cy="17" r="2"/>
-                <path d="M6 11V6h3"/>
-            </svg>
-        `;
+        icon = '🔥';
     } else {
-        // Police car icon
-        iconSvg = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
-                <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
-                <circle cx="7" cy="17" r="2"/>
-                <circle cx="17" cy="17" r="2"/>
-            </svg>
-        `;
+        // Police
+        bgColor = '#1E40AF';
+        icon = '🚓';
     }
     
     const pulseAnimation = isHighPriority ? `
@@ -101,10 +83,9 @@ const createCallIcon = (call, isHighPriority = false) => {
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                    font-size: 18px;
                     animation: ${isHighPriority ? 'flashPulse 1.5s infinite' : 'pulse 2s infinite'};
-                ">
-                    ${iconSvg}
-                </div>
+                ">${icon}</div>
                 <div style="
                     position: absolute;
                     top: -2px;

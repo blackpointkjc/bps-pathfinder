@@ -6,19 +6,22 @@ import L from 'leaflet';
 const jailIcon = new L.DivIcon({
     className: 'custom-marker',
     html: `
-        <div style="position: relative; width: 32px; height: 32px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
-                <rect x="3" y="11" width="18" height="10" rx="2" fill="#DC2626" fill-opacity="0.2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                <line x1="7" y1="15" x2="7" y2="18"/>
-                <line x1="12" y1="15" x2="12" y2="18"/>
-                <line x1="17" y1="15" x2="17" y2="18"/>
-            </svg>
-        </div>
+        <div style="
+            width: 32px;
+            height: 32px;
+            background: #DC2626;
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        ">🏛️</div>
     `,
     iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16],
 });
 
 const jails = [

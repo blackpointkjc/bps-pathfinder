@@ -26,6 +26,9 @@ export default function CallHistory() {
     const [sortBy, setSortBy] = useState('date'); // date, incident, area
     const [sortOrder, setSortOrder] = useState('desc'); // asc, desc
     const [selectedAgency, setSelectedAgency] = useState('all');
+    const [selectedStatus, setSelectedStatus] = useState('all');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
 
     useEffect(() => {
         loadHistory();
@@ -33,7 +36,7 @@ export default function CallHistory() {
 
     useEffect(() => {
         filterAndSort();
-    }, [calls, searchQuery, sortBy, sortOrder, selectedAgency]);
+    }, [calls, searchQuery, sortBy, sortOrder, selectedAgency, selectedStatus, startDate, endDate]);
 
     const loadHistory = async () => {
         try {
@@ -76,6 +79,27 @@ export default function CallHistory() {
             filtered = filtered.filter(call => 
                 call.agency?.includes(selectedAgency)
             );
+        }
+
+        // Filter by status
+        if (selectedStatus !== 'all') {
+            filtered = filtered.filter(call => 
+                call.status?.toLowerCase() === selectedStatus.toLowerCase()
+            );
+        }
+
+        // Filter by date range
+        if (startDate) {
+            filtered = filtered.filter(call => {
+                const callDate = new Date(call.time_received || call.created_date);
+                return callDate >= new Date(startDate);
+            });
+        }
+        if (endDate) {
+            filtered = filtered.filter(call => {
+                const callDate = new Date(call.time_received || call.created_date);
+                return callDate <= new Date(endDate + 'T23:59:59');
+            });
         }
 
         // Sort
@@ -132,54 +156,114 @@ export default function CallHistory() {
 
                 {/* Filters */}
                 <Card className="p-6 mb-6">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        {/* Search */}
-                        <div className="md:col-span-2">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {/* Search */}
+                            <div className="md:col-span-2">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                    <Input
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Search by incident, location, or agency..."
+                                        className="pl-10"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Agency Filter */}
+                            <div>
+                                <select
+                                    value={selectedAgency}
+                                    onChange={(e) => setSelectedAgency(e.target.value)}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                >
+                                    {agencies.map(agency => (
+                                        <option key={agency} value={agency}>
+                                            {agency === 'all' ? 'All Agencies' : agency}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Sort */}
+                            <div className="flex gap-2">
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value)}
+                                    className="flex h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                >
+                                    <option value="date">Date</option>
+                                    <option value="incident">Incident</option>
+                                    <option value="area">Area</option>
+                                </select>
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                                >
+                                    {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Additional Filters Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Status Filter */}
+                            <div>
+                                <select
+                                    value={selectedStatus}
+                                    onChange={(e) => setSelectedStatus(e.target.value)}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                >
+                                    <option value="all">All Statuses</option>
+                                    <option value="new">New</option>
+                                    <option value="dispatched">Dispatched</option>
+                                    <option value="enroute">Enroute</option>
+                                    <option value="on scene">On Scene</option>
+                                    <option value="cleared">Cleared</option>
+                                    <option value="closed">Closed</option>
+                                </select>
+                            </div>
+
+                            {/* Date Range */}
+                            <div>
                                 <Input
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Search by incident, location, or agency..."
-                                    className="pl-10"
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    placeholder="Start Date"
+                                    className="h-10"
+                                />
+                            </div>
+                            <div>
+                                <Input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    placeholder="End Date"
+                                    className="h-10"
                                 />
                             </div>
                         </div>
 
-                        {/* Agency Filter */}
-                        <div>
-                            <select
-                                value={selectedAgency}
-                                onChange={(e) => setSelectedAgency(e.target.value)}
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            >
-                                {agencies.map(agency => (
-                                    <option key={agency} value={agency}>
-                                        {agency === 'all' ? 'All Agencies' : agency}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Sort */}
-                        <div className="flex gap-2">
-                            <select
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value)}
-                                className="flex h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                            >
-                                <option value="date">Date</option>
-                                <option value="incident">Incident</option>
-                                <option value="area">Area</option>
-                            </select>
+                        {/* Clear Filters */}
+                        {(searchQuery || selectedAgency !== 'all' || selectedStatus !== 'all' || startDate || endDate) && (
                             <Button
                                 variant="outline"
-                                size="icon"
-                                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                                size="sm"
+                                onClick={() => {
+                                    setSearchQuery('');
+                                    setSelectedAgency('all');
+                                    setSelectedStatus('all');
+                                    setStartDate('');
+                                    setEndDate('');
+                                }}
+                                className="w-full md:w-auto"
                             >
-                                {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+                                Clear All Filters
                             </Button>
-                        </div>
+                        )}
                     </div>
                 </Card>
 

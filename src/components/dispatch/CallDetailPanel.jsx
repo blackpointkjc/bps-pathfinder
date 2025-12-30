@@ -156,6 +156,19 @@ export default function CallDetailPanel({ call, currentUser, onUpdate, units }) 
             </div>
 
             <ScrollArea className="flex-1 p-4">
+                {/* AI Summary */}
+                {call.ai_summary && (
+                    <div className="mb-6">
+                        <div className="bg-blue-900/40 border border-blue-500/30 rounded-lg p-4">
+                            <h3 className="text-sm font-semibold text-blue-300 mb-2 flex items-center gap-2">
+                                <span>🤖</span>
+                                AI Summary
+                            </h3>
+                            <p className="text-blue-100 text-sm">{call.ai_summary}</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Location Info */}
                 <div className="mb-6">
                     <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
@@ -175,9 +188,19 @@ export default function CallDetailPanel({ call, currentUser, onUpdate, units }) 
                         <p className="text-sm text-slate-400 mt-1">Cross: {call.cross_street}</p>
                     )}
                     {call.latitude && call.longitude && (
-                        <p className="text-xs text-slate-500 mt-1">
-                            GPS: {call.latitude.toFixed(4)}, {call.longitude.toFixed(4)}
-                        </p>
+                        <>
+                            <p className="text-xs text-slate-500 mt-1">
+                                GPS: {call.latitude.toFixed(4)}, {call.longitude.toFixed(4)}
+                            </p>
+                            {/* Mini Map Preview */}
+                            <div className="mt-3 h-32 rounded-lg overflow-hidden border border-slate-700">
+                                <iframe
+                                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${call.longitude-0.005},${call.latitude-0.005},${call.longitude+0.005},${call.latitude+0.005}&layer=mapnik&marker=${call.latitude},${call.longitude}`}
+                                    className="w-full h-full"
+                                    style={{border: 0}}
+                                />
+                            </div>
+                        </>
                     )}
                 </div>
 
