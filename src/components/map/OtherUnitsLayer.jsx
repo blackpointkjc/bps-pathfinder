@@ -44,49 +44,29 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
         className: 'custom-marker',
         html: `
             <div style="position: relative; width: 50px; height: 50px; transform: rotate(${normalizedHeading}deg); transition: transform 0.3s ease;">
-                <div style="
-                    width: 50px;
-                    height: 50px;
-                    background: ${color};
-                    border: 3px solid ${isSupervisor ? '#FFD700' : (isUnionLead ? '#00FF00' : 'white')};
-                    border-radius: 8px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    position: relative;
-                ">
-                    ${isUnionLead ? unionLights : (showLights ? `
-                        <div style="position: absolute; top: 3px; left: 10px; width: 6px; height: 6px; background: #FF0000; border-radius: 50%; animation: blink1 0.8s infinite;"></div>
-                        <div style="position: absolute; top: 3px; right: 10px; width: 6px; height: 6px; background: #0000FF; border-radius: 50%; animation: blink2 0.8s infinite;"></div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" style="position: relative; z-index: 2; filter: drop-shadow(0 3px 10px rgba(0,0,0,0.4));">
+                    ${isUnionLead ? `
+                    <circle cx="8" cy="5" r="1.8" fill="#00FF00">
+                        <animate attributeName="opacity" values="1;0;1" dur="0.8s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="16" cy="5" r="1.8" fill="#00FF00">
+                        <animate attributeName="opacity" values="0;1;0" dur="0.8s" repeatCount="indefinite"/>
+                    </circle>
+                    ` : (showLights ? `
+                    <circle cx="8" cy="5" r="1.8" fill="#FF0000">
+                        <animate attributeName="opacity" values="1;0;1" dur="0.8s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="16" cy="5" r="1.8" fill="#0000FF">
+                        <animate attributeName="opacity" values="0;1;0" dur="0.8s" repeatCount="indefinite"/>
+                    </circle>
                     ` : '')}
-                    <span style="
-                        color: white;
-                        font-weight: bold;
-                        font-size: 10px;
-                        font-family: system-ui, -apple-system, sans-serif;
-                        text-shadow: 0 1px 2px rgba(0,0,0,0.4);
-                    ">${agencyLabel}</span>
-                    <div style="
-                        position: absolute;
-                        top: -5px;
-                        width: 0;
-                        height: 0;
-                        border-left: 8px solid transparent;
-                        border-right: 8px solid transparent;
-                        border-bottom: 12px solid ${color};
-                    "></div>
-                </div>
-                <style>
-                    @keyframes blink1 {
-                        0%, 100% { opacity: 1; }
-                        50% { opacity: 0; }
-                    }
-                    @keyframes blink2 {
-                        0%, 100% { opacity: 0; }
-                        50% { opacity: 1; }
-                    }
-                </style>
+                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" fill="${color}" stroke="${isSupervisor ? '#FFD700' : (isUnionLead ? '#00FF00' : '#1E3A8A')}" stroke-width="0.8"/>
+                    <circle cx="7" cy="17" r="2.2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
+                    <circle cx="17" cy="17" r="2.2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
+                    <rect x="6" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
+                    <rect x="11" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
+                    <polygon points="12,1 15,7 9,7" fill="${color}" stroke="${isSupervisor ? '#FFD700' : (isUnionLead ? '#00FF00' : '#1E3A8A')}" stroke-width="0.8"/>
+                </svg>
             </div>
         `,
         iconSize: [50, 50],

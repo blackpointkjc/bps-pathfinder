@@ -311,7 +311,50 @@ export default function UnitGroupingPanel({ isOpen, onClose, currentUser }) {
 
                             {/* All Active Unions */}
                             <div>
-                                <h3 className="font-semibold text-gray-900 mb-3">All Active Unions</h3>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="font-semibold text-gray-900">All Active Unions</h3>
+                                    {currentUser?.role === 'admin' && unions.length > 0 && (
+                                        <Button
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if (!window.confirm(`Disband all ${unions.length} active unions?`)) return;
+                                                setLoading(true);
+                                                try {
+                                                    for (const union of unions) {
+                                                        await base44.entities.UnitUnion.update(union.id, {
+                                                            status: 'disbanded',
+                                                            disbanded_date: new Date().toISOString()
+                                                        });
+                                                        
+                                                        for (const unitId of union.member_unit_ids) {
+                                                            await base44.functions.invoke('updateUser', {
+                                                                user_id: unitId,
+                                                                data: {
+                                                                    union_id: null,
+                                                                    show_on_map: true
+                                                                }
+                                                            });
+                                                        }
+                                                    }
+                                                    toast.success('All unions disbanded');
+                                                    fetchUnions();
+                                                    fetchAvailableUnits();
+                                                } catch (error) {
+                                                    console.error('Error disbanding all:', error);
+                                                    toast.error('Failed to disband all');
+                                                } finally {
+                                                    setLoading(false);
+                                                }
+                                            }}
+                                            disabled={loading}
+                                            size="sm"
+                                            variant="destructive"
+                                            className="pointer-events-auto"
+                                        >
+                                            Disband All
+                                        </Button>
+                                    )}
+                                </div>
                                 <ScrollArea className="h-64">
                                     {unions.length === 0 ? (
                                         <div className="text-center py-8 text-gray-500">
