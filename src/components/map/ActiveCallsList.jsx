@@ -98,7 +98,7 @@ export default function ActiveCallsList({ isOpen, onClose, calls, onNavigateToCa
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 z-[2100] flex items-center justify-center p-4"
+                className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 pointer-events-auto"
                 onClick={onClose}
             >
                 <motion.div
@@ -106,7 +106,7 @@ export default function ActiveCallsList({ isOpen, onClose, calls, onNavigateToCa
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full max-w-2xl z-[2101]"
+                    className="w-full max-w-2xl z-[10000] pointer-events-auto"
                 >
                     <Card className="bg-white">
                         <div className="p-6">
@@ -209,6 +209,7 @@ export default function ActiveCallsList({ isOpen, onClose, calls, onNavigateToCa
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     onNavigateToCall(call);
+                                                                    onClose();
                                                                 }}
                                                             >
                                                                 <NavigationIcon className="w-4 h-4" />
