@@ -68,12 +68,17 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
             const response = await base44.functions.invoke('fetchAllUsers', {});
             const users = response.data?.users || [];
             
+            // Fetch active unions to verify which unions are actually active
+            const activeUnions = await base44.entities.UnitUnion.filter({ status: 'active' });
+            const activeUnionIds = new Set(activeUnions.map(u => u.union_name));
+            
             // Group users by union and filter out OOS non-union units
             const grouped = [];
             const processedUnions = new Set();
             
             users.forEach(user => {
-                if (user.union_id && !processedUnions.has(user.union_id)) {
+                // Only group if union is active
+                if (user.union_id && activeUnionIds.has(user.union_id) && !processedUnions.has(user.union_id)) {
                     processedUnions.add(user.union_id);
                     const unionMembers = users
                         .filter(u => u.union_id === user.union_id)
@@ -89,7 +94,8 @@ export default function AllUnitsPanel({ isOpen, onClose }) {
                         members: unionMembers,
                         status: unionMembers[0]?.status || 'Available'
                     });
-                } else if (!user.union_id && user.status !== 'Out of Service') {
+                } else if ((!user.union_id || !activeUnionIds.has(user.union_id)) && user.status !== 'Out of Service') {
+                    // Show as individual unit if no union or union is disbanded
                     grouped.push(user);
                 }
             });

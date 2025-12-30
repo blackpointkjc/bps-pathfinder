@@ -36,11 +36,27 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
     const [unitAddresses, setUnitAddresses] = useState({});
 
     // Group units by union - only show union once, not individual members
+    // But first check which unions are actually active
+    const [activeUnionIds, setActiveUnionIds] = React.useState(new Set());
+    
+    React.useEffect(() => {
+        const fetchActiveUnions = async () => {
+            try {
+                const activeUnions = await base44.entities.UnitUnion.filter({ status: 'active' });
+                setActiveUnionIds(new Set(activeUnions.map(u => u.union_name)));
+            } catch (error) {
+                console.error('Error fetching active unions:', error);
+            }
+        };
+        fetchActiveUnions();
+    }, [units]);
+    
     const groupedUnits = {};
     const processedUnitIds = new Set();
     
     units.forEach(unit => {
-        if (unit.union_id) {
+        // Only group if union is active
+        if (unit.union_id && activeUnionIds.has(unit.union_id)) {
             // If this union hasn't been added yet, add it with all members
             if (!groupedUnits[unit.union_id]) {
                 const unionMembers = units.filter(u => u.union_id === unit.union_id);
@@ -48,8 +64,8 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
                 // Mark all members as processed so they don't appear individually
                 unionMembers.forEach(m => processedUnitIds.add(m.id));
             }
-        } else if (unit.status !== 'Out of Service' && !processedUnitIds.has(unit.id)) {
-            // Individual unit (not in union, not OOS, not already processed)
+        } else if ((!unit.union_id || !activeUnionIds.has(unit.union_id)) && unit.status !== 'Out of Service' && !processedUnitIds.has(unit.id)) {
+            // Individual unit (not in active union, not OOS, not already processed)
             groupedUnits[unit.id] = [unit];
             processedUnitIds.add(unit.id);
         }
