@@ -17,18 +17,24 @@ export default function SearchBarWithHistory({ onSearch, isSearching, onClear })
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!query.trim()) return;
+        console.log('🔍 SearchBar: Form submitted with query:', query);
+        if (!query.trim()) {
+            console.log('⚠️ SearchBar: Empty query, ignoring');
+            return;
+        }
 
         // Add to history
         const newHistory = [query, ...searchHistory.filter(h => h !== query)].slice(0, 5);
         setSearchHistory(newHistory);
         localStorage.setItem('searchHistory', JSON.stringify(newHistory));
 
+        console.log('✅ SearchBar: Calling onSearch with:', query);
         onSearch(query);
         setShowHistory(false);
     };
 
     const selectFromHistory = (item) => {
+        console.log('🔍 SearchBar: Selected from history:', item);
         setQuery(item);
         onSearch(item);
         setShowHistory(false);
