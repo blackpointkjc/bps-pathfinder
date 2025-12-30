@@ -95,9 +95,11 @@ export default function DispatchCenter() {
         toast.success('Call created and dispatched');
     };
 
+    const [quickCallType, setQuickCallType] = useState(null);
+    
     const handleQuickDispatch = (callType) => {
+        setQuickCallType(callType);
         setShowCreateDialog(true);
-        // Pre-fill form data would be passed here if needed
     };
 
     const handleUpdate = async () => {
@@ -135,7 +137,7 @@ export default function DispatchCenter() {
                                 CAD / Dispatch Console
                             </h1>
                             <p className="text-slate-400 text-sm">
-                                {currentUser?.full_name} • {currentUser?.unit_number || 'Dispatcher'}
+                                {currentUser?.rank && currentUser?.last_name ? `${currentUser.rank} ${currentUser.last_name}` : currentUser?.full_name} • {currentUser?.unit_number || 'Dispatcher'}
                             </p>
                         </div>
                     </div>
@@ -250,8 +252,13 @@ export default function DispatchCenter() {
                 <CreateCallDialog
                     units={units}
                     currentUser={currentUser}
-                    onClose={() => setShowCreateDialog(false)}
+                    onClose={() => {
+                        setShowCreateDialog(false);
+                        setQuickCallType(null);
+                    }}
                     onCreated={handleCallCreated}
+                    initialCallType={quickCallType?.type}
+                    initialPriority={quickCallType?.priority}
                 />
             )}
         </div>
