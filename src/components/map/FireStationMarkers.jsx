@@ -4,37 +4,17 @@ import L from 'leaflet';
 import { Flame, Phone, MapPin } from 'lucide-react';
 
 // Fire station icon with agency label
-const createFireStationIcon = (agencyLabel = 'FD') => {
-    return new L.DivIcon({
-        className: 'custom-fire-station-marker',
-        html: `
-            <div style="
-                position: relative;
-                width: 44px;
-                height: 44px;
-            ">
-                <div style="
-                    width: 44px;
-                    height: 44px;
-                    background: #DC2626;
-                    border: 3px solid white;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.5);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                ">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
-                        <path d="M4 18l2.5-6h11L20 18H4zm15-8.5l-1.4-1.4-2.6 2.6-2.6-2.6-1.4 1.4 2.6 2.6-2.6 2.6 1.4 1.4 2.6-2.6 2.6 2.6 1.4-1.4-2.6-2.6L19 9.5zM2 21h20v2H2v-2zm1-3h18v2H3v-2z"/>
-                    </svg>
-                </div>
-            </div>
-        `,
-        iconSize: [44, 44],
-        iconAnchor: [22, 22],
-        popupAnchor: [0, -22]
-    });
-};
+const fireStationIcon = new L.Icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+            <circle cx="16" cy="16" r="15" fill="#DC2626" stroke="white" stroke-width="2"/>
+            <path d="M16 8l-2 4h-2l2 4-2 4h2l2 4 2-4h2l-2-4 2-4h-2l-2-4z" fill="white"/>
+        </svg>
+    `),
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16]
+});
 
 export default function FireStationMarkers({ showStations, onNavigateToStation }) {
     const [stations, setStations] = useState([]);
@@ -104,7 +84,7 @@ export default function FireStationMarkers({ showStations, onNavigateToStation }
                 <Marker
                     key={`fire-station-${index}`}
                     position={[station.lat, station.lng]}
-                    icon={createFireStationIcon(station.agency)}
+                    icon={fireStationIcon}
                     eventHandlers={{
                         click: (e) => {
                             e.originalEvent.stopPropagation();
