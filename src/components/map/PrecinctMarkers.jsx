@@ -33,8 +33,8 @@ const precincts = [
     {
         name: 'First Precinct',
         precinctNumber: '1',
-        address: '2501 Q St, Richmond, VA',
-        coords: [37.5257, -77.4109]
+        address: '301 S Meadow St, Richmond, VA',
+        coords: [37.5336, -77.4047]
     },
     {
         name: 'Second Precinct',
@@ -45,8 +45,8 @@ const precincts = [
     {
         name: 'Third Precinct',
         precinctNumber: '3',
-        address: '301 S Meadow St, Richmond, VA',
-        coords: [37.5336, -77.4047]
+        address: '2501 Q St, Richmond, VA',
+        coords: [37.5257, -77.4109]
     },
     {
         name: 'Fourth Precinct',
