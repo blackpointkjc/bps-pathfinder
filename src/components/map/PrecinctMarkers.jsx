@@ -27,32 +27,32 @@ const precincts = [
     {
         name: 'Richmond Police Headquarters',
         precinctNumber: 'HQ',
-        address: '200 W Grace St, Richmond, VA',
-        coords: [37.5419, -77.4440]
+        address: '200 West Grace Street, Richmond, VA 23220',
+        coords: [37.54719529698201, -77.44486422236335]
     },
     {
         name: 'First Precinct',
         precinctNumber: '1',
-        address: '301 S Meadow St, Richmond, VA',
-        coords: [37.5336, -77.4047]
+        address: '2501 Q St, Richmond, VA 23223',
+        coords: [37.53885567352091, -77.4119119229298]
     },
     {
         name: 'Second Precinct',
         precinctNumber: '2',
-        address: '177 Belt Blvd, Richmond, VA',
-        coords: [37.5586, -77.5012]
+        address: '177 Belt Blvd, Richmond, VA 23224',
+        coords: [37.50705142571208, -77.48189721499445]
     },
     {
         name: 'Third Precinct',
         precinctNumber: '3',
-        address: '2501 Q St, Richmond, VA',
-        coords: [37.5257, -77.4109]
+        address: '301 S. Meadow St, Richmond, VA 23220',
+        coords: [37.547279999537636, -77.4671391609979]
     },
     {
         name: 'Fourth Precinct',
         precinctNumber: '4',
-        address: '2219 Chamberlayne Ave, Richmond, VA',
-        coords: [37.5798, -77.4375]
+        address: '2219 Chamberlayne Ave, Richmond, VA 23222',
+        coords: [37.564263393806144, -77.44342034564745]
     }
 ];
 
