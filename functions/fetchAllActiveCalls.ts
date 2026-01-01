@@ -90,11 +90,26 @@ Deno.serve(async (req) => {
                             
                             // Validate
                             if (incident && incident.trim() && location && location.trim() && agency && agency.trim()) {
+                                let mappedAgency = agency.trim();
+                                const incidentLower = incident.toLowerCase();
+                                
+                                // Map fire agencies to police for firearm calls
+                                const isPoliceFireCall = incidentLower.includes('firearm') || 
+                                                         incidentLower.includes('gunfire') || 
+                                                         incidentLower.includes('shooting') ||
+                                                         incidentLower.includes('shots fired');
+                                
+                                if (isPoliceFireCall) {
+                                    if (agency.includes('CCFD')) mappedAgency = 'CCPD';
+                                    else if (agency.includes('RFD')) mappedAgency = 'RPD';
+                                    else if (agency.includes('HFD')) mappedAgency = 'HPD';
+                                }
+                                
                                 calls.push({
                                     timeReceived: timeReceived || 'Unknown',
                                     incident: incident.trim(),
                                     location: location.trim(),
-                                    agency: agency.trim(),
+                                    agency: mappedAgency,
                                     status: (status && status.trim()) || 'Dispatched',
                                     source: 'gractivecalls.com'
                                 });
@@ -293,12 +308,7 @@ Deno.serve(async (req) => {
                 } else {
                     console.log(`❌ FAILED TO GEOCODE: ${call.agency} - ${call.incident} at ${call.location} in ${jurisdiction}`);
                     console.log(`   Query was: ${query}`);
-                    // Still add to list so user can see all calls
-                    geocodedCalls.push({
-                        ...call,
-                        latitude: null,
-                        longitude: null
-                    });
+                    // DON'T add calls without coordinates - they won't show on map anyway
                 }
                 
                 // Rate limit to avoid hitting Nominatim too hard
@@ -315,25 +325,11 @@ Deno.serve(async (req) => {
         
         console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
         
-        // DEBUGGING: Count CCPD/CCFD before and after geocoding
-        const ccpdBeforeGeocode = calls.filter(c => c.agency?.includes('CCPD') || c.agency?.includes('CCFD')).length;
-        const ccpdAfterGeocode = geocodedCalls.filter(c => c.agency?.includes('CCPD') || c.agency?.includes('CCFD')).length;
-        const ccpdWithCoords = geocodedCalls.filter(c => (c.agency?.includes('CCPD') || c.agency?.includes('CCFD')) && c.latitude && c.longitude).length;
-        
-        console.log(`🔍 CHESTERFIELD TRACKING:`);
-        console.log(`   Before geocoding: ${ccpdBeforeGeocode} calls`);
-        console.log(`   After geocoding: ${ccpdAfterGeocode} calls`);
-        console.log(`   With valid coords: ${ccpdWithCoords} calls`);
-        
         // Generate AI summaries for geocoded calls only (skip if no coordinates)
         const callsWithSummaries = geocodedCalls.map(call => ({
             ...call,
             ai_summary: call.ai_summary || `${call.incident} at ${call.location}`
         }));
-        
-        // FINAL DEBUG: What are we actually returning?
-        const finalCCPD = callsWithSummaries.filter(c => c.agency?.includes('CCPD') || c.agency?.includes('CCFD')).length;
-        console.log(`   In final response: ${finalCCPD} Chesterfield calls`);
         
         return Response.json({
             success: true,
