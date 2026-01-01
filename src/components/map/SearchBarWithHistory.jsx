@@ -62,7 +62,7 @@ export default function SearchBarWithHistory({ onSearch, isSearching, onClear })
                         onChange={(e) => setQuery(e.target.value)}
                         onFocus={() => setShowHistory(true)}
                         placeholder="Search destination..."
-                        className="pl-12 pr-24 h-14 text-base border-0 bg-transparent focus-visible:ring-0"
+                        className="pl-12 pr-24 h-14 text-base border-0 bg-transparent focus-visible:ring-0 pointer-events-auto"
                     />
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-2">
                         {query && (
