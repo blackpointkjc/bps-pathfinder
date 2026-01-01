@@ -2177,7 +2177,7 @@ Be thorough and search multiple sources.`,
 
             {/* Call Notification System */}
             <CallNotificationSystem
-                calls={activeCalls}
+                calls={allActiveCalls}
                 onNavigateToCall={handleEnrouteToCall}
                 currentUserId={currentUser?.id}
             />
