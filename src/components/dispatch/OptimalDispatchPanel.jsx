@@ -182,98 +182,101 @@ export default function OptimalDispatchPanel({ isOpen, onClose, call, onUnitAssi
                                         {/* Recommended Units */}
                                         <div>
                                             <h3 className="font-semibold mb-3 text-white">Recommended Units</h3>
-                                            {suggestions.map((unit, index) => (
-                                            <motion.div
-                                                key={unit.unit_id}
-                                                initial={{ opacity: 0, x: -20 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: index * 0.1 }}
-                                            >
-                                                <Card className={`p-4 border-2 ${
-                                                    index === 0 
-                                                        ? 'bg-gradient-to-r from-purple-900/50 to-blue-900/50 border-purple-500' 
-                                                        : 'bg-slate-800 border-slate-700'
-                                                } hover:scale-[1.02] transition-all`}>
-                                                    <div className="flex items-start justify-between">
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-2 mb-2">
-                                                                {index === 0 && (
-                                                                    <Badge className="bg-purple-600 text-white">
-                                                                        BEST MATCH
-                                                                    </Badge>
-                                                                )}
-                                                                <h3 className="font-bold text-white text-lg">
-                                                                    {unit.unit_name}
-                                                                </h3>
-                                                                {unit.skillMatch && (
-                                                                    <Badge className="bg-green-600">
-                                                                        SKILL MATCH
-                                                                    </Badge>
-                                                                )}
+                                            <div className="space-y-2">
+                                                {suggestions.map((unit, index) => (
+                                                    <motion.div
+                                                        key={unit.unit_id}
+                                                        initial={{ opacity: 0, x: -20 }}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        transition={{ delay: index * 0.1 }}
+                                                    >
+                                                        <Card className={`p-4 border-2 ${
+                                                            index === 0 
+                                                                ? 'bg-gradient-to-r from-purple-900/50 to-blue-900/50 border-purple-500' 
+                                                                : 'bg-slate-800 border-slate-700'
+                                                        } hover:scale-[1.02] transition-all`}>
+                                                            <div className="flex items-start justify-between">
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-2 mb-2">
+                                                                        {index === 0 && (
+                                                                            <Badge className="bg-purple-600 text-white">
+                                                                                BEST MATCH
+                                                                            </Badge>
+                                                                        )}
+                                                                        <h3 className="font-bold text-white text-lg">
+                                                                            {unit.unit_name}
+                                                                        </h3>
+                                                                        {unit.skillMatch && (
+                                                                            <Badge className="bg-green-600">
+                                                                                SKILL MATCH
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+
+                                                                    <div className="grid grid-cols-3 gap-4 text-sm mb-3">
+                                                                        <div>
+                                                                            <div className="flex items-center gap-1 text-slate-500 mb-1">
+                                                                                <MapPin className="w-3 h-3" />
+                                                                                <span>Distance</span>
+                                                                            </div>
+                                                                            <p className="text-white font-semibold">
+                                                                                {unit.distance} km
+                                                                            </p>
+                                                                        </div>
+
+                                                                        <div>
+                                                                            <div className="flex items-center gap-1 text-slate-500 mb-1">
+                                                                                <Clock className="w-3 h-3" />
+                                                                                <span>ETA</span>
+                                                                            </div>
+                                                                            <p className="text-white font-semibold">
+                                                                                {unit.eta} min
+                                                                            </p>
+                                                                        </div>
+
+                                                                        <div>
+                                                                            <div className="flex items-center gap-1 text-slate-500 mb-1">
+                                                                                <TrendingUp className="w-3 h-3" />
+                                                                                <span>Status</span>
+                                                                            </div>
+                                                                            <p className="text-green-400 font-semibold">
+                                                                                {unit.status}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {unit.skills && unit.skills.length > 0 && (
+                                                                        <div className="flex flex-wrap gap-1">
+                                                                            {unit.skills.map(skill => (
+                                                                                <Badge
+                                                                                    key={skill}
+                                                                                    className="bg-slate-700 text-slate-300 text-xs"
+                                                                                >
+                                                                                    {skill}
+                                                                                </Badge>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                <Button
+                                                                    onClick={() => assignUnit(unit)}
+                                                                    disabled={assigning !== null}
+                                                                    className={`ml-4 ${
+                                                                        index === 0 
+                                                                            ? 'bg-purple-600 hover:bg-purple-700' 
+                                                                            : 'bg-slate-700 hover:bg-slate-600'
+                                                                    }`}
+                                                                >
+                                                                    <Target className="w-4 h-4 mr-2" />
+                                                                    {assigning === unit.unit_id ? 'Assigning...' : 'Dispatch'}
+                                                                </Button>
                                                             </div>
-
-                                                            <div className="grid grid-cols-3 gap-4 text-sm mb-3">
-                                                                <div>
-                                                                    <div className="flex items-center gap-1 text-slate-500 mb-1">
-                                                                        <MapPin className="w-3 h-3" />
-                                                                        <span>Distance</span>
-                                                                    </div>
-                                                                    <p className="text-white font-semibold">
-                                                                        {unit.distance} km
-                                                                    </p>
-                                                                </div>
-
-                                                                <div>
-                                                                    <div className="flex items-center gap-1 text-slate-500 mb-1">
-                                                                        <Clock className="w-3 h-3" />
-                                                                        <span>ETA</span>
-                                                                    </div>
-                                                                    <p className="text-white font-semibold">
-                                                                        {unit.eta} min
-                                                                    </p>
-                                                                </div>
-
-                                                                <div>
-                                                                    <div className="flex items-center gap-1 text-slate-500 mb-1">
-                                                                        <TrendingUp className="w-3 h-3" />
-                                                                        <span>Status</span>
-                                                                    </div>
-                                                                    <p className="text-green-400 font-semibold">
-                                                                        {unit.status}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-
-                                                            {unit.skills.length > 0 && (
-                                                                <div className="flex flex-wrap gap-1">
-                                                                    {unit.skills.map(skill => (
-                                                                        <Badge
-                                                                            key={skill}
-                                                                            className="bg-slate-700 text-slate-300 text-xs"
-                                                                        >
-                                                                            {skill}
-                                                                        </Badge>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-
-                                                        <Button
-                                                            onClick={() => assignUnit(unit)}
-                                                            disabled={assigning !== null}
-                                                            className={`ml-4 ${
-                                                                index === 0 
-                                                                    ? 'bg-purple-600 hover:bg-purple-700' 
-                                                                    : 'bg-slate-700 hover:bg-slate-600'
-                                                            }`}
-                                                        >
-                                                            <Target className="w-4 h-4 mr-2" />
-                                                            {assigning === unit.unit_id ? 'Assigning...' : 'Dispatch'}
-                                                        </Button>
-                                                    </div>
-                                                </Card>
-                                            </motion.div>
-                                        ))}
+                                                        </Card>
+                                                    </motion.div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 </ScrollArea>
                             )}
