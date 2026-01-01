@@ -40,8 +40,17 @@ export default function LiveNavigation({ currentStep, nextStep, remainingDistanc
     const getETA = () => {
         if (eta) return eta;
         if (remainingTime) {
-            const match = remainingTime.match(/ETA (\d+:\d+\s*[AP]M)/i);
-            return match ? match[1] : null;
+            // Try to extract ETA from various formats
+            const etaMatch = remainingTime.match(/ETA (\d+:\d+\s*[AP]M)/i);
+            if (etaMatch) return etaMatch[1];
+
+            // If no ETA, calculate from duration
+            const minMatch = remainingTime.match(/(\d+)\s*min/i);
+            if (minMatch) {
+                const mins = parseInt(minMatch[1]);
+                const etaTime = new Date(Date.now() + mins * 60000);
+                return etaTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            }
         }
         return null;
     };
@@ -57,22 +66,22 @@ export default function LiveNavigation({ currentStep, nextStep, remainingDistanc
             <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
                 {/* Top Status Bar */}
                 <div className="bg-white px-6 py-3 flex items-center justify-between border-b border-gray-200">
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.5">
                             <Clock className="w-4 h-4 text-blue-600" />
-                            <span className="text-sm font-semibold text-gray-900">
+                            <span className="text-sm font-bold text-gray-900">
                                 {getETA() || 'Calculating...'}
                             </span>
                         </div>
                         <div className="h-4 w-px bg-gray-300" />
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                             <MapPin className="w-4 h-4 text-green-600" />
-                            <span className="text-sm font-semibold text-gray-900">{remainingDistance}</span>
+                            <span className="text-sm font-bold text-gray-900">{remainingDistance}</span>
                         </div>
                         {speed > 0 && (
                             <>
                                 <div className="h-4 w-px bg-gray-300" />
-                                <span className="text-sm font-semibold text-gray-900">{Math.round(speed)} mph</span>
+                                <span className="text-sm font-bold text-gray-900">{Math.round(speed)} mph</span>
                             </>
                         )}
                     </div>

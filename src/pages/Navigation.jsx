@@ -865,14 +865,14 @@ export default function Navigation() {
         const predictiveData = calculatePredictiveETA(routeData.duration, coordinates, activeCalls);
         const advisory = getTrafficAdvisory(predictiveData);
 
-        // Display predictive ETA
+        // Display predictive ETA with cleaner format
         const durationMins = predictiveData.durationMins;
         if (durationMins >= 60) {
             const hours = Math.floor(durationMins / 60);
             const mins = durationMins % 60;
-            setDuration(`${hours}h ${mins}m (ETA ${predictiveData.etaFormatted})`);
+            setDuration(`${hours}h ${mins}m • ETA ${predictiveData.etaFormatted}`);
         } else {
-            setDuration(`${durationMins} min (ETA ${predictiveData.etaFormatted})`);
+            setDuration(`${durationMins} min • ETA ${predictiveData.etaFormatted}`);
         }
 
         // Show traffic advisory if there's significant delay
@@ -1714,45 +1714,61 @@ Be thorough and search multiple sources.`,
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute top-2 md:top-4 left-20 md:left-24 z-[999] flex flex-wrap gap-1.5 md:gap-2"
+                className="absolute top-2 md:top-4 left-20 md:left-24 z-[999] flex flex-col gap-1.5 pointer-events-none"
             >
-                <div className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full flex items-center gap-1.5 md:gap-2 ${
-                    isOnline 
-                        ? 'bg-green-100 text-green-700' 
-                        : 'bg-amber-100 text-amber-700'
-                }`}>
-                    {isOnline ? (
-                        <>
-                            <Wifi className="w-3 h-3" />
-                            <span className="text-[10px] md:text-xs font-medium">Online</span>
-                        </>
-                    ) : (
-                        <>
-                            <WifiOff className="w-3 h-3" />
-                            <span className="text-[10px] md:text-xs font-medium">Offline</span>
-                        </>
+                <div className="flex flex-wrap gap-1.5 md:gap-2">
+                    <div className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full flex items-center gap-1.5 md:gap-2 ${
+                        isOnline 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-amber-100 text-amber-700'
+                    }`}>
+                        {isOnline ? (
+                            <>
+                                <Wifi className="w-3 h-3" />
+                                <span className="text-[10px] md:text-xs font-medium">Online</span>
+                            </>
+                        ) : (
+                            <>
+                                <WifiOff className="w-3 h-3" />
+                                <span className="text-[10px] md:text-xs font-medium">Offline</span>
+                            </>
+                        )}
+                    </div>
+                    
+                    {accuracy && accuracy > 50 && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="bg-amber-100 text-amber-700 px-2 md:px-3 py-1 md:py-1.5 rounded-full flex items-center gap-1.5 md:gap-2"
+                        >
+                            <MapPinOff className="w-3 h-3" />
+                            <span className="text-[10px] md:text-xs font-medium">Low GPS</span>
+                        </motion.div>
+                    )}
+                    
+                    {isLiveTracking && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full flex items-center gap-2"
+                        >
+                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                            <span className="text-xs font-medium">Live Tracking</span>
+                        </motion.div>
                     )}
                 </div>
                 
-                {accuracy && accuracy > 50 && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-amber-100 text-amber-700 px-2 md:px-3 py-1 md:py-1.5 rounded-full flex items-center gap-1.5 md:gap-2"
-                    >
-                        <MapPinOff className="w-3 h-3" />
-                        <span className="text-[10px] md:text-xs font-medium">Low GPS</span>
-                    </motion.div>
-                )}
-                
-                {isLiveTracking && (
+                {/* Current Street Name */}
+                {currentStreet && currentStreet !== 'Locating...' && (
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full flex items-center gap-2"
+                        className="bg-white/95 backdrop-blur-xl rounded-lg shadow-md px-3 py-1.5"
                     >
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                        <span className="text-xs font-medium">Live Tracking</span>
+                        <div className="flex items-center gap-2">
+                            <MapPin className="w-3 h-3 text-blue-600" />
+                            <span className="text-xs font-semibold text-gray-700">{currentStreet}</span>
+                        </div>
                     </motion.div>
                 )}
                 
@@ -1954,15 +1970,6 @@ Be thorough and search multiple sources.`,
                             isSearching={isSearching}
                             onClear={clearRoute}
                         />
-                        {speed > 1 && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="mt-2 bg-white/95 backdrop-blur-xl rounded-xl shadow-lg px-4 py-2 text-center"
-                            >
-                                <p className="text-sm font-semibold text-gray-700">{currentStreet}</p>
-                            </motion.div>
-                        )}
                     </motion.div>
 
                     {/* Voice Command Button */}
