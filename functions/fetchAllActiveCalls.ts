@@ -54,64 +54,66 @@ Deno.serve(async (req) => {
             if (response1.ok) {
                 const html = await response1.text();
                 
-                // Look for all table rows in the entire page
-                const rowMatches = html.matchAll(/<tr[^>]*data-with-row-border="true"[^>]*>([\s\S]*?)<\/tr>/gi);
-                
-                for (const rowMatch of rowMatches) {
-                    const rowHtml = rowMatch[1];
-                    const cells = [];
-                    const cellMatches = rowHtml.matchAll(/<td[^>]*class="[^"]*mantine-Table-td[^"]*"[^>]*>([\s\S]*?)<\/td>/gi);
+                // Find the table body - gractivecalls uses a specific structure
+                const tbodyMatch = html.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
+                if (!tbodyMatch) {
+                    console.error('❌ Could not find table body in gractivecalls.com');
+                } else {
+                    const tbodyHtml = tbodyMatch[1];
+                    // Match all table rows
+                    const rowMatches = tbodyHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
                     
-                    for (const match of cellMatches) {
-                        const text = match[1]
-                            .replace(/<[^>]+>/g, '')
-                            .replace(/&nbsp;/g, ' ')
-                            .replace(/&amp;/g, '&')
-                            .trim();
-                        cells.push(text);
-                    }
-                    
-                    if (cells.length >= 5) {
-                        const [timeReceived, incident, location, agency, status] = cells;
+                    for (const rowMatch of rowMatches) {
+                        const rowHtml = rowMatch[1];
+                        const cells = [];
                         
-                        // Validate
-                        const isTimeValue = /^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(location?.trim());
+                        // Extract all td content
+                        const cellMatches = rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
                         
-                        if (incident && incident.trim() && location && location.trim() && !isTimeValue && agency && agency.trim()) {
-                            const agencyUpper = agency.trim().toUpperCase();
+                        for (const match of cellMatches) {
+                            let text = match[1]
+                                .replace(/<[^>]+>/g, '')
+                                .replace(/&nbsp;/g, ' ')
+                                .replace(/&amp;/g, '&')
+                                .replace(/&#x27;/g, "'")
+                                .trim();
+                            cells.push(text);
+                        }
+                        
+                        // We should have 6 cells: Time, Incident, Location, Agency, Status, Actions
+                        if (cells.length >= 5) {
+                            const timeReceived = cells[0];
+                            const incident = cells[1];
+                            const location = cells[2];
+                            const agency = cells[3];
+                            const status = cells[4];
                             
-                            // IMPORTANT: Map fire-related agencies correctly - firearms/gunfire are POLICE calls
-                            let mappedAgency = agency.trim();
-                            const incidentLower = incident.toLowerCase();
-                            
-                            // Check if this is actually a police call (firearm, gunfire, shooting)
-                            const isPoliceFireCall = incidentLower.includes('firearm') || 
-                                                     incidentLower.includes('gunfire') || 
-                                                     incidentLower.includes('gun fire') ||
-                                                     incidentLower.includes('shooting') ||
-                                                     incidentLower.includes('shots fired');
-                            
-                            // Keep police agencies as-is, but validate fire agencies
-                            if (!isPoliceFireCall && (agencyUpper.includes('FD') || agencyUpper.includes('FIRE') || agencyUpper.includes('EMS'))) {
-                                // This is legitimately a fire/EMS call
-                                mappedAgency = agency.trim();
-                            } else if (agencyUpper.includes('CCFD') || agencyUpper.includes('CFD') || agencyUpper.includes('CFRD')) {
-                                // Chesterfield Fire became police due to firearm keyword
-                                mappedAgency = 'CCPD';
-                            } else if (agencyUpper.includes('RFD')) {
-                                mappedAgency = 'RPD';
-                            } else if (agencyUpper.includes('HFD') || agencyUpper.includes('HENRICO FIRE')) {
-                                mappedAgency = 'HPD';
+                            // Validate
+                            if (incident && incident.trim() && location && location.trim() && agency && agency.trim()) {
+                                let mappedAgency = agency.trim();
+                                const incidentLower = incident.toLowerCase();
+                                
+                                // Map fire agencies to police for firearm calls
+                                const isPoliceFireCall = incidentLower.includes('firearm') || 
+                                                         incidentLower.includes('gunfire') || 
+                                                         incidentLower.includes('shooting') ||
+                                                         incidentLower.includes('shots fired');
+                                
+                                if (isPoliceFireCall) {
+                                    if (agency.includes('CCFD')) mappedAgency = 'CCPD';
+                                    else if (agency.includes('RFD')) mappedAgency = 'RPD';
+                                    else if (agency.includes('HFD')) mappedAgency = 'HPD';
+                                }
+                                
+                                calls.push({
+                                    timeReceived: timeReceived || 'Unknown',
+                                    incident: incident.trim(),
+                                    location: location.trim(),
+                                    agency: mappedAgency,
+                                    status: (status && status.trim()) || 'Dispatched',
+                                    source: 'gractivecalls.com'
+                                });
                             }
-                            
-                            calls.push({
-                                timeReceived: timeReceived || 'Unknown',
-                                incident: incident.trim(),
-                                location: location.trim(),
-                                agency: mappedAgency,
-                                status: (status && status.trim()) || 'Dispatched',
-                                source: 'gractivecalls.com'
-                            });
                         }
                     }
                 }
@@ -126,7 +128,7 @@ Deno.serve(async (req) => {
                         agencyCounts[c.agency] = (agencyCounts[c.agency] || 0) + 1;
                     }
                 });
-                console.log('📊 Agencies:', JSON.stringify(agencyCounts));
+                console.log('📊 Agencies from gractivecalls:', JSON.stringify(agencyCounts));
             }
         } catch (error) {
             console.error('❌ Error fetching from gractivecalls.com:', error);
