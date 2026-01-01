@@ -141,11 +141,51 @@ Deno.serve(async (req) => {
                             const isTimeValue = /^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(location?.trim());
                             
                             if (incident.trim() && location.trim() && !isTimeValue) {
+                                // Determine if it's a fire/EMS call or police call
+                                const incidentLower = incident.toLowerCase();
+                                let agency = 'Henrico Police';
+                                
+                                // Fire/EMS keywords
+                                if (incidentLower.includes('fire') || 
+                                    incidentLower.includes('rescue') || 
+                                    incidentLower.includes('ems') || 
+                                    incidentLower.includes('medical') || 
+                                    incidentLower.includes('cardiac') ||
+                                    incidentLower.includes('stroke') ||
+                                    incidentLower.includes('unconscious') ||
+                                    incidentLower.includes('breathing') ||
+                                    incidentLower.includes('overdose') ||
+                                    incidentLower.includes('choking') ||
+                                    incidentLower.includes('accident with injury') ||
+                                    incidentLower.includes('vehicle accident w/ injury') ||
+                                    incidentLower.includes('mva with injury')) {
+                                    agency = 'Henrico Fire';
+                                }
+                                
+                                // Police keywords (including gun-related)
+                                if (incidentLower.includes('gun') || 
+                                    incidentLower.includes('firearm') || 
+                                    incidentLower.includes('shooting') ||
+                                    incidentLower.includes('shots fired') ||
+                                    incidentLower.includes('weapon') ||
+                                    incidentLower.includes('robbery') ||
+                                    incidentLower.includes('assault') ||
+                                    incidentLower.includes('theft') ||
+                                    incidentLower.includes('burglary') ||
+                                    incidentLower.includes('domestic') ||
+                                    incidentLower.includes('suspicious') ||
+                                    incidentLower.includes('trespass') ||
+                                    incidentLower.includes('violation') ||
+                                    incidentLower.includes('warrant') ||
+                                    incidentLower.includes('pursuit')) {
+                                    agency = 'Henrico Police';
+                                }
+                                
                                 calls.push({
                                     timeReceived,
                                     incident: incident.trim(),
                                     location: location.trim(),
-                                    agency: 'Henrico Police',
+                                    agency,
                                     status: status.trim(),
                                     source: 'activecalls.henrico.gov'
                                 });
