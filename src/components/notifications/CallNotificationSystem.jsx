@@ -46,12 +46,40 @@ export default function CallNotificationSystem({ calls = [], onNavigateToCall, c
     useEffect(() => {
         if (!calls || calls.length === 0) return;
 
-        const currentCallIds = new Set(calls.map(c => c.id || `${c.timeReceived}-${c.incident}-${c.location}`));
-        const newCalls = calls.filter(call => {
+        // Filter calls from last 10 minutes only
+        const now = new Date();
+        const recentCalls = calls.filter(call => {
+            if (!call.timeReceived) return false;
+            
+            const timeStr = call.timeReceived.trim();
+            const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+            if (!timeMatch) return false;
+            
+            const hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            const isPM = timeMatch[3].toUpperCase() === 'PM';
+            
+            let hours24 = hours;
+            if (isPM && hours !== 12) hours24 = hours + 12;
+            if (!isPM && hours === 12) hours24 = 0;
+            
+            const callTime = new Date();
+            callTime.setHours(hours24, minutes, 0, 0);
+            
+            if (callTime > now) {
+                callTime.setDate(callTime.getDate() - 1);
+            }
+            
+            const ageMinutes = (now - callTime) / 1000 / 60;
+            return ageMinutes <= 10;
+        });
+
+        const currentCallIds = new Set(recentCalls.map(c => c.id || `${c.timeReceived}-${c.incident}-${c.location}`));
+        const newCalls = recentCalls.filter(call => {
             const callId = call.id || `${call.timeReceived}-${call.incident}-${call.location}`;
             return !lastCallIdsRef.current.has(callId) && 
                    !dismissedCallIds.has(callId) &&
-                   call.latitude && call.longitude; // Show notification for ANY call with valid coords
+                   call.latitude && call.longitude;
         });
 
         if (newCalls.length > 0) {
