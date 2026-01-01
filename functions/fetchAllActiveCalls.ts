@@ -222,17 +222,16 @@ Deno.serve(async (req) => {
         }
         
         // Geocode all calls with AI assistance (skip if already has coordinates from database)
-        const geocodedCalls = [];
-        for (const call of calls) {
+        const geocodedCalls = await Promise.all(calls.map(async (call) => {
             // Skip geocoding if call already has coordinates (from dispatch database)
             if (call.latitude && call.longitude) {
-                geocodedCalls.push(call);
-                continue;
+                return call;
             }
+            
             try {
                 let jurisdiction = 'Virginia, USA';
                 
-                if (call.agency.includes('RPD') || call.agency.includes('RFD')) {
+                if (call.agency.includes('RPD') || call.agency.includes('RFD') || call.agency.includes('BPS') || call.agency.includes('BSP')) {
                     jurisdiction = 'Richmond, VA, USA';
                 } else if (call.agency.includes('HCPD') || call.agency.includes('HPD') || call.agency.includes('Henrico')) {
                     jurisdiction = 'Henrico County, VA, USA';
@@ -242,8 +241,6 @@ Deno.serve(async (req) => {
                            call.agency.toLowerCase().includes('cfrd') ||
                            call.agency.toLowerCase().includes('cfd')) {
                     jurisdiction = 'Chesterfield County, VA, USA';
-                } else if (call.agency.includes('BPS') || call.agency.includes('BSP')) {
-                    jurisdiction = 'Richmond, VA, USA';
                 }
                 
                 // Additional check for Chesterfield-specific locations
@@ -256,73 +253,54 @@ Deno.serve(async (req) => {
                     jurisdiction = 'Chesterfield County, VA, USA';
                 }
                 
-                // Clean address format (handle intersections, blocks, etc.)
+                // Clean address format
                 let cleanedAddress = call.location.trim();
-                
-                // Remove "Block" text (e.g., "8800 Block THREE CHOPT RD" -> "8800 THREE CHOPT RD")
                 cleanedAddress = cleanedAddress.replace(/\s+Block\s+/gi, ' ');
                 
-                // Convert intersection format "STREET1/STREET2" to "STREET1 and STREET2"
                 if (cleanedAddress.includes('/')) {
                     const parts = cleanedAddress.split('/').map(s => s.trim());
                     cleanedAddress = `${parts[0]} and ${parts[1]}`;
                 }
                 
-                // Remove trailing jurisdiction indicators
                 cleanedAddress = cleanedAddress.replace(/\s+(RICH|CHES|HENR|VA|RICHMOND|HENRICO|CHESTERFIELD)$/i, '').trim();
                 
-                // Try geocoding with cleaned address - try multiple strategies
-                let geoData = null;
-                
-                // Strategy 1: Try with full cleaned address
-                let query = `${cleanedAddress}, ${jurisdiction}`;
-                let geoResponse = await fetch(
+                // Try geocoding
+                const query = `${cleanedAddress}, ${jurisdiction}`;
+                const geoResponse = await fetch(
                     `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
-                    { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
+                    { 
+                        headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' },
+                        signal: AbortSignal.timeout(3000)
+                    }
                 );
-                geoData = await geoResponse.json();
-                
-                // Strategy 2: If no results and has "and" (intersection), try without "and"
-                if ((!geoData || geoData.length === 0) && cleanedAddress.includes(' and ')) {
-                    const firstStreet = cleanedAddress.split(' and ')[0].trim();
-                    query = `${firstStreet}, ${jurisdiction}`;
-                    geoResponse = await fetch(
-                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
-                        { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
-                    );
-                    geoData = await geoResponse.json();
-                }
+                const geoData = await geoResponse.json();
                 
                 if (geoData && geoData.length > 0) {
                     const lat = parseFloat(geoData[0].lat);
                     const lon = parseFloat(geoData[0].lon);
-                    console.log(`✅ Geocoded ${call.agency} - ${call.incident} at ${call.location}: [${lat}, ${lon}]`);
-                    geocodedCalls.push({
+                    console.log(`✅ Geocoded: ${call.location} -> [${lat}, ${lon}]`);
+                    return {
                         ...call,
                         latitude: lat,
                         longitude: lon
-                    });
+                    };
                 } else {
-                    console.log(`❌ Failed to geocode ${call.agency} - ${call.incident} at ${call.location}`);
-                    // Still add the call even without GPS
-                    geocodedCalls.push({
+                    console.log(`❌ No coords for: ${call.location}`);
+                    return {
                         ...call,
                         latitude: null,
                         longitude: null
-                    });
+                    };
                 }
-                
-                // Rate limit to avoid hitting Nominatim too hard
-                await new Promise(resolve => setTimeout(resolve, 1000));
             } catch (error) {
-                console.error(`Error geocoding ${call.location}:`, error);
-                geocodedCalls.push({
+                console.error(`Error geocoding ${call.location}:`, error.message);
+                return {
                     ...call,
                     latitude: null,
                     longitude: null
-                });
+                };
             }
-        }
+        }));
         
         console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
         
