@@ -24,6 +24,8 @@ import CallDetailSidebar from '@/components/map/CallDetailSidebar';
 import CallNotification from '@/components/dispatch/CallNotification';
 import { useVoiceGuidance, useVoiceCommand } from '@/components/map/VoiceGuidance';
 import { generateTrafficData } from '@/components/map/TrafficLayer';
+import { calculatePredictiveETA, getTrafficAdvisory, compareRoutesWithPredictiveTraffic } from '@/components/map/PredictiveTraffic';
+import CallNotificationSystem from '@/components/notifications/CallNotificationSystem';
 import LayerFilterPanel from '@/components/map/LayerFilterPanel';
 import AddressLookupTool from '@/components/map/AddressLookupTool';
 
@@ -830,12 +832,9 @@ export default function Navigation() {
             const data = await response.json();
 
             if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-                const processedRoutes = data.routes.map((route) => ({
-                    ...route,
-                    hasTraffic: Math.random() > 0.5
-                }));
-
-                return processedRoutes;
+                // Apply predictive traffic analysis to all routes
+                const routesWithPredictiveTraffic = compareRoutesWithPredictiveTraffic(data.routes, activeCalls);
+                return routesWithPredictiveTraffic;
             } else {
                 toast.error('Routing error: ' + (data.message || data.code));
                 return null;
@@ -858,25 +857,40 @@ export default function Navigation() {
         const traffic = generateTrafficData(coordinates);
         setTrafficSegments(traffic);
 
-        // Calculate distance and duration
+        // Calculate distance
         const distanceMiles = (routeData.distance / 1609.34).toFixed(1);
         setDistance(`${distanceMiles} mi`);
 
-        const baseDurationMins = Math.round(routeData.duration / 60);
-        const now = new Date();
-        const etaTime = new Date(now.getTime() + baseDurationMins * 60000);
-        const etaFormatted = etaTime.toLocaleTimeString('en-US', { 
-            hour: 'numeric', 
-            minute: '2-digit',
-            hour12: true 
-        });
+        // Use predictive traffic analysis for ETA
+        const predictiveData = calculatePredictiveETA(routeData.duration, coordinates, activeCalls);
+        const advisory = getTrafficAdvisory(predictiveData);
 
-        if (baseDurationMins >= 60) {
-            const hours = Math.floor(baseDurationMins / 60);
-            const mins = baseDurationMins % 60;
-            setDuration(`${hours}h ${mins}m (ETA ${etaFormatted})`);
+        // Display predictive ETA
+        const durationMins = predictiveData.durationMins;
+        if (durationMins >= 60) {
+            const hours = Math.floor(durationMins / 60);
+            const mins = durationMins % 60;
+            setDuration(`${hours}h ${mins}m (ETA ${predictiveData.etaFormatted})`);
         } else {
-            setDuration(`${baseDurationMins} min (ETA ${etaFormatted})`);
+            setDuration(`${durationMins} min (ETA ${predictiveData.etaFormatted})`);
+        }
+
+        // Show traffic advisory if there's significant delay
+        if (advisory) {
+            const severityColor = advisory.severity === 'high' ? 'bg-red-500' : 
+                                 advisory.severity === 'medium' ? 'bg-orange-500' : 'bg-yellow-500';
+            toast.warning(advisory.message, {
+                duration: 6000,
+                icon: '⚠️'
+            });
+            
+            if (advisory.details && advisory.details.length > 0) {
+                advisory.details.forEach(event => {
+                    toast.info(`${event.type} at ${event.location} (${event.distance} km from route)`, {
+                        duration: 4000
+                    });
+                });
+            }
         }
 
         // Generate turn-by-turn directions
@@ -2159,6 +2173,13 @@ Be thorough and search multiple sources.`,
                         propertyInfo: 'See Address Lookup Tool for full details'
                     });
                 }}
+            />
+
+            {/* Call Notification System */}
+            <CallNotificationSystem
+                calls={activeCalls}
+                onNavigateToCall={handleEnrouteToCall}
+                currentUserId={currentUser?.id}
             />
             </div>
             );
