@@ -17,6 +17,9 @@ import VolunteerRescueSquads from './VolunteerRescueSquads';
 import VolunteerFireCompanies from './VolunteerFireCompanies';
 import RAAStations from './RAAStations';
 import CCPDStation from './CCPDStation';
+import UnitHeatmap from '@/components/supervisor/UnitHeatmap';
+import BreadcrumbTrail from '@/components/supervisor/BreadcrumbTrail';
+import GeofenceLayer from '@/components/supervisor/GeofenceLayer';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
