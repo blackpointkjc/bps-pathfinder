@@ -1425,42 +1425,9 @@ Be thorough and search multiple sources.`,
             if (response.data && response.data.success) {
                 const allCalls = response.data.geocodedCalls || [];
 
-                // Filter out calls older than 30 minutes
-                const now = new Date();
-                const filteredCalls = allCalls.filter(call => {
-                    if (!call.timeReceived) return true; // Keep if no timestamp
-
-                    // Parse time format like "12:45 PM" or "01:30 AM"
-                    const timeStr = call.timeReceived.trim();
-                    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-
-                    if (!timeMatch) return true; // Keep if can't parse
-
-                    const hours = parseInt(timeMatch[1]);
-                    const minutes = parseInt(timeMatch[2]);
-                    const isPM = timeMatch[3].toUpperCase() === 'PM';
-
-                    // Convert to 24-hour format
-                    let hours24 = hours;
-                    if (isPM && hours !== 12) hours24 = hours + 12;
-                    if (!isPM && hours === 12) hours24 = 0;
-
-                    // Create date for today with parsed time
-                    const callTime = new Date();
-                    callTime.setHours(hours24, minutes, 0, 0);
-
-                    // If call time is in the future, it's from yesterday
-                    if (callTime > now) {
-                        callTime.setDate(callTime.getDate() - 1);
-                    }
-
-                    const ageMinutes = (now - callTime) / 1000 / 60;
-                    return ageMinutes <= 30;
-                    });
-
-                    setShowActiveCalls(true);
-                setAllActiveCalls(filteredCalls);
-                applyCallFilter(filteredCalls, callFilter);
+                setShowActiveCalls(true);
+                setAllActiveCalls(allCalls);
+                applyCallFilter(allCalls, callFilter);
 
                 if (allCalls.length > 0 && !silent) {
                     toast.success(`Loaded ${allCalls.length} active calls`);

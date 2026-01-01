@@ -1,13 +1,13 @@
-import AdminPortal from './pages/AdminPortal';
 import CallHistory from './pages/CallHistory';
 import DispatchCenter from './pages/DispatchCenter';
+import AdminPortal from './pages/AdminPortal';
 import Navigation from './pages/Navigation';
 
 
 export const PAGES = {
-    "AdminPortal": AdminPortal,
     "CallHistory": CallHistory,
     "DispatchCenter": DispatchCenter,
+    "AdminPortal": AdminPortal,
     "Navigation": Navigation,
 }
 

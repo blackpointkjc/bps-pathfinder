@@ -304,11 +304,41 @@ Deno.serve(async (req) => {
         
         console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
         
-        // Generate AI summaries for geocoded calls only (skip if no coordinates)
-        const callsWithSummaries = geocodedCalls.map(call => ({
+        // Filter out calls older than 2 hours
+        const now = new Date();
+        const filteredCalls = geocodedCalls.filter(call => {
+            if (!call.timeReceived) return true;
+            
+            const timeStr = call.timeReceived.trim();
+            const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+            
+            if (!timeMatch) return true;
+            
+            const hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            const isPM = timeMatch[3].toUpperCase() === 'PM';
+            
+            let hours24 = hours;
+            if (isPM && hours !== 12) hours24 = hours + 12;
+            if (!isPM && hours === 12) hours24 = 0;
+            
+            const callTime = new Date();
+            callTime.setHours(hours24, minutes, 0, 0);
+            
+            if (callTime > now) {
+                callTime.setDate(callTime.getDate() - 1);
+            }
+            
+            const ageMinutes = (now - callTime) / 1000 / 60;
+            return ageMinutes <= 120; // 2 hours
+        });
+        
+        const callsWithSummaries = filteredCalls.map(call => ({
             ...call,
             ai_summary: call.ai_summary || `${call.incident} at ${call.location}`
         }));
+        
+        console.log(`📋 Final calls after 2-hour filter: ${callsWithSummaries.length}/${geocodedCalls.length}`);
         
         return Response.json({
             success: true,
