@@ -44,6 +44,7 @@ Deno.serve(async (req) => {
         try {
             console.log('📡 Fetching from gractivecalls.com...');
             
+            // Fetch ALL tabs - gractivecalls shows Richmond, Henrico AND Chesterfield
             const response1 = await fetch('https://gractivecalls.com/', {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -53,60 +54,55 @@ Deno.serve(async (req) => {
             if (response1.ok) {
                 const html = await response1.text();
                 
-                // Parse table rows with proper Mantine class structure
-                const rowMatches = html.matchAll(/<tr[^>]*class="[^"]*mantine-Table-tr[^"]*"[^>]*data-with-row-border="true"[^>]*>([\s\S]*?)<\/tr>/gi);
+                // Look for all table rows in the entire page
+                const rowMatches = html.matchAll(/<tr[^>]*data-with-row-border="true"[^>]*>([\s\S]*?)<\/tr>/gi);
                 
                 for (const rowMatch of rowMatches) {
                     const rowHtml = rowMatch[1];
                     const cells = [];
-                    
-                    // Match TD cells only (not TH)
-                    const cellMatches = rowHtml.matchAll(/<td[^>]*class="[^"]*mantine-Table-td[^"]*"[^>]*>(.*?)<\/td>/gi);
+                    const cellMatches = rowHtml.matchAll(/<td[^>]*class="[^"]*mantine-Table-td[^"]*"[^>]*>([\s\S]*?)<\/td>/gi);
                     
                     for (const match of cellMatches) {
-                        let text = match[1]
+                        const text = match[1]
                             .replace(/<[^>]+>/g, '')
                             .replace(/&nbsp;/g, ' ')
                             .replace(/&amp;/g, '&')
-                            .replace(/&lt;/g, '<')
-                            .replace(/&gt;/g, '>')
                             .trim();
                         cells.push(text);
                     }
                     
-                    // Should have: [Time, Incident, Location, Agency, Status, Actions]
                     if (cells.length >= 5) {
                         const [timeReceived, incident, location, agency, status] = cells;
                         
-                        // Validate location is not a time
+                        // Validate
                         const isTimeValue = /^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(location?.trim());
                         
                         if (incident && incident.trim() && location && location.trim() && !isTimeValue && agency && agency.trim()) {
                             const agencyUpper = agency.trim().toUpperCase();
+                            
+                            // IMPORTANT: Map fire-related agencies correctly - firearms/gunfire are POLICE calls
+                            let mappedAgency = agency.trim();
                             const incidentLower = incident.toLowerCase();
                             
-                            // Check if this is a police call about firearms
+                            // Check if this is actually a police call (firearm, gunfire, shooting)
                             const isPoliceFireCall = incidentLower.includes('firearm') || 
                                                      incidentLower.includes('gunfire') || 
                                                      incidentLower.includes('gun fire') ||
                                                      incidentLower.includes('shooting') ||
                                                      incidentLower.includes('shots fired');
                             
-                            // Map agencies correctly
-                            let mappedAgency = agency.trim();
-                            
+                            // Keep police agencies as-is, but validate fire agencies
                             if (!isPoliceFireCall && (agencyUpper.includes('FD') || agencyUpper.includes('FIRE') || agencyUpper.includes('EMS'))) {
-                                // Legit fire/EMS
+                                // This is legitimately a fire/EMS call
                                 mappedAgency = agency.trim();
                             } else if (agencyUpper.includes('CCFD') || agencyUpper.includes('CFD') || agencyUpper.includes('CFRD')) {
+                                // Chesterfield Fire became police due to firearm keyword
                                 mappedAgency = 'CCPD';
                             } else if (agencyUpper.includes('RFD')) {
                                 mappedAgency = 'RPD';
                             } else if (agencyUpper.includes('HFD') || agencyUpper.includes('HENRICO FIRE')) {
                                 mappedAgency = 'HPD';
                             }
-                            
-                            console.log(`📋 Found: ${mappedAgency} - ${incident.substring(0, 40)}... at ${location.substring(0, 30)}...`);
                             
                             calls.push({
                                 timeReceived: timeReceived || 'Unknown',
@@ -121,16 +117,16 @@ Deno.serve(async (req) => {
                 }
                 
                 const grCallCount = calls.filter(c => c.source === 'gractivecalls.com').length;
-                console.log(`✅ gractivecalls.com: ${grCallCount} calls total`);
+                console.log(`✅ gractivecalls.com: Found ${grCallCount} calls`);
                 
-                // Count by agency
+                // Count by agency for debugging
                 const agencyCounts = {};
                 calls.forEach(c => {
                     if (c.source === 'gractivecalls.com') {
                         agencyCounts[c.agency] = (agencyCounts[c.agency] || 0) + 1;
                     }
                 });
-                console.log('📊 Agency breakdown:', JSON.stringify(agencyCounts));
+                console.log('📊 Agencies:', JSON.stringify(agencyCounts));
             }
         } catch (error) {
             console.error('❌ Error fetching from gractivecalls.com:', error);
