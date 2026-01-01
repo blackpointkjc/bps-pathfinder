@@ -1469,7 +1469,7 @@ Be thorough and search multiple sources.`,
                     }
 
                     const ageMinutes = (now - callTime) / 1000 / 60;
-                    return ageMinutes <= 30;
+                    return ageMinutes <= 60;
                     });
 
                     setShowActiveCalls(true);
