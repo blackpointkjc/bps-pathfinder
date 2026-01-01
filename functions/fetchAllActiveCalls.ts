@@ -217,71 +217,62 @@ Deno.serve(async (req) => {
             });
         }
         
-        // Simple fast geocoding - process all in parallel
-        console.log(`🔍 Starting geocoding for ${calls.length} calls...`);
+        // Fast geocoding with 10 second timeout
+        console.log(`🔍 Geocoding ${calls.length} calls...`);
         const geocodedCalls = [];
         
-        const geocodePromises = calls.map(async (call) => {
-            // Skip if already has coordinates
-            if (call.latitude && call.longitude) {
-                return call;
-            }
-            
-            try {
-                const locationLower = call.location.toLowerCase();
-                const agencyLower = call.agency.toLowerCase();
-                let jurisdiction = 'Virginia, USA';
-                
-                if (agencyLower.includes('ccpd') || agencyLower.includes('ccfd') || 
-                    agencyLower.includes('chesterfield') || locationLower.includes('chester') || 
-                    locationLower.includes('midlothian')) {
-                    jurisdiction = 'Chesterfield County, VA, USA';
-                } else if (call.agency.includes('RPD') || call.agency.includes('RFD')) {
-                    jurisdiction = 'Richmond, VA, USA';
-                } else if (call.agency.includes('HPD') || call.agency.includes('Henrico')) {
-                    jurisdiction = 'Henrico County, VA, USA';
-                }
-                
-                let cleanedAddress = call.location.trim()
-                    .replace(/\s+Block\s+/gi, ' ')
-                    .replace(/\s+(RICH|CHES|HENR|VA)$/i, '')
-                    .trim();
-                
-                if (cleanedAddress.includes('/')) {
-                    const parts = cleanedAddress.split('/');
-                    cleanedAddress = `${parts[0].trim()} and ${parts[1].trim()}`;
-                }
-                
-                const query = `${cleanedAddress}, ${jurisdiction}`;
-                const response = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
-                    { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
+        const geocodeWithTimeout = Promise.race([
+            (async () => {
+                const results = await Promise.allSettled(
+                    calls.map(async (call) => {
+                        if (call.latitude && call.longitude) return call;
+                        
+                        try {
+                            const agencyLower = call.agency.toLowerCase();
+                            let jurisdiction = 'Virginia, USA';
+                            
+                            if (agencyLower.includes('ccpd') || agencyLower.includes('chesterfield')) {
+                                jurisdiction = 'Chesterfield County, VA';
+                            } else if (agencyLower.includes('rpd') || agencyLower.includes('rfd')) {
+                                jurisdiction = 'Richmond, VA';
+                            } else if (agencyLower.includes('hpd') || agencyLower.includes('henrico')) {
+                                jurisdiction = 'Henrico County, VA';
+                            }
+                            
+                            let address = call.location.trim().replace(/\s+Block\s+/gi, ' ');
+                            if (address.includes('/')) {
+                                const parts = address.split('/');
+                                address = `${parts[0].trim()} and ${parts[1].trim()}`;
+                            }
+                            
+                            const response = await fetch(
+                                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ', ' + jurisdiction)}&limit=1`,
+                                { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
+                            );
+                            const data = await response.json();
+                            
+                            if (data?.[0]) {
+                                return { ...call, latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };
+                            }
+                            return null;
+                        } catch {
+                            return null;
+                        }
+                    })
                 );
-                const data = await response.json();
-                
-                if (data && data.length > 0) {
-                    console.log(`✅ Geocoded: ${call.location}`);
-                    return {
-                        ...call,
-                        latitude: parseFloat(data[0].lat),
-                        longitude: parseFloat(data[0].lon)
-                    };
-                }
-                
-                console.log(`❌ Failed: ${call.location}`);
-                return null;
-            } catch (error) {
-                console.error(`Error: ${call.location}`, error.message);
-                return null;
-            }
-        });
+                return results;
+            })(),
+            new Promise(resolve => setTimeout(() => resolve([]), 10000))
+        ]);
         
-        const results = await Promise.allSettled(geocodePromises);
+        const results = await geocodeWithTimeout;
         results.forEach(result => {
-            if (result.status === 'fulfilled' && result.value && result.value.latitude && result.value.longitude) {
+            if (result?.status === 'fulfilled' && result.value?.latitude && result.value?.longitude) {
                 geocodedCalls.push(result.value);
             }
         });
+        
+        console.log(`✅ Geocoded ${geocodedCalls.length}/${calls.length} calls`);
         
         console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
         
