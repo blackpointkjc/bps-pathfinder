@@ -17,9 +17,6 @@ import VolunteerRescueSquads from './VolunteerRescueSquads';
 import VolunteerFireCompanies from './VolunteerFireCompanies';
 import RAAStations from './RAAStations';
 import CCPDStation from './CCPDStation';
-import UnitHeatmap from '@/components/supervisor/UnitHeatmap';
-import BreadcrumbTrail from '@/components/supervisor/BreadcrumbTrail';
-import GeofenceLayer from '@/components/supervisor/GeofenceLayer';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -173,7 +170,7 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
     return null;
 }
 
-const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail, mapTheme = 'day', showHeatmap = false, showBreadcrumbs = false, selectedUnitForTrail = null }) {
+const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail, mapTheme = 'day' }) {
     const defaultCenter = currentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
     
     // Calculate route bounds if route exists
@@ -352,13 +349,6 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             {otherUnits && otherUnits.length > 0 && (
                 <OtherUnitsLayer units={otherUnits} currentUserId={currentUserId} />
             )}
-
-            {/* Supervisor Features */}
-            {showHeatmap && <UnitHeatmap timeRange={24} intensity={0.5} />}
-            {showBreadcrumbs && selectedUnitForTrail && (
-                <BreadcrumbTrail unitId={selectedUnitForTrail} hoursBack={24} />
-            )}
-            <GeofenceLayer />
             
             {/* Search Pin */}
             {searchPin && <SearchPinMarker position={searchPin.coords} address={searchPin.address} propertyInfo={searchPin.propertyInfo} />}

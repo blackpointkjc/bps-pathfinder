@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield, Filter, MapPinOff, Users, History, Search, Monitor, Activity } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield, Filter, MapPinOff, Users, History, Search, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
@@ -28,11 +28,6 @@ import { calculatePredictiveETA, getTrafficAdvisory, compareRoutesWithPredictive
 import CallNotificationSystem from '@/components/notifications/CallNotificationSystem';
 import LayerFilterPanel from '@/components/map/LayerFilterPanel';
 import AddressLookupTool from '@/components/map/AddressLookupTool';
-import SupervisorPanel from '@/components/supervisor/SupervisorPanel';
-import UnitHeatmap from '@/components/supervisor/UnitHeatmap';
-import BreadcrumbTrail from '@/components/supervisor/BreadcrumbTrail';
-import GeofenceLayer from '@/components/supervisor/GeofenceLayer';
-import BreadcrumbControls from '@/components/supervisor/BreadcrumbControls';
 
 export default function Navigation() {
     const [currentLocation, setCurrentLocation] = useState(null);
@@ -138,12 +133,6 @@ export default function Navigation() {
         const hour = new Date().getHours();
         return hour >= 6 && hour < 19 ? 'day' : 'night';
     });
-    
-    // Supervisor features
-    const [showSupervisorPanel, setShowSupervisorPanel] = useState(false);
-    const [showHeatmap, setShowHeatmap] = useState(false);
-    const [showBreadcrumbs, setShowBreadcrumbs] = useState(false);
-    const [selectedUnitForTrail, setSelectedUnitForTrail] = useState(null);
     
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
@@ -595,21 +584,9 @@ export default function Navigation() {
                 show_lights: showLights,
                 current_call_info: activeCallInfo,
                 last_updated: new Date().toISOString()
-            };
+                };
 
-            await base44.auth.updateMe(updateData);
-
-            // Log location for breadcrumb trail (every 30 seconds)
-            if (!window.lastBreadcrumbLog || now - window.lastBreadcrumbLog > 30000) {
-                window.lastBreadcrumbLog = now;
-                await base44.functions.invoke('logUnitLocation', {
-                    latitude: currentLocation[0],
-                    longitude: currentLocation[1],
-                    heading: heading || 0,
-                    speed: speed || 0,
-                    status: unitStatus
-                }).catch(err => console.log('Breadcrumb log failed:', err));
-            }
+                await base44.auth.updateMe(updateData);
         } catch (error) {
             console.error('Error updating user location:', error);
         }
@@ -951,7 +928,7 @@ export default function Navigation() {
         setDirections(steps);
 
         if (steps.length > 0) {
-            toast.success(`Route ready: ${distanceMiles} mi, ${durationMins} min - Tap Start Navigation`);
+            toast.success(`Route ready: ${distanceMiles} mi, ${baseDurationMins} min - Tap Start Navigation`);
         } else {
             toast.error('No directions generated');
         }
@@ -1462,24 +1439,49 @@ Be thorough and search multiple sources.`,
             if (response.data && response.data.success) {
                 const allCalls = response.data.geocodedCalls || [];
 
-                console.log(`📞 fetchActiveCalls: Got ${allCalls.length} calls from server`);
-                
-                // Don't filter by time - show all calls that have coordinates
-                const validCalls = allCalls.filter(call => call.latitude && call.longitude);
-                
-                console.log(`✅ fetchActiveCalls: ${validCalls.length} calls have valid coordinates`);
+                // Filter out calls older than 30 minutes
+                const now = new Date();
+                const filteredCalls = allCalls.filter(call => {
+                    if (!call.timeReceived) return true; // Keep if no timestamp
 
-                setShowActiveCalls(true);
-                setAllActiveCalls(validCalls);
-                applyCallFilter(validCalls, callFilter);
+                    // Parse time format like "12:45 PM" or "01:30 AM"
+                    const timeStr = call.timeReceived.trim();
+                    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
 
-                if (validCalls.length > 0 && !silent) {
-                    toast.success(`Loaded ${validCalls.length} active calls`);
-                } else if (validCalls.length === 0 && !silent) {
-                    toast.warning('No active calls with valid locations found');
+                    if (!timeMatch) return true; // Keep if can't parse
+
+                    const hours = parseInt(timeMatch[1]);
+                    const minutes = parseInt(timeMatch[2]);
+                    const isPM = timeMatch[3].toUpperCase() === 'PM';
+
+                    // Convert to 24-hour format
+                    let hours24 = hours;
+                    if (isPM && hours !== 12) hours24 = hours + 12;
+                    if (!isPM && hours === 12) hours24 = 0;
+
+                    // Create date for today with parsed time
+                    const callTime = new Date();
+                    callTime.setHours(hours24, minutes, 0, 0);
+
+                    // If call time is in the future, it's from yesterday
+                    if (callTime > now) {
+                        callTime.setDate(callTime.getDate() - 1);
+                    }
+
+                    const ageMinutes = (now - callTime) / 1000 / 60;
+                    return ageMinutes <= 30;
+                    });
+
+                    setShowActiveCalls(true);
+                setAllActiveCalls(filteredCalls);
+                applyCallFilter(filteredCalls, callFilter);
+
+                if (allCalls.length > 0 && !silent) {
+                    toast.success(`Loaded ${allCalls.length} active calls`);
+                } else if (!silent) {
+                    toast.warning(`Found ${response.data.totalCalls} calls but none could be geocoded`);
                 }
-            } else {
-                console.error('❌ fetchActiveCalls: Response error', response.data);
+                } else {
                 const errorMsg = response.data?.error || 'Failed to load active calls';
                 if (!silent) toast.error(errorMsg);
             }
@@ -1534,9 +1536,6 @@ Be thorough and search multiple sources.`,
                     jurisdictionFilters={jurisdictionFilters}
                     searchPin={searchPin}
                     mapTheme={mapTheme}
-                    showHeatmap={showHeatmap}
-                    showBreadcrumbs={showBreadcrumbs}
-                    selectedUnitForTrail={selectedUnitForTrail}
                     onCallClick={(call) => {
                         setSelectedCall(call);
                         setShowCallSidebar(true);
@@ -1868,24 +1867,14 @@ Be thorough and search multiple sources.`,
                 )}
 
                 {currentUser?.role === 'admin' && (
-                    <>
-                        <Button
-                            onClick={() => setShowSupervisorPanel(true)}
-                            size="icon"
-                            className="h-8 w-8 rounded-lg bg-purple-600 hover:bg-purple-700 text-white shadow-lg"
-                            title="Supervisor Tools"
-                        >
-                            <Shield className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            onClick={() => window.location.href = '/adminportal'}
-                            size="icon"
-                            className="h-8 w-8 rounded-lg bg-slate-800 hover:bg-slate-900 text-white shadow-lg"
-                            title="Admin Portal"
-                        >
-                            <Settings className="w-4 h-4" />
-                        </Button>
-                    </>
+                    <Button
+                        onClick={() => window.location.href = '/adminportal'}
+                        size="icon"
+                        className="h-8 w-8 rounded-lg bg-slate-800 hover:bg-slate-900 text-white shadow-lg"
+                        title="Admin Portal"
+                    >
+                        <Shield className="w-4 h-4" />
+                    </Button>
                 )}
 
                 <Button
@@ -2192,27 +2181,6 @@ Be thorough and search multiple sources.`,
                 onNavigateToCall={handleEnrouteToCall}
                 currentUserId={currentUser?.id}
             />
-
-            {/* Supervisor Panel */}
-            <SupervisorPanel
-                isOpen={showSupervisorPanel}
-                onClose={() => setShowSupervisorPanel(false)}
-                onShowHeatmap={(show) => setShowHeatmap(show)}
-                onShowBreadcrumb={(show) => setShowBreadcrumbs(show)}
-                onShowGeofences={(show) => {}}
-            />
-
-            {/* Breadcrumb Controls */}
-            {showBreadcrumbs && (
-                <BreadcrumbControls
-                    onSelectUnit={(unitId) => setSelectedUnitForTrail(unitId)}
-                    selectedUnitId={selectedUnitForTrail}
-                    onClose={() => {
-                        setShowBreadcrumbs(false);
-                        setSelectedUnitForTrail(null);
-                    }}
-                />
-            )}
             </div>
             );
             }
