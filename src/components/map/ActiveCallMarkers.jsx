@@ -11,22 +11,13 @@ const createCallIcon = (call, isHighPriority = false) => {
     const isDispatch = call.source === 'dispatch';
     
     // Determine if it's EMS, Police, or Fire
-    // IMPORTANT: Firearm/gunfire/shooting are POLICE calls, not fire/EMS
-    const isPoliceFirearmCall = incident.includes('firearm') || 
-                                incident.includes('gun') || 
-                                incident.includes('shooting') || 
-                                incident.includes('shots fired') ||
-                                incident.includes('weapon');
-    
-    const isEMS = !isPoliceFirearmCall && (
-                  incident.includes('ems') || incident.includes('medical') || 
+    const isEMS = incident.includes('ems') || incident.includes('medical') || 
                   incident.includes('ambulance') || incident.includes('unconscious') ||
                   incident.includes('overdose') || incident.includes('hemorrhage') ||
-                  incident.includes('stroke') || incident.includes('cardiac'));
+                  incident.includes('stroke') || incident.includes('cardiac');
     
-    const isFire = !isPoliceFirearmCall && (
-                   agency.includes('FD') || incident.includes('fire') || 
-                   incident.includes('smoke') || incident.includes('alarm'));
+    const isFire = agency.includes('FD') || incident.includes('fire') || 
+                   incident.includes('smoke') || incident.includes('alarm');
     
     // Determine status color
     let statusColor = '#EF4444';

@@ -46,41 +46,13 @@ export default function CallNotificationSystem({ calls = [], onNavigateToCall, c
     useEffect(() => {
         if (!calls || calls.length === 0) return;
 
-        // Filter calls from last 10 minutes only
-        const now = new Date();
-        const recentCalls = calls.filter(call => {
-            if (!call.timeReceived) return false;
-            
-            const timeStr = call.timeReceived.trim();
-            const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-            if (!timeMatch) return false;
-            
-            const hours = parseInt(timeMatch[1]);
-            const minutes = parseInt(timeMatch[2]);
-            const isPM = timeMatch[3].toUpperCase() === 'PM';
-            
-            let hours24 = hours;
-            if (isPM && hours !== 12) hours24 = hours + 12;
-            if (!isPM && hours === 12) hours24 = 0;
-            
-            const callTime = new Date();
-            callTime.setHours(hours24, minutes, 0, 0);
-            
-            if (callTime > now) {
-                callTime.setDate(callTime.getDate() - 1);
-            }
-            
-            const ageMinutes = (now - callTime) / 1000 / 60;
-            return ageMinutes <= 10;
-        });
-
-        const currentCallIds = new Set(recentCalls.map(c => c.id || `${c.timeReceived}-${c.incident}-${c.location}`));
-        const newCalls = recentCalls.filter(call => {
-            const callId = call.id || `${call.timeReceived}-${call.incident}-${call.location}`;
-            return !lastCallIdsRef.current.has(callId) && 
-                   !dismissedCallIds.has(callId) &&
-                   call.latitude && call.longitude;
-        });
+        const currentCallIds = new Set(calls.map(c => c.id));
+        const newCalls = calls.filter(call => 
+            !lastCallIdsRef.current.has(call.id) && 
+            !dismissedCallIds.has(call.id) &&
+            call.source === 'dispatch' &&
+            (call.status === 'New' || call.status === 'Dispatched' || call.status === 'Pending')
+        );
 
         if (newCalls.length > 0) {
             // Play sound
@@ -117,9 +89,12 @@ export default function CallNotificationSystem({ calls = [], onNavigateToCall, c
     };
 
     const handleAccept = (call) => {
-        const callId = call.id || `${call.timeReceived}-${call.incident}-${call.location}`;
-        setNotifications(prev => prev.filter(n => n.notificationId !== call.notificationId));
-        setDismissedCallIds(prev => new Set([...prev, callId]));
+        if (call.source !== 'dispatch') {
+            toast.error('Can only accept dispatch calls');
+            return;
+        }
+        setNotifications(prev => prev.filter(n => n.id !== call.id));
+        setDismissedCallIds(prev => new Set([...prev, call.id]));
         onNavigateToCall(call);
     };
 
