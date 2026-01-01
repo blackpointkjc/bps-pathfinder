@@ -293,7 +293,12 @@ Deno.serve(async (req) => {
                 } else {
                     console.log(`❌ FAILED TO GEOCODE: ${call.agency} - ${call.incident} at ${call.location} in ${jurisdiction}`);
                     console.log(`   Query was: ${query}`);
-                    // DON'T add calls without coordinates - they won't show on map anyway
+                    // Still add to list so user can see all calls
+                    geocodedCalls.push({
+                        ...call,
+                        latitude: null,
+                        longitude: null
+                    });
                 }
                 
                 // Rate limit to avoid hitting Nominatim too hard
