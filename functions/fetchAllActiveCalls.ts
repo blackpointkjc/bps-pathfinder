@@ -80,14 +80,11 @@ Deno.serve(async (req) => {
                             const isTimeValue = /^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(location?.trim());
                             
                             if (incident && incident.trim() && location && location.trim() && !isTimeValue) {
-                                const agencyValue = (agency && agency.trim()) || 'Unknown';
-                                console.log(`📋 Call found - Agency: ${agencyValue}, Incident: ${incident.trim()}, Location: ${location.trim()}`);
-                                
                                 calls.push({
                                     timeReceived: timeReceived || 'Unknown',
                                     incident: incident.trim(),
                                     location: location.trim(),
-                                    agency: agencyValue,
+                                    agency: (agency && agency.trim()) || 'Unknown',
                                     status: (status && status.trim()) || 'Dispatched',
                                     source: 'gractivecalls.com'
                                 });
@@ -193,37 +190,30 @@ Deno.serve(async (req) => {
                 continue;
             }
             try {
-                const locationLower = call.location.toLowerCase();
-                const agencyLower = call.agency.toLowerCase();
                 let jurisdiction = 'Virginia, USA';
                 
-                console.log(`🔍 Determining jurisdiction for: Agency="${call.agency}", Location="${call.location}"`);
-                
-                // Check for Chesterfield - be very broad
-                if (agencyLower.includes('ccpd') || 
-                    agencyLower.includes('ccfd') || 
-                    agencyLower.includes('chesterfield') || 
-                    agencyLower.includes('cfrd') ||
-                    agencyLower.includes('cfd') ||
-                    agencyLower.includes('ches') ||
-                    locationLower.includes('chester') || 
-                    locationLower.includes('midlothian') || 
-                    locationLower.includes('bon air') || 
-                    locationLower.includes('ettrick') ||
-                    locationLower.includes('colonial heights') || 
-                    locationLower.includes('matoaca') ||
-                    locationLower.includes('woodlake') || 
-                    locationLower.includes('beach road') ||
-                    locationLower.includes('ironbridge') || 
-                    locationLower.includes('iron bridge')) {
-                    jurisdiction = 'Chesterfield County, VA, USA';
-                    console.log(`✅ Identified as Chesterfield County`);
-                } else if (call.agency.includes('RPD') || call.agency.includes('RFD') || call.agency.includes('BPS') || call.agency.includes('BSP')) {
+                if (call.agency.includes('RPD') || call.agency.includes('RFD')) {
                     jurisdiction = 'Richmond, VA, USA';
-                    console.log(`✅ Identified as Richmond`);
                 } else if (call.agency.includes('HCPD') || call.agency.includes('HPD') || call.agency.includes('Henrico')) {
                     jurisdiction = 'Henrico County, VA, USA';
-                    console.log(`✅ Identified as Henrico County`);
+                } else if (call.agency.toLowerCase().includes('ccpd') || 
+                           call.agency.toLowerCase().includes('ccfd') || 
+                           call.agency.toLowerCase().includes('chesterfield') || 
+                           call.agency.toLowerCase().includes('cfrd') ||
+                           call.agency.toLowerCase().includes('cfd')) {
+                    jurisdiction = 'Chesterfield County, VA, USA';
+                } else if (call.agency.includes('BPS') || call.agency.includes('BSP')) {
+                    jurisdiction = 'Richmond, VA, USA';
+                }
+                
+                // Additional check for Chesterfield-specific locations
+                const locationLower = call.location.toLowerCase();
+                if (locationLower.includes('chester') || locationLower.includes('midlothian') || 
+                    locationLower.includes('bon air') || locationLower.includes('ettrick') ||
+                    locationLower.includes('colonial heights') || locationLower.includes('matoaca') ||
+                    locationLower.includes('woodlake') || locationLower.includes('beach road') ||
+                    locationLower.includes('ironbridge') || locationLower.includes('iron bridge')) {
+                    jurisdiction = 'Chesterfield County, VA, USA';
                 }
                 
                 // Clean address format (handle intersections, blocks, etc.)
@@ -266,17 +256,15 @@ Deno.serve(async (req) => {
                 if (geoData && geoData.length > 0) {
                     const lat = parseFloat(geoData[0].lat);
                     const lon = parseFloat(geoData[0].lon);
-                    console.log(`✅ GEOCODED: ${call.agency} - ${call.incident} at ${call.location}: [${lat}, ${lon}] in ${jurisdiction}`);
+                    console.log(`✅ Geocoded ${call.agency} - ${call.incident} at ${call.location}: [${lat}, ${lon}]`);
                     geocodedCalls.push({
                         ...call,
                         latitude: lat,
                         longitude: lon
                     });
                 } else {
-                    console.log(`❌ FAILED TO GEOCODE: ${call.agency} - ${call.incident} at ${call.location} in ${jurisdiction}`);
-                    console.log(`   Query was: ${query}`);
-                    console.log(`   Nominatim response:`, JSON.stringify(geoData));
-                    // Add with null coords so we can see it failed
+                    console.log(`❌ Failed to geocode ${call.agency} - ${call.incident} at ${call.location}`);
+                    // Still add the call even without GPS
                     geocodedCalls.push({
                         ...call,
                         latitude: null,

@@ -24,8 +24,6 @@ import CallDetailSidebar from '@/components/map/CallDetailSidebar';
 import CallNotification from '@/components/dispatch/CallNotification';
 import { useVoiceGuidance, useVoiceCommand } from '@/components/map/VoiceGuidance';
 import { generateTrafficData } from '@/components/map/TrafficLayer';
-import { calculatePredictiveETA, getTrafficAdvisory, compareRoutesWithPredictiveTraffic } from '@/components/map/PredictiveTraffic';
-import CallNotificationSystem from '@/components/notifications/CallNotificationSystem';
 import LayerFilterPanel from '@/components/map/LayerFilterPanel';
 import AddressLookupTool from '@/components/map/AddressLookupTool';
 
@@ -832,9 +830,12 @@ export default function Navigation() {
             const data = await response.json();
 
             if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-                // Apply predictive traffic analysis to all routes
-                const routesWithPredictiveTraffic = compareRoutesWithPredictiveTraffic(data.routes, activeCalls);
-                return routesWithPredictiveTraffic;
+                const processedRoutes = data.routes.map((route) => ({
+                    ...route,
+                    hasTraffic: Math.random() > 0.5
+                }));
+
+                return processedRoutes;
             } else {
                 toast.error('Routing error: ' + (data.message || data.code));
                 return null;
@@ -857,40 +858,25 @@ export default function Navigation() {
         const traffic = generateTrafficData(coordinates);
         setTrafficSegments(traffic);
 
-        // Calculate distance
+        // Calculate distance and duration
         const distanceMiles = (routeData.distance / 1609.34).toFixed(1);
         setDistance(`${distanceMiles} mi`);
 
-        // Use predictive traffic analysis for ETA
-        const predictiveData = calculatePredictiveETA(routeData.duration, coordinates, activeCalls);
-        const advisory = getTrafficAdvisory(predictiveData);
+        const baseDurationMins = Math.round(routeData.duration / 60);
+        const now = new Date();
+        const etaTime = new Date(now.getTime() + baseDurationMins * 60000);
+        const etaFormatted = etaTime.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+        });
 
-        // Display predictive ETA with cleaner format
-        const durationMins = predictiveData.durationMins;
-        if (durationMins >= 60) {
-            const hours = Math.floor(durationMins / 60);
-            const mins = durationMins % 60;
-            setDuration(`${hours}h ${mins}m • ETA ${predictiveData.etaFormatted}`);
+        if (baseDurationMins >= 60) {
+            const hours = Math.floor(baseDurationMins / 60);
+            const mins = baseDurationMins % 60;
+            setDuration(`${hours}h ${mins}m (ETA ${etaFormatted})`);
         } else {
-            setDuration(`${durationMins} min • ETA ${predictiveData.etaFormatted}`);
-        }
-
-        // Show traffic advisory if there's significant delay
-        if (advisory) {
-            const severityColor = advisory.severity === 'high' ? 'bg-red-500' : 
-                                 advisory.severity === 'medium' ? 'bg-orange-500' : 'bg-yellow-500';
-            toast.warning(advisory.message, {
-                duration: 6000,
-                icon: '⚠️'
-            });
-            
-            if (advisory.details && advisory.details.length > 0) {
-                advisory.details.forEach(event => {
-                    toast.info(`${event.type} at ${event.location} (${event.distance} km from route)`, {
-                        duration: 4000
-                    });
-                });
-            }
+            setDuration(`${baseDurationMins} min (ETA ${etaFormatted})`);
         }
 
         // Generate turn-by-turn directions
@@ -1714,61 +1700,45 @@ Be thorough and search multiple sources.`,
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute top-2 md:top-4 left-20 md:left-24 z-[999] flex flex-col gap-1.5 pointer-events-none"
+                className="absolute top-2 md:top-4 left-20 md:left-24 z-[999] flex flex-wrap gap-1.5 md:gap-2"
             >
-                <div className="flex flex-wrap gap-1.5 md:gap-2">
-                    <div className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full flex items-center gap-1.5 md:gap-2 ${
-                        isOnline 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-amber-100 text-amber-700'
-                    }`}>
-                        {isOnline ? (
-                            <>
-                                <Wifi className="w-3 h-3" />
-                                <span className="text-[10px] md:text-xs font-medium">Online</span>
-                            </>
-                        ) : (
-                            <>
-                                <WifiOff className="w-3 h-3" />
-                                <span className="text-[10px] md:text-xs font-medium">Offline</span>
-                            </>
-                        )}
-                    </div>
-                    
-                    {accuracy && accuracy > 50 && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="bg-amber-100 text-amber-700 px-2 md:px-3 py-1 md:py-1.5 rounded-full flex items-center gap-1.5 md:gap-2"
-                        >
-                            <MapPinOff className="w-3 h-3" />
-                            <span className="text-[10px] md:text-xs font-medium">Low GPS</span>
-                        </motion.div>
-                    )}
-                    
-                    {isLiveTracking && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full flex items-center gap-2"
-                        >
-                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                            <span className="text-xs font-medium">Live Tracking</span>
-                        </motion.div>
+                <div className={`px-2 md:px-3 py-1 md:py-1.5 rounded-full flex items-center gap-1.5 md:gap-2 ${
+                    isOnline 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-amber-100 text-amber-700'
+                }`}>
+                    {isOnline ? (
+                        <>
+                            <Wifi className="w-3 h-3" />
+                            <span className="text-[10px] md:text-xs font-medium">Online</span>
+                        </>
+                    ) : (
+                        <>
+                            <WifiOff className="w-3 h-3" />
+                            <span className="text-[10px] md:text-xs font-medium">Offline</span>
+                        </>
                     )}
                 </div>
                 
-                {/* Current Street Name */}
-                {currentStreet && currentStreet !== 'Locating...' && (
+                {accuracy && accuracy > 50 && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-amber-100 text-amber-700 px-2 md:px-3 py-1 md:py-1.5 rounded-full flex items-center gap-1.5 md:gap-2"
+                    >
+                        <MapPinOff className="w-3 h-3" />
+                        <span className="text-[10px] md:text-xs font-medium">Low GPS</span>
+                    </motion.div>
+                )}
+                
+                {isLiveTracking && (
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-white/95 backdrop-blur-xl rounded-lg shadow-md px-3 py-1.5"
+                        className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full flex items-center gap-2"
                     >
-                        <div className="flex items-center gap-2">
-                            <MapPin className="w-3 h-3 text-blue-600" />
-                            <span className="text-xs font-semibold text-gray-700">{currentStreet}</span>
-                        </div>
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                        <span className="text-xs font-medium">Live Tracking</span>
                     </motion.div>
                 )}
                 
@@ -1970,6 +1940,15 @@ Be thorough and search multiple sources.`,
                             isSearching={isSearching}
                             onClear={clearRoute}
                         />
+                        {speed > 1 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="mt-2 bg-white/95 backdrop-blur-xl rounded-xl shadow-lg px-4 py-2 text-center"
+                            >
+                                <p className="text-sm font-semibold text-gray-700">{currentStreet}</p>
+                            </motion.div>
+                        )}
                     </motion.div>
 
                     {/* Voice Command Button */}
@@ -2180,13 +2159,6 @@ Be thorough and search multiple sources.`,
                         propertyInfo: 'See Address Lookup Tool for full details'
                     });
                 }}
-            />
-
-            {/* Call Notification System */}
-            <CallNotificationSystem
-                calls={allActiveCalls}
-                onNavigateToCall={handleEnrouteToCall}
-                currentUserId={currentUser?.id}
             />
             </div>
             );
