@@ -221,86 +221,80 @@ Deno.serve(async (req) => {
             });
         }
         
-        // Geocode all calls with AI assistance (skip if already has coordinates from database)
-        const geocodedCalls = await Promise.all(calls.map(async (call) => {
-            // Skip geocoding if call already has coordinates (from dispatch database)
-            if (call.latitude && call.longitude) {
-                return call;
-            }
+        // Batch geocode calls to avoid timeout - process in chunks
+        const geocodedCalls = [];
+        const chunkSize = 10;
+        
+        for (let i = 0; i < calls.length; i += chunkSize) {
+            const chunk = calls.slice(i, i + chunkSize);
             
-            try {
-                let jurisdiction = 'Virginia, USA';
-                
-                if (call.agency.includes('RPD') || call.agency.includes('RFD') || call.agency.includes('BPS') || call.agency.includes('BSP')) {
-                    jurisdiction = 'Richmond, VA, USA';
-                } else if (call.agency.includes('HCPD') || call.agency.includes('HPD') || call.agency.includes('Henrico')) {
-                    jurisdiction = 'Henrico County, VA, USA';
-                } else if (call.agency.toLowerCase().includes('ccpd') || 
-                           call.agency.toLowerCase().includes('ccfd') || 
-                           call.agency.toLowerCase().includes('chesterfield') || 
-                           call.agency.toLowerCase().includes('cfrd') ||
-                           call.agency.toLowerCase().includes('cfd')) {
-                    jurisdiction = 'Chesterfield County, VA, USA';
+            const chunkResults = await Promise.all(chunk.map(async (call) => {
+                if (call.latitude && call.longitude) {
+                    return call;
                 }
                 
-                // Additional check for Chesterfield-specific locations
-                const locationLower = call.location.toLowerCase();
-                if (locationLower.includes('chester') || locationLower.includes('midlothian') || 
-                    locationLower.includes('bon air') || locationLower.includes('ettrick') ||
-                    locationLower.includes('colonial heights') || locationLower.includes('matoaca') ||
-                    locationLower.includes('woodlake') || locationLower.includes('beach road') ||
-                    locationLower.includes('ironbridge') || locationLower.includes('iron bridge')) {
-                    jurisdiction = 'Chesterfield County, VA, USA';
-                }
-                
-                // Clean address format
-                let cleanedAddress = call.location.trim();
-                cleanedAddress = cleanedAddress.replace(/\s+Block\s+/gi, ' ');
-                
-                if (cleanedAddress.includes('/')) {
-                    const parts = cleanedAddress.split('/').map(s => s.trim());
-                    cleanedAddress = `${parts[0]} and ${parts[1]}`;
-                }
-                
-                cleanedAddress = cleanedAddress.replace(/\s+(RICH|CHES|HENR|VA|RICHMOND|HENRICO|CHESTERFIELD)$/i, '').trim();
-                
-                // Try geocoding
-                const query = `${cleanedAddress}, ${jurisdiction}`;
-                const geoResponse = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
-                    { 
-                        headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' },
-                        signal: AbortSignal.timeout(3000)
+                try {
+                    let jurisdiction = 'Virginia, USA';
+                    
+                    if (call.agency.includes('RPD') || call.agency.includes('RFD') || call.agency.includes('BPS') || call.agency.includes('BSP')) {
+                        jurisdiction = 'Richmond, VA, USA';
+                    } else if (call.agency.includes('HCPD') || call.agency.includes('HPD') || call.agency.includes('Henrico')) {
+                        jurisdiction = 'Henrico County, VA, USA';
+                    } else if (call.agency.toLowerCase().includes('ccpd') || 
+                               call.agency.toLowerCase().includes('ccfd') || 
+                               call.agency.toLowerCase().includes('chesterfield') || 
+                               call.agency.toLowerCase().includes('cfrd') ||
+                               call.agency.toLowerCase().includes('cfd')) {
+                        jurisdiction = 'Chesterfield County, VA, USA';
                     }
-                );
-                const geoData = await geoResponse.json();
-                
-                if (geoData && geoData.length > 0) {
-                    const lat = parseFloat(geoData[0].lat);
-                    const lon = parseFloat(geoData[0].lon);
-                    console.log(`✅ Geocoded: ${call.location} -> [${lat}, ${lon}]`);
-                    return {
-                        ...call,
-                        latitude: lat,
-                        longitude: lon
-                    };
-                } else {
-                    console.log(`❌ No coords for: ${call.location}`);
-                    return {
-                        ...call,
-                        latitude: null,
-                        longitude: null
-                    };
+                    
+                    const locationLower = call.location.toLowerCase();
+                    if (locationLower.includes('chester') || locationLower.includes('midlothian') || 
+                        locationLower.includes('bon air') || locationLower.includes('ettrick') ||
+                        locationLower.includes('colonial heights') || locationLower.includes('matoaca') ||
+                        locationLower.includes('woodlake') || locationLower.includes('beach road') ||
+                        locationLower.includes('ironbridge') || locationLower.includes('iron bridge')) {
+                        jurisdiction = 'Chesterfield County, VA, USA';
+                    }
+                    
+                    let cleanedAddress = call.location.trim();
+                    cleanedAddress = cleanedAddress.replace(/\s+Block\s+/gi, ' ');
+                    
+                    if (cleanedAddress.includes('/')) {
+                        const parts = cleanedAddress.split('/').map(s => s.trim());
+                        cleanedAddress = `${parts[0]} and ${parts[1]}`;
+                    }
+                    
+                    cleanedAddress = cleanedAddress.replace(/\s+(RICH|CHES|HENR|VA|RICHMOND|HENRICO|CHESTERFIELD)$/i, '').trim();
+                    
+                    const query = `${cleanedAddress}, ${jurisdiction}`;
+                    const geoResponse = await fetch(
+                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
+                        { 
+                            headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' },
+                            signal: AbortSignal.timeout(2000)
+                        }
+                    );
+                    const geoData = await geoResponse.json();
+                    
+                    if (geoData && geoData.length > 0) {
+                        const lat = parseFloat(geoData[0].lat);
+                        const lon = parseFloat(geoData[0].lon);
+                        return { ...call, latitude: lat, longitude: lon };
+                    }
+                    return { ...call, latitude: null, longitude: null };
+                } catch (error) {
+                    return { ...call, latitude: null, longitude: null };
                 }
-            } catch (error) {
-                console.error(`Error geocoding ${call.location}:`, error.message);
-                return {
-                    ...call,
-                    latitude: null,
-                    longitude: null
-                };
+            }));
+            
+            geocodedCalls.push(...chunkResults);
+            
+            // Small delay between chunks to avoid rate limiting
+            if (i + chunkSize < calls.length) {
+                await new Promise(resolve => setTimeout(resolve, 200));
             }
-        }));
+        }
         
         console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
         
