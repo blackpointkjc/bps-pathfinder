@@ -46,13 +46,12 @@ export default function CallNotificationSystem({ calls = [], onNavigateToCall, c
     useEffect(() => {
         if (!calls || calls.length === 0) return;
 
-        const currentCallIds = new Set(calls.map(c => c.id || `${c.timeReceived}-${c.incident}`));
+        const currentCallIds = new Set(calls.map(c => c.id || `${c.timeReceived}-${c.incident}-${c.location}`));
         const newCalls = calls.filter(call => {
-            const callId = call.id || `${call.timeReceived}-${call.incident}`;
+            const callId = call.id || `${call.timeReceived}-${call.incident}-${call.location}`;
             return !lastCallIdsRef.current.has(callId) && 
                    !dismissedCallIds.has(callId) &&
-                   call.source === 'dispatch' &&
-                   (call.status === 'New' || call.status === 'Dispatched' || call.status === 'Pending');
+                   call.latitude && call.longitude; // Show notification for ANY call with valid coords
         });
 
         if (newCalls.length > 0) {
@@ -90,12 +89,9 @@ export default function CallNotificationSystem({ calls = [], onNavigateToCall, c
     };
 
     const handleAccept = (call) => {
-        if (call.source !== 'dispatch') {
-            toast.error('Can only accept dispatch calls');
-            return;
-        }
-        setNotifications(prev => prev.filter(n => n.id !== call.id));
-        setDismissedCallIds(prev => new Set([...prev, call.id]));
+        const callId = call.id || `${call.timeReceived}-${call.incident}-${call.location}`;
+        setNotifications(prev => prev.filter(n => n.notificationId !== call.notificationId));
+        setDismissedCallIds(prev => new Set([...prev, callId]));
         onNavigateToCall(call);
     };
 
