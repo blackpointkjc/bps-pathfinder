@@ -17,6 +17,9 @@ import VolunteerRescueSquads from './VolunteerRescueSquads';
 import VolunteerFireCompanies from './VolunteerFireCompanies';
 import RAAStations from './RAAStations';
 import CCPDStation from './CCPDStation';
+import LiveTrafficFlow from './LiveTrafficFlow';
+import GeofenceLayer from './GeofenceLayer';
+import HistoricalIncidentOverlay from './HistoricalIncidentOverlay';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -170,7 +173,7 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
     return null;
 }
 
-const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail, mapTheme = 'day' }) {
+const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail, mapTheme = 'day', showTrafficFlow = true, showGeofences = true, showHistoricalIncidents = false, onGeofenceAlert }) {
     const defaultCenter = currentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
     
     // Calculate route bounds if route exists
@@ -339,6 +342,25 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
                     }}
                 />
             ) : null}
+
+            {/* Live Traffic Flow Visualization */}
+            {showTrafficFlow && !isNavigating && (
+                <LiveTrafficFlow activeCalls={activeCalls} currentLocation={currentLocation} />
+            )}
+
+            {/* Geofencing Alerts */}
+            {showGeofences && (
+                <GeofenceLayer 
+                    currentLocation={currentLocation} 
+                    currentUserId={currentUserId}
+                    onGeofenceAlert={onGeofenceAlert}
+                />
+            )}
+
+            {/* Historical Incident Overlay */}
+            {showHistoricalIncidents && (
+                <HistoricalIncidentOverlay showHistorical={showHistoricalIncidents} daysBack={7} />
+            )}
 
             {/* Active Emergency Calls */}
             {activeCalls && activeCalls.length > 0 && (

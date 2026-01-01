@@ -133,6 +133,9 @@ export default function Navigation() {
         const hour = new Date().getHours();
         return hour >= 6 && hour < 19 ? 'day' : 'night';
     });
+    const [showTrafficFlow, setShowTrafficFlow] = useState(true);
+    const [showGeofences, setShowGeofences] = useState(true);
+    const [showHistoricalIncidents, setShowHistoricalIncidents] = useState(false);
     
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
@@ -1536,6 +1539,12 @@ Be thorough and search multiple sources.`,
                     jurisdictionFilters={jurisdictionFilters}
                     searchPin={searchPin}
                     mapTheme={mapTheme}
+                    showTrafficFlow={showTrafficFlow}
+                    showGeofences={showGeofences}
+                    showHistoricalIncidents={showHistoricalIncidents}
+                    onGeofenceAlert={(alert) => {
+                        console.log('Geofence alert:', alert);
+                    }}
                     onCallClick={(call) => {
                         setSelectedCall(call);
                         setShowCallSidebar(true);
@@ -1915,6 +1924,38 @@ Be thorough and search multiple sources.`,
                     title="AI Address Lookup"
                 >
                     <Search className="w-4 h-4" />
+                </Button>
+
+                <Button
+                    onClick={() => {
+                        setShowTrafficFlow(!showTrafficFlow);
+                        toast.success(showTrafficFlow ? 'Traffic flow hidden' : 'Traffic flow visible');
+                    }}
+                    size="icon"
+                    className={`h-8 w-8 rounded-lg shadow-lg ${
+                        showTrafficFlow 
+                            ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+                            : 'bg-white hover:bg-gray-100 text-gray-600'
+                    }`}
+                    title="Toggle Traffic Flow"
+                >
+                    🚗
+                </Button>
+
+                <Button
+                    onClick={() => {
+                        setShowHistoricalIncidents(!showHistoricalIncidents);
+                        toast.success(showHistoricalIncidents ? 'Historical incidents hidden' : 'Historical incidents visible');
+                    }}
+                    size="icon"
+                    className={`h-8 w-8 rounded-lg shadow-lg ${
+                        showHistoricalIncidents 
+                            ? 'bg-purple-600 hover:bg-purple-700 text-white' 
+                            : 'bg-white hover:bg-gray-100 text-gray-600'
+                    }`}
+                    title="Toggle Historical Incidents"
+                >
+                    📍
                 </Button>
 
                 <Button
