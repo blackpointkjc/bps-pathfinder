@@ -88,10 +88,42 @@ export default function DispatchCenter() {
 
     const loadActiveCalls = async () => {
         try {
-            const calls = await base44.entities.DispatchCall.filter({
+            // Load dispatch-created calls from database
+            const dbCalls = await base44.entities.DispatchCall.filter({
                 status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene'] }
             });
-            setActiveCalls(calls || []);
+            
+            // Load scraped active calls from external sources
+            try {
+                const scrapedResponse = await base44.functions.invoke('fetchAllActiveCalls', {});
+                if (scrapedResponse.data?.success && scrapedResponse.data.geocodedCalls) {
+                    const scrapedCalls = scrapedResponse.data.geocodedCalls
+                        .filter(c => c.latitude && c.longitude)
+                        .map(c => ({
+                            id: c.id || `scraped-${c.timeReceived}-${c.incident}`,
+                            incident: c.incident,
+                            location: c.location,
+                            latitude: c.latitude,
+                            longitude: c.longitude,
+                            status: c.status || 'Dispatched',
+                            priority: 'medium',
+                            time_received: c.timeReceived,
+                            agency: c.agency,
+                            ai_summary: c.ai_summary,
+                            source: c.source,
+                            assigned_units: []
+                        }));
+                    
+                    // Combine both sources
+                    setActiveCalls([...(dbCalls || []), ...scrapedCalls]);
+                    return;
+                }
+            } catch (err) {
+                console.error('Error loading scraped calls:', err);
+            }
+            
+            // Fallback to just database calls if scraping fails
+            setActiveCalls(dbCalls || []);
         } catch (error) {
             console.error('Error loading active calls:', error);
         }

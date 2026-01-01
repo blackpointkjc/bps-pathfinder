@@ -192,6 +192,14 @@ export default function CallDetailPanel({ call, currentUser, onUpdate, units }) 
                             <p className="text-xs text-slate-500 mt-1">
                                 GPS: {call.latitude.toFixed(4)}, {call.longitude.toFixed(4)}
                             </p>
+                            <Button
+                                onClick={() => window.open(`/navigation?goto=${call.latitude},${call.longitude}&label=${encodeURIComponent(call.location)}`, '_blank')}
+                                className="w-full mt-2 bg-blue-600 hover:bg-blue-700"
+                                size="sm"
+                            >
+                                <MapPin className="w-4 h-4 mr-2" />
+                                Navigate to Location
+                            </Button>
                             {/* Mini Map Preview */}
                             <div className="mt-3 h-32 rounded-lg overflow-hidden border border-slate-700">
                                 <iframe
