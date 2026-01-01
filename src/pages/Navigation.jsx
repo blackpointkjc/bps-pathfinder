@@ -928,7 +928,7 @@ export default function Navigation() {
         setDirections(steps);
 
         if (steps.length > 0) {
-            toast.success(`Route ready: ${distanceMiles} mi, ${baseDurationMins} min - Tap Start Navigation`);
+            toast.success(`Route ready: ${distanceMiles} mi, ${durationMins} min - Tap Start Navigation`);
         } else {
             toast.error('No directions generated');
         }
