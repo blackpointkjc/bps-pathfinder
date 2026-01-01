@@ -53,59 +53,48 @@ Deno.serve(async (req) => {
             
             if (response1.ok) {
                 const html = await response1.text();
-                console.log('📄 Received HTML, length:', html.length);
                 
-                // Parse each line that looks like a call (gractivecalls shows data in markdown table format in the HTML)
-                const lines = html.split('\n');
-                let inTable = false;
-                let headerPassed = false;
-                
-                for (const line of lines) {
-                    // Detect if we're in a table
-                    if (line.includes('| Time Received | Incident | Location | Agency | Status')) {
-                        inTable = true;
-                        continue;
-                    }
+                // Find the table body - gractivecalls uses a specific structure
+                const tbodyMatch = html.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
+                if (!tbodyMatch) {
+                    console.error('❌ Could not find table body in gractivecalls.com');
+                } else {
+                    const tbodyHtml = tbodyMatch[1];
+                    // Match all table rows
+                    const rowMatches = tbodyHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
                     
-                    // Skip separator line
-                    if (line.includes('| --- |')) {
-                        headerPassed = true;
-                        continue;
-                    }
-                    
-                    // Parse data rows
-                    if (inTable && headerPassed && line.trim().startsWith('|')) {
-                        const parts = line.split('|').map(p => p.trim()).filter(p => p);
+                    for (const rowMatch of rowMatches) {
+                        const rowHtml = rowMatch[1];
+                        const cells = [];
                         
-                        if (parts.length >= 5) {
-                            const timeReceived = parts[0];
-                            const incident = parts[1];
-                            const location = parts[2];
-                            const agency = parts[3];
-                            const status = parts[4];
+                        // Extract all td content
+                        const cellMatches = rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
+                        
+                        for (const match of cellMatches) {
+                            let text = match[1]
+                                .replace(/<[^>]+>/g, '')
+                                .replace(/&nbsp;/g, ' ')
+                                .replace(/&amp;/g, '&')
+                                .replace(/&#x27;/g, "'")
+                                .trim();
+                            cells.push(text);
+                        }
+                        
+                        // We should have 6 cells: Time, Incident, Location, Agency, Status, Actions
+                        if (cells.length >= 5) {
+                            const timeReceived = cells[0];
+                            const incident = cells[1];
+                            const location = cells[2];
+                            const agency = cells[3];
+                            const status = cells[4];
                             
-                            if (incident && location && agency) {
-                                console.log(`🔍 Found call: ${agency} - ${incident} at ${location}`);
-                                
-                                let mappedAgency = agency.trim();
-                                const incidentLower = incident.toLowerCase();
-                                
-                                // Map fire agencies to police for firearm calls ONLY
-                                const isPoliceFireCall = incidentLower.includes('firearm') || 
-                                                         incidentLower.includes('gunfire') || 
-                                                         incidentLower.includes('shooting') ||
-                                                         incidentLower.includes('shots fired');
-                                
-                                if (isPoliceFireCall && agency.includes('CCFD')) {
-                                    mappedAgency = 'CCPD';
-                                    console.log(`   ✓ Mapped ${agency} to CCPD (firearm call)`);
-                                }
-                                
+                            // Validate
+                            if (incident && incident.trim() && location && location.trim() && agency && agency.trim()) {
                                 calls.push({
                                     timeReceived: timeReceived || 'Unknown',
                                     incident: incident.trim(),
                                     location: location.trim(),
-                                    agency: mappedAgency,
+                                    agency: agency.trim(),
                                     status: (status && status.trim()) || 'Dispatched',
                                     source: 'gractivecalls.com'
                                 });
@@ -115,10 +104,7 @@ Deno.serve(async (req) => {
                 }
                 
                 const grCallCount = calls.filter(c => c.source === 'gractivecalls.com').length;
-                const ccpdCount = calls.filter(c => c.agency?.includes('CCPD')).length;
-                const ccfdCount = calls.filter(c => c.agency?.includes('CCFD')).length;
-                console.log(`✅ gractivecalls.com: Found ${grCallCount} total calls`);
-                console.log(`   📊 CCPD: ${ccpdCount}, CCFD: ${ccfdCount}`);
+                console.log(`✅ gractivecalls.com: Found ${grCallCount} calls`);
                 
                 // Count by agency for debugging
                 const agencyCounts = {};
@@ -127,7 +113,7 @@ Deno.serve(async (req) => {
                         agencyCounts[c.agency] = (agencyCounts[c.agency] || 0) + 1;
                     }
                 });
-                console.log('📊 All agencies:', JSON.stringify(agencyCounts));
+                console.log('📊 Agencies from gractivecalls:', JSON.stringify(agencyCounts));
             }
         } catch (error) {
             console.error('❌ Error fetching from gractivecalls.com:', error);
