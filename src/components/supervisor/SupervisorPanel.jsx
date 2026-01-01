@@ -186,21 +186,40 @@ export default function SupervisorPanel({ isOpen, onClose, onShowHeatmap, onShow
 
                                 <TabsContent value="activity" className="mt-4">
                                     <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-sm text-slate-400">
-                                                View unit activity patterns over time
-                                            </p>
-                                            <Button
-                                                onClick={() => {
-                                                    setShowHeatmap(!showHeatmap);
-                                                    onShowHeatmap(!showHeatmap);
-                                                    toast.success(showHeatmap ? 'Heatmap hidden' : 'Heatmap visible');
-                                                }}
-                                                className={showHeatmap ? 'bg-purple-600' : 'bg-slate-700'}
-                                            >
-                                                <Activity className="w-4 h-4 mr-2" />
-                                                {showHeatmap ? 'Hide' : 'Show'} Heatmap
-                                            </Button>
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-sm text-slate-400">
+                                                    View unit activity patterns over time
+                                                </p>
+                                                <Button
+                                                    onClick={() => {
+                                                        const newState = !showHeatmap;
+                                                        setShowHeatmap(newState);
+                                                        onShowHeatmap(newState);
+                                                        toast.success(newState ? 'Heatmap visible' : 'Heatmap hidden');
+                                                    }}
+                                                    className={showHeatmap ? 'bg-purple-600' : 'bg-slate-700'}
+                                                >
+                                                    <Activity className="w-4 h-4 mr-2" />
+                                                    {showHeatmap ? 'Hide' : 'Show'} Heatmap
+                                                </Button>
+                                            </div>
+
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-sm text-slate-400">
+                                                    View unit movement trails (24 hours)
+                                                </p>
+                                                <Button
+                                                    onClick={() => {
+                                                        onShowBreadcrumb(true);
+                                                        onClose();
+                                                    }}
+                                                    className="bg-blue-600"
+                                                >
+                                                    <MapPin className="w-4 h-4 mr-2" />
+                                                    View Trails
+                                                </Button>
+                                            </div>
                                         </div>
 
                                         {geofenceEvents.length > 0 && (

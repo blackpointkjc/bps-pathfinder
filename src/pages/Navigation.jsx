@@ -32,6 +32,7 @@ import SupervisorPanel from '@/components/supervisor/SupervisorPanel';
 import UnitHeatmap from '@/components/supervisor/UnitHeatmap';
 import BreadcrumbTrail from '@/components/supervisor/BreadcrumbTrail';
 import GeofenceLayer from '@/components/supervisor/GeofenceLayer';
+import BreadcrumbControls from '@/components/supervisor/BreadcrumbControls';
 
 export default function Navigation() {
     const [currentLocation, setCurrentLocation] = useState(null);
@@ -2197,9 +2198,21 @@ Be thorough and search multiple sources.`,
                 isOpen={showSupervisorPanel}
                 onClose={() => setShowSupervisorPanel(false)}
                 onShowHeatmap={(show) => setShowHeatmap(show)}
-                onShowBreadcrumb={(unitId) => setSelectedUnitForTrail(unitId)}
+                onShowBreadcrumb={(show) => setShowBreadcrumbs(show)}
                 onShowGeofences={(show) => {}}
             />
+
+            {/* Breadcrumb Controls */}
+            {showBreadcrumbs && (
+                <BreadcrumbControls
+                    onSelectUnit={(unitId) => setSelectedUnitForTrail(unitId)}
+                    selectedUnitId={selectedUnitForTrail}
+                    onClose={() => {
+                        setShowBreadcrumbs(false);
+                        setSelectedUnitForTrail(null);
+                    }}
+                />
+            )}
             </div>
             );
             }
