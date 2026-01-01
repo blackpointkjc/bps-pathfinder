@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { X, Target, MapPin, Clock, TrendingUp, Shield, Award } from 'lucide-react';
+import { X, Target, MapPin, Clock, TrendingUp, Shield, Award, Sparkles, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 
@@ -12,28 +12,30 @@ export default function OptimalDispatchPanel({ isOpen, onClose, call, onUnitAssi
     const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [assigning, setAssigning] = useState(null);
+    const [aiAnalysis, setAiAnalysis] = useState(null);
+    const [stats, setStats] = useState(null);
 
     useEffect(() => {
         if (isOpen && call) {
-            fetchSuggestions();
+            fetchAIAnalysis();
         }
     }, [isOpen, call]);
 
-    const fetchSuggestions = async () => {
+    const fetchAIAnalysis = async () => {
         setLoading(true);
         try {
-            const response = await base44.functions.invoke('suggestOptimalUnits', {
-                call_id: call.id
-            });
+            const response = await base44.functions.invoke('aiDispatchAssistant', { call });
 
             if (response.data?.success) {
-                setSuggestions(response.data.suggestions || []);
+                setSuggestions(response.data.recommendations || []);
+                setAiAnalysis(response.data.aiAnalysis);
+                setStats(response.data.stats);
             } else {
-                toast.error(response.data?.message || 'No suggestions available');
+                toast.error('AI analysis failed');
             }
         } catch (error) {
-            console.error('Error fetching suggestions:', error);
-            toast.error('Failed to get unit suggestions');
+            console.error('Error fetching AI analysis:', error);
+            toast.error('Failed to get AI suggestions');
         } finally {
             setLoading(false);
         }
@@ -59,7 +61,18 @@ export default function OptimalDispatchPanel({ isOpen, onClose, call, onUnitAssi
                 status: 'pending'
             });
 
-            toast.success(`${unit.unit_number} assigned - ETA ${unit.eta_minutes} min`);
+            // Send message to unit
+            const currentUser = await base44.auth.me();
+            await base44.entities.Message.create({
+                sender_id: currentUser.id,
+                sender_name: currentUser.full_name,
+                recipient_id: unit.unit_id,
+                recipient_name: unit.unit_name,
+                message: `DISPATCH: ${call.incident} at ${call.location}. ETA: ${unit.eta} min`,
+                call_id: call.id
+            });
+
+            toast.success(`${unit.unit_name} assigned - ETA ${unit.eta} min`);
             onUnitAssigned();
             onClose();
         } catch (error) {
@@ -92,11 +105,11 @@ export default function OptimalDispatchPanel({ isOpen, onClose, call, onUnitAssi
                         <div className="p-6">
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center">
-                                        <Target className="w-6 h-6 text-white" />
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
+                                        <Sparkles className="w-6 h-6 text-white" />
                                     </div>
                                     <div>
-                                        <h2 className="text-2xl font-bold text-white">Optimal Unit Selection</h2>
+                                        <h2 className="text-2xl font-bold text-white">AI Dispatch Assistant</h2>
                                         <p className="text-sm text-slate-400">{call?.incident} - {call?.location}</p>
                                     </div>
                                 </div>
@@ -107,8 +120,8 @@ export default function OptimalDispatchPanel({ isOpen, onClose, call, onUnitAssi
 
                             {loading ? (
                                 <div className="text-center py-12">
-                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4" />
-                                    <p className="text-slate-400">Analyzing best units...</p>
+                                    <Sparkles className="w-12 h-12 mx-auto mb-3 text-purple-500 animate-pulse" />
+                                    <p className="text-slate-400">AI analyzing optimal dispatch...</p>
                                 </div>
                             ) : suggestions.length === 0 ? (
                                 <div className="text-center py-12">
@@ -117,54 +130,96 @@ export default function OptimalDispatchPanel({ isOpen, onClose, call, onUnitAssi
                                 </div>
                             ) : (
                                 <ScrollArea className="max-h-[500px]">
-                                    <div className="space-y-3">
-                                        {suggestions.map((unit, index) => (
+                                    <div className="space-y-4">
+                                        {/* AI Analysis */}
+                                        {aiAnalysis && (
+                                            <div className="bg-gradient-to-br from-purple-900/40 to-blue-900/40 border border-purple-500/30 rounded-lg p-4">
+                                                <h3 className="font-semibold mb-2 flex items-center gap-2 text-white">
+                                                    <Sparkles className="w-4 h-4 text-purple-400" />
+                                                    AI Analysis
+                                                </h3>
+                                                <p className="text-sm text-slate-300 whitespace-pre-line">
+                                                    {aiAnalysis}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Resource Stats */}
+                                        {stats && (
+                                            <div className="grid grid-cols-4 gap-2">
+                                                <div className="bg-slate-800 p-3 rounded-lg text-center">
+                                                    <div className="text-2xl font-bold text-green-400">{stats.availableUnits}</div>
+                                                    <div className="text-xs text-slate-400">Available</div>
+                                                </div>
+                                                <div className="bg-slate-800 p-3 rounded-lg text-center">
+                                                    <div className="text-2xl font-bold text-blue-400">{stats.onPatrol}</div>
+                                                    <div className="text-xs text-slate-400">On Patrol</div>
+                                                </div>
+                                                <div className="bg-slate-800 p-3 rounded-lg text-center">
+                                                    <div className="text-2xl font-bold text-red-400">{stats.onCalls}</div>
+                                                    <div className="text-xs text-slate-400">On Calls</div>
+                                                </div>
+                                                <div className="bg-slate-800 p-3 rounded-lg text-center">
+                                                    <div className="text-2xl font-bold text-gray-400">{stats.outOfService}</div>
+                                                    <div className="text-xs text-slate-400">OOS</div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Resource Shortage Warning */}
+                                        {stats && stats.availableUnits < 3 && (
+                                            <div className="bg-red-900/40 border border-red-500/30 rounded-lg p-4 flex items-start gap-3">
+                                                <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                                                <div>
+                                                    <div className="font-semibold text-red-400">Resource Shortage Warning</div>
+                                                    <div className="text-sm text-red-300 mt-1">
+                                                        Only {stats.availableUnits} units available. Consider requesting backup.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Recommended Units */}
+                                        <div>
+                                            <h3 className="font-semibold mb-3 text-white">Recommended Units</h3>
+                                            {suggestions.map((unit, index) => (
                                             <motion.div
                                                 key={unit.unit_id}
                                                 initial={{ opacity: 0, x: -20 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: index * 0.1 }}
                                             >
-                                                <Card className={`p-4 ${
+                                                <Card className={`p-4 border-2 ${
                                                     index === 0 
-                                                        ? 'bg-gradient-to-r from-blue-900/50 to-blue-800/50 border-blue-600' 
+                                                        ? 'bg-gradient-to-r from-purple-900/50 to-blue-900/50 border-purple-500' 
                                                         : 'bg-slate-800 border-slate-700'
                                                 } hover:scale-[1.02] transition-all`}>
                                                     <div className="flex items-start justify-between">
                                                         <div className="flex-1">
                                                             <div className="flex items-center gap-2 mb-2">
                                                                 {index === 0 && (
-                                                                    <Award className="w-5 h-5 text-yellow-500" />
+                                                                    <Badge className="bg-purple-600 text-white">
+                                                                        BEST MATCH
+                                                                    </Badge>
                                                                 )}
                                                                 <h3 className="font-bold text-white text-lg">
-                                                                    {unit.unit_number}
+                                                                    {unit.unit_name}
                                                                 </h3>
-                                                                {unit.is_supervisor && (
-                                                                    <Shield className="w-4 h-4 text-yellow-500" />
+                                                                {unit.skillMatch && (
+                                                                    <Badge className="bg-green-600">
+                                                                        SKILL MATCH
+                                                                    </Badge>
                                                                 )}
-                                                                <Badge className={
-                                                                    index === 0 
-                                                                        ? 'bg-blue-600 text-white' 
-                                                                        : 'bg-slate-700 text-slate-300'
-                                                                }>
-                                                                    {unit.recommendation}
-                                                                </Badge>
                                                             </div>
-                                                            
-                                                            <p className="text-sm text-slate-400 mb-3">
-                                                                {unit.rank && unit.last_name 
-                                                                    ? `${unit.rank} ${unit.last_name}` 
-                                                                    : unit.full_name}
-                                                            </p>
 
-                                                            <div className="grid grid-cols-3 gap-4 text-sm">
+                                                            <div className="grid grid-cols-3 gap-4 text-sm mb-3">
                                                                 <div>
                                                                     <div className="flex items-center gap-1 text-slate-500 mb-1">
                                                                         <MapPin className="w-3 h-3" />
                                                                         <span>Distance</span>
                                                                     </div>
                                                                     <p className="text-white font-semibold">
-                                                                        {unit.distance_miles} mi
+                                                                        {unit.distance} km
                                                                     </p>
                                                                 </div>
 
@@ -174,7 +229,7 @@ export default function OptimalDispatchPanel({ isOpen, onClose, call, onUnitAssi
                                                                         <span>ETA</span>
                                                                     </div>
                                                                     <p className="text-white font-semibold">
-                                                                        {unit.eta_minutes} min
+                                                                        {unit.eta} min
                                                                     </p>
                                                                 </div>
 
@@ -188,6 +243,19 @@ export default function OptimalDispatchPanel({ isOpen, onClose, call, onUnitAssi
                                                                     </p>
                                                                 </div>
                                                             </div>
+
+                                                            {unit.skills.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {unit.skills.map(skill => (
+                                                                        <Badge
+                                                                            key={skill}
+                                                                            className="bg-slate-700 text-slate-300 text-xs"
+                                                                        >
+                                                                            {skill}
+                                                                        </Badge>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
 
                                                         <Button
@@ -195,10 +263,11 @@ export default function OptimalDispatchPanel({ isOpen, onClose, call, onUnitAssi
                                                             disabled={assigning !== null}
                                                             className={`ml-4 ${
                                                                 index === 0 
-                                                                    ? 'bg-blue-600 hover:bg-blue-700' 
+                                                                    ? 'bg-purple-600 hover:bg-purple-700' 
                                                                     : 'bg-slate-700 hover:bg-slate-600'
                                                             }`}
                                                         >
+                                                            <Target className="w-4 h-4 mr-2" />
                                                             {assigning === unit.unit_id ? 'Assigning...' : 'Dispatch'}
                                                         </Button>
                                                     </div>
