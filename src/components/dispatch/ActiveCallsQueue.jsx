@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Search, Filter, AlertCircle, Clock, MapPin, Target } from 'lucide-react';
 import { motion } from 'framer-motion';
 import OptimalDispatchPanel from './OptimalDispatchPanel';
+import HistoricalCallAlert from '../map/HistoricalCallAlert';
 
 export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, units, onUpdate }) {
     const [searchQuery, setSearchQuery] = useState('');
@@ -147,9 +148,12 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
                                 >
                                     <div className="flex items-start justify-between mb-2">
                                         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelectCall(call)}>
-                                            <h3 className="font-bold text-white text-sm truncate">
-                                                {call.incident}
-                                            </h3>
+                                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                <h3 className="font-bold text-white text-sm truncate">
+                                                    {call.incident}
+                                                </h3>
+                                                <HistoricalCallAlert location={call.location} />
+                                            </div>
                                             <div className="flex items-center gap-1 text-xs text-slate-400 mt-1">
                                                 <MapPin className="w-3 h-3" />
                                                 <span className="truncate">{call.location}</span>
