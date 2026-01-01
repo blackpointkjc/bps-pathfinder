@@ -217,109 +217,108 @@ Deno.serve(async (req) => {
             });
         }
         
-        // Geocode all calls with AI assistance (skip if already has coordinates from database)
+        // Geocode all calls in parallel batches (faster)
         const geocodedCalls = [];
-        for (const call of calls) {
-            // Skip geocoding if call already has coordinates (from dispatch database)
-            if (call.latitude && call.longitude) {
-                geocodedCalls.push(call);
-                continue;
-            }
-            try {
-                const locationLower = call.location.toLowerCase();
-                const agencyLower = call.agency.toLowerCase();
-                let jurisdiction = 'Virginia, USA';
-                
-                console.log(`🔍 Determining jurisdiction for: Agency="${call.agency}", Location="${call.location}"`);
-                
-                // Check for Chesterfield - be very broad
-                if (agencyLower.includes('ccpd') || 
-                    agencyLower.includes('ccfd') || 
-                    agencyLower.includes('chesterfield') || 
-                    agencyLower.includes('cfrd') ||
-                    agencyLower.includes('cfd') ||
-                    agencyLower.includes('ches') ||
-                    locationLower.includes('chester') || 
-                    locationLower.includes('midlothian') || 
-                    locationLower.includes('bon air') || 
-                    locationLower.includes('ettrick') ||
-                    locationLower.includes('colonial heights') || 
-                    locationLower.includes('matoaca') ||
-                    locationLower.includes('woodlake') || 
-                    locationLower.includes('beach road') ||
-                    locationLower.includes('ironbridge') || 
-                    locationLower.includes('iron bridge')) {
-                    jurisdiction = 'Chesterfield County, VA, USA';
-                    console.log(`✅ Identified as Chesterfield County`);
-                } else if (call.agency.includes('RPD') || call.agency.includes('RFD') || call.agency.includes('BPS') || call.agency.includes('BSP')) {
-                    jurisdiction = 'Richmond, VA, USA';
-                    console.log(`✅ Identified as Richmond`);
-                } else if (call.agency.includes('HCPD') || call.agency.includes('HPD') || call.agency.includes('Henrico')) {
-                    jurisdiction = 'Henrico County, VA, USA';
-                    console.log(`✅ Identified as Henrico County`);
+        const BATCH_SIZE = 5; // Process 5 at a time
+        
+        for (let i = 0; i < calls.length; i += BATCH_SIZE) {
+            const batch = calls.slice(i, i + BATCH_SIZE);
+            
+            const batchResults = await Promise.all(batch.map(async (call) => {
+                // Skip geocoding if call already has coordinates (from dispatch database)
+                if (call.latitude && call.longitude) {
+                    return call;
                 }
                 
-                // Clean address format (handle intersections, blocks, etc.)
-                let cleanedAddress = call.location.trim();
-                
-                // Remove "Block" text (e.g., "8800 Block THREE CHOPT RD" -> "8800 THREE CHOPT RD")
-                cleanedAddress = cleanedAddress.replace(/\s+Block\s+/gi, ' ');
-                
-                // Convert intersection format "STREET1/STREET2" to "STREET1 and STREET2"
-                if (cleanedAddress.includes('/')) {
-                    const parts = cleanedAddress.split('/').map(s => s.trim());
-                    cleanedAddress = `${parts[0]} and ${parts[1]}`;
-                }
-                
-                // Remove trailing jurisdiction indicators
-                cleanedAddress = cleanedAddress.replace(/\s+(RICH|CHES|HENR|VA|RICHMOND|HENRICO|CHESTERFIELD)$/i, '').trim();
-                
-                // Try geocoding with cleaned address - try multiple strategies
-                let geoData = null;
-                
-                // Strategy 1: Try with full cleaned address
-                let query = `${cleanedAddress}, ${jurisdiction}`;
-                let geoResponse = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
-                    { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
-                );
-                geoData = await geoResponse.json();
-                
-                // Strategy 2: If no results and has "and" (intersection), try without "and"
-                if ((!geoData || geoData.length === 0) && cleanedAddress.includes(' and ')) {
-                    const firstStreet = cleanedAddress.split(' and ')[0].trim();
-                    query = `${firstStreet}, ${jurisdiction}`;
-                    geoResponse = await fetch(
+                try {
+                    const locationLower = call.location.toLowerCase();
+                    const agencyLower = call.agency.toLowerCase();
+                    let jurisdiction = 'Virginia, USA';
+                    
+                    // Check for Chesterfield - be very broad
+                    if (agencyLower.includes('ccpd') || 
+                        agencyLower.includes('ccfd') || 
+                        agencyLower.includes('chesterfield') || 
+                        agencyLower.includes('cfrd') ||
+                        agencyLower.includes('cfd') ||
+                        agencyLower.includes('ches') ||
+                        locationLower.includes('chester') || 
+                        locationLower.includes('midlothian') || 
+                        locationLower.includes('bon air') || 
+                        locationLower.includes('ettrick') ||
+                        locationLower.includes('colonial heights') || 
+                        locationLower.includes('matoaca') ||
+                        locationLower.includes('woodlake') || 
+                        locationLower.includes('beach road') ||
+                        locationLower.includes('ironbridge') || 
+                        locationLower.includes('iron bridge')) {
+                        jurisdiction = 'Chesterfield County, VA, USA';
+                    } else if (call.agency.includes('RPD') || call.agency.includes('RFD') || call.agency.includes('BPS') || call.agency.includes('BSP')) {
+                        jurisdiction = 'Richmond, VA, USA';
+                    } else if (call.agency.includes('HCPD') || call.agency.includes('HPD') || call.agency.includes('Henrico')) {
+                        jurisdiction = 'Henrico County, VA, USA';
+                    }
+                    
+                    // Clean address format
+                    let cleanedAddress = call.location.trim()
+                        .replace(/\s+Block\s+/gi, ' ')
+                        .replace(/\s+(RICH|CHES|HENR|VA|RICHMOND|HENRICO|CHESTERFIELD)$/i, '')
+                        .trim();
+                    
+                    // Convert intersection format
+                    if (cleanedAddress.includes('/')) {
+                        const parts = cleanedAddress.split('/').map(s => s.trim());
+                        cleanedAddress = `${parts[0]} and ${parts[1]}`;
+                    }
+                    
+                    // Try geocoding
+                    let query = `${cleanedAddress}, ${jurisdiction}`;
+                    const geoResponse = await fetch(
                         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
                         { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
                     );
-                    geoData = await geoResponse.json();
+                    const geoData = await geoResponse.json();
+                    
+                    if (geoData && geoData.length > 0) {
+                        return {
+                            ...call,
+                            latitude: parseFloat(geoData[0].lat),
+                            longitude: parseFloat(geoData[0].lon)
+                        };
+                    }
+                    
+                    // If failed, try first street only for intersections
+                    if (cleanedAddress.includes(' and ')) {
+                        const firstStreet = cleanedAddress.split(' and ')[0].trim();
+                        query = `${firstStreet}, ${jurisdiction}`;
+                        const retryResponse = await fetch(
+                            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
+                            { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
+                        );
+                        const retryData = await retryResponse.json();
+                        
+                        if (retryData && retryData.length > 0) {
+                            return {
+                                ...call,
+                                latitude: parseFloat(retryData[0].lat),
+                                longitude: parseFloat(retryData[0].lon)
+                            };
+                        }
+                    }
+                    
+                    console.log(`❌ Could not geocode: ${call.location}`);
+                    return null; // Don't include calls without coordinates
+                } catch (error) {
+                    console.error(`Error geocoding ${call.location}:`, error);
+                    return null;
                 }
-                
-                if (geoData && geoData.length > 0) {
-                    const lat = parseFloat(geoData[0].lat);
-                    const lon = parseFloat(geoData[0].lon);
-                    console.log(`✅ GEOCODED: ${call.agency} - ${call.incident} at ${call.location}: [${lat}, ${lon}] in ${jurisdiction}`);
-                    geocodedCalls.push({
-                        ...call,
-                        latitude: lat,
-                        longitude: lon
-                    });
-                } else {
-                    console.log(`❌ FAILED TO GEOCODE: ${call.agency} - ${call.incident} at ${call.location} in ${jurisdiction}`);
-                    console.log(`   Query was: ${query}`);
-                    // DON'T add calls without coordinates - they won't show on map anyway
-                }
-                
-                // Rate limit to avoid hitting Nominatim too hard
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            } catch (error) {
-                console.error(`Error geocoding ${call.location}:`, error);
-                geocodedCalls.push({
-                    ...call,
-                    latitude: null,
-                    longitude: null
-                });
+            }));
+            
+            geocodedCalls.push(...batchResults.filter(c => c && c.latitude && c.longitude));
+            
+            // Small delay between batches only
+            if (i + BATCH_SIZE < calls.length) {
+                await new Promise(resolve => setTimeout(resolve, 300));
             }
         }
         
