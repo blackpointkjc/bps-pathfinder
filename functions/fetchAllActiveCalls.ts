@@ -324,11 +324,25 @@ Deno.serve(async (req) => {
         
         console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
         
+        // DEBUGGING: Count CCPD/CCFD before and after geocoding
+        const ccpdBeforeGeocode = calls.filter(c => c.agency?.includes('CCPD') || c.agency?.includes('CCFD')).length;
+        const ccpdAfterGeocode = geocodedCalls.filter(c => c.agency?.includes('CCPD') || c.agency?.includes('CCFD')).length;
+        const ccpdWithCoords = geocodedCalls.filter(c => (c.agency?.includes('CCPD') || c.agency?.includes('CCFD')) && c.latitude && c.longitude).length;
+        
+        console.log(`🔍 CHESTERFIELD TRACKING:`);
+        console.log(`   Before geocoding: ${ccpdBeforeGeocode} calls`);
+        console.log(`   After geocoding: ${ccpdAfterGeocode} calls`);
+        console.log(`   With valid coords: ${ccpdWithCoords} calls`);
+        
         // Generate AI summaries for geocoded calls only (skip if no coordinates)
         const callsWithSummaries = geocodedCalls.map(call => ({
             ...call,
             ai_summary: call.ai_summary || `${call.incident} at ${call.location}`
         }));
+        
+        // FINAL DEBUG: What are we actually returning?
+        const finalCCPD = callsWithSummaries.filter(c => c.agency?.includes('CCPD') || c.agency?.includes('CCFD')).length;
+        console.log(`   In final response: ${finalCCPD} Chesterfield calls`);
         
         return Response.json({
             success: true,
