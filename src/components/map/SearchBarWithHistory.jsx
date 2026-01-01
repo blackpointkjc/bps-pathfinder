@@ -84,7 +84,7 @@ export default function SearchBarWithHistory({ onSearch, isSearching, onClear })
                         <Button
                             type="submit"
                             disabled={isSearching || !query.trim()}
-                            className="h-10 rounded-xl bg-blue-600 hover:bg-blue-700"
+                            className="h-10 rounded-xl bg-blue-600 hover:bg-blue-700 pointer-events-auto"
                         >
                             {isSearching ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
