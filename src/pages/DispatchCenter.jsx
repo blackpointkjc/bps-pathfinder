@@ -14,6 +14,7 @@ import MessagingPanel from '@/components/dispatch/MessagingPanel';
 import UnitScheduling from '@/components/dispatch/UnitScheduling';
 import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import QuickActions from '@/components/dispatch/QuickActions';
+import RepeatAddressAlert from '@/components/dispatch/RepeatAddressAlert';
 
 export default function DispatchCenter() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -215,8 +216,19 @@ export default function DispatchCenter() {
                     <div className="mb-4">
                         <QuickActions onCreateCall={handleQuickDispatch} />
                     </div>
+
+                    {/* Repeat Address Alerts */}
+                    <div className="mb-4">
+                        <RepeatAddressAlert 
+                            onNavigateToAddress={(addr) => {
+                                if (addr.latitude && addr.longitude) {
+                                    window.open(`/navigation?lat=${addr.latitude}&lng=${addr.longitude}&address=${encodeURIComponent(addr.address)}`, '_blank');
+                                }
+                            }}
+                        />
+                    </div>
                     
-                    <div className="grid grid-cols-12 gap-4 h-[calc(100vh-140px)]">
+                    <div className="grid grid-cols-12 gap-4 h-[calc(100vh-240px)]">
                         {/* Left: Active Calls Queue */}
                         <div className="col-span-3">
                             <ActiveCallsQueue
