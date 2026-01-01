@@ -28,6 +28,10 @@ import { calculatePredictiveETA, getTrafficAdvisory, compareRoutesWithPredictive
 import CallNotificationSystem from '@/components/notifications/CallNotificationSystem';
 import LayerFilterPanel from '@/components/map/LayerFilterPanel';
 import AddressLookupTool from '@/components/map/AddressLookupTool';
+import SupervisorPanel from '@/components/supervisor/SupervisorPanel';
+import UnitHeatmap from '@/components/supervisor/UnitHeatmap';
+import BreadcrumbTrail from '@/components/supervisor/BreadcrumbTrail';
+import GeofenceLayer from '@/components/supervisor/GeofenceLayer';
 
 export default function Navigation() {
     const [currentLocation, setCurrentLocation] = useState(null);
@@ -133,6 +137,12 @@ export default function Navigation() {
         const hour = new Date().getHours();
         return hour >= 6 && hour < 19 ? 'day' : 'night';
     });
+    
+    // Supervisor features
+    const [showSupervisorPanel, setShowSupervisorPanel] = useState(false);
+    const [showHeatmap, setShowHeatmap] = useState(false);
+    const [showBreadcrumbs, setShowBreadcrumbs] = useState(false);
+    const [selectedUnitForTrail, setSelectedUnitForTrail] = useState(null);
     
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
@@ -584,9 +594,21 @@ export default function Navigation() {
                 show_lights: showLights,
                 current_call_info: activeCallInfo,
                 last_updated: new Date().toISOString()
-                };
+            };
 
-                await base44.auth.updateMe(updateData);
+            await base44.auth.updateMe(updateData);
+
+            // Log location for breadcrumb trail (every 30 seconds)
+            if (!window.lastBreadcrumbLog || now - window.lastBreadcrumbLog > 30000) {
+                window.lastBreadcrumbLog = now;
+                await base44.functions.invoke('logUnitLocation', {
+                    latitude: currentLocation[0],
+                    longitude: currentLocation[1],
+                    heading: heading || 0,
+                    speed: speed || 0,
+                    status: unitStatus
+                }).catch(err => console.log('Breadcrumb log failed:', err));
+            }
         } catch (error) {
             console.error('Error updating user location:', error);
         }
@@ -1511,6 +1533,9 @@ Be thorough and search multiple sources.`,
                     jurisdictionFilters={jurisdictionFilters}
                     searchPin={searchPin}
                     mapTheme={mapTheme}
+                    showHeatmap={showHeatmap}
+                    showBreadcrumbs={showBreadcrumbs}
+                    selectedUnitForTrail={selectedUnitForTrail}
                     onCallClick={(call) => {
                         setSelectedCall(call);
                         setShowCallSidebar(true);
@@ -1842,14 +1867,24 @@ Be thorough and search multiple sources.`,
                 )}
 
                 {currentUser?.role === 'admin' && (
-                    <Button
-                        onClick={() => window.location.href = '/adminportal'}
-                        size="icon"
-                        className="h-8 w-8 rounded-lg bg-slate-800 hover:bg-slate-900 text-white shadow-lg"
-                        title="Admin Portal"
-                    >
-                        <Shield className="w-4 h-4" />
-                    </Button>
+                    <>
+                        <Button
+                            onClick={() => setShowSupervisorPanel(true)}
+                            size="icon"
+                            className="h-8 w-8 rounded-lg bg-purple-600 hover:bg-purple-700 text-white shadow-lg"
+                            title="Supervisor Tools"
+                        >
+                            <Shield className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            onClick={() => window.location.href = '/adminportal'}
+                            size="icon"
+                            className="h-8 w-8 rounded-lg bg-slate-800 hover:bg-slate-900 text-white shadow-lg"
+                            title="Admin Portal"
+                        >
+                            <Settings className="w-4 h-4" />
+                        </Button>
+                    </>
                 )}
 
                 <Button
@@ -2155,6 +2190,15 @@ Be thorough and search multiple sources.`,
                 calls={allActiveCalls}
                 onNavigateToCall={handleEnrouteToCall}
                 currentUserId={currentUser?.id}
+            />
+
+            {/* Supervisor Panel */}
+            <SupervisorPanel
+                isOpen={showSupervisorPanel}
+                onClose={() => setShowSupervisorPanel(false)}
+                onShowHeatmap={(show) => setShowHeatmap(show)}
+                onShowBreadcrumb={(unitId) => setSelectedUnitForTrail(unitId)}
+                onShowGeofences={(show) => {}}
             />
             </div>
             );
