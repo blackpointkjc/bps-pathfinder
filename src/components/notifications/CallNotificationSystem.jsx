@@ -46,13 +46,14 @@ export default function CallNotificationSystem({ calls = [], onNavigateToCall, c
     useEffect(() => {
         if (!calls || calls.length === 0) return;
 
-        const currentCallIds = new Set(calls.map(c => c.id));
-        const newCalls = calls.filter(call => 
-            !lastCallIdsRef.current.has(call.id) && 
-            !dismissedCallIds.has(call.id) &&
-            call.source === 'dispatch' &&
-            (call.status === 'New' || call.status === 'Dispatched' || call.status === 'Pending')
-        );
+        const currentCallIds = new Set(calls.map(c => c.id || `${c.timeReceived}-${c.incident}`));
+        const newCalls = calls.filter(call => {
+            const callId = call.id || `${call.timeReceived}-${call.incident}`;
+            return !lastCallIdsRef.current.has(callId) && 
+                   !dismissedCallIds.has(callId) &&
+                   call.source === 'dispatch' &&
+                   (call.status === 'New' || call.status === 'Dispatched' || call.status === 'Pending');
+        });
 
         if (newCalls.length > 0) {
             // Play sound
