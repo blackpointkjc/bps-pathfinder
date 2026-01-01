@@ -75,8 +75,8 @@ Deno.serve(async (req) => {
                 const trMatches = html.match(/<tr[^>]*data-with-row-border="true"/gi);
                 console.log(`🔍 Found ${trMatches ? trMatches.length : 0} table rows in HTML`);
                 
-                // Parse table rows
-                const rowMatches = html.matchAll(/<tr[^>]*data-with-row-border="true"[^>]*>([\s\S]*?)<\/tr>/gi);
+                // Parse table rows - need to match ALL rows, not just visible ones
+                const rowMatches = html.matchAll(/<tr[^>]*class="[^"]*mantine-Table-tr[^"]*"[^>]*data-with-row-border="true"[^>]*>([\s\S]*?)<\/tr>/gi);
                 
                 let rowCount = 0;
                 for (const rowMatch of rowMatches) {
@@ -84,7 +84,8 @@ Deno.serve(async (req) => {
                     const rowHtml = rowMatch[1];
                     const cells = [];
                     
-                    const cellMatches = rowHtml.matchAll(/<td[^>]*class="[^"]*mantine-Table-td[^"]*"[^>]*>(.*?)<\/td>/gi);
+                    // Match both td and th elements (header might be in th)
+                    const cellMatches = rowHtml.matchAll(/<t[dh][^>]*class="[^"]*mantine-Table-t[dh][^"]*"[^>]*>(.*?)<\/t[dh]>/gi);
                     
                     for (const match of cellMatches) {
                         let text = match[1]
@@ -95,10 +96,18 @@ Deno.serve(async (req) => {
                         cells.push(text);
                     }
                     
-                    console.log(`📋 Row ${rowCount}: ${cells.length} cells - ${cells.join(' | ')}`);
+                    // Skip header rows (those with "Time Received" text)
+                    if (cells.some(c => c === 'Time Received')) continue;
                     
+                    console.log(`📋 Row ${rowCount}: ${cells.length} cells - ${cells.slice(0, 5).join(' | ')}`);
+                    
+                    // Should have at least 5 cells: Time, Incident, Location, Agency, Status
                     if (cells.length >= 5) {
-                        const [timeReceived, incident, location, agency, status] = cells;
+                        const timeReceived = cells[0];
+                        const incident = cells[1];
+                        const location = cells[2];
+                        const agency = cells[3];
+                        const status = cells[4];
                         
                         const isTimeValue = /^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(location?.trim());
                         
@@ -111,12 +120,19 @@ Deno.serve(async (req) => {
                                 status: (status && status.trim()) || 'Dispatched',
                                 source: 'gractivecalls.com'
                             });
-                            console.log(`✅ Added call: ${agency.trim()} - ${incident.trim().substring(0, 30)}`);
+                            console.log(`✅ Added: ${agency.trim()} - ${incident.trim().substring(0, 25)}`);
                         }
                     }
                 }
                 
                 console.log(`✅ Parsed ${rowCount} rows, extracted ${calls.filter(c => c.source === 'gractivecalls.com').length} valid calls`);
+                
+                // Log agency breakdown
+                const agencyCounts = {};
+                calls.filter(c => c.source === 'gractivecalls.com').forEach(c => {
+                    agencyCounts[c.agency] = (agencyCounts[c.agency] || 0) + 1;
+                });
+                console.log('📊 Agency breakdown:', JSON.stringify(agencyCounts));
             }
         } catch (error) {
             console.error('❌ Error fetching from gractivecalls.com:', error);
