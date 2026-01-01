@@ -6,7 +6,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { X, MapPin, Clock, AlertCircle, Navigation as NavigationIcon, AlertTriangle, Flame, Info } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import HistoricalCallAlert from './HistoricalCallAlert';
 
 const getAgencyBadgeColor = (agency) => {
     if (agency?.includes('RPD')) return 'bg-red-100 text-red-700 border-red-300';
@@ -174,15 +173,14 @@ export default function ActiveCallsList({ isOpen, onClose, calls, onNavigateToCa
                                                     }`}>
                                                         <div className="flex items-start justify-between gap-4">
                                                             <div className="flex-1">
-                                                               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                                                   <div className={`w-2 h-2 rounded-full ${getStatusColor(call.status)} animate-pulse`} />
-                                                                   <h3 className="font-bold text-gray-900">{call.incident}</h3>
-                                                                   <Badge className={`${call.priority.color} text-white border-0 ml-auto`}>
-                                                                       <PriorityIcon className="w-3 h-3 mr-1" />
-                                                                       {call.priority.label}
-                                                                   </Badge>
-                                                                   <HistoricalCallAlert location={call.location} />
-                                                               </div>
+                                                                <div className="flex items-center gap-2 mb-2">
+                                                                    <div className={`w-2 h-2 rounded-full ${getStatusColor(call.status)} animate-pulse`} />
+                                                                    <h3 className="font-bold text-gray-900">{call.incident}</h3>
+                                                                    <Badge className={`${call.priority.color} text-white border-0 ml-auto`}>
+                                                                        <PriorityIcon className="w-3 h-3 mr-1" />
+                                                                        {call.priority.label}
+                                                                    </Badge>
+                                                                </div>
                                                                 
                                                                 <div className="space-y-1 text-sm">
                                                                     <div className="flex items-center gap-2 text-gray-600">

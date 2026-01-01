@@ -2,7 +2,6 @@ import React from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Badge } from '@/components/ui/badge';
-import HistoricalCallAlert from './HistoricalCallAlert';
 import { Clock, MapPin, Radio } from 'lucide-react';
 
 // Icon based on incident type and agency
@@ -182,12 +181,11 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                     >
                         <Popup maxWidth={300}>
                             <div className="p-2">
-                                <div className="flex items-start gap-2 mb-2 flex-wrap">
+                                <div className="flex items-start gap-2 mb-2">
                                     <Radio className="w-4 h-4 text-red-500 flex-shrink-0 mt-1" />
                                     <h3 className="font-bold text-sm text-[#1D1D1F] leading-tight">
                                         {call.incident}
                                     </h3>
-                                    <HistoricalCallAlert location={call.location} />
                                 </div>
                                 
                                 <div className="space-y-2 text-xs">

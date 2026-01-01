@@ -197,12 +197,12 @@ export default function Navigation() {
         };
         init();
         
-        // Refresh active calls every 5 seconds for real-time notifications
+        // Refresh active calls every 60 seconds for real-time updates (silent mode)
         callsRefreshInterval.current = setInterval(() => {
             if (isOnline) {
                 fetchActiveCalls(true); // Silent refresh
             }
-        }, 5000);
+        }, 60000);
         
 
         
@@ -928,7 +928,7 @@ export default function Navigation() {
         setDirections(steps);
 
         if (steps.length > 0) {
-            toast.success(`Route ready: ${distanceMiles} mi, ${durationMins} min - Tap Start Navigation`);
+            toast.success(`Route ready: ${distanceMiles} mi, ${baseDurationMins} min - Tap Start Navigation`);
         } else {
             toast.error('No directions generated');
         }
@@ -1469,7 +1469,7 @@ Be thorough and search multiple sources.`,
                     }
 
                     const ageMinutes = (now - callTime) / 1000 / 60;
-                    return ageMinutes <= 60;
+                    return ageMinutes <= 30;
                     });
 
                     setShowActiveCalls(true);
