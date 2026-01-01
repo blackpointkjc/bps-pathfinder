@@ -40,9 +40,26 @@ Deno.serve(async (req) => {
             console.error('❌ Error fetching from dispatch database:', error);
         }
         
-        // Source 1: gractivecalls.com (Greater Richmond Area - ALL tabs)
+        // Source 1: Try gractivecalls.com API directly (it's a Next.js app)
         try {
-            console.log('📡 Fetching from gractivecalls.com...');
+            console.log('📡 Attempting to fetch from gractivecalls.com API...');
+            
+            // Try to get the data from their Next.js data endpoint
+            const apiResponse = await fetch('https://gractivecalls.com/_next/data/BUILD_ID/index.json', {
+                headers: { 'User-Agent': 'Mozilla/5.0' }
+            }).catch(() => null);
+            
+            if (apiResponse && apiResponse.ok) {
+                const data = await apiResponse.json();
+                console.log('📦 Got API data');
+            }
+        } catch (error) {
+            console.log('⚠️ API fetch failed, trying HTML scrape');
+        }
+        
+        // Fallback: Scrape gractivecalls.com HTML (client-side rendered, may be limited)
+        try {
+            console.log('📡 Fetching from gractivecalls.com HTML...');
             
             const response1 = await fetch('https://gractivecalls.com/', {
                 headers: {
@@ -52,15 +69,21 @@ Deno.serve(async (req) => {
             
             if (response1.ok) {
                 const html = await response1.text();
+                console.log(`📄 HTML length: ${html.length} chars`);
                 
-                // Parse table rows with proper Mantine class structure
-                const rowMatches = html.matchAll(/<tr[^>]*class="[^"]*mantine-Table-tr[^"]*"[^>]*data-with-row-border="true"[^>]*>([\s\S]*?)<\/tr>/gi);
+                // Count how many table rows we find
+                const trMatches = html.match(/<tr[^>]*data-with-row-border="true"/gi);
+                console.log(`🔍 Found ${trMatches ? trMatches.length : 0} table rows in HTML`);
                 
+                // Parse table rows
+                const rowMatches = html.matchAll(/<tr[^>]*data-with-row-border="true"[^>]*>([\s\S]*?)<\/tr>/gi);
+                
+                let rowCount = 0;
                 for (const rowMatch of rowMatches) {
+                    rowCount++;
                     const rowHtml = rowMatch[1];
                     const cells = [];
                     
-                    // Match TD cells only (not TH)
                     const cellMatches = rowHtml.matchAll(/<td[^>]*class="[^"]*mantine-Table-td[^"]*"[^>]*>(.*?)<\/td>/gi);
                     
                     for (const match of cellMatches) {
@@ -68,69 +91,32 @@ Deno.serve(async (req) => {
                             .replace(/<[^>]+>/g, '')
                             .replace(/&nbsp;/g, ' ')
                             .replace(/&amp;/g, '&')
-                            .replace(/&lt;/g, '<')
-                            .replace(/&gt;/g, '>')
                             .trim();
                         cells.push(text);
                     }
                     
-                    // Should have: [Time, Incident, Location, Agency, Status, Actions]
+                    console.log(`📋 Row ${rowCount}: ${cells.length} cells - ${cells.join(' | ')}`);
+                    
                     if (cells.length >= 5) {
                         const [timeReceived, incident, location, agency, status] = cells;
                         
-                        // Validate location is not a time
                         const isTimeValue = /^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(location?.trim());
                         
                         if (incident && incident.trim() && location && location.trim() && !isTimeValue && agency && agency.trim()) {
-                            const agencyUpper = agency.trim().toUpperCase();
-                            const incidentLower = incident.toLowerCase();
-                            
-                            // Check if this is a police call about firearms
-                            const isPoliceFireCall = incidentLower.includes('firearm') || 
-                                                     incidentLower.includes('gunfire') || 
-                                                     incidentLower.includes('gun fire') ||
-                                                     incidentLower.includes('shooting') ||
-                                                     incidentLower.includes('shots fired');
-                            
-                            // Map agencies correctly
-                            let mappedAgency = agency.trim();
-                            
-                            if (!isPoliceFireCall && (agencyUpper.includes('FD') || agencyUpper.includes('FIRE') || agencyUpper.includes('EMS'))) {
-                                // Legit fire/EMS
-                                mappedAgency = agency.trim();
-                            } else if (agencyUpper.includes('CCFD') || agencyUpper.includes('CFD') || agencyUpper.includes('CFRD')) {
-                                mappedAgency = 'CCPD';
-                            } else if (agencyUpper.includes('RFD')) {
-                                mappedAgency = 'RPD';
-                            } else if (agencyUpper.includes('HFD') || agencyUpper.includes('HENRICO FIRE')) {
-                                mappedAgency = 'HPD';
-                            }
-                            
-                            console.log(`📋 Found: ${mappedAgency} - ${incident.substring(0, 40)}... at ${location.substring(0, 30)}...`);
-                            
                             calls.push({
                                 timeReceived: timeReceived || 'Unknown',
                                 incident: incident.trim(),
                                 location: location.trim(),
-                                agency: mappedAgency,
+                                agency: agency.trim(),
                                 status: (status && status.trim()) || 'Dispatched',
                                 source: 'gractivecalls.com'
                             });
+                            console.log(`✅ Added call: ${agency.trim()} - ${incident.trim().substring(0, 30)}`);
                         }
                     }
                 }
                 
-                const grCallCount = calls.filter(c => c.source === 'gractivecalls.com').length;
-                console.log(`✅ gractivecalls.com: ${grCallCount} calls total`);
-                
-                // Count by agency
-                const agencyCounts = {};
-                calls.forEach(c => {
-                    if (c.source === 'gractivecalls.com') {
-                        agencyCounts[c.agency] = (agencyCounts[c.agency] || 0) + 1;
-                    }
-                });
-                console.log('📊 Agency breakdown:', JSON.stringify(agencyCounts));
+                console.log(`✅ Parsed ${rowCount} rows, extracted ${calls.filter(c => c.source === 'gractivecalls.com').length} valid calls`);
             }
         } catch (error) {
             console.error('❌ Error fetching from gractivecalls.com:', error);
@@ -325,13 +311,21 @@ Deno.serve(async (req) => {
             }
         }
         
-        console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
+        const successfulGeocodes = geocodedCalls.filter(c => c.latitude && c.longitude);
+        console.log(`✅ Successfully geocoded ${successfulGeocodes.length}/${calls.length} calls`);
+        
+        // Log sample of geocoded calls
+        if (successfulGeocodes.length > 0) {
+            console.log('📍 Sample geocoded call:', JSON.stringify(successfulGeocodes[0]));
+        }
         
         // Generate AI summaries for geocoded calls only (skip if no coordinates)
         const callsWithSummaries = geocodedCalls.map(call => ({
             ...call,
             ai_summary: call.ai_summary || `${call.incident} at ${call.location}`
         }));
+        
+        console.log(`📤 Returning ${callsWithSummaries.length} calls to client`);
         
         return Response.json({
             success: true,
