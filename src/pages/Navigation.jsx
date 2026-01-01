@@ -197,12 +197,12 @@ export default function Navigation() {
         };
         init();
         
-        // Refresh active calls every 60 seconds for real-time updates (silent mode)
+        // Refresh active calls every 5 seconds for real-time notifications
         callsRefreshInterval.current = setInterval(() => {
             if (isOnline) {
                 fetchActiveCalls(true); // Silent refresh
             }
-        }, 60000);
+        }, 5000);
         
 
         
