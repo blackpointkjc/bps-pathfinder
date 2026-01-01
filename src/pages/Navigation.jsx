@@ -1439,49 +1439,24 @@ Be thorough and search multiple sources.`,
             if (response.data && response.data.success) {
                 const allCalls = response.data.geocodedCalls || [];
 
-                // Filter out calls older than 30 minutes
-                const now = new Date();
-                const filteredCalls = allCalls.filter(call => {
-                    if (!call.timeReceived) return true; // Keep if no timestamp
+                console.log(`📞 fetchActiveCalls: Got ${allCalls.length} calls from server`);
+                
+                // Don't filter by time - show all calls that have coordinates
+                const validCalls = allCalls.filter(call => call.latitude && call.longitude);
+                
+                console.log(`✅ fetchActiveCalls: ${validCalls.length} calls have valid coordinates`);
 
-                    // Parse time format like "12:45 PM" or "01:30 AM"
-                    const timeStr = call.timeReceived.trim();
-                    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+                setShowActiveCalls(true);
+                setAllActiveCalls(validCalls);
+                applyCallFilter(validCalls, callFilter);
 
-                    if (!timeMatch) return true; // Keep if can't parse
-
-                    const hours = parseInt(timeMatch[1]);
-                    const minutes = parseInt(timeMatch[2]);
-                    const isPM = timeMatch[3].toUpperCase() === 'PM';
-
-                    // Convert to 24-hour format
-                    let hours24 = hours;
-                    if (isPM && hours !== 12) hours24 = hours + 12;
-                    if (!isPM && hours === 12) hours24 = 0;
-
-                    // Create date for today with parsed time
-                    const callTime = new Date();
-                    callTime.setHours(hours24, minutes, 0, 0);
-
-                    // If call time is in the future, it's from yesterday
-                    if (callTime > now) {
-                        callTime.setDate(callTime.getDate() - 1);
-                    }
-
-                    const ageMinutes = (now - callTime) / 1000 / 60;
-                    return ageMinutes <= 30;
-                    });
-
-                    setShowActiveCalls(true);
-                setAllActiveCalls(filteredCalls);
-                applyCallFilter(filteredCalls, callFilter);
-
-                if (allCalls.length > 0 && !silent) {
-                    toast.success(`Loaded ${allCalls.length} active calls`);
-                } else if (!silent) {
-                    toast.warning(`Found ${response.data.totalCalls} calls but none could be geocoded`);
+                if (validCalls.length > 0 && !silent) {
+                    toast.success(`Loaded ${validCalls.length} active calls`);
+                } else if (validCalls.length === 0 && !silent) {
+                    toast.warning('No active calls with valid locations found');
                 }
-                } else {
+            } else {
+                console.error('❌ fetchActiveCalls: Response error', response.data);
                 const errorMsg = response.data?.error || 'Failed to load active calls';
                 if (!silent) toast.error(errorMsg);
             }
