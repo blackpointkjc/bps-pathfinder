@@ -40,62 +40,93 @@ Deno.serve(async (req) => {
             console.error('❌ Error fetching from dispatch database:', error);
         }
         
-        // Source 1: gractivecalls.com (Richmond mainly)
+        // Source 1: gractivecalls.com (Greater Richmond Area - ALL tabs)
         try {
             console.log('📡 Fetching from gractivecalls.com...');
+            
+            // Fetch ALL tabs - gractivecalls shows Richmond, Henrico AND Chesterfield
             const response1 = await fetch('https://gractivecalls.com/', {
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                 }
             });
             
             if (response1.ok) {
                 const html = await response1.text();
-                const tableStart = html.indexOf('<table');
-                const tableEnd = html.indexOf('</table>', tableStart);
                 
-                if (tableStart !== -1 && tableEnd !== -1) {
-                    const tableHtml = html.substring(tableStart, tableEnd + 8);
-                    const rows = tableHtml.split(/<tr[^>]*>/i).slice(1);
+                // Look for all table rows in the entire page
+                const rowMatches = html.matchAll(/<tr[^>]*data-with-row-border="true"[^>]*>([\s\S]*?)<\/tr>/gi);
+                
+                for (const rowMatch of rowMatches) {
+                    const rowHtml = rowMatch[1];
+                    const cells = [];
+                    const cellMatches = rowHtml.matchAll(/<td[^>]*class="[^"]*mantine-Table-td[^"]*"[^>]*>([\s\S]*?)<\/td>/gi);
                     
-                    for (let i = 1; i < rows.length; i++) {
-                        const row = rows[i];
-                        if (!row.includes('<td')) continue;
+                    for (const match of cellMatches) {
+                        const text = match[1]
+                            .replace(/<[^>]+>/g, '')
+                            .replace(/&nbsp;/g, ' ')
+                            .replace(/&amp;/g, '&')
+                            .trim();
+                        cells.push(text);
+                    }
+                    
+                    if (cells.length >= 5) {
+                        const [timeReceived, incident, location, agency, status] = cells;
                         
-                        const cells = [];
-                        const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
+                        // Validate
+                        const isTimeValue = /^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(location?.trim());
                         
-                        for (const match of cellMatches) {
-                            const text = match[1]
-                                .replace(/<[^>]+>/g, '')
-                                .replace(/&nbsp;/g, ' ')
-                                .trim();
-                            cells.push(text);
-                        }
-                        
-                        if (cells.length >= 3) {
-                            const [timeReceived, incident, location, agency, status] = cells;
+                        if (incident && incident.trim() && location && location.trim() && !isTimeValue && agency && agency.trim()) {
+                            const agencyUpper = agency.trim().toUpperCase();
                             
-                            // Validate that location is not a time value
-                            const isTimeValue = /^\d{1,2}:\d{2}\s*(AM|PM)?$/i.test(location?.trim());
+                            // IMPORTANT: Map fire-related agencies correctly - firearms/gunfire are POLICE calls
+                            let mappedAgency = agency.trim();
+                            const incidentLower = incident.toLowerCase();
                             
-                            if (incident && incident.trim() && location && location.trim() && !isTimeValue) {
-                                const agencyValue = (agency && agency.trim()) || 'Unknown';
-                                console.log(`📋 Call found - Agency: ${agencyValue}, Incident: ${incident.trim()}, Location: ${location.trim()}`);
-                                
-                                calls.push({
-                                    timeReceived: timeReceived || 'Unknown',
-                                    incident: incident.trim(),
-                                    location: location.trim(),
-                                    agency: agencyValue,
-                                    status: (status && status.trim()) || 'Dispatched',
-                                    source: 'gractivecalls.com'
-                                });
+                            // Check if this is actually a police call (firearm, gunfire, shooting)
+                            const isPoliceFireCall = incidentLower.includes('firearm') || 
+                                                     incidentLower.includes('gunfire') || 
+                                                     incidentLower.includes('gun fire') ||
+                                                     incidentLower.includes('shooting') ||
+                                                     incidentLower.includes('shots fired');
+                            
+                            // Keep police agencies as-is, but validate fire agencies
+                            if (!isPoliceFireCall && (agencyUpper.includes('FD') || agencyUpper.includes('FIRE') || agencyUpper.includes('EMS'))) {
+                                // This is legitimately a fire/EMS call
+                                mappedAgency = agency.trim();
+                            } else if (agencyUpper.includes('CCFD') || agencyUpper.includes('CFD') || agencyUpper.includes('CFRD')) {
+                                // Chesterfield Fire became police due to firearm keyword
+                                mappedAgency = 'CCPD';
+                            } else if (agencyUpper.includes('RFD')) {
+                                mappedAgency = 'RPD';
+                            } else if (agencyUpper.includes('HFD') || agencyUpper.includes('HENRICO FIRE')) {
+                                mappedAgency = 'HPD';
                             }
+                            
+                            calls.push({
+                                timeReceived: timeReceived || 'Unknown',
+                                incident: incident.trim(),
+                                location: location.trim(),
+                                agency: mappedAgency,
+                                status: (status && status.trim()) || 'Dispatched',
+                                source: 'gractivecalls.com'
+                            });
                         }
                     }
                 }
-                console.log(`✅ gractivecalls.com: ${calls.length} calls`);
+                
+                const grCallCount = calls.filter(c => c.source === 'gractivecalls.com').length;
+                console.log(`✅ gractivecalls.com: Found ${grCallCount} calls`);
+                
+                // Count by agency for debugging
+                const agencyCounts = {};
+                calls.forEach(c => {
+                    if (c.source === 'gractivecalls.com') {
+                        agencyCounts[c.agency] = (agencyCounts[c.agency] || 0) + 1;
+                    }
+                });
+                console.log('📊 Agencies:', JSON.stringify(agencyCounts));
             }
         } catch (error) {
             console.error('❌ Error fetching from gractivecalls.com:', error);

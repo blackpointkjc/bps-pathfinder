@@ -112,9 +112,15 @@ export default function AdminPortal() {
                         </h1>
                         <p className="text-gray-600 mt-2">Manage users, roles, and permissions</p>
                     </div>
-                    <Button variant="outline" onClick={() => window.location.href = '/navigation'}>
-                        Back to Navigation
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => window.location.href = '/unitmanagement'}>
+                            <Users className="w-4 h-4 mr-2" />
+                            Unit Management
+                        </Button>
+                        <Button variant="outline" onClick={() => window.location.href = '/navigation'}>
+                            Back to Navigation
+                        </Button>
+                    </div>
                 </div>
 
                 <Card className="p-6">
