@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import HistoricalCallAlert from '../map/HistoricalCallAlert';
 
 const NOTIFICATION_SOUND = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDWH0fPTgjMGHm7A7+OZUQ4PVKbh8LFVGA5On+DvwGMbBzaE0fPReiYEI3DC7+GTUAwQWK3l7q5XFAxAnN/zv2kdBDWH0PPTgyEEI3DD7+CTUQ0RWKzl7q5ZEwtCnN/zvmgdBDWH0fPRfiYEI3DE7+CTTw0PVqfj8K9VFg1Mnt/zv2kbBDOGz/PSfyYEJHPD7t+NTA0PWK3l761ZEgxBm9/zu2MbBDKGzvLPfSUEJXfE7t6OTQ0RW7Hl7ahVFQ5NneDvvWMbBjOGzvLP';
 
@@ -158,9 +159,10 @@ export default function CallNotificationSystem({ calls = [], onNavigateToCall, c
 
                                 <div className="space-y-2 mb-4">
                                     <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20">
-                                        <div className="flex items-center gap-2 mb-2">
+                                        <div className="flex items-center gap-2 mb-2 flex-wrap">
                                             <AlertCircle className="w-4 h-4 text-white" />
                                             <span className="text-white font-bold text-base">{call.incident}</span>
+                                            <HistoricalCallAlert location={call.location} />
                                         </div>
                                         <div className="flex items-start gap-2 text-white/90 text-sm">
                                             <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />

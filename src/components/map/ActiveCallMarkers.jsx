@@ -2,6 +2,7 @@ import React from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Badge } from '@/components/ui/badge';
+import HistoricalCallAlert from './HistoricalCallAlert';
 import { Clock, MapPin, Radio } from 'lucide-react';
 
 // Icon based on incident type and agency
