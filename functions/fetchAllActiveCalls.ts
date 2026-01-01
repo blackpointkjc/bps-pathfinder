@@ -217,109 +217,83 @@ Deno.serve(async (req) => {
             });
         }
         
-        // Geocode all calls in parallel batches (faster)
+        // Geocode all calls in parallel with timeout (max 15 seconds)
         const geocodedCalls = [];
-        const BATCH_SIZE = 5; // Process 5 at a time
+        const BATCH_SIZE = 10; // Process 10 at a time
+        const GEOCODE_TIMEOUT = 15000; // 15 seconds max
+        
+        const geocodeWithTimeout = async (call, timeoutMs) => {
+            return Promise.race([
+                (async () => {
+                    // Skip geocoding if call already has coordinates
+                    if (call.latitude && call.longitude) {
+                        return call;
+                    }
+                    
+                    try {
+                        const locationLower = call.location.toLowerCase();
+                        const agencyLower = call.agency.toLowerCase();
+                        let jurisdiction = 'Virginia, USA';
+                        
+                        if (agencyLower.includes('ccpd') || agencyLower.includes('ccfd') || 
+                            agencyLower.includes('chesterfield') || locationLower.includes('chester') || 
+                            locationLower.includes('midlothian') || locationLower.includes('bon air')) {
+                            jurisdiction = 'Chesterfield County, VA, USA';
+                        } else if (call.agency.includes('RPD') || call.agency.includes('RFD') || 
+                                   call.agency.includes('BPS')) {
+                            jurisdiction = 'Richmond, VA, USA';
+                        } else if (call.agency.includes('HCPD') || call.agency.includes('HPD') || 
+                                   call.agency.includes('Henrico')) {
+                            jurisdiction = 'Henrico County, VA, USA';
+                        }
+                        
+                        let cleanedAddress = call.location.trim()
+                            .replace(/\s+Block\s+/gi, ' ')
+                            .replace(/\s+(RICH|CHES|HENR|VA|RICHMOND|HENRICO|CHESTERFIELD)$/i, '')
+                            .trim();
+                        
+                        if (cleanedAddress.includes('/')) {
+                            const parts = cleanedAddress.split('/').map(s => s.trim());
+                            cleanedAddress = `${parts[0]} and ${parts[1]}`;
+                        }
+                        
+                        let query = `${cleanedAddress}, ${jurisdiction}`;
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 3000);
+                        
+                        const geoResponse = await fetch(
+                            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
+                            { 
+                                headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' },
+                                signal: controller.signal
+                            }
+                        );
+                        clearTimeout(timeoutId);
+                        const geoData = await geoResponse.json();
+                        
+                        if (geoData && geoData.length > 0) {
+                            return {
+                                ...call,
+                                latitude: parseFloat(geoData[0].lat),
+                                longitude: parseFloat(geoData[0].lon)
+                            };
+                        }
+                        
+                        return null;
+                    } catch (error) {
+                        return null;
+                    }
+                })(),
+                new Promise((resolve) => setTimeout(() => resolve(null), timeoutMs))
+            ]);
+        };
         
         for (let i = 0; i < calls.length; i += BATCH_SIZE) {
             const batch = calls.slice(i, i + BATCH_SIZE);
-            
-            const batchResults = await Promise.all(batch.map(async (call) => {
-                // Skip geocoding if call already has coordinates (from dispatch database)
-                if (call.latitude && call.longitude) {
-                    return call;
-                }
-                
-                try {
-                    const locationLower = call.location.toLowerCase();
-                    const agencyLower = call.agency.toLowerCase();
-                    let jurisdiction = 'Virginia, USA';
-                    
-                    // Check for Chesterfield - be very broad
-                    if (agencyLower.includes('ccpd') || 
-                        agencyLower.includes('ccfd') || 
-                        agencyLower.includes('chesterfield') || 
-                        agencyLower.includes('cfrd') ||
-                        agencyLower.includes('cfd') ||
-                        agencyLower.includes('ches') ||
-                        locationLower.includes('chester') || 
-                        locationLower.includes('midlothian') || 
-                        locationLower.includes('bon air') || 
-                        locationLower.includes('ettrick') ||
-                        locationLower.includes('colonial heights') || 
-                        locationLower.includes('matoaca') ||
-                        locationLower.includes('woodlake') || 
-                        locationLower.includes('beach road') ||
-                        locationLower.includes('ironbridge') || 
-                        locationLower.includes('iron bridge')) {
-                        jurisdiction = 'Chesterfield County, VA, USA';
-                    } else if (call.agency.includes('RPD') || call.agency.includes('RFD') || call.agency.includes('BPS') || call.agency.includes('BSP')) {
-                        jurisdiction = 'Richmond, VA, USA';
-                    } else if (call.agency.includes('HCPD') || call.agency.includes('HPD') || call.agency.includes('Henrico')) {
-                        jurisdiction = 'Henrico County, VA, USA';
-                    }
-                    
-                    // Clean address format
-                    let cleanedAddress = call.location.trim()
-                        .replace(/\s+Block\s+/gi, ' ')
-                        .replace(/\s+(RICH|CHES|HENR|VA|RICHMOND|HENRICO|CHESTERFIELD)$/i, '')
-                        .trim();
-                    
-                    // Convert intersection format
-                    if (cleanedAddress.includes('/')) {
-                        const parts = cleanedAddress.split('/').map(s => s.trim());
-                        cleanedAddress = `${parts[0]} and ${parts[1]}`;
-                    }
-                    
-                    // Try geocoding
-                    let query = `${cleanedAddress}, ${jurisdiction}`;
-                    const geoResponse = await fetch(
-                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
-                        { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
-                    );
-                    const geoData = await geoResponse.json();
-                    
-                    if (geoData && geoData.length > 0) {
-                        return {
-                            ...call,
-                            latitude: parseFloat(geoData[0].lat),
-                            longitude: parseFloat(geoData[0].lon)
-                        };
-                    }
-                    
-                    // If failed, try first street only for intersections
-                    if (cleanedAddress.includes(' and ')) {
-                        const firstStreet = cleanedAddress.split(' and ')[0].trim();
-                        query = `${firstStreet}, ${jurisdiction}`;
-                        const retryResponse = await fetch(
-                            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=us`,
-                            { headers: { 'User-Agent': 'Emergency-Dispatch-App/1.0' } }
-                        );
-                        const retryData = await retryResponse.json();
-                        
-                        if (retryData && retryData.length > 0) {
-                            return {
-                                ...call,
-                                latitude: parseFloat(retryData[0].lat),
-                                longitude: parseFloat(retryData[0].lon)
-                            };
-                        }
-                    }
-                    
-                    console.log(`❌ Could not geocode: ${call.location}`);
-                    return null; // Don't include calls without coordinates
-                } catch (error) {
-                    console.error(`Error geocoding ${call.location}:`, error);
-                    return null;
-                }
-            }));
-            
+            const batchResults = await Promise.all(
+                batch.map(call => geocodeWithTimeout(call, GEOCODE_TIMEOUT))
+            );
             geocodedCalls.push(...batchResults.filter(c => c && c.latitude && c.longitude));
-            
-            // Small delay between batches only
-            if (i + BATCH_SIZE < calls.length) {
-                await new Promise(resolve => setTimeout(resolve, 300));
-            }
         }
         
         console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
