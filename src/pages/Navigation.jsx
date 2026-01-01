@@ -299,18 +299,29 @@ export default function Navigation() {
         try {
             const newRoutes = await fetchRoutes(currentLocation, destination.coords);
             if (newRoutes && newRoutes.length > 0) {
+                // Find fastest route among new options
+                let fastestIndex = 0;
+                let fastestDuration = newRoutes[0].duration;
+                
+                for (let i = 1; i < newRoutes.length; i++) {
+                    if (newRoutes[i].duration < fastestDuration) {
+                        fastestDuration = newRoutes[i].duration;
+                        fastestIndex = i;
+                    }
+                }
+                
                 const currentRoute = routes[selectedRouteIndex];
-                const bestNewRoute = newRoutes[0];
+                const bestNewRoute = newRoutes[fastestIndex];
 
-                // If new route saves more than 5 minutes, suggest rerouting
-                if (currentRoute.duration - bestNewRoute.duration > 300) {
+                // If new fastest route saves more than 2 minutes, automatically reroute
+                if (currentRoute.duration - bestNewRoute.duration > 120) {
                     setIsRerouting(true);
-                    toast.info('Faster route found! Rerouting...');
+                    toast.info(`Faster route found! Saving ${Math.round((currentRoute.duration - bestNewRoute.duration) / 60)} min`);
                     
                     setTimeout(() => {
                         setRoutes(newRoutes);
-                        setSelectedRouteIndex(0);
-                        updateRouteDisplay(newRoutes[0]);
+                        setSelectedRouteIndex(fastestIndex);
+                        updateRouteDisplay(newRoutes[fastestIndex]);
                         setIsRerouting(false);
                     }, 2000);
                 }
@@ -779,9 +790,20 @@ export default function Navigation() {
                 const fetchedRoutes = await fetchRoutes(currentLocation, destCoords);
 
                 if (fetchedRoutes && fetchedRoutes.length > 0) {
+                    // Automatically select fastest route (lowest duration)
+                    let fastestIndex = 0;
+                    let fastestDuration = fetchedRoutes[0].duration;
+                    
+                    for (let i = 1; i < fetchedRoutes.length; i++) {
+                        if (fetchedRoutes[i].duration < fastestDuration) {
+                            fastestDuration = fetchedRoutes[i].duration;
+                            fastestIndex = i;
+                        }
+                    }
+                    
                     setRoutes(fetchedRoutes);
-                    setSelectedRouteIndex(0);
-                    updateRouteDisplay(fetchedRoutes[0]);
+                    setSelectedRouteIndex(fastestIndex);
+                    updateRouteDisplay(fetchedRoutes[fastestIndex]);
                 } else {
                     toast.error('Could not calculate route');
                 }
@@ -1237,9 +1259,20 @@ export default function Navigation() {
         if (currentLocation) {
             const fetchedRoutes = await fetchRoutes(currentLocation, callCoords);
             if (fetchedRoutes && fetchedRoutes.length > 0) {
+                // Automatically select fastest route (lowest duration)
+                let fastestIndex = 0;
+                let fastestDuration = fetchedRoutes[0].duration;
+                
+                for (let i = 1; i < fetchedRoutes.length; i++) {
+                    if (fetchedRoutes[i].duration < fastestDuration) {
+                        fastestDuration = fetchedRoutes[i].duration;
+                        fastestIndex = i;
+                    }
+                }
+                
                 setRoutes(fetchedRoutes);
-                setSelectedRouteIndex(0);
-                updateRouteDisplay(fetchedRoutes[0]);
+                setSelectedRouteIndex(fastestIndex);
+                updateRouteDisplay(fetchedRoutes[fastestIndex]);
             }
         }
     };
@@ -1500,9 +1533,20 @@ Be thorough and search multiple sources.`,
                         if (currentLocation) {
                             const fetchedRoutes = await fetchRoutes(currentLocation, jail.coords);
                             if (fetchedRoutes && fetchedRoutes.length > 0) {
+                                // Automatically select fastest route (lowest duration)
+                                let fastestIndex = 0;
+                                let fastestDuration = fetchedRoutes[0].duration;
+                                
+                                for (let i = 1; i < fetchedRoutes.length; i++) {
+                                    if (fetchedRoutes[i].duration < fastestDuration) {
+                                        fastestDuration = fetchedRoutes[i].duration;
+                                        fastestIndex = i;
+                                    }
+                                }
+                                
                                 setRoutes(fetchedRoutes);
-                                setSelectedRouteIndex(0);
-                                updateRouteDisplay(fetchedRoutes[0]);
+                                setSelectedRouteIndex(fastestIndex);
+                                updateRouteDisplay(fetchedRoutes[fastestIndex]);
                             }
                         }
                     }}
