@@ -136,14 +136,25 @@ const assessCallPriority = (call) => {
 
 export default function ActiveCallMarkers({ calls, onCallClick }) {
     if (!calls || calls.length === 0) {
+        console.log('ActiveCallMarkers: No calls provided');
         return null;
     }
     
+    console.log(`ActiveCallMarkers: Received ${calls.length} calls`, calls);
+    
     const validCalls = calls.filter(call => {
-        return call.latitude && call.longitude && 
+        const hasCoords = call.latitude && call.longitude && 
                !isNaN(call.latitude) && !isNaN(call.longitude) &&
                call.latitude !== 0 && call.longitude !== 0;
+        
+        if (!hasCoords) {
+            console.log(`Call without valid coords:`, call.incident, call.location);
+        }
+        
+        return hasCoords;
     });
+    
+    console.log(`ActiveCallMarkers: ${validCalls.length} valid calls with coordinates`);
     
     if (validCalls.length === 0) {
         return null;
