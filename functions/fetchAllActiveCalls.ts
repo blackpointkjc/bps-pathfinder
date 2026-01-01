@@ -200,7 +200,8 @@ Deno.serve(async (req) => {
                            call.agency.toLowerCase().includes('ccfd') || 
                            call.agency.toLowerCase().includes('chesterfield') || 
                            call.agency.toLowerCase().includes('cfrd') ||
-                           call.agency.toLowerCase().includes('cfd')) {
+                           call.agency.toLowerCase().includes('cfd') ||
+                           call.agency.toLowerCase().includes('ches')) {
                     jurisdiction = 'Chesterfield County, VA, USA';
                 } else if (call.agency.includes('BPS') || call.agency.includes('BSP')) {
                     jurisdiction = 'Richmond, VA, USA';
@@ -208,11 +209,13 @@ Deno.serve(async (req) => {
                 
                 // Additional check for Chesterfield-specific locations
                 const locationLower = call.location.toLowerCase();
+                const agencyLower = call.agency.toLowerCase();
                 if (locationLower.includes('chester') || locationLower.includes('midlothian') || 
                     locationLower.includes('bon air') || locationLower.includes('ettrick') ||
                     locationLower.includes('colonial heights') || locationLower.includes('matoaca') ||
                     locationLower.includes('woodlake') || locationLower.includes('beach road') ||
-                    locationLower.includes('ironbridge') || locationLower.includes('iron bridge')) {
+                    locationLower.includes('ironbridge') || locationLower.includes('iron bridge') ||
+                    agencyLower.includes('ches') || locationLower.includes('ches')) {
                     jurisdiction = 'Chesterfield County, VA, USA';
                 }
                 

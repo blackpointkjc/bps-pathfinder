@@ -50,6 +50,7 @@ export default function CallNotificationSystem({ calls = [], onNavigateToCall, c
         const newCalls = calls.filter(call => 
             !lastCallIdsRef.current.has(call.id) && 
             !dismissedCallIds.has(call.id) &&
+            call.source === 'dispatch' &&
             (call.status === 'New' || call.status === 'Dispatched' || call.status === 'Pending')
         );
 
@@ -88,6 +89,10 @@ export default function CallNotificationSystem({ calls = [], onNavigateToCall, c
     };
 
     const handleAccept = (call) => {
+        if (call.source !== 'dispatch') {
+            toast.error('Can only accept dispatch calls');
+            return;
+        }
         setNotifications(prev => prev.filter(n => n.id !== call.id));
         setDismissedCallIds(prev => new Set([...prev, call.id]));
         onNavigateToCall(call);
