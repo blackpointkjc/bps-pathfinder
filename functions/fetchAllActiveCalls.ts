@@ -298,13 +298,42 @@ Deno.serve(async (req) => {
         
         console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
         
-        // Return ALL calls, even those without coordinates (for debugging/display)
-        const callsWithSummaries = geocodedCalls.map(call => ({
+        // Filter calls - keep only those from the last 60 minutes
+        const now = new Date();
+        const filteredCalls = geocodedCalls.filter(call => {
+            if (!call.timeReceived) return true; // Keep if no time
+            
+            const timeStr = call.timeReceived.trim();
+            const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+            
+            if (!timeMatch) return true; // Keep if can't parse
+            
+            const hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            const isPM = timeMatch[3].toUpperCase() === 'PM';
+            
+            let hours24 = hours;
+            if (isPM && hours !== 12) hours24 = hours + 12;
+            if (!isPM && hours === 12) hours24 = 0;
+            
+            const callTime = new Date();
+            callTime.setHours(hours24, minutes, 0, 0);
+            
+            // If call time is in the future, assume it's from yesterday
+            if (callTime > now) {
+                callTime.setDate(callTime.getDate() - 1);
+            }
+            
+            const ageMinutes = (now - callTime) / 1000 / 60;
+            return ageMinutes <= 60; // Keep calls from last 60 minutes
+        });
+        
+        const callsWithSummaries = filteredCalls.map(call => ({
             ...call,
             ai_summary: call.ai_summary || `${call.incident} at ${call.location}`
         }));
         
-        console.log(`📋 Final calls: ${callsWithSummaries.length} total, ${callsWithSummaries.filter(c => c.latitude).length} with coordinates`);
+        console.log(`📋 Final calls: ${callsWithSummaries.length} (filtered from ${geocodedCalls.length}, ${callsWithSummaries.filter(c => c.latitude).length} with coordinates)`);
         
         return Response.json({
             success: true,
