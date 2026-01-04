@@ -1443,17 +1443,20 @@ Be thorough and search multiple sources.`,
 
             if (response.data && response.data.success) {
                 const allCalls = response.data.geocodedCalls || [];
+                const geocodedCount = response.data.geocodedCount || 0;
 
                 setShowActiveCalls(true);
                 setAllActiveCalls(allCalls);
                 applyCallFilter(allCalls, callFilter);
 
-                if (allCalls.length > 0 && !silent) {
-                    toast.success(`Loaded ${allCalls.length} active calls`);
-                } else if (!silent) {
-                    toast.warning(`Found ${response.data.totalCalls} calls but none could be geocoded`);
+                if (!silent) {
+                    if (geocodedCount > 0) {
+                        toast.success(`Loaded ${geocodedCount} calls with locations (${allCalls.length} total)`);
+                    } else {
+                        toast.warning(`Loaded ${allCalls.length} calls but geocoding in progress`);
+                    }
                 }
-                } else {
+            } else {
                 const errorMsg = response.data?.error || 'Failed to load active calls';
                 if (!silent) toast.error(errorMsg);
             }
@@ -1738,6 +1741,18 @@ Be thorough and search multiple sources.`,
                     </motion.div>
                 )}
                 
+                {currentStreet && currentStreet !== 'Locating...' && currentStreet !== 'Location unavailable' && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white/95 backdrop-blur-xl shadow-md px-3 py-1.5 rounded-full"
+                    >
+                        <span className="text-xs font-semibold text-gray-700">
+                            📍 {currentStreet}
+                        </span>
+                    </motion.div>
+                )}
+                
                 {isOffRoute && isNavigating && (
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
@@ -1936,15 +1951,6 @@ Be thorough and search multiple sources.`,
                             isSearching={isSearching}
                             onClear={clearRoute}
                         />
-                        {speed > 1 && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="mt-2 bg-white/95 backdrop-blur-xl rounded-xl shadow-lg px-4 py-2 text-center"
-                            >
-                                <p className="text-sm font-semibold text-gray-700">{currentStreet}</p>
-                            </motion.div>
-                        )}
                     </motion.div>
 
                     {/* Voice Command Button */}

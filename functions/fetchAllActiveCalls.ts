@@ -298,17 +298,19 @@ Deno.serve(async (req) => {
         
         console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
         
+        // Return ALL calls, even those without coordinates (for debugging/display)
         const callsWithSummaries = geocodedCalls.map(call => ({
             ...call,
             ai_summary: call.ai_summary || `${call.incident} at ${call.location}`
         }));
         
-        console.log(`📋 Final calls: ${callsWithSummaries.length}`);
+        console.log(`📋 Final calls: ${callsWithSummaries.length} total, ${callsWithSummaries.filter(c => c.latitude).length} with coordinates`);
         
         return Response.json({
             success: true,
             totalCalls: calls.length,
             geocodedCalls: callsWithSummaries,
+            geocodedCount: callsWithSummaries.filter(c => c.latitude).length,
             timestamp: new Date().toISOString()
         });
         
