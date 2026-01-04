@@ -1585,6 +1585,16 @@ Be thorough and search multiple sources.`,
                     className="absolute top-24 left-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
                 >
                     <Button 
+                        onClick={getCurrentLocation} 
+                        size="sm" 
+                        disabled={isLocating}
+                        className="bg-blue-600 hover:bg-blue-700 shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg pointer-events-auto"
+                        title="Refresh GPS Location"
+                    >
+                        <RefreshCw className={`w-4 h-4 text-white ${isLocating ? 'animate-spin' : ''}`} />
+                        <span className="text-[8px] font-semibold text-white">GPS</span>
+                    </Button>
+                    <Button 
                         onClick={async (e) => {
                             e.preventDefault();
                             e.stopPropagation();
