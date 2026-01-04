@@ -298,48 +298,69 @@ Deno.serve(async (req) => {
         
         console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
         
-        // Filter calls - keep only those from the last 60 minutes
-        const now = new Date();
-        const filteredCalls = geocodedCalls.filter(call => {
-            if (!call.timeReceived) return true; // Keep if no time
-            
-            const timeStr = call.timeReceived.trim();
-            const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-            
-            if (!timeMatch) return true; // Keep if can't parse
-            
-            const hours = parseInt(timeMatch[1]);
-            const minutes = parseInt(timeMatch[2]);
-            const isPM = timeMatch[3].toUpperCase() === 'PM';
-            
-            let hours24 = hours;
-            if (isPM && hours !== 12) hours24 = hours + 12;
-            if (!isPM && hours === 12) hours24 = 0;
-            
-            const callTime = new Date();
-            callTime.setHours(hours24, minutes, 0, 0);
-            
-            // If call time is in the future, assume it's from yesterday
-            if (callTime > now) {
-                callTime.setDate(callTime.getDate() - 1);
+        // Save all geocoded calls to database to persist them
+        for (const call of geocodedCalls) {
+            if (call.latitude && call.longitude) {
+                try {
+                    const callId = `${call.source}-${call.timeReceived}-${call.incident}-${call.location}`.replace(/[^a-zA-Z0-9-]/g, '_');
+                    
+                    // Check if call already exists
+                    const existingCalls = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
+                    
+                    if (!existingCalls || existingCalls.length === 0) {
+                        // Create new call in database
+                        await base44.asServiceRole.entities.DispatchCall.create({
+                            call_id: callId,
+                            incident: call.incident,
+                            location: call.location,
+                            latitude: call.latitude,
+                            longitude: call.longitude,
+                            agency: call.agency,
+                            status: call.status || 'New',
+                            time_received: new Date().toISOString(),
+                            description: call.ai_summary || `${call.incident} at ${call.location}`
+                        });
+                        console.log(`💾 Saved new call: ${callId}`);
+                    }
+                } catch (error) {
+                    console.error('Error saving call to database:', error);
+                }
             }
-            
-            const ageMinutes = (now - callTime) / 1000 / 60;
-            return ageMinutes <= 60; // Keep calls from last 60 minutes
+        }
+        
+        // Fetch ALL calls from database that are less than 1 hour old
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        const dbCalls = await base44.asServiceRole.entities.DispatchCall.list('-time_received', 500);
+        const recentDbCalls = dbCalls.filter(call => {
+            const receivedTime = new Date(call.time_received || call.created_date);
+            return receivedTime >= new Date(oneHourAgo);
         });
         
-        const callsWithSummaries = filteredCalls.map(call => ({
-            ...call,
-            ai_summary: call.ai_summary || `${call.incident} at ${call.location}`
+        // Format database calls to match expected format
+        const formattedCalls = recentDbCalls.map(call => ({
+            id: call.id,
+            timeReceived: new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit',
+                hour12: true 
+            }),
+            incident: call.incident,
+            location: call.location,
+            agency: call.agency,
+            status: call.status,
+            latitude: call.latitude,
+            longitude: call.longitude,
+            ai_summary: call.description || call.ai_summary || `${call.incident} at ${call.location}`,
+            source: 'database'
         }));
         
-        console.log(`📋 Final calls: ${callsWithSummaries.length} (filtered from ${geocodedCalls.length}, ${callsWithSummaries.filter(c => c.latitude).length} with coordinates)`);
+        console.log(`📋 Returning ${formattedCalls.length} calls from database (less than 1 hour old)`);
         
         return Response.json({
             success: true,
             totalCalls: calls.length,
-            geocodedCalls: callsWithSummaries,
-            geocodedCount: callsWithSummaries.filter(c => c.latitude).length,
+            geocodedCalls: formattedCalls,
+            geocodedCount: formattedCalls.filter(c => c.latitude).length,
             timestamp: new Date().toISOString()
         });
         
