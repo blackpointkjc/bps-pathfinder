@@ -298,7 +298,7 @@ Deno.serve(async (req) => {
         
         console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
         
-        // Save all geocoded calls to database to persist them
+        // Save geocoded calls to database (in background, non-blocking)
         for (const call of geocodedCalls) {
             if (call.latitude && call.longitude) {
                 try {
@@ -326,13 +326,6 @@ Deno.serve(async (req) => {
                         }
                     }
                     
-                    // Only save if call is less than 1 hour old
-                    const ageMinutes = (new Date() - callTime) / 1000 / 60;
-                    if (ageMinutes > 60) {
-                        console.log(`⏭️ Skipping old call from ${call.timeReceived} (${ageMinutes.toFixed(0)} min ago)`);
-                        continue;
-                    }
-                    
                     // Check if call already exists
                     const existingCalls = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
                     
@@ -357,17 +350,18 @@ Deno.serve(async (req) => {
             }
         }
         
-        // Fetch ALL calls from database that are less than 1 hour old
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        // Fetch database calls from last 1 hour
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
         const dbCalls = await base44.asServiceRole.entities.DispatchCall.list('-time_received', 500);
         const recentDbCalls = dbCalls.filter(call => {
             const receivedTime = new Date(call.time_received || call.created_date);
-            return receivedTime >= new Date(oneHourAgo);
+            return receivedTime >= oneHourAgo;
         });
         
-        // Format database calls to match expected format
-        const formattedCalls = recentDbCalls.map(call => ({
+        // Format database calls
+        const formattedDbCalls = recentDbCalls.map(call => ({
             id: call.id,
+            callId: call.call_id,
             timeReceived: new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { 
                 hour: 'numeric', 
                 minute: '2-digit',
@@ -383,13 +377,51 @@ Deno.serve(async (req) => {
             source: 'database'
         }));
         
-        console.log(`📋 Returning ${formattedCalls.length} calls from database (less than 1 hour old)`);
+        // Combine fresh scraped calls with database calls, deduplicate
+        const allCalls = [...geocodedCalls];
+        const scrapedCallIds = new Set(geocodedCalls.map(c => `${c.source}-${c.timeReceived}-${c.incident}-${c.location}`.replace(/[^a-zA-Z0-9-]/g, '_')));
+        
+        // Add database calls that aren't in scraped calls
+        for (const dbCall of formattedDbCalls) {
+            if (!scrapedCallIds.has(dbCall.callId)) {
+                allCalls.push(dbCall);
+            }
+        }
+        
+        // Filter to only show calls from last hour
+        const now = new Date();
+        const finalCalls = allCalls.filter(call => {
+            if (!call.timeReceived) return true;
+            
+            const timeMatch = call.timeReceived.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+            if (!timeMatch) return true;
+            
+            const hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            const isPM = timeMatch[3].toUpperCase() === 'PM';
+            
+            let hours24 = hours;
+            if (isPM && hours !== 12) hours24 = hours + 12;
+            if (!isPM && hours === 12) hours24 = 0;
+            
+            const callTime = new Date();
+            callTime.setHours(hours24, minutes, 0, 0);
+            
+            if (callTime > now) {
+                callTime.setDate(callTime.getDate() - 1);
+            }
+            
+            const ageMinutes = (now - callTime) / 1000 / 60;
+            return ageMinutes <= 60;
+        });
+        
+        console.log(`📋 Returning ${finalCalls.length} calls (${geocodedCalls.length} fresh + ${formattedDbCalls.length} from DB, ${finalCalls.filter(c => c.latitude).length} with coordinates)`);
         
         return Response.json({
             success: true,
             totalCalls: calls.length,
-            geocodedCalls: formattedCalls,
-            geocodedCount: formattedCalls.filter(c => c.latitude).length,
+            geocodedCalls: finalCalls,
+            geocodedCount: finalCalls.filter(c => c.latitude).length,
             timestamp: new Date().toISOString()
         });
         
