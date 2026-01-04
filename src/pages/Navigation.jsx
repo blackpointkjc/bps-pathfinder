@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield, Filter, MapPinOff, Users, History, Search, Monitor } from 'lucide-react';
+import { AlertCircle, Map as MapIcon, Wifi, WifiOff, Radio, Car, Settings, Mic, Volume2, X, CheckCircle2, Navigation as NavigationIcon, MapPin, XCircle, Plus, Shield, Filter, MapPinOff, Users, History, Search, Monitor, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
@@ -675,16 +675,35 @@ export default function Navigation() {
         }
 
         navigator.geolocation.getCurrentPosition(
-            (position) => {
+            async (position) => {
                 const coords = [position.coords.latitude, position.coords.longitude];
                 setCurrentLocation(coords);
                 setIsLocating(false);
 
-                // Only show accuracy if it's reasonable
-                if (position.coords.accuracy < 100) {
-                    toast.success(`Location found (±${Math.round(position.coords.accuracy)}m accuracy)`);
+                // Force update to backend immediately
+                if (currentUser) {
+                    try {
+                        await base44.auth.updateMe({
+                            latitude: coords[0],
+                            longitude: coords[1],
+                            heading: position.coords.heading || heading || 0,
+                            speed: position.coords.speed ? position.coords.speed * 2.237 : 0,
+                            status: unitStatus,
+                            show_lights: showLights,
+                            show_on_map: true,
+                            current_call_info: activeCallInfo,
+                            last_updated: new Date().toISOString()
+                        });
+                        toast.success(`Location updated & synced to map`);
+                    } catch (error) {
+                        toast.warning('Location found but sync failed');
+                    }
                 } else {
-                    toast.warning(`Location found but low accuracy (±${Math.round(position.coords.accuracy)}m). Enable high accuracy in settings.`);
+                    if (position.coords.accuracy < 100) {
+                        toast.success(`Location found (±${Math.round(position.coords.accuracy)}m accuracy)`);
+                    } else {
+                        toast.warning(`Location found but low accuracy (±${Math.round(position.coords.accuracy)}m). Enable high accuracy in settings.`);
+                    }
                 }
             },
             (error) => {
@@ -699,7 +718,7 @@ export default function Navigation() {
             },
             { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
         );
-    }, []);
+    }, [currentUser, unitStatus, showLights, activeCallInfo, heading]);
 
 
 
