@@ -203,88 +203,25 @@ Deno.serve(async (req) => {
 
         console.log(`✅ Total scraped calls: ${calls.length}`);
 
-        // Save all scraped calls to database quickly (no geocoding)
-        for (const call of calls) {
-            try {
-                const callId = `${call.source}-${call.timeReceived}-${call.incident}-${call.location}`.replace(/[^a-zA-Z0-9-]/g, '_');
-                
-                // Parse the call time
-                let callTime = new Date();
-                if (call.timeReceived) {
-                    const timeMatch = call.timeReceived.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-                    if (timeMatch) {
-                        const hours = parseInt(timeMatch[1]);
-                        const minutes = parseInt(timeMatch[2]);
-                        const isPM = timeMatch[3].toUpperCase() === 'PM';
-                        
-                        let hours24 = hours;
-                        if (isPM && hours !== 12) hours24 = hours + 12;
-                        if (!isPM && hours === 12) hours24 = 0;
-                        
-                        callTime.setHours(hours24, minutes, 0, 0);
-                        
-                        // If call time is in the future, assume it's from yesterday
-                        if (callTime > new Date()) {
-                            callTime.setDate(callTime.getDate() - 1);
-                        }
-                    }
-                }
-                
-                // Check if call already exists
-                const existingCalls = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
-                
-                if (!existingCalls || existingCalls.length === 0) {
-                    // Create new call in database (save even without coordinates)
-                    await base44.asServiceRole.entities.DispatchCall.create({
-                        call_id: callId,
-                        incident: call.incident,
-                        location: call.location,
-                        latitude: null,
-                        longitude: null,
-                        agency: call.agency,
-                        status: call.status || 'New',
-                        time_received: callTime.toISOString(),
-                        description: call.ai_summary || `${call.incident} at ${call.location}`
-                    });
-                    console.log(`💾 Saved: ${callId}`);
-                }
-            } catch (error) {
-                console.error('Error saving call to database:', error);
-            }
-        }
-        
-        // Fetch recent calls from database (last hour only)
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-        const dbCalls = await base44.asServiceRole.entities.DispatchCall.list('-time_received', 200);
-        
-        const recentCalls = dbCalls.filter(call => {
-            const receivedTime = new Date(call.time_received || call.created_date);
-            return receivedTime >= oneHourAgo;
-        }).map(call => ({
-            id: call.id,
-            callId: call.call_id,
-            timeReceived: new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { 
-                hour: 'numeric', 
-                minute: '2-digit',
-                hour12: true 
-            }),
+        // Format calls for return
+        const formattedCalls = calls.map(call => ({
+            timeReceived: call.timeReceived || 'Unknown',
             incident: call.incident,
             location: call.location,
             agency: call.agency,
-            status: call.status,
-            latitude: call.latitude,
-            longitude: call.longitude,
-            ai_summary: call.description || `${call.incident} at ${call.location}`,
-            source: 'database'
+            status: call.status || 'Dispatched',
+            latitude: null,
+            longitude: null,
+            source: call.source
         }));
-        
-        console.log(`📋 Returning ${recentCalls.length} calls from database`);
-        
+
+        console.log(`📋 Returning ${formattedCalls.length} calls`);
+
         return Response.json({
             success: true,
-            totalCalls: recentCalls.length,
-            geocodedCalls: recentCalls,
-            geocodedCount: recentCalls.filter(c => c.latitude).length,
+            totalCalls: formattedCalls.length,
+            geocodedCalls: formattedCalls,
+            geocodedCount: 0,
             timestamp: new Date().toISOString()
         });
         
