@@ -297,12 +297,11 @@ Deno.serve(async (req) => {
         }
         
         console.log(`✅ Geocoded ${geocodedCalls.filter(c => c.latitude).length}/${geocodedCalls.length} calls`);
-        
-        // Save geocoded calls to database (in background, non-blocking)
+
+        // Save ALL calls to database (even without coordinates)
         for (const call of geocodedCalls) {
-            if (call.latitude && call.longitude) {
-                try {
-                    const callId = `${call.source}-${call.timeReceived}-${call.incident}-${call.location}`.replace(/[^a-zA-Z0-9-]/g, '_');
+            try {
+                const callId = `${call.source}-${call.timeReceived}-${call.incident}-${call.location}`.replace(/[^a-zA-Z0-9-]/g, '_');
                     
                     // Parse the call time
                     let callTime = new Date();
