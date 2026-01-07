@@ -1445,16 +1445,15 @@ Be thorough and search multiple sources.`,
                 const allCalls = response.data.geocodedCalls || [];
                 const geocodedCount = response.data.geocodedCount || 0;
 
+                console.log('📞 Received calls:', allCalls.length, 'calls');
+                console.log('📍 Calls with coords:', geocodedCount);
+                
                 setShowActiveCalls(true);
                 setAllActiveCalls(allCalls);
                 applyCallFilter(allCalls, callFilter);
 
                 if (!silent) {
-                    if (geocodedCount > 0) {
-                        toast.success(`Loaded ${geocodedCount} calls with locations (${allCalls.length} total)`);
-                    } else {
-                        toast.warning(`Loaded ${allCalls.length} calls but geocoding in progress`);
-                    }
+                    toast.success(`Loaded ${allCalls.length} active calls (${geocodedCount} on map)`);
                 }
             } else {
                 const errorMsg = response.data?.error || 'Failed to load active calls';
