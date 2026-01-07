@@ -302,50 +302,49 @@ Deno.serve(async (req) => {
         for (const call of geocodedCalls) {
             try {
                 const callId = `${call.source}-${call.timeReceived}-${call.incident}-${call.location}`.replace(/[^a-zA-Z0-9-]/g, '_');
-                    
-                    // Parse the call time
-                    let callTime = new Date();
-                    if (call.timeReceived) {
-                        const timeMatch = call.timeReceived.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-                        if (timeMatch) {
-                            const hours = parseInt(timeMatch[1]);
-                            const minutes = parseInt(timeMatch[2]);
-                            const isPM = timeMatch[3].toUpperCase() === 'PM';
-                            
-                            let hours24 = hours;
-                            if (isPM && hours !== 12) hours24 = hours + 12;
-                            if (!isPM && hours === 12) hours24 = 0;
-                            
-                            callTime.setHours(hours24, minutes, 0, 0);
-                            
-                            // If call time is in the future, assume it's from yesterday
-                            if (callTime > new Date()) {
-                                callTime.setDate(callTime.getDate() - 1);
-                            }
+                
+                // Parse the call time
+                let callTime = new Date();
+                if (call.timeReceived) {
+                    const timeMatch = call.timeReceived.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+                    if (timeMatch) {
+                        const hours = parseInt(timeMatch[1]);
+                        const minutes = parseInt(timeMatch[2]);
+                        const isPM = timeMatch[3].toUpperCase() === 'PM';
+                        
+                        let hours24 = hours;
+                        if (isPM && hours !== 12) hours24 = hours + 12;
+                        if (!isPM && hours === 12) hours24 = 0;
+                        
+                        callTime.setHours(hours24, minutes, 0, 0);
+                        
+                        // If call time is in the future, assume it's from yesterday
+                        if (callTime > new Date()) {
+                            callTime.setDate(callTime.getDate() - 1);
                         }
                     }
-                    
-                    // Check if call already exists
-                    const existingCalls = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
-                    
-                    if (!existingCalls || existingCalls.length === 0) {
-                        // Create new call in database (save even without coordinates)
-                        await base44.asServiceRole.entities.DispatchCall.create({
-                            call_id: callId,
-                            incident: call.incident,
-                            location: call.location,
-                            latitude: call.latitude || null,
-                            longitude: call.longitude || null,
-                            agency: call.agency,
-                            status: call.status || 'New',
-                            time_received: callTime.toISOString(),
-                            description: call.ai_summary || `${call.incident} at ${call.location}`
-                        });
-                        console.log(`💾 Saved call from ${call.timeReceived}: ${callId} ${call.latitude ? 'with coords' : '(no coords yet)'}`);
-                    }
-                } catch (error) {
-                    console.error('Error saving call to database:', error);
                 }
+                
+                // Check if call already exists
+                const existingCalls = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
+                
+                if (!existingCalls || existingCalls.length === 0) {
+                    // Create new call in database (save even without coordinates)
+                    await base44.asServiceRole.entities.DispatchCall.create({
+                        call_id: callId,
+                        incident: call.incident,
+                        location: call.location,
+                        latitude: call.latitude || null,
+                        longitude: call.longitude || null,
+                        agency: call.agency,
+                        status: call.status || 'New',
+                        time_received: callTime.toISOString(),
+                        description: call.ai_summary || `${call.incident} at ${call.location}`
+                    });
+                    console.log(`💾 Saved call from ${call.timeReceived}: ${callId} ${call.latitude ? 'with coords' : '(no coords yet)'}`);
+                }
+            } catch (error) {
+                console.error('Error saving call to database:', error);
             }
         }
         
