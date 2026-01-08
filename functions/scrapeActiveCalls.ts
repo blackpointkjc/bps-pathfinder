@@ -148,41 +148,55 @@ Deno.serve(async (req) => {
                 const existing = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
                 
                 if (!existing || existing.length === 0) {
-                    // Geocode the location
+                    // Clean and geocode the location
                     let latitude = null;
                     let longitude = null;
                     
-                    try {
-                        // Try different location formats
-                        const locationQueries = [
-                            `${call.location}, ${call.agency.includes('Henrico') ? 'Henrico County' : call.agency.includes('Richmond') || call.agency.includes('RPD') ? 'Richmond' : 'Chesterfield County'}, Virginia`,
-                            `${call.location}, Virginia`
-                        ];
-                        
-                        for (const query of locationQueries) {
-                            const geoResponse = await fetch(
-                                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
-                                { 
-                                    headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' },
-                                    signal: AbortSignal.timeout(3000)
-                                }
-                            );
+                    // Skip highway/interstate locations
+                    if (call.location.includes(' I64 ') || call.location.includes(' I295 ') || 
+                        call.location.includes('I64 ') || call.location.includes('I295 ') ||
+                        /\bEN \d+[A-Z]?\b/.test(call.location)) {
+                        console.log(`⏭️ Skipping highway location: ${call.location}`);
+                    } else {
+                        try {
+                            // Clean the location string
+                            let cleanLocation = call.location
+                                .replace(/\s*\/\s*/g, ' AND ')  // Replace "/" with "AND"
+                                .replace(/\b\d+\s+Block\b/gi, '') // Remove "200 Block"
+                                .replace(/\sBlock\b/gi, '') // Remove "Block"
+                                .trim();
                             
-                            if (geoResponse.ok) {
-                                const geoData = await geoResponse.json();
-                                if (geoData && geoData.length > 0) {
-                                    latitude = parseFloat(geoData[0].lat);
-                                    longitude = parseFloat(geoData[0].lon);
-                                    geocoded++;
-                                    console.log(`✅ Geocoded: ${call.location} -> ${latitude}, ${longitude}`);
-                                    break;
+                            // Try geocoding with cleaned address
+                            const locationQueries = [
+                                `${cleanLocation}, ${call.agency.includes('Henrico') ? 'Henrico County' : call.agency.includes('Richmond') || call.agency.includes('RPD') || call.agency.includes('RFD') ? 'Richmond' : 'Chesterfield County'}, Virginia`,
+                                `${cleanLocation}, Virginia`
+                            ];
+                            
+                            for (const query of locationQueries) {
+                                const geoResponse = await fetch(
+                                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
+                                    { 
+                                        headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' },
+                                        signal: AbortSignal.timeout(3000)
+                                    }
+                                );
+                                
+                                if (geoResponse.ok) {
+                                    const geoData = await geoResponse.json();
+                                    if (geoData && geoData.length > 0) {
+                                        latitude = parseFloat(geoData[0].lat);
+                                        longitude = parseFloat(geoData[0].lon);
+                                        geocoded++;
+                                        console.log(`✅ Geocoded: ${call.location} -> ${cleanLocation} -> ${latitude}, ${longitude}`);
+                                        break;
+                                    }
                                 }
+                                
+                                await new Promise(resolve => setTimeout(resolve, 300));
                             }
-                            
-                            await new Promise(resolve => setTimeout(resolve, 200));
+                        } catch (geoError) {
+                            console.log(`⚠️ Geocode failed for ${call.location}`);
                         }
-                    } catch (geoError) {
-                        console.log(`⚠️ Geocode failed for ${call.location}`);
                     }
                     
                     // Save call (even without coordinates)
