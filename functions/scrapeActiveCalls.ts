@@ -1,5 +1,92 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
+// Coordinate validation
+const isValidCoords = (lat, lng) => {
+    if (lat === null || lng === null || lat === undefined || lng === undefined) return false;
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    if (isNaN(latNum) || isNaN(lngNum)) return false;
+    if (latNum === 0 && lngNum === 0) return false;
+    if (latNum < -90 || latNum > 90) return false;
+    if (lngNum < -180 || lngNum > 180) return false;
+    return true;
+};
+
+// Normalize address for geocoding
+const normalizeAddress = (location, agency) => {
+    let normalized = location.trim();
+    
+    // Skip highways/interstates
+    if (normalized.match(/\bI-?\d+\b/) || normalized.match(/\bEN \d+[A-Z]?\b/)) {
+        return null;
+    }
+    
+    // Remove "Block" pattern: "200 Block N LABURNUM AVE" → "200 N LABURNUM AVE"
+    normalized = normalized.replace(/(\d+)\s+Block\s+/gi, '$1 ');
+    
+    // Convert intersections: " / " → " AND "
+    normalized = normalized.replace(/\s*\/\s*/g, ' AND ');
+    
+    // Determine city/state based on agency
+    let cityState = 'Virginia';
+    const agencyLower = agency.toLowerCase();
+    
+    if (agencyLower.includes('henrico')) {
+        cityState = 'Henrico County, VA';
+    } else if (agencyLower.includes('richmond') || agencyLower.includes('rpd') || agencyLower.includes('rfd')) {
+        cityState = 'Richmond, VA';
+    } else if (agencyLower.includes('chesterfield') || agencyLower.includes('ccpd') || agencyLower.includes('ccfd')) {
+        cityState = 'Chesterfield County, VA';
+    }
+    
+    return `${normalized}, ${cityState}`;
+};
+
+// Geocode cache (in-memory for this execution)
+const geocodeCache = new Map();
+
+// Geocode address using Nominatim
+const geocodeAddress = async (normalizedAddress) => {
+    if (geocodeCache.has(normalizedAddress)) {
+        return geocodeCache.get(normalizedAddress);
+    }
+    
+    try {
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(normalizedAddress)}&limit=1`,
+            {
+                headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' },
+                signal: AbortSignal.timeout(5000)
+            }
+        );
+        
+        if (!response.ok) {
+            geocodeCache.set(normalizedAddress, null);
+            return null;
+        }
+        
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+            const result = {
+                latitude: parseFloat(data[0].lat),
+                longitude: parseFloat(data[0].lon),
+                provider: 'nominatim',
+                confidence: data[0].type || 'unknown'
+            };
+            geocodeCache.set(normalizedAddress, result);
+            return result;
+        }
+        
+        geocodeCache.set(normalizedAddress, null);
+        return null;
+    } catch (error) {
+        console.error(`Geocode error for "${normalizedAddress}":`, error.message);
+        geocodeCache.set(normalizedAddress, null);
+        return null;
+    }
+};
+
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
@@ -111,106 +198,84 @@ Deno.serve(async (req) => {
         
         console.log(`✅ Total scraped: ${calls.length} calls`);
         
-        // Smart address cleaning function
-        const cleanAddress = (location, agency) => {
-            let cleaned = location;
-            
-            // Remove "Block" pattern
-            cleaned = cleaned.replace(/(\d+)\s+Block\s+/gi, '$1 ');
-            
-            // Replace " / " with " AND " for intersections
-            cleaned = cleaned.replace(/\s+\/\s+/g, ' AND ');
-            
-            // Determine city based on agency
-            let city = 'Virginia';
-            if (agency.toLowerCase().includes('henrico')) {
-                city = 'Henrico County, Virginia';
-            } else if (agency.toLowerCase().includes('richmond') || agency.toLowerCase().includes('rpd') || agency.toLowerCase().includes('rfd')) {
-                city = 'Richmond, Virginia';
-            } else if (agency.toLowerCase().includes('chesterfield') || agency.toLowerCase().includes('ccpd') || agency.toLowerCase().includes('ccfd')) {
-                city = 'Chesterfield County, Virginia';
-            }
-            
-            return `${cleaned}, ${city}`;
-        };
-        
-        // Geocode and save
+        // Process and geocode each call
         let saved = 0;
         let geocoded = 0;
-        const batchSize = 10;
+        let skipped = 0;
         
-        for (let i = 0; i < calls.length; i += batchSize) {
-            const batch = calls.slice(i, i + batchSize);
-            
-            await Promise.all(batch.map(async (call) => {
-                try {
-                    const callId = `${call.time}-${call.incident}-${call.location}`.replace(/[^a-zA-Z0-9-]/g, '_').substring(0, 100);
-                    
-                    const existing = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
-                    
-                    if (!existing || existing.length === 0) {
-                        // Skip highways
-                        if (call.location.match(/\bI-?\d+\b/) || call.location.match(/\bEN \d+[A-Z]?\b/)) {
-                            return;
-                        }
-                        
-                        let latitude = null;
-                        let longitude = null;
-                        
-                        try {
-                            const cleanedAddress = cleanAddress(call.location, call.agency);
-                            
-                            const geoResponse = await fetch(
-                                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanedAddress)}&limit=1`,
-                                { 
-                                    headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' },
-                                    signal: AbortSignal.timeout(3000)
-                                }
-                            );
-                            
-                            if (geoResponse.ok) {
-                                const geoData = await geoResponse.json();
-                                if (geoData && geoData.length > 0) {
-                                    latitude = parseFloat(geoData[0].lat);
-                                    longitude = parseFloat(geoData[0].lon);
-                                    geocoded++;
-                                }
-                            }
-                            
-                            await new Promise(resolve => setTimeout(resolve, 100));
-                        } catch (geoError) {
-                            // Silent fail
-                        }
-                        
-                        // Save call even without coords
-                        await base44.asServiceRole.entities.DispatchCall.create({
-                            call_id: callId,
-                            incident: call.incident,
-                            location: call.location,
-                            agency: call.agency,
-                            status: call.status,
-                            latitude: latitude,
-                            longitude: longitude,
-                            time_received: new Date().toISOString(),
-                            description: `${call.incident} at ${call.location}`
-                        });
-                        saved++;
-                    }
-                } catch (error) {
-                    console.error('❌ Error saving call:', error.message);
+        for (const call of calls) {
+            try {
+                const callId = `${call.time}-${call.incident}-${call.location}`.replace(/[^a-zA-Z0-9-]/g, '_').substring(0, 100);
+                
+                // Check if call already exists
+                const existing = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
+                
+                if (existing && existing.length > 0) {
+                    skipped++;
+                    continue;
                 }
-            }));
-            
-            await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Normalize address
+                const normalizedAddress = normalizeAddress(call.location, call.agency);
+                
+                if (!normalizedAddress) {
+                    console.log(`⏭️ Skipping highway/interstate: ${call.location}`);
+                    continue;
+                }
+                
+                let latitude = null;
+                let longitude = null;
+                let coordsStatus = 'missing_or_invalid';
+                let geocodeProvider = null;
+                let geocodeConfidence = null;
+                
+                // Attempt geocoding
+                const geoResult = await geocodeAddress(normalizedAddress);
+                
+                if (geoResult && isValidCoords(geoResult.latitude, geoResult.longitude)) {
+                    latitude = geoResult.latitude;
+                    longitude = geoResult.longitude;
+                    coordsStatus = 'geocoded';
+                    geocodeProvider = geoResult.provider;
+                    geocodeConfidence = geoResult.confidence;
+                    geocoded++;
+                    console.log(`✅ Geocoded: "${call.location}" → ${latitude}, ${longitude}`);
+                } else {
+                    coordsStatus = 'needs_manual_review';
+                    console.log(`⚠️ Failed to geocode: "${call.location}"`);
+                }
+                
+                // Save call with geocoded coords
+                await base44.asServiceRole.entities.DispatchCall.create({
+                    call_id: callId,
+                    incident: call.incident,
+                    location: call.location,
+                    agency: call.agency,
+                    status: call.status,
+                    latitude: latitude,
+                    longitude: longitude,
+                    time_received: new Date().toISOString(),
+                    description: `${call.incident} at ${call.location}`
+                });
+                saved++;
+                
+                // Rate limiting
+                await new Promise(resolve => setTimeout(resolve, 1100));
+                
+            } catch (error) {
+                console.error(`❌ Error processing call "${call.location}":`, error.message);
+            }
         }
         
-        console.log(`💾 FINAL: Saved ${saved} new calls (${geocoded} successfully geocoded)`);
+        console.log(`💾 FINAL: Scraped ${calls.length}, Saved ${saved} new, Geocoded ${geocoded}, Skipped ${skipped}`);
         
         return Response.json({ 
             success: true, 
             scraped: calls.length, 
             saved,
-            geocoded
+            geocoded,
+            skipped,
+            geocodeRate: saved > 0 ? `${Math.round((geocoded / saved) * 100)}%` : '0%'
         });
         
     } catch (error) {
