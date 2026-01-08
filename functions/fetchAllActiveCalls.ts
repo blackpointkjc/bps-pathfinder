@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        console.log('🔍 Fetching calls from database...');
+        console.log('📋 Fetching calls from database...');
 
         // Fetch recent calls from database (last 2 hours)
         const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
                 source: 'database'
             }));
 
-        console.log(`📋 Returning ${recentCalls.length} calls from database`);
+        console.log(`✅ Returning ${recentCalls.length} calls (${recentCalls.filter(c => c.latitude && c.longitude).length} with coords)`);
 
         return Response.json({
             success: true,
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
         });
         
     } catch (error) {
-        console.error('Error fetching all active calls:', error);
+        console.error('❌ Error:', error);
         return Response.json({ 
             error: 'Failed to fetch calls',
             details: error.message 
