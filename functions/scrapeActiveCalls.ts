@@ -104,8 +104,10 @@ Deno.serve(async (req) => {
         
         console.log(`✅ Scraped ${calls.length} calls`);
         
-        // Save to database
+        // Geocode and save to database
         let saved = 0;
+        let geocoded = 0;
+        
         for (const call of calls) {
             try {
                 const callId = `${call.time}-${call.incident}-${call.location}`.replace(/[^a-zA-Z0-9-]/g, '_');
@@ -113,25 +115,55 @@ Deno.serve(async (req) => {
                 const existing = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
                 
                 if (!existing || existing.length === 0) {
+                    // Quick geocode using Nominatim
+                    let latitude = null;
+                    let longitude = null;
+                    
+                    try {
+                        const geoResponse = await fetch(
+                            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(call.location + ', Virginia, USA')}&limit=1`,
+                            { 
+                                headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' },
+                                signal: AbortSignal.timeout(3000)
+                            }
+                        );
+                        
+                        if (geoResponse.ok) {
+                            const geoData = await geoResponse.json();
+                            if (geoData && geoData.length > 0) {
+                                latitude = parseFloat(geoData[0].lat);
+                                longitude = parseFloat(geoData[0].lon);
+                                geocoded++;
+                            }
+                        }
+                    } catch (geoError) {
+                        console.log(`Geocode failed for ${call.location}:`, geoError.message);
+                    }
+                    
                     await base44.asServiceRole.entities.DispatchCall.create({
                         call_id: callId,
                         incident: call.incident,
                         location: call.location,
                         agency: call.agency,
                         status: call.status,
+                        latitude: latitude,
+                        longitude: longitude,
                         time_received: new Date().toISOString(),
                         description: `${call.incident} at ${call.location}`
                     });
                     saved++;
+                    
+                    // Small delay to avoid rate limiting
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 }
             } catch (error) {
                 console.error('Error saving call:', error);
             }
         }
         
-        console.log(`💾 Saved ${saved} new calls`);
+        console.log(`💾 Saved ${saved} new calls (${geocoded} geocoded)`);
         
-        return Response.json({ success: true, scraped: calls.length, saved });
+        return Response.json({ success: true, scraped: calls.length, saved, geocoded });
         
     } catch (error) {
         console.error('Scraper error:', error);
