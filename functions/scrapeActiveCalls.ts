@@ -111,59 +111,60 @@ Deno.serve(async (req) => {
         
         console.log(`✅ Total scraped: ${calls.length} calls`);
         
-        // Geocode and save using AI for better accuracy
+        // Smart address cleaning function
+        const cleanAddress = (location, agency) => {
+            let cleaned = location;
+            
+            // Remove "Block" pattern
+            cleaned = cleaned.replace(/(\d+)\s+Block\s+/gi, '$1 ');
+            
+            // Replace " / " with " AND " for intersections
+            cleaned = cleaned.replace(/\s+\/\s+/g, ' AND ');
+            
+            // Determine city based on agency
+            let city = 'Virginia';
+            if (agency.toLowerCase().includes('henrico')) {
+                city = 'Henrico County, Virginia';
+            } else if (agency.toLowerCase().includes('richmond') || agency.toLowerCase().includes('rpd') || agency.toLowerCase().includes('rfd')) {
+                city = 'Richmond, Virginia';
+            } else if (agency.toLowerCase().includes('chesterfield') || agency.toLowerCase().includes('ccpd') || agency.toLowerCase().includes('ccfd')) {
+                city = 'Chesterfield County, Virginia';
+            }
+            
+            return `${cleaned}, ${city}`;
+        };
+        
+        // Geocode and save
         let saved = 0;
         let geocoded = 0;
+        const batchSize = 10;
         
-        for (const call of calls) {
-            try {
-                const callId = `${call.time}-${call.incident}-${call.location}`.replace(/[^a-zA-Z0-9-]/g, '_').substring(0, 100);
-                
-                const existing = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
-                
-                if (!existing || existing.length === 0) {
-                    // Skip highway/interstate locations
-                    if (call.location.match(/\bI-?\d+\b/) || call.location.match(/\bEN \d+[A-Z]?\b/)) {
-                        console.log(`⏭️ Skipping highway: ${call.location}`);
-                        continue;
-                    }
+        for (let i = 0; i < calls.length; i += batchSize) {
+            const batch = calls.slice(i, i + batchSize);
+            
+            await Promise.all(batch.map(async (call) => {
+                try {
+                    const callId = `${call.time}-${call.incident}-${call.location}`.replace(/[^a-zA-Z0-9-]/g, '_').substring(0, 100);
                     
-                    let latitude = null;
-                    let longitude = null;
+                    const existing = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
                     
-                    try {
-                        // Use AI to intelligently geocode the address
-                        const aiResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
-                            prompt: `Find the exact geocoded coordinates for this dispatch address in Virginia:
-Address: "${call.location}"
-Agency: ${call.agency}
-
-Rules for address cleanup:
-- If it has " / " (slash), replace with " AND " (it's an intersection)
-- If it says "Block" like "200 Block N LABURNUM AVE", remove "Block" and use just "200 N LABURNUM AVE"
-- Add the correct city: Henrico Police/Fire = Henrico County, Richmond Police/Fire = Richmond City, Chesterfield = Chesterfield County
-
-Return the cleaned full address with city and state that will work for geocoding.`,
-                            add_context_from_internet: true,
-                            response_json_schema: {
-                                type: "object",
-                                properties: {
-                                    cleaned_address: { type: "string" }
-                                }
-                            }
-                        });
+                    if (!existing || existing.length === 0) {
+                        // Skip highways
+                        if (call.location.match(/\bI-?\d+\b/) || call.location.match(/\bEN \d+[A-Z]?\b/)) {
+                            return;
+                        }
                         
-                        const cleanedAddress = aiResult?.cleaned_address;
+                        let latitude = null;
+                        let longitude = null;
                         
-                        if (cleanedAddress) {
-                            console.log(`🧹 Cleaned: "${call.location}" -> "${cleanedAddress}"`);
+                        try {
+                            const cleanedAddress = cleanAddress(call.location, call.agency);
                             
-                            // Geocode the cleaned address
                             const geoResponse = await fetch(
                                 `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanedAddress)}&limit=1`,
                                 { 
                                     headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' },
-                                    signal: AbortSignal.timeout(4000)
+                                    signal: AbortSignal.timeout(3000)
                                 }
                             );
                             
@@ -173,35 +174,34 @@ Return the cleaned full address with city and state that will work for geocoding
                                     latitude = parseFloat(geoData[0].lat);
                                     longitude = parseFloat(geoData[0].lon);
                                     geocoded++;
-                                    console.log(`✅ Geocoded: ${latitude}, ${longitude}`);
                                 }
                             }
+                            
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                        } catch (geoError) {
+                            // Silent fail
                         }
                         
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                    } catch (geoError) {
-                        console.log(`⚠️ Geocode failed for ${call.location}: ${geoError.message}`);
+                        // Save call even without coords
+                        await base44.asServiceRole.entities.DispatchCall.create({
+                            call_id: callId,
+                            incident: call.incident,
+                            location: call.location,
+                            agency: call.agency,
+                            status: call.status,
+                            latitude: latitude,
+                            longitude: longitude,
+                            time_received: new Date().toISOString(),
+                            description: `${call.incident} at ${call.location}`
+                        });
+                        saved++;
                     }
-                    
-                    // Save call
-                    await base44.asServiceRole.entities.DispatchCall.create({
-                        call_id: callId,
-                        incident: call.incident,
-                        location: call.location,
-                        agency: call.agency,
-                        status: call.status,
-                        latitude: latitude,
-                        longitude: longitude,
-                        time_received: new Date().toISOString(),
-                        description: `${call.incident} at ${call.location}`
-                    });
-                    saved++;
-                    
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (error) {
+                    console.error('❌ Error saving call:', error.message);
                 }
-            } catch (error) {
-                console.error('❌ Error saving call:', error.message);
-            }
+            }));
+            
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
         
         console.log(`💾 FINAL: Saved ${saved} new calls (${geocoded} successfully geocoded)`);
