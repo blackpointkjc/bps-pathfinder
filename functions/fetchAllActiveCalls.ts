@@ -11,14 +11,15 @@ Deno.serve(async (req) => {
 
         console.log('📋 Fetching calls from database...');
 
-        // Fetch recent calls from database (last 24 hours)
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        // Fetch calls from today only
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const dbCalls = await base44.entities.DispatchCall.list('-time_received', 500);
 
         const recentCalls = dbCalls
             .filter(call => {
                 const receivedTime = new Date(call.time_received || call.created_date);
-                return receivedTime >= twentyFourHoursAgo;
+                return receivedTime >= startOfToday;
             })
             .map(call => ({
                 id: call.id,
