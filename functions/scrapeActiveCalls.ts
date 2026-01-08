@@ -18,16 +18,12 @@ Deno.serve(async (req) => {
             
             if (response1.ok) {
                 const html = await response1.text();
-                console.log('✅ Fetched HTML from gractivecalls');
-                
                 const tableStart = html.indexOf('<table');
                 const tableEnd = html.indexOf('</table>', tableStart);
                 
                 if (tableStart !== -1) {
                     const tableHtml = html.substring(tableStart, tableEnd + 8);
                     const rows = tableHtml.split(/<tr[^>]*>/i);
-                    
-                    console.log(`Found ${rows.length} rows in table`);
                     
                     for (let i = 1; i < rows.length; i++) {
                         const row = rows[i];
@@ -40,7 +36,6 @@ Deno.serve(async (req) => {
                             cells.push(match[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
                         }
                         
-                        // Expected columns: Time, Incident Type, Location, Agency, Status
                         if (cells.length >= 5 && cells[2] && cells[1]) {
                             const time = cells[0];
                             const incident = cells[1].trim();
@@ -48,21 +43,13 @@ Deno.serve(async (req) => {
                             const agency = cells[3]?.trim() || 'Unknown';
                             const status = cells[4]?.trim() || 'Dispatched';
                             
-                            // Validate location doesn't look like a time
                             if (location && !/^\d{1,2}:\d{2}/.test(location)) {
-                                calls.push({
-                                    time,
-                                    incident,
-                                    location,
-                                    agency,
-                                    status,
-                                    source: 'gractivecalls'
-                                });
+                                calls.push({ time, incident, location, agency, status, source: 'gractivecalls' });
                             }
                         }
                     }
                 }
-                console.log(`✅ gractivecalls: Parsed ${calls.length} calls`);
+                console.log(`✅ gractivecalls: ${calls.length} calls`);
             }
         } catch (error) {
             console.error('❌ gractivecalls error:', error.message);
@@ -70,7 +57,7 @@ Deno.serve(async (req) => {
         
         // Source 2: Henrico County
         try {
-            console.log('📡 Scraping Henrico County...');
+            console.log('📡 Scraping Henrico...');
             const response2 = await fetch('https://activecalls.henrico.gov/', {
                 headers: { 'User-Agent': 'Mozilla/5.0' },
                 signal: AbortSignal.timeout(10000)
@@ -78,16 +65,12 @@ Deno.serve(async (req) => {
             
             if (response2.ok) {
                 const html = await response2.text();
-                console.log('✅ Fetched HTML from Henrico');
-                
                 const tableStart = html.indexOf('<table');
                 const tableEnd = html.indexOf('</table>', tableStart);
                 
                 if (tableStart !== -1) {
                     const tableHtml = html.substring(tableStart, tableEnd + 8);
                     const rows = tableHtml.split(/<tr[^>]*>/i);
-                    
-                    console.log(`Found ${rows.length} rows in Henrico table`);
                     
                     for (let i = 1; i < rows.length; i++) {
                         const row = rows[i];
@@ -100,14 +83,12 @@ Deno.serve(async (req) => {
                             cells.push(match[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
                         }
                         
-                        // Henrico format: Time, Incident, Location, Status
                         if (cells.length >= 4 && cells[1] && cells[2]) {
                             const time = cells[0];
                             const incident = cells[1].trim();
                             const location = cells[2].trim();
                             const status = cells[3]?.trim() || 'Dispatched';
                             
-                            // Validate location doesn't look like a time
                             if (location && !/^\d{1,2}:\d{2}/.test(location)) {
                                 const incidentLower = incident.toLowerCase();
                                 let agency = 'Henrico Police';
@@ -117,19 +98,12 @@ Deno.serve(async (req) => {
                                     agency = 'Henrico Fire';
                                 }
                                 
-                                calls.push({
-                                    time,
-                                    incident,
-                                    location,
-                                    agency,
-                                    status,
-                                    source: 'henrico'
-                                });
+                                calls.push({ time, incident, location, agency, status, source: 'henrico' });
                             }
                         }
                     }
                 }
-                console.log(`✅ Henrico: Total ${calls.filter(c => c.source === 'henrico').length} Henrico calls`);
+                console.log(`✅ Henrico: Total ${calls.filter(c => c.source === 'henrico').length} calls`);
             }
         } catch (error) {
             console.error('❌ Henrico error:', error.message);
@@ -137,7 +111,7 @@ Deno.serve(async (req) => {
         
         console.log(`✅ Total scraped: ${calls.length} calls`);
         
-        // Geocode and save to database
+        // Geocode and save using AI for better accuracy
         let saved = 0;
         let geocoded = 0;
         
@@ -148,58 +122,68 @@ Deno.serve(async (req) => {
                 const existing = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
                 
                 if (!existing || existing.length === 0) {
-                    // Clean and geocode the location
+                    // Skip highway/interstate locations
+                    if (call.location.match(/\bI-?\d+\b/) || call.location.match(/\bEN \d+[A-Z]?\b/)) {
+                        console.log(`⏭️ Skipping highway: ${call.location}`);
+                        continue;
+                    }
+                    
                     let latitude = null;
                     let longitude = null;
                     
-                    // Skip highway/interstate locations
-                    if (call.location.includes(' I64 ') || call.location.includes(' I295 ') || 
-                        call.location.includes('I64 ') || call.location.includes('I295 ') ||
-                        /\bEN \d+[A-Z]?\b/.test(call.location)) {
-                        console.log(`⏭️ Skipping highway location: ${call.location}`);
-                    } else {
-                        try {
-                            // Clean the location string
-                            let cleanLocation = call.location
-                                .replace(/\s*\/\s*/g, ' AND ')  // Replace "/" with "AND"
-                                .replace(/\b\d+\s+Block\b/gi, '') // Remove "200 Block"
-                                .replace(/\sBlock\b/gi, '') // Remove "Block"
-                                .trim();
-                            
-                            // Try geocoding with cleaned address
-                            const locationQueries = [
-                                `${cleanLocation}, ${call.agency.includes('Henrico') ? 'Henrico County' : call.agency.includes('Richmond') || call.agency.includes('RPD') || call.agency.includes('RFD') ? 'Richmond' : 'Chesterfield County'}, Virginia`,
-                                `${cleanLocation}, Virginia`
-                            ];
-                            
-                            for (const query of locationQueries) {
-                                const geoResponse = await fetch(
-                                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
-                                    { 
-                                        headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' },
-                                        signal: AbortSignal.timeout(3000)
-                                    }
-                                );
-                                
-                                if (geoResponse.ok) {
-                                    const geoData = await geoResponse.json();
-                                    if (geoData && geoData.length > 0) {
-                                        latitude = parseFloat(geoData[0].lat);
-                                        longitude = parseFloat(geoData[0].lon);
-                                        geocoded++;
-                                        console.log(`✅ Geocoded: ${call.location} -> ${cleanLocation} -> ${latitude}, ${longitude}`);
-                                        break;
-                                    }
+                    try {
+                        // Use AI to intelligently geocode the address
+                        const aiResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
+                            prompt: `Find the exact geocoded coordinates for this dispatch address in Virginia:
+Address: "${call.location}"
+Agency: ${call.agency}
+
+Rules for address cleanup:
+- If it has " / " (slash), replace with " AND " (it's an intersection)
+- If it says "Block" like "200 Block N LABURNUM AVE", remove "Block" and use just "200 N LABURNUM AVE"
+- Add the correct city: Henrico Police/Fire = Henrico County, Richmond Police/Fire = Richmond City, Chesterfield = Chesterfield County
+
+Return the cleaned full address with city and state that will work for geocoding.`,
+                            add_context_from_internet: true,
+                            response_json_schema: {
+                                type: "object",
+                                properties: {
+                                    cleaned_address: { type: "string" }
                                 }
-                                
-                                await new Promise(resolve => setTimeout(resolve, 300));
                             }
-                        } catch (geoError) {
-                            console.log(`⚠️ Geocode failed for ${call.location}`);
+                        });
+                        
+                        const cleanedAddress = aiResult?.cleaned_address;
+                        
+                        if (cleanedAddress) {
+                            console.log(`🧹 Cleaned: "${call.location}" -> "${cleanedAddress}"`);
+                            
+                            // Geocode the cleaned address
+                            const geoResponse = await fetch(
+                                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanedAddress)}&limit=1`,
+                                { 
+                                    headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' },
+                                    signal: AbortSignal.timeout(4000)
+                                }
+                            );
+                            
+                            if (geoResponse.ok) {
+                                const geoData = await geoResponse.json();
+                                if (geoData && geoData.length > 0) {
+                                    latitude = parseFloat(geoData[0].lat);
+                                    longitude = parseFloat(geoData[0].lon);
+                                    geocoded++;
+                                    console.log(`✅ Geocoded: ${latitude}, ${longitude}`);
+                                }
+                            }
                         }
+                        
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    } catch (geoError) {
+                        console.log(`⚠️ Geocode failed for ${call.location}: ${geoError.message}`);
                     }
                     
-                    // Save call (even without coordinates)
+                    // Save call
                     await base44.asServiceRole.entities.DispatchCall.create({
                         call_id: callId,
                         incident: call.incident,
@@ -213,7 +197,6 @@ Deno.serve(async (req) => {
                     });
                     saved++;
                     
-                    // Rate limiting delay
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
             } catch (error) {
