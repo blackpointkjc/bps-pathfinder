@@ -149,42 +149,42 @@ Deno.serve(async (req) => {
                 headers: { 'User-Agent': 'Mozilla/5.0' },
                 signal: AbortSignal.timeout(10000)
             });
-            
+
             if (response2.ok) {
                 const html = await response2.text();
                 const tableStart = html.indexOf('<table');
                 const tableEnd = html.indexOf('</table>', tableStart);
-                
+
                 if (tableStart !== -1) {
                     const tableHtml = html.substring(tableStart, tableEnd + 8);
                     const rows = tableHtml.split(/<tr[^>]*>/i);
-                    
+
                     for (let i = 1; i < rows.length; i++) {
                         const row = rows[i];
                         if (!row.includes('<td')) continue;
-                        
+
                         const cells = [];
                         const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
-                        
+
                         for (const match of cellMatches) {
                             cells.push(match[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
                         }
-                        
+
                         if (cells.length >= 4 && cells[1] && cells[2]) {
                             const time = cells[0];
                             const incident = cells[1].trim();
                             const location = cells[2].trim();
                             const status = cells[3]?.trim() || 'Dispatched';
-                            
+
                             if (location && !/^\d{1,2}:\d{2}/.test(location)) {
                                 const incidentLower = incident.toLowerCase();
                                 let agency = 'Henrico Police';
-                                
+
                                 if (incidentLower.includes('fire') || incidentLower.includes('medical') || 
                                     incidentLower.includes('rescue') || incidentLower.includes('ems')) {
                                     agency = 'Henrico Fire';
                                 }
-                                
+
                                 calls.push({ time, incident, location, agency, status, source: 'henrico' });
                             }
                         }
@@ -194,6 +194,39 @@ Deno.serve(async (req) => {
             }
         } catch (error) {
             console.error('❌ Henrico error:', error.message);
+        }
+
+        // Source 3: Chesterfield County (JSON API)
+        try {
+            console.log('📡 Scraping Chesterfield...');
+            const response3 = await fetch('https://webapps.chesterfield.gov/cws/activecallsservice.svc/GetActiveCalls?callback=jsonp', {
+                headers: { 'User-Agent': 'Mozilla/5.0' },
+                signal: AbortSignal.timeout(10000)
+            });
+
+            if (response3.ok) {
+                let text = await response3.text();
+                // Remove JSONP wrapper
+                text = text.replace(/^jsonp\(/, '').replace(/\);?$/, '');
+                const data = JSON.parse(text);
+
+                if (data && data.GetActiveCallsResult && Array.isArray(data.GetActiveCallsResult)) {
+                    for (const call of data.GetActiveCallsResult) {
+                        const time = call.Call_Received || '';
+                        const incident = call.Type_Description || 'Unknown';
+                        const location = call.Location || '';
+                        const status = 'Dispatched';
+                        const agency = 'CCPD';
+
+                        if (location && time) {
+                            calls.push({ time, incident, location, agency, status, source: 'chesterfield' });
+                        }
+                    }
+                }
+                console.log(`✅ Chesterfield: Total ${calls.filter(c => c.source === 'chesterfield').length} calls`);
+            }
+        } catch (error) {
+            console.error('❌ Chesterfield error:', error.message);
         }
         
         console.log(`✅ Total scraped: ${calls.length} calls`);
