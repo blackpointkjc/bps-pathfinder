@@ -13,15 +13,15 @@ Deno.serve(async (req) => {
         const activeCalls = await base44.asServiceRole.entities.DispatchCall.list();
         
         const now = new Date();
-        const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         
         let archivedCount = 0;
         
         for (const call of activeCalls) {
             const callTime = new Date(call.time_received || call.created_date);
             
-            // Archive if older than 30 minutes
-            if (callTime < thirtyMinutesAgo) {
+            // Archive if not from today
+            if (callTime < startOfToday) {
                 try {
                     // Create in CallHistory
                     await base44.asServiceRole.entities.CallHistory.create({
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
         return Response.json({
             success: true,
             archivedCount,
-            message: `Archived ${archivedCount} calls older than 30 minutes`
+            message: `Archived ${archivedCount} calls not from today`
         });
         
     } catch (error) {
