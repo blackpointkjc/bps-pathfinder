@@ -235,47 +235,54 @@ Deno.serve(async (req) => {
         let saved = 0;
         let geocoded = 0;
         let skipped = 0;
-        
+        let failed = 0;
+
         for (const call of calls) {
             try {
                 const callId = `${call.time}-${call.incident}-${call.location}`.replace(/[^a-zA-Z0-9-]/g, '_').substring(0, 100);
-                
-                // Check if call already exists
+
+                // Check if call already exists (but don't skip if it has no coords - we want to retry geocoding)
                 const existing = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
-                
+
                 if (existing && existing.length > 0) {
-                    skipped++;
-                    continue;
+                    const existingCall = existing[0];
+                    // Only skip if it already has valid coordinates
+                    if (existingCall.latitude && existingCall.longitude) {
+                        skipped++;
+                        continue;
+                    } else {
+                        // Delete and recreate with geocoding
+                        await base44.asServiceRole.entities.DispatchCall.delete(existingCall.id);
+                        console.log(`🔄 Retrying geocoding for: ${call.location}`);
+                    }
                 }
-                
+
                 // Normalize address
                 const normalizedAddress = normalizeAddress(call.location, call.agency);
-                
+
                 if (!normalizedAddress) {
                     console.log(`⏭️ Skipping highway/interstate: ${call.location}`);
+                    failed++;
                     continue;
                 }
-                
+
                 let latitude = null;
                 let longitude = null;
-                let coordsStatus = 'missing_or_invalid';
-                let geocodeProvider = null;
-                let geocodeConfidence = null;
-                
-                // Attempt geocoding
+
+                // Attempt geocoding with retries
+                console.log(`🔍 Geocoding: "${call.location}" → "${normalizedAddress}"`);
                 const geoResult = await geocodeAddress(normalizedAddress);
-                
+
                 if (geoResult && isValidCoords(geoResult.latitude, geoResult.longitude)) {
                     latitude = geoResult.latitude;
                     longitude = geoResult.longitude;
-                    coordsStatus = 'geocoded';
-                    geocodeProvider = geoResult.provider;
-                    geocodeConfidence = geoResult.confidence;
                     geocoded++;
-                    console.log(`✅ Geocoded: "${call.location}" → ${latitude}, ${longitude}`);
+                    console.log(`✅ SUCCESS: ${latitude}, ${longitude}`);
                 } else {
-                    coordsStatus = 'needs_manual_review';
-                    console.log(`⚠️ Failed to geocode: "${call.location}"`);
+                    console.log(`❌ FAILED to geocode: "${normalizedAddress}"`);
+                    failed++;
+                    // Skip this call - don't save without coordinates
+                    continue;
                 }
                 
                 // Parse time from call.time (format: "HH:MM AM/PM")
@@ -324,14 +331,15 @@ Deno.serve(async (req) => {
             }
         }
         
-        console.log(`💾 FINAL: Scraped ${calls.length}, Saved ${saved} new, Geocoded ${geocoded}, Skipped ${skipped}`);
-        
+        console.log(`💾 FINAL: Scraped ${calls.length}, Saved ${saved} new, Geocoded ${geocoded}, Skipped ${skipped}, Failed ${failed}`);
+
         return Response.json({ 
             success: true, 
             scraped: calls.length, 
             saved,
             geocoded,
             skipped,
+            failed,
             geocodeRate: saved > 0 ? `${Math.round((geocoded / saved) * 100)}%` : '0%'
         });
         
