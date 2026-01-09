@@ -195,12 +195,12 @@ export default function Navigation() {
         };
         init();
         
-        // Refresh active calls every 60 seconds for real-time updates (silent mode)
+        // Refresh active calls every 30 seconds for real-time updates (silent mode)
         callsRefreshInterval.current = setInterval(() => {
             if (isOnline) {
                 fetchActiveCalls(true); // Silent refresh
             }
-        }, 60000);
+        }, 30000);
         
 
         
@@ -1431,6 +1431,9 @@ Be thorough and search multiple sources.`,
         }
     };
 
+    const lastCallCountRef = useRef(0);
+    const lastHighPriorityCallsRef = useRef(new Set());
+
     const fetchActiveCalls = async (silent = false) => {
         if (!isOnline) {
             if (!silent) toast.error('Cannot fetch calls while offline');
@@ -1448,6 +1451,52 @@ Be thorough and search multiple sources.`,
                 console.log('📞 Received calls:', allCalls.length, 'calls');
                 console.log('📍 Calls with coords:', geocodedCount);
                 
+                // Detect new calls and high-priority calls in real-time
+                if (silent && lastCallCountRef.current > 0) {
+                    const newCallCount = allCalls.length - lastCallCountRef.current;
+                    
+                    if (newCallCount > 0) {
+                        // Identify new high-priority calls
+                        const highPriorityCalls = allCalls.filter(call => {
+                            const priority = assessCallPriority(call);
+                            return priority.score >= 3;
+                        });
+                        
+                        const newHighPriorityCalls = highPriorityCalls.filter(call => {
+                            const callKey = `${call.timeReceived}-${call.incident}-${call.location}`;
+                            return !lastHighPriorityCallsRef.current.has(callKey);
+                        });
+                        
+                        if (newHighPriorityCalls.length > 0) {
+                            // Alert for new high-priority calls
+                            newHighPriorityCalls.forEach(call => {
+                                const priority = assessCallPriority(call);
+                                toast.error(`🚨 ${priority.label}: ${call.incident} - ${call.location}`, {
+                                    duration: 8000,
+                                    position: 'top-center'
+                                });
+                                
+                                // Play sound for critical calls
+                                if (priority.score === 4) {
+                                    criticalAlertSound.play().catch(() => {});
+                                }
+                            });
+                        } else if (newCallCount > 0) {
+                            // Subtle notification for new regular calls
+                            toast.info(`${newCallCount} new call${newCallCount > 1 ? 's' : ''} detected`, {
+                                duration: 3000,
+                                position: 'bottom-right'
+                            });
+                        }
+                        
+                        // Update high-priority calls tracking
+                        lastHighPriorityCallsRef.current = new Set(
+                            highPriorityCalls.map(call => `${call.timeReceived}-${call.incident}-${call.location}`)
+                        );
+                    }
+                }
+                
+                lastCallCountRef.current = allCalls.length;
                 setShowActiveCalls(true);
                 setAllActiveCalls(allCalls);
                 applyCallFilter(allCalls, callFilter);
