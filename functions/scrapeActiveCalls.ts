@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
                 let latitude = null;
                 let longitude = null;
 
-                // Attempt geocoding with retries
+                // Attempt geocoding - but save call even if it fails
                 console.log(`🔍 Geocoding: "${call.location}" → "${normalizedAddress}"`);
                 const geoResult = await geocodeAddress(normalizedAddress);
 
@@ -279,10 +279,9 @@ Deno.serve(async (req) => {
                     geocoded++;
                     console.log(`✅ SUCCESS: ${latitude}, ${longitude}`);
                 } else {
-                    console.log(`❌ FAILED to geocode: "${normalizedAddress}"`);
+                    console.log(`⚠️ Geocoding failed, saving without coords: "${normalizedAddress}"`);
                     failed++;
-                    // Skip this call - don't save without coordinates
-                    continue;
+                    // Continue to save call without coordinates
                 }
                 
                 // Parse time from call.time (format: "HH:MM AM/PM")
@@ -309,7 +308,7 @@ Deno.serve(async (req) => {
                     }
                 }
                 
-                // Save call with geocoded coords
+                // Save call (with or without coords)
                 await base44.asServiceRole.entities.DispatchCall.create({
                     call_id: callId,
                     incident: call.incident,
@@ -322,9 +321,9 @@ Deno.serve(async (req) => {
                     description: `${call.incident} at ${call.location}`
                 });
                 saved++;
-                
-                // Rate limiting
-                await new Promise(resolve => setTimeout(resolve, 1100));
+
+                // Rate limiting - reduced to 600ms for faster processing
+                await new Promise(resolve => setTimeout(resolve, 600));
                 
             } catch (error) {
                 console.error(`❌ Error processing call "${call.location}":`, error.message);
