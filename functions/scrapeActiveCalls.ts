@@ -245,6 +245,30 @@ Deno.serve(async (req) => {
                     console.log(`⚠️ Failed to geocode: "${call.location}"`);
                 }
                 
+                // Parse time from call.time (format: "HH:MM AM/PM")
+                let timeReceived = new Date();
+                if (call.time && /\d{1,2}:\d{2}/.test(call.time)) {
+                    const timeParts = call.time.match(/(\d{1,2}):(\d{2})\s?(AM|PM)?/i);
+                    if (timeParts) {
+                        let hours = parseInt(timeParts[1]);
+                        const minutes = parseInt(timeParts[2]);
+                        const period = timeParts[3];
+                        
+                        if (period) {
+                            if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+                            if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
+                        }
+                        
+                        timeReceived = new Date();
+                        timeReceived.setHours(hours, minutes, 0, 0);
+                        
+                        // If the time is in the future, it's from yesterday
+                        if (timeReceived > new Date()) {
+                            timeReceived.setDate(timeReceived.getDate() - 1);
+                        }
+                    }
+                }
+                
                 // Save call with geocoded coords
                 await base44.asServiceRole.entities.DispatchCall.create({
                     call_id: callId,
@@ -254,7 +278,7 @@ Deno.serve(async (req) => {
                     status: call.status,
                     latitude: latitude,
                     longitude: longitude,
-                    time_received: new Date().toISOString(),
+                    time_received: timeReceived.toISOString(),
                     description: `${call.incident} at ${call.location}`
                 });
                 saved++;
