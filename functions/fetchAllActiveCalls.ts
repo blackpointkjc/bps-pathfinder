@@ -11,16 +11,12 @@ Deno.serve(async (req) => {
 
         console.log('📋 Fetching calls from database...');
 
-        // Fetch calls from today only
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        // Fetch all calls - no filtering by date
         const dbCalls = await base44.entities.DispatchCall.list('-time_received', 500);
+        
+        console.log(`📊 Found ${dbCalls.length} total calls in database`);
 
         const recentCalls = dbCalls
-            .filter(call => {
-                const receivedTime = new Date(call.time_received || call.created_date);
-                return receivedTime >= startOfToday;
-            })
             .map(call => ({
                 id: call.id,
                 timeReceived: new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { 
