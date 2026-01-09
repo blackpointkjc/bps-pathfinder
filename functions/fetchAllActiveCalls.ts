@@ -32,16 +32,18 @@ Deno.serve(async (req) => {
                 longitude: call.longitude,
                 description: call.description,
                 source: 'database'
-            }))
-            .filter(call => call.latitude && call.longitude && !isNaN(call.latitude) && !isNaN(call.longitude));
+            }));
 
-        console.log(`✅ Returning ${recentCalls.length} calls (${recentCalls.filter(c => c.latitude && c.longitude).length} with coords)`);
+        const callsWithCoords = recentCalls.filter(c => c.latitude && c.longitude && !isNaN(c.latitude) && !isNaN(c.longitude));
+
+        console.log(`✅ Returning ${recentCalls.length} total calls (${callsWithCoords.length} with coords)`);
 
         return Response.json({
             success: true,
             totalCalls: recentCalls.length,
-            geocodedCalls: recentCalls,
-            geocodedCount: recentCalls.filter(c => c.latitude && c.longitude).length,
+            allCalls: recentCalls,
+            geocodedCalls: callsWithCoords,
+            geocodedCount: callsWithCoords.length,
             timestamp: new Date().toISOString()
         });
         

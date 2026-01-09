@@ -1445,7 +1445,7 @@ Be thorough and search multiple sources.`,
             const response = await base44.functions.invoke('fetchAllActiveCalls', {});
 
             if (response.data && response.data.success) {
-                const allCalls = response.data.geocodedCalls || [];
+                const allCalls = response.data.allCalls || response.data.geocodedCalls || [];
                 const geocodedCount = response.data.geocodedCount || 0;
 
                 console.log('📞 Received calls:', allCalls.length, 'calls');
