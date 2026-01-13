@@ -14,6 +14,7 @@ import MessagingPanel from '@/components/dispatch/MessagingPanel';
 import UnitScheduling from '@/components/dispatch/UnitScheduling';
 import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import QuickActions from '@/components/dispatch/QuickActions';
+import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
 
 export default function DispatchCenter() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -229,7 +230,7 @@ export default function DispatchCenter() {
                         </div>
 
                         {/* Center: Call Detail */}
-                        <div className="col-span-5">
+                        <div className="col-span-4">
                             <CallDetailPanel
                                 call={selectedCall}
                                 currentUser={currentUser}
@@ -238,8 +239,13 @@ export default function DispatchCenter() {
                             />
                         </div>
 
-                        {/* Right: Units */}
-                        <div className="col-span-4">
+                        {/* Right: Unit Assignment & Units Panel */}
+                        <div className="col-span-5 space-y-4">
+                            <UnitAssignmentPanel
+                                call={selectedCall}
+                                units={units}
+                                onUpdate={handleUpdate}
+                            />
                             <UnitsPanel
                                 units={units}
                                 selectedCall={selectedCall}

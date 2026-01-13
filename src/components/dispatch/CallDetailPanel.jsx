@@ -41,7 +41,7 @@ export default function CallDetailPanel({ call, currentUser, onUpdate, units }) 
             await base44.entities.CallNote.create({
                 call_id: call.id,
                 author_id: currentUser.id,
-                author_name: currentUser.full_name,
+                author_name: currentUser.rank && currentUser.last_name ? `${currentUser.rank} ${currentUser.last_name}` : currentUser.full_name,
                 note: newNote,
                 note_type: 'general'
             });
@@ -65,7 +65,7 @@ export default function CallDetailPanel({ call, currentUser, onUpdate, units }) 
                 entity_id: call.id,
                 action: 'update',
                 actor_id: currentUser.id,
-                actor_name: currentUser.full_name,
+                actor_name: currentUser.rank && currentUser.last_name ? `${currentUser.rank} ${currentUser.last_name}` : currentUser.full_name,
                 before_value: JSON.stringify(call),
                 after_value: JSON.stringify(editedCall),
                 timestamp: new Date().toISOString()
@@ -81,27 +81,45 @@ export default function CallDetailPanel({ call, currentUser, onUpdate, units }) 
     };
 
     const updateStatus = async (newStatus) => {
+        if (!call?.id) {
+            toast.error('No call selected');
+            return;
+        }
+
         try {
             const updates = { status: newStatus };
-            const timeField = `time_${newStatus.toLowerCase().replace(' ', '_')}`;
-            updates[timeField] = new Date().toISOString();
+            
+            // Map status to time field
+            const statusTimeMap = {
+                'Dispatched': 'time_dispatched',
+                'Enroute': 'time_enroute',
+                'On Scene': 'time_on_scene',
+                'Cleared': 'time_cleared',
+                'Closed': 'time_closed'
+            };
+            
+            const timeField = statusTimeMap[newStatus];
+            if (timeField) {
+                updates[timeField] = new Date().toISOString();
+            }
             
             await base44.entities.DispatchCall.update(call.id, updates);
             
-            await base44.entities.AuditLog.create({
-                entity_type: 'DispatchCall',
-                entity_id: call.id,
-                action: 'status_change',
-                actor_id: currentUser.id,
-                actor_name: currentUser.full_name,
-                before_value: call.status,
-                after_value: newStatus,
-                field_changed: 'status',
-                timestamp: new Date().toISOString()
+            await base44.entities.CallStatusLog.create({
+                call_id: call.id,
+                incident_type: call.incident,
+                location: call.location,
+                old_status: call.status,
+                new_status: newStatus,
+                unit_id: currentUser.id,
+                unit_name: currentUser.rank && currentUser.last_name ? `${currentUser.rank} ${currentUser.last_name}` : currentUser.full_name,
+                latitude: call.latitude,
+                longitude: call.longitude,
+                notes: `Status changed by dispatch`
             });
             
             onUpdate();
-            toast.success(`Status: ${newStatus}`);
+            toast.success(`Status changed to ${newStatus}`);
         } catch (error) {
             console.error('Error updating status:', error);
             toast.error('Failed to update status');
