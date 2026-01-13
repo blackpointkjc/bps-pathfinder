@@ -17,6 +17,7 @@ import VolunteerRescueSquads from './VolunteerRescueSquads';
 import VolunteerFireCompanies from './VolunteerFireCompanies';
 import RAAStations from './RAAStations';
 import CCPDStation from './CCPDStation';
+import MagisterialDistrictsLayer from './MagisterialDistrictsLayer';
 
 // Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -238,6 +239,9 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
 
             {/* Jurisdiction Boundaries */}
             <JurisdictionBoundaries filters={jurisdictionFilters} />
+
+            {/* Magisterial Districts (Yellow) */}
+            <MagisterialDistrictsLayer />
 
             {/* Richmond precinct markers */}
             <PrecinctMarkers showStations={showPoliceStations} onNavigateToPrecinct={onNavigateToJail} />
