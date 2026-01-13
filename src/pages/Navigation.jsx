@@ -2034,19 +2034,19 @@ Be thorough and search multiple sources.`,
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="absolute bottom-52 right-4 z-[1002] pointer-events-auto"
+                        className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1002] pointer-events-auto"
                     >
                         <Button
                             onClick={handleVoiceCommand}
                             disabled={isListening}
                             size="icon"
-                            className={`h-12 w-12 rounded-full shadow-lg ${
+                            className={`h-14 w-14 rounded-full shadow-lg ${
                                 isListening 
                                     ? 'bg-red-500 hover:bg-red-600 animate-pulse' 
                                     : 'bg-white/95 hover:bg-white'
                             }`}
                         >
-                            <Mic className={`w-5 h-5 ${isListening ? 'text-white' : 'text-[#007AFF]'}`} />
+                            <Mic className={`w-6 h-6 ${isListening ? 'text-white' : 'text-[#007AFF]'}`} />
                         </Button>
                     </motion.div>
                 </>
