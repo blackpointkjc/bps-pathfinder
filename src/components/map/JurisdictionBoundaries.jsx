@@ -214,7 +214,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryKey: ['fredericksburgBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://maps.fredericksburgva.gov/arcgis/rest/services/PSAP_Boundaries/MapServer/0/query?outFields=*&where=1%3D1&f=geojson'
+                'https://maps.fredericksburgva.gov/arcgis/rest/services/WebLoGIStics/Fredericksburg_WL_T/MapServer/3/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -464,10 +464,10 @@ export default function JurisdictionBoundaries({ filters = {} }) {
     const fredericksburgStyle = (feature) => {
         return {
             fillColor: '#3B82F6',
-            fillOpacity: 0.2,
-            color: '#2563EB',
-            weight: 2,
-            opacity: 0.8,
+            fillOpacity: 0.25,
+            color: '#1D4ED8',
+            weight: 2.5,
+            opacity: 0.9,
             className: 'clickable-boundary'
         };
     };
