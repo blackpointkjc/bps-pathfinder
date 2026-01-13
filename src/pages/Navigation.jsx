@@ -1932,17 +1932,6 @@ Be thorough and search multiple sources.`,
                     </Button>
                 )}
 
-                {currentUser?.role === 'admin' && (
-                    <Button
-                        onClick={() => window.location.href = '/adminportal'}
-                        size="icon"
-                        className="h-8 w-8 rounded-lg bg-slate-800 hover:bg-slate-900 text-white shadow-lg"
-                        title="Admin Portal"
-                    >
-                        <Shield className="w-4 h-4" />
-                    </Button>
-                )}
-
                 <Button
                     onClick={() => setShowHistoricalLogs(true)}
                     size="icon"
