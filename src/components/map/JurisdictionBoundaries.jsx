@@ -3,7 +3,7 @@ import { GeoJSON } from 'react-leaflet';
 import { useQuery } from '@tanstack/react-query';
 
 export default function JurisdictionBoundaries({ filters = {} }) {
-    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all', staffordDistrict = 'all' } = filters;
+    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all', staffordDistrict = 'all', spotsylvaniaDistrict = 'all', colonialHeightsDistrict = 'all', petersburgDistrict = 'all', carolineDistrict = 'all' } = filters;
     // Fetch Richmond beats
     const { data: richmondBeats } = useQuery({
         queryKey: ['richmondBeats'],
@@ -34,6 +34,54 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryFn: async () => {
             const response = await fetch(
                 'https://services1.arcgis.com/qKiA6JuCrE2l72iL/arcgis/rest/services/ElectionDistricts2022/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Spotsylvania County magisterial districts
+    const { data: spotsylvaniaDistricts } = useQuery({
+        queryKey: ['spotsylvaniaDistricts'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://gis.spotsylvania.va.us/arcgis/rest/services/GeoHub/GeoHub/FeatureServer/20/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Colonial Heights city boundary
+    const { data: colonialHeightsBoundary } = useQuery({
+        queryKey: ['colonialHeightsBoundary'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://services6.arcgis.com/C7nFMNJDTLg0mVYB/arcgis/rest/services/City_Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Petersburg city boundary
+    const { data: petersburgBoundary } = useQuery({
+        queryKey: ['petersburgBoundary'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://services6.arcgis.com/7nIw60gynaQXpDji/arcgis/rest/services/Petersburg_Jurisdictional_Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Caroline County boundary
+    const { data: carolineBoundary } = useQuery({
+        queryKey: ['carolineBoundary'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://parcelviewer.geodecisions.com/arcgis/rest/services/Caroline/Public/MapServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
             return response.json();
         },
@@ -125,6 +173,50 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             fillColor: '#FF6B6B',
             fillOpacity: 0.15,
             color: '#EF4444',
+            weight: 2,
+            opacity: 0.7,
+            className: 'clickable-boundary'
+        };
+    };
+
+    const spotsylvaniaDistrictStyle = (feature) => {
+        return {
+            fillColor: '#F97316',
+            fillOpacity: 0.15,
+            color: '#EA580C',
+            weight: 2,
+            opacity: 0.7,
+            className: 'clickable-boundary'
+        };
+    };
+
+    const colonialHeightsStyle = (feature) => {
+        return {
+            fillColor: '#8B5CF6',
+            fillOpacity: 0.2,
+            color: '#7C3AED',
+            weight: 2,
+            opacity: 0.8,
+            className: 'clickable-boundary'
+        };
+    };
+
+    const petersburgStyle = (feature) => {
+        return {
+            fillColor: '#EC4899',
+            fillOpacity: 0.2,
+            color: '#DB2777',
+            weight: 2,
+            opacity: 0.8,
+            className: 'clickable-boundary'
+        };
+    };
+
+    const carolineStyle = (feature) => {
+        return {
+            fillColor: '#14B8A6',
+            fillOpacity: 0.15,
+            color: '#0D9488',
             weight: 2,
             opacity: 0.7,
             className: 'clickable-boundary'
@@ -247,6 +339,62 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         }
     };
 
+    const onEachSpotsylvaniaFeature = (feature, layer) => {
+        if (feature.properties) {
+            const districtName = feature.properties.MAGDISTNAME || feature.properties.NAME || feature.properties.DISTRICT || 'Unknown';
+            
+            if (spotsylvaniaDistrict !== 'all' && districtName !== spotsylvaniaDistrict) {
+                return;
+            }
+            
+            layer.bindPopup(`
+                <div class="p-2">
+                    <p class="font-bold text-orange-600">Spotsylvania County</p>
+                    <p class="text-sm">${districtName} District</p>
+                </div>
+            `);
+            layer.on('click', () => {
+                layer.openPopup();
+            });
+        }
+    };
+
+    const onEachColonialHeightsFeature = (feature, layer) => {
+        layer.bindPopup(`
+            <div class="p-2">
+                <p class="font-bold text-purple-600">Colonial Heights</p>
+                <p class="text-sm">City Boundary</p>
+            </div>
+        `);
+        layer.on('click', () => {
+            layer.openPopup();
+        });
+    };
+
+    const onEachPetersburgFeature = (feature, layer) => {
+        layer.bindPopup(`
+            <div class="p-2">
+                <p class="font-bold text-pink-600">Petersburg</p>
+                <p class="text-sm">City Boundary</p>
+            </div>
+        `);
+        layer.on('click', () => {
+            layer.openPopup();
+        });
+    };
+
+    const onEachCarolineFeature = (feature, layer) => {
+        layer.bindPopup(`
+            <div class="p-2">
+                <p class="font-bold text-teal-600">Caroline County</p>
+                <p class="text-sm">County Boundary</p>
+            </div>
+        `);
+        layer.on('click', () => {
+            layer.openPopup();
+        });
+    };
+
     // Filter GeoJSON data based on filters
     const filteredRichmondBeats = richmondBeats && richmondBeat !== 'all'
         ? {
@@ -310,6 +458,16 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         }
         : staffordDistricts;
 
+    const filteredSpotsylvaniaDistricts = spotsylvaniaDistricts && spotsylvaniaDistrict !== 'all'
+        ? {
+            ...spotsylvaniaDistricts,
+            features: spotsylvaniaDistricts.features.filter(f => {
+                const name = f.properties?.MAGDISTNAME || f.properties?.NAME || f.properties?.DISTRICT;
+                return name === spotsylvaniaDistrict;
+            })
+        }
+        : spotsylvaniaDistricts;
+
     return (
         <>
             {/* Chesterfield County Districts - render first so they're on top */}
@@ -371,6 +529,46 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                     data={filteredStaffordDistricts}
                     style={staffordDistrictStyle}
                     onEachFeature={onEachStaffordFeature}
+                />
+            )}
+
+            {/* Spotsylvania County Districts */}
+            {filteredSpotsylvaniaDistricts && (
+                <GeoJSON
+                    key={`spotsylvania-${spotsylvaniaDistrict}`}
+                    data={filteredSpotsylvaniaDistricts}
+                    style={spotsylvaniaDistrictStyle}
+                    onEachFeature={onEachSpotsylvaniaFeature}
+                />
+            )}
+
+            {/* Colonial Heights City */}
+            {colonialHeightsBoundary && (
+                <GeoJSON
+                    key="colonial-heights"
+                    data={colonialHeightsBoundary}
+                    style={colonialHeightsStyle}
+                    onEachFeature={onEachColonialHeightsFeature}
+                />
+            )}
+
+            {/* Petersburg City */}
+            {petersburgBoundary && (
+                <GeoJSON
+                    key="petersburg"
+                    data={petersburgBoundary}
+                    style={petersburgStyle}
+                    onEachFeature={onEachPetersburgFeature}
+                />
+            )}
+
+            {/* Caroline County */}
+            {carolineBoundary && (
+                <GeoJSON
+                    key="caroline"
+                    data={carolineBoundary}
+                    style={carolineStyle}
+                    onEachFeature={onEachCarolineFeature}
                 />
             )}
         </>
