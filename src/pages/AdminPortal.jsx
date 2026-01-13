@@ -188,17 +188,18 @@ export default function AdminPortal() {
             </div>
 
             <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-md pointer-events-auto">
                     <DialogHeader>
                         <DialogTitle>Edit User</DialogTitle>
                     </DialogHeader>
                     {editingUser && (
-                        <div className="space-y-4">
+                        <div className="space-y-4 pointer-events-auto">
                             <div>
                                 <Label>Full Name</Label>
                                 <Input
                                     value={editingUser.full_name || ''}
                                     onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
+                                    className="pointer-events-auto"
                                 />
                             </div>
 
@@ -208,6 +209,7 @@ export default function AdminPortal() {
                                     value={editingUser.last_name || ''}
                                     onChange={(e) => setEditingUser({ ...editingUser, last_name: e.target.value })}
                                     placeholder="Last name"
+                                    className="pointer-events-auto"
                                 />
                             </div>
 
@@ -217,7 +219,7 @@ export default function AdminPortal() {
                                     value={editingUser.rank || ''}
                                     onValueChange={(value) => setEditingUser({ ...editingUser, rank: value })}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="pointer-events-auto">
                                         <SelectValue placeholder="Select rank" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -241,6 +243,7 @@ export default function AdminPortal() {
                                     value={editingUser.unit_number || ''}
                                     onChange={(e) => setEditingUser({ ...editingUser, unit_number: e.target.value })}
                                     placeholder="e.g., 23"
+                                    className="pointer-events-auto"
                                 />
                             </div>
 
@@ -250,7 +253,7 @@ export default function AdminPortal() {
                                     value={editingUser.role}
                                     onValueChange={(value) => setEditingUser({ ...editingUser, role: value })}
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="pointer-events-auto">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
