@@ -214,7 +214,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryKey: ['fredericksburgBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://maps.fredericksburgva.gov/arcgis/rest/services/WebLoGIStics/Fredericksburg_WL_T/MapServer/3/query?outFields=*&where=1%3D1&f=geojson'
+                'https://maps.fredericksburgva.gov/arcgis/rest/services/PSAP_Boundaries/MapServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
