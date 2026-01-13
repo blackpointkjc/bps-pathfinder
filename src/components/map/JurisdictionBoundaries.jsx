@@ -66,12 +66,12 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         staleTime: Infinity,
     });
 
-    // Fetch Colonial Heights voting precincts
-    const { data: colonialHeightsPrecincts } = useQuery({
-        queryKey: ['colonialHeightsPrecincts'],
+    // Fetch Colonial Heights city boundary
+    const { data: colonialHeightsBoundary } = useQuery({
+        queryKey: ['colonialHeightsBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://services6.arcgis.com/C7nFMNJDTLg0mVYB/arcgis/rest/services/Voting_Precincts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/4/query?where=STATEFP%3D%2751%27%20AND%20BASENAME%3D%27Colonial%20Heights%27&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -620,23 +620,15 @@ export default function JurisdictionBoundaries({ filters = {} }) {
     };
 
     const onEachColonialHeightsFeature = (feature, layer) => {
-        if (feature.properties) {
-            const precinctName = feature.properties.Precinct || feature.properties.NAME || feature.properties.PRECINCT || 'Unknown';
-            
-            if (colonialHeightsDistrict !== 'all' && precinctName !== colonialHeightsDistrict) {
-                return;
-            }
-            
-            layer.bindPopup(`
-                <div class="p-2">
-                    <p class="font-bold text-purple-600">Colonial Heights</p>
-                    <p class="text-sm">${precinctName} Precinct</p>
-                </div>
-            `);
-            layer.on('click', () => {
-                layer.openPopup();
-            });
-        }
+        layer.bindPopup(`
+            <div class="p-2">
+                <p class="font-bold text-purple-600">Colonial Heights</p>
+                <p class="text-sm">City Boundary</p>
+            </div>
+        `);
+        layer.on('click', () => {
+            layer.openPopup();
+        });
     };
 
     const onEachFredericksburgFeature = (feature, layer) => {
@@ -966,15 +958,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         }
         : dcPSAs;
 
-    const filteredColonialHeightsPrecincts = colonialHeightsPrecincts && colonialHeightsDistrict !== 'all'
-        ? {
-            ...colonialHeightsPrecincts,
-            features: colonialHeightsPrecincts.features.filter(f => {
-                const name = f.properties?.Precinct || f.properties?.NAME || f.properties?.PRECINCT;
-                return name === colonialHeightsDistrict;
-            })
-        }
-        : colonialHeightsPrecincts;
+
 
     return (
         <>
@@ -1050,11 +1034,11 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                 />
             )}
 
-            {/* Colonial Heights Precincts */}
-            {filteredColonialHeightsPrecincts && (
+            {/* Colonial Heights City */}
+            {colonialHeightsBoundary && (
                 <GeoJSON
-                    key={`colonial-heights-${colonialHeightsDistrict}`}
-                    data={filteredColonialHeightsPrecincts}
+                    key="colonial-heights"
+                    data={colonialHeightsBoundary}
                     style={colonialHeightsStyle}
                     onEachFeature={onEachColonialHeightsFeature}
                 />
