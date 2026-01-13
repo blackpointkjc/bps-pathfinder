@@ -201,7 +201,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryKey: ['dcPSAs'],
         queryFn: async () => {
             const response = await fetch(
-                'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Public_Safety_WebMercator/MapServer/25/query?outFields=*&where=1%3D1&f=geojson'
+                'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_APPS/CrimeMap/MapServer/13/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
