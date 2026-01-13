@@ -3,13 +3,25 @@ import { GeoJSON } from 'react-leaflet';
 import { useQuery } from '@tanstack/react-query';
 
 export default function JurisdictionBoundaries({ filters = {} }) {
-    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all' } = filters;
+    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all' } = filters;
     // Fetch Richmond beats
     const { data: richmondBeats } = useQuery({
         queryKey: ['richmondBeats'],
         queryFn: async () => {
             const response = await fetch(
                 'https://services1.arcgis.com/k3vhq11XkBNeeOfM/arcgis/rest/services/Police_Beats/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Hanover County magisterial districts
+    const { data: hanoverDistricts } = useQuery({
+        queryKey: ['hanoverDistricts'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://services2.arcgis.com/sKZWgJlU6SekCzQV/arcgis/rest/services/Magisterial_Districts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
             return response.json();
         },
@@ -81,6 +93,17 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             color: '#7C3AED',
             weight: 2,
             opacity: 0.7,
+            className: 'clickable-boundary'
+        };
+    };
+
+    const hanoverDistrictStyle = (feature) => {
+        return {
+            fillColor: '#FFEB3B',
+            fillOpacity: 0.2,
+            color: '#FDD835',
+            weight: 2,
+            opacity: 0.8,
             className: 'clickable-boundary'
         };
     };
@@ -159,6 +182,27 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         }
     };
 
+    const onEachHanoverFeature = (feature, layer) => {
+        if (feature.properties) {
+            const districtName = feature.properties.MagDistName || feature.properties.NAME || feature.properties.DISTRICT || 'Unknown';
+            
+            // Filter by district name if specified
+            if (hanoverDistrict !== 'all' && districtName !== hanoverDistrict) {
+                return;
+            }
+            
+            layer.bindPopup(`
+                <div class="p-2">
+                    <p class="font-bold text-yellow-600">Hanover County</p>
+                    <p class="text-sm">${districtName} District</p>
+                </div>
+            `);
+            layer.on('click', () => {
+                layer.openPopup();
+            });
+        }
+    };
+
     // Filter GeoJSON data based on filters
     const filteredRichmondBeats = richmondBeats && richmondBeat !== 'all'
         ? {
@@ -202,6 +246,16 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         }
         : chesterfieldDistricts;
 
+    const filteredHanoverDistricts = hanoverDistricts && hanoverDistrict !== 'all'
+        ? {
+            ...hanoverDistricts,
+            features: hanoverDistricts.features.filter(f => {
+                const name = f.properties?.MagDistName || f.properties?.NAME || f.properties?.DISTRICT;
+                return name === hanoverDistrict;
+            })
+        }
+        : hanoverDistricts;
+
     return (
         <>
             {/* Chesterfield County Districts - render first so they're on top */}
@@ -243,6 +297,16 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                     data={filteredRichmondBeats}
                     style={richmondBeatStyle}
                     onEachFeature={onEachRichmondFeature}
+                />
+            )}
+
+            {/* Hanover County Districts */}
+            {filteredHanoverDistricts && (
+                <GeoJSON
+                    key={`hanover-${hanoverDistrict}`}
+                    data={filteredHanoverDistricts}
+                    style={hanoverDistrictStyle}
+                    onEachFeature={onEachHanoverFeature}
                 />
             )}
         </>
