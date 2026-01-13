@@ -3,7 +3,7 @@ import { GeoJSON } from 'react-leaflet';
 import { useQuery } from '@tanstack/react-query';
 
 export default function JurisdictionBoundaries({ filters = {} }) {
-    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all' } = filters;
+    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all', staffordDistrict = 'all' } = filters;
     // Fetch Richmond beats
     const { data: richmondBeats } = useQuery({
         queryKey: ['richmondBeats'],
@@ -22,6 +22,18 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryFn: async () => {
             const response = await fetch(
                 'https://services2.arcgis.com/sKZWgJlU6SekCzQV/arcgis/rest/services/Magisterial_Districts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Stafford County election districts
+    const { data: staffordDistricts } = useQuery({
+        queryKey: ['staffordDistricts'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://services1.arcgis.com/qKiA6JuCrE2l72iL/arcgis/rest/services/ElectionDistricts2022/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
             return response.json();
         },
@@ -104,6 +116,17 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             color: '#FDD835',
             weight: 2,
             opacity: 0.8,
+            className: 'clickable-boundary'
+        };
+    };
+
+    const staffordDistrictStyle = (feature) => {
+        return {
+            fillColor: '#FF6B6B',
+            fillOpacity: 0.15,
+            color: '#EF4444',
+            weight: 2,
+            opacity: 0.7,
             className: 'clickable-boundary'
         };
     };
@@ -203,6 +226,27 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         }
     };
 
+    const onEachStaffordFeature = (feature, layer) => {
+        if (feature.properties) {
+            const districtName = feature.properties.DistrictNa || feature.properties.NAME || feature.properties.DISTRICT || 'Unknown';
+            
+            // Filter by district name if specified
+            if (staffordDistrict !== 'all' && districtName !== staffordDistrict) {
+                return;
+            }
+            
+            layer.bindPopup(`
+                <div class="p-2">
+                    <p class="font-bold text-red-600">Stafford County</p>
+                    <p class="text-sm">${districtName} District</p>
+                </div>
+            `);
+            layer.on('click', () => {
+                layer.openPopup();
+            });
+        }
+    };
+
     // Filter GeoJSON data based on filters
     const filteredRichmondBeats = richmondBeats && richmondBeat !== 'all'
         ? {
@@ -256,6 +300,16 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         }
         : hanoverDistricts;
 
+    const filteredStaffordDistricts = staffordDistricts && staffordDistrict !== 'all'
+        ? {
+            ...staffordDistricts,
+            features: staffordDistricts.features.filter(f => {
+                const name = f.properties?.DistrictNa || f.properties?.NAME || f.properties?.DISTRICT;
+                return name === staffordDistrict;
+            })
+        }
+        : staffordDistricts;
+
     return (
         <>
             {/* Chesterfield County Districts - render first so they're on top */}
@@ -307,6 +361,16 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                     data={filteredHanoverDistricts}
                     style={hanoverDistrictStyle}
                     onEachFeature={onEachHanoverFeature}
+                />
+            )}
+
+            {/* Stafford County Districts */}
+            {filteredStaffordDistricts && (
+                <GeoJSON
+                    key={`stafford-${staffordDistrict}`}
+                    data={filteredStaffordDistricts}
+                    style={staffordDistrictStyle}
+                    onEachFeature={onEachStaffordFeature}
                 />
             )}
         </>
