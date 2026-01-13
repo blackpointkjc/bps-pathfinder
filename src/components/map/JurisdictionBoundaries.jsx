@@ -84,7 +84,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryKey: ['petersburgBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://services6.arcgis.com/7nIw60gynaQXpDji/arcgis/rest/services/Petersburg_Jurisdictional_Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/4/query?where=STATEFP%3D%2751%27%20AND%20BASENAME%3D%27Petersburg%27&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -92,12 +92,12 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         staleTime: Infinity,
     });
 
-    // Fetch Caroline County magisterial districts
+    // Fetch Caroline County boundary
     const { data: carolineDistricts } = useQuery({
         queryKey: ['carolineDistricts'],
         queryFn: async () => {
             const response = await fetch(
-                'https://services1.arcgis.com/ioennV6PpG5Xodq0/arcgis/rest/services/Magisterial_Districts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATEFP%3D%2751%27%20AND%20NAME%3D%27Caroline%27&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -105,12 +105,12 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         staleTime: Infinity,
     });
 
-    // Fetch Prince William County election districts
+    // Fetch Prince William County magisterial districts
     const { data: princeWilliamDistricts } = useQuery({
         queryKey: ['princeWilliamDistricts'],
         queryFn: async () => {
             const response = await fetch(
-                'https://gisweb.pwcva.gov/arcgis/rest/services/GTS/Election/MapServer/5/query?outFields=*&where=1%3D1&f=geojson'
+                'https://gisweb.pwcva.gov/arcgis/rest/services/OpenData/OpenData/MapServer/72/query?outFields=*&where=1%3D1&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -144,12 +144,12 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         staleTime: Infinity,
     });
 
-    // Fetch Loudoun County districts
+    // Fetch Loudoun County boundary
     const { data: loudounDistricts } = useQuery({
         queryKey: ['loudounDistricts'],
         queryFn: async () => {
             const response = await fetch(
-                'https://services1.arcgis.com/ioennV6PpG5Xodq0/arcgis/rest/services/Magisterial_Districts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATEFP%3D%2751%27%20AND%20NAME%3D%27Loudoun%27&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -175,7 +175,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryKey: ['alexandriaBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://services2.arcgis.com/ChYV69FhfjwkvRmy/arcgis/rest/services/Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/4/query?where=STATEFP%3D%2751%27%20AND%20BASENAME%3D%27Alexandria%27&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -214,7 +214,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryKey: ['fredericksburgBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://maps.fredericksburgva.gov/arcgis/rest/services/WebLoGIStics/Fredericksburg_WL_T/MapServer/3/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson'
+                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/4/query?where=STATEFP%3D%2751%27%20AND%20BASENAME%3D%27Fredericksburg%27&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -668,23 +668,15 @@ export default function JurisdictionBoundaries({ filters = {} }) {
     };
 
     const onEachCarolineFeature = (feature, layer) => {
-        if (feature.properties) {
-            const districtName = feature.properties.MagDistName || feature.properties.NAME || feature.properties.DISTRICT || feature.properties.District || 'Unknown';
-            
-            if (carolineDistrict !== 'all' && districtName !== carolineDistrict) {
-                return;
-            }
-            
-            layer.bindPopup(`
-                <div class="p-2">
-                    <p class="font-bold text-teal-600">Caroline County</p>
-                    <p class="text-sm">${districtName} District</p>
-                </div>
-            `);
-            layer.on('click', () => {
-                layer.openPopup();
-            });
-        }
+        layer.bindPopup(`
+            <div class="p-2">
+                <p class="font-bold text-teal-600">Caroline County</p>
+                <p class="text-sm">County Boundary</p>
+            </div>
+        `);
+        layer.on('click', () => {
+            layer.openPopup();
+        });
     };
 
     const onEachFallsChurchFeature = (feature, layer) => {
@@ -747,7 +739,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
     const onEachPrinceWilliamFeature = (feature, layer) => {
         if (feature.properties) {
-            const districtName = feature.properties.NAME || feature.properties.DISTRICT || feature.properties.PRECINCT_NAME || 'Unknown';
+            const districtName = feature.properties.MAGIST || feature.properties.ELECTDIST || feature.properties.NAME || 'Unknown';
             
             if (princeWilliamDistrict !== 'all' && districtName !== princeWilliamDistrict) {
                 return;
@@ -806,23 +798,15 @@ export default function JurisdictionBoundaries({ filters = {} }) {
     };
 
     const onEachLoudounFeature = (feature, layer) => {
-        if (feature.properties) {
-            const districtName = feature.properties.NAME || feature.properties.DISTRICT || feature.properties.MAG_DIST_NAME || 'Unknown';
-            
-            if (loudounDistrict !== 'all' && districtName !== loudounDistrict) {
-                return;
-            }
-            
-            layer.bindPopup(`
-                <div class="p-2">
-                    <p class="font-bold text-cyan-600">Loudoun County</p>
-                    <p class="text-sm">${districtName} District</p>
-                </div>
-            `);
-            layer.on('click', () => {
-                layer.openPopup();
-            });
-        }
+        layer.bindPopup(`
+            <div class="p-2">
+                <p class="font-bold text-cyan-600">Loudoun County</p>
+                <p class="text-sm">County Boundary</p>
+            </div>
+        `);
+        layer.on('click', () => {
+            layer.openPopup();
+        });
     };
 
     // Filter GeoJSON data based on filters
@@ -902,7 +886,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         ? {
             ...princeWilliamDistricts,
             features: princeWilliamDistricts.features.filter(f => {
-                const name = f.properties?.NAME || f.properties?.DISTRICT || f.properties?.PRECINCT_NAME;
+                const name = f.properties?.MAGIST || f.properties?.ELECTDIST || f.properties?.NAME;
                 return name === princeWilliamDistrict;
             })
         }
@@ -928,25 +912,9 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         }
         : arlingtonBeats;
 
-    const filteredLoudounDistricts = loudounDistricts && loudounDistrict !== 'all'
-        ? {
-            ...loudounDistricts,
-            features: loudounDistricts.features.filter(f => {
-                const name = f.properties?.NAME || f.properties?.DISTRICT || f.properties?.MAG_DIST_NAME;
-                return name === loudounDistrict;
-            })
-        }
-        : loudounDistricts;
 
-    const filteredCarolineDistricts = carolineDistricts && carolineDistrict !== 'all'
-        ? {
-            ...carolineDistricts,
-            features: carolineDistricts.features.filter(f => {
-                const name = f.properties?.MagDistName || f.properties?.NAME || f.properties?.DISTRICT || f.properties?.District;
-                return name === carolineDistrict;
-            })
-        }
-        : carolineDistricts;
+
+
 
     const filteredDCPSAs = dcPSAs && dcPSA !== 'all'
         ? {
@@ -1054,11 +1022,11 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                 />
             )}
 
-            {/* Caroline County Districts */}
-            {filteredCarolineDistricts && (
+            {/* Caroline County */}
+            {carolineDistricts && (
                 <GeoJSON
-                    key={`caroline-${carolineDistrict}`}
-                    data={filteredCarolineDistricts}
+                    key="caroline"
+                    data={carolineDistricts}
                     style={carolineStyle}
                     onEachFeature={onEachCarolineFeature}
                 />
@@ -1095,10 +1063,10 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             )}
 
             {/* Loudoun County */}
-            {filteredLoudounDistricts && (
+            {loudounDistricts && (
                 <GeoJSON
-                    key={`loudoun-${loudounDistrict}`}
-                    data={filteredLoudounDistricts}
+                    key="loudoun"
+                    data={loudounDistricts}
                     style={loudounStyle}
                     onEachFeature={onEachLoudounFeature}
                 />
