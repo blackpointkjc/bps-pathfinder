@@ -21,7 +21,8 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             const response = await fetch(
                 'https://services1.arcgis.com/k3vhq11XkBNeeOfM/arcgis/rest/services/Police_Beats/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
-            return response.json();
+            const data = await response.json();
+            return isValidGeoJSON(data) ? data : null;
         },
         staleTime: Infinity,
     });
@@ -33,7 +34,8 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             const response = await fetch(
                 'https://services2.arcgis.com/sKZWgJlU6SekCzQV/arcgis/rest/services/Magisterial_Districts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
-            return response.json();
+            const data = await response.json();
+            return isValidGeoJSON(data) ? data : null;
         },
         staleTime: Infinity,
     });
@@ -45,7 +47,8 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             const response = await fetch(
                 'https://services1.arcgis.com/qKiA6JuCrE2l72iL/arcgis/rest/services/ElectionDistricts2022/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
-            return response.json();
+            const data = await response.json();
+            return isValidGeoJSON(data) ? data : null;
         },
         staleTime: Infinity,
     });
@@ -57,7 +60,8 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             const response = await fetch(
                 'https://gis.spotsylvania.va.us/arcgis/rest/services/GeoHub/GeoHub/FeatureServer/20/query?outFields=*&where=1%3D1&f=geojson'
             );
-            return response.json();
+            const data = await response.json();
+            return isValidGeoJSON(data) ? data : null;
         },
         staleTime: Infinity,
     });
@@ -69,7 +73,8 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             const response = await fetch(
                 'https://services6.arcgis.com/C7nFMNJDTLg0mVYB/arcgis/rest/services/City_Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
-            return response.json();
+            const data = await response.json();
+            return isValidGeoJSON(data) ? data : null;
         },
         staleTime: Infinity,
     });
@@ -81,7 +86,8 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             const response = await fetch(
                 'https://services6.arcgis.com/7nIw60gynaQXpDji/arcgis/rest/services/Petersburg_Jurisdictional_Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
-            return response.json();
+            const data = await response.json();
+            return isValidGeoJSON(data) ? data : null;
         },
         staleTime: Infinity,
     });
@@ -158,7 +164,8 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             const response = await fetch(
                 'https://services6.arcgis.com/C7nFMNJDTLg0mVYB/arcgis/rest/services/City_Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
-            return response.json();
+            const data = await response.json();
+            return isValidGeoJSON(data) ? data : null;
         },
         staleTime: Infinity,
     });
@@ -209,7 +216,8 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             const response = await fetch(
                 'https://services3.arcgis.com/TsynfzBSE6sXfoLq/ArcGIS/rest/services/Administrative_ProdA/FeatureServer/13/query?outFields=*&where=1%3D1&f=geojson'
             );
-            return response.json();
+            const data = await response.json();
+            return isValidGeoJSON(data) ? data : null;
         },
         staleTime: Infinity,
     });
@@ -221,7 +229,8 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             const response = await fetch(
                 'https://services3.arcgis.com/TsynfzBSE6sXfoLq/ArcGIS/rest/services/Administrative_ProdA/FeatureServer/9/query?outFields=*&where=1%3D1&f=geojson'
             );
-            return response.json();
+            const data = await response.json();
+            return isValidGeoJSON(data) ? data : null;
         },
         staleTime: Infinity,
     });
@@ -233,7 +242,8 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             const response = await fetch(
                 'https://portal.henrico.gov/mapping/rest/services/Layers/Magisterial_Districts_2021/MapServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
-            return response.json();
+            const data = await response.json();
+            return isValidGeoJSON(data) ? data : null;
         },
         staleTime: Infinity,
     });
