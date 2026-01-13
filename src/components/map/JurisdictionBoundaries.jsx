@@ -162,7 +162,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryKey: ['fallsChurchBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/4/query?where=STATEFP%3D%2751%27%20AND%20BASENAME%3D%27Falls%20Church%27&outFields=*&returnGeometry=true&f=geojson'
+                'https://services1.arcgis.com/2hmXRAz4ofcdQP6p/arcgis/rest/services/Jurisdictional_Boundary/FeatureServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -214,7 +214,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryKey: ['fredericksburgBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/4/query?where=STATEFP%3D%2751%27%20AND%20BASENAME%3D%27Fredericksburg%27&outFields=*&returnGeometry=true&f=geojson'
+                'https://maps.fredericksburgva.gov/arcgis/rest/services/IasWorld_Base/MapServer/1/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -739,7 +739,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
     const onEachPrinceWilliamFeature = (feature, layer) => {
         if (feature.properties) {
-            const districtName = feature.properties.MAGIST || feature.properties.ELECTDIST || feature.properties.NAME || 'Unknown';
+            const districtName = feature.properties.ELECTDIST || feature.properties.MAGIST || feature.properties.NAME || 'Unknown';
             
             if (princeWilliamDistrict !== 'all' && districtName !== princeWilliamDistrict) {
                 return;
@@ -886,7 +886,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         ? {
             ...princeWilliamDistricts,
             features: princeWilliamDistricts.features.filter(f => {
-                const name = f.properties?.MAGIST || f.properties?.ELECTDIST || f.properties?.NAME;
+                const name = f.properties?.ELECTDIST || f.properties?.MAGIST || f.properties?.NAME;
                 return name === princeWilliamDistrict;
             })
         }
