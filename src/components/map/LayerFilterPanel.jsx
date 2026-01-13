@@ -368,8 +368,8 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
 
 
                             {/* DC PSAs */}
-                            <div className="mb-6 p-4 bg-red-100 rounded-xl">
-                                <Label className="text-sm font-semibold text-red-800 mb-3">Washington DC PSAs</Label>
+                            <div className="mb-6 p-4 bg-blue-50 rounded-xl">
+                                <Label className="text-sm font-semibold text-blue-700 mb-3">Washington DC PSAs</Label>
                                 <Select value={filters.dcPSA || 'all'} onValueChange={(value) => onFilterChange({ ...filters, dcPSA: value })}>
                                     <SelectTrigger className="pointer-events-auto"><SelectValue /></SelectTrigger>
                                     <SelectContent className="pointer-events-auto z-[10001] max-h-60">

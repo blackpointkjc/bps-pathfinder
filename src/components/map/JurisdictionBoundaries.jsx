@@ -452,9 +452,9 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
     const dcPSAStyle = (feature) => {
         return {
-            fillColor: '#DC2626',
+            fillColor: '#3B82F6',
             fillOpacity: 0.15,
-            color: '#B91C1C',
+            color: '#1E40AF',
             weight: 2,
             opacity: 0.7,
             className: 'clickable-boundary'
@@ -726,7 +726,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             
             layer.bindPopup(`
                 <div class="p-2">
-                    <p class="font-bold text-red-600">Washington DC</p>
+                    <p class="font-bold text-blue-600">Washington DC</p>
                     <p class="text-sm">PSA ${psaName}</p>
                     ${districtName ? `<p class="text-xs text-gray-600">${districtName} District</p>` : ''}
                 </div>
