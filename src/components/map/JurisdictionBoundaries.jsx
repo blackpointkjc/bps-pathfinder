@@ -3,7 +3,7 @@ import { GeoJSON } from 'react-leaflet';
 import { useQuery } from '@tanstack/react-query';
 
 export default function JurisdictionBoundaries({ filters = {} }) {
-    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all', staffordDistrict = 'all', spotsylvaniaDistrict = 'all', colonialHeightsDistrict = 'all', petersburgDistrict = 'all', carolineDistrict = 'all', princeWilliamDistrict = 'all', arlingtonBeat = 'all', fairfaxDistrict = 'all', loudounDistrict = 'all', fallsChurchDistrict = 'all', alexandriaDistrict = 'all', manassasDistrict = 'all' } = filters;
+    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all', staffordDistrict = 'all', spotsylvaniaDistrict = 'all', colonialHeightsDistrict = 'all', petersburgDistrict = 'all', carolineDistrict = 'all', princeWilliamDistrict = 'all', arlingtonBeat = 'all', fairfaxDistrict = 'all', loudounDistrict = 'all', fallsChurchDistrict = 'all', alexandriaDistrict = 'all', manassasDistrict = 'all', dcPSA = 'all' } = filters;
     // Fetch Richmond beats
     const { data: richmondBeats } = useQuery({
         queryKey: ['richmondBeats'],
@@ -166,6 +166,18 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryFn: async () => {
             const response = await fetch(
                 'https://gisweb.pwcva.gov/arcgis/rest/services/GTS/Political/MapServer/1/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch DC Police Service Areas (PSAs)
+    const { data: dcPSAs } = useQuery({
+        queryKey: ['dcPSAs'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Public_Safety_WebMercator/MapServer/25/query?outFields=*&where=1%3D1&f=geojson'
             );
             return response.json();
         },
@@ -380,6 +392,17 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             color: '#D97706',
             weight: 2,
             opacity: 0.8,
+            className: 'clickable-boundary'
+        };
+    };
+
+    const dcPSAStyle = (feature) => {
+        return {
+            fillColor: '#DC2626',
+            fillOpacity: 0.15,
+            color: '#B91C1C',
+            weight: 2,
+            opacity: 0.7,
             className: 'clickable-boundary'
         };
     };
@@ -600,6 +623,28 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         });
     };
 
+    const onEachDCPSAFeature = (feature, layer) => {
+        if (feature.properties) {
+            const psaName = feature.properties.PSA || feature.properties.NAME || feature.properties.DISTRICT || 'Unknown';
+            const districtName = feature.properties.DISTRICT || '';
+            
+            if (dcPSA !== 'all' && psaName !== dcPSA) {
+                return;
+            }
+            
+            layer.bindPopup(`
+                <div class="p-2">
+                    <p class="font-bold text-red-600">Washington DC</p>
+                    <p class="text-sm">PSA ${psaName}</p>
+                    ${districtName ? `<p class="text-xs text-gray-600">${districtName} District</p>` : ''}
+                </div>
+            `);
+            layer.on('click', () => {
+                layer.openPopup();
+            });
+        }
+    };
+
     const onEachPrinceWilliamFeature = (feature, layer) => {
         if (feature.properties) {
             const districtName = feature.properties.NAME || feature.properties.DISTRICT || feature.properties.PRECINCT_NAME || 'Unknown';
@@ -803,6 +848,16 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         }
         : carolineDistricts;
 
+    const filteredDCPSAs = dcPSAs && dcPSA !== 'all'
+        ? {
+            ...dcPSAs,
+            features: dcPSAs.features.filter(f => {
+                const name = f.properties?.PSA || f.properties?.NAME || f.properties?.DISTRICT;
+                return name === dcPSA;
+            })
+        }
+        : dcPSAs;
+
     return (
         <>
             {/* Chesterfield County Districts - render first so they're on top */}
@@ -974,6 +1029,16 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                     data={manassasBoundary}
                     style={manassasStyle}
                     onEachFeature={onEachManassasFeature}
+                />
+            )}
+
+            {/* Washington DC PSAs */}
+            {filteredDCPSAs && (
+                <GeoJSON
+                    key={`dc-psa-${dcPSA}`}
+                    data={filteredDCPSAs}
+                    style={dcPSAStyle}
+                    onEachFeature={onEachDCPSAFeature}
                 />
             )}
         </>

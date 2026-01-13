@@ -26,6 +26,15 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
     };
     const henricoDistricts = ['Brookland', 'Fairfield', 'Three Chopt', 'Tuckahoe', 'Varina'];
     const chesterfieldDistricts = ['Bermuda', 'Clover Hill', 'Dale', 'Matoaca', 'Midlothian'];
+    const hanoverDistricts = ['Ashland', 'Beaverdam', 'Cold Harbor', 'Henry', 'Mechanicsville', 'South Anna'];
+    const staffordDistricts = ['Aquia', 'Falmouth', 'Garrisonville', 'George Washington', 'Hartwood', 'Rock Hill'];
+    const spotsylvaniaDistricts = ['Berkeley', 'Chancellor', 'Lee Hill', 'Salem Church'];
+    const carolineDistricts = ['Bowling Green', 'Madison', 'Mattaponi', 'Port Royal', 'Western Caroline', 'Reedy Church'];
+    const princeWilliamDistricts = ['Brentsville', 'Coles', 'Dumfries', 'Gainesville', 'Neabsco', 'Occoquan', 'Potomac', 'Woodbridge'];
+    const fairfaxDistricts = ['Braddock', 'Dranesville', 'Hunter Mill', 'Lee', 'Mason', 'Mount Vernon', 'Providence', 'Springfield', 'Sully'];
+    const arlingtonBeats = ['Beat 100', 'Beat 200', 'Beat 300', 'Beat 400', 'Beat 500'];
+    const loudounDistricts = ['Algonkian', 'Ashburn', 'Blue Ridge', 'Broad Run', 'Catoctin', 'Dulles', 'Leesburg', 'Sterling'];
+    const dcPSAs = ['101', '102', '103', '104', '105', '106', '107', '201', '202', '203', '204', '205', '206', '207', '208', '301', '302', '303', '304', '305', '306', '307', '308', '309', '401', '402', '403', '404', '405', '406', '407', '501', '502', '503', '504', '505', '506', '507', '601', '602', '603', '604', '605', '606', '607', '701', '702', '703', '704', '705', '706', '707', '708'];
     const baseMapTypes = [
         { value: 'street', label: 'Street Map' },
         { value: 'satellite', label: 'Satellite' },
@@ -280,6 +289,114 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                         ))}
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Hanover Districts */}
+                            <div className="mb-6 p-4 bg-red-50 rounded-xl">
+                                <Label className="text-sm font-semibold text-red-700 mb-3">Hanover Districts</Label>
+                                <Select value={filters.hanoverDistrict || 'all'} onValueChange={(value) => onFilterChange({ ...filters, hanoverDistrict: value })}>
+                                    <SelectTrigger className="pointer-events-auto"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="pointer-events-auto z-[10001]">
+                                        <SelectItem value="all">All Districts</SelectItem>
+                                        {hanoverDistricts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Stafford Districts */}
+                            <div className="mb-6 p-4 bg-yellow-50 rounded-xl">
+                                <Label className="text-sm font-semibold text-yellow-700 mb-3">Stafford Districts</Label>
+                                <Select value={filters.staffordDistrict || 'all'} onValueChange={(value) => onFilterChange({ ...filters, staffordDistrict: value })}>
+                                    <SelectTrigger className="pointer-events-auto"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="pointer-events-auto z-[10001]">
+                                        <SelectItem value="all">All Districts</SelectItem>
+                                        {staffordDistricts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Spotsylvania Districts */}
+                            <div className="mb-6 p-4 bg-orange-50 rounded-xl">
+                                <Label className="text-sm font-semibold text-orange-700 mb-3">Spotsylvania Districts</Label>
+                                <Select value={filters.spotsylvaniaDistrict || 'all'} onValueChange={(value) => onFilterChange({ ...filters, spotsylvaniaDistrict: value })}>
+                                    <SelectTrigger className="pointer-events-auto"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="pointer-events-auto z-[10001]">
+                                        <SelectItem value="all">All Districts</SelectItem>
+                                        {spotsylvaniaDistricts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Caroline Districts */}
+                            <div className="mb-6 p-4 bg-teal-50 rounded-xl">
+                                <Label className="text-sm font-semibold text-teal-700 mb-3">Caroline Districts</Label>
+                                <Select value={filters.carolineDistrict || 'all'} onValueChange={(value) => onFilterChange({ ...filters, carolineDistrict: value })}>
+                                    <SelectTrigger className="pointer-events-auto"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="pointer-events-auto z-[10001]">
+                                        <SelectItem value="all">All Districts</SelectItem>
+                                        {carolineDistricts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Prince William Districts */}
+                            <div className="mb-6 p-4 bg-indigo-50 rounded-xl">
+                                <Label className="text-sm font-semibold text-indigo-700 mb-3">Prince William Districts</Label>
+                                <Select value={filters.princeWilliamDistrict || 'all'} onValueChange={(value) => onFilterChange({ ...filters, princeWilliamDistrict: value })}>
+                                    <SelectTrigger className="pointer-events-auto"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="pointer-events-auto z-[10001]">
+                                        <SelectItem value="all">All Districts</SelectItem>
+                                        {princeWilliamDistricts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Fairfax Districts */}
+                            <div className="mb-6 p-4 bg-lime-50 rounded-xl">
+                                <Label className="text-sm font-semibold text-lime-700 mb-3">Fairfax Districts</Label>
+                                <Select value={filters.fairfaxDistrict || 'all'} onValueChange={(value) => onFilterChange({ ...filters, fairfaxDistrict: value })}>
+                                    <SelectTrigger className="pointer-events-auto"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="pointer-events-auto z-[10001]">
+                                        <SelectItem value="all">All Districts</SelectItem>
+                                        {fairfaxDistricts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Arlington Beats */}
+                            <div className="mb-6 p-4 bg-amber-50 rounded-xl">
+                                <Label className="text-sm font-semibold text-amber-700 mb-3">Arlington Beats</Label>
+                                <Select value={filters.arlingtonBeat || 'all'} onValueChange={(value) => onFilterChange({ ...filters, arlingtonBeat: value })}>
+                                    <SelectTrigger className="pointer-events-auto"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="pointer-events-auto z-[10001]">
+                                        <SelectItem value="all">All Beats</SelectItem>
+                                        {arlingtonBeats.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Loudoun Districts */}
+                            <div className="mb-6 p-4 bg-cyan-50 rounded-xl">
+                                <Label className="text-sm font-semibold text-cyan-700 mb-3">Loudoun Districts</Label>
+                                <Select value={filters.loudounDistrict || 'all'} onValueChange={(value) => onFilterChange({ ...filters, loudounDistrict: value })}>
+                                    <SelectTrigger className="pointer-events-auto"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="pointer-events-auto z-[10001]">
+                                        <SelectItem value="all">All Districts</SelectItem>
+                                        {loudounDistricts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* DC PSAs */}
+                            <div className="mb-6 p-4 bg-red-100 rounded-xl">
+                                <Label className="text-sm font-semibold text-red-800 mb-3">Washington DC PSAs</Label>
+                                <Select value={filters.dcPSA || 'all'} onValueChange={(value) => onFilterChange({ ...filters, dcPSA: value })}>
+                                    <SelectTrigger className="pointer-events-auto"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="pointer-events-auto z-[10001] max-h-60">
+                                        <SelectItem value="all">All PSAs</SelectItem>
+                                        {dcPSAs.map((d) => <SelectItem key={d} value={d}>PSA {d}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             {/* Reset Filters */}
