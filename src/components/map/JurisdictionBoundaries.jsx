@@ -3,7 +3,7 @@ import { GeoJSON } from 'react-leaflet';
 import { useQuery } from '@tanstack/react-query';
 
 export default function JurisdictionBoundaries({ filters = {} }) {
-    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all', staffordDistrict = 'all', spotsylvaniaDistrict = 'all', colonialHeightsDistrict = 'all', petersburgDistrict = 'all', carolineDistrict = 'all' } = filters;
+    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all', staffordDistrict = 'all', spotsylvaniaDistrict = 'all', colonialHeightsDistrict = 'all', petersburgDistrict = 'all', carolineDistrict = 'all', princeWilliamDistrict = 'all', arlingtonBeat = 'all', fairfaxDistrict = 'all', loudounDistrict = 'all' } = filters;
     // Fetch Richmond beats
     const { data: richmondBeats } = useQuery({
         queryKey: ['richmondBeats'],
@@ -82,6 +82,54 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryFn: async () => {
             const response = await fetch(
                 'https://parcelviewer.geodecisions.com/arcgis/rest/services/Caroline/Public/MapServer/0/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Prince William County election districts
+    const { data: princeWilliamDistricts } = useQuery({
+        queryKey: ['princeWilliamDistricts'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://gisweb.pwcva.gov/arcgis/rest/services/GTS/Election/MapServer/5/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Fairfax County districts
+    const { data: fairfaxDistricts } = useQuery({
+        queryKey: ['fairfaxDistricts'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://services1.arcgis.com/ioennV6PpG5Xodq0/ArcGIS/rest/services/OpenData_S1/FeatureServer/17/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Arlington County police beats
+    const { data: arlingtonBeats } = useQuery({
+        queryKey: ['arlingtonBeats'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://arlgis.arlingtonva.us/arcgis/rest/services/Open_Data/od_Police_Beat_Polygons/FeatureServer/1/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Loudoun County districts
+    const { data: loudounDistricts } = useQuery({
+        queryKey: ['loudounDistricts'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://services1.arcgis.com/ioennV6PpG5Xodq0/arcgis/rest/services/Magisterial_Districts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
             return response.json();
         },
@@ -217,6 +265,50 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             fillColor: '#14B8A6',
             fillOpacity: 0.15,
             color: '#0D9488',
+            weight: 2,
+            opacity: 0.7,
+            className: 'clickable-boundary'
+        };
+    };
+
+    const princeWilliamStyle = (feature) => {
+        return {
+            fillColor: '#6366F1',
+            fillOpacity: 0.15,
+            color: '#4F46E5',
+            weight: 2,
+            opacity: 0.7,
+            className: 'clickable-boundary'
+        };
+    };
+
+    const fairfaxStyle = (feature) => {
+        return {
+            fillColor: '#84CC16',
+            fillOpacity: 0.15,
+            color: '#65A30D',
+            weight: 2,
+            opacity: 0.7,
+            className: 'clickable-boundary'
+        };
+    };
+
+    const arlingtonStyle = (feature) => {
+        return {
+            fillColor: '#F59E0B',
+            fillOpacity: 0.15,
+            color: '#D97706',
+            weight: 2,
+            opacity: 0.7,
+            className: 'clickable-boundary'
+        };
+    };
+
+    const loudounStyle = (feature) => {
+        return {
+            fillColor: '#06B6D4',
+            fillOpacity: 0.15,
+            color: '#0891B2',
             weight: 2,
             opacity: 0.7,
             className: 'clickable-boundary'
@@ -395,6 +487,86 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         });
     };
 
+    const onEachPrinceWilliamFeature = (feature, layer) => {
+        if (feature.properties) {
+            const districtName = feature.properties.NAME || feature.properties.DISTRICT || feature.properties.PRECINCT_NAME || 'Unknown';
+            
+            if (princeWilliamDistrict !== 'all' && districtName !== princeWilliamDistrict) {
+                return;
+            }
+            
+            layer.bindPopup(`
+                <div class="p-2">
+                    <p class="font-bold text-indigo-600">Prince William County</p>
+                    <p class="text-sm">${districtName} District</p>
+                </div>
+            `);
+            layer.on('click', () => {
+                layer.openPopup();
+            });
+        }
+    };
+
+    const onEachFairfaxFeature = (feature, layer) => {
+        if (feature.properties) {
+            const districtName = feature.properties.NAME || feature.properties.DISTRICT || feature.properties.MAG_DIST || 'Unknown';
+            
+            if (fairfaxDistrict !== 'all' && districtName !== fairfaxDistrict) {
+                return;
+            }
+            
+            layer.bindPopup(`
+                <div class="p-2">
+                    <p class="font-bold text-lime-600">Fairfax County</p>
+                    <p class="text-sm">${districtName} District</p>
+                </div>
+            `);
+            layer.on('click', () => {
+                layer.openPopup();
+            });
+        }
+    };
+
+    const onEachArlingtonFeature = (feature, layer) => {
+        if (feature.properties) {
+            const beatName = feature.properties.BEAT || feature.properties.NAME || feature.properties.DISTRICT || 'Unknown';
+            
+            if (arlingtonBeat !== 'all' && beatName !== arlingtonBeat) {
+                return;
+            }
+            
+            layer.bindPopup(`
+                <div class="p-2">
+                    <p class="font-bold text-amber-600">Arlington County</p>
+                    <p class="text-sm">Beat ${beatName}</p>
+                </div>
+            `);
+            layer.on('click', () => {
+                layer.openPopup();
+            });
+        }
+    };
+
+    const onEachLoudounFeature = (feature, layer) => {
+        if (feature.properties) {
+            const districtName = feature.properties.NAME || feature.properties.DISTRICT || feature.properties.MAG_DIST_NAME || 'Unknown';
+            
+            if (loudounDistrict !== 'all' && districtName !== loudounDistrict) {
+                return;
+            }
+            
+            layer.bindPopup(`
+                <div class="p-2">
+                    <p class="font-bold text-cyan-600">Loudoun County</p>
+                    <p class="text-sm">${districtName} District</p>
+                </div>
+            `);
+            layer.on('click', () => {
+                layer.openPopup();
+            });
+        }
+    };
+
     // Filter GeoJSON data based on filters
     const filteredRichmondBeats = richmondBeats && richmondBeat !== 'all'
         ? {
@@ -467,6 +639,46 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             })
         }
         : spotsylvaniaDistricts;
+
+    const filteredPrinceWilliamDistricts = princeWilliamDistricts && princeWilliamDistrict !== 'all'
+        ? {
+            ...princeWilliamDistricts,
+            features: princeWilliamDistricts.features.filter(f => {
+                const name = f.properties?.NAME || f.properties?.DISTRICT || f.properties?.PRECINCT_NAME;
+                return name === princeWilliamDistrict;
+            })
+        }
+        : princeWilliamDistricts;
+
+    const filteredFairfaxDistricts = fairfaxDistricts && fairfaxDistrict !== 'all'
+        ? {
+            ...fairfaxDistricts,
+            features: fairfaxDistricts.features.filter(f => {
+                const name = f.properties?.NAME || f.properties?.DISTRICT || f.properties?.MAG_DIST;
+                return name === fairfaxDistrict;
+            })
+        }
+        : fairfaxDistricts;
+
+    const filteredArlingtonBeats = arlingtonBeats && arlingtonBeat !== 'all'
+        ? {
+            ...arlingtonBeats,
+            features: arlingtonBeats.features.filter(f => {
+                const name = f.properties?.BEAT || f.properties?.NAME || f.properties?.DISTRICT;
+                return name === arlingtonBeat;
+            })
+        }
+        : arlingtonBeats;
+
+    const filteredLoudounDistricts = loudounDistricts && loudounDistrict !== 'all'
+        ? {
+            ...loudounDistricts,
+            features: loudounDistricts.features.filter(f => {
+                const name = f.properties?.NAME || f.properties?.DISTRICT || f.properties?.MAG_DIST_NAME;
+                return name === loudounDistrict;
+            })
+        }
+        : loudounDistricts;
 
     return (
         <>
@@ -569,6 +781,46 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                     data={carolineBoundary}
                     style={carolineStyle}
                     onEachFeature={onEachCarolineFeature}
+                />
+            )}
+
+            {/* Prince William County */}
+            {filteredPrinceWilliamDistricts && (
+                <GeoJSON
+                    key={`prince-william-${princeWilliamDistrict}`}
+                    data={filteredPrinceWilliamDistricts}
+                    style={princeWilliamStyle}
+                    onEachFeature={onEachPrinceWilliamFeature}
+                />
+            )}
+
+            {/* Fairfax County */}
+            {filteredFairfaxDistricts && (
+                <GeoJSON
+                    key={`fairfax-${fairfaxDistrict}`}
+                    data={filteredFairfaxDistricts}
+                    style={fairfaxStyle}
+                    onEachFeature={onEachFairfaxFeature}
+                />
+            )}
+
+            {/* Arlington County */}
+            {filteredArlingtonBeats && (
+                <GeoJSON
+                    key={`arlington-${arlingtonBeat}`}
+                    data={filteredArlingtonBeats}
+                    style={arlingtonStyle}
+                    onEachFeature={onEachArlingtonFeature}
+                />
+            )}
+
+            {/* Loudoun County */}
+            {filteredLoudounDistricts && (
+                <GeoJSON
+                    key={`loudoun-${loudounDistrict}`}
+                    data={filteredLoudounDistricts}
+                    style={loudounStyle}
+                    onEachFeature={onEachLoudounFeature}
                 />
             )}
         </>
