@@ -32,7 +32,12 @@ export default function UnitSettings({ isOpen, onClose, unitName, onSave, showLi
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 bg-black/50 z-[3000] flex items-center justify-center p-4"
-                onClick={onClose}
+                onClick={(e) => {
+                    if (unitName) {
+                        onClose();
+                    }
+                    e.stopPropagation();
+                }}
             >
                 <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
@@ -46,9 +51,11 @@ export default function UnitSettings({ isOpen, onClose, unitName, onSave, showLi
                                 <Car className="w-5 h-5 text-[#007AFF]" />
                                 <h2 className="text-xl font-bold text-[#1D1D1F]">Unit Settings</h2>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={onClose}>
-                                <X className="w-5 h-5" />
-                            </Button>
+                            {unitName && (
+                                <Button variant="ghost" size="icon" onClick={onClose}>
+                                    <X className="w-5 h-5" />
+                                </Button>
+                            )}
                         </div>
 
                         <div className="space-y-4">
