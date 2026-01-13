@@ -162,7 +162,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryKey: ['fallsChurchBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://services6.arcgis.com/C7nFMNJDTLg0mVYB/arcgis/rest/services/Jurisdictional_Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/4/query?where=STATEFP%3D%2751%27%20AND%20BASENAME%3D%27Falls%20Church%27&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
