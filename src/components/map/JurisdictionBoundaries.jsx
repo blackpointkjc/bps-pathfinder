@@ -227,7 +227,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryKey: ['manassasParkBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/City_Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+                'https://gisweb.pwcva.gov/arcgis/rest/services/OpenData/OpenData/MapServer/19/query?where=NAME%3D%27Manassas%20Park%27&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
