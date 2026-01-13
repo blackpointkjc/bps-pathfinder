@@ -10,16 +10,18 @@ import { toast } from 'sonner';
 
 export default function UnitSettings({ isOpen, onClose, unitName, onSave, showLights, onLightsChange }) {
     const [name, setName] = useState(unitName || '');
+    const [assignedCar, setAssignedCar] = useState(localStorage.getItem('assignedCar') || '');
     const [lightsEnabled, setLightsEnabled] = useState(showLights || false);
 
     const handleSave = () => {
         if (name.trim()) {
             onSave(name.trim());
             onLightsChange(lightsEnabled);
+            localStorage.setItem('assignedCar', assignedCar.trim());
             toast.success('Unit settings saved');
             onClose();
         } else {
-            toast.error('Please enter a unit name');
+            toast.error('Please enter a unit number');
         }
     };
 
@@ -31,7 +33,7 @@ export default function UnitSettings({ isOpen, onClose, unitName, onSave, showLi
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 z-[3000] flex items-center justify-center p-4"
+                className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"
                 onClick={(e) => {
                     if (unitName) {
                         onClose();
@@ -61,7 +63,7 @@ export default function UnitSettings({ isOpen, onClose, unitName, onSave, showLi
                         <div className="space-y-4">
                             <div>
                                 <Label htmlFor="unitName" className="text-sm font-medium text-gray-700">
-                                    Unit Name / Call Sign
+                                    Unit Number / Call Sign *
                                 </Label>
                                 <Input
                                     id="unitName"
@@ -70,9 +72,27 @@ export default function UnitSettings({ isOpen, onClose, unitName, onSave, showLi
                                     onChange={(e) => setName(e.target.value)}
                                     className="mt-1"
                                     maxLength={20}
+                                    required
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
                                     This will be displayed on the map with your location
+                                </p>
+                            </div>
+
+                            <div>
+                                <Label htmlFor="assignedCar" className="text-sm font-medium text-gray-700">
+                                    Assigned Vehicle / Car Number
+                                </Label>
+                                <Input
+                                    id="assignedCar"
+                                    placeholder="e.g., CV-201, Patrol Car 5..."
+                                    value={assignedCar}
+                                    onChange={(e) => setAssignedCar(e.target.value)}
+                                    className="mt-1"
+                                    maxLength={20}
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    The vehicle you're currently assigned to
                                 </p>
                             </div>
 
