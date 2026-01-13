@@ -3,7 +3,7 @@ import { GeoJSON } from 'react-leaflet';
 import { useQuery } from '@tanstack/react-query';
 
 export default function JurisdictionBoundaries({ filters = {} }) {
-    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all', staffordDistrict = 'all', spotsylvaniaDistrict = 'all', colonialHeightsDistrict = 'all', petersburgDistrict = 'all', carolineDistrict = 'all', princeWilliamDistrict = 'all', arlingtonBeat = 'all', fairfaxDistrict = 'all', loudounDistrict = 'all' } = filters;
+    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all', staffordDistrict = 'all', spotsylvaniaDistrict = 'all', colonialHeightsDistrict = 'all', petersburgDistrict = 'all', carolineDistrict = 'all', princeWilliamDistrict = 'all', arlingtonBeat = 'all', fairfaxDistrict = 'all', loudounDistrict = 'all', fallsChurchDistrict = 'all', alexandriaDistrict = 'all', manassasDistrict = 'all' } = filters;
     // Fetch Richmond beats
     const { data: richmondBeats } = useQuery({
         queryKey: ['richmondBeats'],
@@ -76,12 +76,12 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         staleTime: Infinity,
     });
 
-    // Fetch Caroline County boundary
-    const { data: carolineBoundary } = useQuery({
-        queryKey: ['carolineBoundary'],
+    // Fetch Caroline County redistricting districts
+    const { data: carolineDistricts } = useQuery({
+        queryKey: ['carolineDistricts'],
         queryFn: async () => {
             const response = await fetch(
-                'https://parcelviewer.geodecisions.com/arcgis/rest/services/Caroline/Public/MapServer/0/query?outFields=*&where=1%3D1&f=geojson'
+                'https://services1.arcgis.com/ioennV6PpG5Xodq0/arcgis/rest/services/Redistricting/FeatureServer/1/query?outFields=*&where=1%3D1&f=geojson'
             );
             return response.json();
         },
@@ -130,6 +130,42 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryFn: async () => {
             const response = await fetch(
                 'https://services1.arcgis.com/ioennV6PpG5Xodq0/arcgis/rest/services/Magisterial_Districts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Falls Church city boundary
+    const { data: fallsChurchBoundary } = useQuery({
+        queryKey: ['fallsChurchBoundary'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://services6.arcgis.com/C7nFMNJDTLg0mVYB/arcgis/rest/services/City_Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Alexandria city boundary
+    const { data: alexandriaBoundary } = useQuery({
+        queryKey: ['alexandriaBoundary'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://services2.arcgis.com/ChYV69FhfjwkvRmy/arcgis/rest/services/Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            return response.json();
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Manassas city boundary (from Prince William data)
+    const { data: manassasBoundary } = useQuery({
+        queryKey: ['manassasBoundary'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://gisweb.pwcva.gov/arcgis/rest/services/GTS/Political/MapServer/1/query?outFields=*&where=1%3D1&f=geojson'
             );
             return response.json();
         },
@@ -315,6 +351,39 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         };
     };
 
+    const fallsChurchStyle = (feature) => {
+        return {
+            fillColor: '#EC4899',
+            fillOpacity: 0.2,
+            color: '#DB2777',
+            weight: 2,
+            opacity: 0.8,
+            className: 'clickable-boundary'
+        };
+    };
+
+    const alexandriaStyle = (feature) => {
+        return {
+            fillColor: '#8B5CF6',
+            fillOpacity: 0.2,
+            color: '#7C3AED',
+            weight: 2,
+            opacity: 0.8,
+            className: 'clickable-boundary'
+        };
+    };
+
+    const manassasStyle = (feature) => {
+        return {
+            fillColor: '#F59E0B',
+            fillOpacity: 0.2,
+            color: '#D97706',
+            weight: 2,
+            opacity: 0.8,
+            className: 'clickable-boundary'
+        };
+    };
+
     const onEachRichmondFeature = (feature, layer) => {
         if (feature.properties && feature.properties.Name) {
             layer.bindPopup(`
@@ -476,10 +545,54 @@ export default function JurisdictionBoundaries({ filters = {} }) {
     };
 
     const onEachCarolineFeature = (feature, layer) => {
+        if (feature.properties) {
+            const districtName = feature.properties.DISTRICT || feature.properties.NAME || feature.properties.District || 'Unknown';
+            
+            if (carolineDistrict !== 'all' && districtName !== carolineDistrict) {
+                return;
+            }
+            
+            layer.bindPopup(`
+                <div class="p-2">
+                    <p class="font-bold text-teal-600">Caroline County</p>
+                    <p class="text-sm">${districtName} District</p>
+                </div>
+            `);
+            layer.on('click', () => {
+                layer.openPopup();
+            });
+        }
+    };
+
+    const onEachFallsChurchFeature = (feature, layer) => {
         layer.bindPopup(`
             <div class="p-2">
-                <p class="font-bold text-teal-600">Caroline County</p>
-                <p class="text-sm">County Boundary</p>
+                <p class="font-bold text-pink-600">Falls Church</p>
+                <p class="text-sm">City Boundary</p>
+            </div>
+        `);
+        layer.on('click', () => {
+            layer.openPopup();
+        });
+    };
+
+    const onEachAlexandriaFeature = (feature, layer) => {
+        layer.bindPopup(`
+            <div class="p-2">
+                <p class="font-bold text-purple-600">Alexandria</p>
+                <p class="text-sm">City Boundary</p>
+            </div>
+        `);
+        layer.on('click', () => {
+            layer.openPopup();
+        });
+    };
+
+    const onEachManassasFeature = (feature, layer) => {
+        layer.bindPopup(`
+            <div class="p-2">
+                <p class="font-bold text-amber-600">Manassas</p>
+                <p class="text-sm">City Boundary</p>
             </div>
         `);
         layer.on('click', () => {
@@ -680,6 +793,16 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         }
         : loudounDistricts;
 
+    const filteredCarolineDistricts = carolineDistricts && carolineDistrict !== 'all'
+        ? {
+            ...carolineDistricts,
+            features: carolineDistricts.features.filter(f => {
+                const name = f.properties?.DISTRICT || f.properties?.NAME || f.properties?.District;
+                return name === carolineDistrict;
+            })
+        }
+        : carolineDistricts;
+
     return (
         <>
             {/* Chesterfield County Districts - render first so they're on top */}
@@ -774,11 +897,11 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                 />
             )}
 
-            {/* Caroline County */}
-            {carolineBoundary && (
+            {/* Caroline County Districts */}
+            {filteredCarolineDistricts && (
                 <GeoJSON
-                    key="caroline"
-                    data={carolineBoundary}
+                    key={`caroline-${carolineDistrict}`}
+                    data={filteredCarolineDistricts}
                     style={carolineStyle}
                     onEachFeature={onEachCarolineFeature}
                 />
@@ -821,6 +944,36 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                     data={filteredLoudounDistricts}
                     style={loudounStyle}
                     onEachFeature={onEachLoudounFeature}
+                />
+            )}
+
+            {/* Falls Church City */}
+            {fallsChurchBoundary && (
+                <GeoJSON
+                    key="falls-church"
+                    data={fallsChurchBoundary}
+                    style={fallsChurchStyle}
+                    onEachFeature={onEachFallsChurchFeature}
+                />
+            )}
+
+            {/* Alexandria City */}
+            {alexandriaBoundary && (
+                <GeoJSON
+                    key="alexandria"
+                    data={alexandriaBoundary}
+                    style={alexandriaStyle}
+                    onEachFeature={onEachAlexandriaFeature}
+                />
+            )}
+
+            {/* Manassas City */}
+            {manassasBoundary && (
+                <GeoJSON
+                    key="manassas"
+                    data={manassasBoundary}
+                    style={manassasStyle}
+                    onEachFeature={onEachManassasFeature}
                 />
             )}
         </>
