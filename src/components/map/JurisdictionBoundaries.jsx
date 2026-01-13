@@ -92,12 +92,12 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         staleTime: Infinity,
     });
 
-    // Fetch Caroline County redistricting districts
+    // Fetch Caroline County magisterial districts
     const { data: carolineDistricts } = useQuery({
         queryKey: ['carolineDistricts'],
         queryFn: async () => {
             const response = await fetch(
-                'https://services1.arcgis.com/ioennV6PpG5Xodq0/arcgis/rest/services/Redistricting/FeatureServer/1/query?outFields=*&where=1%3D1&f=geojson'
+                'https://services1.arcgis.com/ioennV6PpG5Xodq0/arcgis/rest/services/Magisterial_Districts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -669,7 +669,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
     const onEachCarolineFeature = (feature, layer) => {
         if (feature.properties) {
-            const districtName = feature.properties.DISTRICT || feature.properties.NAME || feature.properties.District || 'Unknown';
+            const districtName = feature.properties.MagDistName || feature.properties.NAME || feature.properties.DISTRICT || feature.properties.District || 'Unknown';
             
             if (carolineDistrict !== 'all' && districtName !== carolineDistrict) {
                 return;
@@ -942,7 +942,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         ? {
             ...carolineDistricts,
             features: carolineDistricts.features.filter(f => {
-                const name = f.properties?.DISTRICT || f.properties?.NAME || f.properties?.District;
+                const name = f.properties?.MagDistName || f.properties?.NAME || f.properties?.DISTRICT || f.properties?.District;
                 return name === carolineDistrict;
             })
         }
