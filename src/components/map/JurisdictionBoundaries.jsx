@@ -183,12 +183,12 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         staleTime: Infinity,
     });
 
-    // Fetch Manassas city boundary (from Prince William data)
+    // Fetch Manassas city boundary
     const { data: manassasBoundary } = useQuery({
         queryKey: ['manassasBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://gisweb.pwcva.gov/arcgis/rest/services/GTS/Political/MapServer/1/query?outFields=*&where=1%3D1&f=geojson'
+                'https://manassasgis.manassasva.gov/arcgis21/rest/services/Components/City_Boundary/MapServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
