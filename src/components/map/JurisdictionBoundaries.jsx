@@ -214,7 +214,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryKey: ['fredericksburgBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://maps.fredericksburgva.gov/arcgis/rest/services/PSAP_Boundaries/MapServer/0/query?outFields=*&where=1%3D1&f=geojson'
+                'https://maps.fredericksburgva.gov/arcgis/rest/services/WebLoGIStics/Fredericksburg_WL_T/MapServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -320,9 +320,9 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
     const staffordDistrictStyle = (feature) => {
         return {
-            fillColor: '#FF6B6B',
+            fillColor: '#10B981',
             fillOpacity: 0.15,
-            color: '#EF4444',
+            color: '#059669',
             weight: 2,
             opacity: 0.7,
             className: 'clickable-boundary'
@@ -463,9 +463,9 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
     const fredericksburgStyle = (feature) => {
         return {
-            fillColor: '#10B981',
+            fillColor: '#3B82F6',
             fillOpacity: 0.2,
-            color: '#059669',
+            color: '#2563EB',
             weight: 2,
             opacity: 0.8,
             className: 'clickable-boundary'
@@ -642,7 +642,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
     const onEachFredericksburgFeature = (feature, layer) => {
         layer.bindPopup(`
             <div class="p-2">
-                <p class="font-bold text-emerald-600">Fredericksburg</p>
+                <p class="font-bold text-blue-600">Fredericksburg</p>
                 <p class="text-sm">City Boundary</p>
             </div>
         `);
