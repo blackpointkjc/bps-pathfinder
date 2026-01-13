@@ -97,7 +97,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryKey: ['carolineDistricts'],
         queryFn: async () => {
             const response = await fetch(
-                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATEFP%3D%2751%27%20AND%20NAME%3D%27Caroline%27&outFields=*&returnGeometry=true&f=geojson'
+                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/4/query?where=STATEFP%3D%2751%27%20AND%20BASENAME%3D%27Caroline%27&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
