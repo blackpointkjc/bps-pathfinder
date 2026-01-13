@@ -13,11 +13,23 @@ export default function UnitSettings({ isOpen, onClose, unitName, onSave, showLi
     const [assignedCar, setAssignedCar] = useState(localStorage.getItem('assignedCar') || '');
     const [lightsEnabled, setLightsEnabled] = useState(showLights || false);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (name.trim()) {
             onSave(name.trim());
             onLightsChange(lightsEnabled);
             localStorage.setItem('assignedCar', assignedCar.trim());
+            
+            // Update backend with unit info
+            try {
+                const { base44 } = await import('@/api/base44Client');
+                await base44.auth.updateMe({ 
+                    unit_number: name.trim(),
+                    assigned_vehicle: assignedCar.trim()
+                });
+            } catch (error) {
+                console.error('Error updating unit info:', error);
+            }
+            
             toast.success('Unit settings saved');
             onClose();
         } else {
@@ -33,12 +45,11 @@ export default function UnitSettings({ isOpen, onClose, unitName, onSave, showLi
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"
+                className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 pointer-events-auto"
                 onClick={(e) => {
-                    if (unitName) {
+                    if (unitName && e.target === e.currentTarget) {
                         onClose();
                     }
-                    e.stopPropagation();
                 }}
             >
                 <motion.div
@@ -46,8 +57,9 @@ export default function UnitSettings({ isOpen, onClose, unitName, onSave, showLi
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
+                    className="pointer-events-auto"
                 >
-                    <Card className="bg-white p-6 w-full max-w-md">
+                    <Card className="bg-white p-6 w-full max-w-md pointer-events-auto">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
                                 <Car className="w-5 h-5 text-[#007AFF]" />

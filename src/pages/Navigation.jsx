@@ -1018,11 +1018,19 @@ export default function Navigation() {
     const handleSaveUnitName = async (name) => {
         setUnitName(name);
         localStorage.setItem('unitName', name);
-        
+
+        const assignedCar = localStorage.getItem('assignedCar') || '';
+
         if (currentUser) {
             try {
-                await base44.auth.updateMe({ unit_number: name });
+                await base44.auth.updateMe({ 
+                    unit_number: name,
+                    assigned_vehicle: assignedCar
+                });
                 toast.success('Unit number saved');
+
+                // Immediately update user location to reflect new unit info
+                await updateUserLocation();
             } catch (error) {
                 // Silent fail
             }
