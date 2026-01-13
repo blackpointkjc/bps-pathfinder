@@ -40,7 +40,7 @@ const createCallIcon = (call, isHighPriority = false) => {
     } else {
         // Police
         bgColor = '#1E40AF';
-        icon = '👮';
+        icon = '🚔';
     }
     
     const pulseAnimation = isHighPriority ? `
