@@ -169,6 +169,14 @@ export default function Navigation() {
     useEffect(() => {
         const init = async () => {
             await loadCurrentUser();
+
+            // Force unit number entry if not set
+            const savedUnitName = localStorage.getItem('unitName');
+            if (!savedUnitName) {
+                setShowUnitSettings(true);
+                toast.info('Please enter your unit number to continue');
+            }
+
             // Get location immediately and forcefully
             if (navigator.geolocation) {
                 toast.info('Getting your location...');
@@ -1947,6 +1955,19 @@ Be thorough and search multiple sources.`,
                     title="AI Address Lookup"
                 >
                     <Search className="w-4 h-4" />
+                </Button>
+
+                <Button
+                    onClick={() => {
+                        if (confirm('Are you sure you want to logout?')) {
+                            base44.auth.logout();
+                        }
+                    }}
+                    size="icon"
+                    className="h-8 w-8 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-lg"
+                    title="Logout"
+                >
+                    <X className="w-4 h-4" />
                 </Button>
 
                 <Button
