@@ -13,7 +13,7 @@ const isValidGeoJSON = (data) => {
 };
 
 export default function JurisdictionBoundaries({ filters = {} }) {
-    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all', staffordDistrict = 'all', spotsylvaniaDistrict = 'all', colonialHeightsDistrict = 'all', petersburgDistrict = 'all', carolineDistrict = 'all', princeWilliamDistrict = 'all', arlingtonBeat = 'all', fairfaxDistrict = 'all', loudounDistrict = 'all', fallsChurchDistrict = 'all', alexandriaDistrict = 'all', manassasDistrict = 'all', dcPSA = 'all' } = filters;
+    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all', staffordDistrict = 'all', spotsylvaniaDistrict = 'all', colonialHeightsDistrict = 'all', petersburgDistrict = 'all', carolineDistrict = 'all', princeWilliamDistrict = 'all', arlingtonBeat = 'all', fairfaxDistrict = 'all', loudounDistrict = 'all', fallsChurchDistrict = 'all', alexandriaDistrict = 'all', manassasDistrict = 'all', dcPSA = 'all', fredericksburgDistrict = 'all', manassasParkDistrict = 'all' } = filters;
     // Fetch Richmond beats
     const { data: richmondBeats } = useQuery({
         queryKey: ['richmondBeats'],
@@ -66,12 +66,12 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         staleTime: Infinity,
     });
 
-    // Fetch Colonial Heights city boundary
-    const { data: colonialHeightsBoundary } = useQuery({
-        queryKey: ['colonialHeightsBoundary'],
+    // Fetch Colonial Heights voting precincts
+    const { data: colonialHeightsPrecincts } = useQuery({
+        queryKey: ['colonialHeightsPrecincts'],
         queryFn: async () => {
             const response = await fetch(
-                'https://services6.arcgis.com/C7nFMNJDTLg0mVYB/arcgis/rest/services/City_Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+                'https://services6.arcgis.com/C7nFMNJDTLg0mVYB/arcgis/rest/services/Voting_Precincts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -162,7 +162,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryKey: ['fallsChurchBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://services6.arcgis.com/C7nFMNJDTLg0mVYB/arcgis/rest/services/City_Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
+                'https://services6.arcgis.com/C7nFMNJDTLg0mVYB/arcgis/rest/services/Jurisdictional_Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -202,6 +202,32 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryFn: async () => {
             const response = await fetch(
                 'https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Public_Safety_WebMercator/MapServer/25/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            const data = await response.json();
+            return isValidGeoJSON(data) ? data : null;
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Fredericksburg city boundary
+    const { data: fredericksburgBoundary } = useQuery({
+        queryKey: ['fredericksburgBoundary'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://maps.fredericksburgva.gov/arcgis/rest/services/PSAP_Boundaries/MapServer/0/query?outFields=*&where=1%3D1&f=geojson'
+            );
+            const data = await response.json();
+            return isValidGeoJSON(data) ? data : null;
+        },
+        staleTime: Infinity,
+    });
+
+    // Fetch Manassas Park city boundary
+    const { data: manassasParkBoundary } = useQuery({
+        queryKey: ['manassasParkBoundary'],
+        queryFn: async () => {
+            const response = await fetch(
+                'https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/City_Boundary/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -435,6 +461,28 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         };
     };
 
+    const fredericksburgStyle = (feature) => {
+        return {
+            fillColor: '#10B981',
+            fillOpacity: 0.2,
+            color: '#059669',
+            weight: 2,
+            opacity: 0.8,
+            className: 'clickable-boundary'
+        };
+    };
+
+    const manassasParkStyle = (feature) => {
+        return {
+            fillColor: '#F472B6',
+            fillOpacity: 0.2,
+            color: '#EC4899',
+            weight: 2,
+            opacity: 0.8,
+            className: 'clickable-boundary'
+        };
+    };
+
     const onEachRichmondFeature = (feature, layer) => {
         if (feature.properties && feature.properties.Name) {
             layer.bindPopup(`
@@ -572,9 +620,41 @@ export default function JurisdictionBoundaries({ filters = {} }) {
     };
 
     const onEachColonialHeightsFeature = (feature, layer) => {
+        if (feature.properties) {
+            const precinctName = feature.properties.Precinct || feature.properties.NAME || feature.properties.PRECINCT || 'Unknown';
+            
+            if (colonialHeightsDistrict !== 'all' && precinctName !== colonialHeightsDistrict) {
+                return;
+            }
+            
+            layer.bindPopup(`
+                <div class="p-2">
+                    <p class="font-bold text-purple-600">Colonial Heights</p>
+                    <p class="text-sm">${precinctName} Precinct</p>
+                </div>
+            `);
+            layer.on('click', () => {
+                layer.openPopup();
+            });
+        }
+    };
+
+    const onEachFredericksburgFeature = (feature, layer) => {
         layer.bindPopup(`
             <div class="p-2">
-                <p class="font-bold text-purple-600">Colonial Heights</p>
+                <p class="font-bold text-emerald-600">Fredericksburg</p>
+                <p class="text-sm">City Boundary</p>
+            </div>
+        `);
+        layer.on('click', () => {
+            layer.openPopup();
+        });
+    };
+
+    const onEachManassasParkFeature = (feature, layer) => {
+        layer.bindPopup(`
+            <div class="p-2">
+                <p class="font-bold text-pink-600">Manassas Park</p>
                 <p class="text-sm">City Boundary</p>
             </div>
         `);
@@ -886,6 +966,16 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         }
         : dcPSAs;
 
+    const filteredColonialHeightsPrecincts = colonialHeightsPrecincts && colonialHeightsDistrict !== 'all'
+        ? {
+            ...colonialHeightsPrecincts,
+            features: colonialHeightsPrecincts.features.filter(f => {
+                const name = f.properties?.Precinct || f.properties?.NAME || f.properties?.PRECINCT;
+                return name === colonialHeightsDistrict;
+            })
+        }
+        : colonialHeightsPrecincts;
+
     return (
         <>
             {/* Chesterfield County Districts - render first so they're on top */}
@@ -960,11 +1050,11 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                 />
             )}
 
-            {/* Colonial Heights City */}
-            {colonialHeightsBoundary && (
+            {/* Colonial Heights Precincts */}
+            {filteredColonialHeightsPrecincts && (
                 <GeoJSON
-                    key="colonial-heights"
-                    data={colonialHeightsBoundary}
+                    key={`colonial-heights-${colonialHeightsDistrict}`}
+                    data={filteredColonialHeightsPrecincts}
                     style={colonialHeightsStyle}
                     onEachFeature={onEachColonialHeightsFeature}
                 />
@@ -1067,6 +1157,26 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                     data={filteredDCPSAs}
                     style={dcPSAStyle}
                     onEachFeature={onEachDCPSAFeature}
+                />
+            )}
+
+            {/* Fredericksburg City */}
+            {fredericksburgBoundary && (
+                <GeoJSON
+                    key="fredericksburg"
+                    data={fredericksburgBoundary}
+                    style={fredericksburgStyle}
+                    onEachFeature={onEachFredericksburgFeature}
+                />
+            )}
+
+            {/* Manassas Park City */}
+            {manassasParkBoundary && (
+                <GeoJSON
+                    key="manassas-park"
+                    data={manassasParkBoundary}
+                    style={manassasParkStyle}
+                    onEachFeature={onEachManassasParkFeature}
                 />
             )}
         </>

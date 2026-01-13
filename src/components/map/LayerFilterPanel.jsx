@@ -35,6 +35,7 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
     const arlingtonBeats = ['Beat 100', 'Beat 200', 'Beat 300', 'Beat 400', 'Beat 500'];
     const loudounDistricts = ['Algonkian', 'Ashburn', 'Blue Ridge', 'Broad Run', 'Catoctin', 'Dulles', 'Leesburg', 'Sterling'];
     const dcPSAs = ['101', '102', '103', '104', '105', '106', '107', '201', '202', '203', '204', '205', '206', '207', '208', '301', '302', '303', '304', '305', '306', '307', '308', '309', '401', '402', '403', '404', '405', '406', '407', '501', '502', '503', '504', '505', '506', '507', '601', '602', '603', '604', '605', '606', '607', '701', '702', '703', '704', '705', '706', '707', '708'];
+    const colonialHeightsPrecincts = ['First', 'Second', 'Third', 'Fourth', 'Fifth'];
     const baseMapTypes = [
         { value: 'street', label: 'Street Map' },
         { value: 'satellite', label: 'Satellite' },
@@ -395,6 +396,18 @@ export default function LayerFilterPanel({ isOpen, onClose, filters, onFilterCha
                                     <SelectContent className="pointer-events-auto z-[10001] max-h-60">
                                         <SelectItem value="all">All PSAs</SelectItem>
                                         {dcPSAs.map((d) => <SelectItem key={d} value={d}>PSA {d}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Colonial Heights Precincts */}
+                            <div className="mb-6 p-4 bg-purple-50 rounded-xl">
+                                <Label className="text-sm font-semibold text-purple-700 mb-3">Colonial Heights Precincts</Label>
+                                <Select value={filters.colonialHeightsDistrict || 'all'} onValueChange={(value) => onFilterChange({ ...filters, colonialHeightsDistrict: value })}>
+                                    <SelectTrigger className="pointer-events-auto"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="pointer-events-auto z-[10001]">
+                                        <SelectItem value="all">All Precincts</SelectItem>
+                                        {colonialHeightsPrecincts.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
