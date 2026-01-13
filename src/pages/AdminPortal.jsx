@@ -288,10 +288,10 @@ export default function AdminPortal() {
                             </div>
 
                             <div className="flex gap-2 pt-4">
-                                <Button variant="outline" onClick={() => setShowEditDialog(false)} className="flex-1">
+                                <Button variant="outline" onClick={() => setShowEditDialog(false)} className="flex-1 pointer-events-auto">
                                     Cancel
                                 </Button>
-                                <Button onClick={handleSaveUser} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                                <Button onClick={handleSaveUser} className="flex-1 bg-blue-600 hover:bg-blue-700 pointer-events-auto">
                                     Save Changes
                                 </Button>
                             </div>
