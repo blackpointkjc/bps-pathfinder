@@ -96,21 +96,21 @@ export default function MaintenanceTracking({ units }) {
     const completed = maintenance.filter(m => m.completed);
 
     return (
-        <Card className="p-6 bg-slate-900/95 border-slate-700">
+        <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                     <Wrench className="w-5 h-5 text-orange-500" />
                     Maintenance Tracking
                 </h2>
-                <Button onClick={() => setShowForm(!showForm)} size="sm">
+                <Button onClick={() => setShowForm(!showForm)} size="sm" className="bg-blue-600 hover:bg-blue-700">
                     <Plus className="w-4 h-4 mr-2" />
                     Add Record
                 </Button>
             </div>
 
             {overdue.length > 0 && (
-                <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg">
-                    <div className="flex items-center gap-2 text-red-400">
+                <div className="mb-4 p-3 bg-red-50 border border-red-300 rounded-lg">
+                    <div className="flex items-center gap-2 text-red-700">
                         <AlertTriangle className="w-5 h-5" />
                         <span className="font-semibold">{overdue.length} overdue maintenance item(s)</span>
                     </div>
@@ -118,11 +118,11 @@ export default function MaintenanceTracking({ units }) {
             )}
 
             {showForm && (
-                <Card className="p-4 mb-4 bg-slate-800 border-slate-700">
+                <Card className="p-4 mb-4 border-gray-200">
                     <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="text-slate-300">Vehicle</Label>
+                                <Label>Vehicle</Label>
                                 <select
                                     value={formData.vehicle_id}
                                     onChange={(e) => {
@@ -130,10 +130,10 @@ export default function MaintenanceTracking({ units }) {
                                         setFormData({
                                             ...formData, 
                                             vehicle_id: e.target.value,
-                                            unit_number: units.find(u => u.id === selectedVehicle?.assigned_to)?.unit_number || ''
+                                            unit_number: units?.find(u => u.id === selectedVehicle?.assigned_to)?.unit_number || ''
                                         });
                                     }}
-                                    className="flex h-10 w-full rounded-md border bg-slate-900 border-slate-700 text-white px-3 py-2 text-sm"
+                                    className="flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                                 >
                                     <option value="">Select Vehicle</option>
                                     {vehicles.map(vehicle => (
@@ -144,14 +144,14 @@ export default function MaintenanceTracking({ units }) {
                                 </select>
                             </div>
                             <div>
-                                <Label className="text-slate-300">Unit Number</Label>
+                                <Label>Unit Number</Label>
                                 <select
                                     value={formData.unit_number}
                                     onChange={(e) => setFormData({...formData, unit_number: e.target.value})}
-                                    className="flex h-10 w-full rounded-md border bg-slate-900 border-slate-700 text-white px-3 py-2 text-sm"
+                                    className="flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                                 >
                                     <option value="">Select Unit</option>
-                                    {units.map(unit => (
+                                    {units?.map(unit => (
                                         <option key={unit.id} value={unit.unit_number}>
                                             {unit.unit_number || unit.full_name}
                                         </option>
@@ -160,11 +160,11 @@ export default function MaintenanceTracking({ units }) {
                             </div>
                         </div>
                         <div>
-                            <Label className="text-slate-300">Type</Label>
+                            <Label>Type</Label>
                             <select
                                 value={formData.maintenance_type}
                                 onChange={(e) => setFormData({...formData, maintenance_type: e.target.value})}
-                                className="flex h-10 w-full rounded-md border bg-slate-900 border-slate-700 text-white px-3 py-2 text-sm"
+                                className="flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                             >
                                 <option value="oil_change">Oil Change</option>
                                 <option value="tire_rotation">Tire Rotation</option>
@@ -174,38 +174,35 @@ export default function MaintenanceTracking({ units }) {
                             </select>
                         </div>
                         <div>
-                            <Label className="text-slate-300">Description</Label>
+                            <Label>Description</Label>
                             <Textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                                 placeholder="Describe the maintenance..."
                                 rows={2}
-                                className="bg-slate-900 border-slate-700 text-white"
                             />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="text-slate-300">Due Date</Label>
+                                <Label>Due Date</Label>
                                 <Input
                                     type="date"
                                     value={formData.due_date}
                                     onChange={(e) => setFormData({...formData, due_date: e.target.value})}
-                                    className="bg-slate-900 border-slate-700 text-white"
                                 />
                             </div>
                             <div>
-                                <Label className="text-slate-300">Due Mileage</Label>
+                                <Label>Due Mileage</Label>
                                 <Input
                                     type="number"
                                     value={formData.due_mileage}
                                     onChange={(e) => setFormData({...formData, due_mileage: e.target.value})}
                                     placeholder="Optional"
-                                    className="bg-slate-900 border-slate-700 text-white"
                                 />
                             </div>
                         </div>
                         <div className="flex gap-2">
-                            <Button onClick={createMaintenance} className="flex-1">Create</Button>
+                            <Button onClick={createMaintenance} className="flex-1 bg-blue-600 hover:bg-blue-700">Create</Button>
                             <Button onClick={() => setShowForm(false)} variant="outline" className="flex-1">Cancel</Button>
                         </div>
                     </div>
@@ -216,7 +213,7 @@ export default function MaintenanceTracking({ units }) {
                 <div className="space-y-4">
                     {overdue.length > 0 && (
                         <div>
-                            <h3 className="text-sm font-semibold text-red-400 mb-2">Overdue</h3>
+                            <h3 className="text-sm font-semibold text-red-600 mb-2">Overdue</h3>
                             {overdue.map(item => (
                                 <MaintenanceCard key={item.id} item={item} onComplete={completeMaintenance} onDelete={deleteMaintenance} isOverdue />
                             ))}
@@ -225,7 +222,7 @@ export default function MaintenanceTracking({ units }) {
 
                     {upcoming.length > 0 && (
                         <div>
-                            <h3 className="text-sm font-semibold text-yellow-400 mb-2">Upcoming</h3>
+                            <h3 className="text-sm font-semibold text-yellow-600 mb-2">Upcoming</h3>
                             {upcoming.map(item => (
                                 <MaintenanceCard key={item.id} item={item} onComplete={completeMaintenance} onDelete={deleteMaintenance} />
                             ))}
@@ -234,7 +231,7 @@ export default function MaintenanceTracking({ units }) {
 
                     {completed.length > 0 && (
                         <div>
-                            <h3 className="text-sm font-semibold text-green-400 mb-2">Completed</h3>
+                            <h3 className="text-sm font-semibold text-green-600 mb-2">Completed</h3>
                             {completed.map(item => (
                                 <MaintenanceCard key={item.id} item={item} onDelete={deleteMaintenance} isCompleted />
                             ))}
@@ -252,17 +249,17 @@ function MaintenanceCard({ item, onComplete, onDelete, isOverdue, isCompleted })
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className={`p-3 rounded-lg mb-2 ${
-                isOverdue ? 'bg-red-900/20 border border-red-700' :
-                isCompleted ? 'bg-green-900/20 border border-green-700 opacity-60' :
-                'bg-slate-800 border border-slate-700'
+                isOverdue ? 'bg-red-50 border border-red-300' :
+                isCompleted ? 'bg-green-50 border border-green-300 opacity-60' :
+                'bg-white border border-gray-200'
             }`}
         >
             <div className="flex items-start justify-between mb-2">
                 <div>
-                    <h4 className="font-semibold text-white">
+                    <h4 className="font-semibold text-gray-900">
                         {item.vehicle_id} {item.unit_number && `(${item.unit_number})`}
                     </h4>
-                    <p className="text-sm text-slate-400">{item.maintenance_type.replace('_', ' ')}</p>
+                    <p className="text-sm text-gray-600">{item.maintenance_type.replace('_', ' ')}</p>
                 </div>
                 <div className="flex items-center gap-2">
                     {!isCompleted && (
@@ -270,7 +267,7 @@ function MaintenanceCard({ item, onComplete, onDelete, isOverdue, isCompleted })
                             size="icon"
                             variant="ghost"
                             onClick={() => onComplete(item.id)}
-                            className="h-7 w-7 text-green-400"
+                            className="h-7 w-7 text-green-600 hover:text-green-700"
                         >
                             <CheckCircle className="w-4 h-4" />
                         </Button>
@@ -279,18 +276,18 @@ function MaintenanceCard({ item, onComplete, onDelete, isOverdue, isCompleted })
                         size="icon"
                         variant="ghost"
                         onClick={() => onDelete(item.id)}
-                        className="h-7 w-7 text-red-400"
+                        className="h-7 w-7 text-red-600 hover:text-red-700"
                     >
                         <Trash2 className="w-4 h-4" />
                     </Button>
                 </div>
             </div>
-            {item.description && <p className="text-xs text-slate-400 mb-2">{item.description}</p>}
+            {item.description && <p className="text-xs text-gray-600 mb-2">{item.description}</p>}
             <div className="flex items-center gap-3 text-xs">
-                <span className={isOverdue ? 'text-red-400' : 'text-slate-400'}>
+                <span className={isOverdue ? 'text-red-600' : 'text-gray-600'}>
                     Due: {new Date(item.due_date).toLocaleDateString()}
                 </span>
-                {item.due_mileage && <span className="text-slate-400">@ {item.due_mileage} mi</span>}
+                {item.due_mileage && <span className="text-gray-600">@ {item.due_mileage} mi</span>}
                 {isCompleted && (
                     <Badge className="bg-green-600 text-white">
                         Completed {new Date(item.completed_date).toLocaleDateString()}
