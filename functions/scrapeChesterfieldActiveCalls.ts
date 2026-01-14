@@ -104,9 +104,12 @@ Deno.serve(async (req) => {
           continue;
         }
         
-        // Filter by time window (RecordDate is in milliseconds)
-        const recordDate = attrs.RecordDate;
-        if (recordDate < oneDayAgo) {
+        // Filter by time window - RecordDate may be in seconds or milliseconds
+        let recordMs = attrs.RecordDate;
+        if (recordMs < 10000000000) {
+          recordMs = recordMs * 1000; // Convert seconds to milliseconds
+        }
+        if (recordMs < oneDayAgo) {
           skipped++;
           continue;
         }
