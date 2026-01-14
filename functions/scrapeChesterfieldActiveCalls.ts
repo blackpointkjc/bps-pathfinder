@@ -131,8 +131,12 @@ Deno.serve(async (req) => {
           continue;
         }
         
-        // Use current time for all calls (RecordDate parsing is broken, but we're filtering by recent)
-        const timeReceived = new Date().toISOString();
+        // Parse RecordDate (in milliseconds, UTC)
+        let recordMs = attrs.RecordDate;
+        if (recordMs < 10000000000) {
+          recordMs = recordMs * 1000; // Convert seconds to milliseconds
+        }
+        const timeReceived = new Date(recordMs).toISOString();
         
         // Build location text
         const location = attrs.DimLocationAddress || attrs.LocationName || 'Unknown Location';
