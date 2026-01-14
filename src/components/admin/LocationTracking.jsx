@@ -135,7 +135,7 @@ export default function LocationTracking({ users }) {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-xs font-medium text-gray-900">
-                                                    {new Date(log.created_date).toLocaleTimeString()}
+                                                    {new Date(log.created_date).toISOString().substr(11, 8)}Z
                                                 </p>
                                                 <p className="text-xs text-gray-600 truncate">
                                                     {log.address || `${log.latitude.toFixed(4)}, ${log.longitude.toFixed(4)}`}
@@ -198,7 +198,7 @@ export default function LocationTracking({ users }) {
                                             {selectedUser.rank} {selectedUser.last_name}
                                         </p>
                                         <p className="text-xs text-gray-600">
-                                            {new Date(log.created_date).toLocaleString()}
+                                            {new Date(log.created_date).toISOString().replace('T', ' ').substr(0, 19)}Z
                                         </p>
                                         {log.address && (
                                             <p className="text-xs mt-1">{log.address}</p>
