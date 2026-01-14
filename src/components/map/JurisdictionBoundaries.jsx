@@ -13,7 +13,7 @@ const isValidGeoJSON = (data) => {
 };
 
 export default function JurisdictionBoundaries({ filters = {} }) {
-    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all', staffordDistrict = 'all', spotsylvaniaDistrict = 'all', colonialHeightsDistrict = 'all', petersburgDistrict = 'all', carolineDistrict = 'all', princeWilliamDistrict = 'all', arlingtonBeat = 'all', fairfaxDistrict = 'all', loudounDistrict = 'all', fallsChurchDistrict = 'all', alexandriaDistrict = 'all', manassasDistrict = 'all', dcPSA = 'all', fredericksburgDistrict = 'all', manassasParkDistrict = 'all', newKentDistrict = 'all' } = filters;
+    const { richmondBeat = 'all', henricoDistrict = 'all', chesterfieldDistrict = 'all', hanoverDistrict = 'all', staffordDistrict = 'all', spotsylvaniaDistrict = 'all', colonialHeightsDistrict = 'all', petersburgDistrict = 'all', carolineDistrict = 'all', princeWilliamDistrict = 'all', arlingtonBeat = 'all', fairfaxDistrict = 'all', loudounDistrict = 'all', fallsChurchDistrict = 'all', alexandriaDistrict = 'all', manassasDistrict = 'all', dcPSA = 'all', fredericksburgDistrict = 'all', manassasParkDistrict = 'all' } = filters;
     // Fetch Richmond beats
     const { data: richmondBeats } = useQuery({
         queryKey: ['richmondBeats'],
@@ -228,19 +228,6 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryFn: async () => {
             const response = await fetch(
                 'https://gisweb.pwcva.gov/arcgis/rest/services/OpenData/OpenData/MapServer/19/query?where=NAME%3D%27Manassas%20Park%27&outFields=*&returnGeometry=true&f=geojson'
-            );
-            const data = await response.json();
-            return isValidGeoJSON(data) ? data : null;
-        },
-        staleTime: Infinity,
-    });
-
-    // Fetch New Kent County boundary
-    const { data: newKentBoundary } = useQuery({
-        queryKey: ['newKentBoundary'],
-        queryFn: async () => {
-            const response = await fetch(
-                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATEFP%3D%2751%27%20AND%20NAME%3D%27New%20Kent%27&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
@@ -496,17 +483,6 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         };
     };
 
-    const newKentStyle = (feature) => {
-        return {
-            fillColor: '#34D399',
-            fillOpacity: 0.15,
-            color: '#10B981',
-            weight: 2,
-            opacity: 0.7,
-            className: 'clickable-boundary'
-        };
-    };
-
     const onEachRichmondFeature = (feature, layer) => {
         if (feature.properties && feature.properties.Name) {
             layer.bindPopup(`
@@ -672,18 +648,6 @@ export default function JurisdictionBoundaries({ filters = {} }) {
             <div class="p-2">
                 <p class="font-bold text-pink-600">Manassas Park</p>
                 <p class="text-sm">City Boundary</p>
-            </div>
-        `);
-        layer.on('click', () => {
-            layer.openPopup();
-        });
-    };
-
-    const onEachNewKentFeature = (feature, layer) => {
-        layer.bindPopup(`
-            <div class="p-2">
-                <p class="font-bold text-emerald-600">New Kent County</p>
-                <p class="text-sm">County Boundary</p>
             </div>
         `);
         layer.on('click', () => {
@@ -1165,16 +1129,6 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                     data={manassasParkBoundary}
                     style={manassasParkStyle}
                     onEachFeature={onEachManassasParkFeature}
-                />
-            )}
-
-            {/* New Kent County */}
-            {newKentBoundary && (
-                <GeoJSON
-                    key="new-kent"
-                    data={newKentBoundary}
-                    style={newKentStyle}
-                    onEachFeature={onEachNewKentFeature}
                 />
             )}
         </>
