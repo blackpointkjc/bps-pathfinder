@@ -3,8 +3,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 // Chesterfield ArcGIS FeatureServer endpoint
 const FEATURESERVER_URL = 'https://services3.arcgis.com/TsynfzBSE6sXfoLq/arcgis/rest/services/PSDWIncidents_ProdA/FeatureServer/0/query';
 
-// Active call window: 24 hours (captures same-day active calls)
-const ACTIVE_WINDOW_MS = 24 * 60 * 60 * 1000;
+// Active call window: 7 days (captures recent active calls)
+const ACTIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 // Map incident category to priority
 const mapPriority = (category) => {
