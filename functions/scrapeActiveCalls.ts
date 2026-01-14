@@ -162,9 +162,9 @@ Deno.serve(async (req) => {
 
                                             location = normalizeAddress(location, 'Richmond');
 
-                                            if (location && time) {
-                                                calls.push({ time, incident, location, agency, status, source: 'richmond' });
-                                            }
+                                            if (location && time && incident) {
+                                                                calls.push({ time, incident, location, agency, status, source: 'richmond' });
+                                                            }
                                         }
                     }
                 } else {
