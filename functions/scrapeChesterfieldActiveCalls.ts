@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
     const now = new Date();
     const windowStart = now.getTime() - (4 * 60 * 60 * 1000);
 
-    console.log(`📅 Filtering for last 2 hours: ${new Date(windowStart).toISOString()} to now`);
+    console.log(`📅 Filtering for last 4 hours: ${new Date(windowStart).toISOString()} to now`);
     
     // Build ArcGIS query - no WHERE clause, fetch all and filter in code
     const params = new URLSearchParams({
