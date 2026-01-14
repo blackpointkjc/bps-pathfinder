@@ -10,9 +10,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car } from 'lucide-react';
+import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car, MapPin } from 'lucide-react';
 import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import VehicleManagement from '@/components/admin/VehicleManagement';
+import LocationTracking from '@/components/admin/LocationTracking';
 
 export default function AdminPortal() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -151,6 +152,14 @@ export default function AdminPortal() {
                         <Wrench className="w-4 h-4" />
                         Maintenance
                     </Button>
+                    <Button
+                        variant={activeTab === 'tracking' ? 'default' : 'outline'}
+                        onClick={() => setActiveTab('tracking')}
+                        className="flex items-center gap-2"
+                    >
+                        <MapPin className="w-4 h-4" />
+                        Location Tracking
+                    </Button>
                 </div>
 
                 {/* Users Tab */}
@@ -233,6 +242,11 @@ export default function AdminPortal() {
                 {/* Maintenance Tab */}
                 {activeTab === 'maintenance' && (
                     <MaintenanceTracking units={users} />
+                )}
+
+                {/* Location Tracking Tab */}
+                {activeTab === 'tracking' && (
+                    <LocationTracking users={users} />
                 )}
             </div>
 
