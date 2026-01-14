@@ -90,7 +90,8 @@ export default function DispatchCenter() {
     const loadActiveCalls = async () => {
         try {
             const calls = await base44.entities.DispatchCall.filter({
-                status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene'] }
+                status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene'] },
+                created_by: { $ne: 'system_scraper' }
             });
             setActiveCalls(calls || []);
         } catch (error) {
