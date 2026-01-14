@@ -187,6 +187,16 @@ export default function DispatchCenter() {
                             <Radio className="w-4 h-4 mr-2" />
                             Call
                         </Button>
+                        {(currentUser?.supervisor_role || currentUser?.role === 'admin') && (
+                            <Button
+                                variant="outline"
+                                className="border-slate-600 text-black bg-white hover:bg-slate-100"
+                                onClick={() => window.location.href = '/assetmanagement'}
+                            >
+                                <Car className="w-4 h-4 mr-2" />
+                                Assets
+                            </Button>
+                        )}
                         {currentUser?.role === 'admin' && (
                             <Button
                                 variant="outline"

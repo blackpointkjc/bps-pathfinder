@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,11 +7,28 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { X, Car, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import { base44 } from '@/api/base44Client';
 
 export default function UnitSettings({ isOpen, onClose, unitName, onSave, showLights, onLightsChange }) {
     const [name, setName] = useState(unitName || '');
     const [assignedCar, setAssignedCar] = useState(localStorage.getItem('assignedCar') || '');
     const [lightsEnabled, setLightsEnabled] = useState(showLights || false);
+    const [vehicles, setVehicles] = useState([]);
+
+    useEffect(() => {
+        if (isOpen) {
+            loadVehicles();
+        }
+    }, [isOpen]);
+
+    const loadVehicles = async () => {
+        try {
+            const data = await base44.entities.Vehicle.list('-created_date', 100);
+            setVehicles(data?.filter(v => v.status === 'Active') || []);
+        } catch (error) {
+            console.error('Error loading vehicles:', error);
+        }
+    };
 
     const handleSave = async () => {
         if (name.trim()) {
@@ -19,13 +36,23 @@ export default function UnitSettings({ isOpen, onClose, unitName, onSave, showLi
             onLightsChange(lightsEnabled);
             localStorage.setItem('assignedCar', assignedCar.trim());
             
-            // Update backend with unit info
+            // Update backend with unit info and link vehicle
             try {
-                const { base44 } = await import('@/api/base44Client');
+                const user = await base44.auth.me();
                 await base44.auth.updateMe({ 
                     unit_number: name.trim(),
                     assigned_vehicle: assignedCar.trim()
                 });
+
+                // Update vehicle assignment if a vehicle was selected
+                if (assignedCar.trim()) {
+                    const vehicle = vehicles.find(v => v.vehicle_id === assignedCar.trim());
+                    if (vehicle) {
+                        await base44.entities.Vehicle.update(vehicle.id, {
+                            assigned_to: user.id
+                        });
+                    }
+                }
             } catch (error) {
                 console.error('Error updating unit info:', error);
             }
@@ -93,16 +120,32 @@ export default function UnitSettings({ isOpen, onClose, unitName, onSave, showLi
 
                             <div>
                                 <Label htmlFor="assignedCar" className="text-sm font-medium text-gray-700">
-                                    Assigned Vehicle / Car Number
+                                    Assigned Vehicle
                                 </Label>
-                                <Input
-                                    id="assignedCar"
-                                    placeholder="e.g., CV-201, Patrol Car 5..."
-                                    value={assignedCar}
-                                    onChange={(e) => setAssignedCar(e.target.value)}
-                                    className="mt-1"
-                                    maxLength={20}
-                                />
+                                {vehicles.length > 0 ? (
+                                    <select
+                                        id="assignedCar"
+                                        value={assignedCar}
+                                        onChange={(e) => setAssignedCar(e.target.value)}
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
+                                    >
+                                        <option value="">Select Vehicle</option>
+                                        {vehicles.map(vehicle => (
+                                            <option key={vehicle.id} value={vehicle.vehicle_id}>
+                                                {vehicle.vehicle_id} - {vehicle.year} {vehicle.make} {vehicle.model}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <Input
+                                        id="assignedCar"
+                                        placeholder="e.g., CV-201, Patrol Car 5..."
+                                        value={assignedCar}
+                                        onChange={(e) => setAssignedCar(e.target.value)}
+                                        className="mt-1"
+                                        maxLength={20}
+                                    />
+                                )}
                                 <p className="text-xs text-gray-500 mt-1">
                                     The vehicle you're currently assigned to
                                 </p>
