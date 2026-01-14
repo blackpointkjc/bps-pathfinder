@@ -43,12 +43,11 @@ Deno.serve(async (req) => {
       console.warn('Could not delete old calls:', e.message);
     }
     
-    // Filter for today's calls only
+    // Filter for last 24 hours
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayStartMs = todayStart.getTime();
+    const oneDayAgo = now.getTime() - (24 * 60 * 60 * 1000);
 
-    console.log(`📅 Filtering for today: ${todayStart.toISOString()}`);
+    console.log(`📅 Filtering for last 24 hours: ${new Date(oneDayAgo).toISOString()} to now`);
 
     // Build ArcGIS query - fetch all, filter in code
     const params = new URLSearchParams({
