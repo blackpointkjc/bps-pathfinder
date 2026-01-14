@@ -105,7 +105,12 @@ Deno.serve(async (req) => {
           continue;
         }
         
-        // RecordDate is already filtered by the WHERE clause, so no need to filter again
+        // Filter by time window (RecordDate is in milliseconds)
+        const recordDate = attrs.RecordDate;
+        if (recordDate < todayStartMs) {
+          skipped++;
+          continue;
+        }
         
         // Check if call already exists
         const existing = await base44.asServiceRole.entities.DispatchCall.filter({
