@@ -55,14 +55,30 @@ export default function MaintenanceTracking({ units }) {
         }
 
         try {
-            await base44.entities.UnitMaintenance.create(formData);
+            const dataToCreate = {
+                vehicle_id: formData.vehicle_id,
+                unit_number: formData.unit_number || '',
+                maintenance_type: formData.maintenance_type,
+                description: formData.description || '',
+                due_date: formData.due_date,
+                notes: formData.notes || ''
+            };
+
+            // Only add due_mileage if it has a value
+            if (formData.due_mileage && formData.due_mileage !== '') {
+                dataToCreate.due_mileage = parseFloat(formData.due_mileage);
+            }
+
+            console.log('Creating maintenance with data:', dataToCreate);
+            await base44.entities.UnitMaintenance.create(dataToCreate);
+            
             setShowForm(false);
             setFormData({ vehicle_id: '', unit_number: '', maintenance_type: 'oil_change', description: '', due_date: '', due_mileage: '', notes: '' });
             await loadMaintenance();
             toast.success('Maintenance scheduled');
         } catch (error) {
             console.error('Error creating maintenance:', error);
-            toast.error('Failed to schedule');
+            toast.error('Failed to schedule: ' + error.message);
         }
     };
 
