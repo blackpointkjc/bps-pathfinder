@@ -265,31 +265,11 @@ Deno.serve(async (req) => {
                     continue;
                 }
 
-                // Normalize address
-                const normalizedAddress = normalizeAddress(call.location, call.agency);
-
-                if (!normalizedAddress) {
+                // Skip highways/interstates
+                if (!normalizeAddress(call.location, call.agency)) {
                     console.log(`⏭️ Skipping highway/interstate: ${call.location}`);
                     failed++;
                     continue;
-                }
-
-                let latitude = null;
-                let longitude = null;
-
-                // Attempt geocoding - but save call even if it fails
-                console.log(`🔍 Geocoding: "${call.location}" → "${normalizedAddress}"`);
-                const geoResult = await geocodeAddress(normalizedAddress);
-
-                if (geoResult && isValidCoords(geoResult.latitude, geoResult.longitude)) {
-                    latitude = geoResult.latitude;
-                    longitude = geoResult.longitude;
-                    geocoded++;
-                    console.log(`✅ SUCCESS: ${latitude}, ${longitude}`);
-                } else {
-                    console.log(`⚠️ Geocoding failed, saving without coords: "${normalizedAddress}"`);
-                    failed++;
-                    // Continue to save call without coordinates
                 }
                 
                 // Parse time from call.time (format: "HH:MM AM/PM")
@@ -316,23 +296,20 @@ Deno.serve(async (req) => {
                     }
                 }
                 
-                // Save call (with or without coords)
+                // Save call immediately without geocoding (show on map now)
                 await base44.asServiceRole.entities.DispatchCall.create({
                     call_id: callId,
                     incident: call.incident,
                     location: call.location,
                     agency: call.agency,
                     status: call.status,
-                    latitude: latitude,
-                    longitude: longitude,
+                    latitude: null,
+                    longitude: null,
                     time_received: timeReceived.toISOString(),
                     description: `${call.incident} at ${call.location}`,
                     source: call.source
                 });
                 saved++;
-
-                // Rate limiting - reduced to 600ms for faster processing
-                await new Promise(resolve => setTimeout(resolve, 600));
                 
             } catch (error) {
                 console.error(`❌ Error processing call "${call.location}":`, error.message);
