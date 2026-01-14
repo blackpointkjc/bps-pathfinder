@@ -29,11 +29,13 @@ Deno.serve(async (req) => {
     
     console.log('🔍 Starting Chesterfield ArcGIS scraper...');
     
-    // Calculate time window (last 4 hours)
+    // Calculate time window (last 7 days)
+    // ArcGIS server uses EST, so offset by -5 hours to get records in our time
+    const EST_OFFSET_MS = 5 * 60 * 60 * 1000;
     const now = Date.now();
-    const windowStart = now - ACTIVE_WINDOW_MS;
-    
-    console.log(`📅 Querying records from ${new Date(windowStart).toISOString()} to now`);
+    const windowStart = now - ACTIVE_WINDOW_MS - EST_OFFSET_MS;
+
+    console.log(`📅 Querying records from ${new Date(windowStart).toISOString()} to now (accounting for EST offset)`);
     
     // Build ArcGIS query - RecordDate is in milliseconds
     const params = new URLSearchParams({
