@@ -29,15 +29,15 @@ Deno.serve(async (req) => {
     
     console.log('🔍 Starting Chesterfield ArcGIS scraper...');
     
-    // Calculate time window (last 4 hours in epoch ms)
+    // Calculate time window (last 4 hours)
     const now = Date.now();
     const windowStart = now - ACTIVE_WINDOW_MS;
     
     console.log(`📅 Querying records from ${new Date(windowStart).toISOString()} to now`);
     
-    // Build ArcGIS query
+    // Build ArcGIS query - use UNIX time (seconds) not milliseconds for ArcGIS
     const params = new URLSearchParams({
-      where: `RecordDate >= ${windowStart} AND DimLocationLatitude IS NOT NULL AND DimLocationLongitude IS NOT NULL`,
+      where: `RecordDate >= ${Math.floor(windowStart / 1000)} AND DimLocationLatitude IS NOT NULL AND DimLocationLongitude IS NOT NULL`,
       outFields: '*',
       returnGeometry: 'false',
       orderByFields: 'RecordDate DESC',
