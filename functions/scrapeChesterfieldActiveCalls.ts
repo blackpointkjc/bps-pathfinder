@@ -29,10 +29,20 @@ Deno.serve(async (req) => {
     
     console.log('🔍 Starting Chesterfield ArcGIS scraper...');
     
-    // Last 2 hours only (EST)
+    // Delete all existing Chesterfield calls (they have wrong timestamps)
+    try {
+      const allCalls = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'chesterfield' });
+      for (const call of allCalls) {
+        await base44.asServiceRole.entities.DispatchCall.delete(call.id);
+      }
+      console.log(`🗑️ Deleted ${allCalls.length} old Chesterfield calls`);
+    } catch (e) {
+      console.warn('Could not delete old calls:', e.message);
+    }
+    
+    // Last 4 hours only
     const now = new Date();
-    const estOffset = 5 * 60 * 60 * 1000; // EST is UTC-5
-    const windowStart = now.getTime() - (2 * 60 * 60 * 1000);
+    const windowStart = now.getTime() - (4 * 60 * 60 * 1000);
 
     console.log(`📅 Filtering for last 2 hours: ${new Date(windowStart).toISOString()} to now`);
     
