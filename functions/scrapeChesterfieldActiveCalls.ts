@@ -50,13 +50,13 @@ Deno.serve(async (req) => {
 
     console.log(`📅 Filtering for today: ${todayStart.toISOString()}`);
 
-    // Build ArcGIS query - filter by RecordDate for today
+    // Build ArcGIS query - fetch all, filter in code
     const params = new URLSearchParams({
-      where: `RecordDate >= ${todayStartMs}`,
+      where: '1=1',
       outFields: '*',
       returnGeometry: 'true',
       orderByFields: 'RecordDate DESC',
-      resultRecordCount: '500',
+      resultRecordCount: '1000',
       f: 'json'
     });
     
