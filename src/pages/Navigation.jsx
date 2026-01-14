@@ -1980,11 +1980,12 @@ Be thorough and search multiple sources.`,
                             base44.auth.logout();
                         }
                     }}
-                    size="icon"
-                    className="h-8 w-8 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-lg"
+                    size="sm"
+                    className="h-8 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-lg flex items-center gap-2"
                     title="Logout"
                 >
-                    <X className="w-4 h-4" />
+                    <X className="w-3 h-3" />
+                    <span className="text-xs font-semibold">Log Out</span>
                 </Button>
 
                 <Button
