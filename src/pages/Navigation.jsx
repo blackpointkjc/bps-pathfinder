@@ -242,6 +242,39 @@ export default function Navigation() {
         }
     }, [currentUser, currentLocation, heading, speed, unitStatus, showLights, activeCallInfo]);
 
+    // Auto-log location every 2 minutes
+    useEffect(() => {
+        if (!currentUser || !currentLocation) return;
+
+        const logInterval = setInterval(async () => {
+            if (currentLocation && currentUser) {
+                try {
+                    await base44.functions.invoke('logLocation', {
+                        latitude: currentLocation[0],
+                        longitude: currentLocation[1],
+                        status: unitStatus,
+                        speed: speed || 0
+                    });
+                    console.log('Location logged successfully');
+                } catch (error) {
+                    console.error('Failed to log location:', error);
+                }
+            }
+        }, 120000); // Every 2 minutes
+
+        // Log immediately on mount
+        if (currentLocation) {
+            base44.functions.invoke('logLocation', {
+                latitude: currentLocation[0],
+                longitude: currentLocation[1],
+                status: unitStatus,
+                speed: speed || 0
+            }).catch(err => console.error('Initial location log failed:', err));
+        }
+
+        return () => clearInterval(logInterval);
+    }, [currentUser, currentLocation]);
+
     // Fetch other units on mount and then every 5 seconds for real-time tracking with push notifications
     useEffect(() => {
         if (currentUser) {
@@ -573,7 +606,6 @@ export default function Navigation() {
     };
 
     const lastLocationUpdateRef = useRef(0);
-    const lastLocationLogRef = useRef(0);
 
     const updateUserLocation = async () => {
         if (!currentUser || !currentLocation) return;
@@ -596,21 +628,6 @@ export default function Navigation() {
             };
 
             await base44.auth.updateMe(updateData);
-
-            // Log location to database every 2 minutes (120000ms)
-            if (now - lastLocationLogRef.current > 120000) {
-                lastLocationLogRef.current = now;
-                try {
-                    await base44.functions.invoke('logLocation', {
-                        latitude: currentLocation[0],
-                        longitude: currentLocation[1],
-                        status: unitStatus,
-                        speed: speed || 0
-                    });
-                } catch (logError) {
-                    console.error('Error logging location:', logError);
-                }
-            }
         } catch (error) {
             console.error('Error updating user location:', error);
         }
