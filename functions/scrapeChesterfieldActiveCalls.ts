@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
         };
         const agency = agencyMap[agencyCode] || `Chesterfield (${agencyCode})`;
         
-        // Save to DispatchCall (using EST time)
+        // Save to DispatchCall
         await base44.asServiceRole.entities.DispatchCall.create({
           call_id: callId,
           incident: incident,
@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
           agency: agency,
           priority: priority,
           status: 'Dispatched',
-          time_received: estTime.toISOString(),
+          time_received: timeReceived,
           description: `${incident} at ${location}`,
           source: 'chesterfield'
         });
