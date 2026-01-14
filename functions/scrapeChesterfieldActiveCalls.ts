@@ -29,11 +29,14 @@ Deno.serve(async (req) => {
     
     console.log('🔍 Starting Chesterfield ArcGIS scraper...');
     
-    // Delete all existing Chesterfield calls (they have wrong timestamps)
+    // Delete all existing Chesterfield calls with rate limiting
     try {
       const allCalls = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'chesterfield' });
-      for (const call of allCalls) {
-        await base44.asServiceRole.entities.DispatchCall.delete(call.id);
+      for (let i = 0; i < allCalls.length; i++) {
+        await base44.asServiceRole.entities.DispatchCall.delete(allCalls[i].id);
+        if ((i + 1) % 5 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
       console.log(`🗑️ Deleted ${allCalls.length} old Chesterfield calls`);
     } catch (e) {
