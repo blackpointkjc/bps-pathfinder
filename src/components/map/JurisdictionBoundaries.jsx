@@ -240,7 +240,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         queryKey: ['newKentBoundary'],
         queryFn: async () => {
             const response = await fetch(
-                'https://parcelviewer.geodecisions.com/arcgis/rest/services/NewKent/Public/MapServer/1/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson'
+                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1/query?where=STATEFP%3D%2751%27%20AND%20NAME%3D%27New%20Kent%27&outFields=*&returnGeometry=true&f=geojson'
             );
             const data = await response.json();
             return isValidGeoJSON(data) ? data : null;
