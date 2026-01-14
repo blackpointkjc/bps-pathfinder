@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
         if (recordMs < 10000000000) {
           recordMs = recordMs * 1000; // Convert seconds to milliseconds
         }
-        if (recordMs < oneDayAgo) {
+        if (recordMs < oneDayAgoEst) {
           skipped++;
           continue;
         }
