@@ -213,37 +213,8 @@ Deno.serve(async (req) => {
             console.error('❌ Henrico error:', error.message);
         }
 
-        // Source 3: Chesterfield County - uses dynamic API
-        try {
-            console.log('📡 Scraping Chesterfield Active Calls...');
-            // Try the API endpoint that serves the data
-            const response3 = await fetch('https://www.chesterfield.gov/api/activecalls', {
-                headers: { 'User-Agent': 'Mozilla/5.0' },
-                signal: AbortSignal.timeout(10000)
-            });
-
-            if (response3.ok) {
-                const data = await response3.json();
-                if (Array.isArray(data)) {
-                    for (const call of data) {
-                        const time = call.ReceivedTime || call.callTime || call.time || '';
-                        const incident = call.IncidentType || call.Description || call.incident || 'Unknown';
-                        const location = call.Location || call.location || '';
-                        const status = call.Status || 'Dispatched';
-                        const agency = 'CCPD';
-
-                        if (location && time) {
-                            calls.push({ time, incident, location, agency, status, source: 'chesterfield' });
-                        }
-                    }
-                }
-                console.log(`✅ Chesterfield: ${calls.filter(c => c.source === 'chesterfield').length} calls`);
-            } else {
-                console.warn('Chesterfield API not responding, trying fallback...');
-            }
-        } catch (error) {
-            console.error('❌ Chesterfield API error:', error.message);
-        }
+        // Source 3: Chesterfield County - skip, handled by dedicated scraper
+        console.log('⏭️ Chesterfield: Handled by scrapeChesterfieldActiveCalls');
         
         console.log(`✅ Total scraped: ${calls.length} calls`);
         
@@ -277,19 +248,27 @@ Deno.serve(async (req) => {
                 let latitude = null;
                 let longitude = null;
 
-                // Attempt geocoding - but save call even if it fails
-                console.log(`🔍 Geocoding: "${call.location}" → "${normalizedAddress}"`);
-                const geoResult = await geocodeAddress(normalizedAddress);
+                // Attempt geocoding with timeout
+                try {
+                    console.log(`🔍 Geocoding: "${call.location}" → "${normalizedAddress}"`);
+                    const geoPromise = geocodeAddress(normalizedAddress);
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Geocode timeout')), 3000)
+                    );
+                    const geoResult = await Promise.race([geoPromise, timeoutPromise]);
 
-                if (geoResult && isValidCoords(geoResult.latitude, geoResult.longitude)) {
-                    latitude = geoResult.latitude;
-                    longitude = geoResult.longitude;
-                    geocoded++;
-                    console.log(`✅ SUCCESS: ${latitude}, ${longitude}`);
-                } else {
-                    console.log(`⚠️ Geocoding failed, saving without coords: "${normalizedAddress}"`);
+                    if (geoResult && isValidCoords(geoResult.latitude, geoResult.longitude)) {
+                        latitude = geoResult.latitude;
+                        longitude = geoResult.longitude;
+                        geocoded++;
+                        console.log(`✅ SUCCESS: ${latitude}, ${longitude}`);
+                    } else {
+                        console.log(`⚠️ Geocoding failed, saving without coords: "${normalizedAddress}"`);
+                        failed++;
+                    }
+                } catch (geoError) {
+                    console.log(`⚠️ Geocoding timeout/error, saving without coords: "${normalizedAddress}"`);
                     failed++;
-                    // Continue to save call without coordinates
                 }
                 
                 // Parse time from call.time (format: "HH:MM AM/PM")
