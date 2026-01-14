@@ -573,6 +573,7 @@ export default function Navigation() {
     };
 
     const lastLocationUpdateRef = useRef(0);
+    const lastLocationLogRef = useRef(0);
 
     const updateUserLocation = async () => {
         if (!currentUser || !currentLocation) return;
@@ -592,9 +593,24 @@ export default function Navigation() {
                 show_lights: showLights,
                 current_call_info: activeCallInfo,
                 last_updated: new Date().toISOString()
-                };
+            };
 
-                await base44.auth.updateMe(updateData);
+            await base44.auth.updateMe(updateData);
+
+            // Log location to database every 2 minutes (120000ms)
+            if (now - lastLocationLogRef.current > 120000) {
+                lastLocationLogRef.current = now;
+                try {
+                    await base44.functions.invoke('logLocation', {
+                        latitude: currentLocation[0],
+                        longitude: currentLocation[1],
+                        status: unitStatus,
+                        speed: speed || 0
+                    });
+                } catch (logError) {
+                    console.error('Error logging location:', logError);
+                }
+            }
         } catch (error) {
             console.error('Error updating user location:', error);
         }
