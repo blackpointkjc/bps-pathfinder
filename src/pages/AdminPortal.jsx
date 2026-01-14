@@ -110,11 +110,19 @@ export default function AdminPortal() {
                             <Shield className="w-10 h-10 text-blue-600" />
                             Admin Portal
                         </h1>
-                        <p className="text-gray-600 mt-2">Manage users, roles, and permissions</p>
+                        <p className="text-gray-600 mt-2">Manage users, roles, permissions, assets, and maintenance</p>
                     </div>
-                    <Button variant="outline" onClick={() => window.location.href = '/navigation'}>
-                        Back to Navigation
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => window.location.href = '/assetmanagement'}>
+                            Assets
+                        </Button>
+                        <Button variant="outline" onClick={() => window.location.href = '/dispatchcenter'}>
+                            Dispatch
+                        </Button>
+                        <Button variant="outline" onClick={() => window.location.href = '/navigation'}>
+                            Map
+                        </Button>
+                    </div>
                 </div>
 
                 <Card className="p-6">
