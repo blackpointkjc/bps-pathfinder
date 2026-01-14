@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car } from 'lucide-react';
 import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
+import VehicleManagement from '@/components/admin/VehicleManagement';
 
 export default function AdminPortal() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -226,16 +227,7 @@ export default function AdminPortal() {
 
                 {/* Assets Tab */}
                 {activeTab === 'assets' && (
-                    <Card className="p-6">
-                        <div className="text-center py-12">
-                            <Car className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Asset Management</h3>
-                            <p className="text-gray-600 mb-6">Manage your vehicle fleet and equipment</p>
-                            <Button onClick={() => window.location.href = '/assetmanagement'}>
-                                Go to Asset Management
-                            </Button>
-                        </div>
-                    </Card>
+                    <VehicleManagement />
                 )}
 
                 {/* Maintenance Tab */}
