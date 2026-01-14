@@ -43,19 +43,20 @@ Deno.serve(async (req) => {
       console.warn('Could not delete old calls:', e.message);
     }
     
-    // Last 4 hours only
+    // Filter for today's calls only
     const now = new Date();
-    const windowStart = now.getTime() - (4 * 60 * 60 * 1000);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStartMs = todayStart.getTime();
 
-    console.log(`📅 Filtering for last 4 hours: ${new Date(windowStart).toISOString()} to now`);
-    
-    // Build ArcGIS query - no WHERE clause, fetch all and filter in code
+    console.log(`📅 Filtering for today: ${todayStart.toISOString()}`);
+
+    // Build ArcGIS query - filter by RecordDate for today
     const params = new URLSearchParams({
-      where: '1=1',
+      where: `RecordDate >= ${todayStartMs}`,
       outFields: '*',
-      returnGeometry: 'false',
+      returnGeometry: 'true',
       orderByFields: 'RecordDate DESC',
-      resultRecordCount: '1000',
+      resultRecordCount: '500',
       f: 'json'
     });
     
