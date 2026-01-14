@@ -37,11 +37,11 @@ Deno.serve(async (req) => {
     
     // Build ArcGIS query
     const params = new URLSearchParams({
-      where: `RecordDate >= ${windowStart}`,
-      outFields: 'CADEventNumber,RecordDate,IncidentorOffenseTypeDesc,IncidentorOffenseGenCategory,DimLocationAddress,LocationName,DimLocationLatitude,DimLocationLongitude,CADAgency',
+      where: `RecordDate >= ${windowStart} AND DimLocationLatitude IS NOT NULL AND DimLocationLongitude IS NOT NULL`,
+      outFields: '*',
       returnGeometry: 'false',
       orderByFields: 'RecordDate DESC',
-      resultRecordCount: '2000',
+      resultRecordCount: '1000',
       f: 'json'
     });
     

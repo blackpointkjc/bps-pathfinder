@@ -121,12 +121,25 @@ Deno.serve(async (req) => {
             
             if (response1.ok) {
                 const html = await response1.text();
-                // Find the tbody within tblActiveCallsListing table
-                const tbodyMatch = html.match(/<table[^>]*id="tblActiveCallsListing"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i);
+                console.log(`Richmond HTML length: ${html.length}`);
+                
+                // Try multiple table ID patterns
+                const patterns = [
+                    /<table[^>]*id="tblActiveCallsListing"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i,
+                    /<table[^>]*id="ctl00_MainContent_gvCalls"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i,
+                    /<tbody>([\s\S]*?)<\/tbody>/i
+                ];
+                
+                let tbodyMatch = null;
+                for (const pattern of patterns) {
+                    tbodyMatch = html.match(pattern);
+                    if (tbodyMatch && tbodyMatch[1]) break;
+                }
                 
                 if (tbodyMatch && tbodyMatch[1]) {
                     const tbody = tbodyMatch[1];
                     const rows = tbody.split(/<tr[^>]*>/i);
+                    console.log(`Found ${rows.length} rows in Richmond table`);
                     
                     for (let i = 1; i < rows.length; i++) {
                         const row = rows[i];
@@ -139,22 +152,37 @@ Deno.serve(async (req) => {
                             cells.push(match[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
                         }
                         
-                        // Format: Time Received, Agency, Dispatch Area, Unit, Call Type, Location, Status
-                        if (cells.length >= 7) {
-                            const time = cells[0]?.trim() || '';
-                            const agency = cells[1]?.trim() || 'RPD';
-                            const incident = cells[4]?.trim() || 'Unknown';
-                            let location = cells[5]?.trim() || '';
-                            const status = cells[6]?.trim() || 'Dispatched';
-
-                            // Normalize Richmond address
+                        // Try flexible parsing - need at least location and time
+                        if (cells.length >= 2) {
+                            // Look for time pattern
+                            let time = '';
+                            let incident = 'Unknown';
+                            let location = '';
+                            let status = 'Dispatched';
+                            
+                            // Search for time in cells
+                            for (let j = 0; j < cells.length; j++) {
+                                if (/\d{1,2}:\d{2}/.test(cells[j]) && !time) {
+                                    time = cells[j];
+                                }
+                                if (cells[j] && cells[j].length > 5 && !location) {
+                                    location = cells[j];
+                                }
+                                if (cells[j] && !incident) {
+                                    incident = cells[j];
+                                }
+                            }
+                            
                             location = normalizeAddress(location, 'Richmond');
-
-                            if (location && time && incident !== 'Unknown') {
-                                calls.push({ time, incident, location, agency, status, source: 'richmond' });
+                            
+                            if (location && time) {
+                                calls.push({ time, incident, location, agency: 'RPD', status, source: 'richmond' });
+                                console.log(`Richmond call: ${incident} at ${location}`);
                             }
                         }
                     }
+                } else {
+                    console.warn('⚠️ Could not find Richmond table tbody');
                 }
                 console.log(`✅ Richmond: ${calls.filter(c => c.source === 'richmond').length} calls`);
             }
