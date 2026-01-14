@@ -1894,12 +1894,16 @@ Be thorough and search multiple sources.`,
                 </Button>
 
                 <Button
-                    onClick={() => fetchActiveCalls(false)}
+                    onClick={() => {
+                        fetchActiveCalls(false);
+                        fetchOtherUnits();
+                        toast.success('Refreshed calls and units');
+                    }}
                     size="sm"
                     className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] px-2 py-1.5 rounded-lg shadow-lg"
                     disabled={isLoadingCalls}
                 >
-                    <NavigationIcon className={`w-3 h-3 ${isLoadingCalls ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-3 h-3 ${isLoadingCalls ? 'animate-spin' : ''}`} />
                 </Button>
 
                 <Button
