@@ -89,28 +89,37 @@ Deno.serve(async (req) => {
     }
     
     console.log(`✅ Retrieved ${data.features.length} records from ArcGIS`);
-    
+    console.log(`⏰ EST Filter threshold: ${new Date(oneDayAgoEst).toISOString()}`);
+
     let saved = 0;
     let skipped = 0;
     let failed = 0;
-    
+    let logCount = 0;
+
     // Process each record
     for (const feature of data.features) {
       try {
         const attrs = feature.attributes || {};
-        
+
         const callId = attrs.CADEventNumber;
         if (!callId) {
           console.warn('⚠️ Record missing CADEventNumber, skipping');
           skipped++;
           continue;
         }
-        
+
         // Filter by time window - RecordDate may be in seconds or milliseconds
         let recordMs = attrs.RecordDate;
         if (recordMs < 10000000000) {
           recordMs = recordMs * 1000; // Convert seconds to milliseconds
         }
+
+        // Log first few records to debug time filtering
+        if (logCount < 5) {
+          console.log(`📝 Record ${callId}: RecordDate=${attrs.RecordDate} (${new Date(recordMs).toISOString()}), Passes filter: ${recordMs >= oneDayAgoEst}`);
+          logCount++;
+        }
+
         if (recordMs < oneDayAgoEst) {
           skipped++;
           continue;
