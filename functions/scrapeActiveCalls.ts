@@ -93,22 +93,16 @@ Deno.serve(async (req) => {
         
         console.log('🔍 Starting active call scraper...');
         
-        // Delete calls older than 24 hours to keep database clean
+        // Delete ALL existing calls to start fresh
         try {
             const allCalls = await base44.asServiceRole.entities.DispatchCall.list();
-            const now = new Date();
             let deletedCount = 0;
             
             for (const call of allCalls) {
-                const callTime = new Date(call.time_received || call.created_date);
-                const ageHours = (now - callTime) / (1000 * 60 * 60);
-                
-                if (ageHours > 24) {
-                    await base44.asServiceRole.entities.DispatchCall.delete(call.id);
-                    deletedCount++;
-                }
+                await base44.asServiceRole.entities.DispatchCall.delete(call.id);
+                deletedCount++;
             }
-            console.log(`🗑️ Deleted ${deletedCount} calls older than 24 hours`);
+            console.log(`🗑️ Deleted ${deletedCount} old calls - starting fresh`);
         } catch (cleanupError) {
             console.warn('Cleanup warning:', cleanupError.message);
         }
