@@ -153,20 +153,19 @@ Deno.serve(async (req) => {
                         }
                         
                         // Format: [0] Time Received, [1] Agency, [2] Dispatch Area, [3] Unit, [4] Call Type, [5] Location, [6] Status
-                        if (cells.length >= 7) {
-                            let time = cells[0]?.trim() || '';
-                            const agency = cells[1]?.trim() || 'RPD';
-                            const incident = cells[4]?.trim() || 'Unknown';
-                            let location = cells[5]?.trim() || '';
-                            const status = cells[6]?.trim() || 'Dispatched';
-                            
-                            location = normalizeAddress(location, 'Richmond');
-                            
-                            if (location && time) {
-                                calls.push({ time, incident, location, agency, status, source: 'richmond' });
-                                console.log(`Richmond call: ${incident} at ${location}`);
-                            }
-                        }
+                                        if (cells.length >= 7) {
+                                            let time = cells[0]?.trim() || '';
+                                            const agency = cells[1]?.trim() || 'RPD';
+                                            const incident = cells[4]?.trim() || 'Unknown';
+                                            let location = cells[5]?.trim() || '';
+                                            const status = cells[6]?.trim() || 'Dispatched';
+
+                                            location = normalizeAddress(location, 'Richmond');
+
+                                            if (location && time) {
+                                                calls.push({ time, incident, location, agency, status, source: 'richmond' });
+                                            }
+                                        }
                     }
                 } else {
                     console.warn('⚠️ Could not find Richmond table tbody');
