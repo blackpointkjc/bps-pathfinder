@@ -349,7 +349,8 @@ Deno.serve(async (req) => {
                     latitude: latitude,
                     longitude: longitude,
                     time_received: timeReceived.toISOString(),
-                    description: `${call.incident} at ${call.location}`
+                    description: `${call.incident} at ${call.location}`,
+                    source: call.source
                 });
                 saved++;
 
