@@ -125,8 +125,21 @@ Deno.serve(async (req) => {
           continue;
         }
         
-        // Parse timestamp (RecordDate is epoch ms)
-        const recordDate = new Date(attrs.RecordDate);
+        // Parse timestamp (RecordDate is epoch ms, UTC/Zulu)
+        const recordDateUTC = new Date(attrs.RecordDate);
+
+        // Convert UTC to EST
+        const estTime = new Date(recordDateUTC.getTime() - (5 * 60 * 60 * 1000));
+
+        // Check if call is from today (EST)
+        const callDateStr = estTime.toISOString().split('T')[0];
+        const todayStr = todayStart.toISOString().split('T')[0];
+
+        if (callDateStr !== todayStr) {
+          console.warn(`⚠️ Skipping ${callId} - not from today (${callDateStr} vs ${todayStr})`);
+          failed++;
+          continue;
+        }
         
         // Build location text
         const location = attrs.DimLocationAddress || attrs.LocationName || 'Unknown Location';
