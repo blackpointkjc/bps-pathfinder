@@ -8,7 +8,6 @@ import { Clock, MapPin, Radio } from 'lucide-react';
 const createCallIcon = (call, isHighPriority = false) => {
     const incident = call.incident?.toLowerCase() || '';
     const agency = call.agency || '';
-    const isDispatch = call.source === 'dispatch';
     
     // Determine if it's EMS, Police, or Fire
     const isEMS = incident.includes('ems') || incident.includes('medical') || 
@@ -42,59 +41,50 @@ const createCallIcon = (call, isHighPriority = false) => {
         bgColor = '#1E40AF';
         icon = '🚔';
     }
-    
-    const pulseAnimation = isHighPriority ? `
-        @keyframes flashPulse {
-            0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            50% { transform: scale(1.2); opacity: 0.9; box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-        }
-    ` : `
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-        }
-    `;
 
     return new L.DivIcon({
         className: 'custom-call-marker',
         html: `
             <div style="
                 position: relative;
-                width: 36px;
-                height: 36px;
+                width: 40px;
+                height: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             ">
                 <div style="
-                    width: 36px;
-                    height: 36px;
+                    position: absolute;
+                    width: 40px;
+                    height: 40px;
                     background: ${bgColor};
                     border: 3px solid ${isHighPriority ? '#EF4444' : 'white'};
                     border-radius: 50%;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 18px;
-                    animation: ${isHighPriority ? 'flashPulse 1.5s infinite' : 'pulse 2s infinite'};
-                ">${icon}</div>
+                    font-size: 20px;
+                    line-height: 1;
+                ">
+                    ${icon}
+                </div>
                 <div style="
                     position: absolute;
-                    top: -2px;
-                    right: -2px;
-                    width: 10px;
-                    height: 10px;
+                    top: -4px;
+                    right: -4px;
+                    width: 12px;
+                    height: 12px;
                     background: ${statusColor};
                     border: 2px solid white;
                     border-radius: 50%;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
                 "></div>
-                <style>
-                    ${pulseAnimation}
-                </style>
             </div>
         `,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
-        popupAnchor: [0, -18]
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -20]
     });
 };
 
