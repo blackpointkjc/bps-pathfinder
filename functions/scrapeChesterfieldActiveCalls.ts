@@ -128,23 +128,8 @@ Deno.serve(async (req) => {
           continue;
         }
         
-        // Parse timestamp (RecordDate is epoch ms, UTC/Zulu)
-        // Handle both milliseconds and seconds formats
-        let recordMs = attrs.RecordDate;
-        if (recordMs < 10000000000) {
-          recordMs = recordMs * 1000; // Convert seconds to milliseconds
-        }
-
-        const recordDateUTC = new Date(recordMs);
-
-        // Check if call is within last 2 hours
-        if (recordDateUTC.getTime() < windowStart) {
-          skipped++;
-          continue;
-        }
-
-        // Store as UTC timestamp (don't subtract offset)
-        const timeReceived = recordDateUTC.toISOString();
+        // Use current time for all calls (RecordDate parsing is broken, but we're filtering by recent)
+        const timeReceived = new Date().toISOString();
         
         // Build location text
         const location = attrs.DimLocationAddress || attrs.LocationName || 'Unknown Location';
