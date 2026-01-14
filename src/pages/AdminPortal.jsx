@@ -115,9 +115,6 @@ export default function AdminPortal() {
                         <p className="text-gray-600 mt-2">Manage users, roles, permissions, assets, and maintenance</p>
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => window.location.href = '/assetmanagement'}>
-                            Assets
-                        </Button>
                         <Button variant="outline" onClick={() => window.location.href = '/dispatchcenter'}>
                             Dispatch
                         </Button>
