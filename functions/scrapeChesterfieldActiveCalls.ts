@@ -121,18 +121,14 @@ Deno.serve(async (req) => {
         // Parse timestamp (RecordDate is epoch ms, UTC/Zulu)
         const recordDateUTC = new Date(attrs.RecordDate);
 
-        // Convert UTC to EST
-        const estTime = new Date(recordDateUTC.getTime() - (5 * 60 * 60 * 1000));
-
-        // Check if call is from today (EST)
-        const callDateStr = estTime.toISOString().split('T')[0];
-        const todayStr = todayStart.toISOString().split('T')[0];
-
-        if (callDateStr !== todayStr) {
-          console.warn(`⚠️ Skipping ${callId} - not from today (${callDateStr} vs ${todayStr})`);
-          failed++;
+        // Check if call is within last 2 hours
+        if (recordDateUTC.getTime() < windowStart) {
+          skipped++;
           continue;
         }
+
+        // Convert UTC to EST for display
+        const estTime = new Date(recordDateUTC.getTime() - (5 * 60 * 60 * 1000));
         
         // Build location text
         const location = attrs.DimLocationAddress || attrs.LocationName || 'Unknown Location';
