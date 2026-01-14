@@ -12,7 +12,6 @@ import CreateCallDialog from '@/components/dispatch/CreateCallDialog';
 import PriorCallsView from '@/components/dispatch/PriorCallsView';
 import MessagingPanel from '@/components/dispatch/MessagingPanel';
 import UnitScheduling from '@/components/dispatch/UnitScheduling';
-import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import QuickActions from '@/components/dispatch/QuickActions';
 import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
 
@@ -25,7 +24,6 @@ export default function DispatchCenter() {
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showPriorCalls, setShowPriorCalls] = useState(false);
     const [showMessaging, setShowMessaging] = useState(false);
-    const [showMaintenance, setShowMaintenance] = useState(false);
 
     useEffect(() => {
         init();
@@ -165,14 +163,6 @@ export default function DispatchCenter() {
                             <AlertCircle className="w-4 h-4 mr-2" />
                             {showPriorCalls ? 'Active' : 'Prior'}
                         </Button>
-
-                        <Button
-                            onClick={() => setShowMaintenance(!showMaintenance)}
-                            variant="outline"
-                            className="border-slate-600 text-black bg-white hover:bg-slate-100"
-                        >
-                            Maintenance
-                        </Button>
                         <Button
                             onClick={() => setShowMessaging(!showMessaging)}
                             variant="outline"
@@ -209,8 +199,6 @@ export default function DispatchCenter() {
 
                 {showPriorCalls ? (
                     <PriorCallsView currentUser={currentUser} units={units} />
-                ) : showMaintenance ? (
-                    <MaintenanceTracking units={units} />
                 ) : (
                     <>
                     {/* Quick Actions Bar */}
