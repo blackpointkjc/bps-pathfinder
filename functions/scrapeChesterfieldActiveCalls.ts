@@ -29,19 +29,12 @@ Deno.serve(async (req) => {
     
     console.log('🔍 Starting Chesterfield ArcGIS scraper...');
     
-    // Get today's date range (EST/local)
+    // Last 2 hours only (EST)
     const now = new Date();
     const estOffset = 5 * 60 * 60 * 1000; // EST is UTC-5
+    const windowStart = now.getTime() - (2 * 60 * 60 * 1000);
 
-    // Start of today in EST
-    const todayStart = new Date(now.getTime() - estOffset);
-    todayStart.setUTCHours(0, 0, 0, 0);
-    const windowStart = todayStart.getTime() + estOffset;
-
-    // End of today in EST
-    const todayEnd = new Date(windowStart + 24 * 60 * 60 * 1000 - 1);
-
-    console.log(`📅 Filtering for today only: ${todayStart.toDateString()} (EST)`);
+    console.log(`📅 Filtering for last 2 hours: ${new Date(windowStart).toISOString()} to now`);
     
     // Build ArcGIS query - no WHERE clause, fetch all and filter in code
     const params = new URLSearchParams({
