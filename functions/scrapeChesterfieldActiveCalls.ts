@@ -43,11 +43,13 @@ Deno.serve(async (req) => {
       console.warn('Could not delete old calls:', e.message);
     }
     
-    // Filter for last 24 hours
+    // Filter for last 24 hours (EST time, not UTC)
     const now = new Date();
-    const oneDayAgo = now.getTime() - (24 * 60 * 60 * 1000);
+    const estOffset = 5 * 60 * 60 * 1000; // EST is UTC-5
+    const nowEst = now.getTime() + estOffset;
+    const oneDayAgoEst = nowEst - (24 * 60 * 60 * 1000);
 
-    console.log(`📅 Filtering for last 24 hours: ${new Date(oneDayAgo).toISOString()} to now`);
+    console.log(`📅 Filtering for last 24 hours EST: ${new Date(oneDayAgoEst).toISOString()} to ${new Date(nowEst).toISOString()}`);
 
     // Build ArcGIS query - fetch all, filter in code
     const params = new URLSearchParams({
