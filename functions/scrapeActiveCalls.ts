@@ -95,20 +95,20 @@ Deno.serve(async (req) => {
         
         const calls = [];
         
-        // Source 1: gractivecalls.com (Richmond + Chesterfield)
+        // Source 1: Richmond (apps.richmondgov.com)
         try {
-            console.log('📡 Scraping gractivecalls.com...');
-            const response1 = await fetch('https://gractivecalls.com/', {
+            console.log('📡 Scraping Richmond PD Active Calls...');
+            const response1 = await fetch('https://apps.richmondgov.com/applications/activecalls', {
                 headers: { 'User-Agent': 'Mozilla/5.0' },
                 signal: AbortSignal.timeout(10000)
             });
             
             if (response1.ok) {
                 const html = await response1.text();
-                const tableStart = html.indexOf('<table');
-                const tableEnd = html.indexOf('</table>', tableStart);
+                const tableStart = html.indexOf('tblActiveCallsListing');
                 
                 if (tableStart !== -1) {
+                    const tableEnd = html.indexOf('</table>', tableStart);
                     const tableHtml = html.substring(tableStart, tableEnd + 8);
                     const rows = tableHtml.split(/<tr[^>]*>/i);
                     
@@ -123,28 +123,29 @@ Deno.serve(async (req) => {
                             cells.push(match[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
                         }
                         
-                        if (cells.length >= 5 && cells[2] && cells[1]) {
-                            const time = cells[0];
-                            const incident = cells[1].trim();
-                            const location = cells[2].trim();
-                            const agency = cells[3]?.trim() || 'Unknown';
-                            const status = cells[4]?.trim() || 'Dispatched';
+                        // Format: Time Received, Agency, Dispatch Area, Unit, Call Type, Location, Status
+                        if (cells.length >= 6 && cells[4] && cells[5]) {
+                            const time = cells[0]?.trim() || '';
+                            const agency = cells[1]?.trim() || 'RPD';
+                            const incident = cells[4]?.trim() || 'Unknown';
+                            const location = cells[5]?.trim() || '';
+                            const status = cells[6]?.trim() || 'Dispatched';
                             
-                            if (location && !/^\d{1,2}:\d{2}/.test(location)) {
-                                calls.push({ time, incident, location, agency, status, source: 'gractivecalls' });
+                            if (location && time) {
+                                calls.push({ time, incident, location, agency, status, source: 'richmond' });
                             }
                         }
                     }
                 }
-                console.log(`✅ gractivecalls: ${calls.length} calls`);
+                console.log(`✅ Richmond: ${calls.filter(c => c.source === 'richmond').length} calls`);
             }
         } catch (error) {
-            console.error('❌ gractivecalls error:', error.message);
+            console.error('❌ Richmond error:', error.message);
         }
         
         // Source 2: Henrico County
         try {
-            console.log('📡 Scraping Henrico...');
+            console.log('📡 Scraping Henrico Active Calls...');
             const response2 = await fetch('https://activecalls.henrico.gov/', {
                 headers: { 'User-Agent': 'Mozilla/5.0' },
                 signal: AbortSignal.timeout(10000)
@@ -152,10 +153,10 @@ Deno.serve(async (req) => {
 
             if (response2.ok) {
                 const html = await response2.text();
-                const tableStart = html.indexOf('<table');
+                const tableStart = html.indexOf('dgCalls');
                 const tableEnd = html.indexOf('</table>', tableStart);
 
-                if (tableStart !== -1) {
+                if (tableStart !== -1 && tableEnd !== -1) {
                     const tableHtml = html.substring(tableStart, tableEnd + 8);
                     const rows = tableHtml.split(/<tr[^>]*>/i);
 
@@ -170,60 +171,82 @@ Deno.serve(async (req) => {
                             cells.push(match[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
                         }
 
-                        if (cells.length >= 4 && cells[1] && cells[2]) {
-                            const time = cells[0];
-                            const incident = cells[1].trim();
-                            const location = cells[2].trim();
-                            const status = cells[3]?.trim() || 'Dispatched';
+                        // Format: ID, Block/Intersection, Received At, Incident, Call Status, Mag. Dist., PD
+                        if (cells.length >= 4 && cells[1] && cells[3]) {
+                            const time = cells[2]?.trim() || '';
+                            const location = cells[1]?.trim() || '';
+                            const incident = cells[3]?.trim() || 'Unknown';
+                            const status = cells[4]?.trim() || 'Dispatched';
+                            const agency = 'Henrico PD';
 
-                            if (location && !/^\d{1,2}:\d{2}/.test(location)) {
-                                const incidentLower = incident.toLowerCase();
-                                let agency = 'Henrico Police';
-
-                                if (incidentLower.includes('fire') || incidentLower.includes('medical') || 
-                                    incidentLower.includes('rescue') || incidentLower.includes('ems')) {
-                                    agency = 'Henrico Fire';
-                                }
-
+                            if (location && time) {
                                 calls.push({ time, incident, location, agency, status, source: 'henrico' });
                             }
                         }
                     }
                 }
-                console.log(`✅ Henrico: Total ${calls.filter(c => c.source === 'henrico').length} calls`);
+                console.log(`✅ Henrico: ${calls.filter(c => c.source === 'henrico').length} calls`);
             }
         } catch (error) {
             console.error('❌ Henrico error:', error.message);
         }
 
-        // Source 3: Chesterfield County (JSON API)
+        // Source 3: Chesterfield County (Parse from webpage)
         try {
-            console.log('📡 Scraping Chesterfield...');
-            const response3 = await fetch('https://webapps.chesterfield.gov/cws/activecallsservice.svc/GetActiveCalls?callback=jsonp', {
+            console.log('📡 Scraping Chesterfield Active Calls...');
+            const response3 = await fetch('https://www.chesterfield.gov/3999/Active-Police-Calls', {
                 headers: { 'User-Agent': 'Mozilla/5.0' },
                 signal: AbortSignal.timeout(10000)
             });
 
             if (response3.ok) {
-                let text = await response3.text();
-                // Remove JSONP wrapper
-                text = text.replace(/^jsonp\(/, '').replace(/\);?$/, '');
-                const data = JSON.parse(text);
+                const html = await response3.text();
+                // Look for embedded data or AJAX data
+                const scriptMatch = html.match(/var\s+activeCalls\s*=\s*(\[[\s\S]*?\]);/);
+                
+                if (scriptMatch) {
+                    try {
+                        const data = JSON.parse(scriptMatch[1]);
+                        for (const call of data) {
+                            const time = call.CallTime || call.time || '';
+                            const incident = call.Description || call.IncidentType || 'Unknown';
+                            const location = call.Location || call.location || '';
+                            const status = call.Status || 'Dispatched';
+                            const agency = 'CCPD';
 
-                if (data && data.GetActiveCallsResult && Array.isArray(data.GetActiveCallsResult)) {
-                    for (const call of data.GetActiveCallsResult) {
-                        const time = call.Call_Received || '';
-                        const incident = call.Type_Description || 'Unknown';
-                        const location = call.Location || '';
-                        const status = 'Dispatched';
-                        const agency = 'CCPD';
-
-                        if (location && time) {
-                            calls.push({ time, incident, location, agency, status, source: 'chesterfield' });
+                            if (location && time) {
+                                calls.push({ time, incident, location, agency, status, source: 'chesterfield' });
+                            }
+                        }
+                    } catch (parseError) {
+                        console.warn('Could not parse Chesterfield JSON:', parseError.message);
+                    }
+                } else {
+                    // Fallback: try to parse table data
+                    const tableMatches = html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
+                    for (const match of tableMatches) {
+                        const row = match[1];
+                        if (!row.includes('<td')) continue;
+                        
+                        const cells = [];
+                        const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
+                        
+                        for (const cellMatch of cellMatches) {
+                            cells.push(cellMatch[1].replace(/<[^>]+>/g, '').trim());
+                        }
+                        
+                        if (cells.length >= 3) {
+                            const time = cells[0]?.trim() || '';
+                            const incident = cells[1]?.trim() || 'Unknown';
+                            const location = cells[2]?.trim() || '';
+                            
+                            if (location && time) {
+                                calls.push({ time, incident, location, agency: 'CCPD', status: 'Dispatched', source: 'chesterfield' });
+                            }
                         }
                     }
                 }
-                console.log(`✅ Chesterfield: Total ${calls.filter(c => c.source === 'chesterfield').length} calls`);
+                console.log(`✅ Chesterfield: ${calls.filter(c => c.source === 'chesterfield').length} calls`);
             }
         } catch (error) {
             console.error('❌ Chesterfield error:', error.message);
