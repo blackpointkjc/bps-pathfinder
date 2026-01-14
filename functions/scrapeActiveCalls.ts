@@ -93,16 +93,18 @@ Deno.serve(async (req) => {
         
         console.log('🔍 Starting active call scraper...');
         
-        // Delete ALL existing calls to start fresh
+        // Delete calls NOT from the three new sources
         try {
             const allCalls = await base44.asServiceRole.entities.DispatchCall.list();
             let deletedCount = 0;
             
             for (const call of allCalls) {
-                await base44.asServiceRole.entities.DispatchCall.delete(call.id);
-                deletedCount++;
+                if (!['richmond', 'henrico', 'chesterfield'].includes(call.source)) {
+                    await base44.asServiceRole.entities.DispatchCall.delete(call.id);
+                    deletedCount++;
+                }
             }
-            console.log(`🗑️ Deleted ${deletedCount} old calls - starting fresh`);
+            console.log(`🗑️ Deleted ${deletedCount} non-approved source calls (old gractivecalls, etc)`);
         } catch (cleanupError) {
             console.warn('Cleanup warning:', cleanupError.message);
         }
