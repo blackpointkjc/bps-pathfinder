@@ -59,9 +59,17 @@ Deno.serve(async (req) => {
     
     const data = await response.json();
     
-    if (!data.features || !Array.isArray(data.features)) {
-      console.warn('⚠️ No features returned from ArcGIS');
-      return Response.json({ success: true, scraped: 0, saved: 0, skipped: 0 });
+    console.log(`📊 ArcGIS Response:`, JSON.stringify(data).substring(0, 500));
+    
+    if (!data.features) {
+      console.error('❌ No features field in response');
+      console.error('Full response:', JSON.stringify(data));
+      return Response.json({ success: true, scraped: 0, saved: 0, skipped: 0, error: 'No features field' });
+    }
+    
+    if (!Array.isArray(data.features)) {
+      console.error(`❌ features is not an array: ${typeof data.features}`);
+      return Response.json({ success: true, scraped: 0, saved: 0, skipped: 0, error: 'features not array' });
     }
     
     console.log(`✅ Retrieved ${data.features.length} records from ArcGIS`);
