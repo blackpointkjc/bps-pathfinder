@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
         
         // Filter by time window (RecordDate is in milliseconds)
         const recordDate = attrs.RecordDate;
-        if (recordDate < todayStartMs) {
+        if (recordDate < oneDayAgo) {
           skipped++;
           continue;
         }
