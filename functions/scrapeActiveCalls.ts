@@ -93,6 +93,26 @@ Deno.serve(async (req) => {
         
         console.log('🔍 Starting active call scraper...');
         
+        // Delete calls older than 24 hours to keep database clean
+        try {
+            const allCalls = await base44.asServiceRole.entities.DispatchCall.list();
+            const now = new Date();
+            let deletedCount = 0;
+            
+            for (const call of allCalls) {
+                const callTime = new Date(call.time_received || call.created_date);
+                const ageHours = (now - callTime) / (1000 * 60 * 60);
+                
+                if (ageHours > 24) {
+                    await base44.asServiceRole.entities.DispatchCall.delete(call.id);
+                    deletedCount++;
+                }
+            }
+            console.log(`🗑️ Deleted ${deletedCount} calls older than 24 hours`);
+        } catch (cleanupError) {
+            console.warn('Cleanup warning:', cleanupError.message);
+        }
+        
         const calls = [];
         
         // Source 1: Richmond (apps.richmondgov.com)
@@ -262,22 +282,14 @@ Deno.serve(async (req) => {
 
         for (const call of calls) {
             try {
-                const callId = `${call.time}-${call.incident}-${call.location}`.replace(/[^a-zA-Z0-9-]/g, '_').substring(0, 100);
+                const callId = `${call.source}-${call.time}-${call.incident}-${call.location}`.replace(/[^a-zA-Z0-9-]/g, '_').substring(0, 150);
 
-                // Check if call already exists (but don't skip if it has no coords - we want to retry geocoding)
+                // Check if call already exists
                 const existing = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
 
                 if (existing && existing.length > 0) {
-                    const existingCall = existing[0];
-                    // Only skip if it already has valid coordinates
-                    if (existingCall.latitude && existingCall.longitude) {
-                        skipped++;
-                        continue;
-                    } else {
-                        // Delete and recreate with geocoding
-                        await base44.asServiceRole.entities.DispatchCall.delete(existingCall.id);
-                        console.log(`🔄 Retrying geocoding for: ${call.location}`);
-                    }
+                    skipped++;
+                    continue;
                 }
 
                 // Normalize address
