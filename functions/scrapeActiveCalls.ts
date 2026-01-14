@@ -152,31 +152,18 @@ Deno.serve(async (req) => {
                             cells.push(match[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
                         }
                         
-                        // Try flexible parsing - need at least location and time
-                        if (cells.length >= 2) {
-                            // Look for time pattern
-                            let time = '';
-                            let incident = 'Unknown';
-                            let location = '';
-                            let status = 'Dispatched';
-                            
-                            // Search for time in cells
-                            for (let j = 0; j < cells.length; j++) {
-                                if (/\d{1,2}:\d{2}/.test(cells[j]) && !time) {
-                                    time = cells[j];
-                                }
-                                if (cells[j] && cells[j].length > 5 && !location) {
-                                    location = cells[j];
-                                }
-                                if (cells[j] && !incident) {
-                                    incident = cells[j];
-                                }
-                            }
+                        // Format: [0] Time Received, [1] Agency, [2] Dispatch Area, [3] Unit, [4] Call Type, [5] Location, [6] Status
+                        if (cells.length >= 7) {
+                            let time = cells[0]?.trim() || '';
+                            const agency = cells[1]?.trim() || 'RPD';
+                            const incident = cells[4]?.trim() || 'Unknown';
+                            let location = cells[5]?.trim() || '';
+                            const status = cells[6]?.trim() || 'Dispatched';
                             
                             location = normalizeAddress(location, 'Richmond');
                             
                             if (location && time) {
-                                calls.push({ time, incident, location, agency: 'RPD', status, source: 'richmond' });
+                                calls.push({ time, incident, location, agency, status, source: 'richmond' });
                                 console.log(`Richmond call: ${incident} at ${location}`);
                             }
                         }
