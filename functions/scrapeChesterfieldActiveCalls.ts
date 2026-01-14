@@ -35,9 +35,9 @@ Deno.serve(async (req) => {
     
     console.log(`📅 Querying records from ${new Date(windowStart).toISOString()} to now`);
     
-    // Build ArcGIS query - use UNIX time (seconds) not milliseconds for ArcGIS
+    // Build ArcGIS query - RecordDate is in milliseconds
     const params = new URLSearchParams({
-      where: `RecordDate >= ${Math.floor(windowStart / 1000)} AND DimLocationLatitude IS NOT NULL AND DimLocationLongitude IS NOT NULL`,
+      where: `RecordDate >= ${windowStart} AND DimLocationLatitude IS NOT NULL AND DimLocationLongitude IS NOT NULL`,
       outFields: '*',
       returnGeometry: 'false',
       orderByFields: 'RecordDate DESC',
