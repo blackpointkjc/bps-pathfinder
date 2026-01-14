@@ -144,9 +144,12 @@ Deno.serve(async (req) => {
                             const time = cells[0]?.trim() || '';
                             const agency = cells[1]?.trim() || 'RPD';
                             const incident = cells[4]?.trim() || 'Unknown';
-                            const location = cells[5]?.trim() || '';
+                            let location = cells[5]?.trim() || '';
                             const status = cells[6]?.trim() || 'Dispatched';
-                            
+
+                            // Normalize Richmond address
+                            location = normalizeAddress(location, 'Richmond');
+
                             if (location && time && incident !== 'Unknown') {
                                 calls.push({ time, incident, location, agency, status, source: 'richmond' });
                             }
@@ -188,17 +191,20 @@ Deno.serve(async (req) => {
                         }
 
                         // Format: ID, Block/Intersection, Received At, Incident, Call Status, Mag. Dist., PD
-                        if (cells.length >= 4 && cells[1] && cells[3]) {
-                            const time = cells[2]?.trim() || '';
-                            const location = cells[1]?.trim() || '';
-                            const incident = cells[3]?.trim() || 'Unknown';
-                            const status = cells[4]?.trim() || 'Dispatched';
-                            const agency = 'Henrico PD';
+                                        if (cells.length >= 4 && cells[1] && cells[3]) {
+                                            const time = cells[2]?.trim() || '';
+                                            let location = cells[1]?.trim() || '';
+                                            const incident = cells[3]?.trim() || 'Unknown';
+                                            const status = cells[4]?.trim() || 'Dispatched';
+                                            const agency = 'Henrico PD';
 
-                            if (location && time) {
-                                calls.push({ time, incident, location, agency, status, source: 'henrico' });
-                            }
-                        }
+                                            // Normalize Henrico address
+                                            location = normalizeAddress(location, 'Henrico');
+
+                                            if (location && time) {
+                                                calls.push({ time, incident, location, agency, status, source: 'henrico' });
+                                            }
+                                        }
                     }
                 }
                 console.log(`✅ Henrico: ${calls.filter(c => c.source === 'henrico').length} calls`);
