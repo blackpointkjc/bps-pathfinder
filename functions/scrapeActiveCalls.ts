@@ -207,65 +207,36 @@ Deno.serve(async (req) => {
             console.error('❌ Henrico error:', error.message);
         }
 
-        // Source 3: Chesterfield County (Parse from webpage)
+        // Source 3: Chesterfield County - uses dynamic API
         try {
             console.log('📡 Scraping Chesterfield Active Calls...');
-            const response3 = await fetch('https://www.chesterfield.gov/3999/Active-Police-Calls', {
+            // Try the API endpoint that serves the data
+            const response3 = await fetch('https://www.chesterfield.gov/api/activecalls', {
                 headers: { 'User-Agent': 'Mozilla/5.0' },
                 signal: AbortSignal.timeout(10000)
             });
 
             if (response3.ok) {
-                const html = await response3.text();
-                // Look for embedded data or AJAX data
-                const scriptMatch = html.match(/var\s+activeCalls\s*=\s*(\[[\s\S]*?\]);/);
-                
-                if (scriptMatch) {
-                    try {
-                        const data = JSON.parse(scriptMatch[1]);
-                        for (const call of data) {
-                            const time = call.CallTime || call.time || '';
-                            const incident = call.Description || call.IncidentType || 'Unknown';
-                            const location = call.Location || call.location || '';
-                            const status = call.Status || 'Dispatched';
-                            const agency = 'CCPD';
+                const data = await response3.json();
+                if (Array.isArray(data)) {
+                    for (const call of data) {
+                        const time = call.ReceivedTime || call.callTime || call.time || '';
+                        const incident = call.IncidentType || call.Description || call.incident || 'Unknown';
+                        const location = call.Location || call.location || '';
+                        const status = call.Status || 'Dispatched';
+                        const agency = 'CCPD';
 
-                            if (location && time) {
-                                calls.push({ time, incident, location, agency, status, source: 'chesterfield' });
-                            }
-                        }
-                    } catch (parseError) {
-                        console.warn('Could not parse Chesterfield JSON:', parseError.message);
-                    }
-                } else {
-                    // Fallback: try to parse table data
-                    const tableMatches = html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
-                    for (const match of tableMatches) {
-                        const row = match[1];
-                        if (!row.includes('<td')) continue;
-                        
-                        const cells = [];
-                        const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
-                        
-                        for (const cellMatch of cellMatches) {
-                            cells.push(cellMatch[1].replace(/<[^>]+>/g, '').trim());
-                        }
-                        
-                        if (cells.length >= 3) {
-                            const time = cells[0]?.trim() || '';
-                            const incident = cells[1]?.trim() || 'Unknown';
-                            const location = cells[2]?.trim() || '';
-                            
-                            if (location && time) {
-                                calls.push({ time, incident, location, agency: 'CCPD', status: 'Dispatched', source: 'chesterfield' });
-                            }
+                        if (location && time) {
+                            calls.push({ time, incident, location, agency, status, source: 'chesterfield' });
                         }
                     }
                 }
                 console.log(`✅ Chesterfield: ${calls.filter(c => c.source === 'chesterfield').length} calls`);
+            } else {
+                console.warn('Chesterfield API not responding, trying fallback...');
             }
         } catch (error) {
-            console.error('❌ Chesterfield error:', error.message);
+            console.error('❌ Chesterfield API error:', error.message);
         }
         
         console.log(`✅ Total scraped: ${calls.length} calls`);
