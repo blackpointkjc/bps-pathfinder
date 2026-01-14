@@ -10,7 +10,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Shield, Edit2, Mail, User, Award, Hash } from 'lucide-react';
+import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car } from 'lucide-react';
+import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 
 export default function AdminPortal() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -18,6 +19,7 @@ export default function AdminPortal() {
     const [loading, setLoading] = useState(true);
     const [editingUser, setEditingUser] = useState(null);
     const [showEditDialog, setShowEditDialog] = useState(false);
+    const [activeTab, setActiveTab] = useState('users');
 
     useEffect(() => {
         init();
@@ -125,15 +127,45 @@ export default function AdminPortal() {
                     </div>
                 </div>
 
-                <Card className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                            <Users className="w-6 h-6 text-blue-600" />
-                            Users ({users.length})
-                        </h2>
-                    </div>
+                {/* Tabs */}
+                <div className="flex gap-2 mb-6">
+                    <Button
+                        variant={activeTab === 'users' ? 'default' : 'outline'}
+                        onClick={() => setActiveTab('users')}
+                        className="flex items-center gap-2"
+                    >
+                        <Users className="w-4 h-4" />
+                        Users
+                    </Button>
+                    <Button
+                        variant={activeTab === 'assets' ? 'default' : 'outline'}
+                        onClick={() => setActiveTab('assets')}
+                        className="flex items-center gap-2"
+                    >
+                        <Car className="w-4 h-4" />
+                        Assets
+                    </Button>
+                    <Button
+                        variant={activeTab === 'maintenance' ? 'default' : 'outline'}
+                        onClick={() => setActiveTab('maintenance')}
+                        className="flex items-center gap-2"
+                    >
+                        <Wrench className="w-4 h-4" />
+                        Maintenance
+                    </Button>
+                </div>
 
-                    <ScrollArea className="h-[calc(100vh-300px)]">
+                {/* Users Tab */}
+                {activeTab === 'users' && (
+                    <Card className="p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                                <Users className="w-6 h-6 text-blue-600" />
+                                Users ({users.length})
+                            </h2>
+                        </div>
+
+                        <ScrollArea className="h-[calc(100vh-400px)]">
                         <div className="space-y-3">
                             {users.map(user => (
                                 <Card key={user.id} className="p-4 hover:shadow-md transition-shadow">
@@ -193,6 +225,26 @@ export default function AdminPortal() {
                         </div>
                     </ScrollArea>
                 </Card>
+                )}
+
+                {/* Assets Tab */}
+                {activeTab === 'assets' && (
+                    <Card className="p-6">
+                        <div className="text-center py-12">
+                            <Car className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Asset Management</h3>
+                            <p className="text-gray-600 mb-6">Manage your vehicle fleet and equipment</p>
+                            <Button onClick={() => window.location.href = '/assetmanagement'}>
+                                Go to Asset Management
+                            </Button>
+                        </div>
+                    </Card>
+                )}
+
+                {/* Maintenance Tab */}
+                {activeTab === 'maintenance' && (
+                    <MaintenanceTracking units={users} />
+                )}
             </div>
 
             <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
