@@ -13,6 +13,7 @@ import { motion } from 'framer-motion';
 
 export default function MaintenanceTracking({ units }) {
     const [maintenance, setMaintenance] = useState([]);
+    const [vehicles, setVehicles] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [formData, setFormData] = useState({
         vehicle_id: '',
@@ -26,7 +27,17 @@ export default function MaintenanceTracking({ units }) {
 
     useEffect(() => {
         loadMaintenance();
+        loadVehicles();
     }, []);
+
+    const loadVehicles = async () => {
+        try {
+            const data = await base44.entities.Vehicle.list('-created_date', 100);
+            setVehicles(data || []);
+        } catch (error) {
+            console.error('Error loading vehicles:', error);
+        }
+    };
 
     const loadMaintenance = async () => {
         try {
@@ -111,13 +122,26 @@ export default function MaintenanceTracking({ units }) {
                     <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label className="text-slate-300">Vehicle ID</Label>
-                                <Input
+                                <Label className="text-slate-300">Vehicle</Label>
+                                <select
                                     value={formData.vehicle_id}
-                                    onChange={(e) => setFormData({...formData, vehicle_id: e.target.value})}
-                                    placeholder="e.g., V-123"
-                                    className="bg-slate-900 border-slate-700 text-white"
-                                />
+                                    onChange={(e) => {
+                                        const selectedVehicle = vehicles.find(v => v.vehicle_id === e.target.value);
+                                        setFormData({
+                                            ...formData, 
+                                            vehicle_id: e.target.value,
+                                            unit_number: units.find(u => u.id === selectedVehicle?.assigned_to)?.unit_number || ''
+                                        });
+                                    }}
+                                    className="flex h-10 w-full rounded-md border bg-slate-900 border-slate-700 text-white px-3 py-2 text-sm"
+                                >
+                                    <option value="">Select Vehicle</option>
+                                    {vehicles.map(vehicle => (
+                                        <option key={vehicle.id} value={vehicle.vehicle_id}>
+                                            {vehicle.vehicle_id} - {vehicle.year} {vehicle.make} {vehicle.model}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
                                 <Label className="text-slate-300">Unit Number</Label>
