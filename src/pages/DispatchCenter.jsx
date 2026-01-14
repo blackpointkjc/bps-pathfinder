@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Plus, Shield, Radio, AlertCircle } from 'lucide-react';
+import { Plus, Shield, Radio, AlertCircle, Car } from 'lucide-react';
 import ActiveCallsQueue from '@/components/dispatch/ActiveCallsQueue';
 import CallDetailPanel from '@/components/dispatch/CallDetailPanel';
 import UnitsPanel from '@/components/dispatch/UnitsPanel';
