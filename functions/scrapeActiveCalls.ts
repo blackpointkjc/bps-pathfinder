@@ -121,12 +121,12 @@ Deno.serve(async (req) => {
             
             if (response1.ok) {
                 const html = await response1.text();
-                const tableStart = html.indexOf('tblActiveCallsListing');
+                // Find the tbody within tblActiveCallsListing table
+                const tbodyMatch = html.match(/<table[^>]*id="tblActiveCallsListing"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i);
                 
-                if (tableStart !== -1) {
-                    const tableEnd = html.indexOf('</table>', tableStart);
-                    const tableHtml = html.substring(tableStart, tableEnd + 8);
-                    const rows = tableHtml.split(/<tr[^>]*>/i);
+                if (tbodyMatch && tbodyMatch[1]) {
+                    const tbody = tbodyMatch[1];
+                    const rows = tbody.split(/<tr[^>]*>/i);
                     
                     for (let i = 1; i < rows.length; i++) {
                         const row = rows[i];
@@ -140,14 +140,14 @@ Deno.serve(async (req) => {
                         }
                         
                         // Format: Time Received, Agency, Dispatch Area, Unit, Call Type, Location, Status
-                        if (cells.length >= 6 && cells[4] && cells[5]) {
+                        if (cells.length >= 7) {
                             const time = cells[0]?.trim() || '';
                             const agency = cells[1]?.trim() || 'RPD';
                             const incident = cells[4]?.trim() || 'Unknown';
                             const location = cells[5]?.trim() || '';
                             const status = cells[6]?.trim() || 'Dispatched';
                             
-                            if (location && time) {
+                            if (location && time && incident !== 'Unknown') {
                                 calls.push({ time, incident, location, agency, status, source: 'richmond' });
                             }
                         }
