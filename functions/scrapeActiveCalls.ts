@@ -110,125 +110,66 @@ Deno.serve(async (req) => {
         }
         
         const calls = [];
-        
-        // Source 1: Richmond (apps.richmondgov.com)
+
+        // Source: gractivecalls.com (Richmond and Henrico)
         try {
-            console.log('📡 Scraping Richmond PD Active Calls...');
-            const response1 = await fetch('https://apps.richmondgov.com/applications/activecalls', {
+            console.log('📡 Scraping gractivecalls.com...');
+            const response = await fetch('https://gractivecalls.com/', {
                 headers: { 'User-Agent': 'Mozilla/5.0' },
                 signal: AbortSignal.timeout(10000)
             });
-            
-            if (response1.ok) {
-                const html = await response1.text();
-                console.log(`Richmond HTML length: ${html.length}`);
-                
-                // Try multiple table ID patterns
-                const patterns = [
-                    /<table[^>]*id="tblActiveCallsListing"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i,
-                    /<table[^>]*id="ctl00_MainContent_gvCalls"[\s\S]*?<tbody>([\s\S]*?)<\/tbody>/i,
-                    /<tbody>([\s\S]*?)<\/tbody>/i
-                ];
-                
-                let tbodyMatch = null;
-                for (const pattern of patterns) {
-                    tbodyMatch = html.match(pattern);
-                    if (tbodyMatch && tbodyMatch[1]) break;
-                }
-                
-                if (tbodyMatch && tbodyMatch[1]) {
-                    const tbody = tbodyMatch[1];
-                    const rows = tbody.split(/<tr[^>]*>/i);
-                    console.log(`Found ${rows.length} rows in Richmond table`);
-                    
+
+            if (response.ok) {
+                const html = await response.text();
+                console.log(`gractivecalls.com HTML length: ${html.length}`);
+
+                // Find the table with active calls
+                const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
+
+                if (tableMatch) {
+                    const rows = tableMatch[0].split(/<tr[^>]*>/i);
+                    console.log(`Found ${rows.length} rows in table`);
+
                     for (let i = 1; i < rows.length; i++) {
                         const row = rows[i];
                         if (!row.includes('<td')) continue;
-                        
+
                         const cells = [];
                         const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
-                        
+
                         for (const match of cellMatches) {
                             cells.push(match[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
                         }
-                        
-                        // Format: [0] Time Received, [1] Agency, [2] Dispatch Area, [3] Unit, [4] Call Type, [5] Location, [6] Status
-                                        if (cells.length >= 7) {
-                                            let time = cells[0]?.trim() || '';
-                                            const agency = cells[1]?.trim() || 'RPD';
-                                            const incident = cells[4]?.trim() || 'Unknown';
-                                            let location = cells[5]?.trim() || '';
-                                            const status = cells[6]?.trim() || 'Dispatched';
 
-                                            location = normalizeAddress(location, 'Richmond');
+                        // Typical format: Time, Agency, Location, Incident Type, Status
+                        if (cells.length >= 4) {
+                            const time = cells[0]?.trim() || '';
+                            const agency = cells[1]?.trim() || '';
+                            let location = cells[2]?.trim() || '';
+                            const incident = cells[3]?.trim() || 'Unknown';
+                            const status = cells[4]?.trim() || 'Dispatched';
 
-                                            if (location && time && incident) {
-                                                                calls.push({ time, incident, location, agency, status, source: 'richmond' });
-                                                            }
-                                        }
+                            // Determine source based on agency
+                            let source = 'richmond';
+                            if (agency.toLowerCase().includes('henrico')) {
+                                source = 'henrico';
+                            }
+
+                            location = normalizeAddress(location, agency);
+
+                            if (location && time && incident) {
+                                calls.push({ time, incident, location, agency, status, source });
+                            }
+                        }
                     }
+                    console.log(`✅ gractivecalls.com: ${calls.length} calls`);
                 } else {
-                    console.warn('⚠️ Could not find Richmond table tbody');
+                    console.warn('⚠️ Could not find table in gractivecalls.com');
                 }
-                console.log(`✅ Richmond: ${calls.filter(c => c.source === 'richmond').length} calls`);
             }
         } catch (error) {
-            console.error('❌ Richmond error:', error.message);
+            console.error('❌ gractivecalls.com error:', error.message);
         }
-        
-        // Source 2: Henrico County
-        try {
-            console.log('📡 Scraping Henrico Active Calls...');
-            const response2 = await fetch('https://activecalls.henrico.gov/', {
-                headers: { 'User-Agent': 'Mozilla/5.0' },
-                signal: AbortSignal.timeout(10000)
-            });
-
-            if (response2.ok) {
-                const html = await response2.text();
-                const tableStart = html.indexOf('dgCalls');
-                const tableEnd = html.indexOf('</table>', tableStart);
-
-                if (tableStart !== -1 && tableEnd !== -1) {
-                    const tableHtml = html.substring(tableStart, tableEnd + 8);
-                    const rows = tableHtml.split(/<tr[^>]*>/i);
-
-                    for (let i = 1; i < rows.length; i++) {
-                        const row = rows[i];
-                        if (!row.includes('<td')) continue;
-
-                        const cells = [];
-                        const cellMatches = row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi);
-
-                        for (const match of cellMatches) {
-                            cells.push(match[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
-                        }
-
-                        // Format: ID, Block/Intersection, Received At, Incident, Call Status, Mag. Dist., PD
-                                        if (cells.length >= 4 && cells[1] && cells[3]) {
-                                            const time = cells[2]?.trim() || '';
-                                            let location = cells[1]?.trim() || '';
-                                            const incident = cells[3]?.trim() || 'Unknown';
-                                            const status = cells[4]?.trim() || 'Dispatched';
-                                            const agency = 'Henrico PD';
-
-                                            // Normalize Henrico address
-                                            location = normalizeAddress(location, 'Henrico');
-
-                                            if (location && time) {
-                                                calls.push({ time, incident, location, agency, status, source: 'henrico' });
-                                            }
-                                        }
-                    }
-                }
-                console.log(`✅ Henrico: ${calls.filter(c => c.source === 'henrico').length} calls`);
-            }
-        } catch (error) {
-            console.error('❌ Henrico error:', error.message);
-        }
-
-        // Source 3: Chesterfield County - skip, handled by dedicated scraper
-        console.log('⏭️ Chesterfield: Handled by scrapeChesterfieldActiveCalls');
         
         console.log(`✅ Total scraped: ${calls.length} calls`);
         
