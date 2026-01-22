@@ -1,8 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export default function Layout({ children, currentPageName }) {
-    // CAD system doesn't need a traditional layout - pages handle their own chrome
-    // This keeps the system clean and modular
+    // Redirect to CADHome on initial load if on root/home
+    useEffect(() => {
+        if (!currentPageName || currentPageName === 'Home') {
+            window.location.href = '/cadhome';
+        }
+    }, [currentPageName]);
+
     return (
         <div className="w-full h-full">
             {children}
