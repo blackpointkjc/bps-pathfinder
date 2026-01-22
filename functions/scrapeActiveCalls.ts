@@ -93,18 +93,18 @@ Deno.serve(async (req) => {
         
         console.log('🔍 Starting active call scraper...');
         
-        // Delete calls NOT from the three new sources
+        // Delete all existing Richmond and Henrico calls before fresh scrape
         try {
-            const allCalls = await base44.asServiceRole.entities.DispatchCall.list();
+            const existingCalls = await base44.asServiceRole.entities.DispatchCall.list();
             let deletedCount = 0;
             
-            for (const call of allCalls) {
-                if (!['richmond', 'henrico', 'chesterfield'].includes(call.source)) {
+            for (const call of existingCalls) {
+                if (['richmond', 'henrico'].includes(call.source)) {
                     await base44.asServiceRole.entities.DispatchCall.delete(call.id);
                     deletedCount++;
                 }
             }
-            console.log(`🗑️ Deleted ${deletedCount} non-approved source calls (old gractivecalls, etc)`);
+            console.log(`🗑️ Deleted ${deletedCount} old Richmond/Henrico calls for fresh data`);
         } catch (cleanupError) {
             console.warn('Cleanup warning:', cleanupError.message);
         }
@@ -226,7 +226,8 @@ Deno.serve(async (req) => {
                     failed++;
                 }
                 
-                // Parse time from call.time (format: "HH:MM AM/PM")
+                // Parse time from call.time and convert from UTC to EST
+                // gractivecalls.com shows times in UTC, need to convert to EST (UTC-5)
                 let timeReceived = new Date();
                 if (call.time && /\d{1,2}:\d{2}/.test(call.time)) {
                     const timeParts = call.time.match(/(\d{1,2}):(\d{2})\s?(AM|PM)?/i);
@@ -240,12 +241,13 @@ Deno.serve(async (req) => {
                             if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
                         }
                         
+                        // Create UTC time
                         timeReceived = new Date();
-                        timeReceived.setHours(hours, minutes, 0, 0);
+                        timeReceived.setUTCHours(hours, minutes, 0, 0);
                         
                         // If the time is in the future, it's from yesterday
                         if (timeReceived > new Date()) {
-                            timeReceived.setDate(timeReceived.getDate() - 1);
+                            timeReceived.setUTCDate(timeReceived.getUTCDate() - 1);
                         }
                     }
                 }
