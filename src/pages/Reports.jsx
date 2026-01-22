@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BarChart, FileText, Download, TrendingUp, Radio, Clock, Users, Calendar } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 export default function Reports() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -148,6 +150,69 @@ export default function Reports() {
         toast.success('CSV exported');
     };
 
+    const exportPDF = () => {
+        if (!reportData) return;
+        
+        const doc = new jsPDF();
+        
+        // Header
+        doc.setFontSize(18);
+        doc.text('CAD System Report', 14, 20);
+        doc.setFontSize(10);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 28);
+        doc.text(`Date Range: ${reportData.dateRange.from} to ${reportData.dateRange.to}`, 14, 34);
+        
+        if (reportData.type === 'call_volume') {
+            doc.setFontSize(14);
+            doc.text('Call Volume by Agency', 14, 45);
+            
+            const tableData = Object.entries(reportData.data).map(([agency, stats]) => [
+                agency,
+                stats.total,
+                Object.entries(stats.byType).map(([t,c]) => `${t}: ${c}`).join('\n'),
+                Object.entries(stats.byPriority).map(([p,c]) => `${p}: ${c}`).join('\n')
+            ]);
+            
+            doc.autoTable({
+                startY: 50,
+                head: [['Agency', 'Total Calls', 'Call Types', 'Priorities']],
+                body: tableData,
+            });
+        } else if (reportData.type === 'response_time') {
+            doc.setFontSize(14);
+            doc.text('Response Time Analysis', 14, 45);
+            
+            doc.autoTable({
+                startY: 50,
+                head: [['Metric', 'Value']],
+                body: [
+                    ['Average Response Time', `${reportData.average} minutes`],
+                    ['Total Calls', reportData.total],
+                    ['Fastest Response', `${Math.min(...reportData.times).toFixed(2)} minutes`],
+                    ['Slowest Response', `${Math.max(...reportData.times).toFixed(2)} minutes`]
+                ],
+            });
+        } else if (reportData.type === 'unit_activity') {
+            doc.setFontSize(14);
+            doc.text('Unit Activity Report', 14, 45);
+            
+            const tableData = Object.entries(reportData.data).map(([unit, stats]) => [
+                unit,
+                stats.statusChanges,
+                Object.entries(stats.statuses).map(([s,c]) => `${s}: ${c}`).join('\n')
+            ]);
+            
+            doc.autoTable({
+                startY: 50,
+                head: [['Unit', 'Status Changes', 'Status Breakdown']],
+                body: tableData,
+            });
+        }
+        
+        doc.save(`${reportData.type}_report_${Date.now()}.pdf`);
+        toast.success('PDF exported');
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -270,14 +335,24 @@ export default function Reports() {
                                 <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
                                     <div className="flex items-center justify-between">
                                         <h2 className="text-lg font-bold text-white font-mono">REPORT RESULTS</h2>
-                                        <Button
-                                            size="sm"
-                                            onClick={exportCSV}
-                                            className="bg-green-600 hover:bg-green-700 font-mono text-xs"
-                                        >
-                                            <Download className="w-3 h-3 mr-2" />
-                                            EXPORT CSV
-                                        </Button>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                size="sm"
+                                                onClick={exportCSV}
+                                                className="bg-green-600 hover:bg-green-700 font-mono text-xs"
+                                            >
+                                                <Download className="w-3 h-3 mr-2" />
+                                                CSV
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                onClick={exportPDF}
+                                                className="bg-red-600 hover:bg-red-700 font-mono text-xs"
+                                            >
+                                                <FileText className="w-3 h-3 mr-2" />
+                                                PDF
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
                                 <ScrollArea className="h-[calc(100vh-280px)]">

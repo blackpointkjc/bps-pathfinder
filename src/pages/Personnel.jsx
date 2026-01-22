@@ -19,6 +19,7 @@ export default function Personnel() {
     const [loading, setLoading] = useState(true);
     const [editDialog, setEditDialog] = useState(false);
     const [editForm, setEditForm] = useState({});
+    const [showTracking, setShowTracking] = useState(false);
 
     useEffect(() => {
         init();
@@ -48,9 +49,11 @@ export default function Personnel() {
     };
 
     const handleEdit = (person) => {
+        const nameParts = person.full_name?.split(' ') || ['', ''];
         setEditForm({
             id: person.id,
-            full_name: person.full_name || '',
+            first_name: nameParts[0] || '',
+            last_name: nameParts.slice(1).join(' ') || '',
             unit_number: person.unit_number || '',
             rank: person.rank || '',
             status: person.status || 'Available'
@@ -63,7 +66,7 @@ export default function Personnel() {
             await base44.functions.invoke('updateUser', {
                 userId: editForm.id,
                 updates: {
-                    full_name: editForm.full_name,
+                    full_name: `${editForm.first_name} ${editForm.last_name}`.trim(),
                     unit_number: editForm.unit_number,
                     rank: editForm.rank,
                     status: editForm.status
@@ -142,7 +145,7 @@ export default function Personnel() {
                             </Button>
                             <Button
                                 size="sm"
-                                onClick={() => window.location.href = createPageUrl('AdminPortal')}
+                                onClick={() => window.location.href = createPageUrl('AdminPortal') + '#tracking'}
                                 className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
                             >
                                 TRACKING
@@ -224,14 +227,24 @@ export default function Personnel() {
                                                 </Badge>
                                             </td>
                                             <td className="p-3">
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() => handleEdit(person)}
-                                                    className="bg-blue-600 hover:bg-blue-700 font-mono text-xs"
-                                                >
-                                                    <Edit2 className="w-3 h-3 mr-1" />
-                                                    EDIT
-                                                </Button>
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handleEdit(person)}
+                                                        className="bg-blue-600 hover:bg-blue-700 font-mono text-xs"
+                                                    >
+                                                        <Edit2 className="w-3 h-3 mr-1" />
+                                                        EDIT
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => window.location.href = createPageUrl('AdminPortal') + '#tracking'}
+                                                        className="bg-purple-600 hover:bg-purple-700 font-mono text-xs"
+                                                    >
+                                                        <MapPin className="w-3 h-3 mr-1" />
+                                                        TRACK
+                                                    </Button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -249,13 +262,23 @@ export default function Personnel() {
                         <DialogTitle className="font-mono">EDIT PERSONNEL</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <div>
-                            <label className="text-xs text-slate-400 font-mono mb-2 block">FULL NAME</label>
-                            <Input
-                                value={editForm.full_name}
-                                onChange={(e) => setEditForm({...editForm, full_name: e.target.value})}
-                                className="bg-slate-800 border-slate-700 text-white font-mono"
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs text-slate-400 font-mono mb-2 block">FIRST NAME</label>
+                                <Input
+                                    value={editForm.first_name}
+                                    onChange={(e) => setEditForm({...editForm, first_name: e.target.value})}
+                                    className="bg-slate-800 border-slate-700 text-white font-mono"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-400 font-mono mb-2 block">LAST NAME</label>
+                                <Input
+                                    value={editForm.last_name}
+                                    onChange={(e) => setEditForm({...editForm, last_name: e.target.value})}
+                                    className="bg-slate-800 border-slate-700 text-white font-mono"
+                                />
+                            </div>
                         </div>
                         <div>
                             <label className="text-xs text-slate-400 font-mono mb-2 block">UNIT NUMBER</label>
