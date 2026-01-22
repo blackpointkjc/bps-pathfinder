@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Users, Search, Edit2, MapPin, Save, X } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import NavigationMenu from '@/components/NavigationMenu';
 
 export default function Personnel() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -107,14 +108,7 @@ export default function Personnel() {
                 <div className="px-6 py-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <Button
-                                variant="ghost"
-                                onClick={() => window.location.href = createPageUrl('CADHome')}
-                                className="text-slate-400 hover:text-white font-mono text-xs"
-                            >
-                                ← CAD HOME
-                            </Button>
-                            <div className="h-6 w-px bg-slate-700" />
+                            <NavigationMenu currentUser={currentUser} />
                             <Users className="w-6 h-6 text-blue-400" />
                             <h1 className="text-xl font-bold text-white tracking-tight font-mono">PERSONNEL ROSTER</h1>
                             <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono">

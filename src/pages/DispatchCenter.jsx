@@ -6,6 +6,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Plus, Shield, Radio, AlertCircle, Car } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import NavigationMenu from '@/components/NavigationMenu';
 import ActiveCallsQueue from '@/components/dispatch/ActiveCallsQueue';
 import CallDetailPanel from '@/components/dispatch/CallDetailPanel';
 import UnitsPanel from '@/components/dispatch/UnitsPanel';
@@ -55,12 +56,12 @@ export default function DispatchCenter() {
             const user = await base44.auth.me();
             setCurrentUser(user);
             
-            // Check if user has dispatch access
-            const hasDispatchAccess = user.role === 'admin' || user.dispatch_role === true;
+            // CRITICAL: Check if user has dispatch role (server-side enforced)
+            const hasDispatchAccess = user.role === 'dispatch' || user.role === 'admin' || user.dispatch_role === true;
             
             if (!hasDispatchAccess) {
-                toast.error('Unauthorized - Dispatch access required');
-                window.location.href = '/navigation';
+                toast.error('Access Denied - Dispatch role required');
+                setTimeout(() => window.location.href = '/cadhome', 1500);
                 return;
             }
 
@@ -143,14 +144,7 @@ export default function DispatchCenter() {
                 <div className="px-6 py-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <Button
-                                variant="ghost"
-                                onClick={() => window.location.href = createPageUrl('CADHome')}
-                                className="text-slate-400 hover:text-white"
-                            >
-                                ← BACK
-                            </Button>
-                            <div className="h-6 w-px bg-slate-700" />
+                            <NavigationMenu currentUser={currentUser} />
                             <Radio className="w-6 h-6 text-red-400" />
                             <h1 className="text-xl font-bold text-white tracking-tight font-mono">DISPATCH CENTER</h1>
                         </div>

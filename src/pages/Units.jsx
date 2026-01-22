@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Users, MapPin, Clock, Activity, Search, Shield } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import NavigationMenu from '@/components/NavigationMenu';
 
 export default function Units() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -79,14 +80,7 @@ export default function Units() {
                 <div className="px-6 py-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <Button
-                                variant="ghost"
-                                onClick={() => window.location.href = createPageUrl('CADHome')}
-                                className="text-slate-400 hover:text-white"
-                            >
-                                ← BACK
-                            </Button>
-                            <div className="h-6 w-px bg-slate-700" />
+                            <NavigationMenu currentUser={currentUser} />
                             <Users className="w-6 h-6 text-green-400" />
                             <h1 className="text-xl font-bold text-white tracking-tight font-mono">UNIT MANAGEMENT</h1>
                             <Badge className="bg-green-500/20 text-green-400 border border-green-500/30 font-mono">
