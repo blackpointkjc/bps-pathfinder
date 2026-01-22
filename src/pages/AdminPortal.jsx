@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car, MapPin, Activity, Database, Server } from 'lucide-react';
+import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car, MapPin, Activity, Database, Server, TrendingUp, Clock, AlertTriangle, BarChart3, Archive } from 'lucide-react';
 import { createPageUrl } from '../utils';
 import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import VehicleManagement from '@/components/admin/VehicleManagement';
@@ -22,11 +22,22 @@ export default function AdminPortal() {
     const [loading, setLoading] = useState(true);
     const [editingUser, setEditingUser] = useState(null);
     const [showEditDialog, setShowEditDialog] = useState(false);
-    const [activeTab, setActiveTab] = useState('users');
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [dashboardData, setDashboardData] = useState({
+        callVolume: [],
+        criticalIncidents: [],
+        systemHealth: { uptime: '99.9%', avgResponse: '3.2m' }
+    });
 
     useEffect(() => {
         init();
     }, []);
+
+    useEffect(() => {
+        if (activeTab === 'dashboard') {
+            loadDashboardData();
+        }
+    }, [activeTab]);
 
     const init = async () => {
         try {
@@ -45,6 +56,39 @@ export default function AdminPortal() {
             toast.error('Failed to load admin portal');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadDashboardData = async () => {
+        try {
+            const calls = await base44.entities.DispatchCall.list('-created_date', 100);
+            
+            // Call volume over time (last 7 days)
+            const last7Days = Array.from({ length: 7 }, (_, i) => {
+                const date = new Date();
+                date.setDate(date.getDate() - (6 - i));
+                return date.toISOString().split('T')[0];
+            });
+
+            const volumeByDay = last7Days.map(day => ({
+                date: day,
+                count: calls.filter(c => c.created_date?.startsWith(day)).length
+            }));
+
+            // Critical incidents
+            const critical = calls.filter(c => 
+                c.priority === 'critical' || c.priority === 'high' ||
+                c.incident?.toLowerCase().includes('shooting') ||
+                c.incident?.toLowerCase().includes('officer')
+            ).slice(0, 5);
+
+            setDashboardData({
+                callVolume: volumeByDay,
+                criticalIncidents: critical,
+                systemHealth: { uptime: '99.9%', avgResponse: '3.2m' }
+            });
+        } catch (error) {
+            console.error('Error loading dashboard data:', error);
         }
     };
 
@@ -169,6 +213,17 @@ export default function AdminPortal() {
                 <div className="border-t border-slate-800">
                     <div className="flex">
                         <button
+                            onClick={() => setActiveTab('dashboard')}
+                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
+                                activeTab === 'dashboard' 
+                                    ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-500' 
+                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                            }`}
+                        >
+                            <BarChart3 className="w-4 h-4" />
+                            DASHBOARD
+                        </button>
+                        <button
                             onClick={() => setActiveTab('users')}
                             className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
                                 activeTab === 'users' 
@@ -218,6 +273,137 @@ export default function AdminPortal() {
 
             {/* Content Area */}
             <div className="p-6">
+
+                {/* Dashboard Tab */}
+                {activeTab === 'dashboard' && (
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-4 gap-4">
+                            <Card className="bg-slate-900 border-slate-800 p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-mono text-slate-400 mb-1">SYSTEM UPTIME</p>
+                                        <p className="text-3xl font-bold text-green-400 font-mono">{dashboardData.systemHealth.uptime}</p>
+                                    </div>
+                                    <Server className="w-8 h-8 text-green-400" />
+                                </div>
+                            </Card>
+
+                            <Card className="bg-slate-900 border-slate-800 p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-mono text-slate-400 mb-1">ACTIVE USERS</p>
+                                        <p className="text-3xl font-bold text-blue-400 font-mono">{users.length}</p>
+                                    </div>
+                                    <Users className="w-8 h-8 text-blue-400" />
+                                </div>
+                            </Card>
+
+                            <Card className="bg-slate-900 border-slate-800 p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-mono text-slate-400 mb-1">AVG RESPONSE</p>
+                                        <p className="text-3xl font-bold text-purple-400 font-mono">{dashboardData.systemHealth.avgResponse}</p>
+                                    </div>
+                                    <Clock className="w-8 h-8 text-purple-400" />
+                                </div>
+                            </Card>
+
+                            <Card className="bg-slate-900 border-slate-800 p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs font-mono text-slate-400 mb-1">CRITICAL CALLS</p>
+                                        <p className="text-3xl font-bold text-red-400 font-mono">{dashboardData.criticalIncidents.length}</p>
+                                    </div>
+                                    <AlertTriangle className="w-8 h-8 text-red-400" />
+                                </div>
+                            </Card>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-6">
+                            <Card className="bg-slate-900 border-slate-800">
+                                <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
+                                    <h2 className="text-lg font-bold text-white font-mono flex items-center gap-2">
+                                        <TrendingUp className="w-5 h-5 text-blue-400" />
+                                        CALL VOLUME (7 DAYS)
+                                    </h2>
+                                </div>
+                                <div className="p-4">
+                                    <div className="space-y-2">
+                                        {dashboardData.callVolume.map((day, idx) => (
+                                            <div key={idx} className="flex items-center gap-3">
+                                                <span className="text-xs font-mono text-slate-400 w-24">{day.date}</span>
+                                                <div className="flex-1 bg-slate-800 rounded-full h-6 overflow-hidden">
+                                                    <div 
+                                                        className="h-full bg-blue-500" 
+                                                        style={{ width: `${Math.min((day.count / 50) * 100, 100)}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-sm font-mono text-white w-8 text-right">{day.count}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </Card>
+
+                            <Card className="bg-slate-900 border-slate-800">
+                                <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
+                                    <h2 className="text-lg font-bold text-white font-mono flex items-center gap-2">
+                                        <AlertTriangle className="w-5 h-5 text-red-400" />
+                                        RECENT CRITICAL INCIDENTS
+                                    </h2>
+                                </div>
+                                <div className="p-4 space-y-2">
+                                    {dashboardData.criticalIncidents.length === 0 ? (
+                                        <div className="text-center py-8 text-slate-500 font-mono text-sm">
+                                            NO CRITICAL INCIDENTS
+                                        </div>
+                                    ) : (
+                                        dashboardData.criticalIncidents.map((call, idx) => (
+                                            <div key={idx} className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                                                <div className="flex items-start justify-between">
+                                                    <div>
+                                                        <p className="text-white font-mono font-bold text-sm">{call.incident}</p>
+                                                        <p className="text-slate-400 text-xs font-mono mt-1">{call.location}</p>
+                                                    </div>
+                                                    <Badge className="bg-red-500 text-white font-mono text-xs">
+                                                        {call.priority?.toUpperCase() || 'CRITICAL'}
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-xs text-slate-500 font-mono mt-2">
+                                                    {new Date(call.created_date).toLocaleString()}
+                                                </p>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </Card>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                            <Button
+                                onClick={() => window.location.href = createPageUrl('Reports')}
+                                className="h-20 bg-slate-900 border-2 border-blue-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
+                            >
+                                <BarChart3 className="w-6 h-6 text-blue-400" />
+                                <span className="text-white font-mono font-bold text-sm">REPORTS</span>
+                            </Button>
+                            <Button
+                                onClick={() => window.location.href = createPageUrl('ArchiveManager')}
+                                className="h-20 bg-slate-900 border-2 border-purple-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
+                            >
+                                <Archive className="w-6 h-6 text-purple-400" />
+                                <span className="text-white font-mono font-bold text-sm">ARCHIVE</span>
+                            </Button>
+                            <Button
+                                onClick={() => window.location.href = createPageUrl('SystemStatus')}
+                                className="h-20 bg-slate-900 border-2 border-green-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
+                            >
+                                <Activity className="w-6 h-6 text-green-400" />
+                                <span className="text-white font-mono font-bold text-sm">SYSTEM STATUS</span>
+                            </Button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Personnel Tab */}
                 {activeTab === 'users' && (

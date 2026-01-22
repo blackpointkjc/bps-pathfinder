@@ -10,6 +10,7 @@ import DispatchLog from './pages/DispatchLog';
 import Reports from './pages/Reports';
 import Personnel from './pages/Personnel';
 import SystemStatus from './pages/SystemStatus';
+import ArchiveManager from './pages/ArchiveManager';
 import __Layout from './Layout.jsx';
 
 
@@ -26,6 +27,7 @@ export const PAGES = {
     "Reports": Reports,
     "Personnel": Personnel,
     "SystemStatus": SystemStatus,
+    "ArchiveManager": ArchiveManager,
 }
 
 export const pagesConfig = {

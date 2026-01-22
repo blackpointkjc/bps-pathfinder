@@ -414,6 +414,14 @@ export default function CADHome() {
                         <span className="text-white font-mono font-bold">DISPATCH CENTER</span>
                     </Button>
                     
+                    <Button 
+                        className="h-24 bg-slate-900 border-2 border-teal-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
+                        onClick={() => window.location.href = createPageUrl('Navigation')}
+                    >
+                        <MapPin className="w-8 h-8 text-teal-400" />
+                        <span className="text-white font-mono font-bold">LIVE MAP</span>
+                    </Button>
+
                     {currentUser?.role === 'admin' && (
                         <Button 
                             className="h-24 bg-slate-900 border-2 border-red-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
