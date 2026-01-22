@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
           logCount++;
         }
 
-        if (recordMs < oneDayAgoEst) {
+        if (recordMs < thirtyDaysAgo) {
           skipped++;
           continue;
         }

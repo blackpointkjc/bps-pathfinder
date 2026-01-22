@@ -141,17 +141,17 @@ Deno.serve(async (req) => {
                             cells.push(match[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
                         }
 
-                        // Typical format: Time, Agency, Location, Incident Type, Status
+                        // Typical format: Time, Incident Type, Agency, Location, Status
                         if (cells.length >= 4) {
                             const time = cells[0]?.trim() || '';
-                            const agency = cells[1]?.trim() || '';
-                            let location = cells[2]?.trim() || '';
-                            const incident = cells[3]?.trim() || 'Unknown';
+                            const incident = cells[1]?.trim() || 'Unknown';
+                            const agency = cells[2]?.trim() || '';
+                            let location = cells[3]?.trim() || '';
                             const status = cells[4]?.trim() || 'Dispatched';
 
                             // Determine source based on agency
                             let source = 'richmond';
-                            if (agency.toLowerCase().includes('henrico')) {
+                            if (agency.toLowerCase().includes('henrico') || agency.toLowerCase().includes('hpd')) {
                                 source = 'henrico';
                             }
 
