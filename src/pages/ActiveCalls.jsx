@@ -181,9 +181,8 @@ export default function ActiveCalls() {
                                             REPORTS
                                         </Button>
                                     </div>
-                                    </div>
                                     <div className="flex gap-2 mt-2">
-                                    {['all', 'New', 'Dispatched', 'Enroute', 'On Scene'].map(status => (
+                                        {['all', 'New', 'Dispatched', 'Enroute', 'On Scene'].map(status => (
                                             <Button
                                                 key={status}
                                                 size="sm"
