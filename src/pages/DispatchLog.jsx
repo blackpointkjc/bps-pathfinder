@@ -117,7 +117,30 @@ export default function DispatchLog() {
                                     className="pl-10 bg-slate-900 border-slate-700 text-white font-mono text-sm"
                                 />
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    onClick={() => window.location.href = createPageUrl('CADHome')}
+                                    className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
+                                >
+                                    HOME
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    onClick={() => window.location.href = createPageUrl('ActiveCalls')}
+                                    className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
+                                >
+                                    CALLS
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    onClick={() => window.location.href = createPageUrl('Reports')}
+                                    className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
+                                >
+                                    REPORTS
+                                </Button>
+                            </div>
+                            <div className="flex gap-2 ml-auto">
                                 {['all', 'unit', 'call'].map(type => (
                                     <Button
                                         key={type}

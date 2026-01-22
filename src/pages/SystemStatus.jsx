@@ -60,9 +60,9 @@ export default function SystemStatus() {
                             <Button
                                 variant="ghost"
                                 onClick={() => window.location.href = createPageUrl('CADHome')}
-                                className="text-slate-400 hover:text-white"
+                                className="text-slate-400 hover:text-white font-mono text-xs"
                             >
-                                ← BACK
+                                ← CAD HOME
                             </Button>
                             <div className="h-6 w-px bg-slate-700" />
                             <Activity className="w-6 h-6 text-green-400" />
@@ -71,6 +71,29 @@ export default function SystemStatus() {
                                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                                 <span className="text-green-400 font-mono text-xs font-bold">OPERATIONAL</span>
                             </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button
+                                size="sm"
+                                onClick={() => window.location.href = createPageUrl('ActiveCalls')}
+                                className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
+                            >
+                                CALLS
+                            </Button>
+                            <Button
+                                size="sm"
+                                onClick={() => window.location.href = createPageUrl('Units')}
+                                className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
+                            >
+                                UNITS
+                            </Button>
+                            <Button
+                                size="sm"
+                                onClick={() => window.location.href = createPageUrl('Reports')}
+                                className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
+                            >
+                                REPORTS
+                            </Button>
                         </div>
                     </div>
                 </div>

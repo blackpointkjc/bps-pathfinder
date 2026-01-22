@@ -158,8 +158,32 @@ export default function ActiveCalls() {
                                             />
                                         </div>
                                     </div>
-                                    <div className="flex gap-2">
-                                        {['all', 'New', 'Dispatched', 'Enroute', 'On Scene'].map(status => (
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            size="sm"
+                                            onClick={() => window.location.href = createPageUrl('CADHome')}
+                                            className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
+                                        >
+                                            HOME
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => window.location.href = createPageUrl('Units')}
+                                            className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
+                                        >
+                                            UNITS
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => window.location.href = createPageUrl('Reports')}
+                                            className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
+                                        >
+                                            REPORTS
+                                        </Button>
+                                    </div>
+                                    </div>
+                                    <div className="flex gap-2 mt-2">
+                                    {['all', 'New', 'Dispatched', 'Enroute', 'On Scene'].map(status => (
                                             <Button
                                                 key={status}
                                                 size="sm"
