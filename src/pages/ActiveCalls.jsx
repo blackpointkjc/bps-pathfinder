@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Radio, AlertTriangle, MapPin, Clock, User, Phone, FileText, Save, X, Plus, Search, Filter } from 'lucide-react';
+import { Radio, AlertTriangle, MapPin, Clock, User, Phone, FileText, Save, X, Plus, Search, Filter, RefreshCw } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import NavigationMenu from '@/components/NavigationMenu';
 
 export default function ActiveCalls() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -19,6 +20,7 @@ export default function ActiveCalls() {
     const [filterStatus, setFilterStatus] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
         init();
@@ -98,7 +100,27 @@ export default function ActiveCalls() {
         }
     };
 
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        try {
+            toast.info('Refreshing active calls...');
+            await base44.functions.invoke('scrapeActiveCalls', {});
+            await loadData();
+            toast.success('Active calls refreshed');
+        } catch (error) {
+            toast.error('Failed to refresh calls');
+            console.error('Refresh error:', error);
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
     const filteredCalls = activeCalls.filter(call => {
+        // Exclude scraped calls from external sources
+        if (call.source === 'richmond' || call.source === 'henrico' || call.source === 'chesterfield') {
+            return false;
+        }
+        
         const matchesStatus = filterStatus === 'all' || call.status === filterStatus;
         const matchesSearch = !searchQuery || 
             call.incident?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -121,20 +143,21 @@ export default function ActiveCalls() {
                 <div className="px-6 py-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <Button
-                                variant="ghost"
-                                onClick={() => window.location.href = createPageUrl('CADHome')}
-                                className="text-slate-400 hover:text-white"
-                            >
-                                ← BACK
-                            </Button>
-                            <div className="h-6 w-px bg-slate-700" />
+                            <NavigationMenu currentUser={currentUser} />
                             <Radio className="w-6 h-6 text-blue-400" />
                             <h1 className="text-xl font-bold text-white tracking-tight font-mono">ACTIVE CALLS MANAGEMENT</h1>
                             <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono">
                                 {filteredCalls.length} ACTIVE
                             </Badge>
                         </div>
+                        <Button
+                            onClick={handleRefresh}
+                            disabled={refreshing}
+                            className="bg-blue-600 hover:bg-blue-700 font-mono"
+                        >
+                            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                            {refreshing ? 'REFRESHING...' : 'REFRESH'}
+                        </Button>
                     </div>
                 </div>
             </div>
