@@ -8,6 +8,8 @@ import ActiveCalls from './pages/ActiveCalls';
 import Units from './pages/Units';
 import DispatchLog from './pages/DispatchLog';
 import Reports from './pages/Reports';
+import Personnel from './pages/Personnel';
+import SystemStatus from './pages/SystemStatus';
 import __Layout from './Layout.jsx';
 
 
@@ -22,6 +24,8 @@ export const PAGES = {
     "Units": Units,
     "DispatchLog": DispatchLog,
     "Reports": Reports,
+    "Personnel": Personnel,
+    "SystemStatus": SystemStatus,
 }
 
 export const pagesConfig = {

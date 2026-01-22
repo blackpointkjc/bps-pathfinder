@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car, MapPin, Activity, Database, Server } from 'lucide-react';
+import { createPageUrl } from '../utils';
 import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import VehicleManagement from '@/components/admin/VehicleManagement';
 import LocationTracking from '@/components/admin/LocationTracking';
@@ -139,7 +140,14 @@ export default function AdminPortal() {
                         <div className="flex items-center gap-2">
                             <Button 
                                 variant="outline" 
-                                onClick={() => window.location.href = '/dispatchcenter'}
+                                onClick={() => window.location.href = createPageUrl('CADHome')}
+                                className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white font-mono text-xs"
+                            >
+                                ← CAD HOME
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                onClick={() => window.location.href = createPageUrl('DispatchCenter')}
                                 className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white font-mono text-xs"
                             >
                                 <Activity className="w-3 h-3 mr-2" />
@@ -147,7 +155,7 @@ export default function AdminPortal() {
                             </Button>
                             <Button 
                                 variant="outline" 
-                                onClick={() => window.location.href = '/navigation'}
+                                onClick={() => window.location.href = createPageUrl('Navigation')}
                                 className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white font-mono text-xs"
                             >
                                 <MapPin className="w-3 h-3 mr-2" />
