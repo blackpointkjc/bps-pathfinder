@@ -93,18 +93,18 @@ Deno.serve(async (req) => {
         
         console.log('🔍 Starting active call scraper...');
         
-        // Delete all existing Richmond and Henrico calls before fresh scrape
+        // Delete all existing calls from all three sources before fresh scrape
         try {
             const existingCalls = await base44.asServiceRole.entities.DispatchCall.list();
             let deletedCount = 0;
             
             for (const call of existingCalls) {
-                if (['richmond', 'henrico'].includes(call.source)) {
+                if (['richmond', 'henrico', 'chesterfield'].includes(call.source)) {
                     await base44.asServiceRole.entities.DispatchCall.delete(call.id);
                     deletedCount++;
                 }
             }
-            console.log(`🗑️ Deleted ${deletedCount} old Richmond/Henrico calls for fresh data`);
+            console.log(`🗑️ Deleted ${deletedCount} old calls for fresh data`);
         } catch (cleanupError) {
             console.warn('Cleanup warning:', cleanupError.message);
         }
@@ -123,12 +123,12 @@ Deno.serve(async (req) => {
                 const html = await response.text();
                 console.log(`gractivecalls.com HTML length: ${html.length}`);
 
-                // Find the table with active calls
-                const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
+                // Find the table with active calls (looking for tbody specifically)
+                const tbodyMatch = html.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
 
-                if (tableMatch) {
-                    const rows = tableMatch[0].split(/<tr[^>]*>/i);
-                    console.log(`Found ${rows.length} rows in table`);
+                if (tbodyMatch) {
+                    const rows = tbodyMatch[1].split(/<tr[^>]*>/i);
+                    console.log(`Found ${rows.length} rows in gractivecalls table`);
 
                     for (let i = 1; i < rows.length; i++) {
                         const row = rows[i];
@@ -141,18 +141,20 @@ Deno.serve(async (req) => {
                             cells.push(match[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim());
                         }
 
-                        // Typical format: Time, Incident Type, Agency, Location, Status
-                        if (cells.length >= 4) {
+                        // Format from gractivecalls: Time Received, Incident, Location, Agency, Status, Actions
+                        if (cells.length >= 5) {
                             const time = cells[0]?.trim() || '';
                             const incident = cells[1]?.trim() || 'Unknown';
-                            const agency = cells[2]?.trim() || '';
-                            let location = cells[3]?.trim() || '';
+                            let location = cells[2]?.trim() || '';
+                            const agency = cells[3]?.trim() || '';
                             const status = cells[4]?.trim() || 'Dispatched';
 
                             // Determine source based on agency
                             let source = 'richmond';
                             if (agency.toLowerCase().includes('henrico') || agency.toLowerCase().includes('hpd')) {
                                 source = 'henrico';
+                            } else if (agency.toLowerCase().includes('chesterfield') || agency.toLowerCase().includes('ccpd') || agency.toLowerCase().includes('ccfd')) {
+                                source = 'chesterfield';
                             }
 
                             location = normalizeAddress(location, agency);
@@ -164,7 +166,7 @@ Deno.serve(async (req) => {
                     }
                     console.log(`✅ gractivecalls.com: ${calls.length} calls`);
                 } else {
-                    console.warn('⚠️ Could not find table in gractivecalls.com');
+                    console.warn('⚠️ Could not find tbody in gractivecalls.com');
                 }
             }
         } catch (error) {
