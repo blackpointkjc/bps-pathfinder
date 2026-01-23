@@ -89,10 +89,9 @@ export default function DispatchCenter() {
 
     const loadActiveCalls = async () => {
         try {
-            const calls = await base44.entities.DispatchCall.filter({
-                status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene'] },
-                created_by: { $ne: 'system_scraper' }
-            });
+            // Load ALL active calls from all sources (scrapers and dispatch center)
+            const calls = await base44.entities.DispatchCall.list('-created_date', 200);
+            console.log('📞 Loaded active calls:', calls.length);
             setActiveCalls(calls || []);
         } catch (error) {
             console.error('Error loading active calls:', error);
