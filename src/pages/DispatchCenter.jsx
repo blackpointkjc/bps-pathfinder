@@ -99,10 +99,39 @@ export default function DispatchCenter() {
 
     const loadActiveCalls = async () => {
         try {
-            // Load ALL active calls from all sources (scrapers and dispatch center)
             const calls = await base44.entities.DispatchCall.list('-created_date', 200);
-            console.log('📞 Loaded active calls:', calls.length);
-            setActiveCalls(calls || []);
+            
+            // Archive calls older than 6 hours (EST time)
+            const sixHoursAgo = new Date();
+            sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
+            
+            const recentCalls = [];
+            for (const call of calls) {
+                const callTime = new Date(call.created_date);
+                if (callTime < sixHoursAgo) {
+                    try {
+                        await base44.entities.CallHistory.create({
+                            time_received: call.time_received || call.created_date,
+                            incident: call.incident,
+                            location: call.location,
+                            agency: call.agency,
+                            status: call.status,
+                            latitude: call.latitude,
+                            longitude: call.longitude,
+                            ai_summary: call.ai_summary,
+                            archived_date: new Date().toISOString()
+                        });
+                        await base44.entities.DispatchCall.delete(call.id);
+                    } catch (err) {
+                        console.error('Archive error:', err);
+                    }
+                } else {
+                    recentCalls.push(call);
+                }
+            }
+            
+            console.log('📞 Active calls:', recentCalls.length, '(archived old)');
+            setActiveCalls(recentCalls);
         } catch (error) {
             console.error('Error loading active calls:', error);
         }
