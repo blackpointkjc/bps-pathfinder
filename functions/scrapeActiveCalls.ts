@@ -93,22 +93,23 @@ Deno.serve(async (req) => {
         
         console.log('🔍 Starting active call scraper...');
         
-        // Delete only old calls (older than 24 hours) instead of all calls
+        // Delete ALL existing calls from gractivecalls sources to refresh
         try {
             const existingCalls = await base44.asServiceRole.entities.DispatchCall.list();
             let deletedCount = 0;
-            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
             
             for (const call of existingCalls) {
+                // Delete all richmond and henrico calls (they come from gractivecalls)
                 if (['richmond', 'henrico'].includes(call.source)) {
-                    const callTime = new Date(call.time_received || call.created_date);
-                    if (callTime < oneDayAgo) {
-                        await base44.asServiceRole.entities.DispatchCall.delete(call.id);
-                        deletedCount++;
+                    await base44.asServiceRole.entities.DispatchCall.delete(call.id);
+                    deletedCount++;
+                    // Rate limit deletions
+                    if (deletedCount % 10 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
                     }
                 }
             }
-            console.log(`🗑️ Deleted ${deletedCount} old calls (>24h)`);
+            console.log(`🗑️ Deleted ${deletedCount} gractivecalls.com calls for fresh scrape`);
         } catch (cleanupError) {
             console.warn('Cleanup warning:', cleanupError.message);
         }
@@ -153,13 +154,12 @@ Deno.serve(async (req) => {
                             const agency = cells[3]?.trim() || '';
                             const status = cells[4]?.trim() || 'Dispatched';
 
-                            // Determine source based on agency
+                            // Determine source based on agency - gractivecalls shows all agencies
                             let source = 'richmond';
-                            if (agency.toLowerCase().includes('henrico') || agency.toLowerCase().includes('hpd') || agency.toLowerCase().includes('hcpd')) {
+                            if (agency.toLowerCase().includes('henrico') || agency.toLowerCase().includes('hpd') || agency.toLowerCase().includes('hcpd') || agency.toLowerCase().includes('hfd')) {
                                 source = 'henrico';
-                            } else if (agency.toLowerCase().includes('chesterfield') || agency.toLowerCase().includes('ccpd') || agency.toLowerCase().includes('ccfd')) {
-                                source = 'chesterfield';
                             }
+                            // Note: CCPD/CCFD from gractivecalls stays as 'richmond' to avoid conflict with ArcGIS chesterfield scraper
 
                             location = normalizeAddress(location, agency);
 
