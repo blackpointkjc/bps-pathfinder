@@ -130,7 +130,7 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
         return null;
     }
     
-    console.log(`ActiveCallMarkers: Received ${calls.length} calls`, calls);
+    console.log(`ActiveCallMarkers: Received ${calls.length} calls`);
     
     const validCalls = calls.filter(call => {
         const hasCoords = call.latitude && call.longitude && 
@@ -138,13 +138,15 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                call.latitude !== 0 && call.longitude !== 0;
         
         if (!hasCoords) {
-            console.log(`Call without valid coords:`, call.incident, call.location);
+            console.log(`❌ Call WITHOUT coords:`, call.incident, call.location, call.agency, call.source);
+        } else {
+            console.log(`✅ Call WITH coords:`, call.incident, call.location, call.agency, `(${call.latitude}, ${call.longitude})`);
         }
         
         return hasCoords;
     });
     
-    console.log(`ActiveCallMarkers: ${validCalls.length} valid calls with coordinates`);
+    console.log(`ActiveCallMarkers: ${validCalls.length}/${calls.length} valid calls with coordinates`);
     
     if (validCalls.length === 0) {
         return null;
