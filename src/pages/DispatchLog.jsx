@@ -16,6 +16,7 @@ export default function DispatchLog() {
     const [callLogs, setCallLogs] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState('all');
+    const [filterSource, setFilterSource] = useState('all'); // 'all', 'app', 'external'
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -38,12 +39,27 @@ export default function DispatchLog() {
 
     const loadLogs = async () => {
         try {
-            const [unitLogs, callStatusLogs] = await Promise.all([
+            const [unitLogs, callStatusLogs, externalCallsData] = await Promise.all([
                 base44.entities.UnitStatusLog.list('-created_date', 100),
-                base44.entities.CallStatusLog.list('-created_date', 100)
+                base44.entities.CallStatusLog.list('-created_date', 100),
+                base44.functions.invoke('getExternalCalls', {})
             ]);
+            
+            // Add external calls as log entries
+            const externalCalls = externalCallsData.data?.calls || [];
+            const externalLogs = externalCalls.map(call => ({
+                type: 'external_call',
+                timestamp: call.lastUpdated,
+                incident_type: call.callType,
+                location: call.address,
+                status: call.status,
+                agency: call.agency,
+                source: 'external',
+                isExternal: true
+            }));
+            
             setStatusLogs(unitLogs || []);
-            setCallLogs(callStatusLogs || []);
+            setCallLogs([...(callStatusLogs || []), ...externalLogs]);
         } catch (error) {
             console.error('Error loading logs:', error);
         }
@@ -55,12 +71,20 @@ export default function DispatchLog() {
     ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     const filteredLogs = allLogs.filter(log => {
-        const matchesType = filterType === 'all' || log.type === filterType;
+        const matchesType = filterType === 'all' || 
+            (filterType === 'call' && (log.type === 'call' || log.type === 'external_call')) ||
+            log.type === filterType;
+        
+        const matchesSource = filterSource === 'all' ||
+            (filterSource === 'app' && !log.isExternal) ||
+            (filterSource === 'external' && log.isExternal);
+        
         const matchesSearch = !searchQuery || 
             log.unit_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             log.incident_type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             log.new_status?.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesType && matchesSearch;
+        
+        return matchesType && matchesSource && matchesSearch;
     });
 
     if (loading) {
@@ -149,6 +173,21 @@ export default function DispatchLog() {
                                         {type === 'all' ? 'ALL' : type === 'unit' ? 'UNIT LOGS' : 'CALL LOGS'}
                                     </Button>
                                 ))}
+                                <div className="h-6 w-px bg-slate-700 mx-2" />
+                                {['all', 'app', 'external'].map(source => (
+                                    <Button
+                                        key={source}
+                                        size="sm"
+                                        variant={filterSource === source ? 'default' : 'outline'}
+                                        onClick={() => setFilterSource(source)}
+                                        className={filterSource === source ? 
+                                            'bg-purple-600 hover:bg-purple-700 font-mono text-xs' : 
+                                            'border-slate-700 text-slate-400 hover:text-white font-mono text-xs'
+                                        }
+                                    >
+                                        {source === 'all' ? 'ALL SOURCES' : source === 'app' ? 'APP-DISPATCHED' : 'EXTERNAL FEED'}
+                                    </Button>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -198,26 +237,46 @@ export default function DispatchLog() {
                                                     <p className="text-slate-400 text-xs font-mono mt-2">{log.notes}</p>
                                                 )}
                                             </div>
+                                        ) : log.type === 'external_call' ? (
+                                           <div>
+                                               <p className="text-white font-mono text-sm mb-1">
+                                                   <Badge className="bg-orange-500/20 text-orange-400 border border-orange-500/30 font-mono text-xs mr-2">
+                                                       EXTERNAL
+                                                   </Badge>
+                                                   <span className="text-blue-400">{log.incident_type}</span> at {log.location}
+                                               </p>
+                                               <div className="flex items-center gap-2">
+                                                   <Badge className="bg-slate-700 text-slate-300 font-mono text-xs">
+                                                       {log.agency}
+                                                   </Badge>
+                                                   <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono text-xs">
+                                                       {log.status}
+                                                   </Badge>
+                                               </div>
+                                               <p className="text-slate-500 text-xs font-mono mt-1">
+                                                   Source: GR Active Calls (Read-Only)
+                                               </p>
+                                           </div>
                                         ) : (
-                                            <div>
-                                                <p className="text-white font-mono text-sm mb-1">
-                                                    Call <span className="text-blue-400">{log.incident_type}</span> at {log.location}
-                                                </p>
-                                                <div className="flex items-center gap-2">
-                                                    <Badge className="bg-slate-700 text-slate-300 font-mono text-xs">
-                                                        {log.old_status || 'N/A'}
-                                                    </Badge>
-                                                    <span className="text-slate-500">→</span>
-                                                    <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono text-xs">
-                                                        {log.new_status}
-                                                    </Badge>
-                                                </div>
-                                                {log.unit_name && (
-                                                    <p className="text-slate-400 text-xs font-mono mt-2">
-                                                        Unit: {log.unit_name}
-                                                    </p>
-                                                )}
-                                            </div>
+                                           <div>
+                                               <p className="text-white font-mono text-sm mb-1">
+                                                   Call <span className="text-blue-400">{log.incident_type}</span> at {log.location}
+                                               </p>
+                                               <div className="flex items-center gap-2">
+                                                   <Badge className="bg-slate-700 text-slate-300 font-mono text-xs">
+                                                       {log.old_status || 'N/A'}
+                                                   </Badge>
+                                                   <span className="text-slate-500">→</span>
+                                                   <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono text-xs">
+                                                       {log.new_status}
+                                                   </Badge>
+                                               </div>
+                                               {log.unit_name && (
+                                                   <p className="text-slate-400 text-xs font-mono mt-2">
+                                                       Unit: {log.unit_name}
+                                                   </p>
+                                               )}
+                                           </div>
                                         )}
                                     </div>
                                 ))

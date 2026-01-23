@@ -42,13 +42,25 @@ export default function ActiveCalls() {
 
     const loadData = async () => {
         try {
-            const [callsData, usersData] = await Promise.all([
+            const [appCallsData, externalCallsData, usersData] = await Promise.all([
                 base44.entities.DispatchCall.filter({
                     status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene'] }
                 }),
+                base44.functions.invoke('getExternalCalls', {}),
                 base44.functions.invoke('fetchAllUsers', {})
             ]);
-            setActiveCalls(callsData || []);
+            
+            // Combine app calls and external calls
+            const appCalls = appCallsData || [];
+            const externalCalls = externalCallsData.data?.calls || [];
+            
+            // Mark source clearly
+            const allCalls = [
+                ...appCalls.map(c => ({ ...c, isAppDispatched: true })),
+                ...externalCalls.map(c => ({ ...c, isExternal: true }))
+            ];
+            
+            setActiveCalls(allCalls);
             setUnits(usersData.data?.users || []);
         } catch (error) {
             console.error('Error loading data:', error);
@@ -116,15 +128,12 @@ export default function ActiveCalls() {
     };
 
     const filteredCalls = activeCalls.filter(call => {
-        // Exclude scraped calls from external sources
-        if (call.source === 'richmond' || call.source === 'henrico' || call.source === 'chesterfield') {
-            return false;
-        }
-        
         const matchesStatus = filterStatus === 'all' || call.status === filterStatus;
         const matchesSearch = !searchQuery || 
             call.incident?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            call.location?.toLowerCase().includes(searchQuery.toLowerCase());
+            call.callType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            call.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            call.address?.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesStatus && matchesSearch;
     });
 
@@ -244,10 +253,17 @@ export default function ActiveCalls() {
                                                     {call.status}
                                                 </Badge>
                                             </div>
-                                            <p className="text-white font-semibold text-sm mb-1">{call.incident}</p>
+                                            <p className="text-white font-semibold text-sm mb-1">
+                                                {call.incident || call.callType}
+                                                {call.isExternal && (
+                                                    <Badge className="ml-2 bg-orange-500/20 text-orange-400 border border-orange-500/30 font-mono text-xs">
+                                                        EXTERNAL
+                                                    </Badge>
+                                                )}
+                                            </p>
                                             <p className="text-slate-400 text-xs font-mono flex items-center gap-1 mb-2">
                                                 <MapPin className="w-3 h-3" />
-                                                {call.location}
+                                                {call.location || call.address}
                                             </p>
                                             <div className="flex items-center justify-between">
                                                 <span className="text-slate-500 text-xs font-mono">

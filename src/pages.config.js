@@ -11,6 +11,7 @@ import Personnel from './pages/Personnel';
 import Reports from './pages/Reports';
 import SystemStatus from './pages/SystemStatus';
 import Units from './pages/Units';
+import SystemDiagnostics from './pages/SystemDiagnostics';
 import __Layout from './Layout.jsx';
 
 
@@ -28,6 +29,7 @@ export const PAGES = {
     "Reports": Reports,
     "SystemStatus": SystemStatus,
     "Units": Units,
+    "SystemDiagnostics": SystemDiagnostics,
 }
 
 export const pagesConfig = {
