@@ -9,7 +9,6 @@ export default function NavigationMenu({ currentUser }) {
 
     const menuItems = [
         { name: 'CAD Home', icon: Radio, page: 'CADHome', color: 'text-blue-400' },
-        { name: 'Active Calls Management', icon: Radio, page: 'ActiveCalls', color: 'text-red-400' },
         { name: 'Dispatch Center', icon: Activity, page: 'DispatchCenter', color: 'text-purple-400' },
         { name: 'Call History', icon: FileText, page: 'CallHistory', color: 'text-orange-400' },
         { name: 'Live Map', icon: MapPin, page: 'Navigation', color: 'text-yellow-400' },
@@ -29,13 +28,12 @@ export default function NavigationMenu({ currentUser }) {
     return (
         <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-                <Button 
-                    variant="outline" 
-                    size="icon"
-                    className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white"
+                <button 
+                    onClick={() => setOpen(true)}
+                    className="bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white rounded-md p-2 transition-all"
                 >
                     <Menu className="w-5 h-5" />
-                </Button>
+                </button>
             </SheetTrigger>
             <SheetContent side="left" className="w-80 bg-slate-900 border-slate-700">
                 <SheetHeader>
