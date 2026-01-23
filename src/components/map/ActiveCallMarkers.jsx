@@ -6,7 +6,7 @@ import { Clock, MapPin, Radio } from 'lucide-react';
 
 // Icon based on incident type and agency
 const createCallIcon = (call, isHighPriority = false) => {
-    const incident = (call.incident || call.callType || '')?.toLowerCase();
+    const incident = call.incident?.toLowerCase() || '';
     const agency = call.agency || '';
     
     // Determine if it's EMS, Police, or Fire
@@ -90,8 +90,8 @@ const createCallIcon = (call, isHighPriority = false) => {
 
 // Priority assessment
 const assessCallPriority = (call) => {
-    const incident = (call.incident || call.callType || '')?.toLowerCase();
-    const description = (call.description || '')?.toLowerCase();
+    const incident = call.incident?.toLowerCase() || '';
+    const description = call.description?.toLowerCase() || '';
     const combined = `${incident} ${description}`;
 
     if (
@@ -160,7 +160,7 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                 
                 return (
                     <Marker
-                        key={call.id || call.externalCallId || `call-${index}`}
+                        key={`call-${index}-${call.timeReceived}-${call.incident}`}
                         position={position}
                         icon={icon}
                         eventHandlers={{
@@ -176,7 +176,7 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                                 <div className="flex items-start gap-2 mb-2">
                                     <Radio className="w-4 h-4 text-red-500 flex-shrink-0 mt-1" />
                                     <h3 className="font-bold text-sm text-[#1D1D1F] leading-tight">
-                                        {call.incident || call.callType}
+                                        {call.incident}
                                     </h3>
                                 </div>
                                 
@@ -189,12 +189,12 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                                     
                                     <div className="flex items-start gap-2">
                                         <MapPin className="w-3 h-3 text-gray-500 flex-shrink-0 mt-0.5" />
-                                        <span className="text-gray-700">{call.location || call.address}</span>
+                                        <span className="text-gray-700">{call.location}</span>
                                     </div>
                                     
                                     <div className="flex items-center gap-2">
                                         <Clock className="w-3 h-3 text-gray-500 flex-shrink-0" />
-                                        <span className="text-gray-600">{call.timeReceived || new Date(call.time_received || call.created_date).toLocaleTimeString()}</span>
+                                        <span className="text-gray-600">{call.timeReceived}</span>
                                     </div>
                                     
                                     <div className="flex items-center gap-2 flex-wrap pt-1">
@@ -204,19 +204,14 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                                         >
                                             {call.agency}
                                         </Badge>
-                                        {call.isExternal && (
-                                            <Badge className="bg-orange-100 text-orange-700 text-xs">
-                                                EXTERNAL
-                                            </Badge>
-                                        )}
                                         <Badge 
                                             variant="secondary"
                                             className={`text-xs ${
-                                                (call.incident || call.callType || '').includes('EMS')
+                                                call.incident.includes('EMS')
                                                     ? 'bg-yellow-100 text-yellow-700'
-                                                    : call.status?.includes('Arrived') || call.status?.includes('ARRIVED')
+                                                    : call.status.includes('Arrived') || call.status.includes('ARRIVED')
                                                     ? 'bg-green-100 text-green-700'
-                                                    : call.status?.includes('Enroute') || call.status?.includes('ENROUTE')
+                                                    : call.status.includes('Enroute') || call.status.includes('ENROUTE')
                                                     ? 'bg-red-100 text-red-700'
                                                     : 'bg-gray-100 text-gray-700'
                                             }`}

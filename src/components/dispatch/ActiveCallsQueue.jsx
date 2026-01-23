@@ -16,11 +16,6 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
     const [selectedCallForDispatch, setSelectedCallForDispatch] = useState(null);
 
     const filteredCalls = calls.filter(call => {
-        // Exclude scraped calls from external sources
-        if (call.source === 'richmond' || call.source === 'henrico' || call.source === 'chesterfield') {
-            return false;
-        }
-        
         const matchesSearch = searchQuery === '' || 
             call.incident?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             call.location?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -32,10 +27,10 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
     });
 
     const counts = {
-        active: calls.filter(c => !c.isExternal && ['Dispatched', 'Enroute', 'On Scene'].includes(c.status)).length,
-        pending: calls.filter(c => !c.isExternal && (c.status === 'New' || c.status === 'Pending')).length,
-        unassigned: calls.filter(c => !c.isExternal && (!c.assigned_units || c.assigned_units.length === 0)).length,
-        all: calls.filter(c => !c.isExternal).length
+        active: calls.filter(c => ['Dispatched', 'Enroute', 'On Scene'].includes(c.status)).length,
+        pending: calls.filter(c => c.status === 'New' || c.status === 'Pending').length,
+        unassigned: calls.filter(c => !c.assigned_units || c.assigned_units.length === 0).length,
+        all: calls.length
     };
 
     const getPriorityColor = (priority) => {
