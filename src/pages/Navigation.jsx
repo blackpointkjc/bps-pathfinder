@@ -1511,7 +1511,7 @@ Be thorough and search multiple sources.`,
 
             if (internalResponse.data && internalResponse.data.success) {
 
-                // Detect new calls and high-priority calls in real-time
+                // Update counts and tracking
                 if (silent && lastCallCountRef.current > 0) {
                     const newCallCount = allCalls.length - lastCallCountRef.current;
 

@@ -235,18 +235,18 @@ export default function ActiveCalls() {
                                 <div className="p-4 space-y-2">
                                     {filteredCalls.map((call) => (
                                         <div
-                                            key={call.id}
-                                            onClick={() => setSelectedCall(call)}
-                                            className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
-                                                selectedCall?.id === call.id ? 
-                                                'bg-blue-500/20 border-blue-500' : 
-                                                `${getPriorityColor(call)} hover:border-blue-400`
-                                            }`}
+                                           key={call.id || call.externalCallId}
+                                           onClick={() => setSelectedCall(call)}
+                                           className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
+                                               selectedCall?.id === call.id || selectedCall?.externalCallId === call.externalCallId ? 
+                                               'bg-blue-500/20 border-blue-500' : 
+                                               `${getPriorityColor(call)} hover:border-blue-400`
+                                           }`}
                                         >
                                             <div className="flex items-start justify-between mb-2">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-white font-mono font-bold text-sm">
-                                                        CALL-{call.id?.slice(-6) || 'UNKNOWN'}
+                                                        {call.isExternal ? 'EXT-' : 'CALL-'}{(call.id?.slice(-6) || call.externalCallId?.slice(-6) || 'UNKNOWN')}
                                                     </span>
                                                 </div>
                                                 <Badge className="bg-slate-700 text-slate-300 font-mono text-xs">
@@ -267,7 +267,7 @@ export default function ActiveCalls() {
                                             </p>
                                             <div className="flex items-center justify-between">
                                                 <span className="text-slate-500 text-xs font-mono">
-                                                    {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { hour12: false })}
+                                                    {call.timeReceived || new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { hour12: false })}
                                                 </span>
                                                 {call.assigned_units?.length > 0 && (
                                                     <Badge className="bg-green-500/20 text-green-400 border border-green-500/30 font-mono text-xs">
@@ -306,7 +306,7 @@ export default function ActiveCalls() {
                                     <div className="p-4 grid grid-cols-2 gap-4">
                                         <div>
                                             <p className="text-xs text-slate-400 font-mono mb-1">CALL TYPE</p>
-                                            <p className="text-white font-semibold">{selectedCall.incident}</p>
+                                            <p className="text-white font-semibold">{selectedCall.incident || selectedCall.callType}</p>
                                         </div>
                                         <div>
                                             <p className="text-xs text-slate-400 font-mono mb-1">PRIORITY</p>
@@ -317,18 +317,25 @@ export default function ActiveCalls() {
                                         <div>
                                             <p className="text-xs text-slate-400 font-mono mb-1">TIME RECEIVED</p>
                                             <p className="text-white font-mono text-sm">
-                                                {new Date(selectedCall.time_received || selectedCall.created_date).toLocaleString()}
+                                                {selectedCall.timeReceived || new Date(selectedCall.time_received || selectedCall.created_date).toLocaleString()}
                                             </p>
                                         </div>
                                         <div>
                                             <p className="text-xs text-slate-400 font-mono mb-1">SOURCE</p>
-                                            <p className="text-white font-mono text-sm">{selectedCall.agency || 'UNKNOWN'}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-white font-mono text-sm">{selectedCall.agency || 'UNKNOWN'}</p>
+                                                {selectedCall.isExternal && (
+                                                    <Badge className="bg-orange-500/20 text-orange-400 border border-orange-500/30 font-mono text-xs">
+                                                        EXTERNAL
+                                                    </Badge>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="col-span-2">
                                             <p className="text-xs text-slate-400 font-mono mb-1">LOCATION</p>
                                             <p className="text-white font-mono text-sm flex items-center gap-2">
                                                 <MapPin className="w-4 h-4 text-blue-400" />
-                                                {selectedCall.location}
+                                                {selectedCall.location || selectedCall.address}
                                             </p>
                                         </div>
                                         {selectedCall.description && (
