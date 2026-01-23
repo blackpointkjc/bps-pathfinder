@@ -48,7 +48,10 @@ export default function CADHome() {
         try {
             const [callsData, usersData] = await Promise.all([
                 base44.entities.DispatchCall.list('-created_date', 200),
-                base44.functions.invoke('fetchAllUsers', {})
+                base44.functions.invoke('fetchAllUsers', {}).catch(err => {
+                    console.error('fetchAllUsers failed:', err);
+                    return { data: { users: [] } };
+                })
             ]);
 
             const calls = callsData || [];
