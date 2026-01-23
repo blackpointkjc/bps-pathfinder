@@ -203,52 +203,106 @@ export default function DispatchCenter() {
             <div className="p-4">
 
                 {showPriorCalls ? (
-                    <PriorCallsView currentUser={currentUser} units={units} />
+                   <PriorCallsView currentUser={currentUser} units={units} />
                 ) : (
-                    <>
-                    {/* Quick Actions Bar */}
-                    <div className="mb-4">
-                        <QuickActions onCreateCall={handleQuickDispatch} />
-                    </div>
-                    
-                    <div className="grid grid-cols-12 gap-4 h-[calc(100vh-140px)]">
-                        {/* Left: Active Calls Queue */}
-                        <div className="col-span-3">
-                            <ActiveCallsQueue
-                                calls={activeCalls}
-                                selectedCallId={selectedCall?.id}
-                                onSelectCall={handleSelectCall}
-                                units={units}
-                                onUpdate={handleUpdate}
-                            />
-                        </div>
+                   <>
+                   {/* Quick Actions Bar */}
+                   <div className="mb-4">
+                       <QuickActions onCreateCall={handleQuickDispatch} />
+                   </div>
 
-                        {/* Center: Call Detail */}
-                        <div className="col-span-4">
-                            <CallDetailPanel
-                                call={selectedCall}
-                                currentUser={currentUser}
-                                onUpdate={handleUpdate}
-                                units={units}
-                            />
-                        </div>
+                   <div className="grid grid-cols-12 gap-4 max-h-[calc(100vh-180px)]">
+                       {/* Left: Active Calls - Split by Source */}
+                       <div className="col-span-4 flex flex-col gap-3 overflow-hidden">
+                           <div className="flex-1 min-h-0">
+                               <Card className="bg-slate-900 border-amber-500/30 h-full flex flex-col">
+                                   <div className="p-3 border-b border-amber-500/20">
+                                       <h3 className="text-sm font-bold text-amber-400 font-mono">SCRAPER CALLS ({activeCalls.filter(c => c.source).length})</h3>
+                                   </div>
+                                   <div className="flex-1 overflow-y-auto p-2">
+                                       {activeCalls.filter(c => c.source).map(call => (
+                                           <div 
+                                               key={call.id}
+                                               onClick={() => handleSelectCall(call)}
+                                               className={`p-2 mb-2 rounded cursor-pointer border ${selectedCall?.id === call.id ? 'bg-blue-900/50 border-blue-500' : 'bg-slate-800 border-slate-700 hover:bg-slate-700'}`}
+                                           >
+                                               <div className="text-xs font-bold text-white">{call.incident}</div>
+                                               <div className="text-xs text-slate-400">{call.location}</div>
+                                               <div className="text-xs text-amber-500 mt-1">{call.source?.toUpperCase()}</div>
+                                           </div>
+                                       ))}
+                                   </div>
+                               </Card>
+                           </div>
+                           <div className="flex-1 min-h-0">
+                               <Card className="bg-slate-900 border-red-500/30 h-full flex flex-col">
+                                   <div className="p-3 border-b border-red-500/20">
+                                       <h3 className="text-sm font-bold text-red-400 font-mono">DISPATCH CALLS ({activeCalls.filter(c => !c.source).length})</h3>
+                                   </div>
+                                   <div className="flex-1 overflow-y-auto p-2">
+                                       {activeCalls.filter(c => !c.source).map(call => (
+                                           <div 
+                                               key={call.id}
+                                               onClick={() => handleSelectCall(call)}
+                                               className={`p-2 mb-2 rounded cursor-pointer border ${selectedCall?.id === call.id ? 'bg-blue-900/50 border-blue-500' : 'bg-slate-800 border-slate-700 hover:bg-slate-700'}`}
+                                           >
+                                               <div className="text-xs font-bold text-white">{call.incident}</div>
+                                               <div className="text-xs text-slate-400">{call.location}</div>
+                                               <div className="text-xs text-red-500 mt-1">DISPATCH</div>
+                                           </div>
+                                       ))}
+                                   </div>
+                               </Card>
+                           </div>
+                       </div>
 
-                        {/* Right: Unit Assignment & Units Panel */}
-                        <div className="col-span-5 space-y-4">
-                            <UnitAssignmentPanel
-                                call={selectedCall}
-                                units={units}
-                                onUpdate={handleUpdate}
-                            />
-                            <UnitsPanel
-                                units={units}
-                                selectedCall={selectedCall}
-                                currentUser={currentUser}
-                                onUpdate={handleUpdate}
-                            />
-                        </div>
-                    </div>
-                    </>
+                       {/* Center: Call Detail */}
+                       <div className="col-span-4 overflow-hidden">
+                           <CallDetailPanel
+                               call={selectedCall}
+                               currentUser={currentUser}
+                               onUpdate={handleUpdate}
+                               units={units}
+                           />
+                       </div>
+
+                       {/* Right: Units & Assignment */}
+                       <div className="col-span-4 flex flex-col gap-3 overflow-hidden">
+                           <div className="flex-1 min-h-0">
+                               <UnitAssignmentPanel
+                                   call={selectedCall}
+                                   units={units}
+                                   onUpdate={handleUpdate}
+                               />
+                           </div>
+                           <div className="flex-1 min-h-0">
+                               <Card className="bg-slate-900 border-green-500/30 h-full flex flex-col">
+                                   <div className="p-3 border-b border-green-500/20">
+                                       <h3 className="text-sm font-bold text-green-400 font-mono">ACTIVE UNITS ({units.filter(u => u.status && u.status !== 'Out of Service').length})</h3>
+                                   </div>
+                                   <div className="flex-1 overflow-y-auto p-2">
+                                       {units.filter(u => u.status && u.status !== 'Out of Service').map(unit => (
+                                           <div key={unit.id} className="p-2 mb-2 rounded bg-slate-800 border border-slate-700">
+                                               <div className="flex items-center justify-between">
+                                                   <div className="text-xs font-bold text-white">{unit.unit_number || unit.full_name}</div>
+                                                   <div className={`text-[10px] px-2 py-0.5 rounded ${
+                                                       unit.status === 'Available' ? 'bg-green-600 text-white' :
+                                                       unit.status === 'Enroute' ? 'bg-yellow-600 text-white' :
+                                                       unit.status === 'On Scene' ? 'bg-blue-600 text-white' :
+                                                       'bg-gray-600 text-white'
+                                                   }`}>{unit.status}</div>
+                                               </div>
+                                               {unit.current_call_info && (
+                                                   <div className="text-[10px] text-slate-400 mt-1">{unit.current_call_info}</div>
+                                               )}
+                                           </div>
+                                       ))}
+                                   </div>
+                               </Card>
+                           </div>
+                       </div>
+                   </div>
+                   </>
                 )}
             </div>
 

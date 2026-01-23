@@ -1764,13 +1764,9 @@ Be thorough and search multiple sources.`,
             )}
 
             {/* Menu Button - Top Left */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="absolute top-2 left-2 z-[1003] pointer-events-auto"
-            >
+            <div className="absolute top-2 left-2 z-[1003] pointer-events-auto">
                 <NavigationMenu currentUser={currentUser} />
-            </motion.div>
+            </div>
 
             {/* Compass */}
             {heading !== null && (
