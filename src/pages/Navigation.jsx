@@ -1495,24 +1495,32 @@ Be thorough and search multiple sources.`,
 
         setIsLoadingCalls(true);
         try {
-            // Fetch ALL active calls - don't filter by status since different sources use different status formats
             const allCalls = await base44.entities.DispatchCall.list('-created_date', 200);
             
-            const geocodedCount = allCalls.filter(call => 
+            // Filter out calls older than 6 hours
+            const sixHoursAgo = new Date();
+            sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
+            
+            const recentCalls = allCalls.filter(call => {
+                const callTime = new Date(call.created_date);
+                return callTime >= sixHoursAgo;
+            });
+            
+            const geocodedCount = recentCalls.filter(call => 
                 call.latitude && call.longitude && 
                 !isNaN(call.latitude) && !isNaN(call.longitude)
             ).length;
 
-            console.log('📞 Received calls:', allCalls.length, 'calls');
+            console.log('📞 Received calls:', recentCalls.length, 'calls');
             console.log('📍 Calls with coords:', geocodedCount);
 
                 // Detect new calls and high-priority calls in real-time
                 if (silent && lastCallCountRef.current > 0) {
-                    const newCallCount = allCalls.length - lastCallCountRef.current;
+                    const newCallCount = recentCalls.length - lastCallCountRef.current;
 
                     if (newCallCount > 0) {
                         // Identify new high-priority calls
-                        const highPriorityCalls = allCalls.filter(call => {
+                        const highPriorityCalls = recentCalls.filter(call => {
                             const priority = assessCallPriority(call);
                             return priority.score >= 3;
                         });
@@ -1553,13 +1561,13 @@ Be thorough and search multiple sources.`,
                     }
                 }
 
-            lastCallCountRef.current = allCalls.length;
+            lastCallCountRef.current = recentCalls.length;
             setShowActiveCalls(true);
-            setAllActiveCalls(allCalls);
-            applyCallFilter(allCalls, callFilter);
+            setAllActiveCalls(recentCalls);
+            applyCallFilter(recentCalls, callFilter);
 
             if (!silent) {
-                toast.success(`Loaded ${allCalls.length} active calls (${geocodedCount} on map)`);
+                toast.success(`Loaded ${recentCalls.length} active calls (${geocodedCount} on map)`);
             }
         } catch (error) {
             if (!silent) toast.error(`Error: ${error.message}`);

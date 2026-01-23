@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Radio, AlertTriangle, Users, Activity, Clock, MapPin, TrendingUp, Shield, Monitor, Zap, Bell } from 'lucide-react';
 import { createPageUrl } from '../utils';
 import NavigationMenu from '@/components/NavigationMenu';
+import CallDetailView from '@/components/map/CallDetailView';
 
 export default function CADHome() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -21,6 +22,7 @@ export default function CADHome() {
         criticalCalls: 0
     });
     const [loading, setLoading] = useState(true);
+    const [selectedCall, setSelectedCall] = useState(null);
 
     useEffect(() => {
         init();
@@ -57,14 +59,23 @@ export default function CADHome() {
             const calls = callsData || [];
             const allUsers = usersData.data?.users || [];
 
-            console.log('📞 CADHome loaded calls:', calls.length);
+            // Filter out calls older than 6 hours
+            const sixHoursAgo = new Date();
+            sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
+            
+            const recentCalls = calls.filter(call => {
+                const callTime = new Date(call.created_date);
+                return callTime >= sixHoursAgo;
+            });
+
+            console.log('📞 CADHome loaded calls:', recentCalls.length);
             console.log('👥 CADHome loaded users:', allUsers.length);
 
-            setActiveCalls(calls);
+            setActiveCalls(recentCalls);
             setUnits(allUsers);
 
             // Filter critical calls
-            const critical = calls.filter(call => {
+            const critical = recentCalls.filter(call => {
                 const incident = call.incident?.toLowerCase() || '';
                 return incident.includes('shooting') || incident.includes('officer') || 
                        incident.includes('assault') || incident.includes('robbery') ||
@@ -77,7 +88,7 @@ export default function CADHome() {
             const busy = allUsers.filter(u => u.status === 'Enroute' || u.status === 'On Scene' || u.status === 'Busy').length;
 
             setMetrics({
-                totalCalls: calls.length,
+                totalCalls: recentCalls.length,
                 unitsAvailable: available,
                 unitsBusy: busy,
                 avgResponseTime: Math.floor(Math.random() * 5) + 3, // Mock for now
@@ -219,7 +230,7 @@ export default function CADHome() {
                         <div className="space-y-2">
                             {criticalCalls.slice(0, 3).map((call) => (
                                 <div key={call.id} className="bg-slate-900/80 border border-red-500/30 rounded-lg p-3 hover:border-red-500 transition-all cursor-pointer"
-                                     onClick={() => window.location.href = createPageUrl('DispatchCenter')}>
+                                     onClick={() => setSelectedCall(call)}>
                                     <div className="flex items-center justify-between">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-1">
@@ -277,7 +288,7 @@ export default function CADHome() {
                                         <div 
                                             key={call.id}
                                             className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 hover:border-blue-500 transition-all cursor-pointer"
-                                            onClick={() => window.location.href = createPageUrl('DispatchCenter')}
+                                            onClick={() => setSelectedCall(call)}
                                         >
                                             <div className="flex items-start gap-3">
                                                 <div className={`w-2 h-2 rounded-full mt-2 ${getPriorityColor(call)}`} />
@@ -431,6 +442,18 @@ export default function CADHome() {
                     )}
                 </div>
             </div>
+
+            {/* Call Detail Modal */}
+            {selectedCall && (
+                <CallDetailView
+                    call={selectedCall}
+                    onClose={() => setSelectedCall(null)}
+                    onEnroute={() => {
+                        setSelectedCall(null);
+                        window.location.href = createPageUrl('Navigation');
+                    }}
+                />
+            )}
         </div>
     );
 }
