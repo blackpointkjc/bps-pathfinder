@@ -10,11 +10,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car, MapPin, Activity, Database, Server, TrendingUp, Clock, AlertTriangle, BarChart3, Archive } from 'lucide-react';
+import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car, MapPin, Activity, Database, Server, TrendingUp, Clock, AlertTriangle, BarChart3, Archive, Home } from 'lucide-react';
 import { createPageUrl } from '../utils';
 import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import VehicleManagement from '@/components/admin/VehicleManagement';
 import LocationTracking from '@/components/admin/LocationTracking';
+import CarolineGISLookup from '@/components/admin/CarolineGISLookup';
 
 export default function AdminPortal() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -267,6 +268,17 @@ export default function AdminPortal() {
                             <MapPin className="w-4 h-4" />
                             TRACKING
                         </button>
+                        <button
+                            onClick={() => setActiveTab('gis')}
+                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
+                                activeTab === 'gis' 
+                                    ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-500' 
+                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                            }`}
+                        >
+                            <Home className="w-4 h-4" />
+                            GIS LOOKUP
+                        </button>
                     </div>
                 </div>
             </div>
@@ -502,6 +514,11 @@ export default function AdminPortal() {
                 {/* Location Tracking Tab */}
                 {activeTab === 'tracking' && (
                     <LocationTracking users={users} />
+                )}
+
+                {/* GIS Lookup Tab */}
+                {activeTab === 'gis' && (
+                    <CarolineGISLookup />
                 )}
             </div>
 
