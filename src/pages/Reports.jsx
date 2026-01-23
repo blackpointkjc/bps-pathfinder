@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BarChart, FileText, Download, TrendingUp, Radio, Clock, Users, Calendar } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import NavigationMenu from '@/components/NavigationMenu';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -228,14 +229,7 @@ export default function Reports() {
                 <div className="px-6 py-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <Button
-                                variant="ghost"
-                                onClick={() => window.location.href = createPageUrl('CADHome')}
-                                className="text-slate-400 hover:text-white font-mono text-xs"
-                            >
-                                ← CAD HOME
-                            </Button>
-                            <div className="h-6 w-px bg-slate-700" />
+                            <NavigationMenu currentUser={currentUser} />
                             <BarChart className="w-6 h-6 text-blue-400" />
                             <h1 className="text-xl font-bold text-white tracking-tight font-mono">COMMAND REPORTS</h1>
                         </div>

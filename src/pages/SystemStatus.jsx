@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Activity, Server, Database, Zap, CheckCircle, Clock, TrendingUp } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import NavigationMenu from '@/components/NavigationMenu';
 
 export default function SystemStatus() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -57,14 +58,7 @@ export default function SystemStatus() {
                 <div className="px-6 py-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <Button
-                                variant="ghost"
-                                onClick={() => window.location.href = createPageUrl('CADHome')}
-                                className="text-slate-400 hover:text-white font-mono text-xs"
-                            >
-                                ← CAD HOME
-                            </Button>
-                            <div className="h-6 w-px bg-slate-700" />
+                            <NavigationMenu currentUser={currentUser} />
                             <Activity className="w-6 h-6 text-green-400" />
                             <h1 className="text-xl font-bold text-white tracking-tight font-mono">SYSTEM STATUS</h1>
                             <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 rounded">
