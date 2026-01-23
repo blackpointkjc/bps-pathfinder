@@ -146,7 +146,28 @@ export default function CallDetailPanel({ call, currentUser, onUpdate, units }) 
                 <div className="flex items-start justify-between mb-3">
                     <div>
                         <h2 className="text-2xl font-bold text-white">{call.incident}</h2>
-                        <p className="text-sm text-slate-400">Call ID: {call.call_id || call.id}</p>
+                        <p className="text-sm text-slate-400">
+                            {call.time_received 
+                                ? new Date(call.time_received).toLocaleString('en-US', { 
+                                    timeZone: 'America/New_York',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                    hour12: true
+                                })
+                                : new Date(call.created_date).toLocaleString('en-US', { 
+                                    timeZone: 'America/New_York',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                    hour12: true
+                                })
+                            }
+                        </p>
                     </div>
                     <Badge className={
                         call.priority === 'critical' ? 'bg-red-600' :
