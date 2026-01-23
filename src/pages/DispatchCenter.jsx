@@ -25,6 +25,7 @@ export default function DispatchCenter() {
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showPriorCalls, setShowPriorCalls] = useState(false);
     const [showMessaging, setShowMessaging] = useState(false);
+    const [sortOrder, setSortOrder] = useState('desc'); // 'desc' = newest first, 'asc' = oldest first
 
     useEffect(() => {
         init();
@@ -131,10 +132,14 @@ export default function DispatchCenter() {
                }
            }
 
-           // Sort by newest first after filtering
-           recentCalls.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+           // Sort by time_received (from scrapers) or created_date, respecting sort order
+           recentCalls.sort((a, b) => {
+               const timeA = new Date(a.time_received || a.created_date);
+               const timeB = new Date(b.time_received || b.created_date);
+               return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+           });
 
-           console.log('📞 Active calls:', recentCalls.length, '(archived old, sorted by newest)');
+           console.log('📞 Active calls:', recentCalls.length, '(archived old, sorted by time_received)');
            setActiveCalls(recentCalls);
         } catch (error) {
             console.error('Error loading active calls:', error);
@@ -157,6 +162,16 @@ export default function DispatchCenter() {
         setQuickCallType(callType);
         setShowCreateDialog(true);
     };
+
+    // Re-sort calls when sortOrder changes
+    useEffect(() => {
+        const sorted = [...activeCalls].sort((a, b) => {
+            const timeA = new Date(a.time_received || a.created_date);
+            const timeB = new Date(b.time_received || b.created_date);
+            return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+        });
+        setActiveCalls(sorted);
+    }, [sortOrder]);
 
     const handleUpdate = async () => {
         await loadActiveCalls();
@@ -185,18 +200,34 @@ export default function DispatchCenter() {
             <div className="bg-slate-900 border-b-2 border-blue-500/30 shadow-lg">
                 <div className="px-6 py-3">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <Button
-                                variant="ghost"
-                                onClick={() => window.location.href = createPageUrl('CADHome')}
-                                className="text-slate-400 hover:text-white"
-                            >
-                                ← BACK
-                            </Button>
-                            <div className="h-6 w-px bg-slate-700" />
-                            <Radio className="w-6 h-6 text-red-400" />
-                            <h1 className="text-xl font-bold text-white tracking-tight font-mono">DISPATCH CENTER</h1>
-                        </div>
+                         <div className="flex items-center gap-4">
+                             <Button
+                                 variant="ghost"
+                                 onClick={() => window.location.href = createPageUrl('CADHome')}
+                                 className="text-slate-400 hover:text-white"
+                             >
+                                 ← BACK
+                             </Button>
+                             <div className="h-6 w-px bg-slate-700" />
+                             <Radio className="w-6 h-6 text-red-400" />
+                             <h1 className="text-xl font-bold text-white tracking-tight font-mono">DISPATCH CENTER</h1>
+                             <div className="flex gap-2 ml-4">
+                                 <Button 
+                                     size="sm"
+                                     className={`font-mono text-xs ${sortOrder === 'desc' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-700 hover:bg-slate-600'}`}
+                                     onClick={() => setSortOrder('desc')}
+                                 >
+                                     NEWEST
+                                 </Button>
+                                 <Button 
+                                     size="sm"
+                                     className={`font-mono text-xs ${sortOrder === 'asc' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-700 hover:bg-slate-600'}`}
+                                     onClick={() => setSortOrder('asc')}
+                                 >
+                                     OLDEST
+                                 </Button>
+                             </div>
+                         </div>
                         
                         <div className="flex gap-2">
                             <Button
