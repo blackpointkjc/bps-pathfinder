@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Plus, Shield, Radio, AlertCircle, Car } from 'lucide-react';
+import { createPageUrl } from '../utils';
 import ActiveCallsQueue from '@/components/dispatch/ActiveCallsQueue';
 import CallDetailPanel from '@/components/dispatch/CallDetailPanel';
 import UnitsPanel from '@/components/dispatch/UnitsPanel';
@@ -89,7 +90,7 @@ export default function DispatchCenter() {
         try {
             const calls = await base44.entities.DispatchCall.filter({
                 status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene'] },
-                source: { $in: [null, 'app'] }
+                created_by: { $ne: 'system_scraper' }
             });
             setActiveCalls(calls || []);
         } catch (error) {
@@ -136,66 +137,70 @@ export default function DispatchCenter() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-            <div className="max-w-[1920px] mx-auto">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-600 to-red-700 flex items-center justify-center shadow-lg">
-                            <Radio className="w-7 h-7 text-white" />
+        <div className="min-h-screen bg-slate-950">
+            {/* Header */}
+            <div className="bg-slate-900 border-b-2 border-blue-500/30 shadow-lg">
+                <div className="px-6 py-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <Button
+                                variant="ghost"
+                                onClick={() => window.location.href = createPageUrl('CADHome')}
+                                className="text-slate-400 hover:text-white"
+                            >
+                                ← BACK
+                            </Button>
+                            <div className="h-6 w-px bg-slate-700" />
+                            <Radio className="w-6 h-6 text-red-400" />
+                            <h1 className="text-xl font-bold text-white tracking-tight font-mono">DISPATCH CENTER</h1>
                         </div>
-                        <div>
-                            <h1 className="text-3xl font-bold text-white flex items-center gap-2">
-                                CAD / Dispatch Console
-                            </h1>
-                            <p className="text-slate-400 text-sm">
-                                {currentUser?.rank && currentUser?.last_name ? `${currentUser.rank} ${currentUser.last_name}` : currentUser?.full_name} • {currentUser?.unit_number || 'Dispatcher'}
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                        <Button
-                            onClick={() => setShowPriorCalls(!showPriorCalls)}
-                            variant="outline"
-                            className="border-slate-600 text-black bg-white hover:bg-slate-100"
-                        >
-                            <AlertCircle className="w-4 h-4 mr-2" />
-                            {showPriorCalls ? 'Active' : 'Prior'}
-                        </Button>
-                        <Button
-                            onClick={() => setShowMessaging(!showMessaging)}
-                            variant="outline"
-                            className="border-slate-600 text-black bg-white hover:bg-slate-100"
-                        >
-                            Messages
-                        </Button>
-                        <Button
-                            onClick={() => setShowCreateDialog(true)}
-                            className="bg-red-600 hover:bg-red-700"
-                        >
-                            <Radio className="w-4 h-4 mr-2" />
-                            Call
-                        </Button>
-                        {currentUser?.role === 'admin' && (
+                        
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={() => setShowPriorCalls(!showPriorCalls)}
+                                variant="outline"
+                                className="border-slate-700 text-slate-300 bg-slate-800 hover:bg-slate-700 font-mono text-xs"
+                            >
+                                <AlertCircle className="w-4 h-4 mr-2" />
+                                {showPriorCalls ? 'ACTIVE' : 'PRIOR'}
+                            </Button>
+                            <Button
+                                onClick={() => setShowMessaging(!showMessaging)}
+                                variant="outline"
+                                className="border-slate-700 text-slate-300 bg-slate-800 hover:bg-slate-700 font-mono text-xs"
+                            >
+                                MESSAGES
+                            </Button>
+                            <Button
+                                onClick={() => setShowCreateDialog(true)}
+                                className="bg-red-600 hover:bg-red-700 font-mono text-xs"
+                            >
+                                <Radio className="w-4 h-4 mr-2" />
+                                NEW CALL
+                            </Button>
+                            {currentUser?.role === 'admin' && (
+                                <Button
+                                    variant="outline"
+                                    className="border-slate-700 text-slate-300 bg-slate-800 hover:bg-slate-700 font-mono text-xs"
+                                    onClick={() => window.location.href = createPageUrl('AdminPortal')}
+                                >
+                                    <Shield className="w-4 h-4 mr-2" />
+                                    ADMIN
+                                </Button>
+                            )}
                             <Button
                                 variant="outline"
-                                className="border-slate-600 text-black bg-white hover:bg-slate-100"
-                                onClick={() => window.location.href = '/adminportal'}
+                                className="border-slate-700 text-slate-300 bg-slate-800 hover:bg-slate-700 font-mono text-xs"
+                                onClick={() => window.location.href = createPageUrl('Navigation')}
                             >
-                                <Shield className="w-4 h-4 mr-2" />
-                                Admin
+                                MAP
                             </Button>
-                        )}
-                        <Button
-                            variant="outline"
-                            className="border-slate-600 text-black bg-white hover:bg-slate-100"
-                            onClick={() => window.location.href = '/navigation'}
-                        >
-                            Map
-                        </Button>
+                        </div>
                     </div>
                 </div>
+            </div>
+
+            <div className="p-4">
 
                 {showPriorCalls ? (
                     <PriorCallsView currentUser={currentUser} units={units} />
