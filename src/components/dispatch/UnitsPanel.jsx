@@ -50,8 +50,8 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
         fetchActiveUnions();
     }, [units]);
     
-    // Filter and group units
-    const visibleUnits = units.filter(u => u.status !== 'Out of Service');
+    // Show ALL units - dispatch needs to see everyone including Out of Service
+    const visibleUnits = units;
     
     const groupedUnits = {};
     const processedUnitIds = new Set();
@@ -253,7 +253,7 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
 
                 {/* Status Filter */}
                 <div className="flex flex-wrap gap-1">
-                    {['all', 'Available', 'Assigned', 'Enroute', 'On Scene'].map(status => (
+                    {['all', 'Available', 'Assigned', 'Enroute', 'On Scene', 'Out of Service'].map(status => (
                         <Button
                             key={status}
                             size="sm"
