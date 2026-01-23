@@ -1,32 +1,32 @@
-import AssetManagement from './pages/AssetManagement';
-import CallHistory from './pages/CallHistory';
+import ActiveCalls from './pages/ActiveCalls';
 import AdminPortal from './pages/AdminPortal';
 import ArchiveManager from './pages/ArchiveManager';
-import Reports from './pages/Reports';
-import SystemStatus from './pages/SystemStatus';
+import AssetManagement from './pages/AssetManagement';
 import CADHome from './pages/CADHome';
-import Navigation from './pages/Navigation';
-import ActiveCalls from './pages/ActiveCalls';
+import CallHistory from './pages/CallHistory';
 import DispatchCenter from './pages/DispatchCenter';
 import DispatchLog from './pages/DispatchLog';
+import Navigation from './pages/Navigation';
 import Personnel from './pages/Personnel';
+import Reports from './pages/Reports';
+import SystemStatus from './pages/SystemStatus';
 import Units from './pages/Units';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "AssetManagement": AssetManagement,
-    "CallHistory": CallHistory,
+    "ActiveCalls": ActiveCalls,
     "AdminPortal": AdminPortal,
     "ArchiveManager": ArchiveManager,
-    "Reports": Reports,
-    "SystemStatus": SystemStatus,
+    "AssetManagement": AssetManagement,
     "CADHome": CADHome,
-    "Navigation": Navigation,
-    "ActiveCalls": ActiveCalls,
+    "CallHistory": CallHistory,
     "DispatchCenter": DispatchCenter,
     "DispatchLog": DispatchLog,
+    "Navigation": Navigation,
     "Personnel": Personnel,
+    "Reports": Reports,
+    "SystemStatus": SystemStatus,
     "Units": Units,
 }
 

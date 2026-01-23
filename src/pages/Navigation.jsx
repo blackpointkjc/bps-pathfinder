@@ -643,19 +643,19 @@ export default function Navigation() {
             const users = response.data?.users || [];
 
             const activeUsers = users.filter(user => {
+                // Don't show yourself
                 if (user.id === currentUser.id) return false;
 
-                if (user.show_on_map === false) {
-                    return false;
-                }
+                // Hide units that explicitly opt out
+                if (user.show_on_map === false) return false;
 
-                if (user.status === 'Out of Service') {
-                    return false;
-                }
+                // Hide Out of Service units
+                if (user.status === 'Out of Service') return false;
 
-                const hasLocation = user.latitude && user.longitude && 
-                                  !isNaN(user.latitude) && !isNaN(user.longitude) &&
-                                  user.latitude !== 0 && user.longitude !== 0;
+                // Show units with valid location OR any location data (even if 0,0)
+                // This way units show up even if they haven't updated location yet
+                const hasLocation = user.latitude !== null && user.latitude !== undefined && 
+                                  user.longitude !== null && user.longitude !== undefined;
 
                 return hasLocation;
             });
