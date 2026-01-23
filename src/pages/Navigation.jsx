@@ -1494,14 +1494,18 @@ Be thorough and search multiple sources.`,
 
         setIsLoadingCalls(true);
         try {
-            const response = await base44.functions.invoke('fetchAllActiveCalls', {});
+            // Directly fetch from DispatchCall entity
+            const allCalls = await base44.entities.DispatchCall.filter({
+                status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene', 'Arrived', 'On Scene'] }
+            });
+            
+            const geocodedCount = allCalls.filter(call => 
+                call.latitude && call.longitude && 
+                !isNaN(call.latitude) && !isNaN(call.longitude)
+            ).length;
 
-            if (response.data && response.data.success) {
-                const allCalls = response.data.allCalls || response.data.geocodedCalls || [];
-                const geocodedCount = response.data.geocodedCount || 0;
-
-                console.log('📞 Received calls:', allCalls.length, 'calls');
-                console.log('📍 Calls with coords:', geocodedCount);
+            console.log('📞 Received calls:', allCalls.length, 'calls');
+            console.log('📍 Calls with coords:', geocodedCount);
 
                 // Detect new calls and high-priority calls in real-time
                 if (silent && lastCallCountRef.current > 0) {
@@ -1550,17 +1554,13 @@ Be thorough and search multiple sources.`,
                     }
                 }
 
-                lastCallCountRef.current = allCalls.length;
-                setShowActiveCalls(true);
-                setAllActiveCalls(allCalls);
-                applyCallFilter(allCalls, callFilter);
+            lastCallCountRef.current = allCalls.length;
+            setShowActiveCalls(true);
+            setAllActiveCalls(allCalls);
+            applyCallFilter(allCalls, callFilter);
 
-                if (!silent) {
-                    toast.success(`Loaded ${allCalls.length} active calls (${geocodedCount} on map)`);
-                }
-            } else {
-                const errorMsg = response.data?.error || 'Failed to load active calls';
-                if (!silent) toast.error(errorMsg);
+            if (!silent) {
+                toast.success(`Loaded ${allCalls.length} active calls (${geocodedCount} on map)`);
             }
         } catch (error) {
             if (!silent) toast.error(`Error: ${error.message}`);
