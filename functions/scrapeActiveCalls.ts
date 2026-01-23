@@ -93,18 +93,22 @@ Deno.serve(async (req) => {
         
         console.log('🔍 Starting active call scraper...');
         
-        // Delete all existing calls from all three sources before fresh scrape
+        // Delete only old calls (older than 24 hours) instead of all calls
         try {
             const existingCalls = await base44.asServiceRole.entities.DispatchCall.list();
             let deletedCount = 0;
+            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
             
             for (const call of existingCalls) {
-                if (['richmond', 'henrico', 'chesterfield'].includes(call.source)) {
-                    await base44.asServiceRole.entities.DispatchCall.delete(call.id);
-                    deletedCount++;
+                if (['richmond', 'henrico'].includes(call.source)) {
+                    const callTime = new Date(call.time_received || call.created_date);
+                    if (callTime < oneDayAgo) {
+                        await base44.asServiceRole.entities.DispatchCall.delete(call.id);
+                        deletedCount++;
+                    }
                 }
             }
-            console.log(`🗑️ Deleted ${deletedCount} old calls for fresh data`);
+            console.log(`🗑️ Deleted ${deletedCount} old calls (>24h)`);
         } catch (cleanupError) {
             console.warn('Cleanup warning:', cleanupError.message);
         }
@@ -185,13 +189,7 @@ Deno.serve(async (req) => {
             try {
                 const callId = `${call.source}-${call.time}-${call.incident}-${call.location}`.replace(/[^a-zA-Z0-9-]/g, '_').substring(0, 150);
 
-                // Check if call already exists
-                const existing = await base44.asServiceRole.entities.DispatchCall.filter({ call_id: callId });
-
-                if (existing && existing.length > 0) {
-                    skipped++;
-                    continue;
-                }
+                // Skip duplicate check - we already deleted old calls, now we refresh all active ones
 
                 // Normalize address
                 const normalizedAddress = normalizeAddress(call.location, call.agency);

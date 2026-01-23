@@ -109,18 +109,18 @@ Deno.serve(async (req) => {
         }
 
         // Filter by time window - RecordDate may be in seconds or milliseconds
-        let recordMs = attrs.RecordDate;
-        if (recordMs < 10000000000) {
-          recordMs = recordMs * 1000; // Convert seconds to milliseconds
+        let recordDateMs = attrs.RecordDate;
+        if (recordDateMs < 10000000000) {
+          recordDateMs = recordDateMs * 1000; // Convert seconds to milliseconds
         }
 
         // Log first few records to debug time filtering
         if (logCount < 5) {
-          console.log(`📝 Record ${callId}: RecordDate=${attrs.RecordDate} (${new Date(recordMs).toISOString()}), Passes filter: ${recordMs >= oneDayAgoEst}`);
+          console.log(`📝 Record ${callId}: RecordDate=${attrs.RecordDate} (${new Date(recordDateMs).toISOString()}), Passes filter: ${recordDateMs >= oneDayAgoEst}`);
           logCount++;
         }
 
-        if (recordMs < thirtyDaysAgo) {
+        if (recordDateMs < oneDayAgoEst) {
           skipped++;
           continue;
         }
@@ -145,12 +145,8 @@ Deno.serve(async (req) => {
           continue;
         }
         
-        // Parse RecordDate (in milliseconds, UTC)
-        let recordMs = attrs.RecordDate;
-        if (recordMs < 10000000000) {
-          recordMs = recordMs * 1000; // Convert seconds to milliseconds
-        }
-        const timeReceived = new Date(recordMs).toISOString();
+        // Use recordDateMs from earlier filtering
+        const timeReceived = new Date(recordDateMs).toISOString();
         
         // Build location text
         const location = attrs.DimLocationAddress || attrs.LocationName || 'Unknown Location';
