@@ -9,22 +9,22 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Use service role to fetch all users
+        // Use service role to fetch all users with proper pagination
         const allUsers = await base44.asServiceRole.entities.User.list();
         
-        // Return ALL users - don't filter by location
-        // Other components will filter as needed
         return Response.json({
             success: true,
-            users: allUsers,
-            total: allUsers.length
+            users: allUsers || [],
+            total: allUsers?.length || 0
         });
         
     } catch (error) {
         console.error('Error fetching users:', error);
         return Response.json({ 
+            success: false,
             error: 'Failed to fetch users',
-            details: error.message 
+            details: error.message,
+            users: []
         }, { status: 500 });
     }
 });

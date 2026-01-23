@@ -15,14 +15,12 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Latitude and longitude required' }, { status: 400 });
         }
 
-        // Get user details
-        const userData = user;
-
         // Reverse geocode to get address
         let address = '';
         try {
             const geoResponse = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+                { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' } }
             );
             const geoData = await geoResponse.json();
             address = geoData.display_name || '';
@@ -34,7 +32,7 @@ Deno.serve(async (req) => {
         const logData = {
             user_id: user.id,
             user_name: user.full_name,
-            unit_number: userData.unit_number || '',
+            unit_number: user.unit_number || '',
             latitude,
             longitude,
             address,
