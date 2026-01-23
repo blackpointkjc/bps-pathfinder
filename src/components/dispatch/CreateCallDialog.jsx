@@ -132,10 +132,10 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-4xl"
+                className="w-full max-w-5xl max-h-[90vh]"
             >
-                <Card className="bg-slate-900 border-slate-700">
-                    <div className="p-6">
+                <Card className="bg-slate-900 border-slate-700 overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="p-6 flex-1 overflow-y-auto">
                         {/* Header */}
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -154,7 +154,7 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
 
                         <div className="grid grid-cols-2 gap-6">
                             {/* Left Column */}
-                            <ScrollArea className="h-[600px] pr-4">
+                            <ScrollArea className="h-[500px] pr-4">
                                 <div className="space-y-4">
                                     <div>
                                         <Label className="text-slate-300">Call Type *</Label>
@@ -285,7 +285,7 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                                 <Label className="text-slate-300 mb-3 block">
                                     Assign Units ({selectedUnits.length} selected)
                                 </Label>
-                                <ScrollArea className="h-[600px] border border-slate-700 rounded-lg p-3 bg-slate-800/50">
+                                <ScrollArea className="h-[500px] border border-slate-700 rounded-lg p-3 bg-slate-800/50">
                                     {units.length === 0 ? (
                                         <p className="text-sm text-slate-500 text-center py-8">No units available</p>
                                     ) : (

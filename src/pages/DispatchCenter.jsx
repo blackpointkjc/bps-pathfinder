@@ -99,6 +99,7 @@ export default function DispatchCenter() {
 
     const loadActiveCalls = async () => {
         try {
+            // Sort by newest first (descending created_date)
             const calls = await base44.entities.DispatchCall.list('-created_date', 200);
             
             // Archive calls older than 6 hours (EST time)

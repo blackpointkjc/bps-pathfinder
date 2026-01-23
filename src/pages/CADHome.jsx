@@ -48,6 +48,7 @@ export default function CADHome() {
 
     const loadData = async () => {
         try {
+            // Fetch calls sorted by newest first
             const [callsData, usersData] = await Promise.all([
                 base44.entities.DispatchCall.list('-created_date', 200),
                 base44.functions.invoke('fetchAllUsers', {}).catch(err => {
