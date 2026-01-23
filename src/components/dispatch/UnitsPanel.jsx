@@ -50,8 +50,8 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
         fetchActiveUnions();
     }, [units]);
     
-    // Filter and group units
-    const visibleUnits = units.filter(u => u.status !== 'Out of Service');
+    // Filter and group units - only show officers with unit_number
+    const visibleUnits = activeOfficers.filter(u => u.status !== 'Out of Service');
     
     const groupedUnits = {};
     const processedUnitIds = new Set();
@@ -103,13 +103,16 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
             };
         });
 
+    // Filter out users without unit_number (not active officers)
+    const activeOfficers = units.filter(u => u.unit_number);
+    
     const statusCounts = {
-        all: units.length,
-        Available: units.filter(u => u.status === 'Available').length,
-        Assigned: units.filter(u => u.status === 'Assigned').length,
-        Enroute: units.filter(u => u.status === 'Enroute').length,
-        'On Scene': units.filter(u => u.status === 'On Scene').length,
-        'Out of Service': units.filter(u => u.status === 'Out of Service').length
+        all: activeOfficers.length,
+        Available: activeOfficers.filter(u => u.status === 'Available').length,
+        Assigned: activeOfficers.filter(u => u.status === 'Assigned').length,
+        Enroute: activeOfficers.filter(u => u.status === 'Enroute').length,
+        'On Scene': activeOfficers.filter(u => u.status === 'On Scene').length,
+        'Out of Service': activeOfficers.filter(u => u.status === 'Out of Service').length
     };
 
     const getStatusColor = (status) => {
@@ -237,7 +240,7 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
             <div className="p-4 border-b border-slate-700">
                 <h2 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
                     <Users className="w-5 h-5 text-blue-500" />
-                    Units ({units.length})
+                    Units ({activeOfficers.length})
                 </h2>
 
                 {/* Search */}
