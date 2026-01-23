@@ -116,7 +116,6 @@ export default function ActiveCalls() {
         setRefreshing(true);
         try {
             toast.info('Refreshing active calls...');
-            await base44.functions.invoke('scrapeActiveCalls', {});
             await loadData();
             toast.success('Active calls refreshed');
         } catch (error) {

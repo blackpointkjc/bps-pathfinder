@@ -15,9 +15,8 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Latitude and longitude required' }, { status: 400 });
         }
 
-        // Get user details
-        const userDetails = await base44.entities.User.filter({ id: user.id });
-        const userData = userDetails[0] || {};
+        // Use user data directly from auth
+        const userData = user || {};
 
         // Reverse geocode to get address
         let address = '';
