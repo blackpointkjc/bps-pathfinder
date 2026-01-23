@@ -1725,9 +1725,9 @@ Be thorough and search multiple sources.`,
                         <CheckCircle2 className={`w-4 h-4 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
                         <span className={`text-[8px] font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Avil</span>
                     </Button>
-                    <Button onClick={() => setShowCallsList(true)} size="sm" className={`${unitStatus === 'Enroute' ? 'bg-red-600 hover:bg-red-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg`}>
-                        <NavigationIcon className={`w-4 h-4 ${unitStatus === 'Enroute' ? 'text-white' : 'text-red-600'}`} />
-                        <span className={`text-[8px] font-semibold ${unitStatus === 'Enroute' ? 'text-white' : 'text-gray-700'}`}>Route</span>
+                    <Button onClick={() => window.location.href = '/cadhome'} size="sm" className="bg-white/95 hover:bg-white shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg">
+                        <MapIcon className="w-4 h-4 text-blue-600" />
+                        <span className="text-[8px] font-semibold text-gray-700">Map</span>
                     </Button>
                     <Button onClick={() => handleStatusChange('On Scene')} size="sm" className={`${unitStatus === 'On Scene' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg`}>
                         <MapPin className={`w-4 h-4 ${unitStatus === 'On Scene' ? 'text-white' : 'text-blue-600'}`} />
@@ -1737,14 +1737,7 @@ Be thorough and search multiple sources.`,
                         <Car className={`w-4 h-4 ${unitStatus === 'On Patrol' ? 'text-white' : 'text-indigo-600'}`} />
                         <span className={`text-[8px] font-semibold ${unitStatus === 'On Patrol' ? 'text-white' : 'text-gray-700'}`}>Patrol</span>
                     </Button>
-                    <Button onClick={() => setShowAllUnitsPanel(true)} size="sm" className="bg-white/95 hover:bg-white shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg">
-                        <Users className="w-4 h-4 text-gray-600" />
-                        <span className="text-[8px] font-semibold text-gray-700">Units</span>
-                    </Button>
-                    <Button onClick={() => setShowUnitGrouping(true)} size="sm" className="bg-white/95 hover:bg-white shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg">
-                        <Shield className="w-4 h-4 text-indigo-600" />
-                        <span className="text-[8px] font-semibold text-gray-700">Group</span>
-                    </Button>
+
                     <Button 
                         onClick={async (e) => {
                             e.preventDefault();
@@ -1958,36 +1951,7 @@ Be thorough and search multiple sources.`,
                     </Button>
                 )}
 
-                {(currentUser?.role === 'admin' || currentUser?.dispatch_role) && (
-                    <Button
-                        onClick={() => window.location.href = '/dispatchcenter'}
-                        size="icon"
-                        className="h-8 w-8 rounded-lg bg-purple-600 hover:bg-purple-700 text-white shadow-lg"
-                        title="Dispatch Center"
-                    >
-                        <Monitor className="w-4 h-4" />
-                    </Button>
-                )}
 
-                {currentUser?.role === 'admin' && (
-                    <Button
-                        onClick={() => window.location.href = '/adminportal'}
-                        size="icon"
-                        className="h-8 w-8 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-                        title="Admin Portal"
-                    >
-                        <Shield className="w-4 h-4" />
-                    </Button>
-                )}
-
-                <Button
-                    onClick={() => setShowHistoricalLogs(true)}
-                    size="icon"
-                    className="h-8 w-8 rounded-lg bg-purple-600 hover:bg-purple-700 text-white shadow-lg"
-                    title="Historical Logs"
-                >
-                    <History className="w-4 h-4" />
-                </Button>
 
                 <Button
                     onClick={() => setShowLayerFilters(true)}

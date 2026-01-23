@@ -18,8 +18,7 @@ export default function NavigationMenu({ currentUser }) {
 
     if (currentUser?.role === 'admin') {
         menuItems.push(
-            { name: 'Admin Portal', icon: Shield, page: 'AdminPortal', color: 'text-red-400' },
-            { name: 'Archive Manager', icon: Archive, page: 'ArchiveManager', color: 'text-purple-400' }
+            { name: 'Admin Portal', icon: Shield, page: 'AdminPortal', color: 'text-red-400' }
         );
     }
 

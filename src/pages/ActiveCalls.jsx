@@ -44,12 +44,11 @@ export default function ActiveCalls() {
         try {
             const [callsData, usersData] = await Promise.all([
                 base44.entities.DispatchCall.filter({
-                    status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene', 'Arrived'] },
-                    source: null // Only internal calls, not scraped
+                    status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene', 'Arrived', 'ASSIGNED 14:29', 'ARV TRNSPT 16:58'] }
                 }),
                 base44.functions.invoke('fetchAllUsers', {})
             ]);
-            console.log('📞 Loaded internal calls only:', callsData.length);
+            console.log('📞 Loaded all calls (internal + scraped):', callsData.length);
             setActiveCalls(callsData || []);
             setUnits(usersData.data?.users || []);
         } catch (error) {
