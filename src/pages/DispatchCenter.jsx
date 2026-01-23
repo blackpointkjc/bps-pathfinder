@@ -226,7 +226,7 @@ export default function DispatchCenter() {
                        <div className="flex flex-col gap-2 h-full overflow-hidden">
                            <Card className="bg-slate-900 border-amber-500/30 flex-1 min-h-0 flex flex-col">
                                <div className="p-2 border-b border-amber-500/20">
-                                   <h3 className="text-xs font-bold text-amber-400 font-mono">SCRAPER CALLS ({activeCalls.filter(c => c.source).length})</h3>
+                                   <h3 className="text-xs font-bold text-amber-400 font-mono">Active Police calls ({activeCalls.filter(c => c.source).length})</h3>
                                </div>
                                <div className="flex-1 overflow-y-auto p-2">
                                    {activeCalls.filter(c => c.source).length === 0 ? (
