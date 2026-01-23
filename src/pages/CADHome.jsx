@@ -47,14 +47,15 @@ export default function CADHome() {
     const loadData = async () => {
         try {
             const [callsData, usersData] = await Promise.all([
-                base44.entities.DispatchCall.filter({
-                    status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene'] }
-                }),
+                base44.entities.DispatchCall.list('-created_date', 200),
                 base44.functions.invoke('fetchAllUsers', {})
             ]);
 
             const calls = callsData || [];
             const allUsers = usersData.data?.users || [];
+
+            console.log('📞 CADHome loaded calls:', calls.length);
+            console.log('👥 CADHome loaded users:', allUsers.length);
 
             setActiveCalls(calls);
             setUnits(allUsers);
@@ -142,7 +143,7 @@ export default function CADHome() {
                                 <span className="text-green-400 font-mono text-xs font-bold">SYSTEM ONLINE</span>
                             </div>
                             <div className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded font-mono text-xs text-slate-300">
-                                {new Date().toLocaleTimeString('en-US', { hour12: false })}
+                                {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
                             </div>
                         </div>
                     </div>
@@ -327,7 +328,7 @@ export default function CADHome() {
                                         NO UNITS ONLINE
                                     </div>
                                 ) : (
-                                    units.filter(u => u.status !== 'Out of Service').map((unit) => (
+                                    units.filter(u => u.status && u.status !== 'Out of Service').map((unit) => (
                                         <div key={unit.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
                                             <div className="flex items-center gap-3">
                                                 <div className={`w-2 h-2 rounded-full ${getStatusColor(unit.status)}`} />
@@ -370,10 +371,10 @@ export default function CADHome() {
                     
                     <Button 
                         className="h-24 bg-slate-900 border-2 border-green-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
-                        onClick={() => window.location.href = createPageUrl('Units')}
+                        onClick={() => window.location.href = createPageUrl('DispatchCenter')}
                     >
                         <Users className="w-8 h-8 text-green-400" />
-                        <span className="text-white font-mono font-bold">UNITS</span>
+                        <span className="text-white font-mono font-bold">DISPATCH</span>
                     </Button>
                     
                     <Button 
@@ -416,14 +417,6 @@ export default function CADHome() {
                         <span className="text-white font-mono font-bold">DISPATCH CENTER</span>
                     </Button>
                     
-                    <Button 
-                        className="h-24 bg-slate-900 border-2 border-teal-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
-                        onClick={() => window.location.href = createPageUrl('Navigation')}
-                    >
-                        <MapPin className="w-8 h-8 text-teal-400" />
-                        <span className="text-white font-mono font-bold">LIVE MAP</span>
-                    </Button>
-
                     {currentUser?.role === 'admin' && (
                         <Button 
                             className="h-24 bg-slate-900 border-2 border-red-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
@@ -433,14 +426,6 @@ export default function CADHome() {
                             <span className="text-white font-mono font-bold">ADMIN</span>
                         </Button>
                     )}
-
-                    <Button 
-                        className="h-24 bg-slate-900 border-2 border-teal-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
-                        onClick={() => window.location.href = createPageUrl('Navigation')}
-                    >
-                        <MapPin className="w-8 h-8 text-teal-400" />
-                        <span className="text-white font-mono font-bold">LIVE MAP</span>
-                    </Button>
                 </div>
             </div>
         </div>
