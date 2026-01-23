@@ -23,6 +23,7 @@ export default function CADHome() {
     });
     const [loading, setLoading] = useState(true);
     const [selectedCall, setSelectedCall] = useState(null);
+    const [sortOrder, setSortOrder] = useState('desc'); // 'desc' = newest first, 'asc' = oldest first
 
     useEffect(() => {
         init();
@@ -67,7 +68,11 @@ export default function CADHome() {
             const recentCalls = calls.filter(call => {
                 const callTime = new Date(call.created_date);
                 return callTime >= sixHoursAgo;
-            }).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+            }).sort((a, b) => {
+                const timeA = new Date(a.time_received || a.created_date);
+                const timeB = new Date(b.time_received || b.created_date);
+                return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+            });
 
             console.log('📞 CADHome loaded calls:', recentCalls.length);
             console.log('👥 CADHome loaded users:', allUsers.length);
@@ -268,21 +273,37 @@ export default function CADHome() {
                         <Card className="bg-slate-900 border-slate-800 h-full">
                             <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Radio className="w-5 h-5 text-blue-400" />
-                                        <h2 className="text-lg font-bold text-white font-mono">ACTIVE CALLS QUEUE</h2>
-                                        <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono">
-                                            {activeCalls.length}
-                                        </Badge>
-                                    </div>
-                                    <Button 
-                                        size="sm"
-                                        className="bg-blue-600 hover:bg-blue-700 font-mono text-xs"
-                                        onClick={() => window.location.href = createPageUrl('DispatchCenter')}
-                                    >
-                                        VIEW ALL
-                                    </Button>
-                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Radio className="w-5 h-5 text-blue-400" />
+                                                    <h2 className="text-lg font-bold text-white font-mono">ACTIVE CALLS QUEUE</h2>
+                                                    <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono">
+                                                        {activeCalls.length}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <Button 
+                                                        size="sm"
+                                                        className={`font-mono text-xs ${sortOrder === 'desc' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-700 hover:bg-slate-600'}`}
+                                                        onClick={() => setSortOrder('desc')}
+                                                    >
+                                                        NEWEST
+                                                    </Button>
+                                                    <Button 
+                                                        size="sm"
+                                                        className={`font-mono text-xs ${sortOrder === 'asc' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-700 hover:bg-slate-600'}`}
+                                                        onClick={() => setSortOrder('asc')}
+                                                    >
+                                                        OLDEST
+                                                    </Button>
+                                                    <Button 
+                                                        size="sm"
+                                                        className="bg-blue-600 hover:bg-blue-700 font-mono text-xs"
+                                                        onClick={() => window.location.href = createPageUrl('DispatchCenter')}
+                                                    >
+                                                        VIEW ALL
+                                                    </Button>
+                                                </div>
+                                            </div>
                             </div>
                             <div className="p-4 space-y-2 h-[500px] overflow-y-auto">
                                 {activeCalls.length === 0 ? (
@@ -321,7 +342,13 @@ export default function CADHome() {
                                                     </div>
                                                 </div>
                                                 <div className="text-xs text-slate-500 font-mono">
-                                                    {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { hour12: false })}
+                                                   {new Date(call.time_received || call.created_date).toLocaleString('en-US', { 
+                                                       month: 'short', 
+                                                       day: 'numeric', 
+                                                       hour: '2-digit', 
+                                                       minute: '2-digit',
+                                                       hour12: false 
+                                                   })}
                                                 </div>
                                             </div>
                                         </div>
