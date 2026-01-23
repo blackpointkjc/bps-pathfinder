@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car, MapPin, Activity, Database, Server, TrendingUp, Clock, AlertTriangle, BarChart3, Archive } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import NavigationMenu from '@/components/NavigationMenu';
 import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import VehicleManagement from '@/components/admin/VehicleManagement';
 import LocationTracking from '@/components/admin/LocationTracking';
@@ -160,6 +161,7 @@ export default function AdminPortal() {
                 <div className="px-6 py-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
+                            <NavigationMenu currentUser={currentUser} />
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
                                     <Shield className="w-6 h-6 text-white" />
@@ -181,31 +183,7 @@ export default function AdminPortal() {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Button 
-                                variant="outline" 
-                                onClick={() => window.location.href = createPageUrl('CADHome')}
-                                className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white font-mono text-xs"
-                            >
-                                ← CAD HOME
-                            </Button>
-                            <Button 
-                                variant="outline" 
-                                onClick={() => window.location.href = createPageUrl('DispatchCenter')}
-                                className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white font-mono text-xs"
-                            >
-                                <Activity className="w-3 h-3 mr-2" />
-                                DISPATCH
-                            </Button>
-                            <Button 
-                                variant="outline" 
-                                onClick={() => window.location.href = createPageUrl('Navigation')}
-                                className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white font-mono text-xs"
-                            >
-                                <MapPin className="w-3 h-3 mr-2" />
-                                MAP
-                            </Button>
-                        </div>
+
                     </div>
                 </div>
 

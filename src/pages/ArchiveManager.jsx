@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Archive, Clock, Database, Filter, Play, Save, Trash2 } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import NavigationMenu from '@/components/NavigationMenu';
 
 export default function ArchiveManager() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -144,14 +145,7 @@ export default function ArchiveManager() {
                 <div className="px-6 py-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <Button
-                                variant="ghost"
-                                onClick={() => window.location.href = createPageUrl('CADHome')}
-                                className="text-slate-400 hover:text-white font-mono text-xs"
-                            >
-                                ← CAD HOME
-                            </Button>
-                            <div className="h-6 w-px bg-slate-700" />
+                            <NavigationMenu currentUser={currentUser} />
                             <Archive className="w-6 h-6 text-purple-400" />
                             <h1 className="text-xl font-bold text-white tracking-tight font-mono">ARCHIVE MANAGER</h1>
                         </div>
