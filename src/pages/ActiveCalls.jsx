@@ -44,11 +44,12 @@ export default function ActiveCalls() {
         try {
             const [callsData, usersData] = await Promise.all([
                 base44.entities.DispatchCall.filter({
-                    status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene', 'Arrived', 'ASSIGNED', 'ARV TRNSPT'] }
+                    status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene', 'Arrived'] },
+                    source: null // Only internal calls, not scraped
                 }),
                 base44.functions.invoke('fetchAllUsers', {})
             ]);
-            console.log('📞 Loaded calls:', callsData.length, callsData);
+            console.log('📞 Loaded internal calls only:', callsData.length);
             setActiveCalls(callsData || []);
             setUnits(usersData.data?.users || []);
         } catch (error) {
@@ -177,29 +178,7 @@ export default function ActiveCalls() {
                                             />
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            size="sm"
-                                            onClick={() => window.location.href = createPageUrl('CADHome')}
-                                            className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
-                                        >
-                                            HOME
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => window.location.href = createPageUrl('Units')}
-                                            className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
-                                        >
-                                            UNITS
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            onClick={() => window.location.href = createPageUrl('Reports')}
-                                            className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
-                                        >
-                                            REPORTS
-                                        </Button>
-                                    </div>
+
                                     <div className="flex gap-2 mt-2">
                                         {['all', 'New', 'Dispatched', 'Enroute', 'On Scene'].map(status => (
                                             <Button
