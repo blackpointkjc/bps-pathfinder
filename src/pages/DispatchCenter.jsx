@@ -15,7 +15,6 @@ import MessagingPanel from '@/components/dispatch/MessagingPanel';
 import UnitScheduling from '@/components/dispatch/UnitScheduling';
 import QuickActions from '@/components/dispatch/QuickActions';
 import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
-import ExternalFeedArchiveSummary from '@/components/dispatch/ExternalFeedArchiveSummary';
 
 export default function DispatchCenter() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -100,32 +99,43 @@ export default function DispatchCenter() {
 
     const loadActiveCalls = async () => {
        try {
-           // Fetch internal calls (non-external)
-           const internalCalls = await base44.entities.DispatchCall.filter({ archived: false }, '-created_date', 200).catch(() => []);
+           // Fetch calls
+           const calls = await base44.entities.DispatchCall.list('-created_date', 200);
 
-           // Fetch external calls using the windowing function
-           const externalData = await base44.functions.invoke('getExternalCallsWithWindow', { includeArchived: false }).catch(err => {
-               console.error('getExternalCallsWithWindow failed:', err);
-               return { data: { calls: [] } };
-           });
+           // Archive calls older than 6 hours (EST time)
+           const sixHoursAgo = new Date();
+           sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
 
-           const externalCalls = externalData.data?.calls || [];
+           const recentCalls = [];
+           for (const call of calls) {
+               const callTime = new Date(call.created_date);
+               if (callTime < sixHoursAgo) {
+                   try {
+                       await base44.entities.CallHistory.create({
+                           time_received: call.time_received || call.created_date,
+                           incident: call.incident,
+                           location: call.location,
+                           agency: call.agency,
+                           status: call.status,
+                           latitude: call.latitude,
+                           longitude: call.longitude,
+                           ai_summary: call.ai_summary,
+                           archived_date: new Date().toISOString()
+                       });
+                       await base44.entities.DispatchCall.delete(call.id);
+                   } catch (err) {
+                       console.error('Archive error:', err);
+                   }
+               } else {
+                   recentCalls.push(call);
+               }
+           }
 
-           // Filter internal calls to exclude external ones
-           const filteredInternal = internalCalls.filter(call => {
-               const isExternal = call.source && ['gractivecalls', 'scraped', 'external', 'richmond', 'henrico', 'chesterfield'].includes(call.source.toLowerCase());
-               return !isExternal;
-           });
+           // Sort by newest first after filtering
+           recentCalls.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
 
-           // Combine all active calls and sort by newest
-           const allActiveCalls = [...filteredInternal, ...externalCalls].sort((a, b) => {
-               const timeA = new Date(a.time_received || a.created_date);
-               const timeB = new Date(b.time_received || b.created_date);
-               return timeB - timeA;
-           });
-
-           console.log('📞 Active calls:', allActiveCalls.length, `(internal: ${filteredInternal.length}, external: ${externalCalls.length})`);
-           setActiveCalls(allActiveCalls);
+           console.log('📞 Active calls:', recentCalls.length, '(archived old, sorted by newest)');
+           setActiveCalls(recentCalls);
         } catch (error) {
             console.error('Error loading active calls:', error);
         }
@@ -234,14 +244,6 @@ export default function DispatchCenter() {
             </div>
 
             <div className="p-4">
-                {/* External Feed Archive Summary */}
-                <div className="mb-4">
-                    <ExternalFeedArchiveSummary 
-                        onViewArchived={() => {
-                            window.location.href = createPageUrl('DispatchLog') + '?view=archived_external';
-                        }}
-                    />
-                </div>
 
                 {showPriorCalls ? (
                    <PriorCallsView currentUser={currentUser} units={units} />
