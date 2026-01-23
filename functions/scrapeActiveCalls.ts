@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
 
                             // Determine source based on agency
                             let source = 'richmond';
-                            if (agency.toLowerCase().includes('henrico') || agency.toLowerCase().includes('hpd')) {
+                            if (agency.toLowerCase().includes('henrico') || agency.toLowerCase().includes('hpd') || agency.toLowerCase().includes('hcpd')) {
                                 source = 'henrico';
                             } else if (agency.toLowerCase().includes('chesterfield') || agency.toLowerCase().includes('ccpd') || agency.toLowerCase().includes('ccfd')) {
                                 source = 'chesterfield';

@@ -1687,7 +1687,7 @@ Be thorough and search multiple sources.`,
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="absolute top-24 left-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
+                    className="absolute bottom-4 left-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
                 >
                     <Button 
                         onClick={getCurrentLocation} 
@@ -1723,11 +1723,7 @@ Be thorough and search multiple sources.`,
                         className={`${unitStatus === 'Available' ? 'bg-green-600 hover:bg-green-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg pointer-events-auto`}
                     >
                         <CheckCircle2 className={`w-4 h-4 ${unitStatus === 'Available' ? 'text-white' : 'text-green-600'}`} />
-                        <span className={`text-[8px] font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Avil</span>
-                    </Button>
-                    <Button onClick={() => window.location.href = '/cadhome'} size="sm" className="bg-white/95 hover:bg-white shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg">
-                        <MapIcon className="w-4 h-4 text-blue-600" />
-                        <span className="text-[8px] font-semibold text-gray-700">Map</span>
+                        <span className={`text-[8px] font-semibold ${unitStatus === 'Available' ? 'text-white' : 'text-gray-700'}`}>Avail</span>
                     </Button>
                     <Button onClick={() => handleStatusChange('On Scene')} size="sm" className={`${unitStatus === 'On Scene' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white/95 hover:bg-white'} shadow-lg w-12 h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg`}>
                         <MapPin className={`w-4 h-4 ${unitStatus === 'On Scene' ? 'text-white' : 'text-blue-600'}`} />
@@ -1768,12 +1764,21 @@ Be thorough and search multiple sources.`,
                 </motion.div>
             )}
 
+            {/* Menu Button - Top Left */}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="absolute top-2 left-2 z-[1003] pointer-events-auto"
+            >
+                <NavigationMenu currentUser={currentUser} />
+            </motion.div>
+
             {/* Compass */}
             {heading !== null && (
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="absolute top-2 left-2 z-[999] pointer-events-none"
+                    className="absolute top-20 left-2 z-[999] pointer-events-none"
                 >
                     <div className="w-16 h-16 rounded-full bg-white/95 backdrop-blur-xl shadow-lg border-2 border-gray-200 flex items-center justify-center relative">
                         <div className="absolute inset-0 flex items-center justify-center">
