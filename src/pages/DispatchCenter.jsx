@@ -80,6 +80,7 @@ export default function DispatchCenter() {
         try {
             const response = await base44.functions.invoke('fetchAllUsers', {});
             const allUsers = response.data?.users || [];
+            console.log('📋 Loaded all users for dispatch:', allUsers.length);
             setUnits(allUsers);
         } catch (error) {
             console.error('Error loading units:', error);
