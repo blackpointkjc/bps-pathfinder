@@ -27,7 +27,7 @@ import { generateTrafficData } from '@/components/map/TrafficLayer';
 import LayerFilterPanel from '@/components/map/LayerFilterPanel';
 import AddressLookupTool from '@/components/map/AddressLookupTool';
 import RealTimeAlert from '@/components/map/RealTimeAlert';
-import NavigationMenu from '@/components/NavigationMenu';
+import { createPageUrl } from '../utils';
 
 export default function Navigation() {
     const [currentLocation, setCurrentLocation] = useState(null);
@@ -1771,13 +1771,18 @@ Be thorough and search multiple sources.`,
                 </motion.div>
             )}
 
-            {/* Menu Button - Top Left */}
+            {/* Back Button - Top Left */}
             <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="absolute top-2 left-2 z-[1003] pointer-events-auto"
             >
-                <NavigationMenu currentUser={currentUser} />
+                <Button
+                    onClick={() => window.location.href = createPageUrl('CADHome')}
+                    className="bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white rounded-md p-2"
+                >
+                    ← BACK
+                </Button>
             </motion.div>
 
             {/* Compass */}
