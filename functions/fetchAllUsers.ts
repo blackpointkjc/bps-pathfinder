@@ -3,8 +3,17 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
+        const user = await base44.auth.me();
         
-        // Use service role to fetch all users - no auth check needed for service role
+        if (!user) {
+            return Response.json({ 
+                success: false,
+                error: 'Unauthorized',
+                users: []
+            }, { status: 401 });
+        }
+        
+        // Fetch all users using service role
         const allUsers = await base44.asServiceRole.entities.User.list('-last_updated', 500);
         
         return Response.json({
@@ -20,6 +29,6 @@ Deno.serve(async (req) => {
             error: 'Failed to fetch users',
             details: error.message,
             users: []
-        }, { status: 200 }); // Return 200 with empty array so pages don't break
+        }, { status: 200 });
     }
 });
