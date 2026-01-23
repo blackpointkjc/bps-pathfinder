@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
         }
 
         // Use service role to fetch all users
-        const allUsers = await base44.asServiceRole.entities.User.list('-last_updated', 200);
+        const allUsers = await base44.asServiceRole.entities.User.list();
         
         // Return ALL users - don't filter by location
         // Other components will filter as needed

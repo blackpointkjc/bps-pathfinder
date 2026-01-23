@@ -16,8 +16,7 @@ Deno.serve(async (req) => {
         }
 
         // Get user details
-        const userDetails = await base44.entities.User.filter({ id: user.id });
-        const userData = userDetails[0] || {};
+        const userData = user;
 
         // Reverse geocode to get address
         let address = '';
