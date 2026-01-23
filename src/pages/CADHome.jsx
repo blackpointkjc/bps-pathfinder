@@ -61,12 +61,12 @@ export default function CADHome() {
             const calls = callsData || [];
             const allUsers = usersData.data?.users || [];
 
-            // Filter out calls older than 6 hours and keep newest first
+            // Filter out calls older than 6 hours using time_received (actual call time) for EST
             const sixHoursAgo = new Date();
             sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
             
             const recentCalls = calls.filter(call => {
-                const callTime = new Date(call.created_date);
+                const callTime = new Date(call.time_received || call.created_date);
                 return callTime >= sixHoursAgo;
             }).sort((a, b) => {
                 const timeA = new Date(a.time_received || a.created_date);
