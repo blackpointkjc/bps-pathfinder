@@ -234,6 +234,14 @@ export default function DispatchCenter() {
             </div>
 
             <div className="p-4">
+                {/* External Feed Archive Summary */}
+                <div className="mb-4">
+                    <ExternalFeedArchiveSummary 
+                        onViewArchived={() => {
+                            window.location.href = createPageUrl('DispatchLog') + '?view=archived_external';
+                        }}
+                    />
+                </div>
 
                 {showPriorCalls ? (
                    <PriorCallsView currentUser={currentUser} units={units} />
