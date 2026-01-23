@@ -8,6 +8,7 @@ import { Radio, AlertTriangle, Users, Activity, Clock, MapPin, TrendingUp, Shiel
 import { createPageUrl } from '../utils';
 import NavigationMenu from '@/components/NavigationMenu';
 import CallDetailView from '@/components/map/CallDetailView';
+import ExternalFeedArchiveSummary from '@/components/dispatch/ExternalFeedArchiveSummary';
 
 export default function CADHome() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -23,6 +24,7 @@ export default function CADHome() {
     });
     const [loading, setLoading] = useState(true);
     const [selectedCall, setSelectedCall] = useState(null);
+    const [showArchived, setShowArchived] = useState(false);
 
     useEffect(() => {
         init();
@@ -48,31 +50,45 @@ export default function CADHome() {
 
     const loadData = async () => {
         try {
-            // Fetch calls sorted by newest first
-            const [callsData, usersData] = await Promise.all([
-                base44.entities.DispatchCall.list('-created_date', 200),
+            // Fetch calls - using getExternalCallsWithWindow for proper windowing
+            const [callsData, usersData, externalData] = await Promise.all([
+                base44.entities.DispatchCall.filter({ archived: false }, '-created_date', 200).catch(() => []),
                 base44.functions.invoke('fetchAllUsers', {}).catch(err => {
                     console.error('fetchAllUsers failed:', err);
                     return { data: { users: [] } };
+                }),
+                base44.functions.invoke('getExternalCallsWithWindow', { includeArchived: false }).catch(err => {
+                    console.error('getExternalCallsWithWindow failed:', err);
+                    return { data: { calls: [] } };
                 })
             ]);
 
             const calls = callsData || [];
             const allUsers = usersData.data?.users || [];
+            const externalCalls = externalData.data?.calls || [];
 
-            // Filter out calls older than 6 hours and keep newest first
+            // Filter out calls older than 6 hours for internal calls
             const sixHoursAgo = new Date();
             sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
             
-            const recentCalls = calls.filter(call => {
+            const internalCalls = calls.filter(call => {
+                const isExternal = call.source && ['gractivecalls', 'scraped', 'external', 'richmond', 'henrico', 'chesterfield'].includes(call.source.toLowerCase());
+                if (isExternal) return false; // Skip external, use externalCalls list
                 const callTime = new Date(call.created_date);
                 return callTime >= sixHoursAgo;
             }).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
 
-            console.log('📞 CADHome loaded calls:', recentCalls.length);
+            // Combine internal + external (which are already windowed) and sort by newest
+            const allActiveCalls = [...internalCalls, ...externalCalls].sort((a, b) => {
+                const timeA = new Date(a.time_received || a.created_date);
+                const timeB = new Date(b.time_received || b.created_date);
+                return timeB - timeA;
+            });
+
+            console.log('📞 CADHome loaded calls:', allActiveCalls.length, `(internal: ${internalCalls.length}, external: ${externalCalls.length})`);
             console.log('👥 CADHome loaded users:', allUsers.length);
 
-            setActiveCalls(recentCalls);
+            setActiveCalls(allActiveCalls);
             setUnits(allUsers);
 
             // Filter critical calls - keep them for 12 hours
@@ -224,6 +240,11 @@ export default function CADHome() {
                         </div>
                     </Card>
                 </div>
+
+                {/* External Feed Archive Summary */}
+                <ExternalFeedArchiveSummary 
+                    onViewArchived={() => setShowArchived(true)}
+                />
 
                 {/* Critical Alerts Section */}
                 {criticalCalls.length > 0 && (
@@ -459,6 +480,15 @@ export default function CADHome() {
                         window.location.href = createPageUrl('Navigation');
                     }}
                 />
+            )}
+
+            {/* Redirect to Dispatch Log for archived calls */}
+            {showArchived && (
+                <script>
+                    {`
+                        window.location.href = "${createPageUrl('DispatchLog')}?view=archived_external";
+                    `}
+                </script>
             )}
         </div>
     );
