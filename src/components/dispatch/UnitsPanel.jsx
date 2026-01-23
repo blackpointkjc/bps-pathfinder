@@ -35,6 +35,9 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
     const [statusFilter, setStatusFilter] = useState('all');
     const [unitAddresses, setUnitAddresses] = useState({});
 
+    // Filter out users without unit_number (not active officers)
+    const activeOfficers = units.filter(u => u.unit_number);
+
     // Group units by union
     const [activeUnionIds, setActiveUnionIds] = React.useState(new Set());
     
@@ -103,6 +106,15 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
             };
         });
 
+    const statusCounts = {
+        all: activeOfficers.length,
+        Available: activeOfficers.filter(u => u.status === 'Available').length,
+        Assigned: activeOfficers.filter(u => u.status === 'Assigned').length,
+        Enroute: activeOfficers.filter(u => u.status === 'Enroute').length,
+        'On Scene': activeOfficers.filter(u => u.status === 'On Scene').length,
+        'Out of Service': activeOfficers.filter(u => u.status === 'Out of Service').length
+    };
+
     const getStatusColor = (status) => {
         switch(status) {
             case 'Available': return 'bg-green-600';
@@ -113,18 +125,6 @@ export default function UnitsPanel({ units, selectedCall, currentUser, onUpdate 
             case 'Out of Service': return 'bg-slate-600';
             default: return 'bg-slate-500';
         }
-    };
-
-    // Filter out users without unit_number (not active officers)
-    const activeOfficers = units.filter(u => u.unit_number);
-    
-    const statusCounts = {
-        all: activeOfficers.length,
-        Available: activeOfficers.filter(u => u.status === 'Available').length,
-        Assigned: activeOfficers.filter(u => u.status === 'Assigned').length,
-        Enroute: activeOfficers.filter(u => u.status === 'Enroute').length,
-        'On Scene': activeOfficers.filter(u => u.status === 'On Scene').length,
-        'Out of Service': activeOfficers.filter(u => u.status === 'Out of Service').length
     };
 
     const assignUnit = async (unit) => {
