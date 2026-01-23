@@ -1495,10 +1495,8 @@ Be thorough and search multiple sources.`,
 
         setIsLoadingCalls(true);
         try {
-            // Directly fetch from DispatchCall entity
-            const allCalls = await base44.entities.DispatchCall.filter({
-                status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene', 'Arrived', 'On Scene'] }
-            });
+            // Fetch ALL active calls - don't filter by status since different sources use different status formats
+            const allCalls = await base44.entities.DispatchCall.list('-created_date', 200);
             
             const geocodedCount = allCalls.filter(call => 
                 call.latitude && call.longitude && 
