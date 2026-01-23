@@ -10,7 +10,6 @@ export default function NavigationMenu({ currentUser }) {
     const menuItems = [
         { name: 'CAD Home', icon: Radio, page: 'CADHome', color: 'text-blue-400' },
         { name: 'Active Calls Management', icon: Radio, page: 'ActiveCalls', color: 'text-red-400' },
-        { name: 'Units', icon: Users, page: 'Units', color: 'text-green-400' },
         { name: 'Dispatch Center', icon: Activity, page: 'DispatchCenter', color: 'text-purple-400' },
         { name: 'Call History', icon: FileText, page: 'CallHistory', color: 'text-orange-400' },
         { name: 'Live Map', icon: MapPin, page: 'Navigation', color: 'text-yellow-400' },
