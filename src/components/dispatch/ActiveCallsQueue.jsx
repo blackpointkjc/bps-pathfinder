@@ -16,11 +16,6 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
     const [selectedCallForDispatch, setSelectedCallForDispatch] = useState(null);
 
     const filteredCalls = calls.filter(call => {
-        // Exclude scraped calls from external sources
-        if (call.source === 'richmond' || call.source === 'henrico' || call.source === 'chesterfield') {
-            return false;
-        }
-        
         const matchesSearch = searchQuery === '' || 
             call.incident?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             call.location?.toLowerCase().includes(searchQuery.toLowerCase());

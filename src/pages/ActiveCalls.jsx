@@ -116,11 +116,6 @@ export default function ActiveCalls() {
     };
 
     const filteredCalls = activeCalls.filter(call => {
-        // Exclude scraped calls from external sources
-        if (call.source === 'richmond' || call.source === 'henrico' || call.source === 'chesterfield') {
-            return false;
-        }
-        
         const matchesStatus = filterStatus === 'all' || call.status === filterStatus;
         const matchesSearch = !searchQuery || 
             call.incident?.toLowerCase().includes(searchQuery.toLowerCase()) ||
