@@ -27,6 +27,7 @@ import { generateTrafficData } from '@/components/map/TrafficLayer';
 import LayerFilterPanel from '@/components/map/LayerFilterPanel';
 import AddressLookupTool from '@/components/map/AddressLookupTool';
 import RealTimeAlert from '@/components/map/RealTimeAlert';
+import NavigationMenu from '@/components/NavigationMenu';
 
 export default function Navigation() {
     const [currentLocation, setCurrentLocation] = useState(null);
