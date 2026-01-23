@@ -1686,7 +1686,7 @@ Be thorough and search multiple sources.`,
                 <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="absolute bottom-4 left-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
+                    className="absolute bottom-1/2 translate-y-1/2 left-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
                 >
                     <Button 
                         onClick={getCurrentLocation} 
@@ -1904,7 +1904,7 @@ Be thorough and search multiple sources.`,
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute top-2 right-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
+                className="absolute bottom-1/2 translate-y-1/2 right-2 z-[1002] flex flex-col gap-1.5 pointer-events-auto"
             >
 
                 <Button
