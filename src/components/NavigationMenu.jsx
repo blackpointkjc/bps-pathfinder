@@ -11,7 +11,6 @@ export default function NavigationMenu({ currentUser }) {
         { name: 'CAD Home', icon: Radio, page: 'CADHome', color: 'text-blue-400' },
         { name: 'Active Calls', icon: Radio, page: 'ActiveCalls', color: 'text-red-400' },
         { name: 'Units', icon: Users, page: 'Units', color: 'text-green-400' },
-        { name: 'Dispatch Center', icon: Activity, page: 'DispatchCenter', color: 'text-purple-400' },
         { name: 'Dispatch Log', icon: FileText, page: 'DispatchLog', color: 'text-orange-400' },
         { name: 'Reports', icon: BarChart3, page: 'Reports', color: 'text-cyan-400' },
         { name: 'Personnel', icon: Users, page: 'Personnel', color: 'text-teal-400' },
@@ -19,10 +18,16 @@ export default function NavigationMenu({ currentUser }) {
         { name: 'System Status', icon: Clock, page: 'SystemStatus', color: 'text-emerald-400' },
     ];
 
+    // Only show Dispatch Center for dispatch role or admin
+    if (currentUser?.role === 'dispatch' || currentUser?.role === 'admin' || currentUser?.dispatch_role === true) {
+        menuItems.splice(3, 0, { name: 'Dispatch Center', icon: Activity, page: 'DispatchCenter', color: 'text-purple-400' });
+    }
+
     if (currentUser?.role === 'admin') {
         menuItems.push(
             { name: 'Admin Portal', icon: Shield, page: 'AdminPortal', color: 'text-red-400' },
-            { name: 'Archive Manager', icon: Archive, page: 'ArchiveManager', color: 'text-purple-400' }
+            { name: 'Archive Manager', icon: Archive, page: 'ArchiveManager', color: 'text-purple-400' },
+            { name: 'Diagnostics', icon: Activity, page: 'SystemDiagnostics', color: 'text-green-400' }
         );
     }
 

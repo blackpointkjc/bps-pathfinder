@@ -1494,14 +1494,22 @@ Be thorough and search multiple sources.`,
 
         setIsLoadingCalls(true);
         try {
-            const response = await base44.functions.invoke('fetchAllActiveCalls', {});
+            const [internalResponse, externalResponse] = await Promise.all([
+                base44.functions.invoke('fetchAllActiveCalls', {}),
+                base44.functions.invoke('getExternalCalls', {})
+            ]);
 
-            if (response.data && response.data.success) {
-                const allCalls = response.data.allCalls || response.data.geocodedCalls || [];
-                const geocodedCount = response.data.geocodedCount || 0;
+            // Combine internal and external calls
+            const internalCalls = internalResponse.data?.allCalls || internalResponse.data?.geocodedCalls || [];
+            const externalCalls = externalResponse.data?.calls || [];
+            
+            const allCalls = [...internalCalls, ...externalCalls.filter(c => c.latitude && c.longitude)];
+            const geocodedCount = allCalls.filter(c => c.latitude && c.longitude).length;
 
-                console.log('📞 Received calls:', allCalls.length, 'calls');
-                console.log('📍 Calls with coords:', geocodedCount);
+            console.log('📞 Total calls:', allCalls.length, '(Internal:', internalCalls.length, 'External:', externalCalls.length, ')');
+            console.log('📍 Calls with coords:', geocodedCount);
+
+            if (internalResponse.data && internalResponse.data.success) {
 
                 // Detect new calls and high-priority calls in real-time
                 if (silent && lastCallCountRef.current > 0) {
