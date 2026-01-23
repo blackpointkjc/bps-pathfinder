@@ -226,8 +226,7 @@ Deno.serve(async (req) => {
                     failed++;
                 }
                 
-                // Parse time from call.time and convert from UTC to EST
-                // gractivecalls.com shows times in UTC, need to convert to EST (UTC-5)
+                // Parse time from call.time - gractivecalls shows EST local time
                 let timeReceived = new Date();
                 if (call.time && /\d{1,2}:\d{2}/.test(call.time)) {
                     const timeParts = call.time.match(/(\d{1,2}):(\d{2})\s?(AM|PM)?/i);
@@ -241,13 +240,13 @@ Deno.serve(async (req) => {
                             if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
                         }
                         
-                        // Create UTC time
-                        timeReceived = new Date();
-                        timeReceived.setUTCHours(hours, minutes, 0, 0);
+                        // Create local time then convert to ISO
+                        const now = new Date();
+                        timeReceived = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
                         
                         // If the time is in the future, it's from yesterday
-                        if (timeReceived > new Date()) {
-                            timeReceived.setUTCDate(timeReceived.getUTCDate() - 1);
+                        if (timeReceived > now) {
+                            timeReceived.setDate(timeReceived.getDate() - 1);
                         }
                     }
                 }
