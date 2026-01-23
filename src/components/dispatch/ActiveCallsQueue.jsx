@@ -14,6 +14,7 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
     const [statusFilter, setStatusFilter] = useState('all');
     const [showOptimalDispatch, setShowOptimalDispatch] = useState(false);
     const [selectedCallForDispatch, setSelectedCallForDispatch] = useState(null);
+    const [sortOrder, setSortOrder] = useState('desc'); // 'desc' = newest first, 'asc' = oldest first
 
     const filteredCalls = calls.filter(call => {
         const matchesSearch = searchQuery === '' || 
@@ -24,6 +25,10 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
         const matchesStatus = statusFilter === 'all' || call.status === statusFilter;
         
         return matchesSearch && matchesPriority && matchesStatus;
+    }).sort((a, b) => {
+        const timeA = new Date(a.time_received || a.created_date);
+        const timeB = new Date(b.time_received || b.created_date);
+        return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
     });
 
     const counts = {
@@ -107,7 +112,7 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
                     />
                 </div>
 
-                {/* Filters */}
+                {/* Filters & Sort */}
                 <div className="flex gap-2">
                     <select
                         value={priorityFilter}
@@ -120,6 +125,20 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
                         <option value="medium">Medium</option>
                         <option value="low">Low</option>
                     </select>
+                    <Button 
+                        size="sm"
+                        className={`text-xs font-mono ${sortOrder === 'desc' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-700 hover:bg-slate-600'}`}
+                        onClick={() => setSortOrder('desc')}
+                    >
+                        NEWEST
+                    </Button>
+                    <Button 
+                        size="sm"
+                        className={`text-xs font-mono ${sortOrder === 'asc' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-700 hover:bg-slate-600'}`}
+                        onClick={() => setSortOrder('asc')}
+                    >
+                        OLDEST
+                    </Button>
                 </div>
             </div>
 
