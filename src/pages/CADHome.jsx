@@ -60,14 +60,14 @@ export default function CADHome() {
             const calls = callsData || [];
             const allUsers = usersData.data?.users || [];
 
-            // Filter out calls older than 6 hours
+            // Filter out calls older than 6 hours and keep newest first
             const sixHoursAgo = new Date();
             sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
             
             const recentCalls = calls.filter(call => {
                 const callTime = new Date(call.created_date);
                 return callTime >= sixHoursAgo;
-            });
+            }).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
 
             console.log('📞 CADHome loaded calls:', recentCalls.length);
             console.log('👥 CADHome loaded users:', allUsers.length);
@@ -75,13 +75,18 @@ export default function CADHome() {
             setActiveCalls(recentCalls);
             setUnits(allUsers);
 
-            // Filter critical calls
-            const critical = recentCalls.filter(call => {
+            // Filter critical calls - keep them for 12 hours
+            const twelveHoursAgo = new Date();
+            twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12);
+            
+            const critical = calls.filter(call => {
                 const incident = call.incident?.toLowerCase() || '';
-                return incident.includes('shooting') || incident.includes('officer') || 
-                       incident.includes('assault') || incident.includes('robbery') ||
-                       call.priority === 'critical' || call.priority === 'high';
-            });
+                const callTime = new Date(call.created_date);
+                const isCritical = incident.includes('shooting') || incident.includes('officer') || 
+                                   incident.includes('assault') || incident.includes('robbery') ||
+                                   call.priority === 'critical' || call.priority === 'high';
+                return isCritical && callTime >= twelveHoursAgo;
+            }).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
             setCriticalCalls(critical);
 
             // Calculate metrics
