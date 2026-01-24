@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
                 
                 // Use current time when app detected the call (not parsed website time)
                 const timeReceived = new Date();
-                console.log(`🕐 Call detected NOW at: ${timeReceived.toLocaleString()}`)
+                console.log(`🕐 Call detected at: ${timeReceived.toLocaleString()} (original time: "${call.time}")`)
                 
                 // Save call (ALWAYS save, even without coords - NON-DESTRUCTIVE)
                 await base44.asServiceRole.entities.DispatchCall.create({
