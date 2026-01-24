@@ -156,12 +156,26 @@ Deno.serve(async (req) => {
                         }
 
                         // Format from gractivecalls: Time Received, Incident, Location, Agency, Status, Actions
+                        // BUT the HTML structure includes an h2 header row for each incident, so we need to extract from it
                         if (cells.length >= 5) {
-                            const time = cells[0]?.trim() || '';
-                            const incident = cells[1]?.trim() || 'Unknown';
+                            let time = cells[0]?.trim() || '';
+                            let incident = cells[1]?.trim() || 'Unknown';
                             let location = cells[2]?.trim() || '';
                             let agency = cells[3]?.trim().toUpperCase() || '';
                             const status = cells[4]?.trim() || 'Dispatched';
+                            
+                            // Check if this is actually the header row with format: "INCIDENT at LOCATION (AGENCY)"
+                            if (incident.includes(' at ') && incident.includes('(') && incident.includes(')')) {
+                                // Extract from header format: "PUBLIC SERVICE at OSBORNE RD / ROUTE 1 (CCFD)"
+                                const headerMatch = incident.match(/^(.+?)\s+at\s+(.+?)\s+\(([A-Z]{2,6})\)$/);
+                                if (headerMatch) {
+                                    incident = headerMatch[1].trim();
+                                    location = headerMatch[2].trim();
+                                    agency = headerMatch[3].trim().toUpperCase();
+                                    // time is in next cell
+                                    console.log(`📋 Parsed header: ${incident} at ${location} [${agency}]`);
+                                }
+                            }
 
                             // Normalize agency code: accept 2-6 uppercase letters
                             const agencyMatch = agency.match(/^[A-Z]{2,6}$/);
@@ -247,16 +261,20 @@ Deno.serve(async (req) => {
                     failed++;
                 }
                 
-                // Parse time from call.time - gractivecalls shows EST local time like "05:56 AM" or "13:45"
+                // Parse time from call.time - gractivecalls shows "MM/DD/YYYY HH:MM AM/PM" format
                 let timeReceived = new Date();
                 if (call.time && call.time.trim()) {
-                    const timeParts = call.time.match(/(\d{1,2}):(\d{2})(?:\s?(AM|PM))?/i);
-                    if (timeParts) {
-                        let hours = parseInt(timeParts[1]);
-                        const minutes = parseInt(timeParts[2]);
-                        const period = timeParts[3];
+                    // Try full format: "01/24/2026 10:30 AM"
+                    const fullMatch = call.time.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?:\s?(AM|PM))?/i);
+                    if (fullMatch) {
+                        const month = parseInt(fullMatch[1]) - 1; // JS months are 0-indexed
+                        const day = parseInt(fullMatch[2]);
+                        const year = parseInt(fullMatch[3]);
+                        let hours = parseInt(fullMatch[4]);
+                        const minutes = parseInt(fullMatch[5]);
+                        const period = fullMatch[6];
                         
-                        // Handle 12-hour format with AM/PM
+                        // Handle 12-hour format
                         if (period) {
                             if (period.toUpperCase() === 'PM' && hours !== 12) {
                                 hours += 12;
@@ -266,20 +284,31 @@ Deno.serve(async (req) => {
                             }
                         }
                         
-                        // Create date with the parsed time
-                        const now = new Date();
-                        timeReceived = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
-                        
-                        // If time is more than 2 hours in the future, assume it's from yesterday
-                        // (gractivecalls shows current active calls, so times shouldn't be far in future)
-                        const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-                        if (timeReceived > twoHoursFromNow) {
-                            timeReceived.setDate(timeReceived.getDate() - 1);
-                        }
-                        
-                        console.log(`🕐 Parsed time: "${call.time}" → ${timeReceived.toLocaleString()}`);
+                        timeReceived = new Date(year, month, day, hours, minutes, 0, 0);
+                        console.log(`🕐 Parsed full time: "${call.time}" → ${timeReceived.toLocaleString()}`);
                     } else {
-                        console.warn(`⚠️ Could not parse time: "${call.time}"`);
+                        // Fallback to time only
+                        const timeMatch = call.time.match(/(\d{1,2}):(\d{2})(?:\s?(AM|PM))?/i);
+                        if (timeMatch) {
+                            let hours = parseInt(timeMatch[1]);
+                            const minutes = parseInt(timeMatch[2]);
+                            const period = timeMatch[3];
+                            
+                            if (period) {
+                                if (period.toUpperCase() === 'PM' && hours !== 12) {
+                                    hours += 12;
+                                }
+                                if (period.toUpperCase() === 'AM' && hours === 12) {
+                                    hours = 0;
+                                }
+                            }
+                            
+                            const now = new Date();
+                            timeReceived = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+                            console.log(`🕐 Parsed time only: "${call.time}" → ${timeReceived.toLocaleString()}`);
+                        } else {
+                            console.warn(`⚠️ Could not parse time: "${call.time}"`);
+                        }
                     }
                 }
                 
