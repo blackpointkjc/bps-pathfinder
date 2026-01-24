@@ -16,6 +16,7 @@ import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import VehicleManagement from '@/components/admin/VehicleManagement';
 import LocationTracking from '@/components/admin/LocationTracking';
 import CarolineGISLookup from '@/components/admin/CarolineGISLookup';
+import IngestionDebugPanel from '@/components/admin/IngestionDebugPanel';
 
 export default function AdminPortal() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -268,6 +269,17 @@ export default function AdminPortal() {
                             <MapPin className="w-4 h-4" />
                             TRACKING
                         </button>
+                        <button
+                            onClick={() => setActiveTab('diagnostics')}
+                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
+                                activeTab === 'diagnostics' 
+                                    ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-500' 
+                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                            }`}
+                        >
+                            <Database className="w-4 h-4" />
+                            INGESTION
+                        </button>
                     </div>
                 </div>
             </div>
@@ -503,6 +515,13 @@ export default function AdminPortal() {
                 {/* Location Tracking Tab */}
                 {activeTab === 'tracking' && (
                     <LocationTracking users={users} />
+                )}
+
+                {/* Diagnostics Tab */}
+                {activeTab === 'diagnostics' && (
+                    <div className="space-y-6">
+                        <IngestionDebugPanel />
+                    </div>
                 )}
             </div>
 
