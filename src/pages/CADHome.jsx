@@ -28,11 +28,25 @@ export default function CADHome() {
     useEffect(() => {
         init();
         
+        // Real-time polling every 5 seconds
         const interval = setInterval(() => {
             loadData();
         }, 5000);
         
-        return () => clearInterval(interval);
+        // Auto-scrape calls every 2 minutes
+        const scrapeInterval = setInterval(async () => {
+            try {
+                await base44.functions.invoke('scrapeActiveCalls', {});
+                console.log('Auto-scraped active calls');
+            } catch (error) {
+                console.error('Auto-scrape failed:', error);
+            }
+        }, 120000);
+        
+        return () => {
+            clearInterval(interval);
+            clearInterval(scrapeInterval);
+        };
     }, []);
 
     const init = async () => {
@@ -61,13 +75,15 @@ export default function CADHome() {
             const calls = callsData || [];
             const allUsers = usersData.data?.users || [];
 
-            // Filter out calls older than 6 hours using time_received (actual call time) for EST
+            // Filter: recent (6hr) AND active status
             const sixHoursAgo = new Date();
             sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
             
             const recentCalls = calls.filter(call => {
                 const callTime = new Date(call.time_received || call.created_date);
-                return callTime >= sixHoursAgo;
+                const isRecent = callTime >= sixHoursAgo;
+                const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
+                return isRecent && isActive;
             }).sort((a, b) => {
                 const timeA = new Date(a.time_received || a.created_date);
                 const timeB = new Date(b.time_received || b.created_date);

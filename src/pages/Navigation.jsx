@@ -11,6 +11,7 @@ import DirectionsModal from '@/components/dispatch/DirectionsModal';
 import RouteOptions from '@/components/map/RouteOptions';
 import LiveNavigation from '@/components/map/LiveNavigation';
 import UnitSettings from '@/components/map/UnitSettings';
+import UnitSettingsPanel from '@/components/map/UnitSettingsPanel';
 import ActiveCallsList from '@/components/map/ActiveCallsList';
 import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
 import UnitStatusPanel from '@/components/map/UnitStatusPanel';
@@ -57,6 +58,7 @@ export default function Navigation() {
     const [showActiveCalls, setShowActiveCalls] = useState(true);
     const [unitName, setUnitName] = useState(localStorage.getItem('unitName') || '');
     const [showUnitSettings, setShowUnitSettings] = useState(false);
+    const [showUnitSettingsPanel, setShowUnitSettingsPanel] = useState(false);
     const [showLights, setShowLights] = useState(
         localStorage.getItem('showLights') === 'true'
     );
@@ -1077,6 +1079,8 @@ export default function Navigation() {
 
     const handleStatusChange = async (newStatus, eta = null) => {
         const oldStatus = unitStatus;
+        
+        // Optimistic UI update
         setUnitStatus(newStatus);
         
         // Auto-manage lights based on status
@@ -1086,11 +1090,19 @@ export default function Navigation() {
         
         if (currentUser) {
             try {
+                // Use centralized backend function for officer status + call status linkage
+                await base44.functions.invoke('updateOfficerStatus', {
+                    status: newStatus,
+                    estimated_return: eta
+                });
+                
+                // Update local state
                 const updateData = { 
                     status: newStatus,
                     show_lights: shouldShowLights,
                     last_updated: new Date().toISOString()
                 };
+                
                 if (eta) {
                     updateData.estimated_return = new Date(eta).toISOString();
                 }
@@ -1099,74 +1111,11 @@ export default function Navigation() {
                 if (newStatus === 'Available' || newStatus === 'Out of Service') {
                     updateData.current_call_id = null;
                     updateData.current_call_info = null;
-                    }
-
-                    await base44.auth.updateMe(updateData);
-                toast.success(`Status: ${newStatus}`);
-                
-                // Log status change
-                await base44.entities.UnitStatusLog.create({
-                    unit_id: currentUser.id,
-                    unit_name: unitName || currentUser.full_name,
-                    old_status: oldStatus,
-                    new_status: newStatus,
-                    location_lat: currentLocation?.[0],
-                    location_lng: currentLocation?.[1],
-                    notes: activeCallInfo
-                });
-                
-                // Auto-update related call status
-                if (currentUser.current_call_id) {
-                    try {
-                        const calls = await base44.entities.DispatchCall.filter({ 
-                            id: currentUser.current_call_id 
-                        });
-                        
-                        if (calls && calls.length > 0) {
-                            const call = calls[0];
-                            let callStatus = call.status;
-                            let timeField = null;
-                            
-                            // Map officer status to call status
-                            if (newStatus === 'Enroute' && call.status !== 'Enroute') {
-                                callStatus = 'Enroute';
-                                timeField = { time_enroute: new Date().toISOString() };
-                            } else if (newStatus === 'On Scene' && call.status !== 'On Scene') {
-                                callStatus = 'On Scene';
-                                timeField = { time_on_scene: new Date().toISOString() };
-                            } else if ((newStatus === 'Available' || newStatus === 'On Patrol' || newStatus === 'Out of Service') && 
-                                     call.status !== 'Cleared' && call.status !== 'Closed') {
-                                // Clear call when officer goes available, on patrol, or OOS after being assigned
-                                callStatus = 'Cleared';
-                                timeField = { time_cleared: new Date().toISOString() };
-                            }
-                            
-                            // Update call if status changed
-                            if (callStatus !== call.status) {
-                                await base44.entities.DispatchCall.update(call.id, {
-                                    status: callStatus,
-                                    ...timeField
-                                });
-                                
-                                // Log call status change
-                                await base44.entities.CallStatusLog.create({
-                                    call_id: call.id,
-                                    incident_type: call.incident,
-                                    location: call.location,
-                                    old_status: call.status,
-                                    new_status: callStatus,
-                                    unit_id: currentUser.id,
-                                    unit_name: unitName || currentUser.full_name,
-                                    latitude: call.latitude,
-                                    longitude: call.longitude,
-                                    notes: `Officer went ${newStatus} - call cleared`
-                                });
-                            }
-                        }
-                    } catch (error) {
-                        // Silent fail
-                    }
+                    setActiveCallInfo(null);
                 }
+
+                await base44.auth.updateMe(updateData);
+                toast.success(`Status: ${newStatus}`);
                 
                 // Auto-dispatch logic when becoming available
                 if ((newStatus === 'Available' || newStatus === 'Returning to Station') && activeCalls.length > 0) {
@@ -1176,7 +1125,10 @@ export default function Navigation() {
                 // Immediately update location to reflect new status
                 await updateUserLocation();
             } catch (error) {
+                // Rollback on failure
+                setUnitStatus(oldStatus);
                 toast.error('Failed to update status');
+                console.error('Status update error:', error);
             }
         }
     };
@@ -2041,6 +1993,15 @@ Be thorough and search multiple sources.`,
                 >
                     <Volume2 className="w-4 h-4" />
                 </Button>
+                
+                <Button
+                    onClick={() => setShowUnitSettingsPanel(true)}
+                    size="icon"
+                    className="h-8 w-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white shadow-lg"
+                    title="Unit Settings"
+                >
+                    <Settings className="w-4 h-4" />
+                </Button>
             </motion.div>
             
 
@@ -2287,6 +2248,12 @@ Be thorough and search multiple sources.`,
                     }}
                 />
             )}
+
+            {/* Unit Settings Panel */}
+            <UnitSettingsPanel
+                isOpen={showUnitSettingsPanel}
+                onClose={() => setShowUnitSettingsPanel(false)}
+            />
             </div>
             );
             }

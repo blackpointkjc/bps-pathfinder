@@ -35,28 +35,41 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
     const handleStatusClick = async (status) => {
         setSelectedStatus(status);
         if (status !== 'Out of Service') {
-            // If changing to Available, clear the active call
-            if (status === 'Available') {
-                try {
-                    const { base44 } = await import('@/api/base44Client');
-                    await base44.auth.updateMe({
-                        current_call_id: null,
-                        current_call_info: null,
-                        status: status
-                    });
-                    toast.success('Cleared from call');
-                } catch (error) {
-                    console.error('Error clearing call:', error);
-                }
+            try {
+                const { base44 } = await import('@/api/base44Client');
+                
+                // Use backend function for officer status update with call linking
+                await base44.functions.invoke('updateOfficerStatus', { 
+                    status 
+                });
+                
+                // Update local state
+                onStatusChange(status);
+                toast.success(`Status updated: ${status}`);
+                onClose();
+            } catch (error) {
+                console.error('Error updating status:', error);
+                toast.error('Failed to update status');
             }
-            onStatusChange(status);
-            onClose();
         }
     };
     
-    const handleConfirmOutOfService = () => {
-        onStatusChange(selectedStatus, estimatedReturn);
-        onClose();
+    const handleConfirmOutOfService = async () => {
+        try {
+            const { base44 } = await import('@/api/base44Client');
+            
+            await base44.functions.invoke('updateOfficerStatus', { 
+                status: selectedStatus,
+                estimated_return: estimatedReturn
+            });
+            
+            onStatusChange(selectedStatus, estimatedReturn);
+            toast.success('Out of Service status set');
+            onClose();
+        } catch (error) {
+            console.error('Error setting OOS:', error);
+            toast.error('Failed to update status');
+        }
     };
 
     const handleSetManualLocation = async () => {
