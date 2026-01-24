@@ -15,6 +15,38 @@ export default function CallNotification({ call, onAccept, onDismiss }) {
     });
 
     useEffect(() => {
+        // Check if alert was already handled
+        const checkAlertStatus = async () => {
+            try {
+                const { base44 } = await import('@/api/base44Client');
+                const user = await base44.auth.me();
+                const alerts = await base44.entities.CallAlert.filter({
+                    user_id: user.id,
+                    call_id: call.id
+                });
+                
+                // If alert already accepted/dismissed, auto-dismiss this notification
+                if (alerts.length > 0 && (alerts[0].status === 'accepted' || alerts[0].status === 'dismissed')) {
+                    onDismiss();
+                    return;
+                }
+                
+                // Mark as seen
+                if (alerts.length === 0) {
+                    await base44.entities.CallAlert.create({
+                        user_id: user.id,
+                        call_id: call.id,
+                        seen_at: new Date().toISOString(),
+                        status: 'seen'
+                    });
+                }
+            } catch (error) {
+                console.error('Error checking alert status:', error);
+            }
+        };
+        
+        checkAlertStatus();
+        
         // Play sound when notification appears
         sound.play().catch(err => console.log('Audio play failed:', err));
 
@@ -24,7 +56,7 @@ export default function CallNotification({ call, onAccept, onDismiss }) {
         }, 30000);
 
         return () => clearTimeout(timer);
-    }, [sound, onDismiss]);
+    }, [sound, onDismiss, call.id]);
 
     return (
         <AnimatePresence>
@@ -76,9 +108,38 @@ export default function CallNotification({ call, onAccept, onDismiss }) {
                         {/* Actions */}
                         <div className="flex gap-2">
                             <Button
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                     e.stopPropagation();
-                                    onAccept(call);
+                                    try {
+                                        const { base44 } = await import('@/api/base44Client');
+                                        const user = await base44.auth.me();
+                                        
+                                        // Mark as accepted
+                                        const alerts = await base44.entities.CallAlert.filter({
+                                            user_id: user.id,
+                                            call_id: call.id
+                                        });
+                                        
+                                        if (alerts.length > 0) {
+                                            await base44.entities.CallAlert.update(alerts[0].id, {
+                                                accepted_at: new Date().toISOString(),
+                                                status: 'accepted'
+                                            });
+                                        } else {
+                                            await base44.entities.CallAlert.create({
+                                                user_id: user.id,
+                                                call_id: call.id,
+                                                seen_at: new Date().toISOString(),
+                                                accepted_at: new Date().toISOString(),
+                                                status: 'accepted'
+                                            });
+                                        }
+                                        
+                                        onAccept(call);
+                                    } catch (error) {
+                                        console.error('Error accepting call:', error);
+                                        onAccept(call);
+                                    }
                                 }}
                                 className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-6 text-lg pointer-events-auto"
                             >
@@ -86,8 +147,35 @@ export default function CallNotification({ call, onAccept, onDismiss }) {
                                 Accept & Navigate
                             </Button>
                             <Button
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                     e.stopPropagation();
+                                    try {
+                                        const { base44 } = await import('@/api/base44Client');
+                                        const user = await base44.auth.me();
+                                        
+                                        // Mark as dismissed
+                                        const alerts = await base44.entities.CallAlert.filter({
+                                            user_id: user.id,
+                                            call_id: call.id
+                                        });
+                                        
+                                        if (alerts.length > 0) {
+                                            await base44.entities.CallAlert.update(alerts[0].id, {
+                                                dismissed_at: new Date().toISOString(),
+                                                status: 'dismissed'
+                                            });
+                                        } else {
+                                            await base44.entities.CallAlert.create({
+                                                user_id: user.id,
+                                                call_id: call.id,
+                                                seen_at: new Date().toISOString(),
+                                                dismissed_at: new Date().toISOString(),
+                                                status: 'dismissed'
+                                            });
+                                        }
+                                    } catch (error) {
+                                        console.error('Error dismissing alert:', error);
+                                    }
                                     onDismiss();
                                 }}
                                 variant="outline"
