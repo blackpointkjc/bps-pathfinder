@@ -30,24 +30,25 @@ export default function DispatchCenter() {
     useEffect(() => {
         init();
         
-        // Real-time updates every 10 seconds
+        // Real-time updates every 5 seconds
         const interval = setInterval(() => {
             loadActiveCalls();
             loadUnits();
-        }, 10000);
+        }, 5000);
         
-        // Auto-close old calls every minute
-        const autoCloseInterval = setInterval(async () => {
+        // Auto-scrape every 2 minutes
+        const scrapeInterval = setInterval(async () => {
             try {
-                await base44.functions.invoke('autoCloseOldCalls', {});
+                await base44.functions.invoke('scrapeActiveCalls', {});
+                console.log('Auto-scraped calls');
             } catch (error) {
-                console.error('Error auto-closing calls:', error);
+                console.error('Auto-scrape failed:', error);
             }
-        }, 60000); // Every minute
+        }, 120000);
         
         return () => {
             clearInterval(interval);
-            clearInterval(autoCloseInterval);
+            clearInterval(scrapeInterval);
         };
     }, []);
 
@@ -103,43 +104,25 @@ export default function DispatchCenter() {
             // Fetch calls
             const calls = await base44.entities.DispatchCall.list('-created_date', 200);
 
-            // Archive calls older than 6 hours based on time_received (EST time)
+            // Filter: recent (6hr) AND active status
             const sixHoursAgo = new Date();
             sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
 
-            const recentCalls = [];
-            for (const call of calls) {
+            const recentCalls = calls.filter(call => {
                 const callTime = new Date(call.time_received || call.created_date);
-                if (callTime < sixHoursAgo) {
-                    try {
-                        await base44.entities.CallHistory.create({
-                            time_received: call.time_received || call.created_date,
-                            incident: call.incident,
-                            location: call.location,
-                            agency: call.agency,
-                            status: call.status,
-                            latitude: call.latitude,
-                            longitude: call.longitude,
-                            ai_summary: call.ai_summary,
-                            archived_date: new Date().toISOString()
-                        });
-                        await base44.entities.DispatchCall.delete(call.id);
-                    } catch (err) {
-                        console.error('Archive error:', err);
-                    }
-                } else {
-                    recentCalls.push(call);
-                }
-            }
+                const isRecent = callTime >= sixHoursAgo;
+                const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
+                return isRecent && isActive;
+            });
 
-            // Sort by time_received (from scrapers) or created_date, respecting sort order
+            // Sort by time_received or created_date
             recentCalls.sort((a, b) => {
                 const timeA = new Date(a.time_received || a.created_date);
                 const timeB = new Date(b.time_received || b.created_date);
                 return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
             });
 
-            console.log('📞 Active calls:', recentCalls.length, '(archived old, sorted by time_received EST)');
+            console.log('📞 Dispatch active calls:', recentCalls.length);
             setActiveCalls(recentCalls);
          } catch (error) {
              console.error('Error loading active calls:', error);

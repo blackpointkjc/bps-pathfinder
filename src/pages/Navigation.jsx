@@ -1449,14 +1449,14 @@ Be thorough and search multiple sources.`,
 
         setIsLoadingCalls(true);
         try {
-            const allCalls = await base44.entities.DispatchCall.list('-created_date', 200);
+            const allCalls = await base44.entities.DispatchCall.list('-time_received', 200);
             
-            // Filter out calls older than 6 hours AND exclude closed/cleared/cancelled
+            // Filter: recent (6hr) AND active status
             const sixHoursAgo = new Date();
             sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
             
             const recentCalls = allCalls.filter(call => {
-                const callTime = new Date(call.created_date);
+                const callTime = new Date(call.time_received || call.created_date);
                 const isRecent = callTime >= sixHoursAgo;
                 const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
                 return isRecent && isActive;
