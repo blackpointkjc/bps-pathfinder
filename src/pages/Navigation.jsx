@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import MapView from '@/components/map/MapView';
 import SearchBarWithHistory from '@/components/map/SearchBarWithHistory';
-import DirectionsPanel from '@/components/map/DirectionsPanel';
+import DirectionsModal from '@/components/dispatch/DirectionsModal';
 import RouteOptions from '@/components/map/RouteOptions';
 import LiveNavigation from '@/components/map/LiveNavigation';
 import UnitSettings from '@/components/map/UnitSettings';
@@ -100,6 +100,7 @@ export default function Navigation() {
     const [mapCenter, setMapCenter] = useState(null);
     const [pendingCallNotification, setPendingCallNotification] = useState(null);
     const lastCheckedCallIdRef = useRef(null);
+    const [showDirectionsModal, setShowDirectionsModal] = useState(false);
     const [showAllUnitsPanel, setShowAllUnitsPanel] = useState(false);
     const [showHistoricalLogs, setShowHistoricalLogs] = useState(false);
     const [autoDispatchSuggestion, setAutoDispatchSuggestion] = useState(null);
@@ -1345,6 +1346,7 @@ export default function Navigation() {
                 setRoutes(fetchedRoutes);
                 setSelectedRouteIndex(fastestIndex);
                 updateRouteDisplay(fetchedRoutes[fastestIndex]);
+                setShowDirectionsModal(true);
             }
         }
     };
@@ -1588,6 +1590,7 @@ Be thorough and search multiple sources.`,
         setDestinationName('');
         setIsNavigating(false);
         setCurrentStepIndex(0);
+        setShowDirectionsModal(false);
     };
 
     const selectedRoute = routes && routes[selectedRouteIndex];
@@ -2121,17 +2124,6 @@ Be thorough and search multiple sources.`,
                             Start Navigation
                         </Button>
                     </motion.div>
-                    
-                    <DirectionsPanel
-                        directions={directions}
-                        destination={destinationName}
-                        distance={distance}
-                        duration={duration}
-                        onClose={clearRoute}
-                        routes={routes}
-                        onSelectRoute={handleSelectRoute}
-                        selectedRouteIndex={selectedRouteIndex}
-                    />
                 </>
             )}
 
@@ -2210,6 +2202,19 @@ Be thorough and search multiple sources.`,
                 onClose={() => setShowDispatchPanel(false)}
                 call={selectedCallForDispatch}
                 onAssignUnit={handleAssignUnit}
+            />
+
+            {/* Directions Modal */}
+            <DirectionsModal
+                isOpen={showDirectionsModal}
+                onClose={() => setShowDirectionsModal(false)}
+                directions={directions}
+                destination={destinationName}
+                distance={distance}
+                duration={duration}
+                routes={routes}
+                onSelectRoute={handleSelectRoute}
+                selectedRouteIndex={selectedRouteIndex}
             />
 
             {/* Call Notification */}
