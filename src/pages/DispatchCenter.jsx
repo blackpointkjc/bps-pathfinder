@@ -112,6 +112,7 @@ export default function DispatchCenter() {
                 const callTime = new Date(call.time_received || call.created_date);
                 const isRecent = callTime >= sixHoursAgo;
                 const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
+                // Include ALL sources: gractivecalls, chesterfield, manual, etc.
                 return isRecent && isActive;
             });
 

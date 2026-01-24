@@ -83,6 +83,7 @@ export default function CADHome() {
                 const callTime = new Date(call.time_received || call.created_date);
                 const isRecent = callTime >= sixHoursAgo;
                 const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
+                // Include ALL sources: gractivecalls, chesterfield, manual, etc.
                 return isRecent && isActive;
             }).sort((a, b) => {
                 const timeA = new Date(a.time_received || a.created_date);

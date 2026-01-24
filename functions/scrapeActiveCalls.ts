@@ -93,14 +93,14 @@ Deno.serve(async (req) => {
         
         console.log('🔍 Starting active call scraper...');
         
-        // Delete ALL existing calls from gractivecalls sources to refresh
+        // Delete ALL existing calls from gractivecalls source to refresh
         try {
             const existingCalls = await base44.asServiceRole.entities.DispatchCall.list();
             let deletedCount = 0;
             
             for (const call of existingCalls) {
-                // Delete all richmond and henrico calls (they come from gractivecalls)
-                if (['richmond', 'henrico'].includes(call.source)) {
+                // Delete all gractivecalls sourced calls for fresh scrape
+                if (call.source === 'gractivecalls') {
                     await base44.asServiceRole.entities.DispatchCall.delete(call.id);
                     deletedCount++;
                     // Rate limit deletions
@@ -113,6 +113,13 @@ Deno.serve(async (req) => {
         } catch (cleanupError) {
             console.warn('Cleanup warning:', cleanupError.message);
         }
+        
+        // Ingestion diagnostics
+        const diagnostics = {
+            agencies: new Set(),
+            parseErrors: 0,
+            totalRows: 0
+        };
         
         const calls = [];
 
@@ -137,6 +144,8 @@ Deno.serve(async (req) => {
 
                     for (let i = 1; i < rows.length; i++) {
                         const row = rows[i];
+                        diagnostics.totalRows++;
+                        
                         if (!row.includes('<td')) continue;
 
                         const cells = [];
@@ -151,21 +160,33 @@ Deno.serve(async (req) => {
                             const time = cells[0]?.trim() || '';
                             const incident = cells[1]?.trim() || 'Unknown';
                             let location = cells[2]?.trim() || '';
-                            const agency = cells[3]?.trim() || '';
+                            let agency = cells[3]?.trim().toUpperCase() || '';
                             const status = cells[4]?.trim() || 'Dispatched';
 
-                            // Determine source based on agency - gractivecalls shows all agencies
-                            let source = 'richmond';
-                            if (agency.toLowerCase().includes('henrico') || agency.toLowerCase().includes('hpd') || agency.toLowerCase().includes('hcpd') || agency.toLowerCase().includes('hfd')) {
-                                source = 'henrico';
+                            // Normalize agency code: accept 2-6 uppercase letters
+                            const agencyMatch = agency.match(/^[A-Z]{2,6}$/);
+                            if (!agencyMatch && agency) {
+                                console.warn(`⚠️ Non-standard agency code: "${agency}" - keeping raw value`);
                             }
-                            // Note: CCPD/CCFD from gractivecalls stays as 'richmond' to avoid conflict with ArcGIS chesterfield scraper
+                            
+                            // Track all agency codes found
+                            if (agency) {
+                                diagnostics.agencies.add(agency);
+                            }
+
+                            // ALL calls from gractivecalls get source='gractivecalls' (no filtering by agency)
+                            const source = 'gractivecalls';
 
                             location = normalizeAddress(location, agency);
 
                             if (location && time && incident) {
                                 calls.push({ time, incident, location, agency, status, source });
+                            } else {
+                                diagnostics.parseErrors++;
+                                console.warn(`⚠️ Parse error - missing required fields: time="${time}" incident="${incident}" location="${location}"`);
                             }
+                        } else {
+                            diagnostics.parseErrors++;
                         }
                     }
                     console.log(`✅ gractivecalls.com: ${calls.length} calls`);
@@ -286,6 +307,8 @@ Deno.serve(async (req) => {
         }
         
         console.log(`💾 FINAL: Scraped ${calls.length}, Saved ${saved} new, Geocoded ${geocoded}, Skipped ${skipped}, Failed ${failed}`);
+        console.log(`📊 DIAGNOSTICS: Total rows: ${diagnostics.totalRows}, Parse errors: ${diagnostics.parseErrors}`);
+        console.log(`🏢 AGENCIES DETECTED: ${Array.from(diagnostics.agencies).sort().join(', ')}`);
 
         return Response.json({ 
             success: true, 
@@ -294,7 +317,12 @@ Deno.serve(async (req) => {
             geocoded,
             skipped,
             failed,
-            geocodeRate: saved > 0 ? `${Math.round((geocoded / saved) * 100)}%` : '0%'
+            geocodeRate: saved > 0 ? `${Math.round((geocoded / saved) * 100)}%` : '0%',
+            diagnostics: {
+                totalRows: diagnostics.totalRows,
+                parseErrors: diagnostics.parseErrors,
+                agenciesDetected: Array.from(diagnostics.agencies).sort()
+            }
         });
         
     } catch (error) {

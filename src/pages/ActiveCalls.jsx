@@ -143,14 +143,21 @@ export default function ActiveCalls() {
             
             const result = await base44.functions.invoke('scrapeActiveCalls', {});
             
-            console.log('Scraper result:', result.data);
+            console.log('📊 Scraper result:', result.data);
+            
+            // Show diagnostics
+            const diag = result.data?.diagnostics;
+            if (diag) {
+                console.log('🏢 Agencies detected:', diag.agenciesDetected?.join(', '));
+                console.log('📝 Total rows:', diag.totalRows, 'Parse errors:', diag.parseErrors);
+            }
             
             toast.success(
-                `✅ Scraped ${result.data?.scraped || 0} calls, saved ${result.data?.saved || 0}, geocoded ${result.data?.geocoded || 0}`,
-                { id: 'scrape', duration: 4000 }
+                `✅ Scraped ${result.data?.saved || 0} calls (${diag?.agenciesDetected?.length || 0} agencies: ${diag?.agenciesDetected?.join(', ') || 'none'})`,
+                { id: 'scrape', duration: 5000 }
             );
             
-            // Wait a moment for database to process
+            // Wait for database
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             await loadData();
