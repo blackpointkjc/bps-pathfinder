@@ -85,6 +85,16 @@ export default function CallNotification({ call, onAccept, onDismiss }) {
                                 <Navigation className="w-5 h-5 mr-2" />
                                 Accept & Navigate
                             </Button>
+                            <Button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDismiss();
+                                }}
+                                variant="outline"
+                                className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-6 px-4 pointer-events-auto"
+                            >
+                                <X className="w-5 h-5" />
+                            </Button>
                         </div>
                     </div>
                 </Card>

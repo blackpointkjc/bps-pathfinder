@@ -42,14 +42,17 @@ export default function ActiveCalls() {
 
     const loadData = async () => {
         try {
-            const [callsData, usersData] = await Promise.all([
-                base44.entities.DispatchCall.filter({
-                    status: { $in: ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene', 'Arrived', 'ASSIGNED 14:29', 'ARV TRNSPT 16:58'] }
-                }),
-                base44.functions.invoke('fetchAllUsers', {})
-            ]);
-            console.log('📞 Loaded all calls (internal + scraped):', callsData.length);
-            setActiveCalls(callsData || []);
+            // Fetch active calls - filter to exclude Closed/Cleared/Cancelled
+            const allCalls = await base44.entities.DispatchCall.list('-created_date', 500);
+            const activeCalls = allCalls.filter(call => 
+                call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status)
+            );
+            
+            // Also fetch user data
+            const usersData = await base44.functions.invoke('fetchAllUsers', {});
+            
+            console.log('📞 Loaded active calls (excluding closed):', activeCalls.length);
+            setActiveCalls(activeCalls || []);
             setUnits(usersData.data?.users || []);
         } catch (error) {
             console.error('Error loading data:', error);

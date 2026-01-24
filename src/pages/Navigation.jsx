@@ -1497,13 +1497,15 @@ Be thorough and search multiple sources.`,
         try {
             const allCalls = await base44.entities.DispatchCall.list('-created_date', 200);
             
-            // Filter out calls older than 6 hours
+            // Filter out calls older than 6 hours AND exclude closed/cleared/cancelled
             const sixHoursAgo = new Date();
             sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
             
             const recentCalls = allCalls.filter(call => {
                 const callTime = new Date(call.created_date);
-                return callTime >= sixHoursAgo;
+                const isRecent = callTime >= sixHoursAgo;
+                const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
+                return isRecent && isActive;
             });
             
             const geocodedCount = recentCalls.filter(call => 
