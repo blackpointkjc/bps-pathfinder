@@ -24,8 +24,19 @@ export default function ActiveCalls() {
 
     useEffect(() => {
         init();
+        // Auto-refresh every 5 seconds
         const interval = setInterval(() => loadData(), 5000);
-        return () => clearInterval(interval);
+        // Auto-scrape every 2 minutes to keep calls fresh
+        const scrapeInterval = setInterval(() => {
+            console.log('Auto-scraping active calls...');
+            base44.functions.invoke('scrapeActiveCalls', {}).catch(err => 
+                console.error('Auto-scrape failed:', err)
+            );
+        }, 120000);
+        return () => {
+            clearInterval(interval);
+            clearInterval(scrapeInterval);
+        };
     }, []);
 
     const init = async () => {
@@ -115,10 +126,11 @@ export default function ActiveCalls() {
     const handleRefresh = async () => {
         setRefreshing(true);
         try {
-            toast.info('Refreshing active calls...');
-            await base44.functions.invoke('scrapeActiveCalls', {});
+            toast.info('Scraping active calls from gractivecalls.com...');
+            const result = await base44.functions.invoke('scrapeActiveCalls', {});
+            console.log('Scraper result:', result);
             await loadData();
-            toast.success('Active calls refreshed');
+            toast.success(`Refreshed: ${result.data?.saved || 0} calls from gractivecalls.com`);
         } catch (error) {
             toast.error('Failed to refresh calls');
             console.error('Refresh error:', error);
