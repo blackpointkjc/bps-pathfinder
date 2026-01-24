@@ -226,28 +226,39 @@ Deno.serve(async (req) => {
                     failed++;
                 }
                 
-                // Parse time from call.time - gractivecalls shows EST local time
+                // Parse time from call.time - gractivecalls shows EST local time like "05:56 AM" or "13:45"
                 let timeReceived = new Date();
-                if (call.time && /\d{1,2}:\d{2}/.test(call.time)) {
-                    const timeParts = call.time.match(/(\d{1,2}):(\d{2})\s?(AM|PM)?/i);
+                if (call.time && call.time.trim()) {
+                    const timeParts = call.time.match(/(\d{1,2}):(\d{2})(?:\s?(AM|PM))?/i);
                     if (timeParts) {
                         let hours = parseInt(timeParts[1]);
                         const minutes = parseInt(timeParts[2]);
                         const period = timeParts[3];
                         
+                        // Handle 12-hour format with AM/PM
                         if (period) {
-                            if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12;
-                            if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
+                            if (period.toUpperCase() === 'PM' && hours !== 12) {
+                                hours += 12;
+                            }
+                            if (period.toUpperCase() === 'AM' && hours === 12) {
+                                hours = 0;
+                            }
                         }
                         
-                        // Create local time then convert to ISO
+                        // Create date with the parsed time
                         const now = new Date();
                         timeReceived = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
                         
-                        // If the time is in the future, it's from yesterday
-                        if (timeReceived > now) {
+                        // If time is more than 2 hours in the future, assume it's from yesterday
+                        // (gractivecalls shows current active calls, so times shouldn't be far in future)
+                        const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+                        if (timeReceived > twoHoursFromNow) {
                             timeReceived.setDate(timeReceived.getDate() - 1);
                         }
+                        
+                        console.log(`🕐 Parsed time: "${call.time}" → ${timeReceived.toLocaleString()}`);
+                    } else {
+                        console.warn(`⚠️ Could not parse time: "${call.time}"`);
                     }
                 }
                 
