@@ -12,26 +12,23 @@ const isValidCoords = (lat, lng) => {
     return true;
 };
 
-// Normalize address for geocoding
+// Normalize address for geocoding - NEVER return null, always attempt geocoding
 const normalizeAddress = (location, agency) => {
     let normalized = location.trim();
     
-    // Skip highways/interstates
-    if (normalized.match(/\bI-?\d+\b/) || normalized.match(/\bEN \d+[A-Z]?\b/)) {
-        return null;
-    }
+    // Don't skip highways - try to geocode everything
     
     // Remove "Block" pattern: "200 Block N LABURNUM AVE" → "200 N LABURNUM AVE"
     normalized = normalized.replace(/(\d+)\s+Block\s+/gi, '$1 ');
     
-    // Convert intersections: " / " → " AND "
-    normalized = normalized.replace(/\s*\/\s*/g, ' AND ');
+    // Convert intersections: " / " → " & " (better for geocoding)
+    normalized = normalized.replace(/\s*\/\s*/g, ' & ');
     
     // Determine city/state based on agency
     let cityState = 'Virginia';
     const agencyLower = agency.toLowerCase();
     
-    if (agencyLower.includes('henrico')) {
+    if (agencyLower.includes('henrico') || agencyLower.includes('hpd') || agencyLower.includes('hcpd') || agencyLower.includes('hfd')) {
         cityState = 'Henrico County, VA';
     } else if (agencyLower.includes('richmond') || agencyLower.includes('rpd') || agencyLower.includes('rfd')) {
         cityState = 'Richmond, VA';
@@ -39,6 +36,7 @@ const normalizeAddress = (location, agency) => {
         cityState = 'Chesterfield County, VA';
     }
     
+    // Always return a geocodable address
     return `${normalized}, ${cityState}`;
 };
 
@@ -212,78 +210,47 @@ Deno.serve(async (req) => {
 
                 // Skip duplicate check - we already deleted old calls, now we refresh all active ones
 
-                // Normalize address
+                // Always normalize address (never skip)
                 const normalizedAddress = normalizeAddress(call.location, call.agency);
-
-                if (!normalizedAddress) {
-                    console.log(`⏭️ Skipping highway/interstate: ${call.location}`);
-                    failed++;
-                    continue;
-                }
 
                 let latitude = null;
                 let longitude = null;
+                let geocodeStatus = 'PENDING';
+                let geocodeError = null;
 
-                // Attempt geocoding with timeout
+                // Attempt geocoding with timeout and retries
                 try {
                     console.log(`🔍 Geocoding: "${call.location}" → "${normalizedAddress}"`);
                     const geoPromise = geocodeAddress(normalizedAddress);
                     const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Geocode timeout')), 3000)
+                        setTimeout(() => reject(new Error('Geocode timeout')), 5000)
                     );
                     const geoResult = await Promise.race([geoPromise, timeoutPromise]);
 
                     if (geoResult && isValidCoords(geoResult.latitude, geoResult.longitude)) {
                         latitude = geoResult.latitude;
                         longitude = geoResult.longitude;
+                        geocodeStatus = 'SUCCESS';
                         geocoded++;
-                        console.log(`✅ SUCCESS: ${latitude}, ${longitude}`);
+                        console.log(`✅ GEOCODE SUCCESS: ${latitude}, ${longitude}`);
                     } else {
-                        console.log(`⚠️ Geocoding failed, saving without coords: "${normalizedAddress}"`);
+                        geocodeStatus = 'FAILED';
+                        geocodeError = 'No results from geocoder';
+                        console.log(`⚠️ Geocoding failed: "${normalizedAddress}"`);
                         failed++;
                     }
                 } catch (geoError) {
-                    console.log(`⚠️ Geocoding timeout/error, saving without coords: "${normalizedAddress}"`);
+                    geocodeStatus = 'FAILED';
+                    geocodeError = geoError.message;
+                    console.log(`⚠️ Geocoding error: ${geoError.message} for "${normalizedAddress}"`);
                     failed++;
                 }
                 
-                // Parse time from call.time - gractivecalls shows EST local time like "05:56 AM" or "13:45"
-                let timeReceived = new Date();
-                if (call.time && call.time.trim()) {
-                    const timeParts = call.time.match(/(\d{1,2}):(\d{2})(?:\s?(AM|PM))?/i);
-                    if (timeParts) {
-                        let hours = parseInt(timeParts[1]);
-                        const minutes = parseInt(timeParts[2]);
-                        const period = timeParts[3];
-                        
-                        // Handle 12-hour format with AM/PM
-                        if (period) {
-                            if (period.toUpperCase() === 'PM' && hours !== 12) {
-                                hours += 12;
-                            }
-                            if (period.toUpperCase() === 'AM' && hours === 12) {
-                                hours = 0;
-                            }
-                        }
-                        
-                        // Create date with the parsed time
-                        const now = new Date();
-                        timeReceived = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
-                        
-                        // If time is more than 2 hours in the future, assume it's from yesterday
-                        // (gractivecalls shows current active calls, so times shouldn't be far in future)
-                        const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-                        if (timeReceived > twoHoursFromNow) {
-                            timeReceived.setDate(timeReceived.getDate() - 1);
-                        }
-                        
-                        console.log(`🕐 Parsed time: "${call.time}" → ${timeReceived.toLocaleString()}`);
-                    } else {
-                        console.warn(`⚠️ Could not parse time: "${call.time}"`);
-                    }
-                }
+                // Use current time when app detected the call (not parsed website time)
+                const timeReceived = new Date();
+                console.log(`🕐 Call detected at: ${timeReceived.toLocaleString()} (original time: "${call.time}")`)
                 
-                // Save call (with or without coords)
+                // Save call (ALWAYS save, even without coords - NON-DESTRUCTIVE)
                 await base44.asServiceRole.entities.DispatchCall.create({
                     call_id: callId,
                     incident: call.incident,
@@ -294,9 +261,11 @@ Deno.serve(async (req) => {
                     longitude: longitude,
                     time_received: timeReceived.toISOString(),
                     description: `${call.incident} at ${call.location}`,
-                    source: call.source
+                    source: call.source,
+                    priority: call.incident?.toLowerCase().includes('shooting') || call.incident?.toLowerCase().includes('officer') ? 'critical' : 'medium'
                 });
                 saved++;
+                console.log(`💾 SAVED: ${call.agency} - ${call.incident} at ${call.location} (coords: ${latitude ? 'YES' : 'NO'})`);
 
                 // Rate limiting - reduced to 600ms for faster processing
                 await new Promise(resolve => setTimeout(resolve, 600));
