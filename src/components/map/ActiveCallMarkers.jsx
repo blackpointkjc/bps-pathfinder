@@ -15,9 +15,8 @@ const createCallIcon = (call, isHighPriority = false) => {
                   incident.includes('overdose') || incident.includes('hemorrhage') ||
                   incident.includes('stroke') || incident.includes('cardiac');
     
-    const isFire = agency.includes('FD') || agency.includes('CCFD') || 
-                   incident.includes('fire') || incident.includes('smoke') || 
-                   incident.includes('alarm');
+    const isFire = agency.includes('FD') || incident.includes('fire') || 
+                   incident.includes('smoke') || incident.includes('alarm');
     
     // Determine status color
     let statusColor = '#EF4444';
@@ -38,12 +37,10 @@ const createCallIcon = (call, isHighPriority = false) => {
         bgColor = '#DC2626'; // Red for fire
         icon = '🚨';
     } else {
-        // Police (includes RPD, HPD, CCPD, etc.)
+        // Police
         bgColor = '#1E40AF';
         icon = '🚔';
     }
-    
-    console.log(`🗺️ Icon for ${agency}: ${isFire ? '🔥 Fire' : isEMS ? '🚑 EMS' : '🚔 Police'}`);
 
     return new L.DivIcon({
         className: 'custom-call-marker',
