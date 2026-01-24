@@ -209,12 +209,24 @@ export default function Navigation() {
         };
         init();
         
-        // Refresh active calls every 30 seconds for real-time updates (silent mode)
+        // Real-time data refresh every 10 seconds
         callsRefreshInterval.current = setInterval(() => {
             if (isOnline) {
                 fetchActiveCalls(true); // Silent refresh
             }
-        }, 30000);
+        }, 10000);
+        
+        // Auto-scrape every 60 seconds
+        const scrapeInterval = setInterval(async () => {
+            if (isOnline) {
+                try {
+                    const result = await base44.functions.invoke('scrapeActiveCalls', {});
+                    console.log('✅ Auto-scraped:', result.data?.saved || 0, 'calls');
+                } catch (err) {
+                    console.error('Auto-scrape failed:', err);
+                }
+            }
+        }, 60000);
         
 
         
@@ -226,7 +238,9 @@ export default function Navigation() {
             if (callsRefreshInterval.current) {
                 clearInterval(callsRefreshInterval.current);
             }
-
+            if (scrapeInterval) {
+                clearInterval(scrapeInterval);
+            }
         };
     }, []);
 
@@ -1451,24 +1465,32 @@ Be thorough and search multiple sources.`,
         try {
             const allCalls = await base44.entities.DispatchCall.list('-time_received', 200);
             
-            // Filter: recent (6hr) AND active status
-            const sixHoursAgo = new Date();
-            sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
+            // Filter: TODAY only AND active status
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
             
             const recentCalls = allCalls.filter(call => {
                 const callTime = new Date(call.time_received || call.created_date);
-                const isRecent = callTime >= sixHoursAgo;
+                const isToday = callTime >= today;
                 const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
-                return isRecent && isActive;
+                return isToday && isActive;
             });
             
             const geocodedCount = recentCalls.filter(call => 
                 call.latitude && call.longitude && 
-                !isNaN(call.latitude) && !isNaN(call.longitude)
+                !isNaN(call.latitude) && !isNaN(call.longitude) &&
+                call.latitude !== 0 && call.longitude !== 0
             ).length;
 
-            console.log('📞 Received calls:', recentCalls.length, 'calls');
-            console.log('📍 Calls with coords:', geocodedCount);
+            console.log('📞 Total calls fetched:', allCalls.length);
+            console.log('📞 Today active calls:', recentCalls.length);
+            console.log('📍 Calls with valid coords:', geocodedCount);
+            
+            // Log each call with details
+            recentCalls.forEach((call, i) => {
+                const hasCoords = call.latitude && call.longitude && !isNaN(call.latitude) && !isNaN(call.longitude);
+                console.log(`${i+1}. ${call.incident} @ ${call.location} [${call.agency}] ${hasCoords ? '✅ HAS COORDS' : '❌ NO COORDS'}`);
+            });
 
                 // Detect new calls and high-priority calls in real-time
                 if (silent && lastCallCountRef.current > 0) {

@@ -24,15 +24,20 @@ export default function ActiveCalls() {
 
     useEffect(() => {
         init();
-        // Auto-refresh every 5 seconds
+        
+        // Real-time data refresh every 5 seconds
         const interval = setInterval(() => loadData(), 5000);
-        // Auto-scrape every 2 minutes to keep calls fresh
-        const scrapeInterval = setInterval(() => {
-            console.log('Auto-scraping active calls...');
-            base44.functions.invoke('scrapeActiveCalls', {}).catch(err => 
-                console.error('Auto-scrape failed:', err)
-            );
-        }, 120000);
+        
+        // Auto-scrape every 60 seconds for real-time feed
+        const scrapeInterval = setInterval(async () => {
+            try {
+                await base44.functions.invoke('scrapeActiveCalls', {});
+                console.log('✅ Auto-scraped active calls');
+            } catch (err) {
+                console.error('Auto-scrape failed:', err);
+            }
+        }, 60000);
+        
         return () => {
             clearInterval(interval);
             clearInterval(scrapeInterval);
@@ -53,14 +58,18 @@ export default function ActiveCalls() {
 
     const loadData = async () => {
         try {
-            // Fetch ALL dispatch calls
-            const allCalls = await base44.entities.DispatchCall.list('-created_date', 500);
+            // Fetch ALL dispatch calls sorted by time_received
+            const allCalls = await base44.entities.DispatchCall.list('-time_received', 500);
             
-            // Filter to show only active calls (exclude Closed/Cleared/Cancelled)
-            const activeCalls = allCalls.filter(call => {
-                const status = call.status || '';
-                const isActive = !['Closed', 'Cleared', 'Cancelled'].includes(status);
-                return isActive;
+            // Filter: TODAY only AND active status
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const todayActiveCalls = allCalls.filter(call => {
+                const callTime = new Date(call.time_received || call.created_date);
+                const isToday = callTime >= today;
+                const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
+                return isToday && isActive;
             });
             
             // Also fetch user data
@@ -69,9 +78,13 @@ export default function ActiveCalls() {
                 return { data: { users: [] } };
             });
             
-            console.log('📞 Total calls fetched:', allCalls.length);
-            console.log('📞 Active calls (excluding closed):', activeCalls.length);
-            setActiveCalls(activeCalls);
+            const geocodedCount = todayActiveCalls.filter(c => c.latitude && c.longitude).length;
+            
+            console.log('📞 Total calls:', allCalls.length);
+            console.log('📞 Today active calls:', todayActiveCalls.length);
+            console.log('📍 Calls with coords:', geocodedCount);
+            
+            setActiveCalls(todayActiveCalls);
             setUnits(usersData.data?.users || []);
         } catch (error) {
             console.error('Error loading data:', error);
@@ -126,13 +139,23 @@ export default function ActiveCalls() {
     const handleRefresh = async () => {
         setRefreshing(true);
         try {
-            toast.info('Scraping active calls from gractivecalls.com...');
+            toast.loading('Scraping gractivecalls.com...', { id: 'scrape' });
+            
             const result = await base44.functions.invoke('scrapeActiveCalls', {});
-            console.log('Scraper result:', result);
+            
+            console.log('Scraper result:', result.data);
+            
+            toast.success(
+                `✅ Scraped ${result.data?.scraped || 0} calls, saved ${result.data?.saved || 0}, geocoded ${result.data?.geocoded || 0}`,
+                { id: 'scrape', duration: 4000 }
+            );
+            
+            // Wait a moment for database to process
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
             await loadData();
-            toast.success(`Refreshed: ${result.data?.saved || 0} calls from gractivecalls.com`);
         } catch (error) {
-            toast.error('Failed to refresh calls');
+            toast.error(`Refresh failed: ${error.message}`, { id: 'scrape' });
             console.error('Refresh error:', error);
         } finally {
             setRefreshing(false);
@@ -169,14 +192,23 @@ export default function ActiveCalls() {
                                 {filteredCalls.length} ACTIVE
                             </Badge>
                         </div>
-                        <Button
-                            onClick={handleRefresh}
-                            disabled={refreshing}
-                            className="bg-blue-600 hover:bg-blue-700 font-mono"
-                        >
-                            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                            {refreshing ? 'REFRESHING...' : 'REFRESH'}
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={handleRefresh}
+                                disabled={refreshing}
+                                className="bg-blue-600 hover:bg-blue-700 font-mono"
+                            >
+                                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                                {refreshing ? 'SCRAPING...' : 'SCRAPE NOW'}
+                            </Button>
+                            <Button
+                                onClick={() => window.location.href = createPageUrl('Navigation')}
+                                variant="outline"
+                                className="border-slate-700 text-slate-300 font-mono"
+                            >
+                                MAP VIEW
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -247,9 +279,17 @@ export default function ActiveCalls() {
                                                 {call.location}
                                             </p>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-slate-500 text-xs font-mono">
-                                                    {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { hour12: false })}
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge className="bg-slate-700 text-slate-300 font-mono text-xs">
+                                                        {call.agency || 'UNKNOWN'}
+                                                    </Badge>
+                                                    <span className="text-slate-500 text-xs font-mono">
+                                                        {call.time_received ? 
+                                                            new Date(call.time_received).toLocaleTimeString('en-US', { hour12: false }) :
+                                                            new Date(call.created_date).toLocaleTimeString('en-US', { hour12: false })
+                                                        }
+                                                    </span>
+                                                </div>
                                                 {call.assigned_units?.length > 0 && (
                                                     <Badge className="bg-green-500/20 text-green-400 border border-green-500/30 font-mono text-xs">
                                                         {call.assigned_units.length} UNIT{call.assigned_units.length > 1 ? 'S' : ''}
@@ -302,8 +342,14 @@ export default function ActiveCalls() {
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-xs text-slate-400 font-mono mb-1">SOURCE</p>
+                                            <p className="text-xs text-slate-400 font-mono mb-1">AGENCY</p>
                                             <p className="text-white font-mono text-sm">{selectedCall.agency || 'UNKNOWN'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-400 font-mono mb-1">SOURCE FEED</p>
+                                            <Badge className={selectedCall.source ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}>
+                                                {selectedCall.source || 'DISPATCH'}
+                                            </Badge>
                                         </div>
                                         <div className="col-span-2">
                                             <p className="text-xs text-slate-400 font-mono mb-1">LOCATION</p>
@@ -318,6 +364,15 @@ export default function ActiveCalls() {
                                                 <p className="text-white text-sm">{selectedCall.description}</p>
                                             </div>
                                         )}
+                                        <div>
+                                            <p className="text-xs text-slate-400 font-mono mb-1">COORDINATES</p>
+                                            <p className="text-white font-mono text-xs">
+                                                {selectedCall.latitude && selectedCall.longitude ? 
+                                                    `${selectedCall.latitude.toFixed(6)}, ${selectedCall.longitude.toFixed(6)}` :
+                                                    '❌ Not geocoded'
+                                                }
+                                            </p>
+                                        </div>
                                     </div>
                                 </Card>
 
@@ -384,9 +439,11 @@ export default function ActiveCalls() {
                                         <ScrollArea className="h-[200px]">
                                             <div className="space-y-2">
                                                 {/* Notes would be loaded here */}
-                                                <div className="text-slate-500 text-sm font-mono text-center py-4">
-                                                    NO NOTES YET
-                                                </div>
+                                                {selectedCall && (
+                                                    <div className="text-slate-500 text-sm font-mono text-center py-4">
+                                                        NO NOTES YET
+                                                    </div>
+                                                )}
                                             </div>
                                         </ScrollArea>
                                     </div>

@@ -126,29 +126,30 @@ const assessCallPriority = (call) => {
 
 export default function ActiveCallMarkers({ calls, onCallClick }) {
     if (!calls || calls.length === 0) {
-        console.log('ActiveCallMarkers: No calls provided');
+        console.log('🗺️ ActiveCallMarkers: No calls provided');
         return null;
     }
     
-    console.log(`ActiveCallMarkers: Received ${calls.length} calls`);
+    console.log(`🗺️ ActiveCallMarkers: Rendering ${calls.length} calls on map`);
     
     const validCalls = calls.filter(call => {
         const hasCoords = call.latitude && call.longitude && 
-               !isNaN(call.latitude) && !isNaN(call.longitude) &&
-               call.latitude !== 0 && call.longitude !== 0;
+               !isNaN(parseFloat(call.latitude)) && !isNaN(parseFloat(call.longitude)) &&
+               parseFloat(call.latitude) !== 0 && parseFloat(call.longitude) !== 0;
         
         if (!hasCoords) {
-            console.log(`❌ Call WITHOUT coords:`, call.incident, call.location, call.agency, call.source);
+            console.log(`❌ NO COORDS: ${call.incident} @ ${call.location} [${call.agency}]`);
         } else {
-            console.log(`✅ Call WITH coords:`, call.incident, call.location, call.agency, `(${call.latitude}, ${call.longitude})`);
+            console.log(`✅ HAS COORDS: ${call.incident} @ ${call.location} [${call.agency}] (${call.latitude}, ${call.longitude})`);
         }
         
         return hasCoords;
     });
     
-    console.log(`ActiveCallMarkers: ${validCalls.length}/${calls.length} valid calls with coordinates`);
+    console.log(`🗺️ FINAL: ${validCalls.length}/${calls.length} calls will render on map`);
     
     if (validCalls.length === 0) {
+        console.warn('⚠️ No calls with valid coordinates to display on map');
         return null;
     }
     
@@ -162,11 +163,12 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                 
                 return (
                     <Marker
-                        key={`call-${index}-${call.timeReceived}-${call.incident}`}
+                        key={call.id || `call-${index}-${call.time_received}-${call.incident}`}
                         position={position}
                         icon={icon}
                         eventHandlers={{
                             click: () => {
+                                console.log('📍 Call marker clicked:', call.incident);
                                 if (onCallClick) {
                                     onCallClick(call);
                                 }
@@ -196,7 +198,12 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                                     
                                     <div className="flex items-center gap-2">
                                         <Clock className="w-3 h-3 text-gray-500 flex-shrink-0" />
-                                        <span className="text-gray-600">{call.timeReceived}</span>
+                                        <span className="text-gray-600">
+                                            {call.time_received ? 
+                                                new Date(call.time_received).toLocaleTimeString('en-US', { hour12: false }) :
+                                                call.timeReceived || 'Unknown time'
+                                            }
+                                        </span>
                                     </div>
                                     
                                     <div className="flex items-center gap-2 flex-wrap pt-1">

@@ -33,15 +33,15 @@ export default function CADHome() {
             loadData();
         }, 5000);
         
-        // Auto-scrape calls every 2 minutes
+        // Auto-scrape every 60 seconds for real-time feed
         const scrapeInterval = setInterval(async () => {
             try {
-                await base44.functions.invoke('scrapeActiveCalls', {});
-                console.log('Auto-scraped active calls');
+                const result = await base44.functions.invoke('scrapeActiveCalls', {});
+                console.log('✅ Auto-scraped:', result.data?.saved || 0, 'calls');
             } catch (error) {
                 console.error('Auto-scrape failed:', error);
             }
-        }, 120000);
+        }, 60000);
         
         return () => {
             clearInterval(interval);
@@ -358,13 +358,18 @@ export default function CADHome() {
                                                     </div>
                                                 </div>
                                                 <div className="text-xs text-slate-500 font-mono">
-                                                   {new Date(call.time_received || call.created_date).toLocaleString('en-US', { 
-                                                       month: 'short', 
-                                                       day: 'numeric', 
-                                                       hour: '2-digit', 
-                                                       minute: '2-digit',
-                                                       hour12: false 
-                                                   })}
+                                                   {call.time_received ? 
+                                                       new Date(call.time_received).toLocaleTimeString('en-US', { 
+                                                           hour: '2-digit', 
+                                                           minute: '2-digit',
+                                                           hour12: false 
+                                                       }) :
+                                                       new Date(call.created_date).toLocaleTimeString('en-US', { 
+                                                           hour: '2-digit', 
+                                                           minute: '2-digit',
+                                                           hour12: false 
+                                                       })
+                                                   }
                                                 </div>
                                             </div>
                                         </div>
