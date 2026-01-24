@@ -42,17 +42,25 @@ export default function ActiveCalls() {
 
     const loadData = async () => {
         try {
-            // Fetch active calls - filter to exclude Closed/Cleared/Cancelled
+            // Fetch ALL dispatch calls
             const allCalls = await base44.entities.DispatchCall.list('-created_date', 500);
-            const activeCalls = allCalls.filter(call => 
-                call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status)
-            );
+            
+            // Filter to show only active calls (exclude Closed/Cleared/Cancelled)
+            const activeCalls = allCalls.filter(call => {
+                const status = call.status || '';
+                const isActive = !['Closed', 'Cleared', 'Cancelled'].includes(status);
+                return isActive;
+            });
             
             // Also fetch user data
-            const usersData = await base44.functions.invoke('fetchAllUsers', {});
+            const usersData = await base44.functions.invoke('fetchAllUsers', {}).catch(err => {
+                console.error('fetchAllUsers failed:', err);
+                return { data: { users: [] } };
+            });
             
-            console.log('📞 Loaded active calls (excluding closed):', activeCalls.length);
-            setActiveCalls(activeCalls || []);
+            console.log('📞 Total calls fetched:', allCalls.length);
+            console.log('📞 Active calls (excluding closed):', activeCalls.length);
+            setActiveCalls(activeCalls);
             setUnits(usersData.data?.users || []);
         } catch (error) {
             console.error('Error loading data:', error);
