@@ -161,6 +161,19 @@ Deno.serve(async (req) => {
                             let agency = cells[3]?.trim().toUpperCase() || '';
                             const status = cells[4]?.trim() || 'Dispatched';
 
+                            // Extract coordinates if available in the location string
+                            // Format might be: "123 MAIN ST (37.5407, -77.4360)"
+                            let extractedLat = null;
+                            let extractedLng = null;
+                            const coordMatch = location.match(/\((-?\d+\.\d+),\s*(-?\d+\.\d+)\)/);
+                            if (coordMatch) {
+                                extractedLat = parseFloat(coordMatch[1]);
+                                extractedLng = parseFloat(coordMatch[2]);
+                                // Remove coordinates from location string
+                                location = location.replace(/\s*\((-?\d+\.\d+),\s*(-?\d+\.\d+)\)/, '').trim();
+                                console.log(`📍 Extracted coordinates from location: ${extractedLat}, ${extractedLng}`);
+                            }
+
                             // Normalize agency code: accept 2-6 uppercase letters
                             const agencyMatch = agency.match(/^[A-Z]{2,6}$/);
                             if (!agencyMatch && agency) {
@@ -177,7 +190,16 @@ Deno.serve(async (req) => {
 
                             // DO NOT normalize location here - save raw location, normalize only during geocoding
                             if (location && time && incident) {
-                                calls.push({ time, incident, location, agency, status, source });
+                                calls.push({ 
+                                    time, 
+                                    incident, 
+                                    location, 
+                                    agency, 
+                                    status, 
+                                    source,
+                                    extractedLat,
+                                    extractedLng
+                                });
                             } else {
                                 diagnostics.parseErrors++;
                                 console.warn(`⚠️ Parse error - missing required fields: time="${time}" incident="${incident}" location="${location}"`);
@@ -217,32 +239,41 @@ Deno.serve(async (req) => {
                 let geocodeStatus = 'PENDING';
                 let geocodeError = null;
 
-                // Attempt geocoding with timeout and retries
-                try {
-                    console.log(`🔍 Geocoding: "${call.location}" → "${normalizedAddress}"`);
-                    const geoPromise = geocodeAddress(normalizedAddress);
-                    const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Geocode timeout')), 5000)
-                    );
-                    const geoResult = await Promise.race([geoPromise, timeoutPromise]);
+                // Check if coordinates were extracted from gractivecalls
+                if (call.extractedLat && call.extractedLng && isValidCoords(call.extractedLat, call.extractedLng)) {
+                    latitude = call.extractedLat;
+                    longitude = call.extractedLng;
+                    geocodeStatus = 'SUCCESS';
+                    geocoded++;
+                    console.log(`✅ USING EXTRACTED COORDS: ${latitude}, ${longitude}`);
+                } else {
+                    // Attempt geocoding with timeout and retries
+                    try {
+                        console.log(`🔍 Geocoding: "${call.location}" → "${normalizedAddress}"`);
+                        const geoPromise = geocodeAddress(normalizedAddress);
+                        const timeoutPromise = new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Geocode timeout')), 5000)
+                        );
+                        const geoResult = await Promise.race([geoPromise, timeoutPromise]);
 
-                    if (geoResult && isValidCoords(geoResult.latitude, geoResult.longitude)) {
-                        latitude = geoResult.latitude;
-                        longitude = geoResult.longitude;
-                        geocodeStatus = 'SUCCESS';
-                        geocoded++;
-                        console.log(`✅ GEOCODE SUCCESS: ${latitude}, ${longitude}`);
-                    } else {
+                        if (geoResult && isValidCoords(geoResult.latitude, geoResult.longitude)) {
+                            latitude = geoResult.latitude;
+                            longitude = geoResult.longitude;
+                            geocodeStatus = 'SUCCESS';
+                            geocoded++;
+                            console.log(`✅ GEOCODE SUCCESS: ${latitude}, ${longitude}`);
+                        } else {
+                            geocodeStatus = 'FAILED';
+                            geocodeError = 'No results from geocoder';
+                            console.log(`⚠️ Geocoding failed: "${normalizedAddress}"`);
+                            failed++;
+                        }
+                    } catch (geoError) {
                         geocodeStatus = 'FAILED';
-                        geocodeError = 'No results from geocoder';
-                        console.log(`⚠️ Geocoding failed: "${normalizedAddress}"`);
+                        geocodeError = geoError.message;
+                        console.log(`⚠️ Geocoding error: ${geoError.message} for "${normalizedAddress}"`);
                         failed++;
                     }
-                } catch (geoError) {
-                    geocodeStatus = 'FAILED';
-                    geocodeError = geoError.message;
-                    console.log(`⚠️ Geocoding error: ${geoError.message} for "${normalizedAddress}"`);
-                    failed++;
                 }
                 
                 // Use current time when app detected the call (not parsed website time)
