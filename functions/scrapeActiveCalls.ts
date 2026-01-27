@@ -292,7 +292,9 @@ Deno.serve(async (req) => {
                     time_received: timeReceived.toISOString(),
                     description: `${call.incident} at ${call.location}`,
                     source: call.source,
-                    priority: call.incident?.toLowerCase().includes('shooting') || call.incident?.toLowerCase().includes('officer') ? 'critical' : 'medium'
+                    priority: call.incident?.toLowerCase().includes('shooting') || 
+                             call.incident?.toLowerCase().includes('officer down') || 
+                             call.incident?.toLowerCase().includes('officer needs assistance') ? 'critical' : 'medium'
                 });
                 saved++;
                 console.log(`💾 SAVED: ${call.agency} - ${call.incident} at ${call.location} (coords: ${latitude ? 'YES' : 'NO'})`);
