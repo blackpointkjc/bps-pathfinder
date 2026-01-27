@@ -175,8 +175,7 @@ Deno.serve(async (req) => {
                             // ALL calls from gractivecalls get source='gractivecalls' (no filtering by agency)
                             const source = 'gractivecalls';
 
-                            location = normalizeAddress(location, agency);
-
+                            // DO NOT normalize location here - save raw location, normalize only during geocoding
                             if (location && time && incident) {
                                 calls.push({ time, incident, location, agency, status, source });
                             } else {
