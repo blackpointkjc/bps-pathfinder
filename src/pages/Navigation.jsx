@@ -1628,7 +1628,9 @@ Be thorough and search multiple sources.`,
                             }
                         }
                     }}
-                />
+                >
+                    <VACountiesBoundaries />
+                </MapView>
             </div>
 
             {/* Traffic Alert */}
