@@ -202,10 +202,10 @@ export default function UnitSettingsPanel({ isOpen, onClose }) {
                                         Assigned Vehicle/Asset
                                     </Label>
                                     <Select value={selectedAsset} onValueChange={handleAssetChange}>
-                                        <SelectTrigger id="asset">
+                                        <SelectTrigger id="asset" className="pointer-events-auto">
                                             <SelectValue placeholder="Select vehicle..." />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="z-[9999] pointer-events-auto bg-white">
                                             <SelectItem value={null}>None</SelectItem>
                                             {vehicles.map((vehicle) => (
                                                 <SelectItem key={vehicle.id} value={vehicle.id}>
