@@ -5,11 +5,12 @@ export default function VACountiesBoundaries() {
     const [countyData, setCountyData] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Counties to exclude from rendering
+    // Counties to exclude from rendering (already in JurisdictionBoundaries)
     const excludedCounties = [
         'henrico', 'richmond', 'chesterfield', 'hanover', 'spotsylvania', 
         'stafford', 'fredericksburg', 'prince william', 'manassas', 
-        'manassas park', 'fairfax', 'alexandria', 'arlington', 'falls church'
+        'manassas park', 'fairfax', 'alexandria', 'arlington', 'falls church',
+        'petersburg', 'colonial heights', 'caroline', 'loudoun'
     ];
 
     // Generate vibrant, distinct colors for each county
