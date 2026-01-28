@@ -79,11 +79,14 @@ export default function VACountiesBoundaries() {
             </div>
         `);
 
+        const index = countyData?.features.findIndex(f => f === feature) || 0;
+        const color = getCountyColor(index);
+        
         layer.on({
             mouseover: (e) => {
                 const layer = e.target;
                 layer.setStyle({
-                    weight: 3,
+                    weight: 4,
                     opacity: 1,
                     fillOpacity: 0.5
                 });
@@ -91,9 +94,10 @@ export default function VACountiesBoundaries() {
             mouseout: (e) => {
                 const layer = e.target;
                 layer.setStyle({
-                    weight: 2,
-                    opacity: 0.8,
-                    fillOpacity: 0.2
+                    weight: 2.5,
+                    opacity: 0.9,
+                    color: color,
+                    fillOpacity: 0.25
                 });
             }
         });
@@ -101,12 +105,13 @@ export default function VACountiesBoundaries() {
 
     const countyStyle = (feature) => {
         const index = countyData?.features.indexOf(feature) || 0;
+        const color = getCountyColor(index);
         return {
-            fillColor: getCountyColor(index),
-            weight: 2,
-            opacity: 0.8,
-            color: '#333',
-            fillOpacity: 0.2
+            fillColor: color,
+            weight: 2.5,
+            opacity: 0.9,
+            color: color,
+            fillOpacity: 0.25
         };
     };
 
