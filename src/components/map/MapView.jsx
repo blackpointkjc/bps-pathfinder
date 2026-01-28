@@ -170,7 +170,7 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
     return null;
 }
 
-const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail, mapTheme = 'day' }) {
+const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail, mapTheme = 'day', children }) {
     const defaultCenter = currentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
     
     // Calculate route bounds if route exists
@@ -225,7 +225,7 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             zoom={isNavigating ? 18 : 13}
             className="h-full w-full"
             zoomControl={false}
-            minZoom={10}
+            minZoom={6}
             maxZoom={baseMapType === 'satellite' ? 18 : 17}
         >
             <TileLayer
@@ -352,6 +352,9 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             
             {/* Search Pin */}
             {searchPin && <SearchPinMarker position={searchPin.coords} address={searchPin.address} propertyInfo={searchPin.propertyInfo} />}
+            
+            {/* Additional children (e.g., VA Counties) */}
+            {children}
         </MapContainer>
         );
         });
