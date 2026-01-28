@@ -289,16 +289,7 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
                     <Marker 
                         position={currentLocation} 
                         icon={heading !== null ? createLocationWithHeading(heading, showLights) : createCurrentLocationIcon(showLights)}
-                    >
-                        <Popup>
-                                <div className="p-2">
-                                    <p className="font-bold text-base text-[#007AFF]">{unitName || 'Your Location'}</p>
-                                    <p className="text-xs text-gray-600 mt-1">
-                                        Speed: {Math.round(speed || 0)} mph
-                                    </p>
-                                </div>
-                            </Popup>
-                        </Marker>
+                    />
                         </>
                         )}
             

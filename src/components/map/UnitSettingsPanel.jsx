@@ -158,14 +158,16 @@ export default function UnitSettingsPanel({ isOpen, onClose }) {
                                     <Car className="w-5 h-5 text-white" />
                                     <h3 className="text-white font-bold text-lg">Unit Settings</h3>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={onClose}
-                                    className="text-white hover:bg-white/20"
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onClose();
+                                    }}
+                                    className="text-white hover:bg-white/20 p-2 rounded-md transition-colors"
                                 >
                                     <X className="w-5 h-5" />
-                                </Button>
+                                </button>
                             </div>
 
                             {/* Content */}
