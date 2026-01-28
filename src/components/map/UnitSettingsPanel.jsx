@@ -148,7 +148,7 @@ export default function UnitSettingsPanel({ isOpen, onClose }) {
                         initial={{ opacity: 0, x: 300 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 300 }}
-                        className="fixed right-0 top-0 bottom-0 w-96 z-[2201] bg-white shadow-2xl"
+                        className="fixed right-0 top-0 bottom-0 w-96 z-[2201] bg-white shadow-2xl pointer-events-auto"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="h-full flex flex-col">
@@ -232,19 +232,27 @@ export default function UnitSettingsPanel({ isOpen, onClose }) {
                             </div>
 
                             {/* Footer */}
-                            <div className="border-t p-6 space-y-3">
+                            <div className="border-t p-6 space-y-3 pointer-events-auto">
                                 <Button
-                                    onClick={handleSave}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleSave();
+                                    }}
                                     disabled={saving || !unitNumber.trim()}
-                                    className="w-full bg-blue-600 hover:bg-blue-700"
+                                    className="w-full bg-blue-600 hover:bg-blue-700 pointer-events-auto"
                                 >
                                     <Save className="w-4 h-4 mr-2" />
                                     {saving ? 'Saving...' : 'Save Settings'}
                                 </Button>
                                 <Button
                                     variant="outline"
-                                    onClick={onClose}
-                                    className="w-full"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onClose();
+                                    }}
+                                    className="w-full pointer-events-auto"
                                 >
                                     Cancel
                                 </Button>
