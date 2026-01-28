@@ -66,44 +66,11 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         staleTime: Infinity,
     });
 
-    // Fetch Colonial Heights city boundary
-    const { data: colonialHeightsBoundary } = useQuery({
-        queryKey: ['colonialHeightsBoundary'],
-        queryFn: async () => {
-            const response = await fetch(
-                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/4/query?where=STATEFP%3D%2751%27%20AND%20BASENAME%3D%27Colonial%20Heights%27&outFields=*&returnGeometry=true&f=geojson'
-            );
-            const data = await response.json();
-            return isValidGeoJSON(data) ? data : null;
-        },
-        staleTime: Infinity,
-    });
 
-    // Fetch Petersburg city boundary
-    const { data: petersburgBoundary } = useQuery({
-        queryKey: ['petersburgBoundary'],
-        queryFn: async () => {
-            const response = await fetch(
-                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/4/query?where=STATEFP%3D%2751%27%20AND%20BASENAME%3D%27Petersburg%27&outFields=*&returnGeometry=true&f=geojson'
-            );
-            const data = await response.json();
-            return isValidGeoJSON(data) ? data : null;
-        },
-        staleTime: Infinity,
-    });
 
-    // Fetch Caroline County boundary
-    const { data: carolineDistricts } = useQuery({
-        queryKey: ['carolineDistricts'],
-        queryFn: async () => {
-            const response = await fetch(
-                'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/Places_CouSub_ConCity_SubMCD/MapServer/4/query?where=STATEFP%3D%2751%27%20AND%20BASENAME%3D%27Caroline%27&outFields=*&returnGeometry=true&f=geojson'
-            );
-            const data = await response.json();
-            return isValidGeoJSON(data) ? data : null;
-        },
-        staleTime: Infinity,
-    });
+
+
+
 
     // Fetch Prince William County magisterial districts
     const { data: princeWilliamDistricts } = useQuery({
@@ -340,38 +307,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         };
     };
 
-    const colonialHeightsStyle = (feature) => {
-        return {
-            fillColor: '#8B5CF6',
-            fillOpacity: 0.2,
-            color: '#7C3AED',
-            weight: 2,
-            opacity: 0.8,
-            className: 'clickable-boundary'
-        };
-    };
 
-    const petersburgStyle = (feature) => {
-        return {
-            fillColor: '#EC4899',
-            fillOpacity: 0.2,
-            color: '#DB2777',
-            weight: 2,
-            opacity: 0.8,
-            className: 'clickable-boundary'
-        };
-    };
-
-    const carolineStyle = (feature) => {
-        return {
-            fillColor: '#14B8A6',
-            fillOpacity: 0.15,
-            color: '#0D9488',
-            weight: 2,
-            opacity: 0.7,
-            className: 'clickable-boundary'
-        };
-    };
 
     const princeWilliamStyle = (feature) => {
         return {
@@ -619,17 +555,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         }
     };
 
-    const onEachColonialHeightsFeature = (feature, layer) => {
-        layer.bindPopup(`
-            <div class="p-2">
-                <p class="font-bold text-purple-600">Colonial Heights</p>
-                <p class="text-sm">City Boundary</p>
-            </div>
-        `);
-        layer.on('click', () => {
-            layer.openPopup();
-        });
-    };
+
 
     const onEachFredericksburgFeature = (feature, layer) => {
         layer.bindPopup(`
@@ -655,29 +581,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         });
     };
 
-    const onEachPetersburgFeature = (feature, layer) => {
-        layer.bindPopup(`
-            <div class="p-2">
-                <p class="font-bold text-pink-600">Petersburg</p>
-                <p class="text-sm">City Boundary</p>
-            </div>
-        `);
-        layer.on('click', () => {
-            layer.openPopup();
-        });
-    };
 
-    const onEachCarolineFeature = (feature, layer) => {
-        layer.bindPopup(`
-            <div class="p-2">
-                <p class="font-bold text-teal-600">Caroline County</p>
-                <p class="text-sm">County Boundary</p>
-            </div>
-        `);
-        layer.on('click', () => {
-            layer.openPopup();
-        });
-    };
 
     const onEachFallsChurchFeature = (feature, layer) => {
         layer.bindPopup(`
@@ -1002,35 +906,7 @@ export default function JurisdictionBoundaries({ filters = {} }) {
                 />
             )}
 
-            {/* Colonial Heights City */}
-            {colonialHeightsBoundary && (
-                <GeoJSON
-                    key="colonial-heights"
-                    data={colonialHeightsBoundary}
-                    style={colonialHeightsStyle}
-                    onEachFeature={onEachColonialHeightsFeature}
-                />
-            )}
 
-            {/* Petersburg City */}
-            {petersburgBoundary && (
-                <GeoJSON
-                    key="petersburg"
-                    data={petersburgBoundary}
-                    style={petersburgStyle}
-                    onEachFeature={onEachPetersburgFeature}
-                />
-            )}
-
-            {/* Caroline County */}
-            {carolineDistricts && (
-                <GeoJSON
-                    key="caroline"
-                    data={carolineDistricts}
-                    style={carolineStyle}
-                    onEachFeature={onEachCarolineFeature}
-                />
-            )}
 
             {/* Prince William County */}
             {filteredPrinceWilliamDistricts && (
