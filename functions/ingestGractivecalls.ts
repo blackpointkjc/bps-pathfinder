@@ -4,93 +4,95 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        console.log('🚨 Starting gractivecalls.com data ingestion...');
-        
-        // Fetch all active calls from the three official sources
-        const sources = [
-            { name: 'richmond', url: 'https://apps.richmondgov.com/applications/activecalls', code: 'RPD' },
-            { name: 'henrico', url: 'https://web1.co.henrico.va.us/activecalls/', code: 'HPD' },
-            { name: 'chesterfield', url: 'https://apps.chesterfield.gov/arcgis/rest/services/public/Public_Safety/FeatureServer/0/query?where=1%3D1&outFields=*&f=json', code: 'CCPD' }
-        ];
+        console.log('🚨 Starting active calls ingestion from Richmond data sources...');
         
         const allCalls = [];
         const errors = [];
         
-        // Richmond City
+        // RICHMOND CITY POLICE
         try {
-            console.log('📡 Fetching Richmond calls...');
-            const response = await fetch('https://apps.richmondgov.com/applications/activecalls');
-            const html = await response.text();
+            console.log('📡 Fetching Richmond PD active calls...');
+            const response = await fetch('https://apps.richmondgov.com/applications/ActiveCalls/getData.ashx');
+            const data = await response.json();
             
-            // Parse Richmond HTML table
-            const rows = html.match(/<tr[^>]*>(.*?)<\/tr>/gs) || [];
-            for (const row of rows) {
-                const cells = row.match(/<td[^>]*>(.*?)<\/td>/gs) || [];
-                if (cells.length >= 5) {
-                    const timeReceived = cells[0].replace(/<[^>]*>/g, '').trim();
-                    const incident = cells[2].replace(/<[^>]*>/g, '').trim();
-                    const location = cells[3].replace(/<[^>]*>/g, '').trim();
+            if (data && Array.isArray(data)) {
+                console.log(`✅ Richmond API returned ${data.length} calls`);
+                
+                for (const call of data) {
+                    const incident = call.type || call.CallType || '';
+                    const location = call.location || call.Location || '';
                     
-                    if (incident && location && incident.length > 2) {
-                        const stableId = `rpd-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
-                        
-                        // Geocode
-                        let latitude = null, longitude = null;
-                        try {
-                            await new Promise(r => setTimeout(r, 150));
-                            const geoResp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location + ', Richmond, Virginia')}&limit=1`, {
-                                headers: { 'User-Agent': 'BPS-CAD/1.0' }
-                            });
-                            const geoData = await geoResp.json();
-                            if (geoData[0]) {
-                                latitude = parseFloat(geoData[0].lat);
-                                longitude = parseFloat(geoData[0].lon);
-                            }
-                        } catch (e) {}
-                        
-                        allCalls.push({
-                            call_id: stableId,
-                            incident: incident,
-                            location: location,
-                            agency: 'RPD',
-                            status: 'Active',
-                            priority: 'medium',
-                            time_received: new Date().toISOString(),
-                            latitude: latitude,
-                            longitude: longitude,
-                            source: 'gractivecalls',
-                            description: `${incident} at ${location}`
+                    if (!incident || !location) continue;
+                    
+                    // Generate stable ID
+                    const stableId = `rpd-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+                    
+                    // Geocode
+                    let latitude = null, longitude = null;
+                    try {
+                        await new Promise(r => setTimeout(r, 100));
+                        const geoResp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location + ', Richmond, Virginia')}&limit=1`, {
+                            headers: { 'User-Agent': 'BPS-CAD/1.0' }
                         });
+                        const geoData = await geoResp.json();
+                        if (geoData[0]) {
+                            latitude = parseFloat(geoData[0].lat);
+                            longitude = parseFloat(geoData[0].lon);
+                        }
+                    } catch (e) {
+                        console.error(`Geocode failed for ${location}`);
                     }
+                    
+                    allCalls.push({
+                        call_id: stableId,
+                        incident: incident,
+                        location: location,
+                        agency: 'RPD',
+                        status: 'Active',
+                        priority: 'medium',
+                        time_received: new Date().toISOString(),
+                        latitude: latitude,
+                        longitude: longitude,
+                        source: 'gractivecalls',
+                        description: `${incident} at ${location}`
+                    });
                 }
             }
-            console.log(`✅ Richmond: ${allCalls.length} calls`);
+            console.log(`✅ Richmond: Parsed ${allCalls.length} calls`);
         } catch (e) {
             errors.push(`Richmond: ${e.message}`);
-            console.error(`❌ Richmond failed:`, e);
+            console.error(`❌ Richmond failed:`, e.message);
         }
         
-        // Henrico County
+        // HENRICO COUNTY POLICE
         try {
-            console.log('📡 Fetching Henrico calls...');
-            const response = await fetch('https://web1.co.henrico.va.us/activecalls/');
+            console.log('📡 Fetching Henrico PD active calls...');
+            const response = await fetch('https://webapps.co.henrico.va.us/activecalls/Default.aspx');
             const html = await response.text();
             
-            const rows = html.match(/<tr[^>]*class="odd"|<tr[^>]*class="even"/g) || [];
             const henStartCount = allCalls.length;
             
-            for (const row of rows) {
-                const cells = html.substring(html.indexOf(row), html.indexOf(row) + 500).match(/<td[^>]*>(.*?)<\/td>/gs) || [];
-                if (cells.length >= 4) {
-                    const incident = cells[1].replace(/<[^>]*>/g, '').trim();
-                    const location = cells[2].replace(/<[^>]*>/g, '').trim();
+            // Extract table rows - Henrico uses class="odd" and class="even"
+            const oddRows = [...html.matchAll(/<tr class="odd">(.*?)<\/tr>/gs)];
+            const evenRows = [...html.matchAll(/<tr class="even">(.*?)<\/tr>/gs)];
+            const allRows = [...oddRows, ...evenRows];
+            
+            console.log(`📋 Found ${allRows.length} Henrico rows`);
+            
+            for (const rowMatch of allRows) {
+                const rowHtml = rowMatch[1];
+                const cells = [...rowHtml.matchAll(/<td[^>]*>(.*?)<\/td>/gs)];
+                
+                if (cells.length >= 3) {
+                    const incident = cells[1][1].replace(/<[^>]*>/g, '').trim();
+                    const location = cells[2][1].replace(/<[^>]*>/g, '').trim();
                     
                     if (incident && location && incident.length > 2) {
                         const stableId = `hpd-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
                         
                         let latitude = null, longitude = null;
                         try {
-                            await new Promise(r => setTimeout(r, 150));
+                            await new Promise(r => setTimeout(r, 100));
                             const geoResp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location + ', Henrico, Virginia')}&limit=1`, {
                                 headers: { 'User-Agent': 'BPS-CAD/1.0' }
                             });
@@ -117,29 +119,31 @@ Deno.serve(async (req) => {
                     }
                 }
             }
-            console.log(`✅ Henrico: ${allCalls.length - henStartCount} calls`);
+            console.log(`✅ Henrico: Parsed ${allCalls.length - henStartCount} calls`);
         } catch (e) {
             errors.push(`Henrico: ${e.message}`);
-            console.error(`❌ Henrico failed:`, e);
+            console.error(`❌ Henrico failed:`, e.message);
         }
         
-        // Chesterfield County
+        // CHESTERFIELD COUNTY
         try {
-            console.log('📡 Fetching Chesterfield calls...');
-            const response = await fetch('https://apps.chesterfield.gov/arcgis/rest/services/public/Public_Safety/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json');
+            console.log('📡 Fetching Chesterfield active calls...');
+            const response = await fetch('https://services7.arcgis.com/8KuaSGRhumOSMuAG/arcgis/rest/services/Public_Safety_view/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json');
             const data = await response.json();
             const ccStartCount = allCalls.length;
             
             if (data.features) {
+                console.log(`📋 Found ${data.features.length} Chesterfield features`);
+                
                 for (const feature of data.features) {
                     const attrs = feature.attributes;
-                    const incident = attrs.CallType || attrs.EventType || '';
-                    const location = attrs.Address || attrs.Location || '';
+                    const incident = attrs.EventType || attrs.CallType || attrs.EVENTTYPE || '';
+                    const location = attrs.Address || attrs.Location || attrs.ADDRESS || '';
                     
                     if (incident && location && incident.length > 2) {
                         const stableId = `ccpd-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
-                        const latitude = feature.geometry?.y || null;
-                        const longitude = feature.geometry?.x || null;
+                        const latitude = feature.geometry?.y ? parseFloat(feature.geometry.y) : null;
+                        const longitude = feature.geometry?.x ? parseFloat(feature.geometry.x) : null;
                         
                         allCalls.push({
                             call_id: stableId,
@@ -149,18 +153,18 @@ Deno.serve(async (req) => {
                             status: 'Active',
                             priority: 'medium',
                             time_received: new Date().toISOString(),
-                            latitude: latitude ? parseFloat(latitude) : null,
-                            longitude: longitude ? parseFloat(longitude) : null,
+                            latitude: latitude,
+                            longitude: longitude,
                             source: 'gractivecalls',
                             description: `${incident} at ${location}`
                         });
                     }
                 }
             }
-            console.log(`✅ Chesterfield: ${allCalls.length - ccStartCount} calls`);
+            console.log(`✅ Chesterfield: Parsed ${allCalls.length - ccStartCount} calls`);
         } catch (e) {
             errors.push(`Chesterfield: ${e.message}`);
-            console.error(`❌ Chesterfield failed:`, e);
+            console.error(`❌ Chesterfield failed:`, e.message);
         }
         
         console.log(`✅ Total parsed: ${allCalls.length} calls`);
@@ -203,7 +207,7 @@ Deno.serve(async (req) => {
         return Response.json({
             success: true,
             timestamp: new Date().toISOString(),
-            source: 'gractivecalls-direct',
+            source: 'richmond-henrico-chesterfield',
             total_parsed: allCalls.length,
             inserted: inserted,
             updated: updated,
