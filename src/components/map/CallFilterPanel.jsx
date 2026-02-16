@@ -33,10 +33,10 @@ export default function CallFilterPanel({ isOpen, onClose, filters, onFilterChan
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[2001] w-96 max-w-[90vw] pointer-events-auto"
+                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] w-96 max-w-[90vw]"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <Card className="bg-white shadow-2xl p-6">
+                        <Card className="bg-white shadow-2xl p-6 pointer-events-auto">
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-2">
                                     <Shield className="w-5 h-5 text-blue-600" />
