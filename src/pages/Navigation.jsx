@@ -149,6 +149,7 @@ export default function Navigation() {
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
     const callsRefreshInterval = useRef(null);
+    const scrapeIntervalRef = useRef(null);
     const unitsRefreshInterval = useRef(null);
     const lastPosition = useRef(null);
     const lastAnnouncedStep = useRef(-1);
@@ -226,7 +227,7 @@ export default function Navigation() {
         }, 10000);
         
         // Auto-scrape every 30 seconds
-        const scrapeInterval = setInterval(async () => {
+        scrapeIntervalRef.current = setInterval(async () => {
             if (isOnline) {
                 try {
                     await base44.functions.invoke('ingestGractivecalls', {});
@@ -246,8 +247,8 @@ export default function Navigation() {
             if (callsRefreshInterval.current) {
                 clearInterval(callsRefreshInterval.current);
             }
-            if (scrapeInterval) {
-                clearInterval(scrapeInterval);
+            if (scrapeIntervalRef.current) {
+                clearInterval(scrapeIntervalRef.current);
             }
         };
     }, []);
@@ -1555,7 +1556,7 @@ Be thorough and search multiple sources.`,
                 if (recentCalls.length === 0) {
                     toast.info('No Active Calls Available');
                 } else {
-                    toast.success(`Loaded ${recentCalls.length} active calls (${geocodedCount} on map)`);
+                    toast.success(`Loaded ${recentCalls.length} active calls on map`);
                 }
             }
         } catch (error) {
