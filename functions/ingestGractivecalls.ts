@@ -1,6 +1,22 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import * as cheerio from 'npm:cheerio@1.0.0';
 
+// Haversine distance calculation
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Earth radius in meters
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Distance in meters
+}
+
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
@@ -99,6 +115,51 @@ Deno.serve(async (req) => {
         
         console.log(`💾 Database: ${inserted} created, ${updated} updated, ${deleted} deleted`);
         
+        // Property alert checking
+        let alertsCreated = 0;
+        try {
+            const properties = await base44.asServiceRole.entities.MonitoredProperty.filter({ enabled: true });
+            
+            if (properties.length > 0) {
+                console.log(`📍 Checking ${allCalls.length} calls against ${properties.length} monitored properties`);
+                
+                for (const call of allCalls) {
+                    if (!call.latitude || !call.longitude) continue;
+                    
+                    for (const property of properties) {
+                        const distance = calculateDistance(
+                            call.latitude, call.longitude,
+                            property.latitude, property.longitude
+                        );
+                        
+                        if (distance <= property.radiusMeters) {
+                            // Check if alert already exists
+                            const existingAlert = await base44.asServiceRole.entities.PropertyAlert.filter({
+                                callId: call.call_id,
+                                propertyId: property.id
+                            });
+                            
+                            if (existingAlert.length === 0) {
+                                await base44.asServiceRole.entities.PropertyAlert.create({
+                                    callId: call.call_id,
+                                    propertyId: property.id,
+                                    propertyName: property.name,
+                                    callIncident: call.incident,
+                                    callLocation: call.location,
+                                    distanceMeters: Math.round(distance),
+                                    acknowledged: false
+                                });
+                                alertsCreated++;
+                                console.log(`🚨 Alert: ${call.incident} within ${Math.round(distance)}m of ${property.name}`);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (alertError) {
+            console.error('❌ Property alert check failed:', alertError);
+        }
+        
         return Response.json({
             success: true,
             timestamp: new Date().toISOString(),
@@ -107,7 +168,8 @@ Deno.serve(async (req) => {
             inserted: inserted,
             updated: updated,
             deleted: deleted,
-            expired: expired
+            expired: expired,
+            alerts_created: alertsCreated
         });
         
     } catch (error) {

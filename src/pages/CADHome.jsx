@@ -8,6 +8,7 @@ import { Radio, AlertTriangle, Users, Activity, Clock, MapPin, TrendingUp, Shiel
 import { createPageUrl } from '../utils';
 import CallDetailView from '@/components/map/CallDetailView';
 import NavigationMenu from '@/components/NavigationMenu';
+import PropertyAlertsBanner from '@/components/dispatch/PropertyAlertsBanner';
 
 export default function CADHome() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -191,6 +192,9 @@ export default function CADHome() {
 
             {/* Main Content */}
             <div className="p-6 space-y-6">
+                {/* Property Alerts */}
+                <PropertyAlertsBanner />
+                
                 {/* Metrics Bar */}
                 <div className="grid grid-cols-5 gap-4">
                     <Card className="bg-slate-900 border-slate-800 p-4">

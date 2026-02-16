@@ -17,6 +17,7 @@ import VehicleManagement from '@/components/admin/VehicleManagement';
 import LocationTracking from '@/components/admin/LocationTracking';
 import CarolineGISLookup from '@/components/admin/CarolineGISLookup';
 import IngestionDebugPanel from '@/components/admin/IngestionDebugPanel';
+import PropertyMonitoring from '@/components/admin/PropertyMonitoring';
 
 export default function AdminPortal() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -249,6 +250,17 @@ export default function AdminPortal() {
                             MAINTENANCE
                         </button>
 
+                        <button
+                            onClick={() => setActiveTab('properties')}
+                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
+                                activeTab === 'properties' 
+                                    ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-500' 
+                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                            }`}
+                        >
+                            <MapPin className="w-4 h-4" />
+                            PROPERTIES
+                        </button>
 
                     </div>
                 </div>
@@ -400,8 +412,10 @@ export default function AdminPortal() {
                     <MaintenanceTracking units={users} />
                 )}
 
-
-
+                {/* Properties Tab */}
+                {activeTab === 'properties' && (
+                    <PropertyMonitoring />
+                )}
 
             </div>
 
