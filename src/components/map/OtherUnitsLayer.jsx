@@ -84,8 +84,9 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     const processedUnionIds = new Set();
     
     units.forEach(unit => {
-        // Skip current user, hidden units, and Out of Service units
+        // Skip current user, hidden units, Out of Service units, and units without valid coordinates
         if (unit.id === currentUserId || unit.show_on_map === false || unit.status === 'Out of Service') return;
+        if (!unit.latitude || !unit.longitude || isNaN(unit.latitude) || isNaN(unit.longitude)) return;
         
         // If unit is in a union
         if (unit.union_id) {
