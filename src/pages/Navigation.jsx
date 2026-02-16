@@ -1367,9 +1367,18 @@ export default function Navigation() {
         const filtered = calls.filter(call => {
             const agency = (call.agency || '').toUpperCase();
             
+            // If no agency specified, show the call
+            if (!agency) return true;
+            
+            // Check each filter
             if ((agency.includes('RPD') || agency.includes('RICHMOND')) && filters.showRPD) return true;
             if ((agency.includes('HPD') || agency.includes('HCPD') || agency.includes('HENRICO')) && filters.showHPD) return true;
             if ((agency.includes('CCPD') || agency.includes('CCFD') || agency.includes('CHESTERFIELD')) && filters.showCCPD) return true;
+            
+            // Show calls from other agencies if at least one filter is enabled
+            if (filters.showRPD || filters.showHPD || filters.showCCPD) {
+                return true;
+            }
             
             return false;
         });
