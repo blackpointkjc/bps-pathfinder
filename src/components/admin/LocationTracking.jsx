@@ -50,7 +50,7 @@ export default function LocationTracking({ users }) {
         }
     };
 
-    const activeUsers = users?.filter(u => u.unit_number) || [];
+    const activeUsers = (users || []).filter(u => u.unit_number && u.unit_number.trim() !== '');
     const hasLogs = locationLogs.length > 0;
     const pathCoordinates = locationLogs.map(log => [log.latitude, log.longitude]);
     const center = hasLogs ? [locationLogs[0].latitude, locationLogs[0].longitude] : [37.5407, -77.4360];
@@ -72,11 +72,15 @@ export default function LocationTracking({ users }) {
                                 <SelectValue placeholder="Choose officer..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {activeUsers.map(user => (
-                                    <SelectItem key={user.id} value={user.id}>
-                                        {user.rank} {user.last_name} - #{user.unit_number}
-                                    </SelectItem>
-                                ))}
+                                {activeUsers.length === 0 ? (
+                                    <div className="p-4 text-sm text-gray-500">No users with unit numbers</div>
+                                ) : (
+                                    activeUsers.map(user => (
+                                        <SelectItem key={user.id} value={user.id}>
+                                            {user.rank} {user.last_name || user.full_name} - #{user.unit_number}
+                                        </SelectItem>
+                                    ))
+                                )}
                             </SelectContent>
                         </Select>
                     </div>

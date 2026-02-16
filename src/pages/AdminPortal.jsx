@@ -435,6 +435,11 @@ export default function AdminPortal() {
 
                         <ScrollArea className="h-[calc(100vh-280px)]">
                             <div className="p-4 space-y-2">
+                                {users.length === 0 && (
+                                    <div className="text-center py-12 text-slate-500 font-mono">
+                                        NO USERS FOUND
+                                    </div>
+                                )}
                                 {users.map(user => (
                                     <div 
                                         key={user.id} 
