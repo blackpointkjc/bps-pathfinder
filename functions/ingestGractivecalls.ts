@@ -19,11 +19,24 @@ Deno.serve(async (req) => {
         }
         
         const html = await response.text();
+        console.log(`📄 HTML length: ${html.length} chars`);
+        
         const doc = new DOMParser().parseFromString(html, 'text/html');
+        
+        // Debug: log what we found
+        const tables = doc.querySelectorAll('table');
+        console.log(`📊 Found ${tables.length} tables`);
         
         // Parse active calls - gractivecalls uses a simple table structure
         const allRows = Array.from(doc.querySelectorAll('table tr'));
         console.log(`📋 Found ${allRows.length} total table rows`);
+        
+        // Log first few rows for debugging
+        for (let i = 0; i < Math.min(3, allRows.length); i++) {
+            const cells = Array.from(allRows[i].querySelectorAll('td, th'));
+            const rowText = cells.map(c => c.textContent?.trim()).join(' | ');
+            console.log(`  Row ${i}: ${rowText}`);
+        }
         
         const allowedJurisdictions = ['richmond', 'henrico', 'chesterfield'];
         const newCalls = [];
