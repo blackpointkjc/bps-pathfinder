@@ -112,14 +112,14 @@ export default function ActiveCallsList({ isOpen, onClose, calls, onNavigateToCa
                         <div className="p-6">
                             <div className="flex items-center justify-between mb-6">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center">
-                                        <AlertCircle className="w-6 h-6 text-red-600" />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-gray-900">Active Calls</h2>
-                                        <p className="text-sm text-gray-500">{calls.length} calls for service</p>
-                                    </div>
-                                </div>
+                                                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-md">
+                                                        <AlertCircle className="w-7 h-7 text-white" />
+                                                    </div>
+                                                    <div>
+                                                        <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Active Calls</h2>
+                                                        <p className="text-sm text-gray-600 font-medium">{calls.length} active incidents</p>
+                                                    </div>
+                                                </div>
                                 <Button variant="ghost" size="icon" onClick={(e) => {
                                     e.stopPropagation();
                                     onClose();
@@ -129,30 +129,33 @@ export default function ActiveCallsList({ isOpen, onClose, calls, onNavigateToCa
                             </div>
 
                             {/* Priority Summary */}
-                            <div className="grid grid-cols-4 gap-2 mb-4">
-                                <div className="bg-red-50 rounded-lg p-2 text-center">
-                                    <div className="text-2xl font-bold text-red-600">{priorityCounts.critical}</div>
-                                    <div className="text-xs text-red-700">Critical</div>
+                            <div className="grid grid-cols-4 gap-3 mb-6">
+                                <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-3 text-center border border-red-200 shadow-sm">
+                                    <div className="text-3xl font-bold text-red-600">{priorityCounts.critical}</div>
+                                    <div className="text-xs font-semibold text-red-700 uppercase tracking-wide">Critical</div>
                                 </div>
-                                <div className="bg-orange-50 rounded-lg p-2 text-center">
-                                    <div className="text-2xl font-bold text-orange-600">{priorityCounts.high}</div>
-                                    <div className="text-xs text-orange-700">High</div>
+                                <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-3 text-center border border-orange-200 shadow-sm">
+                                    <div className="text-3xl font-bold text-orange-600">{priorityCounts.high}</div>
+                                    <div className="text-xs font-semibold text-orange-700 uppercase tracking-wide">High</div>
                                 </div>
-                                <div className="bg-yellow-50 rounded-lg p-2 text-center">
-                                    <div className="text-2xl font-bold text-yellow-600">{priorityCounts.medium}</div>
-                                    <div className="text-xs text-yellow-700">Medium</div>
+                                <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-3 text-center border border-yellow-200 shadow-sm">
+                                    <div className="text-3xl font-bold text-yellow-600">{priorityCounts.medium}</div>
+                                    <div className="text-xs font-semibold text-yellow-700 uppercase tracking-wide">Medium</div>
                                 </div>
-                                <div className="bg-blue-50 rounded-lg p-2 text-center">
-                                    <div className="text-2xl font-bold text-blue-600">{priorityCounts.low}</div>
-                                    <div className="text-xs text-blue-700">Low</div>
+                                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 text-center border border-blue-200 shadow-sm">
+                                    <div className="text-3xl font-bold text-blue-600">{priorityCounts.low}</div>
+                                    <div className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Low</div>
                                 </div>
                             </div>
 
                             <ScrollArea className="h-[500px]">
                                 {sortedCalls.length === 0 ? (
-                                    <div className="text-center py-12 text-gray-500">
-                                        <AlertCircle className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                                        <p>No active calls</p>
+                                    <div className="text-center py-20 text-gray-500">
+                                        <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                                            <AlertCircle className="w-10 h-10 text-gray-300" />
+                                        </div>
+                                        <p className="text-lg font-medium text-gray-900 mb-1">No Active Calls Available</p>
+                                        <p className="text-sm text-gray-500">All clear at the moment</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-3">
@@ -165,31 +168,31 @@ export default function ActiveCallsList({ isOpen, onClose, calls, onNavigateToCa
                                                     animate={{ opacity: 1, y: 0 }}
                                                     transition={{ delay: index * 0.05 }}
                                                 >
-                                                    <Card className={`p-4 hover:shadow-lg transition-shadow border-l-4 ${
-                                                        call.priority.level === 'critical' ? 'border-l-red-600' :
-                                                        call.priority.level === 'high' ? 'border-l-orange-500' :
-                                                        call.priority.level === 'medium' ? 'border-l-yellow-500' :
-                                                        'border-l-blue-500'
+                                                    <Card className={`p-5 hover:shadow-xl transition-all duration-200 border-l-4 hover:scale-[1.01] ${
+                                                        call.priority.level === 'critical' ? 'border-l-red-600 bg-red-50/30' :
+                                                        call.priority.level === 'high' ? 'border-l-orange-500 bg-orange-50/30' :
+                                                        call.priority.level === 'medium' ? 'border-l-yellow-500 bg-yellow-50/30' :
+                                                        'border-l-blue-500 bg-blue-50/30'
                                                     }`}>
                                                         <div className="flex items-start justify-between gap-4">
                                                             <div className="flex-1">
                                                                 <div className="flex items-center gap-2 mb-2">
                                                                     <div className={`w-2 h-2 rounded-full ${getStatusColor(call.status)} animate-pulse`} />
-                                                                    <h3 className="font-bold text-gray-900">{call.incident}</h3>
+                                                                    <h3 className="font-bold text-gray-900 text-base">{call.incident}</h3>
                                                                     <Badge className={`${call.priority.color} text-white border-0 ml-auto`}>
                                                                         <PriorityIcon className="w-3 h-3 mr-1" />
                                                                         {call.priority.label}
                                                                     </Badge>
                                                                 </div>
                                                                 
-                                                                <div className="space-y-1 text-sm">
-                                                                    <div className="flex items-center gap-2 text-gray-600">
-                                                                        <MapPin className="w-4 h-4" />
-                                                                        <span>{call.location}</span>
+                                                                <div className="space-y-2 text-sm mt-3">
+                                                                    <div className="flex items-start gap-2 text-gray-700">
+                                                                        <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                                                        <span className="font-medium">{call.location}</span>
                                                                     </div>
-                                                                    <div className="flex items-center gap-2 text-gray-500">
-                                                                        <Clock className="w-4 h-4" />
-                                                                        <span>{call.timeReceived}</span>
+                                                                    <div className="flex items-center gap-2 text-gray-600">
+                                                                        <Clock className="w-4 h-4 flex-shrink-0" />
+                                                                        <span>{call.timeReceived || new Date(call.time_received).toLocaleTimeString()}</span>
                                                                     </div>
                                                                 </div>
 
@@ -205,14 +208,14 @@ export default function ActiveCallsList({ isOpen, onClose, calls, onNavigateToCa
 
                                                             <Button
                                                                 size="icon"
-                                                                className="bg-red-600 hover:bg-red-700 text-white shrink-0"
+                                                                className="bg-gradient-to-br from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shrink-0 shadow-md hover:shadow-lg transition-all"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     onNavigateToCall(call);
                                                                     onClose();
                                                                 }}
                                                             >
-                                                                <NavigationIcon className="w-4 h-4" />
+                                                                <NavigationIcon className="w-5 h-5" />
                                                             </Button>
                                                         </div>
                                                     </Card>

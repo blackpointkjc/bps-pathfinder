@@ -217,17 +217,7 @@ export default function Navigation() {
             }
         }, 10000);
         
-        // Auto-scrape every 60 seconds
-        const scrapeInterval = setInterval(async () => {
-            if (isOnline) {
-                try {
-                    const result = await base44.functions.invoke('scrapeActiveCalls', {});
-                    console.log('✅ Auto-scraped:', result.data?.saved || 0, 'calls');
-                } catch (err) {
-                    console.error('Auto-scrape failed:', err);
-                }
-            }
-        }, 60000);
+        // Removed auto-scrape interval - gractivecalls.com is now the sole source
         
 
         
@@ -238,9 +228,6 @@ export default function Navigation() {
             }
             if (callsRefreshInterval.current) {
                 clearInterval(callsRefreshInterval.current);
-            }
-            if (scrapeInterval) {
-                clearInterval(scrapeInterval);
             }
         };
     }, []);
@@ -1464,17 +1451,32 @@ Be thorough and search multiple sources.`,
 
         setIsLoadingCalls(true);
         try {
-            const allCalls = await base44.entities.DispatchCall.list('-time_received', 200);
+            // ONLY fetch from gractivecalls.com source
+            const allCalls = await base44.entities.DispatchCall.filter({ source: 'gractivecalls' }, '-time_received', 300);
             
-            // Filter: TODAY only AND active status
+            // Filter: TODAY only, active status, and ONLY Henrico, Richmond, Chesterfield
             const today = new Date();
             today.setHours(0, 0, 0, 0);
+            
+            const allowedJurisdictions = ['henrico', 'richmond', 'chesterfield'];
             
             const recentCalls = allCalls.filter(call => {
                 const callTime = new Date(call.time_received || call.created_date);
                 const isToday = callTime >= today;
                 const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
-                return isToday && isActive;
+                
+                // Check jurisdiction - source field should contain jurisdiction name
+                const source = (call.source || '').toLowerCase();
+                const agency = (call.agency || '').toLowerCase();
+                const location = (call.location || '').toLowerCase();
+                
+                const isAllowedJurisdiction = allowedJurisdictions.some(jurisdiction => 
+                    source.includes(jurisdiction) || 
+                    agency.includes(jurisdiction) ||
+                    location.includes(jurisdiction)
+                );
+                
+                return isToday && isActive && isAllowedJurisdiction;
             });
             
             const geocodedCount = recentCalls.filter(call => 
@@ -1483,8 +1485,8 @@ Be thorough and search multiple sources.`,
                 call.latitude !== 0 && call.longitude !== 0
             ).length;
 
-            console.log('📞 Total calls fetched:', allCalls.length);
-            console.log('📞 Today active calls:', recentCalls.length);
+            console.log('📞 Total gractivecalls fetched:', allCalls.length);
+            console.log('📞 Today active calls (filtered):', recentCalls.length);
             console.log('📍 Calls with valid coords:', geocodedCount);
             
             // Log each call with details
@@ -1493,52 +1495,52 @@ Be thorough and search multiple sources.`,
                 console.log(`${i+1}. ${call.incident} @ ${call.location} [${call.agency}] ${hasCoords ? '✅ HAS COORDS' : '❌ NO COORDS'}`);
             });
 
-                // Detect new calls and high-priority calls in real-time
-                if (silent && lastCallCountRef.current > 0) {
-                    const newCallCount = recentCalls.length - lastCallCountRef.current;
+            // Detect new calls and high-priority calls in real-time
+            if (silent && lastCallCountRef.current > 0) {
+                const newCallCount = recentCalls.length - lastCallCountRef.current;
 
-                    if (newCallCount > 0) {
-                        // Identify new high-priority calls
-                        const highPriorityCalls = recentCalls.filter(call => {
+                if (newCallCount > 0) {
+                    // Identify new high-priority calls
+                    const highPriorityCalls = recentCalls.filter(call => {
+                        const priority = assessCallPriority(call);
+                        return priority.score >= 3;
+                    });
+
+                    const newHighPriorityCalls = highPriorityCalls.filter(call => {
+                        const callKey = `${call.time_received}-${call.incident}-${call.location}`;
+                        return !lastHighPriorityCallsRef.current.has(callKey);
+                    });
+
+                    if (newHighPriorityCalls.length > 0) {
+                        // Show visual alert on map for high-priority calls
+                        newHighPriorityCalls.forEach(call => {
                             const priority = assessCallPriority(call);
-                            return priority.score >= 3;
-                        });
-
-                        const newHighPriorityCalls = highPriorityCalls.filter(call => {
-                            const callKey = `${call.timeReceived}-${call.incident}-${call.location}`;
-                            return !lastHighPriorityCallsRef.current.has(callKey);
-                        });
-
-                        if (newHighPriorityCalls.length > 0) {
-                            // Show visual alert on map for high-priority calls
-                            newHighPriorityCalls.forEach(call => {
-                                const priority = assessCallPriority(call);
-                                setRealTimeAlert({
-                                    type: 'new_incident',
-                                    message: `${priority.label}: ${call.incident} at ${call.location}`,
-                                    data: call,
-                                    priority: priority.score
-                                });
-
-                                // Play sound for critical calls
-                                if (priority.score === 4) {
-                                    criticalAlertSound.play().catch(() => {});
-                                }
+                            setRealTimeAlert({
+                                type: 'new_incident',
+                                message: `${priority.label}: ${call.incident} at ${call.location}`,
+                                data: call,
+                                priority: priority.score
                             });
-                        } else if (newCallCount > 0) {
-                            // Subtle notification for new regular calls
-                            toast.info(`${newCallCount} new call${newCallCount > 1 ? 's' : ''} detected`, {
-                                duration: 3000,
-                                position: 'bottom-right'
-                            });
-                        }
 
-                        // Update high-priority calls tracking
-                        lastHighPriorityCallsRef.current = new Set(
-                            highPriorityCalls.map(call => `${call.timeReceived}-${call.incident}-${call.location}`)
-                        );
+                            // Play sound for critical calls
+                            if (priority.score === 4) {
+                                criticalAlertSound.play().catch(() => {});
+                            }
+                        });
+                    } else if (newCallCount > 0) {
+                        // Subtle notification for new regular calls
+                        toast.info(`${newCallCount} new call${newCallCount > 1 ? 's' : ''} detected`, {
+                            duration: 3000,
+                            position: 'bottom-right'
+                        });
                     }
+
+                    // Update high-priority calls tracking
+                    lastHighPriorityCallsRef.current = new Set(
+                        highPriorityCalls.map(call => `${call.time_received}-${call.incident}-${call.location}`)
+                    );
                 }
+            }
 
             lastCallCountRef.current = recentCalls.length;
             setShowActiveCalls(true);
@@ -1546,10 +1548,20 @@ Be thorough and search multiple sources.`,
             applyCallFilter(recentCalls, callFilter);
 
             if (!silent) {
-                toast.success(`Loaded ${recentCalls.length} active calls (${geocodedCount} on map)`);
+                if (recentCalls.length === 0) {
+                    toast.info('No Active Calls Available');
+                } else {
+                    toast.success(`Loaded ${recentCalls.length} active calls (${geocodedCount} on map)`);
+                }
             }
         } catch (error) {
-            if (!silent) toast.error(`Error: ${error.message}`);
+            if (!silent) {
+                console.error('Error fetching calls:', error);
+                toast.error('Failed to load active calls');
+            }
+            // Set empty on error
+            setAllActiveCalls([]);
+            setActiveCalls([]);
         } finally {
             setIsLoadingCalls(false);
         }
