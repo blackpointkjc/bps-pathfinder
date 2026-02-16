@@ -54,15 +54,25 @@ Deno.serve(async (req) => {
         const expirationThreshold = 60 * 60 * 1000; // 60 minutes in milliseconds
         let expired = 0;
         
+        const expiredIds = [];
         for (const call of existingCalls) {
             if (call.time_received) {
                 const callTime = new Date(call.time_received);
                 const ageMs = now - callTime;
                 
                 if (ageMs > expirationThreshold) {
-                    await base44.asServiceRole.entities.DispatchCall.delete(call.id);
+                    expiredIds.push(call.id);
                     expired++;
                 }
+            }
+        }
+        
+        // Batch delete expired calls
+        for (const id of expiredIds) {
+            try {
+                await base44.asServiceRole.entities.DispatchCall.delete(id);
+            } catch (e) {
+                console.error(`Failed to delete expired call ${id}: ${e.message}`);
             }
         }
         
@@ -71,9 +81,12 @@ Deno.serve(async (req) => {
         let inserted = 0;
         let updated = 0;
         
+        // Filter out expired calls from existingCalls for upsert logic
+        const activeExisting = existingCalls.filter(c => !expiredIds.includes(c.id));
+        
         for (const callData of allCalls) {
             try {
-                const existing = existingCalls.find(c => c.call_id === callData.call_id);
+                const existing = activeExisting.find(c => c.call_id === callData.call_id);
                 if (existing) {
                     await base44.asServiceRole.entities.DispatchCall.update(existing.id, callData);
                     updated++;
@@ -88,10 +101,14 @@ Deno.serve(async (req) => {
         
         const newCallIds = new Set(allCalls.map(c => c.call_id));
         let deleted = 0;
-        for (const existing of existingCalls) {
+        for (const existing of activeExisting) {
             if (!newCallIds.has(existing.call_id)) {
-                await base44.asServiceRole.entities.DispatchCall.delete(existing.id);
-                deleted++;
+                try {
+                    await base44.asServiceRole.entities.DispatchCall.delete(existing.id);
+                    deleted++;
+                } catch (e) {
+                    console.error(`Failed to delete ${existing.call_id}: ${e.message}`);
+                }
             }
         }
         
