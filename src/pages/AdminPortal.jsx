@@ -96,8 +96,8 @@ export default function AdminPortal() {
 
     const loadUsers = async () => {
         try {
-            const response = await base44.functions.invoke('fetchAllUsers', {});
-            setUsers(response.data?.users || []);
+            const allUsers = await base44.entities.User.list();
+            setUsers(allUsers || []);
         } catch (error) {
             console.error('Error loading users:', error);
             toast.error('Failed to load users');

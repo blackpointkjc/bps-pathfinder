@@ -84,22 +84,13 @@ export default function DispatchCenter() {
 
     const loadUnits = async () => {
         try {
-            const response = await base44.functions.invoke('fetchAllUsers', {});
-            const allUsers = response.data?.users || [];
+            const allUsers = await base44.entities.User.list('-last_updated', 500);
             console.log('📋 Dispatch loaded units:', allUsers.length);
             console.log('📋 Units data:', allUsers);
-            setUnits(allUsers);
+            setUnits(allUsers || []);
         } catch (error) {
             console.error('Error loading units:', error);
-            // Fallback: try to get users directly
-            try {
-                const directUsers = await base44.entities.User.list('-last_updated', 500);
-                console.log('📋 Loaded users directly:', directUsers.length);
-                setUnits(directUsers || []);
-            } catch (fallbackError) {
-                console.error('Fallback also failed:', fallbackError);
-                setUnits([]);
-            }
+            setUnits([]);
         }
     };
 
