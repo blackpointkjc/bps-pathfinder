@@ -12,6 +12,7 @@ import JailMarkers from './JailMarkers';
 import SearchPinMarker from './SearchPinMarker';
 import NavigationCamera from './NavigationCamera';
 import FireStationMarkers from './FireStationMarkers';
+import MonitoredPropertyMarkers from './MonitoredPropertyMarkers';
 import ChesterfieldFireStations from './ChesterfieldFireStations';
 import VolunteerRescueSquads from './VolunteerRescueSquads';
 import VolunteerFireCompanies from './VolunteerFireCompanies';
@@ -170,7 +171,7 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
     return null;
 }
 
-const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail, mapTheme = 'day', children }) {
+const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail, mapTheme = 'day', monitoredProperties = [], children }) {
     const defaultCenter = currentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
     
     // Calculate route bounds if route exists
@@ -340,6 +341,9 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             {otherUnits && otherUnits.length > 0 && (
                 <OtherUnitsLayer units={otherUnits} currentUserId={currentUserId} />
             )}
+            
+            {/* Monitored Properties */}
+            <MonitoredPropertyMarkers properties={monitoredProperties} />
             
             {/* Search Pin */}
             {searchPin && <SearchPinMarker position={searchPin.coords} address={searchPin.address} propertyInfo={searchPin.propertyInfo} />}

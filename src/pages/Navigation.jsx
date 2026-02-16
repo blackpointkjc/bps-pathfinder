@@ -144,6 +144,7 @@ export default function Navigation() {
         return hour >= 6 && hour < 19 ? 'day' : 'night';
     });
     const [realTimeAlert, setRealTimeAlert] = useState(null);
+    const [monitoredProperties, setMonitoredProperties] = useState([]);
     
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
@@ -213,6 +214,7 @@ export default function Navigation() {
                 );
             }
             fetchActiveCalls();
+            loadMonitoredProperties();
         };
         init();
         
@@ -1443,6 +1445,15 @@ Be thorough and search multiple sources.`,
     const lastCallCountRef = useRef(0);
     const lastHighPriorityCallsRef = useRef(new Set());
 
+    const loadMonitoredProperties = async () => {
+        try {
+            const properties = await base44.entities.MonitoredProperty.list();
+            setMonitoredProperties(properties || []);
+        } catch (error) {
+            console.error('Error loading monitored properties:', error);
+        }
+    };
+
     const fetchActiveCalls = async (silent = false) => {
         if (!isOnline) {
             if (!silent) toast.error('Cannot fetch calls while offline');
@@ -1606,6 +1617,7 @@ Be thorough and search multiple sources.`,
                     jurisdictionFilters={jurisdictionFilters}
                     searchPin={searchPin}
                     mapTheme={mapTheme}
+                    monitoredProperties={monitoredProperties}
                     onCallClick={(call) => {
                         setSelectedCall(call);
                         setShowCallSidebar(true);
