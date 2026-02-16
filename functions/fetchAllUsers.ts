@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
             }, { status: 401 });
         }
         
-        // Fetch all users using service role
+        // Fetch all users using service role with proper sorting
         const allUsers = await base44.asServiceRole.entities.User.list('-updated_date', 500);
         
         return Response.json({
