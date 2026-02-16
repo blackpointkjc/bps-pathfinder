@@ -4,8 +4,10 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Plus, Shield, Radio, AlertCircle, Car } from 'lucide-react';
+import { Plus, Shield, Radio, AlertCircle, Car, Map as MapIcon } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import { MapContainer, TileLayer } from 'react-leaflet';
+import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
 import ActiveCallsQueue from '@/components/dispatch/ActiveCallsQueue';
 import CallDetailPanel from '@/components/dispatch/CallDetailPanel';
 import UnitsPanel from '@/components/dispatch/UnitsPanel';
@@ -15,6 +17,7 @@ import MessagingPanel from '@/components/dispatch/MessagingPanel';
 import UnitScheduling from '@/components/dispatch/UnitScheduling';
 import QuickActions from '@/components/dispatch/QuickActions';
 import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
+import 'leaflet/dist/leaflet.css';
 
 export default function DispatchCenter() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -26,15 +29,16 @@ export default function DispatchCenter() {
     const [showPriorCalls, setShowPriorCalls] = useState(false);
     const [showMessaging, setShowMessaging] = useState(false);
     const [sortOrder, setSortOrder] = useState('desc'); // 'desc' = newest first, 'asc' = oldest first
+    const [showMap, setShowMap] = useState(true);
 
     useEffect(() => {
         init();
         
-        // Real-time updates every 5 seconds
+        // Real-time updates every 60 seconds
         const interval = setInterval(() => {
             loadActiveCalls();
             loadUnits();
-        }, 5000);
+        }, 60000);
         
         // Auto-scrape every 60 seconds for real-time feed
         const scrapeInterval = setInterval(async () => {
@@ -214,14 +218,22 @@ export default function DispatchCenter() {
                          </div>
                         
                         <div className="flex gap-2">
-                            <Button
-                                onClick={() => setShowPriorCalls(!showPriorCalls)}
-                                variant="outline"
-                                className="border-slate-700 text-slate-300 bg-slate-800 hover:bg-slate-700 font-mono text-xs"
-                            >
-                                <AlertCircle className="w-4 h-4 mr-2" />
-                                {showPriorCalls ? 'ACTIVE' : 'PRIOR'}
-                            </Button>
+                           <Button
+                               onClick={() => setShowMap(!showMap)}
+                               variant="outline"
+                               className={`border-slate-700 font-mono text-xs ${showMap ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-slate-300 bg-slate-800 hover:bg-slate-700'}`}
+                           >
+                               <MapIcon className="w-4 h-4 mr-2" />
+                               MAP
+                           </Button>
+                           <Button
+                               onClick={() => setShowPriorCalls(!showPriorCalls)}
+                               variant="outline"
+                               className="border-slate-700 text-slate-300 bg-slate-800 hover:bg-slate-700 font-mono text-xs"
+                           >
+                               <AlertCircle className="w-4 h-4 mr-2" />
+                               {showPriorCalls ? 'ACTIVE' : 'PRIOR'}
+                           </Button>
                             <Button
                                 onClick={() => setShowMessaging(!showMessaging)}
                                 variant="outline"
@@ -269,7 +281,35 @@ export default function DispatchCenter() {
                        <QuickActions onCreateCall={handleQuickDispatch} />
                    </div>
 
-                   <div className="grid grid-cols-3 gap-3 h-[calc(100vh-200px)]">
+                   <div className={`grid ${showMap ? 'grid-cols-4' : 'grid-cols-3'} gap-3 h-[calc(100vh-200px)]`}>
+                       {/* Map View */}
+                       {showMap && (
+                           <div className="h-full overflow-hidden col-span-2">
+                               <Card className="bg-slate-900 border-emerald-500/30 h-full flex flex-col">
+                                   <div className="p-2 border-b border-emerald-500/20">
+                                       <h3 className="text-xs font-bold text-emerald-400 font-mono">LIVE TACTICAL MAP</h3>
+                                   </div>
+                                   <div className="flex-1 relative">
+                                       <MapContainer
+                                           center={[37.5407, -77.4360]}
+                                           zoom={11}
+                                           className="h-full w-full"
+                                           zoomControl={true}
+                                       >
+                                           <TileLayer
+                                               url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                                               attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                                           />
+                                           <ActiveCallMarkers 
+                                               calls={activeCalls} 
+                                               onCallClick={handleSelectCall}
+                                           />
+                                       </MapContainer>
+                                   </div>
+                               </Card>
+                           </div>
+                       )}
+                       
                        {/* Left: Active Calls - Split by Source */}
                        <div className="flex flex-col gap-2 h-full overflow-hidden">
                            <Card className="bg-slate-900 border-amber-500/30 flex-1 min-h-0 flex flex-col">
