@@ -9,6 +9,7 @@ import { createPageUrl } from '../utils';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
 import ActiveCallsQueue from '@/components/dispatch/ActiveCallsQueue';
+import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
 import CallDetailPanel from '@/components/dispatch/CallDetailPanel';
 import UnitsPanel from '@/components/dispatch/UnitsPanel';
 import CreateCallDialog from '@/components/dispatch/CreateCallDialog';
@@ -295,7 +296,11 @@ export default function DispatchCenter() {
                                                calls={activeCalls} 
                                                onCallClick={handleSelectCall}
                                            />
-                                       </MapContainer>
+                                           <OtherUnitsLayer 
+                                               units={units}
+                                               currentUserId={currentUser?.id}
+                                           />
+                                           </MapContainer>
                                    </div>
                                </Card>
                            </div>
