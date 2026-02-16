@@ -4,47 +4,168 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        console.log('🚨 Starting active calls ingestion...');
-        
-        // TEMPORARY: Generate test data until we fix the API connections
-        const testCalls = [
-            { incident: 'TRAFFIC ACCIDENT', location: '5000 W BROAD ST', agency: 'RPD', lat: 37.5926, lon: -77.4886 },
-            { incident: 'SUSPICIOUS PERSON', location: '3000 N BOULEVARD', agency: 'RPD', lat: 37.5755, lon: -77.4553 },
-            { incident: 'ALARM ACTIVATION', location: '1000 CANAL ST', agency: 'RPD', lat: 37.5368, lon: -77.4275 },
-            { incident: 'DOMESTIC DISTURBANCE', location: '2000 CHAMBERLAYNE AVE', agency: 'RPD', lat: 37.5689, lon: -77.4252 },
-            { incident: 'MEDICAL EMERGENCY', location: '1600 W LEIGH ST', agency: 'RPD', lat: 37.5562, lon: -77.4485 },
-            { incident: 'VEHICLE THEFT', location: '3600 PATTERSON AVE', agency: 'HPD', lat: 37.5733, lon: -77.5106 },
-            { incident: 'BURGLARY IN PROGRESS', location: '4000 PARHAM RD', agency: 'HPD', lat: 37.6189, lon: -77.5339 },
-            { incident: 'ASSAULT', location: '9000 STAPLES MILL RD', agency: 'HPD', lat: 37.6303, lon: -77.4984 },
-            { incident: 'LARCENY', location: '7000 FOREST AVE', agency: 'HPD', lat: 37.5905, lon: -77.5162 },
-            { incident: 'TRAFFIC STOP', location: '12000 IRON BRIDGE RD', agency: 'CCPD', lat: 37.4129, lon: -77.5636 },
-            { incident: 'SUSPICIOUS VEHICLE', location: '15000 HULL STREET RD', agency: 'CCPD', lat: 37.3898, lon: -77.5854 },
-            { incident: 'WELFARE CHECK', location: '13000 MIDLOTHIAN TPKE', agency: 'CCPD', lat: 37.4521, lon: -77.6279 },
-            { incident: 'TRESPASSING', location: '6000 HOPKINS RD', agency: 'CCPD', lat: 37.3456, lon: -77.5112 }
-        ];
+        console.log('🚨 Starting active calls ingestion from real sources...');
         
         const allCalls = [];
+        const errors = [];
         
-        for (const call of testCalls) {
-            const stableId = `${call.agency.toLowerCase()}-${call.location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+        // RICHMOND CITY POLICE
+        try {
+            console.log('📡 Fetching Richmond PD active calls...');
+            const response = await fetch('https://apps.richmondgov.com/applications/ActiveCalls/getData.ashx');
+            const data = await response.json();
             
-            allCalls.push({
-                call_id: stableId,
-                incident: call.incident,
-                location: call.location,
-                agency: call.agency,
-                status: 'Active',
-                priority: 'medium',
-                time_received: new Date().toISOString(),
-                latitude: call.lat,
-                longitude: call.lon,
-                source: 'gractivecalls',
-                description: `${call.incident} at ${call.location}`
-            });
+            if (data && Array.isArray(data)) {
+                console.log(`✅ Richmond API returned ${data.length} calls`);
+                
+                for (const call of data) {
+                    const incident = call.type || call.CallType || '';
+                    const location = call.location || call.Location || '';
+                    
+                    if (!incident || !location) continue;
+                    
+                    const stableId = `rpd-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+                    
+                    let latitude = null, longitude = null;
+                    try {
+                        await new Promise(r => setTimeout(r, 100));
+                        const geoResp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location + ', Richmond, Virginia')}&limit=1`, {
+                            headers: { 'User-Agent': 'BPS-CAD/1.0' }
+                        });
+                        const geoData = await geoResp.json();
+                        if (geoData[0]) {
+                            latitude = parseFloat(geoData[0].lat);
+                            longitude = parseFloat(geoData[0].lon);
+                        }
+                    } catch (e) {
+                        console.error(`Geocode failed for ${location}`);
+                    }
+                    
+                    allCalls.push({
+                        call_id: stableId,
+                        incident: incident,
+                        location: location,
+                        agency: 'RPD',
+                        status: 'Active',
+                        priority: 'medium',
+                        time_received: new Date().toISOString(),
+                        latitude: latitude,
+                        longitude: longitude,
+                        source: 'gractivecalls',
+                        description: `${incident} at ${location}`
+                    });
+                }
+            }
+            console.log(`✅ Richmond: Parsed ${allCalls.length} calls`);
+        } catch (e) {
+            errors.push(`Richmond: ${e.message}`);
+            console.error(`❌ Richmond failed:`, e.message);
         }
         
-        console.log(`✅ Generated ${allCalls.length} test calls`);
-        console.log(`📍 All calls have geocoded coordinates`);
+        // HENRICO COUNTY POLICE
+        try {
+            console.log('📡 Fetching Henrico PD active calls...');
+            const response = await fetch('https://webapps.co.henrico.va.us/activecalls/Default.aspx');
+            const html = await response.text();
+            
+            const henStartCount = allCalls.length;
+            
+            const oddRows = [...html.matchAll(/<tr class="odd">(.*?)<\/tr>/gs)];
+            const evenRows = [...html.matchAll(/<tr class="even">(.*?)<\/tr>/gs)];
+            const allRows = [...oddRows, ...evenRows];
+            
+            console.log(`📋 Found ${allRows.length} Henrico rows`);
+            
+            for (const rowMatch of allRows) {
+                const rowHtml = rowMatch[1];
+                const cells = [...rowHtml.matchAll(/<td[^>]*>(.*?)<\/td>/gs)];
+                
+                if (cells.length >= 3) {
+                    const incident = cells[1][1].replace(/<[^>]*>/g, '').trim();
+                    const location = cells[2][1].replace(/<[^>]*>/g, '').trim();
+                    
+                    if (incident && location && incident.length > 2) {
+                        const stableId = `hpd-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+                        
+                        let latitude = null, longitude = null;
+                        try {
+                            await new Promise(r => setTimeout(r, 100));
+                            const geoResp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location + ', Henrico, Virginia')}&limit=1`, {
+                                headers: { 'User-Agent': 'BPS-CAD/1.0' }
+                            });
+                            const geoData = await geoResp.json();
+                            if (geoData[0]) {
+                                latitude = parseFloat(geoData[0].lat);
+                                longitude = parseFloat(geoData[0].lon);
+                            }
+                        } catch (e) {}
+                        
+                        allCalls.push({
+                            call_id: stableId,
+                            incident: incident,
+                            location: location,
+                            agency: 'HPD',
+                            status: 'Active',
+                            priority: 'medium',
+                            time_received: new Date().toISOString(),
+                            latitude: latitude,
+                            longitude: longitude,
+                            source: 'gractivecalls',
+                            description: `${incident} at ${location}`
+                        });
+                    }
+                }
+            }
+            console.log(`✅ Henrico: Parsed ${allCalls.length - henStartCount} calls`);
+        } catch (e) {
+            errors.push(`Henrico: ${e.message}`);
+            console.error(`❌ Henrico failed:`, e.message);
+        }
+        
+        // CHESTERFIELD COUNTY
+        try {
+            console.log('📡 Fetching Chesterfield active calls...');
+            const response = await fetch('https://services7.arcgis.com/8KuaSGRhumOSMuAG/arcgis/rest/services/Public_Safety_view/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json');
+            const data = await response.json();
+            const ccStartCount = allCalls.length;
+            
+            if (data.features) {
+                console.log(`📋 Found ${data.features.length} Chesterfield features`);
+                
+                for (const feature of data.features) {
+                    const attrs = feature.attributes;
+                    const incident = attrs.EventType || attrs.CallType || attrs.EVENTTYPE || '';
+                    const location = attrs.Address || attrs.Location || attrs.ADDRESS || '';
+                    
+                    if (incident && location && incident.length > 2) {
+                        const stableId = `ccpd-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+                        const latitude = feature.geometry?.y ? parseFloat(feature.geometry.y) : null;
+                        const longitude = feature.geometry?.x ? parseFloat(feature.geometry.x) : null;
+                        
+                        allCalls.push({
+                            call_id: stableId,
+                            incident: incident,
+                            location: location,
+                            agency: 'CCPD',
+                            status: 'Active',
+                            priority: 'medium',
+                            time_received: new Date().toISOString(),
+                            latitude: latitude,
+                            longitude: longitude,
+                            source: 'gractivecalls',
+                            description: `${incident} at ${location}`
+                        });
+                    }
+                }
+            }
+            console.log(`✅ Chesterfield: Parsed ${allCalls.length - ccStartCount} calls`);
+        } catch (e) {
+            errors.push(`Chesterfield: ${e.message}`);
+            console.error(`❌ Chesterfield failed:`, e.message);
+        }
+        
+        console.log(`✅ Total parsed: ${allCalls.length} calls`);
+        console.log(`📍 Geocoded: ${allCalls.filter(c => c.latitude && c.longitude).length}`);
         
         // UPSERT logic
         const existingCalls = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'gractivecalls' });
@@ -59,14 +180,12 @@ Deno.serve(async (req) => {
                 if (existing) {
                     await base44.asServiceRole.entities.DispatchCall.update(existing.id, callData);
                     updated++;
-                    console.log(`  🔄 Updated: ${callData.call_id}`);
                 } else {
                     await base44.asServiceRole.entities.DispatchCall.create(callData);
                     inserted++;
-                    console.log(`  ➕ Created: ${callData.call_id}`);
                 }
             } catch (e) {
-                console.error(`  ❌ Failed ${callData.call_id}: ${e.message}`);
+                errors.push(`Upsert ${callData.call_id}: ${e.message}`);
             }
         }
         
@@ -77,7 +196,6 @@ Deno.serve(async (req) => {
             if (!newCallIds.has(existing.call_id)) {
                 await base44.asServiceRole.entities.DispatchCall.delete(existing.id);
                 deleted++;
-                console.log(`  🗑️ Deleted stale: ${existing.call_id}`);
             }
         }
         
@@ -86,12 +204,13 @@ Deno.serve(async (req) => {
         return Response.json({
             success: true,
             timestamp: new Date().toISOString(),
-            source: 'test-data',
+            source: 'richmond-henrico-chesterfield-LIVE',
             total_parsed: allCalls.length,
             inserted: inserted,
             updated: updated,
             deleted: deleted,
-            geocoded: allCalls.length
+            geocoded: allCalls.filter(c => c.latitude && c.longitude).length,
+            errors: errors.length > 0 ? errors : undefined
         });
         
     } catch (error) {

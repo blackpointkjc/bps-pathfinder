@@ -30,10 +30,11 @@ export default function CallFilterPanel({ isOpen, onClose, filters, onFilterChan
                         onClick={onClose}
                     />
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: -20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[2001] w-96 max-w-[90vw]"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[2001] w-96 max-w-[90vw] pointer-events-auto"
+                        onClick={(e) => e.stopPropagation()}
                     >
                         <Card className="bg-white shadow-2xl p-6">
                             <div className="flex items-center justify-between mb-6">
