@@ -49,6 +49,32 @@ Deno.serve(async (req) => {
                 if (incident && location && agency) {
                     const stableId = `${agency.toLowerCase()}-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
                     
+                    // Geocode the location
+                    let latitude = null;
+                    let longitude = null;
+                    
+                    try {
+                        const geocodeQuery = `${location}, Virginia, USA`;
+                        const geocodeResponse = await fetch(
+                            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(geocodeQuery)}&limit=1`,
+                            { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' } }
+                        );
+                        const geocodeData = await geocodeResponse.json();
+                        
+                        if (geocodeData && geocodeData.length > 0) {
+                            latitude = parseFloat(geocodeData[0].lat);
+                            longitude = parseFloat(geocodeData[0].lon);
+                            console.log(`📍 Geocoded: ${location} → [${latitude}, ${longitude}]`);
+                        } else {
+                            console.log(`⚠️ No geocode result for: ${location}`);
+                        }
+                        
+                        // Rate limit: wait 1 second between geocode requests
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    } catch (geocodeError) {
+                        console.error(`❌ Geocode failed for ${location}:`, geocodeError.message);
+                    }
+                    
                     allCalls.push({
                         call_id: stableId,
                         incident: incident,
@@ -58,7 +84,9 @@ Deno.serve(async (req) => {
                         priority: 'medium',
                         time_received: timeReceived || new Date().toISOString(),
                         source: 'gractivecalls',
-                        description: `${incident} at ${location}`
+                        description: `${incident} at ${location}`,
+                        latitude: latitude,
+                        longitude: longitude
                     });
                 }
             }
