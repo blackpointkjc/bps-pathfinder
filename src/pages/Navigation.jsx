@@ -225,7 +225,16 @@ export default function Navigation() {
             }
         }, 10000);
         
-        // Removed auto-scrape interval - gractivecalls.com is now the sole source
+        // Auto-scrape every 30 seconds
+        const scrapeInterval = setInterval(async () => {
+            if (isOnline) {
+                try {
+                    await base44.functions.invoke('ingestGractivecalls', {});
+                } catch (error) {
+                    console.error('Auto-scrape failed:', error);
+                }
+            }
+        }, 30000);
         
 
         
@@ -236,6 +245,9 @@ export default function Navigation() {
             }
             if (callsRefreshInterval.current) {
                 clearInterval(callsRefreshInterval.current);
+            }
+            if (scrapeInterval) {
+                clearInterval(scrapeInterval);
             }
         };
     }, []);
@@ -1462,43 +1474,30 @@ Be thorough and search multiple sources.`,
 
         setIsLoadingCalls(true);
         try {
-            // ONLY fetch from gractivecalls.com source
-            const allCalls = await base44.entities.DispatchCall.filter({ source: 'gractivecalls' }, '-time_received', 300);
+            // Fetch recent calls from all sources
+            const allCalls = await base44.entities.DispatchCall.list('-time_received', 300);
             
-            // Filter: TODAY only, active status, and ONLY Henrico, Richmond, Chesterfield
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            // Filter: Last 6 hours, active status, valid coordinates
+            const sixHoursAgo = new Date();
+            sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
             
             const recentCalls = allCalls.filter(call => {
                 const callTime = new Date(call.time_received || call.created_date);
-                const isToday = callTime >= today;
+                const isRecent = callTime >= sixHoursAgo;
                 const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
+                const hasValidCoords = call.latitude && call.longitude && 
+                                      !isNaN(call.latitude) && !isNaN(call.longitude) &&
+                                      call.latitude !== 0 && call.longitude !== 0;
                 
-                // Check jurisdiction - map agency codes to jurisdictions
-                const agency = (call.agency || '').toUpperCase();
-                const isAllowedJurisdiction = 
-                    agency.includes('RPD') || agency.includes('RICHMOND') ||
-                    agency.includes('HPD') || agency.includes('HCPD') || agency.includes('HENRICO') ||
-                    agency.includes('CCPD') || agency.includes('CCFD') || agency.includes('CHESTERFIELD');
-                
-                return isToday && isActive && isAllowedJurisdiction;
+                return isRecent && isActive && hasValidCoords;
             });
             
-            const geocodedCount = recentCalls.filter(call => 
-                call.latitude && call.longitude && 
-                !isNaN(call.latitude) && !isNaN(call.longitude) &&
-                call.latitude !== 0 && call.longitude !== 0
-            ).length;
-
-            console.log('📞 Total gractivecalls fetched:', allCalls.length);
-            console.log('📞 Today active calls (filtered):', recentCalls.length);
-            console.log('📍 Calls with valid coords:', geocodedCount);
+            console.log('📞 Total calls fetched:', allCalls.length);
+            console.log('📞 Active calls with valid coords:', recentCalls.length);
             
-            // Log each call with details
-            recentCalls.forEach((call, i) => {
-                const hasCoords = call.latitude && call.longitude && !isNaN(call.latitude) && !isNaN(call.longitude);
-                console.log(`${i+1}. ${call.incident} @ ${call.location} [${call.agency}] ${hasCoords ? '✅ HAS COORDS' : '❌ NO COORDS'}`);
-            });
+            if (!silent && recentCalls.length > 0) {
+                console.log('📍 Sample calls:', recentCalls.slice(0, 3).map(c => `${c.incident} @ ${c.location}`));
+            }
 
             // Detect new calls and high-priority calls in real-time
             if (silent && lastCallCountRef.current > 0) {
