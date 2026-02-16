@@ -225,17 +225,7 @@ export default function AdminPortal() {
                             <BarChart3 className="w-4 h-4" />
                             DASHBOARD
                         </button>
-                        <button
-                            onClick={() => setActiveTab('users')}
-                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
-                                activeTab === 'users' 
-                                    ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-500' 
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                            }`}
-                        >
-                            <Users className="w-4 h-4" />
-                            PERSONNEL
-                        </button>
+
                         <button
                             onClick={() => setActiveTab('assets')}
                             className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
@@ -258,28 +248,8 @@ export default function AdminPortal() {
                             <Wrench className="w-4 h-4" />
                             MAINTENANCE
                         </button>
-                        <button
-                            onClick={() => setActiveTab('tracking')}
-                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
-                                activeTab === 'tracking' 
-                                    ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-500' 
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                            }`}
-                        >
-                            <MapPin className="w-4 h-4" />
-                            TRACKING
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('diagnostics')}
-                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
-                                activeTab === 'diagnostics' 
-                                    ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-500' 
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                            }`}
-                        >
-                            <Database className="w-4 h-4" />
-                            INGESTION
-                        </button>
+
+
                     </div>
                 </div>
             </div>
@@ -418,94 +388,7 @@ export default function AdminPortal() {
                     </div>
                 )}
 
-                {/* Personnel Tab */}
-                {activeTab === 'users' && (
-                    <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
-                        <div className="bg-slate-800/50 border-b border-slate-700 px-6 py-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <Users className="w-5 h-5 text-blue-400" />
-                                    <h2 className="text-lg font-bold text-white font-mono">PERSONNEL ROSTER</h2>
-                                    <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono">
-                                        {users.length} ACTIVE
-                                    </Badge>
-                                </div>
-                            </div>
-                        </div>
 
-                        <ScrollArea className="h-[calc(100vh-280px)]">
-                            <div className="p-4 space-y-2">
-                                {users.length === 0 && (
-                                    <div className="text-center py-12 text-slate-500 font-mono">
-                                        NO USERS FOUND
-                                    </div>
-                                )}
-                                {users.map(user => (
-                                    <div 
-                                        key={user.id} 
-                                        className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:border-slate-600 hover:bg-slate-800 transition-all group"
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-4 flex-1">
-                                                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg">
-                                                    <User className="w-6 h-6 text-white" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <h3 className="font-bold text-white font-mono text-sm">
-                                                            {user.rank && <span className="text-blue-400">{user.rank}</span>} {user.last_name || user.full_name}
-                                                        </h3>
-                                                        {user.unit_number && (
-                                                            <Badge className="bg-slate-700 text-blue-400 border border-slate-600 font-mono text-xs">
-                                                                UNIT-{user.unit_number}
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <span className="text-xs text-slate-400 font-mono flex items-center gap-1">
-                                                            <Mail className="w-3 h-3" />
-                                                            {user.email}
-                                                        </span>
-                                                        <Badge className={user.role === 'admin' 
-                                                            ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30 font-mono text-xs' 
-                                                            : 'bg-slate-700 text-slate-300 border border-slate-600 font-mono text-xs'
-                                                        }>
-                                                            {user.role.toUpperCase()}
-                                                        </Badge>
-                                                        {user.dispatch_role && (
-                                                            <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono text-xs">
-                                                                DISPATCH
-                                                            </Badge>
-                                                        )}
-                                                        {user.is_supervisor && (
-                                                            <Badge className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-mono text-xs">
-                                                                SUPERVISOR
-                                                            </Badge>
-                                                        )}
-                                                        {!user.show_on_map && (
-                                                            <Badge className="bg-red-500/20 text-red-400 border border-red-500/30 font-mono text-xs">
-                                                                HIDDEN
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleEditUser(user)}
-                                                className="bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600 hover:text-white font-mono text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <Edit2 className="w-3 h-3 mr-2" />
-                                                EDIT
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </ScrollArea>
-                    </div>
-                )}
 
                 {/* Assets Tab */}
                 {activeTab === 'assets' && (
@@ -517,17 +400,9 @@ export default function AdminPortal() {
                     <MaintenanceTracking units={users} />
                 )}
 
-                {/* Location Tracking Tab */}
-                {activeTab === 'tracking' && (
-                    <LocationTracking users={users} />
-                )}
 
-                {/* Diagnostics Tab */}
-                {activeTab === 'diagnostics' && (
-                    <div className="space-y-6">
-                        <IngestionDebugPanel />
-                    </div>
-                )}
+
+
             </div>
 
             <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
