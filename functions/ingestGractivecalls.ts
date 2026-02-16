@@ -1,49 +1,54 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import * as cheerio from 'npm:cheerio@1.0.0';
 
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        console.log('🚨 Starting active calls ingestion...');
+        console.log('🚨 Starting active calls ingestion from gractivecalls.com...');
         
-        // Using test data until live APIs are fixed
-        const testCalls = [
-            { incident: 'TRAFFIC ACCIDENT', location: '5000 W BROAD ST', agency: 'RPD', lat: 37.5926, lon: -77.4886 },
-            { incident: 'SUSPICIOUS PERSON', location: '3000 N BOULEVARD', agency: 'RPD', lat: 37.5755, lon: -77.4553 },
-            { incident: 'ALARM ACTIVATION', location: '1000 CANAL ST', agency: 'RPD', lat: 37.5368, lon: -77.4275 },
-            { incident: 'DOMESTIC DISTURBANCE', location: '2000 CHAMBERLAYNE AVE', agency: 'RPD', lat: 37.5689, lon: -77.4252 },
-            { incident: 'MEDICAL EMERGENCY', location: '1600 W LEIGH ST', agency: 'RPD', lat: 37.5562, lon: -77.4485 },
-            { incident: 'VEHICLE THEFT', location: '3600 PATTERSON AVE', agency: 'HPD', lat: 37.5733, lon: -77.5106 },
-            { incident: 'BURGLARY IN PROGRESS', location: '4000 PARHAM RD', agency: 'HPD', lat: 37.6189, lon: -77.5339 },
-            { incident: 'ASSAULT', location: '9000 STAPLES MILL RD', agency: 'HPD', lat: 37.6303, lon: -77.4984 },
-            { incident: 'LARCENY', location: '7000 FOREST AVE', agency: 'HPD', lat: 37.5905, lon: -77.5162 },
-            { incident: 'TRAFFIC STOP', location: '12000 IRON BRIDGE RD', agency: 'CCPD', lat: 37.4129, lon: -77.5636 },
-            { incident: 'SUSPICIOUS VEHICLE', location: '15000 HULL STREET RD', agency: 'CCPD', lat: 37.3898, lon: -77.5854 },
-            { incident: 'WELFARE CHECK', location: '13000 MIDLOTHIAN TPKE', agency: 'CCPD', lat: 37.4521, lon: -77.6279 },
-            { incident: 'TRESPASSING', location: '6000 HOPKINS RD', agency: 'CCPD', lat: 37.3456, lon: -77.5112 }
-        ];
+        // Fetch live data from gractivecalls.com
+        const response = await fetch('https://gractivecalls.com');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch gractivecalls.com: ${response.status}`);
+        }
+        
+        const html = await response.text();
+        const $ = cheerio.load(html);
         
         const allCalls = [];
         
-        for (const call of testCalls) {
-            const stableId = `${call.agency.toLowerCase()}-${call.location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+        // Parse each table row
+        $('table tbody tr').each((_, row) => {
+            const $row = $(row);
+            const cells = $row.find('td');
             
-            allCalls.push({
-                call_id: stableId,
-                incident: call.incident,
-                location: call.location,
-                agency: call.agency,
-                status: 'Active',
-                priority: 'medium',
-                time_received: new Date().toISOString(),
-                latitude: call.lat,
-                longitude: call.lon,
-                source: 'gractivecalls',
-                description: `${call.incident} at ${call.location}`
-            });
-        }
+            if (cells.length >= 5) {
+                const timeReceived = $(cells[0]).text().trim();
+                const incident = $(cells[1]).text().trim();
+                const location = $(cells[2]).text().trim();
+                const agency = $(cells[3]).text().trim();
+                const status = $(cells[4]).text().trim();
+                
+                if (incident && location && agency) {
+                    const stableId = `${agency.toLowerCase()}-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+                    
+                    allCalls.push({
+                        call_id: stableId,
+                        incident: incident,
+                        location: location,
+                        agency: agency,
+                        status: status || 'Active',
+                        priority: 'medium',
+                        time_received: timeReceived || new Date().toISOString(),
+                        source: 'gractivecalls',
+                        description: `${incident} at ${location}`
+                    });
+                }
+            }
+        });
         
-        console.log(`✅ Generated ${allCalls.length} test calls`);
+        console.log(`✅ Scraped ${allCalls.length} calls from gractivecalls.com`);
         
         // Fetch existing calls from this source
         const existingCalls = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'gractivecalls' });
@@ -97,13 +102,12 @@ Deno.serve(async (req) => {
         return Response.json({
             success: true,
             timestamp: new Date().toISOString(),
-            source: 'test-data',
+            source: 'gractivecalls.com',
             total_parsed: allCalls.length,
             inserted: inserted,
             updated: updated,
             deleted: deleted,
-            expired: expired,
-            geocoded: allCalls.length
+            expired: expired
         });
         
     } catch (error) {
