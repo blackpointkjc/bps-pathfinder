@@ -24,6 +24,7 @@ import DispatchPanel from '@/components/map/DispatchPanel';
 import CallDetailView from '@/components/map/CallDetailView';
 import CallDetailSidebar from '@/components/map/CallDetailSidebar';
 import CallNotification from '@/components/dispatch/CallNotification';
+import CallFilterPanel from '@/components/map/CallFilterPanel';
 import { useVoiceGuidance, useVoiceCommand } from '@/components/map/VoiceGuidance';
 import { generateTrafficData } from '@/components/map/TrafficLayer';
 import LayerFilterPanel from '@/components/map/LayerFilterPanel';
@@ -54,8 +55,13 @@ export default function Navigation() {
     // Active calls state
     const [activeCalls, setActiveCalls] = useState([]);
     const [allActiveCalls, setAllActiveCalls] = useState([]);
-    const [callFilter, setCallFilter] = useState('all'); // 'all', 'henrico', 'chesterfield', 'richmond'
+    const [callAgencyFilters, setCallAgencyFilters] = useState({
+        showRPD: true,
+        showHPD: true,
+        showCCPD: true
+    });
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
+    const [showCallFilterPanel, setShowCallFilterPanel] = useState(false);
     const [showActiveCalls, setShowActiveCalls] = useState(true);
     const [unitName, setUnitName] = useState(localStorage.getItem('unitName') || '');
     const [showUnitSettings, setShowUnitSettings] = useState(false);
@@ -1342,29 +1348,23 @@ export default function Navigation() {
         }
     };
 
-    const applyCallFilter = (calls, filter) => {
-        let filtered = calls;
-        
-        if (filter === 'richmond') {
-            filtered = calls.filter(call => call.agency?.includes('RPD') || call.agency?.includes('RFD') || call.agency?.includes('BPS'));
-        } else if (filter === 'henrico') {
-            filtered = calls.filter(call => call.agency?.includes('HPD') || call.agency?.includes('HCPD') || call.agency?.includes('Henrico'));
-        } else if (filter === 'chesterfield') {
-            filtered = calls.filter(call => call.agency?.includes('CCPD') || call.agency?.includes('CCFD') || call.agency?.includes('Chesterfield'));
-        }
+    const applyCallFilter = (calls, filters) => {
+        const filtered = calls.filter(call => {
+            const agency = (call.agency || '').toUpperCase();
+            
+            if ((agency.includes('RPD') || agency.includes('RICHMOND')) && filters.showRPD) return true;
+            if ((agency.includes('HPD') || agency.includes('HCPD') || agency.includes('HENRICO')) && filters.showHPD) return true;
+            if ((agency.includes('CCPD') || agency.includes('CCFD') || agency.includes('CHESTERFIELD')) && filters.showCCPD) return true;
+            
+            return false;
+        });
 
         setActiveCalls(filtered);
     };
 
-    const cycleCallFilter = () => {
-        const filters = ['all', 'richmond', 'henrico', 'chesterfield'];
-        const currentIndex = filters.indexOf(callFilter);
-        const nextFilter = filters[(currentIndex + 1) % filters.length];
-        setCallFilter(nextFilter);
-        applyCallFilter(allActiveCalls, nextFilter);
-
-        const filterNames = { all: 'All Areas', richmond: 'Richmond', henrico: 'Henrico', chesterfield: 'Chesterfield' };
-        toast.info(`Showing calls: ${filterNames[nextFilter]}`);
+    const handleCallFilterChange = (newFilters) => {
+        setCallAgencyFilters(newFilters);
+        applyCallFilter(allActiveCalls, newFilters);
     };
 
         const handleLayerFilterChange = async (newFilters) => {
@@ -1539,7 +1539,7 @@ Be thorough and search multiple sources.`,
             lastCallCountRef.current = recentCalls.length;
             setShowActiveCalls(true);
             setAllActiveCalls(recentCalls);
-            applyCallFilter(recentCalls, callFilter);
+            applyCallFilter(recentCalls, callAgencyFilters);
 
             if (!silent) {
                 if (recentCalls.length === 0) {
@@ -1938,10 +1938,11 @@ Be thorough and search multiple sources.`,
                 </Button>
 
                 <Button
-                    onClick={cycleCallFilter}
+                    onClick={() => setShowCallFilterPanel(true)}
                     size="sm"
-                    className="bg-red-500 hover:bg-red-600 text-white text-[10px] px-2 py-1.5 rounded-lg shadow-lg"
+                    className="bg-purple-500 hover:bg-purple-600 text-white text-[10px] px-2 py-1.5 rounded-lg shadow-lg flex items-center gap-1"
                     disabled={isLoadingCalls}
+                    title="Filter by Agency"
                 >
                     <Shield className="w-3 h-3" />
                 </Button>
@@ -2284,6 +2285,14 @@ Be thorough and search multiple sources.`,
             <UnitSettingsPanel
                 isOpen={showUnitSettingsPanel}
                 onClose={() => setShowUnitSettingsPanel(false)}
+            />
+
+            {/* Call Filter Panel */}
+            <CallFilterPanel
+                isOpen={showCallFilterPanel}
+                onClose={() => setShowCallFilterPanel(false)}
+                filters={callAgencyFilters}
+                onFilterChange={handleCallFilterChange}
             />
             </div>
             );
