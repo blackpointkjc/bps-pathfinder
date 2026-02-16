@@ -1505,8 +1505,13 @@ Be thorough and search multiple sources.`,
             console.log('📞 Total calls fetched:', allCalls.length);
             console.log('📞 Active calls with valid coords:', recentCalls.length);
             
-            if (!silent && recentCalls.length > 0) {
-                console.log('📍 Sample calls:', recentCalls.slice(0, 3).map(c => `${c.incident} @ ${c.location}`));
+            if (recentCalls.length > 0) {
+                console.log('📍 Sample calls:', recentCalls.slice(0, 3).map(c => ({
+                    incident: c.incident,
+                    location: c.location,
+                    coords: [c.latitude, c.longitude],
+                    agency: c.agency
+                })));
             }
 
             // Detect new calls and high-priority calls in real-time
@@ -1557,9 +1562,10 @@ Be thorough and search multiple sources.`,
             }
 
             lastCallCountRef.current = recentCalls.length;
-            setShowActiveCalls(true);
             setAllActiveCalls(recentCalls);
             applyCallFilter(recentCalls, callAgencyFilters);
+            
+            console.log('🚨 Calls after filter:', activeCalls.length, 'Show calls:', showActiveCalls);
 
             if (!silent) {
                 if (recentCalls.length === 0) {
@@ -1608,7 +1614,7 @@ Be thorough and search multiple sources.`,
                     route={routeCoords}
                     trafficSegments={trafficSegments}
                     useOfflineTiles={!isOnline}
-                    activeCalls={activeCalls}
+                    activeCalls={showActiveCalls ? activeCalls : []}
                     heading={heading}
                     locationHistory={isLiveTracking ? locationHistory : []}
                     unitName={unitName || currentUser?.unit_number}
