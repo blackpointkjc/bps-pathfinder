@@ -1458,23 +1458,17 @@ Be thorough and search multiple sources.`,
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
-            const allowedJurisdictions = ['henrico', 'richmond', 'chesterfield'];
-            
             const recentCalls = allCalls.filter(call => {
                 const callTime = new Date(call.time_received || call.created_date);
                 const isToday = callTime >= today;
                 const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
                 
-                // Check jurisdiction - source field should contain jurisdiction name
-                const source = (call.source || '').toLowerCase();
-                const agency = (call.agency || '').toLowerCase();
-                const location = (call.location || '').toLowerCase();
-                
-                const isAllowedJurisdiction = allowedJurisdictions.some(jurisdiction => 
-                    source.includes(jurisdiction) || 
-                    agency.includes(jurisdiction) ||
-                    location.includes(jurisdiction)
-                );
+                // Check jurisdiction - map agency codes to jurisdictions
+                const agency = (call.agency || '').toUpperCase();
+                const isAllowedJurisdiction = 
+                    agency.includes('RPD') || agency.includes('RICHMOND') ||
+                    agency.includes('HPD') || agency.includes('HCPD') || agency.includes('HENRICO') ||
+                    agency.includes('CCPD') || agency.includes('CCFD') || agency.includes('CHESTERFIELD');
                 
                 return isToday && isActive && isAllowedJurisdiction;
             });
