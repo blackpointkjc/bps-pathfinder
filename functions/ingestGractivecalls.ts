@@ -4,109 +4,163 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
-        console.log('🚨 Starting active calls ingestion from Afroraydude API...');
+        console.log('🚨 Starting gractivecalls.com data ingestion...');
         
-        // Fetch from the API endpoints for each jurisdiction
-        const jurisdictions = [
-            { name: 'richmond', code: 'RPD', apiUrl: 'https://api.afroraydude.com/activeCalls/richmond' },
-            { name: 'henrico', code: 'HPD', apiUrl: 'https://api.afroraydude.com/activeCalls/henrico' },
-            { name: 'chesterfield', code: 'CCPD', apiUrl: 'https://api.afroraydude.com/activeCalls/chesterfield' }
+        // Fetch all active calls from the three official sources
+        const sources = [
+            { name: 'richmond', url: 'https://apps.richmondgov.com/applications/activecalls', code: 'RPD' },
+            { name: 'henrico', url: 'https://web1.co.henrico.va.us/activecalls/', code: 'HPD' },
+            { name: 'chesterfield', url: 'https://apps.chesterfield.gov/arcgis/rest/services/public/Public_Safety/FeatureServer/0/query?where=1%3D1&outFields=*&f=json', code: 'CCPD' }
         ];
         
         const allCalls = [];
         const errors = [];
         
-        for (const jurisdiction of jurisdictions) {
-            try {
-                console.log(`📡 Fetching ${jurisdiction.name} calls...`);
-                const response = await fetch(jurisdiction.apiUrl, {
-                    headers: {
-                        'User-Agent': 'BPS-Dispatch-CAD/1.0'
-                    }
-                });
-                
-                if (!response.ok) {
-                    errors.push(`${jurisdiction.name}: HTTP ${response.status}`);
-                    console.error(`❌ ${jurisdiction.name} failed: ${response.status}`);
-                    continue;
-                }
-                
-                const data = await response.json();
-                const calls = Array.isArray(data) ? data : (data.calls || []);
-                console.log(`✅ ${jurisdiction.name}: ${calls.length} calls`);
-                
-                // Parse each call
-                for (const call of calls) {
-                    try {
-                        const incident = call.incident || call.type || call.callType || '';
-                        const location = call.location || call.address || '';
-                        const timeReceived = call.time || call.timestamp || call.timeReceived || new Date().toISOString();
-                        const agency = call.agency || jurisdiction.code;
-                        const status = call.status || 'Active';
+        // Richmond City
+        try {
+            console.log('📡 Fetching Richmond calls...');
+            const response = await fetch('https://apps.richmondgov.com/applications/activecalls');
+            const html = await response.text();
+            
+            // Parse Richmond HTML table
+            const rows = html.match(/<tr[^>]*>(.*?)<\/tr>/gs) || [];
+            for (const row of rows) {
+                const cells = row.match(/<td[^>]*>(.*?)<\/td>/gs) || [];
+                if (cells.length >= 5) {
+                    const timeReceived = cells[0].replace(/<[^>]*>/g, '').trim();
+                    const incident = cells[2].replace(/<[^>]*>/g, '').trim();
+                    const location = cells[3].replace(/<[^>]*>/g, '').trim();
+                    
+                    if (incident && location && incident.length > 2) {
+                        const stableId = `rpd-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
                         
-                        if (!incident || !location) {
-                            console.log(`  ⚠️ Skipped call: missing incident or location`);
-                            continue;
-                        }
-                        
-                        // Geocode location
-                        let latitude = null;
-                        let longitude = null;
-                        
+                        // Geocode
+                        let latitude = null, longitude = null;
                         try {
-                            await new Promise(resolve => setTimeout(resolve, 150));
-                            const geocodeQuery = `${location}, ${jurisdiction.name}, Virginia, USA`;
-                            const geocodeResponse = await fetch(
-                                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(geocodeQuery)}&limit=1`,
-                                { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' } }
-                            );
-                            const geocodeData = await geocodeResponse.json();
-                            
-                            if (geocodeData && geocodeData.length > 0) {
-                                latitude = parseFloat(geocodeData[0].lat);
-                                longitude = parseFloat(geocodeData[0].lon);
+                            await new Promise(r => setTimeout(r, 150));
+                            const geoResp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location + ', Richmond, Virginia')}&limit=1`, {
+                                headers: { 'User-Agent': 'BPS-CAD/1.0' }
+                            });
+                            const geoData = await geoResp.json();
+                            if (geoData[0]) {
+                                latitude = parseFloat(geoData[0].lat);
+                                longitude = parseFloat(geoData[0].lon);
                             }
-                        } catch (geocodeError) {
-                            console.error(`  ❌ Geocoding failed:`, geocodeError.message);
-                        }
-                        
-                        // Generate stable ID
-                        const cleanLocation = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
-                        const stableId = `${jurisdiction.code.toLowerCase()}-${cleanLocation}`;
-                        
-                        // Parse timestamp
-                        let parsedTime = new Date().toISOString();
-                        try {
-                            if (timeReceived.includes('/') || timeReceived.includes('-')) {
-                                parsedTime = new Date(timeReceived).toISOString();
-                            }
-                        } catch {
-                            // Use current time as fallback
-                        }
+                        } catch (e) {}
                         
                         allCalls.push({
                             call_id: stableId,
                             incident: incident,
                             location: location,
-                            agency: agency,
-                            status: status,
+                            agency: 'RPD',
+                            status: 'Active',
                             priority: 'medium',
-                            time_received: parsedTime,
+                            time_received: new Date().toISOString(),
                             latitude: latitude,
                             longitude: longitude,
                             source: 'gractivecalls',
                             description: `${incident} at ${location}`
                         });
-                        
-                    } catch (callError) {
-                        errors.push(`Parse error: ${callError.message}`);
                     }
                 }
-                
-            } catch (jurisdictionError) {
-                errors.push(`${jurisdiction.name}: ${jurisdictionError.message}`);
-                console.error(`❌ ${jurisdiction.name} error:`, jurisdictionError);
             }
+            console.log(`✅ Richmond: ${allCalls.length} calls`);
+        } catch (e) {
+            errors.push(`Richmond: ${e.message}`);
+            console.error(`❌ Richmond failed:`, e);
+        }
+        
+        // Henrico County
+        try {
+            console.log('📡 Fetching Henrico calls...');
+            const response = await fetch('https://web1.co.henrico.va.us/activecalls/');
+            const html = await response.text();
+            
+            const rows = html.match(/<tr[^>]*class="odd"|<tr[^>]*class="even"/g) || [];
+            const henStartCount = allCalls.length;
+            
+            for (const row of rows) {
+                const cells = html.substring(html.indexOf(row), html.indexOf(row) + 500).match(/<td[^>]*>(.*?)<\/td>/gs) || [];
+                if (cells.length >= 4) {
+                    const incident = cells[1].replace(/<[^>]*>/g, '').trim();
+                    const location = cells[2].replace(/<[^>]*>/g, '').trim();
+                    
+                    if (incident && location && incident.length > 2) {
+                        const stableId = `hpd-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+                        
+                        let latitude = null, longitude = null;
+                        try {
+                            await new Promise(r => setTimeout(r, 150));
+                            const geoResp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location + ', Henrico, Virginia')}&limit=1`, {
+                                headers: { 'User-Agent': 'BPS-CAD/1.0' }
+                            });
+                            const geoData = await geoResp.json();
+                            if (geoData[0]) {
+                                latitude = parseFloat(geoData[0].lat);
+                                longitude = parseFloat(geoData[0].lon);
+                            }
+                        } catch (e) {}
+                        
+                        allCalls.push({
+                            call_id: stableId,
+                            incident: incident,
+                            location: location,
+                            agency: 'HPD',
+                            status: 'Active',
+                            priority: 'medium',
+                            time_received: new Date().toISOString(),
+                            latitude: latitude,
+                            longitude: longitude,
+                            source: 'gractivecalls',
+                            description: `${incident} at ${location}`
+                        });
+                    }
+                }
+            }
+            console.log(`✅ Henrico: ${allCalls.length - henStartCount} calls`);
+        } catch (e) {
+            errors.push(`Henrico: ${e.message}`);
+            console.error(`❌ Henrico failed:`, e);
+        }
+        
+        // Chesterfield County
+        try {
+            console.log('📡 Fetching Chesterfield calls...');
+            const response = await fetch('https://apps.chesterfield.gov/arcgis/rest/services/public/Public_Safety/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json');
+            const data = await response.json();
+            const ccStartCount = allCalls.length;
+            
+            if (data.features) {
+                for (const feature of data.features) {
+                    const attrs = feature.attributes;
+                    const incident = attrs.CallType || attrs.EventType || '';
+                    const location = attrs.Address || attrs.Location || '';
+                    
+                    if (incident && location && incident.length > 2) {
+                        const stableId = `ccpd-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+                        const latitude = feature.geometry?.y || null;
+                        const longitude = feature.geometry?.x || null;
+                        
+                        allCalls.push({
+                            call_id: stableId,
+                            incident: incident,
+                            location: location,
+                            agency: 'CCPD',
+                            status: 'Active',
+                            priority: 'medium',
+                            time_received: new Date().toISOString(),
+                            latitude: latitude ? parseFloat(latitude) : null,
+                            longitude: longitude ? parseFloat(longitude) : null,
+                            source: 'gractivecalls',
+                            description: `${incident} at ${location}`
+                        });
+                    }
+                }
+            }
+            console.log(`✅ Chesterfield: ${allCalls.length - ccStartCount} calls`);
+        } catch (e) {
+            errors.push(`Chesterfield: ${e.message}`);
+            console.error(`❌ Chesterfield failed:`, e);
         }
         
         console.log(`✅ Total parsed: ${allCalls.length} calls`);
@@ -118,12 +172,10 @@ Deno.serve(async (req) => {
         
         let inserted = 0;
         let updated = 0;
-        let skipped = 0;
         
         for (const callData of allCalls) {
             try {
                 const existing = existingCalls.find(c => c.call_id === callData.call_id);
-                
                 if (existing) {
                     await base44.asServiceRole.entities.DispatchCall.update(existing.id, callData);
                     updated++;
@@ -131,9 +183,8 @@ Deno.serve(async (req) => {
                     await base44.asServiceRole.entities.DispatchCall.create(callData);
                     inserted++;
                 }
-            } catch (upsertError) {
-                errors.push(`Upsert failed for ${callData.call_id}: ${upsertError.message}`);
-                skipped++;
+            } catch (e) {
+                errors.push(`Upsert ${callData.call_id}: ${e.message}`);
             }
         }
         
@@ -147,18 +198,18 @@ Deno.serve(async (req) => {
             }
         }
         
-        console.log(`💾 Database: ${inserted} created, ${updated} updated, ${deleted} deleted, ${skipped} failed`);
+        console.log(`💾 Database: ${inserted} created, ${updated} updated, ${deleted} deleted`);
         
         return Response.json({
             success: true,
             timestamp: new Date().toISOString(),
-            source: 'afroraydude-api',
+            source: 'gractivecalls-direct',
             total_parsed: allCalls.length,
             inserted: inserted,
             updated: updated,
             deleted: deleted,
             geocoded: allCalls.filter(c => c.latitude && c.longitude).length,
-            errors: errors.length > 0 ? errors.slice(0, 10) : undefined
+            errors: errors.length > 0 ? errors : undefined
         });
         
     } catch (error) {
@@ -166,8 +217,7 @@ Deno.serve(async (req) => {
         return Response.json({
             success: false,
             error: error.message,
-            stack: error.stack,
-            timestamp: new Date().toISOString()
+            stack: error.stack
         }, { status: 500 });
     }
 });
