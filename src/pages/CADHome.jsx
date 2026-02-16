@@ -66,14 +66,11 @@ export default function CADHome() {
             // Fetch calls sorted by newest first
             const [callsData, usersData] = await Promise.all([
                 base44.entities.DispatchCall.list('-created_date', 200),
-                base44.functions.invoke('fetchAllUsers', {}).catch(err => {
-                    console.error('fetchAllUsers failed:', err);
-                    return { data: { users: [] } };
-                })
+                base44.entities.User.list()
             ]);
 
             const calls = callsData || [];
-            const allUsers = usersData.data?.users || [];
+            const allUsers = usersData || [];
 
             // Filter: recent (6hr) AND active status
             const sixHoursAgo = new Date();
