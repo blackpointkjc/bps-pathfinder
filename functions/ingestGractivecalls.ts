@@ -49,31 +49,22 @@ Deno.serve(async (req) => {
         const existingCalls = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'gractivecalls' });
         console.log(`📊 Found ${existingCalls.length} existing calls in database`);
         
-        // Remove expired calls (older than 60 minutes)
+        // Remove expired calls (older than 60 minutes) and track what's not expired
         const now = new Date();
-        const expirationThreshold = 60 * 60 * 1000; // 60 minutes in milliseconds
+        const expirationThreshold = 60 * 60 * 1000;
         let expired = 0;
+        const activeExisting = [];
         
-        const expiredIds = [];
         for (const call of existingCalls) {
             if (call.time_received) {
-                const callTime = new Date(call.time_received);
-                const ageMs = now - callTime;
-                
+                const ageMs = now - new Date(call.time_received);
                 if (ageMs > expirationThreshold) {
-                    expiredIds.push(call.id);
+                    await base44.asServiceRole.entities.DispatchCall.delete(call.id);
                     expired++;
+                    continue;
                 }
             }
-        }
-        
-        // Batch delete expired calls
-        for (const id of expiredIds) {
-            try {
-                await base44.asServiceRole.entities.DispatchCall.delete(id);
-            } catch (e) {
-                console.error(`Failed to delete expired call ${id}: ${e.message}`);
-            }
+            activeExisting.push(call);
         }
         
         console.log(`🗑️ Expired ${expired} calls older than 60 minutes`);
@@ -81,21 +72,14 @@ Deno.serve(async (req) => {
         let inserted = 0;
         let updated = 0;
         
-        // Filter out expired calls from existingCalls for upsert logic
-        const activeExisting = existingCalls.filter(c => !expiredIds.includes(c.id));
-        
         for (const callData of allCalls) {
-            try {
-                const existing = activeExisting.find(c => c.call_id === callData.call_id);
-                if (existing) {
-                    await base44.asServiceRole.entities.DispatchCall.update(existing.id, callData);
-                    updated++;
-                } else {
-                    await base44.asServiceRole.entities.DispatchCall.create(callData);
-                    inserted++;
-                }
-            } catch (e) {
-                console.error(`Failed ${callData.call_id}: ${e.message}`);
+            const existing = activeExisting.find(c => c.call_id === callData.call_id);
+            if (existing) {
+                await base44.asServiceRole.entities.DispatchCall.update(existing.id, callData);
+                updated++;
+            } else {
+                await base44.asServiceRole.entities.DispatchCall.create(callData);
+                inserted++;
             }
         }
         
@@ -103,12 +87,8 @@ Deno.serve(async (req) => {
         let deleted = 0;
         for (const existing of activeExisting) {
             if (!newCallIds.has(existing.call_id)) {
-                try {
-                    await base44.asServiceRole.entities.DispatchCall.delete(existing.id);
-                    deleted++;
-                } catch (e) {
-                    console.error(`Failed to delete ${existing.call_id}: ${e.message}`);
-                }
+                await base44.asServiceRole.entities.DispatchCall.delete(existing.id);
+                deleted++;
             }
         }
         
