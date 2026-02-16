@@ -85,10 +85,11 @@ export default function DispatchCenter() {
 
     const loadUnits = async () => {
         try {
-            const allUsers = await base44.entities.User.list('-last_updated', 500);
+            const response = await base44.functions.invoke('fetchAllUsers', {});
+            const allUsers = response.data?.users || [];
             console.log('📋 Dispatch loaded units:', allUsers.length);
-            console.log('📋 Units data:', allUsers);
-            setUnits(allUsers || []);
+            console.log('📋 Units with coords:', allUsers.filter(u => u.latitude && u.longitude).length);
+            setUnits(allUsers);
         } catch (error) {
             console.error('Error loading units:', error);
             setUnits([]);
