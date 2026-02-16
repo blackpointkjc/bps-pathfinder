@@ -1589,14 +1589,19 @@ Be thorough and search multiple sources.`,
                 return false;
             });
             
-            console.log('🚨 Setting active calls:', filtered.length, 'calls');
             setActiveCalls(filtered);
+            console.log('🚨 Active calls set to:', filtered.length, 'calls');
+            console.log('📍 First 3 filtered calls:', filtered.slice(0, 3).map(c => ({
+                incident: c.incident,
+                location: c.location,
+                coords: [c.latitude, c.longitude]
+            })));
 
             if (!silent) {
                 if (recentCalls.length === 0) {
-                    toast.info('No Active Calls Available');
+                    toast.error('No Active Calls Available');
                 } else {
-                    toast.success(`Loaded ${recentCalls.length} active calls on map`);
+                    toast.success(`Loaded ${filtered.length} calls on map`);
                 }
             }
         } catch (error) {
