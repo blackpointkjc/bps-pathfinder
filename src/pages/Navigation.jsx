@@ -214,7 +214,18 @@ export default function Navigation() {
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             }
-            fetchActiveCalls();
+            // Initial scrape then fetch calls
+            if (isOnline) {
+                toast.info('Loading active calls...');
+                base44.functions.invoke('ingestGractivecalls', {})
+                    .then(() => {
+                        console.log('✅ Initial scrape complete');
+                        return fetchActiveCalls();
+                    })
+                    .catch(err => console.error('Initial scrape failed:', err));
+            } else {
+                fetchActiveCalls();
+            }
             loadMonitoredProperties();
         };
         init();
@@ -231,6 +242,7 @@ export default function Navigation() {
             if (isOnline) {
                 try {
                     await base44.functions.invoke('ingestGractivecalls', {});
+                    console.log('🔄 Auto-scrape complete');
                 } catch (error) {
                     console.error('Auto-scrape failed:', error);
                 }
@@ -1563,9 +1575,22 @@ Be thorough and search multiple sources.`,
 
             lastCallCountRef.current = recentCalls.length;
             setAllActiveCalls(recentCalls);
-            applyCallFilter(recentCalls, callAgencyFilters);
             
-            console.log('🚨 Calls after filter:', activeCalls.length, 'Show calls:', showActiveCalls);
+            // Apply filter
+            const filtered = recentCalls.filter(call => {
+                const agency = (call.agency || '').toUpperCase();
+                if (!agency) return true;
+                if ((agency.includes('RPD') || agency.includes('RICHMOND')) && callAgencyFilters.showRPD) return true;
+                if ((agency.includes('HPD') || agency.includes('HCPD') || agency.includes('HENRICO')) && callAgencyFilters.showHPD) return true;
+                if ((agency.includes('CCPD') || agency.includes('CCFD') || agency.includes('CHESTERFIELD')) && callAgencyFilters.showCCPD) return true;
+                if (callAgencyFilters.showRPD || callAgencyFilters.showHPD || callAgencyFilters.showCCPD) {
+                    return true;
+                }
+                return false;
+            });
+            
+            console.log('🚨 Setting active calls:', filtered.length, 'calls');
+            setActiveCalls(filtered);
 
             if (!silent) {
                 if (recentCalls.length === 0) {
@@ -1952,10 +1977,17 @@ Be thorough and search multiple sources.`,
                 </Button>
 
                 <Button
-                    onClick={() => {
-                        fetchActiveCalls(false);
-                        fetchOtherUnits();
-                        toast.success('Refreshed calls and units');
+                    onClick={async () => {
+                        toast.info('Refreshing...');
+                        try {
+                            await base44.functions.invoke('ingestGractivecalls', {});
+                            await fetchActiveCalls(false);
+                            await fetchOtherUnits();
+                            toast.success('Refreshed');
+                        } catch (error) {
+                            console.error('Refresh failed:', error);
+                            toast.error('Refresh failed');
+                        }
                     }}
                     size="sm"
                     className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] px-2 py-1.5 rounded-lg shadow-lg"
