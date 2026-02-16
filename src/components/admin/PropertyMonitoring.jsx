@@ -134,6 +134,43 @@ export default function PropertyMonitoring() {
         }
     };
 
+    const handleGeocode = async () => {
+        if (!formData.address) {
+            toast.error('Enter an address first');
+            return;
+        }
+
+        try {
+            toast.loading('Geocoding address...');
+            const result = await base44.integrations.Core.InvokeLLM({
+                prompt: `What are the exact GPS coordinates (latitude and longitude) for this address: "${formData.address}"? Return ONLY a JSON object with "latitude" and "longitude" as numbers. No other text.`,
+                add_context_from_internet: true,
+                response_json_schema: {
+                    type: "object",
+                    properties: {
+                        latitude: { type: "number" },
+                        longitude: { type: "number" }
+                    },
+                    required: ["latitude", "longitude"]
+                }
+            });
+
+            if (result.latitude && result.longitude) {
+                setFormData({
+                    ...formData,
+                    latitude: result.latitude.toString(),
+                    longitude: result.longitude.toString()
+                });
+                toast.success('Coordinates found!');
+            } else {
+                toast.error('Could not find coordinates');
+            }
+        } catch (error) {
+            console.error('Geocoding error:', error);
+            toast.error('Geocoding failed');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
@@ -264,12 +301,23 @@ export default function PropertyMonitoring() {
 
                         <div>
                             <Label className="text-slate-300 font-mono text-xs">ADDRESS</Label>
-                            <Input
-                                value={formData.address}
-                                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                placeholder="e.g., 200 W Grace St, Richmond, VA"
-                                className="bg-slate-800 border-slate-700 text-white font-mono"
-                            />
+                            <div className="flex gap-2">
+                                <Input
+                                    value={formData.address}
+                                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                    placeholder="e.g., 200 W Grace St, Richmond, VA"
+                                    className="flex-1 bg-slate-800 border-slate-700 text-white font-mono"
+                                />
+                                <Button
+                                    type="button"
+                                    onClick={handleGeocode}
+                                    disabled={!formData.address}
+                                    className="bg-blue-600 hover:bg-blue-700 font-mono text-xs"
+                                >
+                                    <MapPin className="w-3 h-3 mr-1" />
+                                    GEOCODE
+                                </Button>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
