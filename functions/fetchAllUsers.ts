@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
         }
         
         // Fetch all users using service role
-        const allUsers = await base44.asServiceRole.entities.User.list('-last_updated', 500);
+        const allUsers = await base44.asServiceRole.entities.User.list('-updated_date', 500);
         
         return Response.json({
             success: true,
