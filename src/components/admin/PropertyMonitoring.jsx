@@ -140,8 +140,9 @@ export default function PropertyMonitoring() {
             return;
         }
 
+        const loadingToast = toast.loading('Geocoding address...');
+        
         try {
-            toast.loading('Geocoding address...');
             const result = await base44.integrations.Core.InvokeLLM({
                 prompt: `What are the exact GPS coordinates (latitude and longitude) for this address: "${formData.address}"? Return ONLY a JSON object with "latitude" and "longitude" as numbers. No other text.`,
                 add_context_from_internet: true,
@@ -155,6 +156,8 @@ export default function PropertyMonitoring() {
                 }
             });
 
+            toast.dismiss(loadingToast);
+
             if (result.latitude && result.longitude) {
                 setFormData({
                     ...formData,
@@ -166,6 +169,7 @@ export default function PropertyMonitoring() {
                 toast.error('Could not find coordinates');
             }
         } catch (error) {
+            toast.dismiss(loadingToast);
             console.error('Geocoding error:', error);
             toast.error('Geocoding failed');
         }
@@ -281,21 +285,21 @@ export default function PropertyMonitoring() {
             </div>
 
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
-                <DialogContent className="max-w-lg bg-slate-900 border-slate-700">
+                <DialogContent className="max-w-lg bg-slate-900 border-slate-700 pointer-events-auto">
                     <DialogHeader>
                         <DialogTitle className="text-white font-mono flex items-center gap-2">
                             <MapPin className="w-4 h-4 text-blue-400" />
                             {editingProperty ? 'EDIT PROPERTY' : 'ADD PROPERTY'}
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="space-y-4 pointer-events-auto">
                         <div>
                             <Label className="text-slate-300 font-mono text-xs">PROPERTY NAME</Label>
                             <Input
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 placeholder="e.g., Police Headquarters"
-                                className="bg-slate-800 border-slate-700 text-white font-mono"
+                                className="pointer-events-auto bg-slate-800 border-slate-700 text-white font-mono"
                             />
                         </div>
 
@@ -306,13 +310,13 @@ export default function PropertyMonitoring() {
                                     value={formData.address}
                                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                                     placeholder="e.g., 200 W Grace St, Richmond, VA"
-                                    className="flex-1 bg-slate-800 border-slate-700 text-white font-mono"
+                                    className="pointer-events-auto flex-1 bg-slate-800 border-slate-700 text-white font-mono"
                                 />
                                 <Button
                                     type="button"
                                     onClick={handleGeocode}
                                     disabled={!formData.address}
-                                    className="bg-blue-600 hover:bg-blue-700 font-mono text-xs"
+                                    className="pointer-events-auto bg-blue-600 hover:bg-blue-700 font-mono text-xs"
                                 >
                                     <MapPin className="w-3 h-3 mr-1" />
                                     GEOCODE
@@ -329,7 +333,7 @@ export default function PropertyMonitoring() {
                                     value={formData.latitude}
                                     onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
                                     placeholder="37.5407"
-                                    className="bg-slate-800 border-slate-700 text-white font-mono"
+                                    className="pointer-events-auto bg-slate-800 border-slate-700 text-white font-mono"
                                 />
                             </div>
                             <div>
@@ -340,7 +344,7 @@ export default function PropertyMonitoring() {
                                     value={formData.longitude}
                                     onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
                                     placeholder="-77.4360"
-                                    className="bg-slate-800 border-slate-700 text-white font-mono"
+                                    className="pointer-events-auto bg-slate-800 border-slate-700 text-white font-mono"
                                 />
                             </div>
                         </div>
@@ -354,18 +358,19 @@ export default function PropertyMonitoring() {
                                 value={formData.radiusMeters}
                                 onChange={(e) => setFormData({ ...formData, radiusMeters: e.target.value })}
                                 placeholder="500"
-                                className="bg-slate-800 border-slate-700 text-white font-mono"
+                                className="pointer-events-auto bg-slate-800 border-slate-700 text-white font-mono"
                             />
                             <p className="text-xs text-slate-500 font-mono mt-1">
                                 Alerts trigger when calls occur within this radius
                             </p>
                         </div>
 
-                        <div className="flex items-center justify-between py-2 px-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+                        <div className="flex items-center justify-between py-2 px-3 bg-slate-800/50 border border-slate-700 rounded-lg pointer-events-auto">
                             <Label className="text-slate-300 font-mono text-xs">ENABLED</Label>
                             <Switch
                                 checked={formData.enabled}
                                 onCheckedChange={(checked) => setFormData({ ...formData, enabled: checked })}
+                                className="pointer-events-auto"
                             />
                         </div>
 
@@ -373,11 +378,14 @@ export default function PropertyMonitoring() {
                             <Button
                                 variant="outline"
                                 onClick={() => setShowDialog(false)}
-                                className="flex-1 bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 font-mono"
+                                className="pointer-events-auto flex-1 bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 font-mono"
                             >
                                 CANCEL
                             </Button>
-                            <Button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 font-mono">
+                            <Button 
+                                onClick={handleSave} 
+                                className="pointer-events-auto flex-1 bg-blue-600 hover:bg-blue-700 font-mono"
+                            >
                                 {editingProperty ? 'UPDATE' : 'ADD'}
                             </Button>
                         </div>
