@@ -49,6 +49,24 @@ Deno.serve(async (req) => {
                 if (incident && location && agency) {
                     const stableId = `${agency.toLowerCase()}-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
                     
+                    // Geocode the location
+                    let latitude = null;
+                    let longitude = null;
+                    try {
+                        const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location + ', Virginia, USA')}&limit=1`;
+                        const geocodeRes = await fetch(geocodeUrl, {
+                            headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' }
+                        });
+                        const geocodeData = await geocodeRes.json();
+                        if (geocodeData && geocodeData.length > 0) {
+                            latitude = parseFloat(geocodeData[0].lat);
+                            longitude = parseFloat(geocodeData[0].lon);
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 100)); // Rate limiting
+                    } catch (geocodeError) {
+                        console.error(`Geocoding failed for ${location}:`, geocodeError.message);
+                    }
+                    
                     allCalls.push({
                         call_id: stableId,
                         incident: incident,
@@ -58,7 +76,9 @@ Deno.serve(async (req) => {
                         priority: 'medium',
                         time_received: timeReceived || new Date().toISOString(),
                         source: 'gractivecalls',
-                        description: `${incident} at ${location}`
+                        description: `${incident} at ${location}`,
+                        latitude: latitude,
+                        longitude: longitude
                     });
                 }
             }
