@@ -29,24 +29,13 @@ export default function CADHome() {
     useEffect(() => {
         init();
         
-        // Real-time polling every 5 seconds
+        // Real-time polling every 30 seconds
         const interval = setInterval(() => {
             loadData();
-        }, 5000);
-        
-        // Auto-scrape every 60 seconds for real-time feed
-        const scrapeInterval = setInterval(async () => {
-            try {
-                const result = await base44.functions.invoke('scrapeActiveCalls', {});
-                console.log('✅ Auto-scraped:', result.data?.saved || 0, 'calls');
-            } catch (error) {
-                console.error('Auto-scrape failed:', error);
-            }
-        }, 60000);
+        }, 30000);
         
         return () => {
             clearInterval(interval);
-            clearInterval(scrapeInterval);
         };
     }, []);
 
@@ -179,8 +168,12 @@ export default function CADHome() {
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 border border-green-500/30 rounded">
-                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                <Radio className="w-3 h-3 text-green-400 animate-pulse" />
                                 <span className="text-green-400 font-mono text-xs font-bold">SYSTEM ONLINE</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 border border-blue-500/30 rounded">
+                                <Activity className="w-3 h-3 text-blue-400" />
+                                <span className="text-blue-400 font-mono text-xs font-bold">{metrics.totalCalls} ACTIVE</span>
                             </div>
                             <div className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded font-mono text-xs text-slate-300">
                                 {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
