@@ -9,7 +9,6 @@ import { createPageUrl } from '../utils';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
 import ActiveCallsQueue from '@/components/dispatch/ActiveCallsQueue';
-import OtherUnitsLayer from '@/components/map/OtherUnitsLayer';
 import CallDetailPanel from '@/components/dispatch/CallDetailPanel';
 import UnitsPanel from '@/components/dispatch/UnitsPanel';
 import CreateCallDialog from '@/components/dispatch/CreateCallDialog';
@@ -85,11 +84,10 @@ export default function DispatchCenter() {
 
     const loadUnits = async () => {
         try {
-            const response = await base44.functions.invoke('fetchAllUsers', {});
-            const allUsers = response.data?.users || [];
+            const allUsers = await base44.entities.User.list('-last_updated', 500);
             console.log('📋 Dispatch loaded units:', allUsers.length);
-            console.log('📋 Units with coords:', allUsers.filter(u => u.latitude && u.longitude).length);
-            setUnits(allUsers);
+            console.log('📋 Units data:', allUsers);
+            setUnits(allUsers || []);
         } catch (error) {
             console.error('Error loading units:', error);
             setUnits([]);
@@ -297,11 +295,7 @@ export default function DispatchCenter() {
                                                calls={activeCalls} 
                                                onCallClick={handleSelectCall}
                                            />
-                                           <OtherUnitsLayer 
-                                               units={units}
-                                               currentUserId={currentUser?.id}
-                                           />
-                                           </MapContainer>
+                                       </MapContainer>
                                    </div>
                                </Card>
                            </div>

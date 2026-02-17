@@ -144,12 +144,10 @@ export default function Navigation() {
         return hour >= 6 && hour < 19 ? 'day' : 'night';
     });
     const [realTimeAlert, setRealTimeAlert] = useState(null);
-    const [monitoredProperties, setMonitoredProperties] = useState([]);
     
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
     const callsRefreshInterval = useRef(null);
-    const scrapeIntervalRef = useRef(null);
     const unitsRefreshInterval = useRef(null);
     const lastPosition = useRef(null);
     const lastAnnouncedStep = useRef(-1);
@@ -214,19 +212,7 @@ export default function Navigation() {
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             }
-            // Initial scrape then fetch calls
-            if (isOnline) {
-                toast.info('Loading active calls...');
-                base44.functions.invoke('ingestGractivecalls', {})
-                    .then(() => {
-                        console.log('✅ Initial scrape complete');
-                        return fetchActiveCalls();
-                    })
-                    .catch(err => console.error('Initial scrape failed:', err));
-            } else {
-                fetchActiveCalls();
-            }
-            loadMonitoredProperties();
+            fetchActiveCalls();
         };
         init();
         
@@ -237,17 +223,7 @@ export default function Navigation() {
             }
         }, 10000);
         
-        // Auto-scrape every 30 seconds
-        scrapeIntervalRef.current = setInterval(async () => {
-            if (isOnline) {
-                try {
-                    await base44.functions.invoke('ingestGractivecalls', {});
-                    console.log('🔄 Auto-scrape complete');
-                } catch (error) {
-                    console.error('Auto-scrape failed:', error);
-                }
-            }
-        }, 30000);
+        // Removed auto-scrape interval - gractivecalls.com is now the sole source
         
 
         
@@ -258,9 +234,6 @@ export default function Navigation() {
             }
             if (callsRefreshInterval.current) {
                 clearInterval(callsRefreshInterval.current);
-            }
-            if (scrapeIntervalRef.current) {
-                clearInterval(scrapeIntervalRef.current);
             }
         };
     }, []);
@@ -1379,18 +1352,9 @@ export default function Navigation() {
         const filtered = calls.filter(call => {
             const agency = (call.agency || '').toUpperCase();
             
-            // If no agency specified, show the call
-            if (!agency) return true;
-            
-            // Check each filter
             if ((agency.includes('RPD') || agency.includes('RICHMOND')) && filters.showRPD) return true;
             if ((agency.includes('HPD') || agency.includes('HCPD') || agency.includes('HENRICO')) && filters.showHPD) return true;
             if ((agency.includes('CCPD') || agency.includes('CCFD') || agency.includes('CHESTERFIELD')) && filters.showCCPD) return true;
-            
-            // Show calls from other agencies if at least one filter is enabled
-            if (filters.showRPD || filters.showHPD || filters.showCCPD) {
-                return true;
-            }
             
             return false;
         });
@@ -1479,15 +1443,6 @@ Be thorough and search multiple sources.`,
     const lastCallCountRef = useRef(0);
     const lastHighPriorityCallsRef = useRef(new Set());
 
-    const loadMonitoredProperties = async () => {
-        try {
-            const properties = await base44.entities.MonitoredProperty.list();
-            setMonitoredProperties(properties || []);
-        } catch (error) {
-            console.error('Error loading monitored properties:', error);
-        }
-    };
-
     const fetchActiveCalls = async (silent = false) => {
         if (!isOnline) {
             if (!silent) toast.error('Cannot fetch calls while offline');
@@ -1496,35 +1451,43 @@ Be thorough and search multiple sources.`,
 
         setIsLoadingCalls(true);
         try {
-            // Fetch recent calls from all sources
-            const allCalls = await base44.entities.DispatchCall.list('-time_received', 300);
+            // ONLY fetch from gractivecalls.com source
+            const allCalls = await base44.entities.DispatchCall.filter({ source: 'gractivecalls' }, '-time_received', 300);
             
-            // Filter: Last 6 hours, active status, valid coordinates
-            const sixHoursAgo = new Date();
-            sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
+            // Filter: TODAY only, active status, and ONLY Henrico, Richmond, Chesterfield
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
             
             const recentCalls = allCalls.filter(call => {
                 const callTime = new Date(call.time_received || call.created_date);
-                const isRecent = callTime >= sixHoursAgo;
+                const isToday = callTime >= today;
                 const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
-                const hasValidCoords = call.latitude && call.longitude && 
-                                      !isNaN(call.latitude) && !isNaN(call.longitude) &&
-                                      call.latitude !== 0 && call.longitude !== 0;
                 
-                return isRecent && isActive && hasValidCoords;
+                // Check jurisdiction - map agency codes to jurisdictions
+                const agency = (call.agency || '').toUpperCase();
+                const isAllowedJurisdiction = 
+                    agency.includes('RPD') || agency.includes('RICHMOND') ||
+                    agency.includes('HPD') || agency.includes('HCPD') || agency.includes('HENRICO') ||
+                    agency.includes('CCPD') || agency.includes('CCFD') || agency.includes('CHESTERFIELD');
+                
+                return isToday && isActive && isAllowedJurisdiction;
             });
             
-            console.log('📞 Total calls fetched:', allCalls.length);
-            console.log('📞 Active calls with valid coords:', recentCalls.length);
+            const geocodedCount = recentCalls.filter(call => 
+                call.latitude && call.longitude && 
+                !isNaN(call.latitude) && !isNaN(call.longitude) &&
+                call.latitude !== 0 && call.longitude !== 0
+            ).length;
+
+            console.log('📞 Total gractivecalls fetched:', allCalls.length);
+            console.log('📞 Today active calls (filtered):', recentCalls.length);
+            console.log('📍 Calls with valid coords:', geocodedCount);
             
-            if (recentCalls.length > 0) {
-                console.log('📍 Sample calls:', recentCalls.slice(0, 3).map(c => ({
-                    incident: c.incident,
-                    location: c.location,
-                    coords: [c.latitude, c.longitude],
-                    agency: c.agency
-                })));
-            }
+            // Log each call with details
+            recentCalls.forEach((call, i) => {
+                const hasCoords = call.latitude && call.longitude && !isNaN(call.latitude) && !isNaN(call.longitude);
+                console.log(`${i+1}. ${call.incident} @ ${call.location} [${call.agency}] ${hasCoords ? '✅ HAS COORDS' : '❌ NO COORDS'}`);
+            });
 
             // Detect new calls and high-priority calls in real-time
             if (silent && lastCallCountRef.current > 0) {
@@ -1574,34 +1537,15 @@ Be thorough and search multiple sources.`,
             }
 
             lastCallCountRef.current = recentCalls.length;
+            setShowActiveCalls(true);
             setAllActiveCalls(recentCalls);
-            
-            // Apply filter
-            const filtered = recentCalls.filter(call => {
-                const agency = (call.agency || '').toUpperCase();
-                if (!agency) return true;
-                if ((agency.includes('RPD') || agency.includes('RICHMOND')) && callAgencyFilters.showRPD) return true;
-                if ((agency.includes('HPD') || agency.includes('HCPD') || agency.includes('HENRICO')) && callAgencyFilters.showHPD) return true;
-                if ((agency.includes('CCPD') || agency.includes('CCFD') || agency.includes('CHESTERFIELD')) && callAgencyFilters.showCCPD) return true;
-                if (callAgencyFilters.showRPD || callAgencyFilters.showHPD || callAgencyFilters.showCCPD) {
-                    return true;
-                }
-                return false;
-            });
-            
-            setActiveCalls(filtered);
-            console.log('🚨 Active calls set to:', filtered.length, 'calls');
-            console.log('📍 First 3 filtered calls:', filtered.slice(0, 3).map(c => ({
-                incident: c.incident,
-                location: c.location,
-                coords: [c.latitude, c.longitude]
-            })));
+            applyCallFilter(recentCalls, callAgencyFilters);
 
             if (!silent) {
                 if (recentCalls.length === 0) {
-                    toast.error('No Active Calls Available');
+                    toast.info('No Active Calls Available');
                 } else {
-                    toast.success(`Loaded ${filtered.length} calls on map`);
+                    toast.success(`Loaded ${recentCalls.length} active calls (${geocodedCount} on map)`);
                 }
             }
         } catch (error) {
@@ -1644,7 +1588,7 @@ Be thorough and search multiple sources.`,
                     route={routeCoords}
                     trafficSegments={trafficSegments}
                     useOfflineTiles={!isOnline}
-                    activeCalls={showActiveCalls ? activeCalls : []}
+                    activeCalls={activeCalls}
                     heading={heading}
                     locationHistory={isLiveTracking ? locationHistory : []}
                     unitName={unitName || currentUser?.unit_number}
@@ -1662,7 +1606,6 @@ Be thorough and search multiple sources.`,
                     jurisdictionFilters={jurisdictionFilters}
                     searchPin={searchPin}
                     mapTheme={mapTheme}
-                    monitoredProperties={monitoredProperties}
                     onCallClick={(call) => {
                         setSelectedCall(call);
                         setShowCallSidebar(true);
@@ -1982,17 +1925,10 @@ Be thorough and search multiple sources.`,
                 </Button>
 
                 <Button
-                    onClick={async () => {
-                        toast.info('Refreshing...');
-                        try {
-                            await base44.functions.invoke('ingestGractivecalls', {});
-                            await fetchActiveCalls(false);
-                            await fetchOtherUnits();
-                            toast.success('Refreshed');
-                        } catch (error) {
-                            console.error('Refresh failed:', error);
-                            toast.error('Refresh failed');
-                        }
+                    onClick={() => {
+                        fetchActiveCalls(false);
+                        fetchOtherUnits();
+                        toast.success('Refreshed calls and units');
                     }}
                     size="sm"
                     className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] px-2 py-1.5 rounded-lg shadow-lg"
