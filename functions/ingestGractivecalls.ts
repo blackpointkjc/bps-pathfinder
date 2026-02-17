@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
         const html = await response.text();
         const $ = cheerio.load(html);
         
-        const allCalls = [];
+        const rawCalls = [];
         
         // Parse each table row
         $('table tbody tr').each((_, row) => {
@@ -49,33 +49,7 @@ Deno.serve(async (req) => {
                 if (incident && location && agency) {
                     const stableId = `${agency.toLowerCase()}-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
                     
-                    // Geocode the location
-                    let latitude = null;
-                    let longitude = null;
-                    
-                    try {
-                        const geocodeQuery = `${location}, Virginia, USA`;
-                        const geocodeResponse = await fetch(
-                            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(geocodeQuery)}&limit=1`,
-                            { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' } }
-                        );
-                        const geocodeData = await geocodeResponse.json();
-                        
-                        if (geocodeData && geocodeData.length > 0) {
-                            latitude = parseFloat(geocodeData[0].lat);
-                            longitude = parseFloat(geocodeData[0].lon);
-                            console.log(`📍 Geocoded: ${location} → [${latitude}, ${longitude}]`);
-                        } else {
-                            console.log(`⚠️ No geocode result for: ${location}`);
-                        }
-                        
-                        // Rate limit: wait 1 second between geocode requests
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                    } catch (geocodeError) {
-                        console.error(`❌ Geocode failed for ${location}:`, geocodeError.message);
-                    }
-                    
-                    allCalls.push({
+                    rawCalls.push({
                         call_id: stableId,
                         incident: incident,
                         location: location,
@@ -84,15 +58,51 @@ Deno.serve(async (req) => {
                         priority: 'medium',
                         time_received: timeReceived || new Date().toISOString(),
                         source: 'gractivecalls',
-                        description: `${incident} at ${location}`,
-                        latitude: latitude,
-                        longitude: longitude
+                        description: `${incident} at ${location}`
                     });
                 }
             }
         });
         
-        console.log(`✅ Scraped ${allCalls.length} calls from gractivecalls.com`);
+        console.log(`✅ Scraped ${rawCalls.length} calls from gractivecalls.com`);
+        
+        // Batch geocode all unique locations
+        const uniqueLocations = [...new Set(rawCalls.map(c => c.location))];
+        const geocodeCache = {};
+        
+        console.log(`🗺️ Geocoding ${uniqueLocations.length} unique locations...`);
+        
+        for (const location of uniqueLocations) {
+            try {
+                const geocodeQuery = `${location}, Virginia, USA`;
+                const geocodeResponse = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(geocodeQuery)}&limit=1`,
+                    { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' } }
+                );
+                const geocodeData = await geocodeResponse.json();
+                
+                if (geocodeData && geocodeData.length > 0) {
+                    geocodeCache[location] = {
+                        latitude: parseFloat(geocodeData[0].lat),
+                        longitude: parseFloat(geocodeData[0].lon)
+                    };
+                }
+                
+                // Rate limit
+                await new Promise(resolve => setTimeout(resolve, 1100));
+            } catch (err) {
+                console.error(`Geocode failed for ${location}:`, err.message);
+            }
+        }
+        
+        console.log(`✅ Geocoded ${Object.keys(geocodeCache).length}/${uniqueLocations.length} locations`);
+        
+        // Apply geocoded coordinates to calls
+        const allCalls = rawCalls.map(call => ({
+            ...call,
+            latitude: geocodeCache[call.location]?.latitude || null,
+            longitude: geocodeCache[call.location]?.longitude || null
+        }));
         
         // Fetch existing calls from this source
         const existingCalls = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'gractivecalls' });
