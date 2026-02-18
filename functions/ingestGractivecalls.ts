@@ -133,9 +133,10 @@ Deno.serve(async (req) => {
         const existingCalls = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'gractivecalls' });
         console.log(`📊 Found ${existingCalls.length} existing calls in database`);
         
-        // Remove expired calls: delete any call whose time_received is older than 3 hours
+        // Only expire calls NOT on the current site fetch AND older than 6 hours
+        // (site keeps some HPD calls for hours — let the "deleted from site" logic below handle fresh removals)
         const now = new Date();
-        const expirationThreshold = 3 * 60 * 60 * 1000; // 3 hours
+        const expirationThreshold = 6 * 60 * 60 * 1000; // 6 hours hard cap
         let expired = 0;
         const activeExisting = [];
         
