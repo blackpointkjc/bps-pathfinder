@@ -15,14 +15,42 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
-// Parse "14:35" into today's full ISO datetime
+// Parse "14:35" (Eastern time) into a proper ISO datetime
+// gractivecalls.com is based in the Richmond, VA area — times are Eastern
 function parseTimeToISO(timeStr) {
     if (!timeStr) return new Date().toISOString();
     const match = timeStr.match(/(\d{1,2}):(\d{2})/);
     if (match) {
-        const now = new Date();
-        now.setHours(parseInt(match[1]), parseInt(match[2]), 0, 0);
-        return now.toISOString();
+        const hours = parseInt(match[1]);
+        const minutes = parseInt(match[2]);
+
+        // Build an Eastern-time date string for today
+        // Use Intl to get today's date in Eastern time
+        const nowUtc = new Date();
+        const easternFormatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/New_York',
+            year: 'numeric', month: '2-digit', day: '2-digit'
+        });
+        const parts = easternFormatter.formatToParts(nowUtc);
+        const year = parts.find(p => p.type === 'year').value;
+        const month = parts.find(p => p.type === 'month').value;
+        const day = parts.find(p => p.type === 'day').value;
+
+        // Construct ISO string in Eastern time and convert to UTC via Date parsing
+        const pad = (n) => String(n).padStart(2, '0');
+        const easternDateStr = `${year}-${month}-${day}T${pad(hours)}:${pad(minutes)}:00`;
+
+        // Determine EST vs EDT offset using a reference date
+        const testDate = new Date(`${year}-${month}-${day}T12:00:00Z`);
+        const easternOffset = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/New_York',
+            timeZoneName: 'shortOffset'
+        }).formatToParts(testDate).find(p => p.type === 'timeZoneName')?.value || 'GMT-5';
+        const offsetHours = easternOffset.includes('-4') ? 4 : 5;
+
+        const utcDate = new Date(`${easternDateStr}Z`);
+        utcDate.setUTCHours(utcDate.getUTCHours() + offsetHours);
+        return utcDate.toISOString();
     }
     return new Date().toISOString();
 }
