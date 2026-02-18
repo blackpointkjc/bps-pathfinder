@@ -347,18 +347,10 @@ export default function CADHome() {
                                                     </div>
                                                 </div>
                                                 <div className="text-xs text-slate-500 font-mono">
-                                                   {call.time_received ? 
-                                                       new Date(call.time_received).toLocaleTimeString('en-US', { 
-                                                           hour: '2-digit', 
-                                                           minute: '2-digit',
-                                                           hour12: false 
-                                                       }) :
-                                                       new Date(call.created_date).toLocaleTimeString('en-US', { 
-                                                           hour: '2-digit', 
-                                                           minute: '2-digit',
-                                                           hour12: false 
-                                                       })
-                                                   }
+                                                  {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { 
+                                                      hour: '2-digit', minute: '2-digit', hour12: true,
+                                                      timeZone: 'America/New_York'
+                                                  })} EST
                                                 </div>
                                             </div>
                                         </div>
