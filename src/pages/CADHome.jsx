@@ -112,17 +112,15 @@ export default function CADHome() {
     const handleRefresh = async () => {
         if (refreshing) return;
         setRefreshing(true);
-        const toastId = toast.loading('Scraping live feed... (this may take ~60s)');
-        try {
-            await base44.functions.invoke('ingestGractivecalls', {});
+        // Fire-and-forget the scrape (it takes ~60s, don't await)
+        base44.functions.invoke('ingestGractivecalls', {}).catch(() => {});
+        // Wait 5 seconds for the scrape to make initial progress, then reload
+        toast.loading('Refreshing live feed...', { id: 'refresh' });
+        setTimeout(async () => {
             await loadData();
-            toast.success('Feed refreshed successfully', { id: toastId, duration: 4000 });
-        } catch (error) {
-            console.error('Refresh error:', error);
-            toast.error('Refresh failed: ' + (error?.message || 'unknown error'), { id: toastId });
-        } finally {
+            toast.success('Feed refreshed', { id: 'refresh', duration: 3000 });
             setRefreshing(false);
-        }
+        }, 5000);
     };
 
     const getPriorityColor = (call) => {
