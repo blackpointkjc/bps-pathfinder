@@ -252,8 +252,16 @@ export default function DispatchCenter() {
                          </div>
                         
                         <div className="flex gap-2">
-                           <Button
-                               onClick={() => setShowMap(!showMap)}
+                          <Button
+                              onClick={() => setSoundEnabled(!soundEnabled)}
+                              variant="outline"
+                              className={`border-slate-700 font-mono text-xs ${soundEnabled ? 'text-green-400 bg-slate-800 hover:bg-slate-700' : 'text-slate-500 bg-slate-800 hover:bg-slate-700'}`}
+                              title={soundEnabled ? 'Mute alerts' : 'Unmute alerts'}
+                          >
+                              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                          </Button>
+                          <Button
+                              onClick={() => setShowMap(!showMap)}
                                variant="outline"
                                className={`border-slate-700 font-mono text-xs ${showMap ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-slate-300 bg-slate-800 hover:bg-slate-700'}`}
                            >
