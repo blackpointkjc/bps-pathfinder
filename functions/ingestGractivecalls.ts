@@ -200,13 +200,14 @@ Deno.serve(async (req) => {
             }
         }
         
-        // Delete calls no longer on the site
+        // Delete calls no longer on the site (most important — keeps DB in sync with live site)
         const newCallIds = new Set(allCalls.map(c => c.call_id));
         let deleted = 0;
         for (const existing of activeExisting) {
             if (!newCallIds.has(existing.call_id)) {
                 await base44.asServiceRole.entities.DispatchCall.delete(existing.id);
                 deleted++;
+                console.log(`🗑️ Removed from site: ${existing.incident} @ ${existing.location}`);
             }
         }
         
