@@ -176,6 +176,14 @@ export default function CADHome() {
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
+                            <Button
+                                onClick={handleRefresh}
+                                disabled={refreshing}
+                                className="bg-green-700 hover:bg-green-600 font-mono text-xs"
+                            >
+                                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                                {refreshing ? 'REFRESHING...' : 'REFRESH FEED'}
+                            </Button>
                             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 border border-green-500/30 rounded">
                                 <Radio className="w-3 h-3 text-green-400 animate-pulse" />
                                 <span className="text-green-400 font-mono text-xs font-bold">SYSTEM ONLINE</span>
