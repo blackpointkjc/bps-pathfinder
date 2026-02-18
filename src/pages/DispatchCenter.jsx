@@ -59,6 +59,7 @@ export default function DispatchCenter() {
     const [sortOrder, setSortOrder] = useState('desc');
     const [showMap, setShowMap] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const knownCallIdsRef = React.useRef(null);
 
     useEffect(() => {
