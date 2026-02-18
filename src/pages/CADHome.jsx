@@ -63,12 +63,11 @@ export default function CADHome() {
             const calls = callsData || [];
             const allUsers = usersData || [];
 
-            // Filter: active status only — backend expires stale records automatically
+            // Filter: active status only — show ALL agencies from the feed
             const recentCalls = calls.filter(call => {
                 const isActive = !call.status || !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
                 return isActive;
-            })
-            // No agency filter here — show ALL agencies from the feed.sort((a, b) => {
+            }).sort((a, b) => {
                 const timeA = new Date(a.time_received || a.created_date);
                 const timeB = new Date(b.time_received || b.created_date);
                 return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
