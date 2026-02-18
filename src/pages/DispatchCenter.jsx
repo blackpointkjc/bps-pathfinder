@@ -19,6 +19,34 @@ import QuickActions from '@/components/dispatch/QuickActions';
 import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
 import 'leaflet/dist/leaflet.css';
 
+// Play a dispatch alert tone using Web Audio API
+function playDispatchAlert() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const tones = [
+            { freq: 880, start: 0, duration: 0.12 },
+            { freq: 1100, start: 0.15, duration: 0.12 },
+            { freq: 880, start: 0.30, duration: 0.12 },
+            { freq: 1100, start: 0.45, duration: 0.18 },
+        ];
+        tones.forEach(({ freq, start, duration }) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+            gain.gain.setValueAtTime(0, ctx.currentTime + start);
+            gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + start + 0.01);
+            gain.gain.linearRampToValueAtTime(0, ctx.currentTime + start + duration);
+            osc.start(ctx.currentTime + start);
+            osc.stop(ctx.currentTime + start + duration + 0.05);
+        });
+    } catch (e) {
+        // silently fail if audio not available
+    }
+}
+
 export default function DispatchCenter() {
     const [currentUser, setCurrentUser] = useState(null);
     const [units, setUnits] = useState([]);
@@ -28,8 +56,10 @@ export default function DispatchCenter() {
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showPriorCalls, setShowPriorCalls] = useState(false);
     const [showMessaging, setShowMessaging] = useState(false);
-    const [sortOrder, setSortOrder] = useState('desc'); // 'desc' = newest first, 'asc' = oldest first
+    const [sortOrder, setSortOrder] = useState('desc');
     const [showMap, setShowMap] = useState(true);
+    const [soundEnabled, setSoundEnabled] = useState(true);
+    const knownCallIdsRef = React.useRef(null);
 
     useEffect(() => {
         init();
