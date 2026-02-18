@@ -27,59 +27,29 @@ const createCallIcon = (call, isHighPriority = false) => {
     }
     
     // Choose icon and color
-    let icon = '';
+    let iconSvg = '';
     let bgColor = '#1E40AF'; // Blue for police (default)
     
     if (isEMS) {
-        bgColor = '#F59E0B'; // Amber for EMS
-        icon = '🚨';
+        bgColor = '#D97706'; // Amber for EMS
+        iconSvg = `<text x="20" y="26" font-size="18" text-anchor="middle" font-family="Arial">🚑</text>`;
     } else if (isFire) {
         bgColor = '#DC2626'; // Red for fire
-        icon = '🚨';
+        iconSvg = `<text x="20" y="26" font-size="18" text-anchor="middle" font-family="Arial">🔥</text>`;
     } else {
-        // Police
         bgColor = '#1E40AF';
-        icon = '🚔';
+        iconSvg = `<text x="20" y="26" font-size="16" text-anchor="middle" font-family="Arial" fill="white" font-weight="bold">PD</text>`;
     }
 
     return new L.DivIcon({
         className: 'custom-call-marker',
         html: `
-            <div style="
-                position: relative;
-                width: 40px;
-                height: 40px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            ">
-                <div style="
-                    position: absolute;
-                    width: 40px;
-                    height: 40px;
-                    background: ${bgColor};
-                    border: 3px solid ${isHighPriority ? '#EF4444' : 'white'};
-                    border-radius: 50%;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 20px;
-                    line-height: 1;
-                ">
-                    ${icon}
-                </div>
-                <div style="
-                    position: absolute;
-                    top: -4px;
-                    right: -4px;
-                    width: 12px;
-                    height: 12px;
-                    background: ${statusColor};
-                    border: 2px solid white;
-                    border-radius: 50%;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                "></div>
+            <div style="position:relative;width:40px;height:40px;">
+                <svg width="40" height="40" viewBox="0 0 40 40">
+                    <circle cx="20" cy="20" r="18" fill="${bgColor}" stroke="${isHighPriority ? '#EF4444' : 'white'}" stroke-width="3"/>
+                    ${iconSvg}
+                    <circle cx="32" cy="8" r="6" fill="${statusColor}" stroke="white" stroke-width="2"/>
+                </svg>
             </div>
         `,
         iconSize: [40, 40],

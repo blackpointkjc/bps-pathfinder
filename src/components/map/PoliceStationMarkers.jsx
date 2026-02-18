@@ -5,18 +5,10 @@ import L from 'leaflet';
 const policeStationIcon = new L.DivIcon({
     className: 'custom-marker',
     html: `
-        <div style="
-            width: 32px;
-            height: 32px;
-            background: #1E40AF;
-            border: 2px solid white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        ">🚓</div>
+        <svg width="32" height="32" viewBox="0 0 32 32">
+            <circle cx="16" cy="16" r="14" fill="#1E40AF" stroke="white" stroke-width="2"/>
+            <text x="16" y="21" font-size="11" text-anchor="middle" font-family="Arial" fill="white" font-weight="bold">PD</text>
+        </svg>
     `,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
