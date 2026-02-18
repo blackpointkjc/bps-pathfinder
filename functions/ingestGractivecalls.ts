@@ -15,43 +15,45 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
-// Parse "14:35" (Eastern time) into a proper ISO datetime
-// gractivecalls.com is based in the Richmond, VA area — times are Eastern
+// Parse full date strings from gractivecalls.com
+// Format examples: "02/17/2026 8:51 PM", "02/17/2026 10:05 AM"
+// The site is Richmond VA — times are always Eastern
 function parseTimeToISO(timeStr) {
     if (!timeStr) return new Date().toISOString();
-    const match = timeStr.match(/(\d{1,2}):(\d{2})/);
-    if (match) {
-        const hours = parseInt(match[1]);
-        const minutes = parseInt(match[2]);
 
-        // Build an Eastern-time date string for today
-        // Use Intl to get today's date in Eastern time
-        const nowUtc = new Date();
-        const easternFormatter = new Intl.DateTimeFormat('en-US', {
-            timeZone: 'America/New_York',
-            year: 'numeric', month: '2-digit', day: '2-digit'
-        });
-        const parts = easternFormatter.formatToParts(nowUtc);
-        const year = parts.find(p => p.type === 'year').value;
-        const month = parts.find(p => p.type === 'month').value;
-        const day = parts.find(p => p.type === 'day').value;
+    // Try full date+time format: "MM/DD/YYYY H:MM AM/PM"
+    const fullMatch = timeStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (fullMatch) {
+        const [, month, day, year, rawHour, minutes, ampm] = fullMatch;
+        let hour = parseInt(rawHour);
+        if (ampm.toUpperCase() === 'PM' && hour !== 12) hour += 12;
+        if (ampm.toUpperCase() === 'AM' && hour === 12) hour = 0;
 
-        // Construct ISO string in Eastern time and convert to UTC via Date parsing
         const pad = (n) => String(n).padStart(2, '0');
-        const easternDateStr = `${year}-${month}-${day}T${pad(hours)}:${pad(minutes)}:00`;
+        const localStr = `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minutes)}:00`;
 
-        // Determine EST vs EDT offset using a reference date
-        const testDate = new Date(`${year}-${month}-${day}T12:00:00Z`);
-        const easternOffset = new Intl.DateTimeFormat('en-US', {
+        // Determine EST (-5) vs EDT (-4) offset for that date
+        const testDate = new Date(`${year}-${pad(month)}-${pad(day)}T12:00:00Z`);
+        const tzName = new Intl.DateTimeFormat('en-US', {
             timeZone: 'America/New_York',
             timeZoneName: 'shortOffset'
         }).formatToParts(testDate).find(p => p.type === 'timeZoneName')?.value || 'GMT-5';
-        const offsetHours = easternOffset.includes('-4') ? 4 : 5;
+        const offsetHours = tzName.includes('-4') ? 4 : 5;
 
-        const utcDate = new Date(`${easternDateStr}Z`);
+        const utcDate = new Date(`${localStr}Z`);
         utcDate.setUTCHours(utcDate.getUTCHours() + offsetHours);
         return utcDate.toISOString();
     }
+
+    // Fallback: bare "HH:MM" 24-hour (treat as Eastern today)
+    const timeOnly = timeStr.match(/(\d{1,2}):(\d{2})/);
+    if (timeOnly) {
+        const nowEastern = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+        const d = new Date(nowEastern);
+        d.setHours(parseInt(timeOnly[1]), parseInt(timeOnly[2]), 0, 0);
+        return d.toISOString();
+    }
+
     return new Date().toISOString();
 }
 
