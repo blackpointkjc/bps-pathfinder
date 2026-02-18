@@ -109,6 +109,20 @@ export default function CADHome() {
         }
     };
 
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        try {
+            toast.loading('Scraping live feed...', { id: 'refresh' });
+            await base44.functions.invoke('ingestGractivecalls', {});
+            await loadData();
+            toast.success('Feed refreshed', { id: 'refresh', duration: 3000 });
+        } catch (error) {
+            toast.error('Refresh failed', { id: 'refresh' });
+        } finally {
+            setRefreshing(false);
+        }
+    };
+
     const getPriorityColor = (call) => {
         const incident = call.incident?.toLowerCase() || '';
         if (incident.includes('shooting') || incident.includes('officer') || call.priority === 'critical') {
