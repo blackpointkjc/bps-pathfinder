@@ -109,7 +109,11 @@ Deno.serve(async (req) => {
                 const status = $(cells[4]).text().trim();
                 
                 if (incident && location && agency) {
-                    const stableId = `${agency.toLowerCase()}-${location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+                    // Include incident type in the stable ID so two agencies at same location
+                    // (e.g. RPD + RFD at same address) are stored as separate calls
+                    const incidentSlug = incident.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 30);
+                    const locationSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
+                    const stableId = `${agency.toLowerCase()}-${incidentSlug}-${locationSlug}`;
                     
                     allCalls.push({
                         call_id: stableId,
@@ -118,7 +122,6 @@ Deno.serve(async (req) => {
                         agency: agency,
                         status: status || 'Active',
                         priority: 'medium',
-                        // Always store as valid ISO datetime, not raw time string
                         time_received: parseTimeToISO(timeReceived),
                         source: 'gractivecalls',
                         description: `${incident} at ${location}`
