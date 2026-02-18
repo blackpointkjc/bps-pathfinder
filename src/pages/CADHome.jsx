@@ -24,7 +24,8 @@ export default function CADHome() {
     });
     const [loading, setLoading] = useState(true);
     const [selectedCall, setSelectedCall] = useState(null);
-    const [sortOrder, setSortOrder] = useState('desc'); // 'desc' = newest first, 'asc' = oldest first
+    const [sortOrder, setSortOrder] = useState('desc');
+    const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
         init();
