@@ -30,7 +30,6 @@ function parseTimeToISO(timeStr) {
         if (ampm.toUpperCase() === 'AM' && hour === 12) hour = 0;
 
         const pad = (n) => String(n).padStart(2, '0');
-        const localStr = `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minutes)}:00`;
 
         // Determine EST (-5) vs EDT (-4) offset for that date
         const testDate = new Date(`${year}-${pad(month)}-${pad(day)}T12:00:00Z`);
@@ -40,8 +39,12 @@ function parseTimeToISO(timeStr) {
         }).formatToParts(testDate).find(p => p.type === 'timeZoneName')?.value || 'GMT-5';
         const offsetHours = tzName.includes('-4') ? 4 : 5;
 
-        const utcDate = new Date(`${localStr}Z`);
-        utcDate.setUTCHours(utcDate.getUTCHours() + offsetHours);
+        // Build UTC by SUBTRACTING the offset from the Eastern local time
+        // e.g. 8:51 PM EST (-5) → 8:51 PM + 5h = 1:51 AM UTC next day
+        const utcDate = new Date(Date.UTC(
+            parseInt(year), parseInt(month) - 1, parseInt(day),
+            hour + offsetHours, parseInt(minutes), 0
+        ));
         return utcDate.toISOString();
     }
 
