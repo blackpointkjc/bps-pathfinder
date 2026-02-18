@@ -200,12 +200,23 @@ export default function DispatchCenter() {
         await loadActiveCalls();
         await loadUnits();
         
-        // Refresh selected call if it exists
         if (selectedCall) {
             const updatedCall = activeCalls.find(c => c.id === selectedCall.id);
-            if (updatedCall) {
-                setSelectedCall(updatedCall);
-            }
+            if (updatedCall) setSelectedCall(updatedCall);
+        }
+    };
+
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        try {
+            toast.loading('Scraping live feed...', { id: 'refresh' });
+            await base44.functions.invoke('ingestGractivecalls', {});
+            await Promise.all([loadActiveCalls(), loadUnits()]);
+            toast.success('Feed refreshed', { id: 'refresh', duration: 3000 });
+        } catch (error) {
+            toast.error('Refresh failed', { id: 'refresh' });
+        } finally {
+            setRefreshing(false);
         }
     };
 
