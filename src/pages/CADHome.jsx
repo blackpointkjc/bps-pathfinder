@@ -31,14 +31,10 @@ export default function CADHome() {
         init();
         
         // Real-time polling every 30 seconds
-        const interval = setInterval(() => {
-            loadData();
-        }, 30000);
+        const interval = setInterval(loadData, 30000);
         
-        return () => {
-            clearInterval(interval);
-        };
-    }, []);
+        return () => clearInterval(interval);
+    }, [sortOrder]);
 
     const init = async () => {
         try {
