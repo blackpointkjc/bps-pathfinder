@@ -125,11 +125,24 @@ Deno.serve(async (req) => {
         for (const callData of allCalls) {
             const existing = activeExisting.find(c => c.call_id === callData.call_id);
             if (existing) {
-                // Only update status/time, preserve existing coordinates
-                await base44.asServiceRole.entities.DispatchCall.update(existing.id, {
+                const updateData = {
                     status: callData.status,
                     time_received: callData.time_received
-                });
+                };
+                
+                // If existing call has no coords, geocode it now
+                if (!existing.latitude || !existing.longitude || existing.latitude === 0) {
+                    const coords = await geocodeAddress(callData.location);
+                    if (coords) {
+                        updateData.latitude = coords.latitude;
+                        updateData.longitude = coords.longitude;
+                        geocoded++;
+                        console.log(`📍 Geocoded existing: ${callData.location} → (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
+                    }
+                    await sleep(1100);
+                }
+                
+                await base44.asServiceRole.entities.DispatchCall.update(existing.id, updateData);
                 updated++;
             } else {
                 // New call — geocode it using free Nominatim
@@ -138,7 +151,7 @@ Deno.serve(async (req) => {
                     callData.latitude = coords.latitude;
                     callData.longitude = coords.longitude;
                     geocoded++;
-                    console.log(`📍 Geocoded: ${callData.location} → (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
+                    console.log(`📍 Geocoded new: ${callData.location} → (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
                 } else {
                     console.log(`❌ Could not geocode: ${callData.location}`);
                 }
