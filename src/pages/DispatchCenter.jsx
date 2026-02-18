@@ -126,10 +126,8 @@ export default function DispatchCenter() {
 
     const loadActiveCalls = async () => {
        try {
-            // Fetch calls
             const calls = await base44.entities.DispatchCall.list('-created_date', 200);
 
-            // Filter: recent (6hr) AND active status
             const sixHoursAgo = new Date();
             sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
 
@@ -137,16 +135,31 @@ export default function DispatchCenter() {
                 const callTime = new Date(call.time_received || call.created_date);
                 const isRecent = callTime >= sixHoursAgo;
                 const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
-                // Include ALL sources: gractivecalls, chesterfield, manual, etc.
                 return isRecent && isActive;
             });
 
-            // Sort by time_received or created_date
             recentCalls.sort((a, b) => {
                 const timeA = new Date(a.time_received || a.created_date);
                 const timeB = new Date(b.time_received || b.created_date);
                 return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
             });
+
+            // Detect new calls and play alert
+            const currentIds = new Set(recentCalls.map(c => c.id));
+            if (knownCallIdsRef.current === null) {
+                // First load — just record IDs, don't alert
+                knownCallIdsRef.current = currentIds;
+            } else {
+                const newCallIds = [...currentIds].filter(id => !knownCallIdsRef.current.has(id));
+                if (newCallIds.length > 0 && soundEnabled) {
+                    playDispatchAlert();
+                    toast.info(`${newCallIds.length} new call${newCallIds.length > 1 ? 's' : ''} received`, {
+                        duration: 4000,
+                        style: { background: '#1e3a5f', color: 'white', border: '1px solid #3b82f6' }
+                    });
+                }
+                knownCallIdsRef.current = currentIds;
+            }
 
             console.log('📞 Dispatch active calls:', recentCalls.length);
             setActiveCalls(recentCalls);
