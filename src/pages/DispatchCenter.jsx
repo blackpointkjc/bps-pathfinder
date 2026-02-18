@@ -370,20 +370,23 @@ export default function DispatchCenter() {
                                            >
                                                <div className="font-bold text-white truncate">{call.incident}</div>
                                                <div className="text-slate-400 truncate">{call.location}</div>
+                                               <div className="text-slate-500 font-mono mt-0.5">
+                                                   {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })} EST
+                                               </div>
                                            </div>
-                                       ))
-                                   )}
-                               </div>
-                           </Card>
-                           <Card className="bg-slate-900 border-red-500/30 flex-1 min-h-0 flex flex-col">
-                               <div className="p-2 border-b border-red-500/20">
-                                   <h3 className="text-xs font-bold text-red-400 font-mono">DISPATCH CALLS ({activeCalls.filter(c => !c.source).length})</h3>
-                               </div>
-                               <div className="flex-1 overflow-y-auto p-2">
-                                   {activeCalls.filter(c => !c.source).length === 0 ? (
-                                       <div className="text-xs text-slate-500 text-center mt-4">No dispatch calls</div>
-                                   ) : (
-                                       activeCalls.filter(c => !c.source).map(call => (
+                                           ))
+                                           )}
+                                           </div>
+                                           </Card>
+                                           <Card className="bg-slate-900 border-red-500/30 flex-1 min-h-0 flex flex-col">
+                                           <div className="p-2 border-b border-red-500/20">
+                                           <h3 className="text-xs font-bold text-red-400 font-mono">DISPATCH CALLS ({activeCalls.filter(c => !c.source).length})</h3>
+                                           </div>
+                                           <div className="flex-1 overflow-y-auto p-2">
+                                           {activeCalls.filter(c => !c.source).length === 0 ? (
+                                           <div className="text-xs text-slate-500 text-center mt-4">No dispatch calls</div>
+                                           ) : (
+                                           activeCalls.filter(c => !c.source).map(call => (
                                            <div 
                                                key={call.id}
                                                onClick={() => handleSelectCall(call)}
@@ -391,6 +394,9 @@ export default function DispatchCenter() {
                                            >
                                                <div className="font-bold text-white truncate">{call.incident}</div>
                                                <div className="text-slate-400 truncate">{call.location}</div>
+                                               <div className="text-slate-500 font-mono mt-0.5">
+                                                   {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })} EST
+                                               </div>
                                            </div>
                                        ))
                                    )}
