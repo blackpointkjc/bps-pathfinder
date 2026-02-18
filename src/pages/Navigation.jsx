@@ -1460,7 +1460,9 @@ Be thorough and search multiple sources.`,
                 const agency = (call.agency || '').toUpperCase();
                 const isAllowedJurisdiction = 
                     agency.includes('RPD') || agency.includes('RICHMOND') ||
+                    agency.includes('RFD') ||
                     agency.includes('HPD') || agency.includes('HCPD') || agency.includes('HENRICO') ||
+                    agency.includes('HFD') ||
                     agency.includes('CCPD') || agency.includes('CCFD') || agency.includes('CHESTERFIELD');
                 return isActive && isAllowedJurisdiction;
             });
