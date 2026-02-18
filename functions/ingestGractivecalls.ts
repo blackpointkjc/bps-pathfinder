@@ -130,17 +130,20 @@ Deno.serve(async (req) => {
         const existingCalls = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'gractivecalls' });
         console.log(`📊 Found ${existingCalls.length} existing calls in database`);
         
-        // Remove expired calls using created_date (reliable ISO datetime from platform)
+        // Remove expired calls: delete any call whose time_received is older than 3 hours
         const now = new Date();
-        const expirationThreshold = 60 * 60 * 1000; // 60 minutes
+        const expirationThreshold = 3 * 60 * 60 * 1000; // 3 hours
         let expired = 0;
         const activeExisting = [];
         
         for (const call of existingCalls) {
-            const ageMs = now - new Date(call.created_date);
+            // Use time_received if available, otherwise fall back to created_date
+            const callTime = new Date(call.time_received || call.created_date);
+            const ageMs = now - callTime;
             if (ageMs > expirationThreshold) {
                 await base44.asServiceRole.entities.DispatchCall.delete(call.id);
                 expired++;
+                console.log(`🗑️ Expired old call: ${call.incident} @ ${call.location} (${Math.round(ageMs/60000)} min old)`);
                 continue;
             }
             activeExisting.push(call);
