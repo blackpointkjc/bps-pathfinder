@@ -291,10 +291,10 @@ export default function ActiveCalls() {
                                                         {call.agency || 'UNKNOWN'}
                                                     </Badge>
                                                     <span className="text-slate-500 text-xs font-mono">
-                                                        {call.time_received ? 
-                                                            new Date(call.time_received).toLocaleTimeString('en-US', { hour12: false }) :
-                                                            new Date(call.created_date).toLocaleTimeString('en-US', { hour12: false })
-                                                        }
+                                                        {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { 
+                                                            hour: '2-digit', minute: '2-digit', hour12: true,
+                                                            timeZone: 'America/New_York'
+                                                        })} EST
                                                     </span>
                                                 </div>
                                                 {call.assigned_units?.length > 0 && (
@@ -344,9 +344,13 @@ export default function ActiveCalls() {
                                         </div>
                                         <div>
                                             <p className="text-xs text-slate-400 font-mono mb-1">TIME RECEIVED</p>
-                                            <p className="text-white font-mono text-sm">
-                                                {new Date(selectedCall.time_received || selectedCall.created_date).toLocaleString()}
-                                            </p>
+                                                <p className="text-white font-mono text-sm">
+                                                    {new Date(selectedCall.time_received || selectedCall.created_date).toLocaleString('en-US', {
+                                                        month: '2-digit', day: '2-digit', year: 'numeric',
+                                                        hour: '2-digit', minute: '2-digit', hour12: true,
+                                                        timeZone: 'America/New_York'
+                                                    })} EST
+                                                </p>
                                         </div>
                                         <div>
                                             <p className="text-xs text-slate-400 font-mono mb-1">AGENCY</p>
