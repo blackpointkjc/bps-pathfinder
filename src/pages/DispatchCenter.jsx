@@ -265,7 +265,16 @@ export default function DispatchCenter() {
                         
                         <div className="flex gap-2">
                           <Button
-                              onClick={() => setSoundEnabled(!soundEnabled)}
+                              onClick={handleRefresh}
+                              disabled={refreshing}
+                              className="bg-green-700 hover:bg-green-600 font-mono text-xs"
+                              title="Scrape & refresh active calls"
+                          >
+                              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                              {refreshing ? 'REFRESHING...' : 'REFRESH FEED'}
+                          </Button>
+                          <Button
+                               onClick={() => setSoundEnabled(!soundEnabled)}
                               variant="outline"
                               className={`border-slate-700 font-mono text-xs ${soundEnabled ? 'text-green-400 bg-slate-800 hover:bg-slate-700' : 'text-slate-500 bg-slate-800 hover:bg-slate-700'}`}
                               title={soundEnabled ? 'Mute alerts' : 'Unmute alerts'}
