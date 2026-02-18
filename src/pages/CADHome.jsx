@@ -110,14 +110,16 @@ export default function CADHome() {
     };
 
     const handleRefresh = async () => {
+        if (refreshing) return;
         setRefreshing(true);
+        const toastId = toast.loading('Scraping live feed... (this may take ~60s)');
         try {
-            toast.loading('Scraping live feed...', { id: 'refresh' });
             await base44.functions.invoke('ingestGractivecalls', {});
             await loadData();
-            toast.success('Feed refreshed', { id: 'refresh', duration: 3000 });
+            toast.success('Feed refreshed successfully', { id: toastId, duration: 4000 });
         } catch (error) {
-            toast.error('Refresh failed', { id: 'refresh' });
+            console.error('Refresh error:', error);
+            toast.error('Refresh failed: ' + (error?.message || 'unknown error'), { id: toastId });
         } finally {
             setRefreshing(false);
         }
