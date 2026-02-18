@@ -53,12 +53,12 @@ import ArchiveManager from './pages/ArchiveManager';
 import AssetManagement from './pages/AssetManagement';
 import CADHome from './pages/CADHome';
 import CallHistory from './pages/CallHistory';
+import DispatchCenter from './pages/DispatchCenter';
 import DispatchLog from './pages/DispatchLog';
+import Navigation from './pages/Navigation';
 import Personnel from './pages/Personnel';
 import Reports from './pages/Reports';
 import SystemStatus from './pages/SystemStatus';
-import Navigation from './pages/Navigation';
-import DispatchCenter from './pages/DispatchCenter';
 import __Layout from './Layout.jsx';
 
 
@@ -69,12 +69,12 @@ export const PAGES = {
     "AssetManagement": AssetManagement,
     "CADHome": CADHome,
     "CallHistory": CallHistory,
+    "DispatchCenter": DispatchCenter,
     "DispatchLog": DispatchLog,
+    "Navigation": Navigation,
     "Personnel": Personnel,
     "Reports": Reports,
     "SystemStatus": SystemStatus,
-    "Navigation": Navigation,
-    "DispatchCenter": DispatchCenter,
 }
 
 export const pagesConfig = {

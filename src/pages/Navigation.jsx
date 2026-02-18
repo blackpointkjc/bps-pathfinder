@@ -1451,26 +1451,18 @@ Be thorough and search multiple sources.`,
 
         setIsLoadingCalls(true);
         try {
-            // ONLY fetch from gractivecalls.com source
-            const allCalls = await base44.entities.DispatchCall.filter({ source: 'gractivecalls' }, '-time_received', 300);
+            // Fetch from gractivecalls.com source — backend already expires calls >60min old
+            const allCalls = await base44.entities.DispatchCall.filter({ source: 'gractivecalls' }, '-created_date', 300);
             
-            // Filter: TODAY only, active status, and ONLY Henrico, Richmond, Chesterfield
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
+            // Only filter by active status — no date filter needed since backend expires stale records
             const recentCalls = allCalls.filter(call => {
-                const callTime = new Date(call.time_received || call.created_date);
-                const isToday = callTime >= today;
-                const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
-                
-                // Check jurisdiction - map agency codes to jurisdictions
+                const isActive = !call.status || !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
                 const agency = (call.agency || '').toUpperCase();
                 const isAllowedJurisdiction = 
                     agency.includes('RPD') || agency.includes('RICHMOND') ||
                     agency.includes('HPD') || agency.includes('HCPD') || agency.includes('HENRICO') ||
                     agency.includes('CCPD') || agency.includes('CCFD') || agency.includes('CHESTERFIELD');
-                
-                return isToday && isActive && isAllowedJurisdiction;
+                return isActive && isAllowedJurisdiction;
             });
             
             const geocodedCount = recentCalls.filter(call => 

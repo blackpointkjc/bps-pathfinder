@@ -3,19 +3,50 @@ import * as cheerio from 'npm:cheerio@1.0.0';
 
 // Haversine distance calculation
 function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // Earth radius in meters
+    const R = 6371e3;
     const φ1 = lat1 * Math.PI / 180;
     const φ2 = lat2 * Math.PI / 180;
     const Δφ = (lat2 - lat1) * Math.PI / 180;
     const Δλ = (lon2 - lon1) * Math.PI / 180;
-
     const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
               Math.cos(φ1) * Math.cos(φ2) *
               Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c; // Distance in meters
+    return R * c;
 }
+
+// Parse "14:35" into today's full ISO datetime
+function parseTimeToISO(timeStr) {
+    if (!timeStr) return new Date().toISOString();
+    const match = timeStr.match(/(\d{1,2}):(\d{2})/);
+    if (match) {
+        const now = new Date();
+        now.setHours(parseInt(match[1]), parseInt(match[2]), 0, 0);
+        return now.toISOString();
+    }
+    return new Date().toISOString();
+}
+
+// Free geocoding via Nominatim (no credits used)
+async function geocodeAddress(address) {
+    try {
+        const query = encodeURIComponent(address + ', Virginia, USA');
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&countrycodes=us`;
+        const res = await fetch(url, {
+            headers: { 'User-Agent': 'BPS-CAD-Dispatch/1.0 (emergency-services)' }
+        });
+        const data = await res.json();
+        if (data && data.length > 0) {
+            return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };
+        }
+    } catch (e) {
+        // Silent fail
+    }
+    return null;
+}
+
+// Sleep helper for rate limiting
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 Deno.serve(async (req) => {
     try {
@@ -23,7 +54,6 @@ Deno.serve(async (req) => {
         
         console.log('🚨 Starting active calls ingestion from gractivecalls.com...');
         
-        // Fetch live data from gractivecalls.com
         const response = await fetch('https://gractivecalls.com');
         if (!response.ok) {
             throw new Error(`Failed to fetch gractivecalls.com: ${response.status}`);
@@ -34,7 +64,6 @@ Deno.serve(async (req) => {
         
         const allCalls = [];
         
-        // Parse each table row
         $('table tbody tr').each((_, row) => {
             const $row = $(row);
             const cells = $row.find('td');
@@ -56,7 +85,8 @@ Deno.serve(async (req) => {
                         agency: agency,
                         status: status || 'Active',
                         priority: 'medium',
-                        time_received: timeReceived || new Date().toISOString(),
+                        // Always store as valid ISO datetime, not raw time string
+                        time_received: parseTimeToISO(timeReceived),
                         source: 'gractivecalls',
                         description: `${incident} at ${location}`
                     });
@@ -70,20 +100,18 @@ Deno.serve(async (req) => {
         const existingCalls = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'gractivecalls' });
         console.log(`📊 Found ${existingCalls.length} existing calls in database`);
         
-        // Remove expired calls (older than 60 minutes) and track what's not expired
+        // Remove expired calls using created_date (reliable ISO datetime from platform)
         const now = new Date();
-        const expirationThreshold = 60 * 60 * 1000;
+        const expirationThreshold = 60 * 60 * 1000; // 60 minutes
         let expired = 0;
         const activeExisting = [];
         
         for (const call of existingCalls) {
-            if (call.time_received) {
-                const ageMs = now - new Date(call.time_received);
-                if (ageMs > expirationThreshold) {
-                    await base44.asServiceRole.entities.DispatchCall.delete(call.id);
-                    expired++;
-                    continue;
-                }
+            const ageMs = now - new Date(call.created_date);
+            if (ageMs > expirationThreshold) {
+                await base44.asServiceRole.entities.DispatchCall.delete(call.id);
+                expired++;
+                continue;
             }
             activeExisting.push(call);
         }
@@ -92,18 +120,38 @@ Deno.serve(async (req) => {
         
         let inserted = 0;
         let updated = 0;
+        let geocoded = 0;
         
         for (const callData of allCalls) {
             const existing = activeExisting.find(c => c.call_id === callData.call_id);
             if (existing) {
-                await base44.asServiceRole.entities.DispatchCall.update(existing.id, callData);
+                // Only update status/time, preserve existing coordinates
+                await base44.asServiceRole.entities.DispatchCall.update(existing.id, {
+                    status: callData.status,
+                    time_received: callData.time_received
+                });
                 updated++;
             } else {
+                // New call — geocode it using free Nominatim
+                const coords = await geocodeAddress(callData.location);
+                if (coords) {
+                    callData.latitude = coords.latitude;
+                    callData.longitude = coords.longitude;
+                    geocoded++;
+                    console.log(`📍 Geocoded: ${callData.location} → (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
+                } else {
+                    console.log(`❌ Could not geocode: ${callData.location}`);
+                }
+                
                 await base44.asServiceRole.entities.DispatchCall.create(callData);
                 inserted++;
+                
+                // Rate limit: Nominatim allows 1 req/sec
+                await sleep(1100);
             }
         }
         
+        // Delete calls no longer on the site
         const newCallIds = new Set(allCalls.map(c => c.call_id));
         let deleted = 0;
         for (const existing of activeExisting) {
@@ -113,7 +161,7 @@ Deno.serve(async (req) => {
             }
         }
         
-        console.log(`💾 Database: ${inserted} created, ${updated} updated, ${deleted} deleted`);
+        console.log(`💾 Database: ${inserted} created (${geocoded} geocoded), ${updated} updated, ${deleted} deleted`);
         
         // Property alert checking
         let alertsCreated = 0;
@@ -121,11 +169,10 @@ Deno.serve(async (req) => {
             const properties = await base44.asServiceRole.entities.MonitoredProperty.filter({ enabled: true });
             
             if (properties.length > 0) {
-                console.log(`📍 Checking ${allCalls.length} calls against ${properties.length} monitored properties`);
+                const callsWithCoords = allCalls.filter(c => c.latitude && c.longitude);
+                console.log(`📍 Checking ${callsWithCoords.length} geocoded calls against ${properties.length} monitored properties`);
                 
-                for (const call of allCalls) {
-                    if (!call.latitude || !call.longitude) continue;
-                    
+                for (const call of callsWithCoords) {
                     for (const property of properties) {
                         const distance = calculateDistance(
                             call.latitude, call.longitude,
@@ -133,7 +180,6 @@ Deno.serve(async (req) => {
                         );
                         
                         if (distance <= property.radiusMeters) {
-                            // Check if alert already exists
                             const existingAlert = await base44.asServiceRole.entities.PropertyAlert.filter({
                                 callId: call.call_id,
                                 propertyId: property.id
@@ -165,10 +211,11 @@ Deno.serve(async (req) => {
             timestamp: new Date().toISOString(),
             source: 'gractivecalls.com',
             total_parsed: allCalls.length,
-            inserted: inserted,
-            updated: updated,
-            deleted: deleted,
-            expired: expired,
+            inserted,
+            updated,
+            deleted,
+            expired,
+            geocoded,
             alerts_created: alertsCreated
         });
         
@@ -176,8 +223,7 @@ Deno.serve(async (req) => {
         console.error('❌ Ingestion failed:', error);
         return Response.json({
             success: false,
-            error: error.message,
-            stack: error.stack
+            error: error.message
         }, { status: 500 });
     }
 });
