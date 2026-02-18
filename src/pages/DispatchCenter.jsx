@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Plus, Shield, Radio, AlertCircle, Car, Map as MapIcon } from 'lucide-react';
+import { Plus, Shield, Radio, AlertCircle, Car, Map as MapIcon, Volume2, VolumeX } from 'lucide-react';
 import { createPageUrl } from '../utils';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
