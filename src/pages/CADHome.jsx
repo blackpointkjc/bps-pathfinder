@@ -67,7 +67,8 @@ export default function CADHome() {
             const recentCalls = calls.filter(call => {
                 const isActive = !call.status || !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
                 return isActive;
-            }).sort((a, b) => {
+            })
+            // No agency filter here — show ALL agencies from the feed.sort((a, b) => {
                 const timeA = new Date(a.time_received || a.created_date);
                 const timeB = new Date(b.time_received || b.created_date);
                 return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
