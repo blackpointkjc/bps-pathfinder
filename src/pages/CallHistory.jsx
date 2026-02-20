@@ -133,26 +133,33 @@ export default function CallHistory() {
         );
     }
 
+    const handlePullRefresh = async () => {
+        setLoading(true);
+        await loadHistory();
+    };
+
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
+        <div className="min-h-screen bg-gray-50 p-4 md:p-6">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-4">
-                        <Button variant="outline" onClick={() => window.location.href = '/navigation'}>
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back
+                <div className="flex items-center justify-between mb-6 md:mb-8">
+                    <div className="flex items-center gap-3 md:gap-4">
+                        <Button variant="outline" size="icon" onClick={() => window.location.href = createPageUrl('CADHome')}>
+                            <ArrowLeft className="w-4 h-4" />
                         </Button>
                         <div>
-                            <h1 className="text-4xl font-bold text-gray-900 flex items-center gap-3">
-                                <History className="w-10 h-10 text-red-600" />
+                            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 flex items-center gap-2 md:gap-3">
+                                <History className="w-7 h-7 md:w-10 md:h-10 text-red-600" />
                                 Call History
                             </h1>
-                            <p className="text-gray-600 mt-1">
+                            <p className="text-gray-600 mt-1 text-sm md:text-base">
                                 {filteredCalls.length} {filteredCalls.length === 1 ? 'call' : 'calls'} found
                             </p>
                         </div>
                     </div>
+                    <Button variant="outline" size="icon" onClick={handlePullRefresh} title="Refresh">
+                        <RefreshCw className="w-4 h-4" />
+                    </Button>
                 </div>
 
                 {/* Filters */}
