@@ -258,7 +258,17 @@ export default function ActiveCalls() {
                                     </div>
                                 </div>
                             </div>
-                            <ScrollArea className="h-[calc(100%-120px)]">
+                            <ScrollArea className="h-[calc(100%-120px)]" onTouchStart={(e) => {
+                const startY = e.touches[0].clientY;
+                e.currentTarget._pullStartY = startY;
+            }} onTouchEnd={(e) => {
+                const startY = e.currentTarget._pullStartY;
+                const endY = e.changedTouches[0].clientY;
+                if (startY && endY - startY > 60 && e.currentTarget.scrollTop === 0) {
+                    loadData();
+                    toast.info('Refreshing...');
+                }
+            }}>
                                 <div className="p-4 space-y-2">
                                     {filteredCalls.map((call) => (
                                         <div

@@ -2034,10 +2034,16 @@ Be thorough and search multiple sources.`,
 
             {!isNavigating && (
                 <>
+                    {/* Search bar: pushed right on very narrow screens to avoid left-side controls */}
                     <motion.div 
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="absolute top-4 left-1/2 -translate-x-1/2 z-[1002] w-[400px] max-w-[calc(100vw-32px)] pointer-events-auto"
+                        className="absolute top-4 z-[1002] pointer-events-auto"
+                        style={{
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            width: 'min(400px, calc(100vw - 100px))',
+                        }}
                     >
                         <SearchBarWithHistory
                             onSearch={searchDestination}
