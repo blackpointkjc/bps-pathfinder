@@ -204,11 +204,11 @@ export default function ActiveCalls() {
             </div>
 
             {/* Main Content */}
-            <div className="p-6">
-                <div className="grid grid-cols-12 gap-6">
-                    {/* Left: Calls List */}
-                    <div className="col-span-4">
-                        <Card className="bg-slate-900 border-slate-800 h-[calc(100vh-180px)]">
+            <div className="p-3 md:p-6">
+                <div className="flex flex-col md:grid md:grid-cols-12 gap-4 md:gap-6">
+                    {/* Calls List */}
+                    <div className="w-full md:col-span-4">
+                        <Card className="bg-slate-900 border-slate-800 md:h-[calc(100vh-180px)]">
                             <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2">
@@ -303,8 +303,8 @@ export default function ActiveCalls() {
                         </Card>
                     </div>
 
-                    {/* Right: Call Detail */}
-                    <div className="col-span-8">
+                    {/* Call Detail */}
+                    <div className="w-full md:col-span-8">
                         {!selectedCall ? (
                             <Card className="bg-slate-900 border-slate-800 h-[calc(100vh-180px)] flex items-center justify-center">
                                 <div className="text-center text-slate-500 font-mono">
@@ -324,7 +324,7 @@ export default function ActiveCalls() {
                                             </Badge>
                                         </div>
                                     </div>
-                                    <div className="p-4 grid grid-cols-2 gap-4">
+                                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <p className="text-xs text-slate-400 font-mono mb-1">CALL TYPE</p>
                                             <p className="text-white font-semibold">{selectedCall.incident}</p>
@@ -386,7 +386,7 @@ export default function ActiveCalls() {
                                         <h2 className="text-lg font-bold text-white font-mono">CALL STATUS CONTROLS</h2>
                                     </div>
                                     <div className="p-4">
-                                        <div className="flex gap-2">
+                                        <div className="flex flex-wrap gap-2">
                                             <Button
                                                 size="sm"
                                                 onClick={() => handleUpdateStatus('Dispatched')}
