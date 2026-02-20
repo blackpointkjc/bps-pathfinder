@@ -254,31 +254,7 @@ export default function Navigation() {
         }
     }, [isOnline]);
 
-    // Inactivity auto-status: after 30 min no movement → Available; after 12h → Out of Service (handled by backend automation)
-    useEffect(() => {
-        if (!currentUser) return;
 
-        const INACTIVITY_AVAILABLE_MS = 30 * 60 * 1000; // 30 minutes
-
-        const resetInactivityTimer = () => {
-            lastActivityRef.current = Date.now();
-            if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-            inactivityTimerRef.current = setTimeout(async () => {
-                // Only auto-set if currently in an "active" status
-                if (['Enroute', 'On Scene', 'On Patrol'].includes(unitStatus)) {
-                    await handleStatusChange('Available');
-                    toast.info('Status auto-set to Available after inactivity');
-                }
-            }, INACTIVITY_AVAILABLE_MS);
-        };
-
-        // Reset timer on speed changes (movement detected)
-        if (speed > 2) resetInactivityTimer();
-
-        return () => {
-            if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-        };
-    }, [speed, currentUser]);
 
     // Initialize user location when user and location are ready
     useEffect(() => {
