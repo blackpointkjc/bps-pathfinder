@@ -47,9 +47,9 @@ export default function Layout({ children, currentPageName }) {
                     {NAV_TABS.map(({ label, icon: Icon, page }) => {
                         const isActive = currentPageName === page;
                         return (
-                            <button
+                            <Link
                                 key={page}
-                                onClick={() => { window.location.href = createPageUrl(page); }}
+                                to={createPageUrl(page)}
                                 className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors select-none ${
                                     isActive
                                         ? 'text-blue-400'
@@ -58,7 +58,7 @@ export default function Layout({ children, currentPageName }) {
                             >
                                 <Icon className="w-5 h-5" />
                                 <span className="text-[10px] font-mono font-semibold">{label}</span>
-                            </button>
+                            </Link>
                         );
                     })}
                 </nav>
