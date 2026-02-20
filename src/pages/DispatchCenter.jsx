@@ -71,15 +71,15 @@ export default function DispatchCenter() {
             loadUnits();
         }, 60000);
         
-        // Auto-scrape every 60 seconds for real-time feed
+        // Auto-ingest every 5 minutes for real-time feed
         const scrapeInterval = setInterval(async () => {
             try {
-                const result = await base44.functions.invoke('scrapeActiveCalls', {});
-                console.log('✅ Auto-scraped:', result.data?.saved || 0, 'calls');
+                await base44.functions.invoke('ingestGractivecalls', {});
+                loadActiveCalls();
             } catch (error) {
-                console.error('Auto-scrape failed:', error);
+                console.error('Auto-ingest failed:', error);
             }
-        }, 60000);
+        }, 5 * 60 * 1000);
         
         return () => {
             clearInterval(interval);
