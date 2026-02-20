@@ -439,37 +439,18 @@ export default function ActiveCalls() {
                                     </div>
                                 </Card>
 
-                                {/* Notes Section */}
+                                {/* AI Notes Section */}
                                 <Card className="bg-slate-900 border-slate-800">
-                                    <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
-                                        <h2 className="text-lg font-bold text-white font-mono">DISPATCHER LOG / NOTES</h2>
+                                    <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3 flex items-center gap-2">
+                                        <h2 className="text-lg font-bold text-white font-mono">DISPATCHER LOG / AI NOTES</h2>
+                                        <span className="text-xs bg-purple-600/40 text-purple-300 px-2 py-0.5 rounded font-mono">AI</span>
                                     </div>
-                                    <div className="p-4 space-y-3">
-                                        <div className="flex gap-2">
-                                            <Textarea
-                                                placeholder="Enter notes..."
-                                                value={notes}
-                                                onChange={(e) => setNotes(e.target.value)}
-                                                className="bg-slate-800 border-slate-700 text-white font-mono"
-                                                rows={3}
-                                            />
-                                            <Button
-                                                onClick={handleAddNote}
-                                                className="bg-blue-600 hover:bg-blue-700"
-                                            >
-                                                <Save className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                        <ScrollArea className="h-[200px]">
-                                            <div className="space-y-2">
-                                                {/* Notes would be loaded here */}
-                                                {selectedCall && (
-                                                    <div className="text-slate-500 text-sm font-mono text-center py-4">
-                                                        NO NOTES YET
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </ScrollArea>
+                                    <div className="p-4">
+                                        <AINotesPanel
+                                            call={selectedCall}
+                                            currentUser={currentUser}
+                                            onNoteSaved={loadData}
+                                        />
                                     </div>
                                 </Card>
                             </div>
