@@ -130,6 +130,11 @@
   color: #0066FF;
 }
 
+/* Native momentum scrolling on iOS */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;

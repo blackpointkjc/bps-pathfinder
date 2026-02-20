@@ -268,9 +268,9 @@ export default function Reports() {
 
             {/* Main Content */}
             <div className="p-4 md:p-6">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                    {/* Left: Report Configuration */}
-                    <div className="col-span-1 md:col-span-4">
+                <div className="flex flex-col md:grid md:grid-cols-12 gap-4 md:gap-6">
+                    {/* Report Configuration */}
+                    <div className="w-full md:col-span-4">
                         <Card className="bg-slate-900 border-slate-800">
                             <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
                                 <h2 className="text-lg font-bold text-white font-mono">REPORT CONFIGURATION</h2>
@@ -321,8 +321,8 @@ export default function Reports() {
                         </Card>
                     </div>
 
-                    {/* Right: Report Results */}
-                    <div className="col-span-1 md:col-span-8">
+                    {/* Report Results */}
+                    <div className="w-full md:col-span-8">
                         {!reportData ? (
                             <Card className="bg-slate-900 border-slate-800 h-[calc(100vh-180px)] flex items-center justify-center">
                                 <div className="text-center text-slate-500 font-mono">

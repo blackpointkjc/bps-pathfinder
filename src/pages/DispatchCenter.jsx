@@ -333,21 +333,21 @@ export default function DispatchCenter() {
                 </div>
             </div>
 
-            <div className="p-4">
+            <div className="p-3 md:p-4">
 
                 {showPriorCalls ? (
                    <PriorCallsView currentUser={currentUser} units={units} />
                 ) : (
                    <>
                    {/* Quick Actions Bar */}
-                   <div className="mb-4">
+                   <div className="mb-3">
                        <QuickActions onCreateCall={handleQuickDispatch} />
                    </div>
 
-                   <div className={`grid grid-cols-1 ${showMap ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-3 md:h-[calc(100vh-200px)]`}>
+                   <div className={`flex flex-col md:grid ${showMap ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-3 md:h-[calc(100vh-200px)]`}>
                        {/* Map View */}
                        {showMap && (
-                           <div className="h-full overflow-hidden col-span-2">
+                           <div className="h-64 md:h-full overflow-hidden md:col-span-2">
                                <Card className="bg-slate-900 border-emerald-500/30 h-full flex flex-col">
                                    <div className="p-2 border-b border-emerald-500/20">
                                        <h3 className="text-xs font-bold text-emerald-400 font-mono">LIVE TACTICAL MAP</h3>
@@ -373,8 +373,8 @@ export default function DispatchCenter() {
                            </div>
                        )}
                        
-                       {/* Left: Active Calls - Split by Source */}
-                       <div className="flex flex-col gap-2 h-full overflow-hidden">
+                       {/* Active Calls - Split by Source */}
+                       <div className="flex flex-col gap-2 md:h-full overflow-hidden">
                            <Card className="bg-slate-900 border-amber-500/30 flex-1 min-h-0 flex flex-col">
                                <div className="p-2 border-b border-amber-500/20">
                                    <h3 className="text-xs font-bold text-amber-400 font-mono">Active Police calls ({activeCalls.filter(c => c.source).length})</h3>
@@ -425,8 +425,8 @@ export default function DispatchCenter() {
                            </Card>
                        </div>
 
-                       {/* Center: Call Detail */}
-                       <div className="h-full overflow-hidden">
+                       {/* Call Detail */}
+                       <div className="md:h-full overflow-hidden">
                            <CallDetailPanel
                                call={selectedCall}
                                currentUser={currentUser}
@@ -435,8 +435,8 @@ export default function DispatchCenter() {
                            />
                        </div>
 
-                       {/* Right: Units & Assignment */}
-                       <div className="flex flex-col gap-2 h-full overflow-hidden">
+                       {/* Units & Assignment */}
+                       <div className="flex flex-col gap-2 md:h-full overflow-hidden">
                            <Card className="bg-slate-900 border-blue-500/30 flex-1 min-h-0 flex flex-col">
                                <div className="p-2 border-b border-blue-500/20">
                                    <h3 className="text-xs font-bold text-blue-400 font-mono">UNIT ASSIGNMENT</h3>
