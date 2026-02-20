@@ -180,7 +180,11 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
 
     // Determine tile layer URL based on base map type and theme
     const getTileLayerUrl = () => {
-        if (useOfflineTiles) return '';
+        // When offline, still try OSM — browser will serve from Cache API via service worker / cache fetch
+        // We always use OSM for offline-friendly fallback
+        if (useOfflineTiles) {
+            return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        }
 
         // Night mode uses dark tactical style
         if (mapTheme === 'night') {
