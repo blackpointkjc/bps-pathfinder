@@ -98,10 +98,14 @@ Deno.serve(async (req) => {
         const allCalls = [];
         const seenIds = new Set();
         
-        // gractivecalls.com table structure (6 <td> per row):
-        // td[0]=time, td[1]=incident, td[2]=location, td[3]=agency, td[4]=status, td[5]=actions
+        // gractivecalls.com uses Next.js SSR. Each data row has:
+        // - a hidden <th> with the heading (skip it)
+        // - 6 <td>: time, incident, location, agency, status, actions
+        // Some rows also contain the hidden <th> inside the same <tr>.
+        // We parse ALL <td> sets regardless of the hidden <th>.
         $('table tbody tr').each((_, row) => {
             const $row = $(row);
+            // Get only <td> elements (not <th>)
             const cells = $row.find('td');
             
             if (cells.length >= 5) {
@@ -111,13 +115,13 @@ Deno.serve(async (req) => {
                 const agency = $(cells[3]).text().trim();
                 const status = $(cells[4]).text().trim() || 'Active';
                 
-                // agency should be short like RPD, HPD, CCPD, CCFD, RFD etc.
-                if (incident && location && agency && agency.length >= 2 && agency.length <= 10) {
+                // Validate: agency should be like RPD, CCPD, CCFD, HPD, RFD, HCPD etc (2-10 chars)
+                const validAgencyPattern = /^[A-Z]{2,10}$/;
+                if (incident && location && validAgencyPattern.test(agency)) {
                     const incidentSlug = incident.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 30);
                     const locationSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
                     const stableId = `${agency.toLowerCase()}-${incidentSlug}-${locationSlug}`;
                     
-                    // Deduplicate within this fetch
                     if (!seenIds.has(stableId)) {
                         seenIds.add(stableId);
                         allCalls.push({
@@ -135,6 +139,10 @@ Deno.serve(async (req) => {
                 }
             }
         });
+        
+        // Debug log agencies found
+        const agenciesFound = [...new Set(allCalls.map(c => c.agency))];
+        console.log(`🏢 Agencies found: ${agenciesFound.join(', ')}`);
         
         console.log(`✅ Scraped ${allCalls.length} calls from gractivecalls.com`);
         
