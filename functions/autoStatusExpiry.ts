@@ -11,7 +11,9 @@ Deno.serve(async (req) => {
 
         const staleThresholdMs = 12 * 60 * 60 * 1000; // 12 hours
         const now = Date.now();
-        const expiredStatuses = ['Available', 'Enroute', 'On Scene', 'On Patrol', 'Busy', 'Dispatched'];
+        // Only auto-expire users who are "Available" and have been idle 12+ hours
+        // Officers who manually set Out of Service should stay there until they change it themselves
+        const expiredStatuses = ['Available'];
 
         let updatedCount = 0;
         const updated = [];
