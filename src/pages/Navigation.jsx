@@ -2074,6 +2074,15 @@ Be thorough and search multiple sources.`,
                 >
                     <Settings className="w-4 h-4" />
                 </Button>
+
+                <Button
+                    onClick={() => setShowOfflineManager(true)}
+                    size="icon"
+                    className={`h-8 w-8 rounded-lg shadow-lg ${!isOnline ? 'bg-amber-600 hover:bg-amber-700' : 'bg-slate-700 hover:bg-slate-600'} text-white`}
+                    title="Offline Map Cache"
+                >
+                    <WifiOff className="w-4 h-4" />
+                </Button>
             </motion.div>
             
 
