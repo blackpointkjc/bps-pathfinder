@@ -65,6 +65,7 @@ export default function Navigation() {
     });
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
     const [showCallFilterPanel, setShowCallFilterPanel] = useState(false);
+    const [showOfflineManager, setShowOfflineManager] = useState(false);
     const [showActiveCalls, setShowActiveCalls] = useState(true);
     const [unitName, setUnitName] = useState(localStorage.getItem('unitName') || '');
     const [showUnitSettings, setShowUnitSettings] = useState(false);
