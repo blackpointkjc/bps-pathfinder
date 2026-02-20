@@ -153,6 +153,8 @@ export default function Navigation() {
     const unitsRefreshInterval = useRef(null);
     const lastPosition = useRef(null);
     const lastAnnouncedStep = useRef(-1);
+    const lastActivityRef = useRef(Date.now());
+    const inactivityTimerRef = useRef(null);
     
     const { speak, stop: stopSpeech } = useVoiceGuidance(voiceEnabled);
     const { startListening, stopListening } = useVoiceCommand((transcript) => {
