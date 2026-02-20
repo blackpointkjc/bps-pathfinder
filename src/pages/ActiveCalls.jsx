@@ -9,7 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Radio, AlertTriangle, MapPin, Clock, User, Phone, FileText, Save, X, Plus, Search, Filter, RefreshCw } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import { useNavigate } from 'react-router-dom';
 import NavigationMenu from '@/components/NavigationMenu';
+import AINotesPanel from '@/components/dispatch/AINotesPanel';
 
 export default function ActiveCalls() {
     const [currentUser, setCurrentUser] = useState(null);
