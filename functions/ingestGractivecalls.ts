@@ -87,60 +87,84 @@ Deno.serve(async (req) => {
         
         console.log('🚨 Starting active calls ingestion from gractivecalls.com...');
         
-        const response = await fetch('https://gractivecalls.com');
-        if (!response.ok) {
-            throw new Error(`Failed to fetch gractivecalls.com: ${response.status}`);
+        // Use the JSON API endpoint for reliable structured data (includes CCPD/CCFD)
+        const apiResponse = await fetch('https://gractivecalls.com/api/calls', {
+            headers: { 
+                'User-Agent': 'BPS-CAD-Dispatch/1.0',
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!apiResponse.ok) {
+            throw new Error(`Failed to fetch gractivecalls.com API: ${apiResponse.status}`);
         }
         
-        const html = await response.text();
-        const $ = cheerio.load(html);
+        const apiData = await apiResponse.json();
+        console.log(`📡 API returned ${apiData.length} calls`);
+        
+        // Fetch status from the HTML page for calls that need it
+        // (the API might not include status, so we also parse HTML as a fallback)
+        let statusMap = {};
+        try {
+            const htmlResponse = await fetch('https://gractivecalls.com', {
+                headers: { 'User-Agent': 'BPS-CAD-Dispatch/1.0' }
+            });
+            if (htmlResponse.ok) {
+                const html = await htmlResponse.text();
+                const $ = cheerio.load(html);
+                $('table tbody tr').each((_, row) => {
+                    const cells = $(row).find('td');
+                    if (cells.length >= 5) {
+                        const incident = $(cells[1]).text().trim();
+                        const location = $(cells[2]).text().trim();
+                        const agency = $(cells[3]).text().trim();
+                        const status = $(cells[4]).text().trim();
+                        if (incident && location && agency) {
+                            const key = `${agency}-${incident}-${location}`;
+                            statusMap[key] = status;
+                        }
+                    }
+                });
+            }
+        } catch (e) {
+            console.log('HTML status fetch failed, using default status');
+        }
         
         const allCalls = [];
         const seenIds = new Set();
         
-        // gractivecalls.com uses Next.js SSR. Each data row has:
-        // - a hidden <th> with the heading (skip it)
-        // - 6 <td>: time, incident, location, agency, status, actions
-        // Some rows also contain the hidden <th> inside the same <tr>.
-        // We parse ALL <td> sets regardless of the hidden <th>.
-        $('table tbody tr').each((_, row) => {
-            const $row = $(row);
-            // Get only <td> elements (not <th>)
-            const cells = $row.find('td');
+        for (const entry of apiData) {
+            const agency = entry.agency || '';
+            const incident = entry.incident || '';
+            const location = entry.location || '';
+            const timeReceived = entry.timeReceived || '';
+            const statusKey = `${agency}-${incident}-${location}`;
+            const status = statusMap[statusKey] || entry.status || 'Active';
             
-            if (cells.length >= 5) {
-                const timeReceived = $(cells[0]).text().trim();
-                const incident = $(cells[1]).text().trim();
-                const location = $(cells[2]).text().trim();
-                const agency = $(cells[3]).text().trim();
-                const status = $(cells[4]).text().trim() || 'Active';
-                
-                // Validate: agency should be like RPD, CCPD, CCFD, HPD, RFD, HCPD etc (2-10 chars)
-                const validAgencyPattern = /^[A-Z]{2,10}$/;
-                if (incident && location && validAgencyPattern.test(agency)) {
-                    const incidentSlug = incident.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 30);
-                    const locationSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
-                    const stableId = `${agency.toLowerCase()}-${incidentSlug}-${locationSlug}`;
-                    
-                    if (!seenIds.has(stableId)) {
-                        seenIds.add(stableId);
-                        allCalls.push({
-                            call_id: stableId,
-                            incident: incident,
-                            location: location,
-                            agency: agency,
-                            status: status,
-                            priority: 'medium',
-                            time_received: parseTimeToISO(timeReceived),
-                            source: 'gractivecalls',
-                            description: `${incident} at ${location}`
-                        });
-                    }
-                }
+            if (!incident || !location || !agency) continue;
+            
+            const incidentSlug = incident.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 30);
+            const locationSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
+            const stableId = `${agency.toLowerCase()}-${incidentSlug}-${locationSlug}`;
+            
+            if (!seenIds.has(stableId)) {
+                seenIds.add(stableId);
+                allCalls.push({
+                    call_id: stableId,
+                    incident: incident,
+                    location: location,
+                    agency: agency,
+                    status: status,
+                    priority: 'medium',
+                    time_received: typeof timeReceived === 'string' && timeReceived.includes('T') 
+                        ? timeReceived  // Already ISO format from the API
+                        : parseTimeToISO(timeReceived),
+                    source: 'gractivecalls',
+                    description: `${incident} at ${location}`
+                });
             }
-        });
+        }
         
-        // Debug log agencies found
         const agenciesFound = [...new Set(allCalls.map(c => c.agency))];
         console.log(`🏢 Agencies found: ${agenciesFound.join(', ')}`);
         
