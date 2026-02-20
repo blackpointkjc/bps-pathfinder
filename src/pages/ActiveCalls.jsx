@@ -19,7 +19,6 @@ export default function ActiveCalls() {
     const [activeCalls, setActiveCalls] = useState([]);
     const [selectedCall, setSelectedCall] = useState(null);
     const [units, setUnits] = useState([]);
-    const [notes, setNotes] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
