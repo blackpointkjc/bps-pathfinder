@@ -14,6 +14,16 @@ export default function NavigationMenu({ currentUser }) {
         setOpen(false);
     };
 
+    const menuItems = [
+        { name: 'CAD Home', icon: Radio, page: 'CADHome', color: 'text-blue-400' },
+        { name: 'Dispatch Center', icon: Activity, page: 'DispatchCenter', color: 'text-purple-400' },
+        { name: 'Active Calls Management', icon: Clock, page: 'ActiveCalls', color: 'text-green-400' },
+        { name: 'Call History', icon: FileText, page: 'CallHistory', color: 'text-orange-400' },
+        { name: 'Live Map', icon: MapPin, page: 'Navigation', color: 'text-yellow-400' },
+        { name: 'Account Settings', icon: Settings, page: 'AccountSettings', color: 'text-slate-400' },
+        ...(currentUser?.role === 'admin' ? [{ name: 'Admin Portal', icon: Shield, page: 'AdminPortal', color: 'text-red-400' }] : []),
+    ];
+
     return (
         <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
