@@ -31,6 +31,7 @@ import LayerFilterPanel from '@/components/map/LayerFilterPanel';
 import AddressLookupTool from '@/components/map/AddressLookupTool';
 import RealTimeAlert from '@/components/map/RealTimeAlert';
 import { createPageUrl } from '../utils';
+import { useNavigate } from 'react-router-dom';
 
 export default function Navigation() {
     const [currentLocation, setCurrentLocation] = useState(null);
