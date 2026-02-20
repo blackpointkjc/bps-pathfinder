@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Radio, AlertTriangle, MapPin, Clock, User, Phone, FileText, Save, X, Plus, Search, Filter, RefreshCw } from 'lucide-react';
+import { Radio, MapPin, Clock, FileText, Search, RefreshCw } from 'lucide-react';
 import { createPageUrl } from '../utils';
 import { useNavigate } from 'react-router-dom';
 import NavigationMenu from '@/components/NavigationMenu';
