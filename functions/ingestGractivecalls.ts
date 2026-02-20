@@ -98,8 +98,9 @@ Deno.serve(async (req) => {
         const allCalls = [];
         const seenIds = new Set();
         
-        // Parse all rows from all tables on the page
-        $('table tr').each((_, row) => {
+        // gractivecalls.com table structure (6 <td> per row):
+        // td[0]=time, td[1]=incident, td[2]=location, td[3]=agency, td[4]=status, td[5]=actions
+        $('table tbody tr').each((_, row) => {
             const $row = $(row);
             const cells = $row.find('td');
             
@@ -108,13 +109,10 @@ Deno.serve(async (req) => {
                 const incident = $(cells[1]).text().trim();
                 const location = $(cells[2]).text().trim();
                 const agency = $(cells[3]).text().trim();
-                // cell[4] might be status or Actions — find actual status
-                let status = $(cells[4]).text().trim();
-                // If there's a 6th cell, cell[4] is status and cell[5] is actions
-                // Either way, clean up the status text
-                status = status.replace(/^(actions?|view)$/i, '').trim() || 'Active';
+                const status = $(cells[4]).text().trim() || 'Active';
                 
-                if (incident && location && agency && agency.length <= 10) {
+                // agency should be short like RPD, HPD, CCPD, CCFD, RFD etc.
+                if (incident && location && agency && agency.length >= 2 && agency.length <= 10) {
                     const incidentSlug = incident.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 30);
                     const locationSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
                     const stableId = `${agency.toLowerCase()}-${incidentSlug}-${locationSlug}`;
