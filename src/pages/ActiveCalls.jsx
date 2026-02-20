@@ -103,25 +103,6 @@ export default function ActiveCalls() {
         return 'border-blue-500 bg-blue-500/10';
     };
 
-    const handleAddNote = async () => {
-        if (!notes.trim() || !selectedCall) return;
-        
-        try {
-            await base44.entities.CallNote.create({
-                call_id: selectedCall.id,
-                author_id: currentUser.id,
-                author_name: currentUser.full_name,
-                note: notes,
-                note_type: 'general'
-            });
-            setNotes('');
-            toast.success('Note added');
-            loadData();
-        } catch (error) {
-            toast.error('Failed to add note');
-        }
-    };
-
     const handleUpdateStatus = async (newStatus) => {
         if (!selectedCall) return;
         
