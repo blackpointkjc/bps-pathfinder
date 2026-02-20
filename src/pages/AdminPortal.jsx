@@ -314,7 +314,7 @@ export default function AdminPortal() {
                             </Card>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <Card className="bg-slate-900 border-slate-800">
                                 <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
                                     <h2 className="text-lg font-bold text-white font-mono flex items-center gap-2">
