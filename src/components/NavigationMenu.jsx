@@ -32,7 +32,7 @@ export default function NavigationMenu({ currentUser }) {
             <SheetTrigger asChild>
                 <button 
                     onClick={() => setOpen(true)}
-                    className="bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white rounded-md p-2 transition-all"
+                    className="bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white rounded-md p-2 transition-all select-none"
                 >
                     <Menu className="w-5 h-5" />
                 </button>
