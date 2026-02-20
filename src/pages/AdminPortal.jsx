@@ -374,7 +374,7 @@ export default function AdminPortal() {
                             </Card>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <Button
                                 onClick={() => window.location.href = createPageUrl('Reports')}
                                 className="h-20 bg-slate-900 border-2 border-blue-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
