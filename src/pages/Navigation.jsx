@@ -2349,6 +2349,13 @@ Be thorough and search multiple sources.`,
                 filters={callAgencyFilters}
                 onFilterChange={handleCallFilterChange}
             />
+
+            {/* Offline Map Manager */}
+            <OfflineMapManager
+                isOpen={showOfflineManager}
+                onClose={() => setShowOfflineManager(false)}
+                isOnline={isOnline}
+            />
             </div>
             );
             }
