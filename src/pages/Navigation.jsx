@@ -1770,7 +1770,7 @@ Be thorough and search multiple sources.`,
                 className="absolute top-2 left-2 z-[1003] pointer-events-auto"
             >
                 <Button
-                    onClick={() => window.location.href = createPageUrl('CADHome')}
+                    onClick={() => navigate(createPageUrl('CADHome'))}
                     className="bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white rounded-md p-2"
                 >
                     ← BACK
