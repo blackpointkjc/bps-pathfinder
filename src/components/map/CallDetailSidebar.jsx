@@ -121,7 +121,9 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
     };
 
     if (!call) return null;
-    
+
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
     return (
         <AnimatePresence>
             {call && (
@@ -134,11 +136,11 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
                         onClick={onClose}
                     />
                     <motion.div
-                        initial={{ x: 400 }}
-                        animate={{ x: 0 }}
-                        exit={{ x: 400 }}
+                        initial={isMobile ? { y: '100%' } : { x: 400 }}
+                        animate={isMobile ? { y: 0 } : { x: 0 }}
+                        exit={isMobile ? { y: '100%' } : { x: 400 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="fixed top-0 right-0 bottom-0 w-full md:w-[400px] bg-white shadow-2xl z-[9999] overflow-hidden flex flex-col pointer-events-auto"
+                        className="fixed bottom-0 left-0 right-0 md:top-0 md:left-auto md:right-0 md:bottom-0 md:w-[400px] h-[85vh] md:h-auto bg-white shadow-2xl z-[9999] overflow-hidden flex flex-col pointer-events-auto rounded-t-2xl md:rounded-none"
                     >
                 {/* Header */}
                 <div className="bg-gradient-to-r from-red-600 to-red-700 p-6 text-white">

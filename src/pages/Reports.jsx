@@ -267,8 +267,8 @@ export default function Reports() {
             </div>
 
             {/* Main Content */}
-            <div className="p-6">
-                <div className="grid grid-cols-12 gap-6">
+            <div className="p-4 md:p-6">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                     {/* Left: Report Configuration */}
                     <div className="col-span-4">
                         <Card className="bg-slate-900 border-slate-800">

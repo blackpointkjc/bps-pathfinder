@@ -133,6 +133,8 @@ export default function UnitSettingsPanel({ isOpen, onClose }) {
 
     if (!isOpen) return null;
 
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -145,10 +147,10 @@ export default function UnitSettingsPanel({ isOpen, onClose }) {
                         onClick={onClose}
                     />
                     <motion.div
-                        initial={{ opacity: 0, x: 300 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 300 }}
-                        className="fixed right-0 top-0 bottom-0 w-96 z-[2201] bg-white shadow-2xl pointer-events-auto"
+                        initial={isMobile ? { y: '100%' } : { opacity: 0, x: 300 }}
+                        animate={isMobile ? { y: 0 } : { opacity: 1, x: 0 }}
+                        exit={isMobile ? { y: '100%' } : { opacity: 0, x: 300 }}
+                        className="fixed bottom-0 left-0 right-0 md:right-0 md:top-0 md:left-auto md:bottom-0 md:w-96 h-[80vh] md:h-auto z-[2201] bg-white shadow-2xl pointer-events-auto rounded-t-2xl md:rounded-none"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="h-full flex flex-col">

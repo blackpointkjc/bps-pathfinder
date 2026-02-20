@@ -33,23 +33,21 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
     if (!isOpen) return null;
     
     const handleStatusClick = async (status) => {
+        // Optimistic update
         setSelectedStatus(status);
         if (status !== 'Out of Service') {
+            onStatusChange(status); // optimistic
+            onClose();
+            toast.success(`Status updated: ${status}`);
             try {
                 const { base44 } = await import('@/api/base44Client');
-                
-                // Use backend function for officer status update with call linking
-                await base44.functions.invoke('updateOfficerStatus', { 
-                    status 
-                });
-                
-                // Update local state
-                onStatusChange(status);
-                toast.success(`Status updated: ${status}`);
-                onClose();
+                await base44.functions.invoke('updateOfficerStatus', { status });
             } catch (error) {
                 console.error('Error updating status:', error);
-                toast.error('Failed to update status');
+                // Rollback
+                setSelectedStatus(currentStatus);
+                onStatusChange(currentStatus);
+                toast.error('Failed to update status — reverted');
             }
         }
     };

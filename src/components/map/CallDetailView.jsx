@@ -22,21 +22,23 @@ const getStatusColor = (status) => {
 };
 
 export default function CallDetailView({ call, onClose, onEnroute }) {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
     return (
         <AnimatePresence>
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/50 z-[3000] flex items-center justify-center p-4"
+                className={`fixed inset-0 bg-black/50 z-[3000] ${isMobile ? 'flex items-end' : 'flex items-center justify-center p-4'}`}
                 onClick={onClose}
             >
                 <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
+                    initial={isMobile ? { y: '100%' } : { scale: 0.9, opacity: 0 }}
+                    animate={isMobile ? { y: 0 } : { scale: 1, opacity: 1 }}
+                    exit={isMobile ? { y: '100%' } : { scale: 0.9, opacity: 0 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full max-w-lg"
+                    className={isMobile ? 'w-full rounded-t-2xl overflow-hidden' : 'w-full max-w-lg'}
                 >
                     <Card className="bg-white overflow-hidden">
                         <div className="bg-gradient-to-r from-red-600 to-red-700 p-6 text-white">
