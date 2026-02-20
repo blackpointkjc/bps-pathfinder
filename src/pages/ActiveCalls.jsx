@@ -30,15 +30,15 @@ export default function ActiveCalls() {
         // Real-time data refresh every 5 seconds
         const interval = setInterval(() => loadData(), 5000);
         
-        // Auto-scrape every 60 seconds for real-time feed
+        // Auto-ingest every 5 minutes
         const scrapeInterval = setInterval(async () => {
             try {
-                await base44.functions.invoke('scrapeActiveCalls', {});
-                console.log('✅ Auto-scraped active calls');
+                await base44.functions.invoke('ingestGractivecalls', {});
+                loadData();
             } catch (err) {
-                console.error('Auto-scrape failed:', err);
+                console.error('Auto-ingest failed:', err);
             }
-        }, 60000);
+        }, 5 * 60 * 1000);
         
         return () => {
             clearInterval(interval);
