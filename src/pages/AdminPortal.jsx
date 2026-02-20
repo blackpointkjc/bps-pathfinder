@@ -272,7 +272,7 @@ export default function AdminPortal() {
                 {/* Dashboard Tab */}
                 {activeTab === 'dashboard' && (
                     <div className="space-y-6">
-                        <div className="grid grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <Card className="bg-slate-900 border-slate-800 p-4">
                                 <div className="flex items-center justify-between">
                                     <div>
