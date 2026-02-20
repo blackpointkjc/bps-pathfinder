@@ -214,6 +214,7 @@ export default function ActiveCalls() {
                                 onClick={() => window.location.href = createPageUrl('Navigation')}
                                 variant="outline"
                                 className="border-slate-700 text-slate-300 font-mono"
+                                onClick={() => navigate(createPageUrl('Navigation'))}
                             >
                                 MAP VIEW
                             </Button>
