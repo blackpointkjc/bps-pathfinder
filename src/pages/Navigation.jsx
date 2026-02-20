@@ -1064,12 +1064,17 @@ export default function Navigation() {
         toast.success('Navigation started - Follow the route');
     };
 
-    const exitNavigation = () => {
+    const exitNavigation = async () => {
         setIsNavigating(false);
         setTrafficAlert(null);
         stopSpeech();
         if (rerouteCheckInterval.current) {
             clearInterval(rerouteCheckInterval.current);
+        }
+        // Auto-set status to On Scene when user ends navigation
+        if (unitStatus === 'Enroute' && currentUser) {
+            await handleStatusChange('On Scene');
+            toast.success('Status set to On Scene');
         }
     };
 
