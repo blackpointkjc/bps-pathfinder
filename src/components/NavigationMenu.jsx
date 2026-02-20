@@ -13,6 +13,7 @@ export default function NavigationMenu({ currentUser }) {
         { name: 'Active Calls Management', icon: Clock, page: 'ActiveCalls', color: 'text-green-400' },
         { name: 'Call History', icon: FileText, page: 'CallHistory', color: 'text-orange-400' },
         { name: 'Live Map', icon: MapPin, page: 'Navigation', color: 'text-yellow-400' },
+        { name: 'Account Settings', icon: Settings, page: 'AccountSettings', color: 'text-slate-400' },
     ];
 
     if (currentUser?.role === 'admin') {
