@@ -664,12 +664,16 @@ export default function Navigation() {
                 // Hide Out of Service units
                 if (user.status === 'Out of Service') return false;
 
-                // Show units with valid location OR any location data (even if 0,0)
-                // This way units show up even if they haven't updated location yet
-                const hasLocation = user.latitude !== null && user.latitude !== undefined && 
-                                  user.longitude !== null && user.longitude !== undefined;
+                // Only show units that have a valid non-zero location
+                const lat = parseFloat(user.latitude);
+                const lng = parseFloat(user.longitude);
+                const hasLocation = !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
 
-                return hasLocation;
+                // Only show units updated within the last 2 hours
+                const lastUpdate = user.last_updated ? new Date(user.last_updated).getTime() : 0;
+                const isRecent = lastUpdate > Date.now() - 2 * 60 * 60 * 1000;
+
+                return hasLocation && isRecent;
             });
 
             // Check for status changes and trigger notifications
