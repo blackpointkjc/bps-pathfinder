@@ -61,15 +61,14 @@ export default function ActiveCalls() {
             // Fetch ALL dispatch calls sorted by time_received
             const allCalls = await base44.entities.DispatchCall.list('-time_received', 500);
             
-            // Filter: TODAY only AND active status
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            // Filter: last 12 hours AND active status (avoid midnight UTC cutoff issues)
+            const cutoff = Date.now() - 12 * 60 * 60 * 1000;
             
             const todayActiveCalls = allCalls.filter(call => {
-                const callTime = new Date(call.time_received || call.created_date);
-                const isToday = callTime >= today;
-                const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
-                return isToday && isActive;
+                const callTime = new Date(call.time_received || call.created_date).getTime();
+                const isRecent = callTime >= cutoff;
+                const isActive = !call.status || !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
+                return isRecent && isActive;
             });
             
             // Also fetch user data
