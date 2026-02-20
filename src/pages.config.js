@@ -59,6 +59,7 @@ import Navigation from './pages/Navigation';
 import Personnel from './pages/Personnel';
 import Reports from './pages/Reports';
 import SystemStatus from './pages/SystemStatus';
+import AccountSettings from './pages/AccountSettings';
 import __Layout from './Layout.jsx';
 
 
@@ -75,6 +76,7 @@ export const PAGES = {
     "Personnel": Personnel,
     "Reports": Reports,
     "SystemStatus": SystemStatus,
+    "AccountSettings": AccountSettings,
 }
 
 export const pagesConfig = {
