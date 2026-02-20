@@ -14,6 +14,7 @@ import NavigationMenu from '@/components/NavigationMenu';
 import AINotesPanel from '@/components/dispatch/AINotesPanel';
 
 export default function ActiveCalls() {
+    const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState(null);
     const [activeCalls, setActiveCalls] = useState([]);
     const [selectedCall, setSelectedCall] = useState(null);
