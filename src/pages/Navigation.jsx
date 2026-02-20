@@ -34,6 +34,7 @@ import { createPageUrl } from '../utils';
 import { useNavigate } from 'react-router-dom';
 
 export default function Navigation() {
+    const navigate = useNavigate();
     const [currentLocation, setCurrentLocation] = useState(null);
     const [destination, setDestination] = useState(null);
     const [routes, setRoutes] = useState(null);
