@@ -344,7 +344,7 @@ export default function DispatchCenter() {
                        <QuickActions onCreateCall={handleQuickDispatch} />
                    </div>
 
-                   <div className={`grid ${showMap ? 'grid-cols-4' : 'grid-cols-3'} gap-3 h-[calc(100vh-200px)]`}>
+                   <div className={`grid grid-cols-1 ${showMap ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-3 md:h-[calc(100vh-200px)]`}>
                        {/* Map View */}
                        {showMap && (
                            <div className="h-full overflow-hidden col-span-2">
