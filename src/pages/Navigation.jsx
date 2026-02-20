@@ -786,9 +786,34 @@ export default function Navigation() {
 
 
 
+    // Inactivity auto-status: set Available after 15min idle if On Patrol, OOS after 2hr idle
+    useEffect(() => {
+        const resetActivity = () => { lastActivityRef.current = Date.now(); };
+        window.addEventListener('touchstart', resetActivity);
+        window.addEventListener('click', resetActivity);
+
+        inactivityTimerRef.current = setInterval(async () => {
+            if (!currentUser || isNavigating) return;
+            const idleMs = Date.now() - lastActivityRef.current;
+            const idleMins = idleMs / 60000;
+
+            // After 2 hours idle and not already OOS/Off Duty → set Out of Service
+            if (idleMins > 120 && unitStatus !== 'Out of Service' && unitStatus !== 'Off Duty') {
+                await handleStatusChange('Out of Service');
+                toast.info('Auto-set Out of Service due to inactivity');
+            }
+        }, 60000);
+
+        return () => {
+            window.removeEventListener('touchstart', resetActivity);
+            window.removeEventListener('click', resetActivity);
+            if (inactivityTimerRef.current) clearInterval(inactivityTimerRef.current);
+        };
+    }, [currentUser, isNavigating, unitStatus]);
+
     const updateNavigationProgress = (coords) => {
         if (!directions || currentStepIndex >= directions.length - 1) {
-            // Arrived at destination
+            // Arrived at destination → auto set On Scene
             setIsNavigating(false);
             if (voiceEnabled) {
                 speak('You have arrived at your destination');
