@@ -57,6 +57,12 @@
     @apply bg-background text-foreground;
     overscroll-behavior: none;
   }
+  button, a, [role="button"], nav {
+    @apply select-none;
+  }
+  button, [role="button"] {
+    min-height: 44px;
+  }
 }
 
 /* Auto dark mode based on system preference */

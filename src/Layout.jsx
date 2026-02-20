@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPageUrl } from './utils';
+import { Link, useNavigate } from 'react-router-dom';
 import { Radio, Activity, MapPin, Clock } from 'lucide-react';
 
 const ROOT_PAGES = ['CADHome', 'Navigation'];
