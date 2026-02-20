@@ -13,10 +13,12 @@ const NAV_TABS = [
 ];
 
 export default function Layout({ children, currentPageName }) {
+    const navigate = useNavigate();
+
     useEffect(() => {
         const path = window.location.pathname.toLowerCase();
         if (path === '/' || path === '/home' || !currentPageName || currentPageName === 'Home') {
-            window.location.replace('/cadhome');
+            navigate('/cadhome', { replace: true });
         }
     }, [currentPageName]);
 
