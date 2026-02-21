@@ -47,6 +47,7 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import AccountSettings from './pages/AccountSettings';
 import ActiveCalls from './pages/ActiveCalls';
 import AdminPortal from './pages/AdminPortal';
 import ArchiveManager from './pages/ArchiveManager';
@@ -59,11 +60,11 @@ import Navigation from './pages/Navigation';
 import Personnel from './pages/Personnel';
 import Reports from './pages/Reports';
 import SystemStatus from './pages/SystemStatus';
-import AccountSettings from './pages/AccountSettings';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "AccountSettings": AccountSettings,
     "ActiveCalls": ActiveCalls,
     "AdminPortal": AdminPortal,
     "ArchiveManager": ArchiveManager,
@@ -76,7 +77,6 @@ export const PAGES = {
     "Personnel": Personnel,
     "Reports": Reports,
     "SystemStatus": SystemStatus,
-    "AccountSettings": AccountSettings,
 }
 
 export const pagesConfig = {

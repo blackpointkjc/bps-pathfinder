@@ -670,9 +670,6 @@ export default function Navigation() {
                 // Hide units that explicitly opt out
                 if (user.show_on_map === false) return false;
 
-                // Hide Out of Service units
-                if (user.status === 'Out of Service') return false;
-
                 // Only show units that have a valid non-zero location
                 const lat = parseFloat(user.latitude);
                 const lng = parseFloat(user.longitude);
