@@ -13,16 +13,22 @@ Deno.serve(async (req) => {
         const activeCalls = await base44.asServiceRole.entities.DispatchCall.list();
         
         const now = new Date();
-        // Archive calls older than 6 hours to keep map showing only active/recent calls
-        const sixHoursAgo = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+        // Only archive calls that are NOT from gractivecalls.com (those are managed by the ingest function)
+        // For gractivecalls source, only archive if > 24 hours old (they'll be removed by ingest if cleared)
+        // For other sources, archive after 6 hours
         
         let archivedCount = 0;
         
         for (const call of activeCalls) {
             const callTime = new Date(call.time_received || call.created_date);
+            const ageMs = now - callTime;
             
-            // Archive if older than 6 hours
-            if (callTime < sixHoursAgo) {
+            // gractivecalls source: keep up to 24 hours (sync handles removal)
+            // other sources: archive after 6 hours
+            const isGractivecalls = call.source === 'gractivecalls';
+            const threshold = isGractivecalls ? 24 * 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
+            
+            if (ageMs > threshold) {
                 try {
                     // Create in CallHistory
                     await base44.asServiceRole.entities.CallHistory.create({

@@ -85,6 +85,9 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         
+        // Allow both authenticated user calls AND scheduled automation calls (no user context)
+        // For scheduled runs, we use service role only
+        
         console.log('🚨 Starting active calls ingestion from gractivecalls.com...');
         
         // Use the JSON API endpoint for reliable structured data (includes CCPD/CCFD)
