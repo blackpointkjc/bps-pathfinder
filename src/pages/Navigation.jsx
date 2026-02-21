@@ -222,19 +222,35 @@ export default function Navigation() {
         };
         init();
         
-        // Real-time data refresh every 10 seconds
+        // Real-time data refresh every 10 seconds (reads from DB)
         callsRefreshInterval.current = setInterval(() => {
             if (isOnline) {
                 fetchActiveCalls(true); // Silent refresh
             }
         }, 10000);
         
-        // Removed auto-scrape interval - gractivecalls.com is now the sole source
+        // Auto-ingest from gractivecalls.com every 5 minutes
+        const ingestInterval = setInterval(async () => {
+            if (isOnline) {
+                try {
+                    await base44.functions.invoke('ingestGractivecalls', {});
+                    console.log('Auto-ingested gractivecalls.com');
+                } catch (e) {
+                    console.log('Auto-ingest failed silently');
+                }
+            }
+        }, 5 * 60 * 1000);
+        
+        // Also ingest immediately on load
+        if (navigator.onLine) {
+            base44.functions.invoke('ingestGractivecalls', {}).catch(() => {});
+        }
         
 
         
         return () => {
             stopContinuousTracking();
+            clearInterval(ingestInterval);
             if (rerouteCheckInterval.current) {
                 clearInterval(rerouteCheckInterval.current);
             }
