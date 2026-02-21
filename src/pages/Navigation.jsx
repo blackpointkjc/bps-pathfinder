@@ -1469,8 +1469,7 @@ Be thorough and search multiple sources.`,
             // Fetch all active dispatch calls (all sources)
             const allCalls = await base44.entities.DispatchCall.list('-created_date', 500);
             
-            // Filter: active status + allowed jurisdiction + not older than 4 hours
-            const cutoff = Date.now() - 4 * 60 * 60 * 1000;
+            // Filter: active status + allowed jurisdiction
             const recentCalls = allCalls.filter(call => {
                 const isActive = !call.status || !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
                 const agency = (call.agency || '').toUpperCase();
@@ -1480,10 +1479,7 @@ Be thorough and search multiple sources.`,
                     agency.includes('HPD') || agency.includes('HCPD') || agency.includes('HENRICO') ||
                     agency.includes('HFD') ||
                     agency.includes('CCPD') || agency.includes('CCFD') || agency.includes('CHESTERFIELD');
-                // Only include calls from last 4 hours
-                const receivedTime = call.time_received ? new Date(call.time_received).getTime() : (call.created_date ? new Date(call.created_date).getTime() : 0);
-                const isRecent = !receivedTime || receivedTime > cutoff;
-                return isActive && isAllowedJurisdiction && isRecent;
+                return isActive && isAllowedJurisdiction;
             });
             
             const geocodedCount = recentCalls.filter(call => 
