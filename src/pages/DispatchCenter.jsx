@@ -99,7 +99,7 @@ export default function DispatchCenter() {
             
             if (!hasDispatchAccess) {
                 toast.error('Unauthorized - Dispatch access required');
-                window.location.href = createPageUrl('CADHome');
+                navigate(createPageUrl('CADHome'));
                 return;
             }
 
@@ -239,7 +239,7 @@ export default function DispatchCenter() {
                          <div className="flex items-center gap-4">
                              <Button
                                  variant="ghost"
-                                 onClick={() => window.location.href = createPageUrl('CADHome')}
+                                 onClick={() => navigate(createPageUrl('CADHome'))}
                                  className="text-slate-400 hover:text-white"
                              >
                                  ← BACK
@@ -317,7 +317,7 @@ export default function DispatchCenter() {
                                 <Button
                                     variant="outline"
                                     className="border-slate-700 text-slate-300 bg-slate-800 hover:bg-slate-700 font-mono text-xs"
-                                    onClick={() => window.location.href = createPageUrl('AdminPortal')}
+                                    onClick={() => navigate(createPageUrl('AdminPortal'))}
                                 >
                                     <Shield className="w-4 h-4 mr-2" />
                                     ADMIN
@@ -326,7 +326,7 @@ export default function DispatchCenter() {
                             <Button
                                 variant="outline"
                                 className="border-slate-700 text-slate-300 bg-slate-800 hover:bg-slate-700 font-mono text-xs"
-                                onClick={() => window.location.href = createPageUrl('Navigation')}
+                                onClick={() => navigate(createPageUrl('Navigation'))}
                             >
                                 MAP
                             </Button>
