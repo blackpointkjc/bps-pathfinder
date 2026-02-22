@@ -84,7 +84,7 @@ export const PAGES = {
 }
 
 export const pagesConfig = {
-    mainPage: "Navigation",
+    mainPage: "CADHome",
     Pages: PAGES,
     Layout: __Layout,
 };
