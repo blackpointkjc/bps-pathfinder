@@ -465,7 +465,12 @@ export default function CADHome() {
                                         NO UNITS ONLINE
                                     </div>
                                 ) : (
-                                    units.filter(u => u.status && u.status !== 'Out of Service').map((unit) => (
+                                    units.filter(u => {
+                                       if (!u.status || u.status === 'Out of Service') return false;
+                                       // Hide units not updated in 12 hours
+                                       const lastUpdate = u.last_updated ? new Date(u.last_updated).getTime() : 0;
+                                       return lastUpdate > Date.now() - 12 * 60 * 60 * 1000;
+                                    }).map((unit) => (
                                         <div key={unit.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
                                             <div className="flex items-center gap-3">
                                                 <div className={`w-2 h-2 rounded-full ${getStatusColor(unit.status)}`} />
