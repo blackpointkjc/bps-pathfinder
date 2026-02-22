@@ -10,21 +10,22 @@ Deno.serve(async (req) => {
 
         const reportData = await req.json();
 
-        // Send full report to linked app
+        // Send complete report to linked app
         const res = await fetch(BRIDGE_URL, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
                 'x-api-key': Deno.env.get('LINKED_APP_API_KEY')
             },
-            body: JSON.stringify({
-                action: 'sendReport',
-                reportData: reportData
+            body: JSON.stringify({ 
+                action: 'create',
+                entity: 'IncidentReport',
+                data: reportData
             })
         });
 
         const result = await res.json();
-        if (!res.ok) throw new Error(result.error || 'Failed to send report');
+        if (!res.ok) throw new Error(result.error || 'Failed to send report to linked app');
 
         return Response.json({ success: true, result });
     } catch (error) {
