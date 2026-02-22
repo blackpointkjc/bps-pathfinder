@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 const LINKED_APP_ID = '69503da793f3e1140bbd4426';
 const API_KEY = Deno.env.get('LINKED_APP_API_KEY');
-const BASE_URL = `https://app.base44.com/api/apps/${LINKED_APP_ID}/entities`;
+const BASE_URL = `https://api.base44.com/api/apps/${LINKED_APP_ID}/entities`;
 
 async function apiGet(entity, params = {}) {
     const qs = new URLSearchParams(params).toString();
