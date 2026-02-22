@@ -109,10 +109,10 @@ export default function CADHome() {
             const calls = callsData || [];
             const allUsers = usersData || [];
 
-            // Filter: active status from gractivecalls.com scrape (have source field)
+            // Filter: all active calls (both dispatch and scraper)
             const recentCalls = calls.filter(call => {
                 const isActive = !call.status || !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
-                return isActive && call.source;
+                return isActive;
             }).sort((a, b) => {
                 const timeA = new Date(a.time_received || a.created_date);
                 const timeB = new Date(b.time_received || b.created_date);
