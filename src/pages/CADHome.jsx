@@ -593,6 +593,15 @@ export default function CADHome() {
                     }}
                 />
             )}
+
+            {/* Incident Report Modal */}
+            {reportCall && (
+                <IncidentReportModal
+                    call={reportCall}
+                    currentUser={currentUser}
+                    onClose={() => setReportCall(null)}
+                />
+            )}
         </div>
     );
 }
