@@ -400,18 +400,9 @@ export default function CallDetailPanel({ call, currentUser, onUpdate, units }) 
                         </Button>
                     </>
                 ) : (
-                    <>
-                        <Button onClick={() => setIsEditing(true)} variant="outline" className="flex-1 text-xs font-mono">
-                            Edit Call
-                        </Button>
-                        <Button
-                            onClick={() => setShowReportModal(true)}
-                            className="flex-1 bg-blue-700 hover:bg-blue-600 text-xs font-mono"
-                        >
-                            <ClipboardList className="w-4 h-4 mr-2" />
-                            WRITE REPORT
-                        </Button>
-                    </>
+                    <Button onClick={() => setIsEditing(true)} variant="outline" className="flex-1 text-xs font-mono">
+                        Edit Call
+                    </Button>
                 )}
             </div>
 
