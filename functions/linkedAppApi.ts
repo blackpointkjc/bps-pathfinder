@@ -11,39 +11,38 @@ Deno.serve(async (req) => {
         const body = await req.json().catch(() => ({}));
         const { action, entity, entityId, data, query } = body;
 
-        const linkedApp = getLinkedAppClient();
-
         if (action === 'search') {
-            const [incidentReports, trespassingNotices] = await Promise.all([
-                linkedApp.entities.IncidentReport.list().catch(() => []),
-                linkedApp.entities.TrespassingNotice.list().catch(() => []),
-            ]);
-
-            const q = (query || '').toLowerCase();
-
-            const filteredIR = q ? incidentReports.filter(r => {
-                return [r.report_number, r.persons_involved, r.victims, r.witnesses,
-                        r.suspect_description, r.location, r.description, r.call_number]
-                    .some(f => f && String(f).toLowerCase().includes(q));
-            }) : incidentReports;
-
-            const filteredTN = q ? trespassingNotices.filter(n => {
-                return [n.subject_name, n.subject_id, n.subject_dob, n.location, n.reason]
-                    .some(f => f && String(f).toLowerCase().includes(q));
-            }) : trespassingNotices;
-
-            return Response.json({ incidentReports: filteredIR, trespassingNotices: filteredTN });
+            const res = await fetch(BRIDGE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'search', query: query || '' })
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Bridge search failed');
+            return Response.json(result);
         }
 
         if (action === 'update') {
             if (!entity || !entityId || !data) return Response.json({ error: 'Missing entity, entityId, or data' }, { status: 400 });
-            const result = await linkedApp.entities[entity].update(entityId, data);
+            const res = await fetch(BRIDGE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'update', entity, entityId, data })
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Bridge update failed');
             return Response.json({ success: true, result });
         }
 
         if (action === 'create') {
             if (!entity || !data) return Response.json({ error: 'Missing entity or data' }, { status: 400 });
-            const result = await linkedApp.entities[entity].create(data);
+            const res = await fetch(BRIDGE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'create', entity, data })
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Bridge create failed');
             return Response.json({ success: true, result });
         }
 
