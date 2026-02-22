@@ -160,7 +160,7 @@ export default function IncidentReportsViewer() {
                                         </div>
                                         <div>
                                             <label className="block font-bold text-xs uppercase tracking-wide mb-1">Call Number</label>
-                                            <div className="border-b border-black pb-1">{selectedReport.call_number || 'N/A'}</div>
+                                            <div className="border-b border-black pb-1">{selectedReport.call_number}</div>
                                         </div>
                                         <div>
                                             <label className="block font-bold text-xs uppercase tracking-wide mb-1">Date</label>
