@@ -16,7 +16,7 @@ export default function CallDetailPanel({ call, currentUser, onUpdate, units }) 
     const [newNote, setNewNote] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [editedCall, setEditedCall] = useState(call);
-    const [showReportModal, setShowReportModal] = useState(false);
+
 
     useEffect(() => {
         if (call) {
