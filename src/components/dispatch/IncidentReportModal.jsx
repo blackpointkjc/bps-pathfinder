@@ -41,13 +41,14 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
         police_notified: false,
         ems_notified: false,
         fire_notified: false,
+        subject_trespassed: false,
         reporting_officer: currentUser?.rank && currentUser?.last_name
             ? `${currentUser.rank} ${currentUser.last_name}`
             : currentUser?.full_name || '',
         badge_number: currentUser?.badge_number || '',
     });
 
-    const [reportType, setReportType] = useState('IncidentReport');
+
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
 
@@ -62,7 +63,7 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
         try {
             const payload = {
                 ...form,
-                report_type: reportType,
+                report_type: 'IncidentReport',
                 linked_call_id: call?.id || null,
                 linked_call_number: call?.call_id || null,
                 status: 'Pending Review',
@@ -73,7 +74,7 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
 
             if (res.data?.success) {
                 setSubmitted(true);
-                toast.success(`${reportType === 'IncidentReport' ? 'Incident Report' : 'Trespassing Notice'} submitted successfully`);
+                toast.success('Incident Report submitted successfully');
             } else {
                 throw new Error(res.data?.error || 'Submission failed');
             }
@@ -116,22 +117,7 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
                     </div>
                 ) : (
                     <>
-                        {/* Report Type Tabs */}
-                        <div className="flex border-b border-slate-800">
-                            {['IncidentReport', 'TrespassingNotice'].map(type => (
-                                <button
-                                    key={type}
-                                    onClick={() => setReportType(type)}
-                                    className={`flex-1 py-3 text-xs font-mono font-bold uppercase tracking-wider transition-colors ${
-                                        reportType === type
-                                            ? 'bg-blue-700/30 text-blue-300 border-b-2 border-blue-500'
-                                            : 'text-slate-500 hover:text-slate-300'
-                                    }`}
-                                >
-                                    {type === 'IncidentReport' ? '📋 Incident Report' : '🚫 Trespassing Notice'}
-                                </button>
-                            ))}
-                        </div>
+
 
                         {/* Form Body */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-5">
@@ -178,32 +164,18 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
                                 <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest font-mono border-b border-slate-700 pb-2">
                                     ② PERSONS INVOLVED
                                 </h3>
-                                <FIELD label={reportType === 'TrespassingNotice' ? 'Subject Name' : 'Persons Involved'}>
+                                <FIELD label="Persons Involved">
                                     <Input
-                                        value={reportType === 'TrespassingNotice' ? form.subject_name || '' : form.persons_involved}
-                                        onChange={e => set(reportType === 'TrespassingNotice' ? 'subject_name' : 'persons_involved', e.target.value)}
+                                        value={form.persons_involved}
+                                        onChange={e => set('persons_involved', e.target.value)}
                                         className={inputClass} placeholder="Full name(s), DOB, address..." />
                                 </FIELD>
-                                {reportType === 'IncidentReport' && (
-                                    <>
-                                        <FIELD label="Victims">
-                                            <Input value={form.victims} onChange={e => set('victims', e.target.value)} className={inputClass} placeholder="Victim name(s), contact..." />
-                                        </FIELD>
-                                        <FIELD label="Witnesses">
-                                            <Input value={form.witnesses} onChange={e => set('witnesses', e.target.value)} className={inputClass} placeholder="Witness name(s), contact..." />
-                                        </FIELD>
-                                    </>
-                                )}
-                                {reportType === 'TrespassingNotice' && (
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <FIELD label="Subject DOB">
-                                            <Input type="date" value={form.subject_dob || ''} onChange={e => set('subject_dob', e.target.value)} className={inputClass} />
-                                        </FIELD>
-                                        <FIELD label="Subject ID #">
-                                            <Input value={form.subject_id || ''} onChange={e => set('subject_id', e.target.value)} className={inputClass} placeholder="DL, SSN last 4, etc." />
-                                        </FIELD>
-                                    </div>
-                                )}
+                                <FIELD label="Victims">
+                                    <Input value={form.victims} onChange={e => set('victims', e.target.value)} className={inputClass} placeholder="Victim name(s), contact..." />
+                                </FIELD>
+                                <FIELD label="Witnesses">
+                                    <Input value={form.witnesses} onChange={e => set('witnesses', e.target.value)} className={inputClass} placeholder="Witness name(s), contact..." />
+                                </FIELD>
                                 <FIELD label="Suspect Description">
                                     <Input value={form.suspect_description} onChange={e => set('suspect_description', e.target.value)} className={inputClass} placeholder="Height, weight, clothing, direction of travel..." />
                                 </FIELD>
@@ -222,7 +194,7 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
                                         className={inputClass} rows={3} placeholder="Describe officer actions, arrests, citations, referrals..." />
                                 </FIELD>
                                 <div className="flex gap-6">
-                                    {[['police_notified', 'Police Notified'], ['ems_notified', 'EMS Notified'], ['fire_notified', 'Fire Notified']].map(([field, label]) => (
+                                    {[['police_notified', 'Police Notified'], ['ems_notified', 'EMS Notified'], ['fire_notified', 'Fire Notified'], ['subject_trespassed', 'Subject Was Trespassed']].map(([field, label]) => (
                                         <label key={field} className="flex items-center gap-2 cursor-pointer">
                                             <input type="checkbox" checked={form[field]} onChange={e => set(field, e.target.checked)}
                                                 className="w-4 h-4 accent-blue-500" />
