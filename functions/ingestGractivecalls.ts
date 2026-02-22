@@ -90,129 +90,55 @@ Deno.serve(async (req) => {
         
         console.log('🚨 Starting active calls ingestion from gractivecalls.com...');
         
-        // Use the JSON API endpoint for reliable structured data (includes CCPD/CCFD)
-        const apiResponse = await fetch('https://gractivecalls.com/api/calls', {
-            headers: { 
-                'User-Agent': 'BPS-CAD-Dispatch/1.0',
-                'Accept': 'application/json'
-            }
+        // Fetch from HTML page which has complete call list (all agencies including HPD)
+        const htmlResponse = await fetch('https://gractivecalls.com', {
+            headers: { 'User-Agent': 'BPS-CAD-Dispatch/1.0' }
         });
         
-        if (!apiResponse.ok) {
-            throw new Error(`Failed to fetch gractivecalls.com API: ${apiResponse.status}`);
+        if (!htmlResponse.ok) {
+            throw new Error(`Failed to fetch gractivecalls.com: ${htmlResponse.status}`);
         }
         
-        const apiData = await apiResponse.json();
-        console.log(`📡 API returned ${apiData.length} calls`);
-        
-        // Fetch status from the HTML page for calls that need it
-        // (the API might not include status, so we also parse HTML as a fallback)
-        let statusMap = {};
-        try {
-            const htmlResponse = await fetch('https://gractivecalls.com', {
-                headers: { 'User-Agent': 'BPS-CAD-Dispatch/1.0' }
-            });
-            if (htmlResponse.ok) {
-                const html = await htmlResponse.text();
-                const $ = cheerio.load(html);
-                $('table tbody tr').each((_, row) => {
-                    const cells = $(row).find('td');
-                    if (cells.length >= 5) {
-                        const incident = $(cells[1]).text().trim();
-                        const location = $(cells[2]).text().trim();
-                        const agency = $(cells[3]).text().trim();
-                        const status = $(cells[4]).text().trim();
-                        if (incident && location && agency) {
-                            const key = `${agency}-${incident}-${location}`;
-                            statusMap[key] = status;
-                        }
-                    }
-                });
-            }
-        } catch (e) {
-            console.log('HTML status fetch failed, using default status');
-        }
+        const html = await htmlResponse.text();
+        const $ = cheerio.load(html);
         
         const allCalls = [];
         const seenIds = new Set();
         
-        // Parse API data (RPD, CCPD, RFD, CCFD)
-        for (const entry of apiData) {
-            const agency = entry.agency || '';
-            const incident = entry.incident || '';
-            const location = entry.location || '';
-            const timeReceived = entry.timeReceived || '';
-            const statusKey = `${agency}-${incident}-${location}`;
-            const status = statusMap[statusKey] || entry.status || 'Active';
-            
-            if (!incident || !location || !agency) continue;
-            
-            const incidentSlug = incident.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 30);
-            const locationSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
-            const stableId = `${agency.toLowerCase()}-${incidentSlug}-${locationSlug}`;
-            
-            if (!seenIds.has(stableId)) {
-                seenIds.add(stableId);
-                allCalls.push({
-                    call_id: stableId,
-                    incident: incident,
-                    location: location,
-                    agency: agency,
-                    status: status,
-                    priority: 'medium',
-                    time_received: typeof timeReceived === 'string' && timeReceived.includes('T') 
-                        ? timeReceived  // Already ISO format from the API
-                        : parseTimeToISO(timeReceived),
-                    source: 'gractivecalls',
-                    description: `${incident} at ${location}`
-                });
-            }
-        }
-        
-        // Parse HTML for HPD calls (API doesn't include them)
-        try {
-            const htmlResponse = await fetch('https://gractivecalls.com', {
-                headers: { 'User-Agent': 'BPS-CAD-Dispatch/1.0' }
-            });
-            if (htmlResponse.ok) {
-                const html = await htmlResponse.text();
-                const $ = cheerio.load(html);
+        // Parse all calls from the HTML table
+        $('table tbody tr').each((_, row) => {
+            const cells = $(row).find('td');
+            if (cells.length >= 5) {
+                const timeStr = $(cells[0]).text().trim();
+                const incident = $(cells[1]).text().trim();
+                const location = $(cells[2]).text().trim();
+                const agency = $(cells[3]).text().trim();
+                const status = $(cells[4]).text().trim();
                 
-                $('table tbody tr').each((_, row) => {
-                    const cells = $(row).find('td');
-                    if (cells.length >= 5) {
-                        const timeStr = $(cells[0]).text().trim();
-                        const incident = $(cells[1]).text().trim();
-                        const location = $(cells[2]).text().trim();
-                        const agency = $(cells[3]).text().trim();
-                        const status = $(cells[4]).text().trim();
-                        
-                        if (incident && location && agency === 'HPD') {
-                            const incidentSlug = incident.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 30);
-                            const locationSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
-                            const stableId = `hpd-${incidentSlug}-${locationSlug}`;
-                            
-                            if (!seenIds.has(stableId)) {
-                                seenIds.add(stableId);
-                                allCalls.push({
-                                    call_id: stableId,
-                                    incident: incident,
-                                    location: location,
-                                    agency: 'HPD',
-                                    status: status,
-                                    priority: 'medium',
-                                    time_received: parseTimeToISO(timeStr),
-                                    source: 'gractivecalls',
-                                    description: `${incident} at ${location}`
-                                });
-                            }
-                        }
-                    }
-                });
+                if (!incident || !location || !agency) return;
+                
+                const incidentSlug = incident.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 30);
+                const locationSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
+                const stableId = `${agency.toLowerCase()}-${incidentSlug}-${locationSlug}`;
+                
+                if (!seenIds.has(stableId)) {
+                    seenIds.add(stableId);
+                    allCalls.push({
+                        call_id: stableId,
+                        incident: incident,
+                        location: location,
+                        agency: agency,
+                        status: status,
+                        priority: 'medium',
+                        time_received: parseTimeToISO(timeStr),
+                        source: 'gractivecalls',
+                        description: `${incident} at ${location}`
+                    });
+                }
             }
-        } catch (e) {
-            console.log('HPD HTML parsing failed, continuing without HPD calls');
-        }
+        });
+        
+        console.log(`📡 HTML parsed ${allCalls.length} calls`);
         
         const agenciesFound = [...new Set(allCalls.map(c => c.agency))];
         console.log(`🏢 Agencies found: ${agenciesFound.join(', ')}`);
