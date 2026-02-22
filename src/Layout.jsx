@@ -22,10 +22,10 @@ export default function Layout({ children, currentPageName }) {
 
     useEffect(() => {
         const path = window.location.pathname.toLowerCase();
-        if (path === '/' || path === '/home' || !currentPageName || currentPageName === 'Home') {
+        if (path === '/' || path === '/home' || path === '/navigation' || !currentPageName || currentPageName === 'Home') {
             navigate('/cadhome', { replace: true });
         }
-    }, [currentPageName]);
+    }, []);
 
     const isMapPage = currentPageName === 'Navigation';
     const isRoot = ROOT_PAGE_SET.has(currentPageName);
