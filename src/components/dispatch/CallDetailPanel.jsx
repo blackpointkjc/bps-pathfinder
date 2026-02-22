@@ -406,13 +406,7 @@ export default function CallDetailPanel({ call, currentUser, onUpdate, units }) 
                 )}
             </div>
 
-            {showReportModal && (
-                <IncidentReportModal
-                    call={call}
-                    currentUser={currentUser}
-                    onClose={() => setShowReportModal(false)}
-                />
-            )}
+
         </Card>
     );
 }
