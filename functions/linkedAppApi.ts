@@ -41,8 +41,11 @@ Deno.serve(async (req) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'create', entity, data })
             });
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.error || 'Bridge create failed');
+            const resultText = await res.text();
+            console.log('[Bridge create response]', res.status, resultText);
+            let result;
+            try { result = JSON.parse(resultText); } catch { result = { raw: resultText }; }
+            if (!res.ok) throw new Error(result.error || resultText || 'Bridge create failed');
             return Response.json({ success: true, result });
         }
 
