@@ -4,11 +4,19 @@ import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Radio, AlertTriangle, Users, Activity, Clock, MapPin, TrendingUp, Shield, Monitor, Zap, Bell, RefreshCw } from 'lucide-react';
+import { Radio, AlertTriangle, Users, Activity, Clock, MapPin, TrendingUp, Shield, Monitor, Zap, Bell, RefreshCw, CheckCircle2, Car, XCircle } from 'lucide-react';
 import { createPageUrl } from '../utils';
 import CallDetailView from '@/components/map/CallDetailView';
 import NavigationMenu from '@/components/NavigationMenu';
 import PropertyAlertsBanner from '@/components/dispatch/PropertyAlertsBanner';
+
+const STATUS_OPTIONS = [
+    { label: 'Available', value: 'Available', color: 'bg-green-600 hover:bg-green-700', activeColor: 'bg-green-500/20 border-green-500 text-green-400' },
+    { label: 'On Patrol', value: 'On Patrol', color: 'bg-indigo-600 hover:bg-indigo-700', activeColor: 'bg-indigo-500/20 border-indigo-500 text-indigo-400' },
+    { label: 'On Scene', value: 'On Scene', color: 'bg-blue-600 hover:bg-blue-700', activeColor: 'bg-blue-500/20 border-blue-500 text-blue-400' },
+    { label: 'Enroute', value: 'Enroute', color: 'bg-yellow-600 hover:bg-yellow-700', activeColor: 'bg-yellow-500/20 border-yellow-500 text-yellow-400' },
+    { label: 'Out of Service', value: 'Out of Service', color: 'bg-gray-600 hover:bg-gray-700', activeColor: 'bg-gray-500/20 border-gray-500 text-gray-400' },
+];
 
 export default function CADHome() {
     const [currentUser, setCurrentUser] = useState(null);
