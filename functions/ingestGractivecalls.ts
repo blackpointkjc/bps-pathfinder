@@ -136,6 +136,7 @@ Deno.serve(async (req) => {
         const allCalls = [];
         const seenIds = new Set();
         
+        // Parse API data (RPD, CCPD, RFD, CCFD)
         for (const entry of apiData) {
             const agency = entry.agency || '';
             const incident = entry.incident || '';
@@ -166,6 +167,51 @@ Deno.serve(async (req) => {
                     description: `${incident} at ${location}`
                 });
             }
+        }
+        
+        // Parse HTML for HPD calls (API doesn't include them)
+        try {
+            const htmlResponse = await fetch('https://gractivecalls.com', {
+                headers: { 'User-Agent': 'BPS-CAD-Dispatch/1.0' }
+            });
+            if (htmlResponse.ok) {
+                const html = await htmlResponse.text();
+                const $ = cheerio.load(html);
+                
+                $('table tbody tr').each((_, row) => {
+                    const cells = $(row).find('td');
+                    if (cells.length >= 5) {
+                        const timeStr = $(cells[0]).text().trim();
+                        const incident = $(cells[1]).text().trim();
+                        const location = $(cells[2]).text().trim();
+                        const agency = $(cells[3]).text().trim();
+                        const status = $(cells[4]).text().trim();
+                        
+                        if (incident && location && agency === 'HPD') {
+                            const incidentSlug = incident.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 30);
+                            const locationSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
+                            const stableId = `hpd-${incidentSlug}-${locationSlug}`;
+                            
+                            if (!seenIds.has(stableId)) {
+                                seenIds.add(stableId);
+                                allCalls.push({
+                                    call_id: stableId,
+                                    incident: incident,
+                                    location: location,
+                                    agency: 'HPD',
+                                    status: status,
+                                    priority: 'medium',
+                                    time_received: parseTimeToISO(timeStr),
+                                    source: 'gractivecalls',
+                                    description: `${incident} at ${location}`
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+        } catch (e) {
+            console.log('HPD HTML parsing failed, continuing without HPD calls');
         }
         
         const agenciesFound = [...new Set(allCalls.map(c => c.agency))];
