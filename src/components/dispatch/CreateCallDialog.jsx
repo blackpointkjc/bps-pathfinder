@@ -77,8 +77,7 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                 assigned_units: selectedUnits,
                 status: selectedUnits.length > 0 ? 'Dispatched' : 'Pending',
                 time_received: new Date().toISOString(),
-                time_dispatched: selectedUnits.length > 0 ? new Date().toISOString() : null,
-                source: 'dispatch'
+                time_dispatched: selectedUnits.length > 0 ? new Date().toISOString() : null
             };
 
             const createdCall = await base44.entities.DispatchCall.create(callData);
