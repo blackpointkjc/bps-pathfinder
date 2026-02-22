@@ -100,29 +100,22 @@ export default function CADHome() {
 
     const loadData = async () => {
         try {
-            // Fetch calls from linked app and users from local database
-            const usersData = await base44.entities.User.list();
-            
-            let callsData = [];
-            try {
-                // Fetch active calls from linked app via bridge
-                const { data: linkedCalls } = await base44.functions.invoke('linkedAppApi', { action: 'search', query: 'status:active' });
-                callsData = linkedCalls?.results || [];
-            } catch (err) {
-                console.error('Error fetching from linked app:', err);
-                callsData = [];
-            }
+            // Fetch calls from DispatchCall (populated by ingestGractivecalls from gractivecalls.com) and users
+            const [callsData, usersData] = await Promise.all([
+                base44.entities.DispatchCall.list('-created_date', 200),
+                base44.entities.User.list()
+            ]);
 
             const calls = callsData || [];
             const allUsers = usersData || [];
 
-            // Filter: active status only
+            // Filter: active status from gractivecalls.com scrape (have source field)
             const recentCalls = calls.filter(call => {
                 const isActive = !call.status || !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
-                return isActive;
+                return isActive && call.source;
             }).sort((a, b) => {
-                const timeA = new Date(call.incident_date || call.created_date);
-                const timeB = new Date(call.incident_date || call.created_date);
+                const timeA = new Date(a.time_received || a.created_date);
+                const timeB = new Date(b.time_received || b.created_date);
                 return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
             });
 
