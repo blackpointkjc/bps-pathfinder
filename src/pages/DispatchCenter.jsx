@@ -131,13 +131,13 @@ export default function DispatchCenter() {
        try {
             const calls = await base44.entities.DispatchCall.list('-created_date', 200);
 
-            const sixHoursAgo = new Date();
-            sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
+            const twelveHoursAgo = new Date();
+            twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12);
 
             const recentCalls = calls.filter(call => {
                 const callTime = new Date(call.time_received || call.created_date);
-                const isRecent = callTime >= sixHoursAgo;
-                const isActive = call.status && !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
+                const isRecent = callTime >= twelveHoursAgo;
+                const isActive = !call.status || !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
                 return isRecent && isActive;
             });
 
