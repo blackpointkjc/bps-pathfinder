@@ -20,6 +20,7 @@ const STATUS_OPTIONS = [
 
 export default function CADHome() {
     const [currentUser, setCurrentUser] = useState(null);
+    const [unitStatus, setUnitStatus] = useState(() => localStorage.getItem('unitStatus') || 'Available');
     const [activeCalls, setActiveCalls] = useState([]);
     const [units, setUnits] = useState([]);
     const [criticalCalls, setCriticalCalls] = useState([]);
@@ -34,6 +35,7 @@ export default function CADHome() {
     const [selectedCall, setSelectedCall] = useState(null);
     const [sortOrder, setSortOrder] = useState('desc');
     const [refreshing, setRefreshing] = useState(false);
+    const [updatingStatus, setUpdatingStatus] = useState(false);
 
     useEffect(() => {
         init();
