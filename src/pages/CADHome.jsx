@@ -221,6 +221,26 @@ export default function CADHome() {
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
+                            {/* Status Selector */}
+                            {currentUser && (
+                                <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-lg p-1">
+                                    <span className="text-slate-400 font-mono text-xs px-2">MY STATUS:</span>
+                                    {STATUS_OPTIONS.map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => handleStatusChange(opt.value)}
+                                            disabled={updatingStatus}
+                                            className={`px-3 py-1 rounded font-mono text-xs font-bold transition-all border ${
+                                                unitStatus === opt.value
+                                                    ? `${opt.activeColor} border`
+                                                    : 'bg-transparent border-transparent text-slate-500 hover:text-slate-300'
+                                            }`}
+                                        >
+                                            {opt.label.toUpperCase()}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                             <Button
                                 onClick={handleRefresh}
                                 disabled={refreshing}
