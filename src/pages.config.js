@@ -61,6 +61,7 @@ import Personnel from './pages/Personnel';
 import Reports from './pages/Reports';
 import SystemStatus from './pages/SystemStatus';
 import LinkedAppSearch from './pages/LinkedAppSearch';
+import RecordsAssistant from './pages/RecordsAssistant';
 import __Layout from './Layout.jsx';
 
 
@@ -79,6 +80,7 @@ export const PAGES = {
     "Reports": Reports,
     "SystemStatus": SystemStatus,
     "LinkedAppSearch": LinkedAppSearch,
+    "RecordsAssistant": RecordsAssistant,
 }
 
 export const pagesConfig = {
