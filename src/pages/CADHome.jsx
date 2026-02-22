@@ -50,11 +50,47 @@ export default function CADHome() {
         try {
             const user = await base44.auth.me();
             setCurrentUser(user);
+            // Restore status from user profile (persisted in DB), fallback to localStorage
+            if (user?.status && user.status !== 'Out of Service') {
+                setUnitStatus(user.status);
+                localStorage.setItem('unitStatus', user.status);
+            } else if (user?.status === 'Out of Service') {
+                setUnitStatus('Out of Service');
+                localStorage.setItem('unitStatus', 'Out of Service');
+            }
             await loadData();
         } catch (error) {
             console.error('Error initializing:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleStatusChange = async (newStatus) => {
+        if (updatingStatus) return;
+        setUpdatingStatus(true);
+        const oldStatus = unitStatus;
+        setUnitStatus(newStatus);
+        localStorage.setItem('unitStatus', newStatus);
+        try {
+            await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
+            const updateData = {
+                status: newStatus,
+                show_on_map: newStatus !== 'Out of Service',
+                last_updated: new Date().toISOString()
+            };
+            if (newStatus === 'Available' || newStatus === 'Out of Service') {
+                updateData.current_call_id = null;
+                updateData.current_call_info = null;
+            }
+            await base44.auth.updateMe(updateData);
+            toast.success(`Status: ${newStatus}`);
+        } catch (error) {
+            setUnitStatus(oldStatus);
+            localStorage.setItem('unitStatus', oldStatus);
+            toast.error('Failed to update status');
+        } finally {
+            setUpdatingStatus(false);
         }
     };
 
