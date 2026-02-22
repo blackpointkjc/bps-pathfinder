@@ -269,6 +269,9 @@ export default function IncidentReportsViewer() {
                         max-width: 100%;
                         border: none;
                     }
+                    .radix-scroll-area-viewport {
+                        overflow: visible !important;
+                    }
                 }
             `}</style>
         </div>
