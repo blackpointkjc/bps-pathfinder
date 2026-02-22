@@ -1,15 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
-import { createClient } from 'npm:@base44/sdk@0.8.6';
 
-const LINKED_APP_ID = '69503da793f3e1140bbd4426';
-const API_KEY = Deno.env.get('LINKED_APP_API_KEY');
-
-function getLinkedAppClient() {
-    return createClient({
-        appId: LINKED_APP_ID,
-        apiKey: API_KEY,
-    });
-}
+const BRIDGE_URL = 'https://bpsc.base44.app/api/functions/linkedAppBridge';
 
 Deno.serve(async (req) => {
     try {
