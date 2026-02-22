@@ -354,12 +354,13 @@ export default function DispatchCenter() {
                                    <div className="p-2 border-b border-emerald-500/20">
                                        <h3 className="text-xs font-bold text-emerald-400 font-mono">LIVE TACTICAL MAP</h3>
                                    </div>
-                                   <div className="flex-1 relative">
+                                   <div className="flex-1 relative" style={{ zIndex: 1 }}>
                                        <MapContainer
                                            center={[37.5407, -77.4360]}
                                            zoom={11}
                                            className="h-full w-full"
                                            zoomControl={true}
+                                           style={{ zIndex: 0 }}
                                        >
                                            <TileLayer
                                                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
