@@ -10,6 +10,39 @@ Deno.serve(async (req) => {
 
         const reportData = await req.json();
 
+        // Format array data as strings for linked app
+        const formatPersonArray = (people) => {
+            return people.map(p => {
+                const parts = [p.name];
+                if (p.dob) parts.push(`DOB: ${p.dob}`);
+                if (p.dl_number) parts.push(`DL: ${p.dl_number}`);
+                if (p.dl_state) parts.push(p.dl_state);
+                if (p.ssn) parts.push(`SSN: ${p.ssn}`);
+                return parts.filter(Boolean).join(' | ');
+            }).join('\n');
+        };
+
+        const formatVehicleArray = (vehicles) => {
+            return vehicles.map(v => {
+                const parts = [];
+                if (v.year || v.make || v.model) {
+                    parts.push([v.year, v.make, v.model].filter(Boolean).join(' '));
+                }
+                if (v.color) parts.push(v.color);
+                if (v.plate) parts.push(`Plate: ${v.plate}`);
+                if (v.state) parts.push(v.state);
+                return parts.filter(Boolean).join(' | ');
+            }).join('\n');
+        };
+
+        const formattedData = {
+            ...reportData,
+            victims: formatPersonArray(reportData.victims || []),
+            witnesses: formatPersonArray(reportData.witnesses || []),
+            suspects: formatPersonArray(reportData.suspects || []),
+            suspect_vehicles: formatVehicleArray(reportData.suspect_vehicles || [])
+        };
+
         // Send complete report to linked app
         const res = await fetch(BRIDGE_URL, {
             method: 'POST',
@@ -20,7 +53,7 @@ Deno.serve(async (req) => {
             body: JSON.stringify({ 
                 action: 'create',
                 entity: 'IncidentReport',
-                data: reportData
+                data: formattedData
             })
         });
 
