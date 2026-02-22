@@ -395,7 +395,7 @@ export default function CADHome() {
                                                     <Button 
                                                         size="sm"
                                                         className="bg-blue-600 hover:bg-blue-700 font-mono text-xs"
-                                                        onClick={() => window.location.href = createPageUrl('DispatchCenter')}
+                                                        onClick={() => navigate(createPageUrl('DispatchCenter'))}
                                                     >
                                                         VIEW ALL
                                                     </Button>
@@ -518,7 +518,7 @@ export default function CADHome() {
                 <div className="grid grid-cols-4 gap-4">
                     <Button 
                         className="h-24 bg-slate-900 border-2 border-blue-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
-                        onClick={() => window.location.href = createPageUrl('ActiveCalls')}
+                        onClick={() => navigate(createPageUrl('ActiveCalls'))}
                     >
                         <Radio className="w-8 h-8 text-blue-400" />
                         <span className="text-white font-mono font-bold">ACTIVE CALLS</span>
@@ -526,7 +526,7 @@ export default function CADHome() {
                     
                     <Button 
                         className="h-24 bg-slate-900 border-2 border-green-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
-                        onClick={() => window.location.href = createPageUrl('DispatchCenter')}
+                        onClick={() => navigate(createPageUrl('DispatchCenter'))}
                     >
                         <Users className="w-8 h-8 text-green-400" />
                         <span className="text-white font-mono font-bold">DISPATCH</span>
@@ -534,7 +534,7 @@ export default function CADHome() {
                     
                     <Button 
                         className="h-24 bg-slate-900 border-2 border-purple-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
-                        onClick={() => window.location.href = createPageUrl('DispatchLog')}
+                        onClick={() => navigate(createPageUrl('DispatchLog'))}
                     >
                         <Activity className="w-8 h-8 text-purple-400" />
                         <span className="text-white font-mono font-bold">DISPATCH LOG</span>
@@ -542,7 +542,7 @@ export default function CADHome() {
                     
                     <Button 
                         className="h-24 bg-slate-900 border-2 border-orange-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
-                        onClick={() => window.location.href = createPageUrl('Reports')}
+                        onClick={() => navigate(createPageUrl('Reports'))}
                     >
                         <TrendingUp className="w-8 h-8 text-orange-400" />
                         <span className="text-white font-mono font-bold">REPORTS</span>
@@ -550,7 +550,7 @@ export default function CADHome() {
 
                     <Button 
                         className="h-24 bg-slate-900 border-2 border-cyan-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
-                        onClick={() => window.location.href = createPageUrl('Personnel')}
+                        onClick={() => navigate(createPageUrl('Personnel'))}
                     >
                         <Users className="w-8 h-8 text-cyan-400" />
                         <span className="text-white font-mono font-bold">PERSONNEL</span>
@@ -558,7 +558,7 @@ export default function CADHome() {
 
                     <Button 
                         className="h-24 bg-slate-900 border-2 border-emerald-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
-                        onClick={() => window.location.href = createPageUrl('SystemStatus')}
+                        onClick={() => navigate(createPageUrl('SystemStatus'))}
                     >
                         <Zap className="w-8 h-8 text-emerald-400" />
                         <span className="text-white font-mono font-bold">SYSTEM STATUS</span>
@@ -566,7 +566,7 @@ export default function CADHome() {
 
                     <Button 
                         className="h-24 bg-slate-900 border-2 border-indigo-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
-                        onClick={() => window.location.href = createPageUrl('DispatchCenter')}
+                        onClick={() => navigate(createPageUrl('DispatchCenter'))}
                     >
                         <Monitor className="w-8 h-8 text-indigo-400" />
                         <span className="text-white font-mono font-bold">DISPATCH CENTER</span>
@@ -575,7 +575,7 @@ export default function CADHome() {
                     {currentUser?.role === 'admin' && (
                         <Button 
                             className="h-24 bg-slate-900 border-2 border-red-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
-                            onClick={() => window.location.href = createPageUrl('AdminPortal')}
+                            onClick={() => navigate(createPageUrl('AdminPortal'))}
                         >
                             <Shield className="w-8 h-8 text-red-400" />
                             <span className="text-white font-mono font-bold">ADMIN</span>
@@ -591,7 +591,7 @@ export default function CADHome() {
                     onClose={() => setSelectedCall(null)}
                     onEnroute={() => {
                         setSelectedCall(null);
-                        window.location.href = createPageUrl('Navigation');
+                        navigate(createPageUrl('Navigation'));
                     }}
                 />
             )}
