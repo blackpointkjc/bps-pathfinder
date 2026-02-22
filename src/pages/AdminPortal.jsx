@@ -263,6 +263,18 @@ export default function AdminPortal() {
                             PROPERTIES
                         </button>
 
+                        <button
+                            onClick={() => setActiveTab('reports')}
+                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
+                                activeTab === 'reports' 
+                                    ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-500' 
+                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                            }`}
+                        >
+                            <FileText className="w-4 h-4" />
+                            INCIDENT REPORTS
+                        </button>
+
                     </div>
                 </div>
             </div>
