@@ -8,7 +8,7 @@ async function apiGet(entity, params = {}) {
     const qs = new URLSearchParams(params).toString();
     const url = `${BASE_URL}/${entity}${qs ? '?' + qs : ''}`;
     const res = await fetch(url, {
-        headers: { 'api_key': API_KEY, 'Content-Type': 'application/json' }
+        headers: { 'api_key': API_KEY, 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
     });
     if (!res.ok) throw new Error(`GET ${entity} failed: ${res.status} ${await res.text()}`);
     const data = await res.json();
@@ -18,7 +18,7 @@ async function apiGet(entity, params = {}) {
 async function apiPut(entity, entityId, body) {
     const res = await fetch(`${BASE_URL}/${entity}/${entityId}`, {
         method: 'PUT',
-        headers: { 'api_key': API_KEY, 'Content-Type': 'application/json' },
+        headers: { 'api_key': API_KEY, 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
     });
     if (!res.ok) throw new Error(`PUT ${entity}/${entityId} failed: ${res.status} ${await res.text()}`);
@@ -28,7 +28,7 @@ async function apiPut(entity, entityId, body) {
 async function apiPost(entity, body) {
     const res = await fetch(`${BASE_URL}/${entity}`, {
         method: 'POST',
-        headers: { 'api_key': API_KEY, 'Content-Type': 'application/json' },
+        headers: { 'api_key': API_KEY, 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
     });
     if (!res.ok) throw new Error(`POST ${entity} failed: ${res.status} ${await res.text()}`);
