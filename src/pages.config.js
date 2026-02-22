@@ -52,16 +52,16 @@ import ActiveCalls from './pages/ActiveCalls';
 import AdminPortal from './pages/AdminPortal';
 import ArchiveManager from './pages/ArchiveManager';
 import AssetManagement from './pages/AssetManagement';
+import CADHome from './pages/CADHome';
 import CallHistory from './pages/CallHistory';
 import DispatchCenter from './pages/DispatchCenter';
 import DispatchLog from './pages/DispatchLog';
+import LinkedAppSearch from './pages/LinkedAppSearch';
 import Navigation from './pages/Navigation';
 import Personnel from './pages/Personnel';
+import RecordsAssistant from './pages/RecordsAssistant';
 import Reports from './pages/Reports';
 import SystemStatus from './pages/SystemStatus';
-import LinkedAppSearch from './pages/LinkedAppSearch';
-import RecordsAssistant from './pages/RecordsAssistant';
-import CADHome from './pages/CADHome';
 import __Layout from './Layout.jsx';
 
 
@@ -71,16 +71,16 @@ export const PAGES = {
     "AdminPortal": AdminPortal,
     "ArchiveManager": ArchiveManager,
     "AssetManagement": AssetManagement,
+    "CADHome": CADHome,
     "CallHistory": CallHistory,
     "DispatchCenter": DispatchCenter,
     "DispatchLog": DispatchLog,
+    "LinkedAppSearch": LinkedAppSearch,
     "Navigation": Navigation,
     "Personnel": Personnel,
+    "RecordsAssistant": RecordsAssistant,
     "Reports": Reports,
     "SystemStatus": SystemStatus,
-    "LinkedAppSearch": LinkedAppSearch,
-    "RecordsAssistant": RecordsAssistant,
-    "CADHome": CADHome,
 }
 
 export const pagesConfig = {

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Radio, AlertTriangle, Users, Activity, Clock, MapPin, TrendingUp, Shield, Monitor, Zap, Bell, RefreshCw, CheckCircle2, Car, XCircle, ClipboardList } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import { useNavigate } from 'react-router-dom';
 import CallDetailView from '@/components/map/CallDetailView';
 import NavigationMenu from '@/components/NavigationMenu';
 import PropertyAlertsBanner from '@/components/dispatch/PropertyAlertsBanner';

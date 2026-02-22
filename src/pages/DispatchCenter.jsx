@@ -6,6 +6,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Plus, Shield, Radio, AlertCircle, Car, Map as MapIcon, Volume2, VolumeX, RefreshCw } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
 import ActiveCallsQueue from '@/components/dispatch/ActiveCallsQueue';
