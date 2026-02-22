@@ -62,17 +62,14 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
         try {
             const payload = {
                 ...form,
+                report_type: reportType,
                 linked_call_id: call?.id || null,
                 linked_call_number: call?.call_id || null,
                 status: 'Pending Review',
                 submitted_by: currentUser?.email || currentUser?.full_name,
             };
 
-            const res = await base44.functions.invoke('linkedAppApi', {
-                action: 'create',
-                entity: reportType,
-                data: payload
-            });
+            const res = await base44.functions.invoke('sendReportToLinkedApp', payload);
 
             if (res.data?.success) {
                 setSubmitted(true);
