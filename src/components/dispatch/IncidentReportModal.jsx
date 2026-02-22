@@ -64,8 +64,17 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
             const payload = {
                 ...form,
                 report_type: 'IncidentReport',
-                linked_call_id: call?.id || null,
-                linked_call_number: call?.call_id || null,
+                linked_call: call ? {
+                    id: call.id,
+                    call_id: call.call_id,
+                    incident: call.incident,
+                    location: call.location,
+                    agency: call.agency,
+                    status: call.status,
+                    time_received: call.time_received,
+                    description: call.description,
+                    priority: call.priority,
+                } : null,
                 status: 'Pending Review',
                 submitted_by: currentUser?.email || currentUser?.full_name,
             };
