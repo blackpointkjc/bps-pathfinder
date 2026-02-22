@@ -21,6 +21,7 @@ const STATUS_OPTIONS = [
 ];
 
 export default function CADHome() {
+    const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState(null);
     const [unitStatus, setUnitStatus] = useState(() => localStorage.getItem('unitStatus') || 'Available');
     const [activeCalls, setActiveCalls] = useState([]);

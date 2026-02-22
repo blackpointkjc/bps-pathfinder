@@ -49,6 +49,7 @@ function playDispatchAlert() {
 }
 
 export default function DispatchCenter() {
+    const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState(null);
     const [units, setUnits] = useState([]);
     const [activeCalls, setActiveCalls] = useState([]);
