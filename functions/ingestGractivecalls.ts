@@ -189,45 +189,36 @@ Deno.serve(async (req) => {
         let geocoded = 0;
         
         for (const callData of allCalls) {
-            const existing = activeExisting.find(c => c.call_id === callData.call_id);
-            if (existing) {
-                const updateData = {
-                    status: callData.status,
-                    time_received: callData.time_received
-                };
-                
-                // If existing call has no coords, geocode it now
-                if (!existing.latitude || !existing.longitude || existing.latitude === 0) {
-                    const coords = await geocodeAddress(callData.location);
-                    if (coords) {
-                        updateData.latitude = coords.latitude;
-                        updateData.longitude = coords.longitude;
-                        geocoded++;
-                        console.log(`📍 Geocoded existing: ${callData.location} → (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
-                    }
-                    await sleep(1100);
-                }
-                
-                await base44.asServiceRole.entities.DispatchCall.update(existing.id, updateData);
-                updated++;
-            } else {
-                // New call — geocode it using free Nominatim
-                const coords = await geocodeAddress(callData.location);
-                if (coords) {
-                    callData.latitude = coords.latitude;
-                    callData.longitude = coords.longitude;
-                    geocoded++;
-                    console.log(`📍 Geocoded new: ${callData.location} → (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
-                } else {
-                    console.log(`❌ Could not geocode: ${callData.location}`);
-                }
-                
-                await base44.asServiceRole.entities.DispatchCall.create(callData);
-                inserted++;
-                
-                // Rate limit: Nominatim allows 1 req/sec
-                await sleep(1100);
-            }
+             const existing = activeExisting.find(c => c.call_id === callData.call_id);
+
+             // Always geocode if missing coords
+             if (!callData.latitude || !callData.longitude) {
+                 const coords = await geocodeAddress(callData.location);
+                 if (coords) {
+                     callData.latitude = coords.latitude;
+                     callData.longitude = coords.longitude;
+                     geocoded++;
+                     console.log(`📍 Geocoded: ${callData.location} → (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
+                 } else {
+                     console.log(`❌ Could not geocode: ${callData.location}`);
+                 }
+                 await sleep(1100);
+             }
+
+             if (existing) {
+                 const updateData = {
+                     status: callData.status,
+                     time_received: callData.time_received,
+                     latitude: callData.latitude,
+                     longitude: callData.longitude
+                 };
+
+                 await base44.asServiceRole.entities.DispatchCall.update(existing.id, updateData);
+                 updated++;
+             } else {
+                 await base44.asServiceRole.entities.DispatchCall.create(callData);
+                 inserted++;
+             }
         }
         
         // Delete calls no longer on the site (most important — keeps DB in sync with live site)
