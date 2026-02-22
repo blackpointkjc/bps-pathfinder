@@ -153,14 +153,10 @@ export default function IncidentReportsViewer() {
                                     </div>
 
                                     {/* Report Info Section */}
-                                    <div className="grid grid-cols-3 gap-6 mb-6 text-sm">
+                                    <div className="grid grid-cols-2 gap-6 mb-6 text-sm">
                                         <div>
                                             <label className="block font-bold text-xs uppercase tracking-wide mb-1">Report Number</label>
                                             <div className="border-b border-black pb-1">{selectedReport.report_number}</div>
-                                        </div>
-                                        <div>
-                                            <label className="block font-bold text-xs uppercase tracking-wide mb-1">Call Number</label>
-                                            <div className="border-b border-black pb-1">{selectedReport.call_number}</div>
                                         </div>
                                         <div>
                                             <label className="block font-bold text-xs uppercase tracking-wide mb-1">Date</label>
