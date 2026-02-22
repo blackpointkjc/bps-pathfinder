@@ -430,6 +430,11 @@ export default function AdminPortal() {
                     <PropertyMonitoring />
                 )}
 
+                {/* Incident Reports Tab */}
+                {activeTab === 'reports' && (
+                    <IncidentReportsViewer />
+                )}
+
             </div>
 
             <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
