@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { MapPin, Clock, User, Phone, AlertTriangle, FileText, Send, Save } from 'lucide-react';
+import { MapPin, Clock, User, Phone, AlertTriangle, FileText, Send, Save, ClipboardList } from 'lucide-react';
 import { motion } from 'framer-motion';
+import IncidentReportModal from './IncidentReportModal';
 
 export default function CallDetailPanel({ call, currentUser, onUpdate, units }) {
     const [notes, setNotes] = useState([]);
