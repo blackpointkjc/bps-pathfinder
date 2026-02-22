@@ -107,10 +107,10 @@ export default function CADHome() {
             const calls = callsData || [];
             const allUsers = usersData || [];
 
-            // Filter: active status only — show ALL agencies from the feed
+            // Filter: active status + only scraper/feed calls (with source) — BPS dispatch calls go to Dispatch Center
             const recentCalls = calls.filter(call => {
                 const isActive = !call.status || !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
-                return isActive;
+                return isActive && call.source;
             }).sort((a, b) => {
                 const timeA = new Date(a.time_received || a.created_date);
                 const timeB = new Date(b.time_received || b.created_date);
