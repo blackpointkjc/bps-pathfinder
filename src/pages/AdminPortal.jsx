@@ -18,6 +18,7 @@ import LocationTracking from '@/components/admin/LocationTracking';
 import CarolineGISLookup from '@/components/admin/CarolineGISLookup';
 import IngestionDebugPanel from '@/components/admin/IngestionDebugPanel';
 import PropertyMonitoring from '@/components/admin/PropertyMonitoring';
+import IncidentReportsViewer from '@/components/admin/IncidentReportsViewer';
 
 export default function AdminPortal() {
     const [currentUser, setCurrentUser] = useState(null);
