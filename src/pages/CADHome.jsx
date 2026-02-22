@@ -34,6 +34,7 @@ export default function CADHome() {
     });
     const [loading, setLoading] = useState(true);
     const [selectedCall, setSelectedCall] = useState(null);
+    const [reportCall, setReportCall] = useState(null);
     const [sortOrder, setSortOrder] = useState('desc');
     const [refreshing, setRefreshing] = useState(false);
     const [updatingStatus, setUpdatingStatus] = useState(false);
