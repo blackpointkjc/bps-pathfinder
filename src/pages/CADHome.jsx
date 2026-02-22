@@ -4,11 +4,12 @@ import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Radio, AlertTriangle, Users, Activity, Clock, MapPin, TrendingUp, Shield, Monitor, Zap, Bell, RefreshCw, CheckCircle2, Car, XCircle } from 'lucide-react';
+import { Radio, AlertTriangle, Users, Activity, Clock, MapPin, TrendingUp, Shield, Monitor, Zap, Bell, RefreshCw, CheckCircle2, Car, XCircle, ClipboardList } from 'lucide-react';
 import { createPageUrl } from '../utils';
 import CallDetailView from '@/components/map/CallDetailView';
 import NavigationMenu from '@/components/NavigationMenu';
 import PropertyAlertsBanner from '@/components/dispatch/PropertyAlertsBanner';
+import IncidentReportModal from '@/components/dispatch/IncidentReportModal';
 
 const STATUS_OPTIONS = [
     { label: 'Available', value: 'Available', color: 'bg-green-600 hover:bg-green-700', activeColor: 'bg-green-500/20 border-green-500 text-green-400' },
