@@ -21,6 +21,7 @@ export default function NavigationMenu({ currentUser }) {
         { name: 'Call History', icon: FileText, page: 'CallHistory', color: 'text-orange-400' },
         { name: 'Live Map', icon: MapPin, page: 'Navigation', color: 'text-yellow-400' },
         { name: 'Records Search', icon: Search, page: 'LinkedAppSearch', color: 'text-purple-400' },
+        { name: 'Records Assistant', icon: Bot, page: 'RecordsAssistant', color: 'text-indigo-400' },
         { name: 'Account Settings', icon: Settings, page: 'AccountSettings', color: 'text-slate-400' },
         ...(currentUser?.role === 'admin' ? [{ name: 'Admin Portal', icon: Shield, page: 'AdminPortal', color: 'text-red-400' }] : []),
     ];
