@@ -14,7 +14,10 @@ Deno.serve(async (req) => {
         if (action === 'search') {
             const res = await fetch(BRIDGE_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-api-key': Deno.env.get('LINKED_APP_API_KEY')
+                },
                 body: JSON.stringify({ action: 'search', query: query || '' })
             });
             const result = await res.json();
@@ -26,7 +29,10 @@ Deno.serve(async (req) => {
             if (!entity || !entityId || !data) return Response.json({ error: 'Missing entity, entityId, or data' }, { status: 400 });
             const res = await fetch(BRIDGE_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-api-key': Deno.env.get('LINKED_APP_API_KEY')
+                },
                 body: JSON.stringify({ action: 'update', entity, entityId, data })
             });
             const result = await res.json();
@@ -38,7 +44,10 @@ Deno.serve(async (req) => {
             if (!entity || !data) return Response.json({ error: 'Missing entity or data' }, { status: 400 });
             const res = await fetch(BRIDGE_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-api-key': Deno.env.get('LINKED_APP_API_KEY')
+                },
                 body: JSON.stringify({ action: 'create', entity, data })
             });
             const resultText = await res.text();
