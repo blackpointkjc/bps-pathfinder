@@ -146,10 +146,10 @@ export default function IncidentReportsViewer() {
                             {/* Report Content */}
                             <ScrollArea className="flex-1 overflow-y-auto">
                                 <div className="p-8 bg-white font-serif text-gray-900">
-                                    {/* Police Report Header */}
+                                    {/* Incident Report Header */}
                                     <div className="text-center border-b-2 border-black pb-4 mb-6">
-                                        <h1 className="text-2xl font-bold">POLICE INCIDENT REPORT</h1>
-                                        <p className="text-sm mt-2">Richmond Police Department</p>
+                                        <h1 className="text-2xl font-bold">INCIDENT REPORT</h1>
+                                        <p className="text-sm mt-2">Black Point</p>
                                     </div>
 
                                     {/* Report Info Section */}
