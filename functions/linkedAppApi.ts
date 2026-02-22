@@ -20,11 +20,12 @@ Deno.serve(async (req) => {
         const body = await req.json().catch(() => ({}));
         const { action, entity, entityId, data, query } = body;
 
+        const linkedApp = getLinkedAppClient();
+
         if (action === 'search') {
-            // Search IncidentReport and TrespassingNotice by query string
             const [incidentReports, trespassingNotices] = await Promise.all([
-                apiGet('IncidentReport').catch(() => []),
-                apiGet('TrespassingNotice').catch(() => []),
+                linkedApp.entities.IncidentReport.list().catch(() => []),
+                linkedApp.entities.TrespassingNotice.list().catch(() => []),
             ]);
 
             const q = (query || '').toLowerCase();
@@ -45,13 +46,13 @@ Deno.serve(async (req) => {
 
         if (action === 'update') {
             if (!entity || !entityId || !data) return Response.json({ error: 'Missing entity, entityId, or data' }, { status: 400 });
-            const result = await apiPut(entity, entityId, data);
+            const result = await linkedApp.entities[entity].update(entityId, data);
             return Response.json({ success: true, result });
         }
 
         if (action === 'create') {
             if (!entity || !data) return Response.json({ error: 'Missing entity or data' }, { status: 400 });
-            const result = await apiPost(entity, data);
+            const result = await linkedApp.entities[entity].create(data);
             return Response.json({ success: true, result });
         }
 
