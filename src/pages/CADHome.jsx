@@ -100,22 +100,29 @@ export default function CADHome() {
 
     const loadData = async () => {
         try {
-            // Fetch calls sorted by newest first
-            const [callsData, usersData] = await Promise.all([
-                base44.entities.DispatchCall.list('-created_date', 200),
-                base44.entities.User.list()
-            ]);
+            // Fetch calls from linked app and users from local database
+            const usersData = await base44.entities.User.list();
+            
+            let callsData = [];
+            try {
+                // Fetch active calls from linked app via bridge
+                const { data: linkedCalls } = await base44.functions.invoke('linkedAppApi', { action: 'search', query: 'status:active' });
+                callsData = linkedCalls?.results || [];
+            } catch (err) {
+                console.error('Error fetching from linked app:', err);
+                callsData = [];
+            }
 
             const calls = callsData || [];
             const allUsers = usersData || [];
 
-            // Filter: active status + only scraper/feed calls (with source) — BPS dispatch calls go to Dispatch Center
+            // Filter: active status only
             const recentCalls = calls.filter(call => {
                 const isActive = !call.status || !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
-                return isActive && call.source;
+                return isActive;
             }).sort((a, b) => {
-                const timeA = new Date(a.time_received || a.created_date);
-                const timeB = new Date(b.time_received || b.created_date);
+                const timeA = new Date(call.incident_date || call.created_date);
+                const timeB = new Date(call.incident_date || call.created_date);
                 return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
             });
 
