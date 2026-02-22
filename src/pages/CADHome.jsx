@@ -132,10 +132,11 @@ export default function CADHome() {
             const critical = calls.filter(call => {
                 const incident = call.incident?.toLowerCase() || '';
                 const callTime = new Date(call.created_date);
+                const isActive = !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
                 const isCritical = incident.includes('shooting') || incident.includes('officer') || 
                                    incident.includes('assault') || incident.includes('robbery') ||
                                    call.priority === 'critical' || call.priority === 'high';
-                return isCritical && callTime >= twelveHoursAgo;
+                return isCritical && isActive && callTime >= twelveHoursAgo;
             }).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
             setCriticalCalls(critical);
 
