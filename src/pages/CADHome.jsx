@@ -409,10 +409,9 @@ export default function CADHome() {
                                     activeCalls.map((call) => (
                                         <div 
                                             key={call.id}
-                                            className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 hover:border-blue-500 transition-all cursor-pointer"
-                                            onClick={() => setSelectedCall(call)}
+                                            className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 hover:border-blue-500 transition-all"
                                         >
-                                            <div className="flex items-start gap-3">
+                                            <div className="flex items-start gap-3 cursor-pointer" onClick={() => setSelectedCall(call)}>
                                                 <div className={`w-2 h-2 rounded-full mt-2 ${getPriorityColor(call)}`} />
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2 mb-1">
@@ -436,12 +435,22 @@ export default function CADHome() {
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div className="text-xs text-slate-500 font-mono">
+                                                <div className="text-xs text-slate-500 font-mono shrink-0">
                                                   {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { 
                                                       hour: '2-digit', minute: '2-digit', hour12: true,
                                                       timeZone: 'America/New_York'
                                                   })} EST
                                                 </div>
+                                            </div>
+                                            <div className="mt-2 flex justify-end">
+                                                <Button
+                                                    size="sm"
+                                                    onClick={(e) => { e.stopPropagation(); setReportCall(call); }}
+                                                    className="bg-blue-700 hover:bg-blue-600 font-mono text-xs h-7 px-3"
+                                                >
+                                                    <ClipboardList className="w-3 h-3 mr-1" />
+                                                    WRITE REPORT
+                                                </Button>
                                             </div>
                                         </div>
                                     ))
