@@ -92,12 +92,12 @@ export default function DispatchCenter() {
             const user = await base44.auth.me();
             setCurrentUser(user);
             
-            // Check if user has dispatch access
-            const hasDispatchAccess = user.role === 'admin' || user.dispatch_role === true;
+            // Check if user has dispatch access (admin or dispatch role)
+            const hasDispatchAccess = user.role === 'admin' || user.role === 'dispatch' || user.dispatch_role === true;
             
             if (!hasDispatchAccess) {
                 toast.error('Unauthorized - Dispatch access required');
-                window.location.href = '/navigation';
+                window.location.href = createPageUrl('CADHome');
                 return;
             }
 
