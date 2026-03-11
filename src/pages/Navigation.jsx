@@ -679,22 +679,15 @@ export default function Navigation() {
             const response = await base44.functions.invoke('fetchAllUsers', {});
             const users = response.data?.users || [];
 
-            const activeUsers = users.filter(user => {
-                // Don't show yourself
+            const VISIBLE_STATUSES = new Set(['Available', 'On Patrol', 'On Scene', 'Enroute']);
+        const activeUsers = users.filter(user => {
                 if (user.id === currentUser.id) return false;
-
-                // Hide units that explicitly opt out
-                if (user.show_on_map === false) return false;
-
-                // Only show units that have a valid non-zero location
+                if (!VISIBLE_STATUSES.has(user.status)) return false;
                 const lat = parseFloat(user.latitude);
                 const lng = parseFloat(user.longitude);
                 const hasLocation = !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
-
-                // Only show units updated within the last 2 hours
                 const lastUpdate = user.last_updated ? new Date(user.last_updated).getTime() : 0;
                 const isRecent = lastUpdate > Date.now() - 2 * 60 * 60 * 1000;
-
                 return hasLocation && isRecent;
             });
 
