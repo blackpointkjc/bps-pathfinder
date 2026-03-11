@@ -661,9 +661,9 @@ export default function Navigation() {
                 status: unitStatus,
                 show_lights: showLights,
                 current_call_info: activeCallInfo,
+                show_on_map: unitStatus !== 'Out of Service',
                 last_updated: new Date().toISOString()
             };
-
             await base44.auth.updateMe(updateData);
         } catch (error) {
             console.error('Error updating user location:', error);
