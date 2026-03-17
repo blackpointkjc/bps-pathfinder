@@ -124,14 +124,29 @@ Deno.serve(async (req) => {
             const existing = existingMap.get(callData.call_id);
 
             if (existing) {
-                // Reuse stored coordinates — never re-geocode existing calls
-                callData.latitude = existing.latitude;
-                callData.longitude = existing.longitude;
+                // Re-geocode only if the location string changed
+                const locationChanged = existing.location !== callData.location;
+                if (locationChanged && geocoded < MAX_GEOCODE_PER_RUN) {
+                    const coords = await geocodeAddress(callData.location);
+                    if (coords) {
+                        callData.latitude = coords.latitude;
+                        callData.longitude = coords.longitude;
+                        geocoded++;
+                        console.log(`🔄 Re-geocoded (location changed): ${callData.location}`);
+                    }
+                    await sleep(1100);
+                } else {
+                    // Reuse stored coordinates — location unchanged
+                    callData.latitude = existing.latitude;
+                    callData.longitude = existing.longitude;
+                }
 
-                // Only update mutable fields
                 await base44.asServiceRole.entities.DispatchCall.update(existing.id, {
                     status: callData.status,
                     time_received: callData.time_received,
+                    location: callData.location,
+                    latitude: callData.latitude,
+                    longitude: callData.longitude,
                 });
                 updated++;
             } else {
