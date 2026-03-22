@@ -179,6 +179,15 @@ export default function Navigation() {
         if (currentUser && currentLocation) updateUserLocation();
     }, [currentUser, currentLocation, heading, speed, unitStatus, showLights, activeCallInfo]);
 
+    // Dedicated interval to push location updates even when coords haven't changed
+    useEffect(() => {
+        if (!currentUser) return;
+        const interval = setInterval(() => {
+            if (currentLocation) updateUserLocation();
+        }, 10000);
+        return () => clearInterval(interval);
+    }, [currentUser, currentLocation, unitStatus, showLights, activeCallInfo, heading, speed]);
+
     useEffect(() => {
         if (!currentUser || !currentLocation) return;
         const logInterval = setInterval(async () => {
