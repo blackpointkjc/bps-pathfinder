@@ -359,29 +359,20 @@ export default function Navigation() {
         try {
             const response = await base44.functions.invoke('fetchAllUsers', {});
             const users = response.data?.users || [];
-            const VISIBLE_STATUSES = new Set(['Available', 'On Patrol', 'On Scene', 'Enroute']);
-            const activeUsers = users.filter(user => {
-                if (user.id === currentUser.id) return false;
-                if (!VISIBLE_STATUSES.has(user.status)) return false;
-                const lat = parseFloat(user.latitude), lng = parseFloat(user.longitude);
-                const hasLocation = !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
-                const isRecent = (user.last_updated ? new Date(user.last_updated).getTime() : 0) > Date.now() - 4 * 60 * 60 * 1000;
-                return hasLocation && isRecent;
-            });
             if (silentMode) {
-                activeUsers.forEach(user => {
+                users.forEach(user => {
                     const lastState = lastUnitStatesRef.current[user.id];
                     if (lastState && lastState.status !== user.status) {
-                        const uName = user.unit_number || (user.rank && user.last_name ? `${user.rank} ${user.last_name}` : user.full_name);
+                        const uName = user.unit_number || user.full_name;
                         setRealTimeAlert({ type: 'unit_status_change', message: `${uName}: ${lastState.status} → ${user.status}`, data: user });
                     }
                     lastUnitStatesRef.current[user.id] = { status: user.status, call_info: user.current_call_info };
                 });
             } else {
-                activeUsers.forEach(user => { lastUnitStatesRef.current[user.id] = { status: user.status, call_info: user.current_call_info }; });
+                users.forEach(user => { lastUnitStatesRef.current[user.id] = { status: user.status, call_info: user.current_call_info }; });
             }
-            setOtherUnits(activeUsers);
-        } catch (error) {}
+            setOtherUnits(users);
+        } catch (error) { console.error('fetchOtherUnits error:', error); }
     };
 
     const calculateHeading = (from, to) => {
