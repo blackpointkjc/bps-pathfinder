@@ -332,14 +332,14 @@ export default function Navigation() {
     const updateUserLocation = async () => {
         if (!currentUser || !currentLocation) return;
         const now = Date.now();
-        if (now - lastLocationUpdateRef.current < 5000) return;
+        if (now - lastLocationUpdateRef.current < 3000) return;
         lastLocationUpdateRef.current = now;
         try {
             await base44.auth.updateMe({
                 latitude: currentLocation[0], longitude: currentLocation[1],
                 heading: heading || 0, speed: speed || 0,
                 status: unitStatus, show_lights: showLights, current_call_info: activeCallInfo,
-                show_on_map: unitStatus !== 'Out of Service',
+                show_on_map: true,
                 last_updated: new Date().toISOString()
             });
         } catch (error) { console.error('Error updating user location:', error); }
