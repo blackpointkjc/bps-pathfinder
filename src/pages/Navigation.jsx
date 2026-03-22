@@ -338,7 +338,7 @@ export default function Navigation() {
         } catch (error) {}
     };
 
-    const updateUserLocation = async () => {
+    const updateUserLocation = useCallback(async () => {
         if (!currentUser || !currentLocation) return;
         const now = Date.now();
         if (now - lastLocationUpdateRef.current < 3000) return;
@@ -352,7 +352,7 @@ export default function Navigation() {
                 last_updated: new Date().toISOString()
             });
         } catch (error) { console.error('Error updating user location:', error); }
-    };
+    }, [currentUser, currentLocation, heading, speed, unitStatus, showLights, activeCallInfo]);
 
     const fetchOtherUnits = async (silentMode = false) => {
         if (!currentUser) return;
