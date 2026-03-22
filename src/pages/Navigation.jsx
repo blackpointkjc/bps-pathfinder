@@ -356,7 +356,7 @@ export default function Navigation() {
                 if (!VISIBLE_STATUSES.has(user.status)) return false;
                 const lat = parseFloat(user.latitude), lng = parseFloat(user.longitude);
                 const hasLocation = !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
-                const isRecent = (user.last_updated ? new Date(user.last_updated).getTime() : 0) > Date.now() - 2 * 60 * 60 * 1000;
+                const isRecent = (user.last_updated ? new Date(user.last_updated).getTime() : 0) > Date.now() - 4 * 60 * 60 * 1000;
                 return hasLocation && isRecent;
             });
             if (silentMode) {
