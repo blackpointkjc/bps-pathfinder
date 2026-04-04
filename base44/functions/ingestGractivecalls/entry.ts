@@ -3,11 +3,11 @@ import * as cheerio from 'npm:cheerio@1.0.0';
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371e3;
-    const φ1 = lat1 * Math.PI / 180;
-    const φ2 = lat2 * Math.PI / 180;
-    const Δφ = (lat2 - lat1) * Math.PI / 180;
-    const Δλ = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+    const phi1 = lat1 * Math.PI / 180;
+    const phi2 = lat2 * Math.PI / 180;
+    const dPhi = (lat2 - lat1) * Math.PI / 180;
+    const dLambda = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -54,14 +54,13 @@ async function geocodeAddress(address) {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Max new geocoding calls per run to stay well under time limit
 const MAX_GEOCODE_PER_RUN = 10;
 
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
 
-        console.log('🚨 Starting active calls ingestion from gractivecalls.com...');
+        console.log('Starting active calls ingestion from gractivecalls.com...');
 
         const htmlResponse = await fetch('https://gractivecalls.com', {
             headers: { 'User-Agent': 'BPS-CAD-Dispatch/1.0' },
@@ -110,12 +109,11 @@ Deno.serve(async (req) => {
             }
         });
 
-        console.log(`📡 HTML parsed ${allCalls.length} calls`);
+        console.log(`HTML parsed ${allCalls.length} calls`);
 
-        // Fetch existing calls (with their coords already stored)
         const existingCalls = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'gractivecalls' });
         const existingMap = new Map(existingCalls.map(c => [c.call_id, c]));
-        console.log(`📊 Found ${existingCalls.length} existing calls in database`);
+        console.log(`Found ${existingCalls.length} existing calls in database`);
 
         let inserted = 0, updated = 0, geocoded = 0, geocodeSkipped = 0;
         const newCallIds = new Set(allCalls.map(c => c.call_id));
@@ -124,7 +122,6 @@ Deno.serve(async (req) => {
             const existing = existingMap.get(callData.call_id);
 
             if (existing) {
-                // Re-geocode only if the location string changed
                 const locationChanged = existing.location !== callData.location;
                 if (locationChanged && geocoded < MAX_GEOCODE_PER_RUN) {
                     const coords = await geocodeAddress(callData.location);
@@ -132,43 +129,47 @@ Deno.serve(async (req) => {
                         callData.latitude = coords.latitude;
                         callData.longitude = coords.longitude;
                         geocoded++;
-                        console.log(`🔄 Re-geocoded (location changed): ${callData.location}`);
                     }
                     await sleep(1100);
                 } else {
-                    // Reuse stored coordinates — location unchanged
                     callData.latitude = existing.latitude;
                     callData.longitude = existing.longitude;
                 }
 
-                await base44.asServiceRole.entities.DispatchCall.update(existing.id, {
-                    status: callData.status,
-                    time_received: callData.time_received,
-                    location: callData.location,
-                    latitude: callData.latitude,
-                    longitude: callData.longitude,
-                });
-                updated++;
+                try {
+                    await base44.asServiceRole.entities.DispatchCall.update(existing.id, {
+                        status: callData.status,
+                        time_received: callData.time_received,
+                        location: callData.location,
+                        latitude: callData.latitude,
+                        longitude: callData.longitude,
+                    });
+                    updated++;
+                } catch (_e) {
+                    // Record may have been deleted — skip update
+                }
             } else {
-                // Brand new call — geocode only if under limit
                 if (geocoded < MAX_GEOCODE_PER_RUN) {
                     const coords = await geocodeAddress(callData.location);
                     if (coords) {
                         callData.latitude = coords.latitude;
                         callData.longitude = coords.longitude;
                         geocoded++;
-                        console.log(`📍 Geocoded: ${callData.location} → (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
+                        console.log(`Geocoded: ${callData.location} -> (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
                     } else {
-                        console.log(`❌ Could not geocode: ${callData.location}`);
+                        console.log(`Could not geocode: ${callData.location}`);
                     }
-                    await sleep(1100); // Nominatim rate limit: 1 req/sec
+                    await sleep(1100);
                 } else {
                     geocodeSkipped++;
-                    console.log(`⏭️ Geocode skipped (limit reached): ${callData.location}`);
                 }
 
-                await base44.asServiceRole.entities.DispatchCall.create(callData);
-                inserted++;
+                try {
+                    await base44.asServiceRole.entities.DispatchCall.create(callData);
+                    inserted++;
+                } catch (_e) {
+                    // Duplicate — skip
+                }
             }
         }
 
@@ -176,13 +177,17 @@ Deno.serve(async (req) => {
         let deleted = 0;
         for (const existing of existingCalls) {
             if (!newCallIds.has(existing.call_id)) {
-                await base44.asServiceRole.entities.DispatchCall.delete(existing.id);
-                deleted++;
-                console.log(`🗑️ Removed: ${existing.incident} @ ${existing.location}`);
+                try {
+                    await base44.asServiceRole.entities.DispatchCall.delete(existing.id);
+                    deleted++;
+                    console.log(`Removed: ${existing.incident} @ ${existing.location}`);
+                } catch (_e) {
+                    // Already deleted by a concurrent run - ignore
+                }
             }
         }
 
-        console.log(`💾 DB: ${inserted} created (${geocoded} geocoded, ${geocodeSkipped} skipped), ${updated} updated, ${deleted} deleted`);
+        console.log(`DB: ${inserted} created (${geocoded} geocoded, ${geocodeSkipped} skipped), ${updated} updated, ${deleted} deleted`);
 
         // Property alert checking
         let alertsCreated = 0;
@@ -209,14 +214,13 @@ Deno.serve(async (req) => {
                                     acknowledged: false
                                 });
                                 alertsCreated++;
-                                console.log(`🚨 Alert: ${call.incident} within ${Math.round(distance)}m of ${property.name}`);
                             }
                         }
                     }
                 }
             }
         } catch (alertError) {
-            console.error('❌ Property alert check failed:', alertError);
+            console.error('Property alert check failed:', alertError);
         }
 
         return Response.json({
@@ -233,7 +237,7 @@ Deno.serve(async (req) => {
         });
 
     } catch (error) {
-        console.error('❌ Ingestion failed:', error);
+        console.error('Ingestion failed:', error);
         return Response.json({ success: false, error: error.message }, { status: 500 });
     }
 });
