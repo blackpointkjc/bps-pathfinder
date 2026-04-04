@@ -726,23 +726,6 @@ export default function Navigation() {
                 </MapView>
             </div>
 
-            {/* Traffic Alert */}
-            <AnimatePresence>
-                {trafficAlert && isNavigating && (
-                    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="absolute top-20 left-4 right-4 z-[999] md:left-1/2 md:-translate-x-1/2 md:w-[480px]">
-                        <div className="bg-amber-500 text-white rounded-2xl p-4 shadow-lg">
-                            <div className="flex items-start gap-3">
-                                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                                <div className="flex-1">
-                                    <p className="font-semibold text-sm">{trafficAlert.message}</p>
-                                    {trafficAlert.canReroute && <Button onClick={() => { const alt = routes.findIndex((r, i) => i !== selectedRouteIndex && !r.hasTraffic); if (alt !== -1) { handleSelectRoute(alt); setTrafficAlert(null); toast.success('Rerouting to avoid traffic'); } }} size="sm" className="mt-2 bg-white text-amber-600 hover:bg-gray-100">Auto-Reroute</Button>}
-                                </div>
-                                <Button variant="ghost" size="icon" onClick={() => setTrafficAlert(null)} className="text-white hover:bg-white/20"><X className="w-4 h-4" /></Button>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
             {/* Back Button */}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute top-2 left-2 z-[1003] pointer-events-auto">
