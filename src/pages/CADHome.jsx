@@ -445,16 +445,6 @@ export default function CADHome() {
                                                   })} EST
                                                 </div>
                                             </div>
-                                            <div className="mt-2 flex justify-end">
-                                                <Button
-                                                    size="sm"
-                                                    onClick={(e) => { e.stopPropagation(); setReportCall(call); }}
-                                                    className="bg-blue-700 hover:bg-blue-600 font-mono text-xs h-7 px-3"
-                                                >
-                                                    <ClipboardList className="w-3 h-3 mr-1" />
-                                                    WRITE REPORT
-                                                </Button>
-                                            </div>
                                         </div>
                                     ))
                                 )}
