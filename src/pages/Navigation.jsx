@@ -102,6 +102,9 @@ export default function Navigation() {
 
     const locationWatchId = useRef(null);
     const rerouteCheckInterval = useRef(null);
+    const isNavigatingRef = useRef(false);
+    const routeCoordsRef = useRef(null);
+    const directionsRef = useRef(null);
     const callsRefreshInterval = useRef(null);
     const lastPosition = useRef(null);
     const lastAnnouncedStep = useRef(-1);
@@ -325,8 +328,8 @@ export default function Navigation() {
                 setAccuracy(position.coords.accuracy);
                 setLocationHistory(prev => [...prev, finalCoords].slice(-30));
                 lastPosition.current = finalCoords;
-                if (isNavigating && routeCoords) checkIfOffRoute(finalCoords, routeCoords);
-                if (isNavigating && directions) updateNavigationProgress(finalCoords);
+                if (isNavigatingRef.current && routeCoordsRef.current) checkIfOffRoute(finalCoords, routeCoordsRef.current);
+                if (isNavigatingRef.current && directionsRef.current) updateNavigationProgress(finalCoords);
             },
             (error) => { if (error.code === error.PERMISSION_DENIED) { toast.error('Location permission denied'); setIsLiveTracking(false); } },
             { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
@@ -695,6 +698,11 @@ export default function Navigation() {
 
     const selectedRoute = routes?.[selectedRouteIndex];
     const routeCoords = selectedRoute ? selectedRoute.geometry.coordinates.map(coord => [coord[1], coord[0]]) : null;
+
+    // Keep refs in sync so callbacks always have fresh values
+    useEffect(() => { isNavigatingRef.current = isNavigating; }, [isNavigating]);
+    useEffect(() => { routeCoordsRef.current = routeCoords; }, [routeCoords]);
+    useEffect(() => { directionsRef.current = directions; }, [directions]);
 
     return (
         <div className="h-screen w-screen relative overflow-hidden bg-[#F5F5F7] pointer-events-none">
