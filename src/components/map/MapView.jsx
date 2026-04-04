@@ -180,22 +180,22 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
 
     // Determine tile layer URL based on base map type and theme
     const getTileLayerUrl = () => {
-        // When offline, still try OSM — browser will serve from Cache API via service worker / cache fetch
-        // We always use OSM for offline-friendly fallback
+        // During navigation, always use satellite
+        if (isNavigating) {
+            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+        }
+
         if (useOfflineTiles) {
             return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
         }
 
-        // Night mode uses dark tactical style
         if (mapTheme === 'night') {
             if (baseMapType === 'satellite') {
                 return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
             }
-            // Dark tactical map
             return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
         }
 
-        // Day mode
         switch (baseMapType) {
             case 'satellite':
                 return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
@@ -233,7 +233,7 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             maxZoom={baseMapType === 'satellite' ? 19 : 18}
         >
             <TileLayer
-                key={`${baseMapType}-${mapTheme}`}
+                key={`${baseMapType}-${mapTheme}-${isNavigating ? 'nav' : 'normal'}`}
                 attribution={getTileAttribution()}
                 url={getTileLayerUrl()}
                 maxZoom={20}
