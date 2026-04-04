@@ -647,13 +647,33 @@ export default function Navigation() {
         }
         setDestination({ coords: [call.latitude, call.longitude], name: call.location });
         setDestinationName(call.incident);
-        if (currentLocation) {
-            const fetchedRoutes = await fetchRoutes(currentLocation, [call.latitude, call.longitude]);
+
+        // Ensure GPS tracking is running
+        if (!isLiveTracking) startContinuousTracking();
+
+        const doRoute = async (coords) => {
+            const fetchedRoutes = await fetchRoutes(coords, [call.latitude, call.longitude]);
             if (fetchedRoutes?.length > 0) {
                 let fastestIndex = 0, fastestDuration = fetchedRoutes[0].duration;
                 for (let i = 1; i < fetchedRoutes.length; i++) { if (fetchedRoutes[i].duration < fastestDuration) { fastestDuration = fetchedRoutes[i].duration; fastestIndex = i; } }
                 setRoutes(fetchedRoutes); setSelectedRouteIndex(fastestIndex); updateRouteDisplay(fetchedRoutes[fastestIndex]); setShowDirectionsModal(true);
             }
+        };
+
+        if (currentLocation) {
+            await doRoute(currentLocation);
+        } else {
+            // Get location first, then route
+            toast.info('Getting your location...');
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const coords = [position.coords.latitude, position.coords.longitude];
+                    setCurrentLocation(coords);
+                    await doRoute(coords);
+                },
+                () => toast.error('Unable to get location — enable GPS'),
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+            );
         }
     };
 
