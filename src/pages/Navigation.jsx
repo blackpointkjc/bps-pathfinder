@@ -304,7 +304,7 @@ export default function Navigation() {
     };
 
     const checkIfOffRoute = (position, routeCoordinates) => {
-        if (!routeCoordinates || routeCoordinates.length === 0 || !isNavigating) return;
+        if (!routeCoordinates || routeCoordinates.length === 0 || !isNavigatingRef.current) return;
         let minDist = Infinity;
         for (const coord of routeCoordinates) { const d = getDistanceMeters(position, coord); if (d < minDist) minDist = d; }
         if (minDist > 100) { setIsOffRoute(true); toast.warning('Off route - recalculating...'); setTimeout(() => checkForBetterRoute(), 2000); }
@@ -371,8 +371,21 @@ export default function Navigation() {
                 if (isNavigatingRef.current && routeCoordsRef.current) checkIfOffRoute(finalCoords, routeCoordsRef.current);
                 if (isNavigatingRef.current && directionsRef.current) updateNavigationProgress(finalCoords);
             },
-            (error) => { if (error.code === error.PERMISSION_DENIED) { toast.error('Location permission denied'); setIsLiveTracking(false); } },
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+            (error) => {
+                if (error.code === error.PERMISSION_DENIED) {
+                    toast.error('Location permission denied');
+                    setIsLiveTracking(false);
+                } else {
+                    // Timeout or position unavailable — restart watch after short delay
+                    console.warn('GPS error, restarting watch:', error.code, error.message);
+                    if (locationWatchId.current !== null) {
+                        navigator.geolocation.clearWatch(locationWatchId.current);
+                        locationWatchId.current = null;
+                    }
+                    setTimeout(() => startContinuousTracking(), 3000);
+                }
+            },
+            { enableHighAccuracy: true, maximumAge: 0 }
         );
     };
 
