@@ -236,7 +236,8 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
                 key={`${baseMapType}-${mapTheme}`}
                 attribution={getTileAttribution()}
                 url={getTileLayerUrl()}
-                maxZoom={baseMapType === 'satellite' ? 19 : 17}
+                maxZoom={20}
+                maxNativeZoom={baseMapType === 'satellite' ? 19 : 18}
                 className={mapTheme === 'night' ? 'map-night-mode' : ''}
             />
 
