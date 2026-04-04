@@ -297,8 +297,17 @@ export default function Navigation() {
                 const now = Date.now();
                 if (!window.lastStreetUpdate || now - window.lastStreetUpdate > 5000) {
                     window.lastStreetUpdate = now;
-                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${rawCoords[0]}&lon=${rawCoords[1]}&zoom=18`, { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' } })
-                        .then(res => res.json()).then(data => { if (data?.address) { const s = data.address.road || data.address.street || 'Unknown Street'; const c = data.address.city || data.address.town || ''; setCurrentStreet(c ? `${s}, ${c}` : s); } })
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${rawCoords[0]}&lon=${rawCoords[1]}&zoom=16&addressdetails=1`, { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' } })
+                        .then(res => res.json()).then(data => {
+                            if (data?.address) {
+                                const a = data.address;
+                                const s = a.road || a.street || a.highway || a.path || a.footway || a.cycleway || a.residential || a.suburb || a.neighbourhood || a.village || a.town || a.county || '';
+                                const c = a.city || a.town || a.village || a.county || '';
+                                if (s) setCurrentStreet(c && c !== s ? `${s}, ${c}` : s);
+                                else if (data.display_name) setCurrentStreet(data.display_name.split(',')[0]);
+                                else setCurrentStreet('Near unknown road');
+                            }
+                        })
                         .catch(() => setCurrentStreet('Location unavailable'));
                 }
                 if (lastPosition.current) {
