@@ -149,6 +149,24 @@ export default function Navigation() {
                         setIsLocating(false);
                         toast.success('Location ready');
                         if (isOnline) startContinuousTracking();
+
+                        // Auto-navigate to call if lat/lng passed in URL
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const lat = parseFloat(urlParams.get('lat'));
+                        const lng = parseFloat(urlParams.get('lng'));
+                        const name = urlParams.get('name') || 'Call';
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            const destCoords = [lat, lng];
+                            setDestination({ coords: destCoords, name });
+                            setDestinationName(name);
+                            fetchRoutes(coords, destCoords).then(fetchedRoutes => {
+                                if (fetchedRoutes?.length > 0) {
+                                    let fi = 0, fd = fetchedRoutes[0].duration;
+                                    for (let i = 1; i < fetchedRoutes.length; i++) { if (fetchedRoutes[i].duration < fd) { fd = fetchedRoutes[i].duration; fi = i; } }
+                                    setRoutes(fetchedRoutes); setSelectedRouteIndex(fi); updateRouteDisplay(fetchedRoutes[fi]);
+                                }
+                            });
+                        }
                     },
                     () => { toast.error('Please enable location services'); setIsLocating(false); },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }

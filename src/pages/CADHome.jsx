@@ -581,8 +581,13 @@ export default function CADHome() {
                     call={selectedCall}
                     onClose={() => setSelectedCall(null)}
                     onEnroute={() => {
+                        const call = selectedCall;
                         setSelectedCall(null);
-                        navigate(createPageUrl('Navigation'));
+                        if (call?.latitude && call?.longitude) {
+                            navigate(`${createPageUrl('Navigation')}?lat=${call.latitude}&lng=${call.longitude}&name=${encodeURIComponent(call.incident || 'Call')}`);
+                        } else {
+                            navigate(createPageUrl('Navigation'));
+                        }
                     }}
                 />
             )}
