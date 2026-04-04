@@ -105,6 +105,9 @@ export default function Navigation() {
     const isNavigatingRef = useRef(false);
     const routeCoordsRef = useRef(null);
     const directionsRef = useRef(null);
+    const currentStepIndexRef = useRef(0);
+    const lastPositionTimeRef = useRef(null);
+    const lastPositionForSpeedRef = useRef(null);
     const callsRefreshInterval = useRef(null);
     const lastPosition = useRef(null);
     const lastAnnouncedStep = useRef(-1);
@@ -193,7 +196,7 @@ export default function Navigation() {
     }, []);
 
     useEffect(() => {
-        if (isOnline && !isLiveTracking) startContinuousTracking();
+        if (isOnline && !isLiveTracking && currentLocation) startContinuousTracking();
     }, [isOnline]);
 
     useEffect(() => {
@@ -310,12 +313,31 @@ export default function Navigation() {
 
     const startContinuousTracking = () => {
         if (!navigator.geolocation) { toast.error('Geolocation is not supported'); return; }
+        // Prevent duplicate watches
+        if (locationWatchId.current !== null) {
+            navigator.geolocation.clearWatch(locationWatchId.current);
+            locationWatchId.current = null;
+        }
         setIsLiveTracking(true);
         locationWatchId.current = navigator.geolocation.watchPosition(
             (position) => {
                 const rawCoords = [position.coords.latitude, position.coords.longitude];
-                const rawSpeed = position.coords.speed !== null && position.coords.speed >= 0 ? Math.max(0, position.coords.speed * 2.237) : 0;
                 const now = Date.now();
+
+                // Calculate speed from position delta if device doesn't provide it
+                let rawSpeed = 0;
+                if (position.coords.speed !== null && position.coords.speed !== undefined && position.coords.speed >= 0) {
+                    rawSpeed = Math.max(0, position.coords.speed * 2.237);
+                } else if (lastPositionForSpeedRef.current && lastPositionTimeRef.current) {
+                    const timeDeltaSec = (now - lastPositionTimeRef.current) / 1000;
+                    const distMeters = getDistanceMeters(lastPositionForSpeedRef.current, rawCoords);
+                    if (timeDeltaSec > 0 && timeDeltaSec < 10) {
+                        rawSpeed = Math.max(0, (distMeters / timeDeltaSec) * 2.237);
+                    }
+                }
+                lastPositionForSpeedRef.current = rawCoords;
+                lastPositionTimeRef.current = now;
+
                 if (!window.lastStreetUpdate || now - window.lastStreetUpdate > 5000) {
                     window.lastStreetUpdate = now;
                     fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${rawCoords[0]}&lon=${rawCoords[1]}&zoom=16&addressdetails=1`, { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' } })
@@ -350,7 +372,7 @@ export default function Navigation() {
                 if (isNavigatingRef.current && directionsRef.current) updateNavigationProgress(finalCoords);
             },
             (error) => { if (error.code === error.PERMISSION_DENIED) { toast.error('Location permission denied'); setIsLiveTracking(false); } },
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
         );
     };
 
@@ -455,23 +477,26 @@ export default function Navigation() {
     };
 
     const updateNavigationProgress = (coords) => {
-        if (!directions || currentStepIndex >= directions.length - 1) {
+        const currentDirs = directionsRef.current;
+        const currentStep = currentStepIndexRef.current;
+        const currentRouteCoords = routeCoordsRef.current;
+        if (!currentDirs || currentStep >= currentDirs.length - 1) {
             setIsNavigating(false);
             if (voiceEnabled) speak('You have arrived at your destination');
             toast.success('You have arrived at your destination!');
             handleStatusChange('On Scene');
             return;
         }
-        if (routeCoords?.length > 0) {
+        if (currentRouteCoords?.length > 0) {
             let minDist = Infinity, closestIndex = 0;
-            for (let i = 0; i < routeCoords.length; i++) { const d = getDistanceMeters(coords, routeCoords[i]); if (d < minDist) { minDist = d; closestIndex = i; } }
+            for (let i = 0; i < currentRouteCoords.length; i++) { const d = getDistanceMeters(coords, currentRouteCoords[i]); if (d < minDist) { minDist = d; closestIndex = i; } }
             let remainingDist = 0;
-            for (let i = closestIndex; i < routeCoords.length - 1; i++) remainingDist += getDistanceMeters(routeCoords[i], routeCoords[i+1]);
+            for (let i = closestIndex; i < currentRouteCoords.length - 1; i++) remainingDist += getDistanceMeters(currentRouteCoords[i], currentRouteCoords[i+1]);
             setRemainingDistance(`${(remainingDist/1609.34).toFixed(1)} mi`);
-            const stepProgress = Math.floor(closestIndex / (routeCoords.length / directions.length));
-            if (stepProgress > currentStepIndex && stepProgress < directions.length) {
+            const stepProgress = Math.floor(closestIndex / (currentRouteCoords.length / currentDirs.length));
+            if (stepProgress > currentStep && stepProgress < currentDirs.length) {
                 setCurrentStepIndex(stepProgress);
-                if (voiceEnabled && stepProgress !== lastAnnouncedStep.current) { const s = directions[stepProgress]; if (s) { speak(`In ${s.distance}, ${s.instruction}`); lastAnnouncedStep.current = stepProgress; } }
+                if (voiceEnabled && stepProgress !== lastAnnouncedStep.current) { const s = currentDirs[stepProgress]; if (s) { speak(`In ${s.distance}, ${s.instruction}`); lastAnnouncedStep.current = stepProgress; } }
             }
         }
     };
@@ -721,6 +746,7 @@ export default function Navigation() {
     useEffect(() => { isNavigatingRef.current = isNavigating; }, [isNavigating]);
     useEffect(() => { routeCoordsRef.current = routeCoords; }, [routeCoords]);
     useEffect(() => { directionsRef.current = directions; }, [directions]);
+    useEffect(() => { currentStepIndexRef.current = currentStepIndex; }, [currentStepIndex]);
 
     return (
         <div className="h-screen w-screen relative overflow-hidden bg-[#F5F5F7] pointer-events-none">
