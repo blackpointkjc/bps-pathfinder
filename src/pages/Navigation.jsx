@@ -801,7 +801,7 @@ export default function Navigation() {
             </AnimatePresence>
 
             {isNavigating && directions && (
-                <LiveNavigation currentStep={directions[currentStepIndex]} nextStep={directions[currentStepIndex + 1]} remainingDistance={remainingDistance} remainingTime={duration} onExit={exitNavigation} isRerouting={isRerouting} />
+                <LiveNavigation currentStep={directions[currentStepIndex]} nextStep={directions[currentStepIndex + 1]} remainingDistance={remainingDistance} remainingTime={duration} onExit={exitNavigation} isRerouting={isRerouting} speed={speed} />
             )}
 
             {!isNavigating && directions?.length > 0 && (
