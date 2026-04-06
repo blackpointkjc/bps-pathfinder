@@ -372,7 +372,7 @@ export default function DispatchCenter() {
                        <div className="flex flex-col gap-2 md:h-full overflow-hidden">
                            <Card className="bg-slate-900 border-amber-500/30 flex-1 min-h-0 flex flex-col">
                                <div className="p-2 border-b border-amber-500/20">
-                                   <h3 className="text-xs font-bold text-amber-400 font-mono">Active Police calls ({activeCalls.filter(c => c.source).length})</h3>
+                                   <h3 className="text-sm font-bold text-amber-400 font-mono">Active Police calls ({activeCalls.filter(c => c.source).length})</h3>
                                </div>
                                <div className="flex-1 overflow-y-auto p-2">
                                    {activeCalls.filter(c => c.source).length === 0 ? (
@@ -396,7 +396,7 @@ export default function DispatchCenter() {
                                            </Card>
                                            <Card className="bg-slate-900 border-red-500/30 flex-1 min-h-0 flex flex-col">
                                            <div className="p-2 border-b border-red-500/20">
-                                           <h3 className="text-xs font-bold text-red-400 font-mono">DISPATCH CALLS ({activeCalls.filter(c => !c.source).length})</h3>
+                                           <h3 className="text-sm font-bold text-red-400 font-mono">DISPATCH CALLS ({activeCalls.filter(c => !c.source).length})</h3>
                                            </div>
                                            <div className="flex-1 overflow-y-auto p-2">
                                            {activeCalls.filter(c => !c.source).length === 0 ? (
@@ -434,7 +434,7 @@ export default function DispatchCenter() {
                        <div className="flex flex-col gap-2 md:h-full overflow-hidden">
                            <Card className="bg-slate-900 border-blue-500/30 flex-1 min-h-0 flex flex-col">
                                <div className="p-2 border-b border-blue-500/20">
-                                   <h3 className="text-xs font-bold text-blue-400 font-mono">UNIT ASSIGNMENT</h3>
+                                   <h3 className="text-sm font-bold text-blue-400 font-mono">UNIT ASSIGNMENT</h3>
                                </div>
                                <div className="flex-1 overflow-y-auto p-2">
                                    <UnitAssignmentPanel
@@ -446,7 +446,7 @@ export default function DispatchCenter() {
                            </Card>
                            <Card className="bg-slate-900 border-green-500/30 flex-1 min-h-0 flex flex-col">
                                <div className="p-2 border-b border-green-500/20">
-                                   <h3 className="text-xs font-bold text-green-400 font-mono">ACTIVE UNITS ({units.filter(u => u.status && u.status !== 'Out of Service').length})</h3>
+                                   <h3 className="text-sm font-bold text-green-400 font-mono">ACTIVE UNITS ({units.filter(u => u.status && u.status !== 'Out of Service').length})</h3>
                                </div>
                                <div className="flex-1 overflow-y-auto p-2">
                                    {units.length === 0 ? (

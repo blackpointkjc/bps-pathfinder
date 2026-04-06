@@ -28,14 +28,14 @@ const STATUS_BADGE = {
 
 function KPICard({ label, value, sub, icon: Icon, color = 'text-gold' }) {
     return (
-        <Card className="bg-slate-900 border-slate-800 p-5 flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0 ${color}`}>
-                <Icon className="w-6 h-6" />
+        <Card className="bg-slate-900 border-slate-800 p-4 flex items-center gap-4">
+            <div className={`w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center ${color}`}>
+                <Icon className="w-5 h-5" />
             </div>
             <div>
-                <p className="text-3xl font-bold text-white font-mono leading-none">{value}</p>
-                <p className="text-sm text-slate-400 font-mono mt-1">{label}</p>
-                {sub && <p className="text-xs text-slate-500 font-mono">{sub}</p>}
+                <p className="text-2xl font-bold text-white font-mono">{value}</p>
+                <p className="text-xs text-slate-400 font-mono">{label}</p>
+                {sub && <p className="text-[10px] text-slate-500 font-mono">{sub}</p>}
             </div>
         </Card>
     );
