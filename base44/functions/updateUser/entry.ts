@@ -19,16 +19,10 @@ Deno.serve(async (req) => {
         console.log('📝 Updates:', JSON.stringify(updates, null, 2));
 
         // Update the user's profile using asServiceRole
-        await base44.asServiceRole.entities.User.update(userId, {
-            full_name: updates.full_name,
-            rank: updates.rank,
-            last_name: updates.last_name,
-            unit_number: updates.unit_number,
-            dispatch_role: updates.dispatch_role,
-            is_supervisor: updates.is_supervisor,
-            show_on_map: updates.show_on_map,
-            role: updates.role
-        });
+        const updatePayload = {};
+        const fields = ['full_name','rank','last_name','unit_number','dispatch_role','is_supervisor','show_on_map','role','status'];
+        for (const f of fields) { if (updates[f] !== undefined) updatePayload[f] = updates[f]; }
+        await base44.asServiceRole.entities.User.update(userId, updatePayload);
 
         console.log('✅ User updated successfully');
         

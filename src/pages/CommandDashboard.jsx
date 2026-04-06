@@ -126,7 +126,7 @@ export default function CommandDashboard() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 p-4 md:p-6 space-y-5">
+        <div className="bg-slate-950 p-4 md:p-5 space-y-4 min-h-full">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
@@ -168,7 +168,7 @@ export default function CommandDashboard() {
             )}
 
             {/* KPI Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
                 <KPICard label="ACTIVE CALLS" value={calls.length} icon={Radio} color="text-gold" />
                 <KPICard label="CRITICAL" value={criticalCalls.length} icon={AlertTriangle} color="text-red-400" />
                 <KPICard label="UNASSIGNED" value={unassigned.length} icon={PhoneCall} color="text-orange-400" />
@@ -180,7 +180,7 @@ export default function CommandDashboard() {
             {/* Main Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Priority Call Queue */}
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-2">                    
                     <Card className="bg-slate-900 border-slate-800">
                         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
                             <div className="flex items-center gap-2">
@@ -188,12 +188,12 @@ export default function CommandDashboard() {
                                 <span className="text-white font-mono font-bold text-sm">LIVE INCIDENT QUEUE</span>
                                 <Badge className="bg-gold/20 text-gold border-gold/30 font-mono text-xs">{calls.length}</Badge>
                             </div>
-                            <Button size="sm" variant="ghost" onClick={() => navigate(createPageUrl('ActiveCalls'))}
+                            <Button size="sm" variant="ghost" onClick={() => navigate(createPageUrl('DispatchCenter'))}
                                 className="text-slate-400 hover:text-gold font-mono text-xs">
                                 ALL CALLS <ArrowRight className="w-3 h-3 ml-1" />
                             </Button>
                         </div>
-                        <div className="divide-y divide-slate-800 max-h-[500px] overflow-y-auto">
+                        <div className="divide-y divide-slate-800 max-h-[420px] overflow-y-auto">
                             {sortedCalls.length === 0 ? (
                                 <div className="flex items-center justify-center py-12 text-slate-500 font-mono text-sm">
                                     NO ACTIVE CALLS

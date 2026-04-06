@@ -49,11 +49,13 @@ export default function Personnel() {
     };
 
     const handleEdit = (person) => {
-        const nameParts = person.full_name?.split(' ') || ['', ''];
+        const parts = (person.full_name || '').trim().split(' ');
+        const lastName = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+        const firstName = parts.length > 1 ? parts.slice(0, parts.length - 1).join(' ') : '';
         setEditForm({
             id: person.id,
-            first_name: nameParts[0] || '',
-            last_name: nameParts.slice(1).join(' ') || '',
+            first_name: firstName,
+            last_name: lastName,
             unit_number: person.unit_number || '',
             rank: person.rank || '',
             status: person.status || 'Available'
@@ -63,10 +65,11 @@ export default function Personnel() {
 
     const handleSave = async () => {
         try {
+            const fullName = [editForm.first_name, editForm.last_name].filter(Boolean).join(' ').trim();
             await base44.functions.invoke('updateUser', {
                 userId: editForm.id,
                 updates: {
-                    full_name: `${editForm.first_name} ${editForm.last_name}`.trim(),
+                    full_name: fullName,
                     unit_number: editForm.unit_number,
                     rank: editForm.rank,
                     status: editForm.status
@@ -74,9 +77,10 @@ export default function Personnel() {
             });
             toast.success('Personnel updated');
             setEditDialog(false);
-            loadPersonnel();
+            await loadPersonnel();
         } catch (error) {
-            toast.error('Failed to update personnel');
+            console.error('Save error:', error);
+            toast.error('Failed to update: ' + (error?.message || 'Unknown error'));
         }
     };
 
@@ -222,24 +226,14 @@ export default function Personnel() {
                         <DialogTitle className="font-mono">EDIT PERSONNEL</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-xs text-slate-400 font-mono mb-2 block">FIRST NAME</label>
-                                <Input
-                                    value={editForm.first_name}
-                                    onChange={(e) => setEditForm({...editForm, first_name: e.target.value})}
-                                    className="bg-slate-800 border-slate-700 text-white font-mono"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-xs text-slate-400 font-mono mb-2 block">LAST NAME</label>
-                                <Input
-                                    value={editForm.last_name}
-                                    onChange={(e) => setEditForm({...editForm, last_name: e.target.value})}
-                                    className="bg-slate-800 border-slate-700 text-white font-mono"
-                                />
-                            </div>
-                        </div>
+                        <div>
+                             <label className="text-xs text-slate-400 font-mono mb-2 block">LAST NAME</label>
+                             <Input
+                                 value={editForm.last_name}
+                                 onChange={(e) => setEditForm({...editForm, last_name: e.target.value})}
+                                 className="bg-slate-800 border-slate-700 text-white font-mono"
+                             />
+                         </div>
                         <div>
                             <label className="text-xs text-slate-400 font-mono mb-2 block">UNIT NUMBER</label>
                             <Input
