@@ -76,7 +76,7 @@ export default function MessagingPanel({ currentUser, units, isOpen, onClose }) 
                     initial={{ opacity: 0, x: 300 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 300 }}
-                    className="fixed right-0 top-0 bottom-0 w-96 bg-slate-900 border-l border-slate-700 z-50 flex flex-col"
+                    className="fixed right-0 top-0 bottom-0 w-96 bg-slate-900 border-l border-slate-700 z-[9999] flex flex-col"
                 >
                     <div className="p-4 border-b border-slate-700 flex items-center justify-between">
                         <h3 className="text-lg font-bold text-white flex items-center gap-2">
