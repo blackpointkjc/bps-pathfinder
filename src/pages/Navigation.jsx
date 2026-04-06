@@ -171,7 +171,7 @@ export default function Navigation() {
 
     const ACTIVE_STATUSES = ['Available', 'On Patrol', 'Enroute', 'On Scene', 'Busy', 'Supervisor'];
     const unitsByStatus = ACTIVE_STATUSES.reduce((acc, s) => {
-        acc[s] = onlineUnits.filter(u => u.status === s);
+        acc[s] = onlineUnits.filter(u => u.status === s && u.status !== 'Out of Service');
         return acc;
     }, {});
 
