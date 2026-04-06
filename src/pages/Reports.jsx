@@ -44,8 +44,8 @@ export default function Reports() {
     const generateReport = async () => {
         setGenerating(true);
         try {
-            const fromDate = new Date(dateFrom);
-            const toDate = new Date(dateTo);
+            const fromDate = new Date(dateFrom + 'T00:00:00');
+            const toDate = new Date(dateTo + 'T23:59:59');
             
             if (reportType === 'call_volume') {
                 const calls = await base44.entities.DispatchCall.list('-created_date', 5000);
@@ -67,26 +67,34 @@ export default function Reports() {
                 
                 setReportData({ type: 'call_volume', data: byAgency, total: filtered.length, dateRange: { from: dateFrom, to: dateTo } });
             } else if (reportType === 'response_time') {
-                const logs = await base44.entities.CallStatusLog.list('-created_date', 5000);
-                const filtered = logs.filter(log => {
-                    const logDate = new Date(log.created_date);
-                    return logDate >= fromDate && logDate <= toDate;
-                });
-                
                 const calls = await base44.entities.DispatchCall.list('-created_date', 5000);
-                const responseTimes = calls.filter(call => call.time_received && call.time_on_scene).map(call => {
+                const filtered = calls.filter(call => {
+                    const callDate = new Date(call.created_date);
+                    return callDate >= fromDate && callDate <= toDate;
+                });
+
+                const withTimes = filtered.filter(call => call.time_received && call.time_on_scene);
+                const responseTimes = withTimes.map(call => {
                     const received = new Date(call.time_received);
                     const onScene = new Date(call.time_on_scene);
-                    return (onScene - received) / 60000; // minutes
-                });
-                
-                const avg = responseTimes.length > 0 ? responseTimes.reduce((a,b) => a+b, 0) / responseTimes.length : 0;
+                    const minutes = (onScene - received) / 60000;
+                    return { call, minutes };
+                }).filter(r => r.minutes > 0 && r.minutes < 600); // sanity check
+
+                const times = responseTimes.map(r => r.minutes);
+                const avg = times.length > 0 ? times.reduce((a,b) => a+b, 0) / times.length : 0;
+                const under5 = times.filter(t => t <= 5).length;
+                const under10 = times.filter(t => t <= 10).length;
+                const over10 = times.filter(t => t > 10).length;
                 
                 setReportData({ 
                     type: 'response_time', 
                     average: avg.toFixed(2), 
                     total: responseTimes.length,
-                    times: responseTimes,
+                    totalFiltered: filtered.length,
+                    times,
+                    topCalls: responseTimes.sort((a,b) => b.minutes - a.minutes).slice(0, 10),
+                    breakdown: { under5, under10: under10 - under5, over10 },
                     dateRange: { from: dateFrom, to: dateTo }
                 });
             } else if (reportType === 'unit_activity') {
@@ -98,12 +106,13 @@ export default function Reports() {
                 
                 const byUnit = {};
                 filtered.forEach(log => {
-                    const unit = log.unit_name || 'Unknown';
+                    const unit = log.unit_name || log.unit_id || 'Unknown';
                     if (!byUnit[unit]) {
-                        byUnit[unit] = { statusChanges: 0, statuses: {} };
+                        byUnit[unit] = { statusChanges: 0, statuses: {}, lastSeen: log.created_date };
                     }
                     byUnit[unit].statusChanges++;
                     byUnit[unit].statuses[log.new_status] = (byUnit[unit].statuses[log.new_status] || 0) + 1;
+                    if (log.created_date > byUnit[unit].lastSeen) byUnit[unit].lastSeen = log.created_date;
                 });
                 
                 setReportData({ type: 'unit_activity', data: byUnit, total: filtered.length, dateRange: { from: dateFrom, to: dateTo } });
@@ -112,7 +121,7 @@ export default function Reports() {
             toast.success('Report generated');
         } catch (error) {
             console.error('Error generating report:', error);
-            toast.error('Failed to generate report');
+            toast.error('Failed to generate report: ' + error.message);
         } finally {
             setGenerating(false);
         }
@@ -370,32 +379,55 @@ export default function Reports() {
                                         
                                         {reportData.type === 'response_time' && (
                                             <div className="space-y-4">
-                                                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                                                    <p className="text-xs text-slate-400 font-mono mb-1">AVERAGE RESPONSE TIME</p>
-                                                    <p className="text-4xl font-bold text-green-400 font-mono">{reportData.average} min</p>
-                                                    <p className="text-xs text-slate-400 font-mono mt-2">
-                                                        Based on {reportData.total} calls
-                                                    </p>
-                                                </div>
-                                                
-                                                {reportData.times.length > 0 && (
-                                                    <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-                                                        <p className="text-xs text-slate-400 font-mono mb-2">DISTRIBUTION</p>
-                                                        <div className="space-y-1">
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-slate-300">Fastest</span>
-                                                                <span className="text-white font-mono">{Math.min(...reportData.times).toFixed(2)} min</span>
+                                                {reportData.total === 0 ? (
+                                                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-6 text-center">
+                                                        <Clock className="w-10 h-10 text-yellow-400 mx-auto mb-2 opacity-50" />
+                                                        <p className="text-yellow-400 font-mono text-sm">NO RESPONSE TIME DATA</p>
+                                                        <p className="text-slate-400 font-mono text-xs mt-2">{reportData.totalFiltered} calls found but none have both Time Received and Time On Scene recorded.</p>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="grid grid-cols-2 gap-3">
+                                                            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                                                                <p className="text-xs text-slate-400 font-mono mb-1">AVG RESPONSE TIME</p>
+                                                                <p className="text-3xl font-bold text-green-400 font-mono">{reportData.average} min</p>
+                                                                <p className="text-xs text-slate-400 font-mono mt-1">Based on {reportData.total} calls</p>
                                                             </div>
-                                                            <div className="flex justify-between text-sm">
-                                                                <span className="text-slate-300">Slowest</span>
-                                                                <span className="text-white font-mono">{Math.max(...reportData.times).toFixed(2)} min</span>
+                                                            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 space-y-1">
+                                                                <p className="text-xs text-slate-400 font-mono mb-2">DISTRIBUTION</p>
+                                                                <div className="flex justify-between text-xs"><span className="text-green-400">Under 5 min</span><span className="text-white font-mono">{reportData.breakdown.under5}</span></div>
+                                                                <div className="flex justify-between text-xs"><span className="text-yellow-400">5–10 min</span><span className="text-white font-mono">{reportData.breakdown.under10}</span></div>
+                                                                <div className="flex justify-between text-xs"><span className="text-red-400">Over 10 min</span><span className="text-white font-mono">{reportData.breakdown.over10}</span></div>
                                                             </div>
                                                         </div>
-                                                    </div>
+                                                        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
+                                                            <p className="text-xs text-slate-400 font-mono mb-2">STATS</p>
+                                                            <div className="space-y-1">
+                                                                <div className="flex justify-between text-sm"><span className="text-slate-300">Fastest</span><span className="text-green-400 font-mono">{Math.min(...reportData.times).toFixed(2)} min</span></div>
+                                                                <div className="flex justify-between text-sm"><span className="text-slate-300">Slowest</span><span className="text-red-400 font-mono">{Math.max(...reportData.times).toFixed(2)} min</span></div>
+                                                            </div>
+                                                        </div>
+                                                        {reportData.topCalls.length > 0 && (
+                                                            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
+                                                                <p className="text-xs text-slate-400 font-mono mb-2">SLOWEST RESPONSES (TOP 10)</p>
+                                                                <div className="space-y-2">
+                                                                    {reportData.topCalls.map((r, i) => (
+                                                                        <div key={i} className="flex justify-between text-xs border-b border-slate-700 pb-1">
+                                                                            <div>
+                                                                                <span className="text-white">{r.call.incident}</span>
+                                                                                <span className="text-slate-400 ml-2">{r.call.location}</span>
+                                                                            </div>
+                                                                            <span className={`font-mono font-bold ${r.minutes > 10 ? 'text-red-400' : r.minutes > 5 ? 'text-yellow-400' : 'text-green-400'}`}>{r.minutes.toFixed(1)} min</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
                                                 )}
                                             </div>
                                         )}
-                                        
+
                                         {reportData.type === 'unit_activity' && (
                                             <div className="space-y-4">
                                                 <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
