@@ -167,7 +167,7 @@ export default function Personnel() {
                                 <tbody>
                                     {filteredPersonnel.map((person) => (
                                         <tr key={person.id} className="border-b border-slate-800 hover:bg-slate-800/50">
-                                            <td className="p-3 text-white font-mono text-sm">{(() => { const parts = (person.full_name || '').trim().split(' '); if (parts.length < 2) return person.full_name || '-'; return `${parts[parts.length - 1]}, ${parts.slice(0, parts.length - 1).join(' ')}`; })()}</td>
+                                            <td className="p-3 text-white font-mono text-sm">{person.last_name || (() => { const parts = (person.full_name || '').trim().split(' '); return parts.length > 1 ? parts[parts.length - 1] : parts[0] || '-'; })()}</td>
                                             <td className="p-3 text-white font-mono text-sm">
                                                 {person.unit_number ? `UNIT-${person.unit_number}` : '-'}
                                             </td>

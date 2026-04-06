@@ -57,14 +57,6 @@ export default function SystemStatus() {
                 <div className="px-6 py-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <Button
-                                variant="ghost"
-                                onClick={() => window.location.href = createPageUrl('CADHome')}
-                                className="text-slate-400 hover:text-white font-mono text-xs"
-                            >
-                                ← CAD HOME
-                            </Button>
-                            <div className="h-6 w-px bg-slate-700" />
                             <Activity className="w-6 h-6 text-green-400" />
                             <h1 className="text-xl font-bold text-white tracking-tight font-mono">SYSTEM STATUS</h1>
                             <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 rounded">
@@ -72,29 +64,7 @@ export default function SystemStatus() {
                                 <span className="text-green-400 font-mono text-xs font-bold">OPERATIONAL</span>
                             </div>
                         </div>
-                        <div className="flex gap-2">
-                            <Button
-                                size="sm"
-                                onClick={() => window.location.href = createPageUrl('ActiveCalls')}
-                                className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
-                            >
-                                CALLS
-                            </Button>
-                            <Button
-                                size="sm"
-                                onClick={() => window.location.href = createPageUrl('Units')}
-                                className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
-                            >
-                                UNITS
-                            </Button>
-                            <Button
-                                size="sm"
-                                onClick={() => window.location.href = createPageUrl('Reports')}
-                                className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
-                            >
-                                REPORTS
-                            </Button>
-                        </div>
+
                     </div>
                 </div>
             </div>

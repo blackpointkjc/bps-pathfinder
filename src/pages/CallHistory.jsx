@@ -144,9 +144,6 @@ export default function CallHistory() {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6 md:mb-8">
                     <div className="flex items-center gap-3 md:gap-4">
-                        <Button variant="outline" size="icon" onClick={() => window.location.href = createPageUrl('CADHome')}>
-                            <ArrowLeft className="w-4 h-4" />
-                        </Button>
                         <div>
                             <h1 className="text-2xl md:text-4xl font-bold text-gray-900 flex items-center gap-2 md:gap-3">
                                 <History className="w-7 h-7 md:w-10 md:h-10 text-red-600" />
