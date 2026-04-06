@@ -252,11 +252,18 @@ export default function Personnel() {
                         </div>
                         <div>
                             <label className="text-xs text-slate-400 font-mono mb-2 block">STATUS</label>
-                            <Input
+                            <select
                                 value={editForm.status}
                                 onChange={(e) => setEditForm({...editForm, status: e.target.value})}
-                                className="bg-slate-800 border-slate-700 text-white font-mono"
-                            />
+                                className="w-full h-10 rounded-md bg-slate-800 border border-slate-700 text-white font-mono px-3 py-2 text-sm"
+                            >
+                                <option value="Available">Available</option>
+                                <option value="Enroute">Enroute</option>
+                                <option value="On Scene">On Scene</option>
+                                <option value="Busy">Busy</option>
+                                <option value="Out of Service">Out of Service</option>
+                                <option value="On Patrol">On Patrol</option>
+                            </select>
                         </div>
                         <div className="flex gap-2">
                             <Button

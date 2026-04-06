@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { ArrowLeft, Search, Clock, MapPin, Radio, History, Filter, Calendar, SortAsc, SortDesc, RefreshCw } from 'lucide-react';
+import { Search, Clock, MapPin, History, Calendar, SortAsc, SortDesc, RefreshCw, Map } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 
 const getAgencyColor = (agency) => {
@@ -19,7 +20,17 @@ const getAgencyColor = (agency) => {
     return 'bg-gray-600 text-white';
 };
 
+const formatEST = (dateStr) => {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleString('en-US', {
+        timeZone: 'America/New_York',
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+    }) + ' EST';
+};
+
 export default function CallHistory() {
+    const navigate = useNavigate();
     const [calls, setCalls] = useState([]);
     const [filteredCalls, setFilteredCalls] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -320,18 +331,26 @@ export default function CallHistory() {
                                                 </div>
                                                 <div className="flex items-center gap-2 text-gray-600">
                                                     <Clock className="w-4 h-4 text-gray-400" />
-                                                    <span>{call.time_received}</span>
+                                                    <span>{formatEST(call.time_received || call.created_date)}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2 text-gray-600">
                                                     <Calendar className="w-4 h-4 text-gray-400" />
-                                                    <span>
-                                                        {new Date(call.archived_date || call.created_date).toLocaleDateString()}
-                                                    </span>
+                                                    <span>{formatEST(call.archived_date || call.created_date)}</span>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Card>
+                                                </div>
+                                                </div>
+                                                {(call.latitude && call.longitude) && (
+                                                <Button
+                                                size="sm"
+                                                onClick={() => navigate(createPageUrl('Navigation'))}
+                                                className="ml-4 bg-blue-600 hover:bg-blue-700 flex-shrink-0"
+                                                >
+                                                <Map className="w-4 h-4 mr-1" />
+                                                Live Map
+                                                </Button>
+                                                )}
+                                                </div>
+                                                </Card>
                             </motion.div>
                         ))}
                     </div>
