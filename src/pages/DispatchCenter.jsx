@@ -237,14 +237,6 @@ export default function DispatchCenter() {
                 <div className="px-6 py-3">
                     <div className="flex items-center justify-between">
                          <div className="flex items-center gap-4">
-                             <Button
-                                 variant="ghost"
-                                 onClick={() => navigate(createPageUrl('CADHome'))}
-                                 className="text-slate-400 hover:text-white"
-                             >
-                                 ← BACK
-                             </Button>
-                             <div className="h-6 w-px bg-slate-700" />
                              <Radio className="w-6 h-6 text-red-400" />
                              <h1 className="text-xl font-bold text-white tracking-tight font-mono">DISPATCH CENTER</h1>
                              <div className="flex gap-2 ml-4">

@@ -160,7 +160,7 @@ export default function CommandDashboard() {
                             {criticalCalls[0].incident} @ {criticalCalls[0].location}
                         </span>
                     </div>
-                    <Button size="sm" onClick={() => navigate(createPageUrl('ActiveCalls'))}
+                    <Button size="sm" onClick={() => navigate(createPageUrl('CallHistory'))}
                         className="bg-red-600 hover:bg-red-500 text-white font-mono text-xs">
                         VIEW <ArrowRight className="w-3 h-3 ml-1" />
                     </Button>
