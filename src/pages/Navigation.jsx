@@ -80,6 +80,13 @@ export default function Navigation() {
         startTracking();
     };
 
+    const handleStatusChange = async (newStatus) => {
+        setUnitStatus(newStatus);
+        try {
+            await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
+        } catch (e) {}
+    };
+
     const startTracking = () => {
         if (!navigator.geolocation) return;
         if (locationWatchId.current) navigator.geolocation.clearWatch(locationWatchId.current);
@@ -273,30 +280,34 @@ export default function Navigation() {
                 </button>
             </motion.div>
 
-            {/* Unit status pills bottom left */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="absolute bottom-6 left-3 z-[1001] flex flex-col gap-1.5 pointer-events-auto"
-            >
-                {onlineUnits.slice(0, 6).map(unit => (
-                    <div key={unit.id}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/90 backdrop-blur border border-slate-800 text-[11px] font-mono">
-                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                            unit.status === 'Available' ? 'bg-green-400' :
-                            unit.status === 'Enroute' ? 'bg-yellow-400 animate-pulse' :
-                            unit.status === 'On Scene' ? 'bg-blue-400' : 'bg-orange-400'
-                        }`} />
-                        <span className="text-white font-bold">
-                            {unit.unit_number ? `U-${unit.unit_number}` : (unit.full_name || '').split(' ')[0]}
-                        </span>
-                        <span className="text-slate-400">{unit.status}</span>
-                    </div>
-                ))}
-                {onlineUnits.length > 6 && (
-                    <div className="text-slate-500 font-mono text-[10px] px-3">+{onlineUnits.length - 6} more</div>
-                )}
-            </motion.div>
+            {/* My Status Selector */}
+            <div className="absolute bottom-6 left-3 z-[1001] pointer-events-auto">
+                <div className="bg-slate-900/95 backdrop-blur border border-slate-700 rounded-xl p-2 flex flex-col gap-1">
+                    <div className="text-[9px] text-slate-500 font-mono font-bold px-1 mb-0.5">MY STATUS</div>
+                    {[
+                        { label: 'Available', color: 'bg-gray-500' },
+                        { label: 'On Patrol', color: 'bg-indigo-500' },
+                        { label: 'Enroute', color: 'bg-red-500' },
+                        { label: 'On Scene', color: 'bg-green-500' },
+                        { label: 'Busy', color: 'bg-yellow-500' },
+                        { label: 'Supervisor', color: 'bg-yellow-400' },
+                        { label: 'Out of Service', color: 'bg-slate-600' },
+                    ].map(({ label, color }) => (
+                        <button
+                            key={label}
+                            onClick={() => handleStatusChange(label)}
+                            className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all ${
+                                unitStatus === label
+                                    ? 'bg-white/10 text-white font-bold ring-1 ring-white/30'
+                                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                            }`}
+                        >
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${color}`} />
+                            {label}
+                        </button>
+                    ))}
+                </div>
+            </div>
 
             {/* Call detail sidebar */}
             {showCallSidebar && selectedCall && (
