@@ -35,6 +35,7 @@ export default function Navigation() {
     });
     const [showCallSidebar, setShowCallSidebar] = useState(false);
     const [selectedCall, setSelectedCall] = useState(null);
+    const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const [jurisdictionFilters] = useState({
         baseMapType: 'street', showPoliceStations: true, showFireStations: false,
         showEMS: false, showJails: true
@@ -169,8 +170,6 @@ export default function Navigation() {
     // Filter out of service units for map display (unless admin/supervisor)
     const mapVisibleUnits = isSupervisorUser ? otherUnits : otherUnits.filter(u => u.status !== 'Out of Service');
     const availableCount = onlineUnits.filter(u => u.status === 'Available').length;
-
-    const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
 
     const ACTIVE_STATUSES = ['Available', 'On Patrol', 'Enroute', 'On Scene', 'Busy', 'Supervisor'];
     const unitsByStatus = ACTIVE_STATUSES.reduce((acc, s) => {
