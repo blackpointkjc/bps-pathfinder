@@ -153,7 +153,7 @@ export default function DispatchLog() {
                                             </div>
                                             <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
                                                 <Clock className="w-3 h-3" />
-                                                {new Date(log.timestamp).toLocaleString()}
+                                                {new Date(log.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York' })} EST
                                             </div>
                                         </div>
                                         {log.type === 'unit' ? (
