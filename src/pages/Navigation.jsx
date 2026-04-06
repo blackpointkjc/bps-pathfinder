@@ -8,10 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Layers, RefreshCw, Radio, MapPin, Users, Activity,
-    Eye, EyeOff, Wifi, WifiOff, Crosshair
+    Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Navigation() {
+    const navigate = useNavigate();
     const [currentLocation, setCurrentLocation] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
     const [otherUnits, setOtherUnits] = useState([]);
@@ -186,6 +188,15 @@ export default function Navigation() {
                     <VACountiesBoundaries />
                 </MapView>
             </div>
+
+            {/* Back button */}
+            <button
+                onClick={() => navigate(-1)}
+                className="absolute top-14 left-3 z-[1001] w-10 h-10 rounded-xl bg-slate-900/90 backdrop-blur border border-slate-700 flex items-center justify-center text-slate-300 hover:text-white hover:border-gold transition-all pointer-events-auto"
+                title="Go back"
+            >
+                <ArrowLeft className="w-4 h-4" />
+            </button>
 
             {/* Top status bar */}
             <div className="absolute top-0 left-0 right-0 z-[1000] pointer-events-none">
