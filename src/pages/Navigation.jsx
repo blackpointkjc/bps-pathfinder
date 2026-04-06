@@ -165,6 +165,9 @@ export default function Navigation() {
     const selfEntry = currentUser ? { ...currentUser, status: unitStatus } : null;
     const otherOnline = otherUnits.filter(u => u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
     const onlineUnits = selfEntry ? [selfEntry, ...otherOnline] : otherOnline;
+    
+    // Filter out of service units for map display (unless admin/supervisor)
+    const mapVisibleUnits = isSupervisorUser ? otherUnits : otherUnits.filter(u => u.status !== 'Out of Service');
     const availableCount = onlineUnits.filter(u => u.status === 'Available').length;
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
@@ -210,7 +213,7 @@ export default function Navigation() {
                     locationHistory={isLiveTracking ? locationHistory : []}
                     unitName={unitName || currentUser?.unit_number}
                     showLights={showLights}
-                    otherUnits={otherUnits}
+                    otherUnits={mapVisibleUnits}
                     currentUserId={currentUser?.id}
                     speed={speed}
                     mapCenter={null}
