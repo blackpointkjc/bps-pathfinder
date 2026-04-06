@@ -164,6 +164,34 @@ export default function Navigation() {
     const onlineUnits = otherUnits.filter(u => u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
     const availableCount = onlineUnits.filter(u => u.status === 'Available').length;
 
+    const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
+
+    const ACTIVE_STATUSES = ['Available', 'On Patrol', 'Enroute', 'On Scene', 'Busy', 'Supervisor'];
+    const unitsByStatus = ACTIVE_STATUSES.reduce((acc, s) => {
+        acc[s] = onlineUnits.filter(u => u.status === s);
+        return acc;
+    }, {});
+
+    const STATUS_COLORS = {
+        'Available': 'bg-gray-500',
+        'On Patrol': 'bg-indigo-500',
+        'Enroute': 'bg-red-500',
+        'On Scene': 'bg-green-500',
+        'Busy': 'bg-yellow-500',
+        'Supervisor': 'bg-yellow-400',
+        'Out of Service': 'bg-slate-600',
+    };
+
+    const ALL_STATUSES = [
+        { label: 'Available', color: 'bg-gray-500' },
+        { label: 'On Patrol', color: 'bg-indigo-500' },
+        { label: 'Enroute', color: 'bg-red-500' },
+        { label: 'On Scene', color: 'bg-green-500' },
+        { label: 'Busy', color: 'bg-yellow-500' },
+        ...(isSupervisorUser ? [{ label: 'Supervisor', color: 'bg-yellow-400' }] : []),
+        { label: 'Out of Service', color: 'bg-slate-600' },
+    ];
+
     return (
         <div className="h-screen w-screen relative overflow-hidden bg-slate-950">
             {/* Map fills everything */}
@@ -280,19 +308,43 @@ export default function Navigation() {
                 </button>
             </motion.div>
 
-            {/* My Status Selector */}
-            <div className="absolute bottom-6 left-3 z-[1001] pointer-events-auto">
-                <div className="bg-slate-900/95 backdrop-blur border border-slate-700 rounded-xl p-2 flex flex-col gap-1">
+            {/* Left panel: Unit Board + My Status */}
+            <div className="absolute bottom-6 left-3 z-[1001] pointer-events-auto flex flex-col gap-2 max-h-[calc(100vh-120px)]">
+                {/* All Units Status Board */}
+                <div className="bg-slate-900/95 backdrop-blur border border-slate-700 rounded-xl p-2 overflow-y-auto flex-shrink min-h-0">
+                    <div className="text-[9px] text-slate-500 font-mono font-bold px-1 mb-1">UNIT STATUS BOARD</div>
+                    <div className="space-y-0.5">
+                        {ACTIVE_STATUSES.filter(s => s !== 'Supervisor' || isSupervisorUser).map(s => {
+                            const units = unitsByStatus[s] || [];
+                            return (
+                                <div key={s}>
+                                    <div className="flex items-center gap-1.5 px-1 py-0.5">
+                                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_COLORS[s]}`} />
+                                        <span className="text-[9px] text-slate-500 font-mono font-bold">{s.toUpperCase()}</span>
+                                        <span className="text-[9px] text-slate-600 font-mono ml-auto">{units.length}</span>
+                                    </div>
+                                    {units.map(u => (
+                                        <div key={u.id} className="flex items-center gap-1.5 pl-4 pr-1 py-0.5">
+                                            {u.is_supervisor && <span className="text-yellow-400 text-[9px]">★</span>}
+                                            <span className="text-[10px] text-white font-mono truncate max-w-[120px]">
+                                                {u.unit_number || u.full_name || 'Unit'}
+                                            </span>
+                                            {u.rank && <span className="text-[9px] text-slate-500 font-mono ml-auto">{u.rank}</span>}
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })}
+                        {ACTIVE_STATUSES.filter(s => s !== 'Supervisor' || isSupervisorUser).every(s => (unitsByStatus[s] || []).length === 0) && (
+                            <div className="text-[9px] text-slate-600 font-mono px-1 py-1">No active units</div>
+                        )}
+                    </div>
+                </div>
+
+                {/* My Status Selector */}
+                <div className="bg-slate-900/95 backdrop-blur border border-slate-700 rounded-xl p-2 flex flex-col gap-1 flex-shrink-0">
                     <div className="text-[9px] text-slate-500 font-mono font-bold px-1 mb-0.5">MY STATUS</div>
-                    {[
-                        { label: 'Available', color: 'bg-gray-500' },
-                        { label: 'On Patrol', color: 'bg-indigo-500' },
-                        { label: 'Enroute', color: 'bg-red-500' },
-                        { label: 'On Scene', color: 'bg-green-500' },
-                        { label: 'Busy', color: 'bg-yellow-500' },
-                        { label: 'Supervisor', color: 'bg-yellow-400' },
-                        { label: 'Out of Service', color: 'bg-slate-600' },
-                    ].map(({ label, color }) => (
+                    {ALL_STATUSES.map(({ label, color }) => (
                         <button
                             key={label}
                             onClick={() => handleStatusChange(label)}

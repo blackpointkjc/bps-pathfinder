@@ -58,6 +58,7 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
                     <rect x="6" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
                     <rect x="11" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
                     <polygon points="12,1 15,7 9,7" fill="${color}" stroke="${isSupervisor ? '#FFD700' : (lightsColor ? lightsColor : '#1E3A8A')}" stroke-width="0.8"/>
+                    ${isSupervisor ? `<text x="12" y="-2" text-anchor="middle" font-size="7" fill="#FFD700" font-weight="bold" font-family="monospace">★SUP</text>` : ''}
                 </svg>
             </div>
         `,
