@@ -41,8 +41,8 @@ export default function Personnel() {
 
     const loadPersonnel = async () => {
         try {
-            const response = await base44.functions.invoke('fetchAllUsers', {});
-            setPersonnel(response.data?.users || []);
+            const response = await base44.entities.User.list();
+            setPersonnel(response || []);
         } catch (error) {
             console.error('Error loading personnel:', error);
         }
@@ -202,7 +202,7 @@ export default function Personnel() {
                                                     </Button>
                                                     <Button
                                                         size="sm"
-                                                        onClick={() => window.location.href = createPageUrl('AdminPortal') + '#tracking'}
+                                                        onClick={() => window.location.href = createPageUrl('Navigation')}
                                                         className="bg-purple-600 hover:bg-purple-700 font-mono text-xs"
                                                     >
                                                         <MapPin className="w-3 h-3 mr-1" />
