@@ -1,115 +1,226 @@
-import React, { useEffect } from 'react';
-import { createPageUrl } from './utils';
+import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
-import { Radio, Activity, MapPin, Clock, ChevronLeft } from 'lucide-react';
+import {
+    Radio, Activity, MapPin, Clock, Shield, Users, BarChart2,
+    ChevronLeft, ChevronRight, Bell, Search, LogOut, Settings,
+    Home, Zap, FileText, AlertTriangle, Menu, X
+} from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { createPageUrl } from './utils';
 
-const ROOT_PAGES = ['CADHome', 'Navigation'];
-
-const NAV_TABS = [
-    { label: 'Home', icon: Radio, page: 'CADHome' },
-    { label: 'Dispatch', icon: Activity, page: 'DispatchCenter' },
-    { label: 'Map', icon: MapPin, page: 'Navigation' },
-    { label: 'History', icon: Clock, page: 'CallHistory' },
+const NAV_SECTIONS = [
+    {
+        label: 'COMMAND',
+        items: [
+            { label: 'Command Center', icon: Home, page: 'CommandDashboard' },
+            { label: 'Live Map', icon: MapPin, page: 'Navigation' },
+        ]
+    },
+    {
+        label: 'DISPATCH',
+        items: [
+            { label: 'Active Calls', icon: Radio, page: 'ActiveCalls' },
+            { label: 'Dispatch Center', icon: Zap, page: 'DispatchCenter' },
+            { label: 'Call History', icon: Clock, page: 'CallHistory' },
+        ]
+    },
+    {
+        label: 'OPERATIONS',
+        items: [
+            { label: 'Personnel', icon: Users, page: 'Personnel' },
+            { label: 'Dispatch Log', icon: FileText, page: 'DispatchLog' },
+            { label: 'Reports', icon: BarChart2, page: 'Reports' },
+        ]
+    },
+    {
+        label: 'SYSTEM',
+        items: [
+            { label: 'System Status', icon: Activity, page: 'SystemStatus' },
+            { label: 'Admin Portal', icon: Shield, page: 'AdminPortal', adminOnly: true },
+        ]
+    }
 ];
 
-// Pages considered "root" (show logo, no back button)
-const ROOT_PAGE_SET = new Set(['CADHome', 'Navigation']);
+// Pages that get their own full-screen layout (no sidebar)
+const FULLSCREEN_PAGES = new Set(['Navigation']);
 
 export default function Layout({ children, currentPageName }) {
     const navigate = useNavigate();
     const location = useLocation();
+    const [collapsed, setCollapsed] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
 
-    useEffect(() => {
-        const path = window.location.pathname.toLowerCase();
-        if (path === '/' || path === '/home' || path === '/navigation' || !currentPageName || currentPageName === 'Home') {
-            navigate('/cadhome', { replace: true });
-        }
-    }, []);
+    const isFullscreen = FULLSCREEN_PAGES.has(currentPageName);
 
-    const isMapPage = currentPageName === 'Navigation';
-    const isRoot = ROOT_PAGE_SET.has(currentPageName);
-    const showTopBar = !isMapPage; // Map has its own full-screen header
+    if (isFullscreen) {
+        return <div className="w-full h-full">{children}</div>;
+    }
 
-    return (
-        <div
-            className="w-full h-full flex flex-col bg-slate-950"
-            style={{
-                paddingTop: 'env(safe-area-inset-top)',
-                paddingLeft: 'env(safe-area-inset-left)',
-                paddingRight: 'env(safe-area-inset-right)',
-            }}
-        >
-            {/* Top Bar */}
-            {showTopBar && (
-                <header className="flex-none h-12 bg-slate-900 border-b border-slate-800 flex items-center px-3 z-[100] gap-3">
-                    {isRoot ? (
-                        /* Logo for root screens */
-                        <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-md bg-blue-600 flex items-center justify-center">
-                                <Radio className="w-4 h-4 text-white" />
-                            </div>
-                            <span className="text-white font-mono font-bold text-sm tracking-widest">BPS CAD</span>
-                        </div>
-                    ) : (
-                        /* Back button for child screens */
-                        <button
-                            onClick={() => navigate(-1)}
-                            className="flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors min-h-[44px] pr-2"
-                        >
-                            <ChevronLeft className="w-5 h-5" />
-                            <span className="text-sm font-medium">Back</span>
-                        </button>
-                    )}
-                    <div className="flex-1" />
-                    <span className="text-slate-400 text-xs font-mono uppercase tracking-wider truncate max-w-[50vw] text-right">
-                        {currentPageName?.replace(/([A-Z])/g, ' $1').trim()}
-                    </span>
-                </header>
-            )}
+    const handleLogout = () => {
+        base44.auth.logout('/');
+    };
 
-            {/* Page content */}
-            <div
-                className={`flex-1 overflow-auto ${!isMapPage ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom))]' : ''}`}
-                style={{ WebkitOverflowScrolling: 'touch' }}
-            >
-                <AnimatePresence mode="wait" initial={false}>
-                    <motion.div
-                        key={location.pathname}
-                        initial={{ x: 24, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: -24, opacity: 0 }}
-                        transition={{ duration: 0.18, ease: 'easeOut' }}
-                        className="h-full"
-                    >
-                        {children}
-                    </motion.div>
-                </AnimatePresence>
+    const NavContent = ({ onNav }) => (
+        <div className="flex flex-col h-full">
+            {/* Logo */}
+            <div className={`flex items-center gap-3 px-4 py-4 border-b border-gold-900/30 ${collapsed ? 'justify-center' : ''}`}>
+                <div className="w-9 h-9 rounded-lg bg-gold flex items-center justify-center flex-shrink-0">
+                    <Radio className="w-5 h-5 text-black" />
+                </div>
+                {!collapsed && (
+                    <div>
+                        <div className="text-white font-bold text-sm tracking-widest font-mono">BPS CAD</div>
+                        <div className="text-gold text-[10px] font-mono tracking-wider">COMMAND SYSTEM</div>
+                    </div>
+                )}
             </div>
 
-            {/* Bottom tab bar — hidden on map */}
-            {!isMapPage && (
-                <nav
-                    className="fixed bottom-0 left-0 right-0 z-[9999] bg-slate-900 border-t border-slate-800 flex select-none"
-                    style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            {/* Nav Items */}
+            <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+                {NAV_SECTIONS.map(section => (
+                    <div key={section.label}>
+                        {!collapsed && (
+                            <div className="text-[10px] font-bold text-slate-500 tracking-widest px-2 mb-1 font-mono">
+                                {section.label}
+                            </div>
+                        )}
+                        <div className="space-y-0.5">
+                            {section.items.map(({ label, icon: Icon, page }) => {
+                                const isActive = currentPageName === page;
+                                return (
+                                    <Link
+                                        key={page}
+                                        to={createPageUrl(page)}
+                                        onClick={() => onNav?.()}
+                                        title={collapsed ? label : undefined}
+                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all select-none ${
+                                            isActive
+                                                ? 'bg-gold text-black font-bold'
+                                                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                        } ${collapsed ? 'justify-center' : ''}`}
+                                    >
+                                        <Icon className="w-4 h-4 flex-shrink-0" />
+                                        {!collapsed && <span className="text-sm font-mono">{label}</span>}
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
+            </nav>
+
+            {/* Footer */}
+            <div className={`border-t border-slate-800 p-3 space-y-1 ${collapsed ? 'flex flex-col items-center' : ''}`}>
+                <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-900/10 transition-all w-full"
                 >
-                    {NAV_TABS.map(({ label, icon: Icon, page }) => {
-                        const isActive = currentPageName === page;
-                        return (
-                            <Link
-                                key={page}
-                                to={createPageUrl(page)}
-                                className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors select-none ${
-                                    isActive ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'
-                                }`}
+                    <LogOut className="w-4 h-4 flex-shrink-0" />
+                    {!collapsed && <span className="text-sm font-mono">Sign Out</span>}
+                </button>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="w-full h-full flex bg-slate-950 overflow-hidden">
+            {/* Desktop Sidebar */}
+            <motion.aside
+                animate={{ width: collapsed ? 64 : 220 }}
+                transition={{ duration: 0.2 }}
+                className="hidden md:flex flex-col bg-slate-900 border-r border-slate-800 flex-shrink-0 overflow-hidden relative z-30"
+            >
+                <NavContent />
+                {/* Collapse Toggle */}
+                <button
+                    onClick={() => setCollapsed(c => !c)}
+                    className="absolute top-4 -right-3 w-6 h-6 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-slate-400 hover:text-white z-40"
+                >
+                    {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+                </button>
+            </motion.aside>
+
+            {/* Mobile Sidebar Overlay */}
+            <AnimatePresence>
+                {mobileOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="md:hidden fixed inset-0 bg-black/60 z-40"
+                            onClick={() => setMobileOpen(false)}
+                        />
+                        <motion.aside
+                            initial={{ x: -240 }} animate={{ x: 0 }} exit={{ x: -240 }}
+                            transition={{ duration: 0.2 }}
+                            className="md:hidden fixed left-0 top-0 bottom-0 w-60 bg-slate-900 border-r border-slate-800 z-50"
+                        >
+                            <button
+                                onClick={() => setMobileOpen(false)}
+                                className="absolute top-3 right-3 text-slate-400 hover:text-white"
                             >
-                                <Icon className="w-5 h-5" />
-                                <span className="text-[10px] font-mono font-semibold">{label}</span>
-                            </Link>
-                        );
-                    })}
-                </nav>
-            )}
+                                <X className="w-5 h-5" />
+                            </button>
+                            <NavContent onNav={() => setMobileOpen(false)} />
+                        </motion.aside>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                {/* Top Command Bar */}
+                <header className="flex-none h-12 bg-slate-900 border-b border-slate-800 flex items-center px-4 gap-3 z-20">
+                    {/* Mobile hamburger */}
+                    <button
+                        onClick={() => setMobileOpen(true)}
+                        className="md:hidden text-slate-400 hover:text-white"
+                    >
+                        <Menu className="w-5 h-5" />
+                    </button>
+
+                    {/* Breadcrumb */}
+                    <div className="hidden md:flex items-center gap-2 text-xs font-mono text-slate-500">
+                        <Radio className="w-3 h-3 text-gold" />
+                        <span className="text-gold">BPS CAD</span>
+                        <span>/</span>
+                        <span className="text-slate-300">{currentPageName?.replace(/([A-Z])/g, ' $1').trim()}</span>
+                    </div>
+
+                    <div className="flex-1" />
+
+                    {/* Status indicators */}
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 border border-green-500/30 rounded text-green-400 font-mono text-[10px] font-bold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                        LIVE
+                    </div>
+
+                    <Link to={createPageUrl('ActiveCalls')} className="relative text-slate-400 hover:text-gold transition-colors">
+                        <Bell className="w-5 h-5" />
+                    </Link>
+
+                    <Link to={createPageUrl('AdminPortal')} className="text-slate-400 hover:text-gold transition-colors">
+                        <Settings className="w-5 h-5" />
+                    </Link>
+                </header>
+
+                {/* Page Content */}
+                <main className="flex-1 overflow-auto">
+                    <AnimatePresence mode="wait" initial={false}>
+                        <motion.div
+                            key={location.pathname}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.15 }}
+                            className="h-full"
+                        >
+                            {children}
+                        </motion.div>
+                    </AnimatePresence>
+                </main>
+            </div>
         </div>
     );
 }

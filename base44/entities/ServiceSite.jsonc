@@ -1,0 +1,95 @@
+{
+  "name": "ServiceSite",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Site name or identifier"
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "latitude": {
+      "type": "number"
+    },
+    "longitude": {
+      "type": "number"
+    },
+    "region": {
+      "type": "string",
+      "description": "Service region / zone"
+    },
+    "property_type": {
+      "type": "string",
+      "enum": [
+        "commercial",
+        "residential",
+        "industrial",
+        "government",
+        "retail",
+        "healthcare",
+        "education",
+        "other"
+      ]
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "low"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "under_review"
+      ],
+      "default": "active"
+    },
+    "access_instructions": {
+      "type": "string"
+    },
+    "post_orders": {
+      "type": "string",
+      "description": "Standing instructions for officers"
+    },
+    "emergency_contact_name": {
+      "type": "string"
+    },
+    "emergency_contact_phone": {
+      "type": "string"
+    },
+    "service_schedule": {
+      "type": "string",
+      "description": "Patrol or service schedule"
+    },
+    "contract_id": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "client_id",
+    "address"
+  ]
+}

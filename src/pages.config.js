@@ -54,6 +54,7 @@ import ArchiveManager from './pages/ArchiveManager';
 import AssetManagement from './pages/AssetManagement';
 import CADHome from './pages/CADHome';
 import CallHistory from './pages/CallHistory';
+import CommandDashboard from './pages/CommandDashboard';
 import DispatchCenter from './pages/DispatchCenter';
 import DispatchLog from './pages/DispatchLog';
 import LinkedAppSearch from './pages/LinkedAppSearch';
@@ -73,6 +74,7 @@ export const PAGES = {
     "AssetManagement": AssetManagement,
     "CADHome": CADHome,
     "CallHistory": CallHistory,
+    "CommandDashboard": CommandDashboard,
     "DispatchCenter": DispatchCenter,
     "DispatchLog": DispatchLog,
     "LinkedAppSearch": LinkedAppSearch,
@@ -84,7 +86,7 @@ export const PAGES = {
 }
 
 export const pagesConfig = {
-    mainPage: "Navigation",
+    mainPage: "CommandDashboard",
     Pages: PAGES,
     Layout: __Layout,
 };
