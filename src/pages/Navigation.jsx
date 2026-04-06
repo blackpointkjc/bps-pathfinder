@@ -230,7 +230,7 @@ export default function Navigation() {
 
             {/* Back button */}
             <button
-                onClick={() => navigate(-1)}
+                onClick={() => navigate('/CommandDashboard')}
                 className="absolute top-14 left-3 z-[1001] w-10 h-10 rounded-xl bg-slate-900/90 backdrop-blur border border-slate-700 flex items-center justify-center text-slate-300 hover:text-white hover:border-gold transition-all pointer-events-auto"
                 title="Go back"
             >
