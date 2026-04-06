@@ -12,13 +12,21 @@ Deno.serve(async (req) => {
         // Only fetch the fields we actually need to minimize CPU/data
         const allUsers = await base44.asServiceRole.entities.User.list();
 
-        // Filter to only active users server-side to reduce payload
-        const VISIBLE_STATUSES = new Set(['Available', 'On Patrol', 'On Scene', 'Enroute']);
+        const isPrivileged = user.role === 'admin' || user.dispatch_role === true;
+
+        // Regular users see active field units only
+        // Admin/Dispatch also see Supervisor status units and Out of Service
+        const REGULAR_STATUSES = new Set(['Available', 'On Patrol', 'On Scene', 'Enroute']);
+        const PRIVILEGED_STATUSES = new Set(['Available', 'On Patrol', 'On Scene', 'Enroute', 'Supervisor', 'Out of Service', 'Busy']);
+        const allowedStatuses = isPrivileged ? PRIVILEGED_STATUSES : REGULAR_STATUSES;
+
         const cutoff = Date.now() - 4 * 60 * 60 * 1000; // 4 hours
 
         const activeUsers = (allUsers || []).filter(u => {
             if (u.id === user.id) return false;
-            if (!VISIBLE_STATUSES.has(u.status)) return false;
+            if (!allowedStatuses.has(u.status)) return false;
+            // Supervisor status: hide from regular users (extra guard)
+            if (!isPrivileged && u.status === 'Supervisor') return false;
             const lat = parseFloat(u.latitude), lng = parseFloat(u.longitude);
             if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return false;
             const lastUpdated = u.last_updated ? new Date(u.last_updated).getTime() : 0;

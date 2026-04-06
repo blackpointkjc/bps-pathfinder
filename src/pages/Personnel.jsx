@@ -263,6 +263,7 @@ export default function Personnel() {
                                 <option value="Busy">Busy</option>
                                 <option value="Out of Service">Out of Service</option>
                                 <option value="On Patrol">On Patrol</option>
+                                <option value="Supervisor">Supervisor (Hidden from field)</option>
                             </select>
                         </div>
                         <div className="flex gap-2">

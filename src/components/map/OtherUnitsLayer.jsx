@@ -21,11 +21,12 @@ const getAgencyLabel = (unitNumber) => {
 // Create icons for other units based on status with agency labels
 const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumber, isUnionLead) => {
     let color = '#6B7280'; // Gray for Available
-    if (status === 'Enroute') color = '#EF4444'; // Red
-    else if (status === 'On Scene') color = '#10B981'; // Green
-    else if (status === 'On Patrol') color = '#6366F1'; // Indigo
-    else if (status === 'Busy') color = '#F59E0B'; // Orange
-    else if (status === 'Out of Service') color = '#9CA3AF'; // Light gray
+    if (status === 'Enroute') color = '#EF4444';
+    else if (status === 'On Scene') color = '#10B981';
+    else if (status === 'On Patrol') color = '#6366F1';
+    else if (status === 'Busy') color = '#F59E0B';
+    else if (status === 'Out of Service') color = '#9CA3AF';
+    else if (status === 'Supervisor') color = '#EAB308'; // Gold
 
     if (isSupervisor) {
         color = '#EAB308'; // Gold/Yellow
