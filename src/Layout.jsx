@@ -133,12 +133,12 @@ export default function Layout({ children, currentPageName }) {
             {/* Desktop Sidebar */}
             <div
                 style={{ width: collapsed ? 64 : 220, transition: 'width 0.2s' }}
-                className="hidden md:flex flex-col bg-slate-900 border-r border-slate-800 flex-shrink-0 overflow-hidden relative z-30 h-full"
+                className="hidden md:flex flex-col bg-slate-900 border-r border-slate-800 flex-shrink-0 relative z-30 h-full"
             >
                 <NavContent />
                 <button
                     onClick={() => setCollapsed(c => !c)}
-                    className="absolute top-4 -right-3 w-6 h-6 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-slate-400 hover:text-white z-40"
+                    className="absolute top-16 -right-3 w-6 h-6 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-slate-400 hover:text-white z-40"
                 >
                     {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
                 </button>
@@ -174,12 +174,7 @@ export default function Layout({ children, currentPageName }) {
                     <button onClick={() => setMobileOpen(true)} className="md:hidden text-slate-400 hover:text-white">
                         <Menu className="w-5 h-5" />
                     </button>
-                    <div className="hidden md:flex items-center gap-2 text-xs font-mono text-slate-500">
-                        <Radio className="w-3 h-3 text-gold" />
-                        <span className="text-gold">BPS CAD</span>
-                        <span>/</span>
-                        <span className="text-slate-300">{currentPageName?.replace(/([A-Z])/g, ' $1').trim()}</span>
-                    </div>
+
                     <div className="flex-1" />
                     <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 border border-green-500/30 rounded text-green-400 font-mono text-[10px] font-bold">
                         <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
