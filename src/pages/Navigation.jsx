@@ -11,6 +11,7 @@ import {
     Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { playDispatchAlert, playPropertyAlert, stopPropertyAlert, isCallNearMonitoredProperty } from '@/utils/alertUtils';
 
 export default function Navigation() {
     const navigate = useNavigate();
@@ -27,6 +28,9 @@ export default function Navigation() {
     const [unitStatus, setUnitStatus] = useState('Available');
     const [showLights, setShowLights] = useState(false);
     const [unitName, setUnitName] = useState(localStorage.getItem('unitName') || '');
+    const [monitoredProperties, setMonitoredProperties] = useState([]);
+    const propertyAlertRef = React.useRef(null);
+    const lastCallCountRef = React.useRef(0);
     const [mapTheme, setMapTheme] = useState(() => {
         const saved = localStorage.getItem('mapTheme');
         if (saved) return saved;
@@ -68,7 +72,11 @@ export default function Navigation() {
 
     useEffect(() => {
         fetchCalls();
-        const i = setInterval(fetchCalls, 30000);
+        loadMonitoredProperties();
+        const i = setInterval(() => {
+            fetchCalls();
+            loadMonitoredProperties();
+        }, 30000);
         return () => clearInterval(i);
     }, []);
 
@@ -154,11 +162,36 @@ export default function Navigation() {
         } catch (e) {}
     };
 
+    const loadMonitoredProperties = async () => {
+        try {
+            const props = await base44.entities.MonitoredProperty.list();
+            setMonitoredProperties(props?.filter(p => p.enabled) || []);
+        } catch (error) {
+            console.error('Error loading monitored properties:', error);
+        }
+    };
+
     const fetchCalls = async () => {
         setIsLoadingCalls(true);
         try {
             const all = await base44.entities.DispatchCall.list('-created_date', 200);
-            setActiveCalls(all.filter(c => !['Closed', 'Cleared', 'Cancelled'].includes(c.status)));
+            const active = all.filter(c => !['Closed', 'Cleared', 'Cancelled'].includes(c.status));
+            
+            // Detect new calls
+            if (active.length > lastCallCountRef.current) {
+                const newCall = active[0]; // Most recent call
+                const nearProperty = isCallNearMonitoredProperty(newCall, monitoredProperties);
+                
+                if (nearProperty) {
+                    playPropertyAlert();
+                    propertyAlertRef.current = { timeout: setTimeout(() => stopPropertyAlert(), 60000) };
+                } else {
+                    playDispatchAlert();
+                }
+            }
+            lastCallCountRef.current = active.length;
+            
+            setActiveCalls(active);
         } catch (e) {} finally { setIsLoadingCalls(false); }
     };
 

@@ -6,6 +6,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Plus, Shield, Radio, Map as MapIcon, Volume2, VolumeX, RefreshCw } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import { playDispatchAlert, playPropertyAlert, stopPropertyAlert, isCallNearMonitoredProperty } from '@/utils/alertUtils';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
@@ -20,33 +21,7 @@ import QuickActions from '@/components/dispatch/QuickActions';
 import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
 import 'leaflet/dist/leaflet.css';
 
-// Play a dispatch alert tone using Web Audio API
-function playDispatchAlert() {
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const tones = [
-            { freq: 880, start: 0, duration: 0.12 },
-            { freq: 1100, start: 0.15, duration: 0.12 },
-            { freq: 880, start: 0.30, duration: 0.12 },
-            { freq: 1100, start: 0.45, duration: 0.18 },
-        ];
-        tones.forEach(({ freq, start, duration }) => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
-            gain.gain.setValueAtTime(0, ctx.currentTime + start);
-            gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + start + 0.01);
-            gain.gain.linearRampToValueAtTime(0, ctx.currentTime + start + duration);
-            osc.start(ctx.currentTime + start);
-            osc.stop(ctx.currentTime + start + duration + 0.05);
-        });
-    } catch (e) {
-        // silently fail if audio not available
-    }
-}
+
 
 export default function DispatchCenter() {
     const navigate = useNavigate();
@@ -62,15 +37,19 @@ export default function DispatchCenter() {
     const [showMap, setShowMap] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [monitoredProperties, setMonitoredProperties] = useState([]);
     const knownCallIdsRef = React.useRef(null);
+    const propertyAlertRef = React.useRef(null);
 
     useEffect(() => {
         init();
+        loadMonitoredProperties();
         
         // Real-time updates every 60 seconds
         const interval = setInterval(() => {
             loadActiveCalls();
             loadUnits();
+            loadMonitoredProperties();
         }, 60000);
         
         // Auto-ingest every 5 minutes for real-time feed
@@ -88,6 +67,15 @@ export default function DispatchCenter() {
             clearInterval(scrapeInterval);
         };
     }, []);
+
+    const loadMonitoredProperties = async () => {
+        try {
+            const props = await base44.entities.MonitoredProperty.list();
+            setMonitoredProperties(props?.filter(p => p.enabled) || []);
+        } catch (error) {
+            console.error('Error loading monitored properties:', error);
+        }
+    };
 
     const init = async () => {
         try {
@@ -155,11 +143,25 @@ export default function DispatchCenter() {
             } else {
                 const newCallIds = [...currentIds].filter(id => !knownCallIdsRef.current.has(id));
                 if (newCallIds.length > 0 && soundEnabled) {
-                    playDispatchAlert();
-                    toast.info(`${newCallIds.length} new call${newCallIds.length > 1 ? 's' : ''} received`, {
-                        duration: 4000,
-                        style: { background: '#1e3a5f', color: 'white', border: '1px solid #3b82f6' }
-                    });
+                    const newCall = recentCalls.find(c => newCallIds.includes(c.id));
+                    const nearProperty = isCallNearMonitoredProperty(newCall, monitoredProperties);
+
+                    if (nearProperty) {
+                        // Property alert: continuous beeping
+                        playPropertyAlert();
+                        propertyAlertRef.current = { callId: newCall.id, timeout: setTimeout(() => stopPropertyAlert(), 60000) };
+                        toast.warning(`ALERT: Call near monitored property!`, {
+                            duration: 10000,
+                            style: { background: '#7c2d12', color: 'white', border: '1px solid #ea580c' }
+                        });
+                    } else {
+                        // Standard dispatch alert
+                        playDispatchAlert();
+                        toast.info(`${newCallIds.length} new call${newCallIds.length > 1 ? 's' : ''} received`, {
+                            duration: 4000,
+                            style: { background: '#1e3a5f', color: 'white', border: '1px solid #3b82f6' }
+                        });
+                    }
                 }
                 knownCallIdsRef.current = currentIds;
             }

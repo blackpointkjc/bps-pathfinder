@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
+import { playDispatchAlert, playPropertyAlert, stopPropertyAlert, isCallNearMonitoredProperty } from '@/utils/alertUtils';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,12 +65,28 @@ export default function CommandDashboard() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [lastRefresh, setLastRefresh] = useState(new Date());
+    const [monitoredProperties, setMonitoredProperties] = useState([]);
+    const knownCallIdsRef = React.useRef(null);
+    const propertyAlertRef = React.useRef(null);
 
     useEffect(() => {
         loadData();
-        const interval = setInterval(() => loadData(), 20000);
+        loadMonitoredProperties();
+        const interval = setInterval(() => {
+            loadData();
+            loadMonitoredProperties();
+        }, 20000);
         return () => clearInterval(interval);
     }, []);
+
+    const loadMonitoredProperties = async () => {
+        try {
+            const props = await base44.entities.MonitoredProperty.list();
+            setMonitoredProperties(props?.filter(p => p.enabled) || []);
+        } catch (error) {
+            console.error('Error loading monitored properties:', error);
+        }
+    };
 
     const loadData = async () => {
         try {
@@ -79,6 +96,27 @@ export default function CommandDashboard() {
                 base44.entities.User.list()
             ]);
             const active = (callsData || []).filter(c => !['Closed', 'Cleared', 'Cancelled'].includes(c.status));
+            
+            // Detect new calls and play alerts
+            const currentIds = new Set(active.map(c => c.id));
+            if (knownCallIdsRef.current === null) {
+                knownCallIdsRef.current = currentIds;
+            } else {
+                const newCallIds = [...currentIds].filter(id => !knownCallIdsRef.current.has(id));
+                if (newCallIds.length > 0) {
+                    const newCall = active.find(c => newCallIds.includes(c.id));
+                    const nearProperty = isCallNearMonitoredProperty(newCall, monitoredProperties);
+                    
+                    if (nearProperty) {
+                        playPropertyAlert();
+                        propertyAlertRef.current = { timeout: setTimeout(() => stopPropertyAlert(), 60000) };
+                    } else {
+                        playDispatchAlert();
+                    }
+                }
+                knownCallIdsRef.current = currentIds;
+            }
+            
             setCalls(active);
             setUnits(usersData || []);
             setLastRefresh(new Date());
