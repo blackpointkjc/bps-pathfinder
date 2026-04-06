@@ -110,10 +110,7 @@ export default function CommandDashboard() {
     const highCalls = calls.filter(c => getCallPriority(c) === 'high');
     const unassigned = calls.filter(c => !c.assigned_units || c.assigned_units.length === 0);
 
-    const sortedCalls = [...calls].sort((a, b) => {
-        const pOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-        return (pOrder[getCallPriority(a)] ?? 3) - (pOrder[getCallPriority(b)] ?? 3);
-    });
+    const sortedCalls = [...calls].sort((a, b) => new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date));
 
     if (loading) {
         return (
@@ -199,7 +196,7 @@ export default function CommandDashboard() {
                                 <div className="flex items-center justify-center py-12 text-slate-500 font-mono text-sm">
                                     NO ACTIVE CALLS
                                 </div>
-                            ) : [...sortedCalls].sort((a, b) => new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date)).slice(0, 15).map(call => {
+                            ) : sortedCalls.slice(0, 15).map(call => {
                                                  const priority = getCallPriority(call);
                                                  return (
                                     <div key={call.id}
