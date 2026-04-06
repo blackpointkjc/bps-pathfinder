@@ -161,7 +161,10 @@ export default function Navigation() {
         } catch (e) {} finally { setIsLoadingCalls(false); }
     };
 
-    const onlineUnits = otherUnits.filter(u => u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
+    // Include current user in the board with live status, merge with other units
+    const selfEntry = currentUser ? { ...currentUser, status: unitStatus } : null;
+    const otherOnline = otherUnits.filter(u => u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
+    const onlineUnits = selfEntry ? [selfEntry, ...otherOnline] : otherOnline;
     const availableCount = onlineUnits.filter(u => u.status === 'Available').length;
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
