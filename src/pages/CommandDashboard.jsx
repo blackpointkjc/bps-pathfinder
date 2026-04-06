@@ -199,9 +199,9 @@ export default function CommandDashboard() {
                                 <div className="flex items-center justify-center py-12 text-slate-500 font-mono text-sm">
                                     NO ACTIVE CALLS
                                 </div>
-                            ) : sortedCalls.slice(0, 15).map(call => {
-                                const priority = getCallPriority(call);
-                                return (
+                            ) : [...sortedCalls].sort((a, b) => new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date)).slice(0, 15).map(call => {
+                                                 const priority = getCallPriority(call);
+                                                 return (
                                     <div key={call.id}
                                         onClick={() => navigate(createPageUrl('CallHistory'))}
                                         className="flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 cursor-pointer transition-colors">
