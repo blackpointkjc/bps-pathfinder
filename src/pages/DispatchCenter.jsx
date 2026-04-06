@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Plus, Shield, Radio, AlertCircle, Car, Map as MapIcon, Volume2, VolumeX, RefreshCw } from 'lucide-react';
+import { Plus, Shield, Radio, Map as MapIcon, Volume2, VolumeX, RefreshCw } from 'lucide-react';
 import { createPageUrl } from '../utils';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
@@ -230,165 +230,228 @@ export default function DispatchCenter() {
         );
     }
 
-    const priorityColor = (priority) => {
-        if (priority === 'critical') return 'border-l-red-500 bg-red-950/20';
-        if (priority === 'high') return 'border-l-orange-500 bg-orange-950/20';
-        if (priority === 'medium') return 'border-l-yellow-500 bg-yellow-950/10';
-        return 'border-l-slate-600 bg-slate-900';
+    const priorityBg = (priority) => {
+        if (priority === 'critical') return 'bg-red-700 text-white';
+        if (priority === 'high') return 'bg-orange-600 text-white';
+        if (priority === 'medium') return 'bg-yellow-600 text-black';
+        return 'bg-slate-600 text-slate-200';
     };
 
-    const statusDot = (status) => {
-        if (status === 'Available') return 'bg-green-400';
+    const statusColor = (status) => {
+        if (status === 'Available') return 'bg-green-500';
         if (status === 'Enroute') return 'bg-yellow-400';
-        if (status === 'On Scene') return 'bg-blue-400';
-        return 'bg-gray-400';
+        if (status === 'On Scene') return 'bg-blue-500';
+        if (status === 'Busy') return 'bg-orange-500';
+        return 'bg-slate-500';
     };
+
+    const allCalls = activeCalls;
 
     return (
-        <div className="h-screen flex flex-col bg-slate-950 overflow-hidden">
-            {/* ── TOP COMMAND BAR ── */}
-            <div className="flex-none bg-slate-900 border-b border-slate-700 px-4 py-2 flex items-center gap-3">
+        <div className="h-screen flex flex-col bg-[#0a0e1a] text-white overflow-hidden font-mono">
+
+            {/* ══ TOP SYSTEM BAR ══ */}
+            <div className="flex-none h-9 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center px-3 gap-3">
                 <div className="flex items-center gap-2">
-                    <Radio className="w-5 h-5 text-red-400" />
-                    <span className="text-white font-bold font-mono tracking-widest text-sm">BPS DISPATCH CENTER</span>
-                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse ml-1" />
-                    <span className="text-green-400 font-mono text-xs">LIVE</span>
-                </div>
-                <div className="flex gap-1 ml-2">
-                    <button onClick={() => setSortOrder('desc')} className={`px-2 py-1 rounded text-xs font-mono border ${sortOrder==='desc' ? 'bg-blue-600 border-blue-500 text-white' : 'border-slate-600 text-slate-400 hover:text-white'}`}>NEWEST</button>
-                    <button onClick={() => setSortOrder('asc')} className={`px-2 py-1 rounded text-xs font-mono border ${sortOrder==='asc' ? 'bg-blue-600 border-blue-500 text-white' : 'border-slate-600 text-slate-400 hover:text-white'}`}>OLDEST</button>
+                    <Radio className="w-4 h-4 text-[#f5a623]" />
+                    <span className="text-[#f5a623] font-bold text-xs tracking-widest">BPS CAD</span>
+                    <span className="text-slate-500 text-xs">|</span>
+                    <span className="text-slate-300 text-xs">DISPATCH CENTER</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse ml-1" />
+                    <span className="text-green-400 text-[10px]">ONLINE</span>
                 </div>
                 <div className="flex-1" />
-                <div className="flex items-center gap-2">
-                    <Button onClick={handleRefresh} disabled={refreshing} size="sm" className="bg-emerald-700 hover:bg-emerald-600 font-mono text-xs h-8">
-                        <RefreshCw className={`w-3 h-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
-                        {refreshing ? 'REFRESHING...' : 'REFRESH FEED'}
-                    </Button>
-                    <button onClick={() => setSoundEnabled(!soundEnabled)} className={`px-2 py-1 rounded border text-xs font-mono ${soundEnabled ? 'border-green-500/50 text-green-400' : 'border-slate-600 text-slate-500'}`}>
-                        {soundEnabled ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
+                <div className="flex items-center gap-1.5">
+                    <button onClick={handleRefresh} disabled={refreshing}
+                        className="flex items-center gap-1 px-2 py-1 bg-[#1a2a40] hover:bg-[#243550] border border-[#2a3f60] rounded text-[10px] text-green-400">
+                        <RefreshCw className={`w-2.5 h-2.5 ${refreshing ? 'animate-spin' : ''}`} />
+                        {refreshing ? 'REFRESHING' : 'REFRESH FEED'}
                     </button>
-                    <button onClick={() => setShowMap(!showMap)} className={`px-2 py-1 rounded border text-xs font-mono ${showMap ? 'border-blue-500/50 text-blue-400' : 'border-slate-600 text-slate-500'}`}>
-                        <MapIcon className="w-3 h-3" />
+                    <button onClick={() => setSoundEnabled(!soundEnabled)}
+                        className={`px-2 py-1 border rounded text-[10px] ${
+                            soundEnabled ? 'border-green-500/40 text-green-400 bg-green-900/20' : 'border-slate-600 text-slate-500'
+                        }`}>
+                        {soundEnabled ? <Volume2 className="w-2.5 h-2.5" /> : <VolumeX className="w-2.5 h-2.5" />}
                     </button>
-                    <button onClick={() => setShowPriorCalls(!showPriorCalls)} className={`px-2 py-1 rounded border text-xs font-mono ${showPriorCalls ? 'border-amber-500/50 text-amber-400' : 'border-slate-600 text-slate-400 hover:text-white'}`}>
-                        {showPriorCalls ? 'ACTIVE' : 'PRIOR CALLS'}
+                    <button onClick={() => setShowMap(!showMap)}
+                        className={`px-2 py-1 border rounded text-[10px] ${
+                            showMap ? 'border-blue-500/40 text-blue-400 bg-blue-900/20' : 'border-slate-600 text-slate-500'
+                        }`}>
+                        <MapIcon className="w-2.5 h-2.5" />
                     </button>
-                    <button onClick={() => setShowMessaging(!showMessaging)} className="px-2 py-1 rounded border border-slate-600 text-slate-400 hover:text-white text-xs font-mono">MSG</button>
-                    <Button onClick={() => setShowCreateDialog(true)} size="sm" className="bg-red-600 hover:bg-red-700 font-mono text-xs h-8">
-                        <Radio className="w-3 h-3 mr-1" /> NEW CALL
-                    </Button>
+                    <button onClick={() => setShowPriorCalls(!showPriorCalls)}
+                        className={`px-2 py-1 border rounded text-[10px] ${
+                            showPriorCalls ? 'border-amber-500/40 text-amber-400' : 'border-slate-600 text-slate-400 hover:text-white'
+                        }`}>
+                        {showPriorCalls ? 'ACTIVE' : 'PRIOR'}
+                    </button>
+                    <button onClick={() => setShowMessaging(!showMessaging)}
+                        className="px-2 py-1 border border-slate-600 text-slate-400 hover:text-white rounded text-[10px]">MSG</button>
                     {currentUser?.role === 'admin' && (
-                        <Button variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-800 font-mono text-xs h-8" onClick={() => navigate(createPageUrl('AdminPortal'))}>
-                            <Shield className="w-3 h-3 mr-1" /> ADMIN
-                        </Button>
+                        <button onClick={() => navigate(createPageUrl('AdminPortal'))}
+                            className="flex items-center gap-1 px-2 py-1 border border-slate-600 text-slate-400 hover:text-white rounded text-[10px]">
+                            <Shield className="w-2.5 h-2.5" /> ADMIN
+                        </button>
                     )}
+                    <button onClick={() => setShowCreateDialog(true)}
+                        className="flex items-center gap-1 px-3 py-1 bg-red-700 hover:bg-red-600 rounded text-[10px] text-white font-bold">
+                        <Plus className="w-2.5 h-2.5" /> NEW CALL
+                    </button>
                 </div>
             </div>
 
-            {/* ── QUICK ACTIONS ── */}
-            <div className="flex-none border-b border-slate-800 px-3 py-1.5">
+            {/* ══ QUICK ACTIONS ══ */}
+            <div className="flex-none border-b border-[#1e2d4a] bg-[#0d1220] px-3 py-1">
                 <QuickActions onCreateCall={handleQuickDispatch} />
             </div>
 
-            {/* ── MAIN DISPATCH GRID ── */}
+            {/* ══ SORT CONTROLS ══ */}
+            <div className="flex-none flex items-center gap-2 px-3 py-1 bg-[#0a0e1a] border-b border-[#1e2d4a]">
+                <span className="text-[10px] text-slate-500">SORT:</span>
+                <button onClick={() => setSortOrder('desc')} className={`px-2 py-0.5 rounded text-[10px] border ${
+                    sortOrder === 'desc' ? 'border-[#f5a623] text-[#f5a623] bg-[#f5a623]/10' : 'border-slate-700 text-slate-500'
+                }`}>NEWEST</button>
+                <button onClick={() => setSortOrder('asc')} className={`px-2 py-0.5 rounded text-[10px] border ${
+                    sortOrder === 'asc' ? 'border-[#f5a623] text-[#f5a623] bg-[#f5a623]/10' : 'border-slate-700 text-slate-500'
+                }`}>OLDEST</button>
+                <span className="ml-3 text-[10px] text-slate-500">TOTAL ACTIVE: <span className="text-white font-bold">{allCalls.length}</span></span>
+            </div>
+
+            {/* ══ MAIN GRID ══ */}
             {showPriorCalls ? (
                 <div className="flex-1 overflow-auto p-3">
                     <PriorCallsView currentUser={currentUser} units={units} />
                 </div>
             ) : (
-                <div className="flex-1 min-h-0 flex gap-0 overflow-hidden">
+                <div className="flex-1 min-h-0 flex overflow-hidden">
 
-                    {/* ── COLUMN 1: CALLS LIST ── */}
-                    <div className="w-72 flex-none flex flex-col border-r border-slate-800 bg-slate-950">
+                    {/* ═══ LEFT: ACTIVE CALLS TABLE ═══ */}
+                    <div className="w-[340px] flex-none flex flex-col border-r border-[#1e2d4a]">
                         {/* Police Calls */}
-                        <div className="flex-1 min-h-0 flex flex-col border-b border-slate-800">
-                            <div className="flex-none px-3 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
-                                <span className="text-xs font-bold font-mono text-amber-400 tracking-widest">POLICE CALLS</span>
-                                <span className="text-xs font-mono bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">{activeCalls.filter(c => c.source).length}</span>
-                            </div>
-                            <div className="flex-1 overflow-y-auto">
-                                {activeCalls.filter(c => c.source).length === 0 ? (
-                                    <div className="text-xs text-slate-500 text-center mt-6 font-mono">NO ACTIVE CALLS</div>
-                                ) : activeCalls.filter(c => c.source).map(call => (
-                                    <div
-                                        key={call.id}
-                                        onClick={() => handleSelectCall(call)}
-                                        className={`border-l-4 border-b border-slate-800 px-3 py-2 cursor-pointer transition-all ${
-                                            selectedCall?.id === call.id
-                                                ? 'bg-blue-900/40 border-l-blue-400'
-                                                : `${priorityColor(call.priority)} hover:brightness-110`
-                                        }`}
-                                    >
-                                        <div className="text-xs font-bold text-white font-mono leading-tight truncate">{call.incident}</div>
-                                        <div className="text-[10px] text-slate-400 truncate mt-0.5">{call.location}</div>
-                                        <div className="flex items-center justify-between mt-1">
-                                            <span className="text-[10px] text-slate-500 font-mono">
-                                                {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })}
-                                            </span>
-                                            {call.priority && <span className={`text-[9px] font-bold px-1.5 rounded font-mono ${
-                                                call.priority === 'critical' ? 'bg-red-600 text-white' :
-                                                call.priority === 'high' ? 'bg-orange-500 text-white' :
-                                                call.priority === 'medium' ? 'bg-yellow-600 text-white' : 'bg-slate-600 text-slate-300'
-                                            }`}>{call.priority?.toUpperCase()}</span>}
-                                        </div>
+                        <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />
+                            <span className="text-[10px] font-bold text-[#f5a623] tracking-widest">ACTIVE POLICE CALLS</span>
+                            <span className="ml-auto text-[10px] bg-[#f5a623]/20 text-[#f5a623] px-2 rounded-full border border-[#f5a623]/30">{allCalls.filter(c => c.source).length}</span>
+                        </div>
+                        {/* Table header */}
+                        <div className="flex-none grid grid-cols-12 px-2 py-1 bg-[#111827] border-b border-[#1e2d4a] text-[9px] text-slate-500 uppercase">
+                            <div className="col-span-2">PRI</div>
+                            <div className="col-span-5">INCIDENT</div>
+                            <div className="col-span-5">TIME</div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto" style={{maxHeight: '45%'}}>
+                            {allCalls.filter(c => c.source).length === 0 ? (
+                                <div className="text-[10px] text-slate-600 text-center py-4">NO ACTIVE CALLS</div>
+                            ) : allCalls.filter(c => c.source).map(call => (
+                                <div key={call.id} onClick={() => handleSelectCall(call)}
+                                    className={`grid grid-cols-12 px-2 py-1.5 border-b border-[#1a2535] cursor-pointer transition-colors ${
+                                        selectedCall?.id === call.id
+                                            ? 'bg-[#1a3a5c] border-l-2 border-l-[#3b82f6]'
+                                            : 'hover:bg-[#111827]'
+                                    }`}>
+                                    <div className="col-span-2">
+                                        <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${priorityBg(call.priority)}`}>
+                                            {call.priority ? call.priority[0].toUpperCase() : 'L'}
+                                        </span>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="col-span-5">
+                                        <div className="text-[10px] text-white font-bold truncate leading-tight">{call.incident}</div>
+                                        <div className="text-[9px] text-slate-400 truncate">{call.location}</div>
+                                    </div>
+                                    <div className="col-span-5 text-[9px] text-slate-400 text-right pr-1">
+                                        {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
 
                         {/* Dispatch Calls */}
-                        <div className="flex-1 min-h-0 flex flex-col">
-                            <div className="flex-none px-3 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
-                                <span className="text-xs font-bold font-mono text-red-400 tracking-widest">DISPATCH CALLS</span>
-                                <span className="text-xs font-mono bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full border border-red-500/30">{activeCalls.filter(c => !c.source).length}</span>
-                            </div>
-                            <div className="flex-1 overflow-y-auto">
-                                {activeCalls.filter(c => !c.source).length === 0 ? (
-                                    <div className="text-xs text-slate-500 text-center mt-6 font-mono">NO DISPATCH CALLS</div>
-                                ) : activeCalls.filter(c => !c.source).map(call => (
-                                    <div
-                                        key={call.id}
-                                        onClick={() => handleSelectCall(call)}
-                                        className={`border-l-4 border-b border-slate-800 px-3 py-2 cursor-pointer transition-all ${
-                                            selectedCall?.id === call.id
-                                                ? 'bg-blue-900/40 border-l-blue-400'
-                                                : `${priorityColor(call.priority)} hover:brightness-110`
-                                        }`}
-                                    >
-                                        <div className="text-xs font-bold text-white font-mono leading-tight truncate">{call.incident}</div>
-                                        <div className="text-[10px] text-slate-400 truncate mt-0.5">{call.location}</div>
-                                        <div className="flex items-center justify-between mt-1">
-                                            <span className="text-[10px] text-slate-500 font-mono">
-                                                {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })}
-                                            </span>
-                                            {call.priority && <span className={`text-[9px] font-bold px-1.5 rounded font-mono ${
-                                                call.priority === 'critical' ? 'bg-red-600 text-white' :
-                                                call.priority === 'high' ? 'bg-orange-500 text-white' :
-                                                call.priority === 'medium' ? 'bg-yellow-600 text-white' : 'bg-slate-600 text-slate-300'
-                                            }`}>{call.priority?.toUpperCase()}</span>}
-                                        </div>
+                        <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-t border-[#1e2d4a] flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                            <span className="text-[10px] font-bold text-red-400 tracking-widest">DISPATCH CALLS</span>
+                            <span className="ml-auto text-[10px] bg-red-500/20 text-red-400 px-2 rounded-full border border-red-500/30">{allCalls.filter(c => !c.source).length}</span>
+                        </div>
+                        <div className="flex-none grid grid-cols-12 px-2 py-1 bg-[#111827] border-b border-[#1e2d4a] text-[9px] text-slate-500 uppercase">
+                            <div className="col-span-2">PRI</div>
+                            <div className="col-span-5">INCIDENT</div>
+                            <div className="col-span-5">TIME</div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto">
+                            {allCalls.filter(c => !c.source).length === 0 ? (
+                                <div className="text-[10px] text-slate-600 text-center py-4">NO DISPATCH CALLS</div>
+                            ) : allCalls.filter(c => !c.source).map(call => (
+                                <div key={call.id} onClick={() => handleSelectCall(call)}
+                                    className={`grid grid-cols-12 px-2 py-1.5 border-b border-[#1a2535] cursor-pointer transition-colors ${
+                                        selectedCall?.id === call.id
+                                            ? 'bg-[#1a3a5c] border-l-2 border-l-[#3b82f6]'
+                                            : 'hover:bg-[#111827]'
+                                    }`}>
+                                    <div className="col-span-2">
+                                        <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${priorityBg(call.priority)}`}>
+                                            {call.priority ? call.priority[0].toUpperCase() : 'L'}
+                                        </span>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="col-span-5">
+                                        <div className="text-[10px] text-white font-bold truncate leading-tight">{call.incident}</div>
+                                        <div className="text-[9px] text-slate-400 truncate">{call.location}</div>
+                                    </div>
+                                    <div className="col-span-5 text-[9px] text-slate-400 text-right pr-1">
+                                        {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
-                    {/* ── COLUMN 2: MAP + UNIT ASSIGNMENT ── */}
-                    <div className="flex-1 min-w-0 flex flex-col border-r border-slate-800">
-                        {/* Map */}
+                    {/* ═══ CENTER: MAP + CALL DETAIL ═══ */}
+                    <div className="flex-1 min-w-0 flex flex-col border-r border-[#1e2d4a]">
+                        {/* Call Detail */}
+                        <div className="flex-none border-b border-[#1e2d4a]" style={{minHeight: 0}}>
+                            {selectedCall ? (
+                                <div className="overflow-auto" style={{maxHeight: '220px'}}>
+                                    <div className="px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-3">
+                                        <span className="text-[#f5a623] font-bold text-xs">EVENT #{selectedCall.call_id || selectedCall.id?.slice(-8).toUpperCase()}</span>
+                                        <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(selectedCall.priority)}`}>{(selectedCall.priority || 'low').toUpperCase()}</span>
+                                        <span className="text-[10px] text-slate-400">{selectedCall.status}</span>
+                                        <span className="ml-auto text-[9px] text-slate-500">
+                                            RECV: {new Date(selectedCall.time_received || selectedCall.created_date).toLocaleString('en-US', {timeZone:'America/New_York', month:'2-digit', day:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit'})}
+                                        </span>
+                                    </div>
+                                    <div className="px-4 py-2 grid grid-cols-2 gap-x-6 gap-y-1 text-[10px]">
+                                        <div><span className="text-slate-500">INCIDENT: </span><span className="text-white font-bold">{selectedCall.incident}</span></div>
+                                        <div><span className="text-slate-500">AGENCY: </span><span className="text-white">{selectedCall.agency || '—'}</span></div>
+                                        <div className="col-span-2"><span className="text-slate-500">LOCATION: </span><span className="text-white">{selectedCall.location}</span></div>
+                                        {selectedCall.caller_name && <div><span className="text-slate-500">CALLER: </span><span className="text-white">{selectedCall.caller_name}</span></div>}
+                                        {selectedCall.caller_phone && <div><span className="text-slate-500">PHONE: </span><span className="text-white">{selectedCall.caller_phone}</span></div>}
+                                        {selectedCall.zone && <div><span className="text-slate-500">ZONE: </span><span className="text-white">{selectedCall.zone}</span></div>}
+                                    </div>
+                                    {selectedCall.description && (
+                                        <div className="px-4 pb-2">
+                                            <div className="text-[9px] text-slate-500 mb-1">NARRATIVE</div>
+                                            <div className="text-[10px] text-slate-300 bg-[#111827] rounded p-2 leading-relaxed">{selectedCall.description}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-center h-16 text-[10px] text-slate-600">
+                                    SELECT A CALL TO VIEW DETAILS
+                                </div>
+                            )}
+                        </div>
+
+                        {/* MAP */}
                         {showMap && (
                             <div className="flex-1 min-h-0 flex flex-col">
-                                <div className="flex-none px-3 py-2 bg-slate-900 border-b border-slate-800 flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                    <span className="text-xs font-bold font-mono text-emerald-400 tracking-widest">LIVE TACTICAL MAP</span>
+                                <div className="flex-none px-3 py-1 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                    <span className="text-[10px] font-bold text-emerald-400 tracking-widest">LIVE TACTICAL MAP</span>
                                 </div>
-                                <div className="flex-1 relative">
+                                <div className="flex-1" style={{minHeight: '200px'}}>
                                     <MapContainer
                                         center={[37.5407, -77.4360]}
                                         zoom={11}
                                         className="h-full w-full"
                                         zoomControl={true}
-                                        style={{ zIndex: 0 }}
                                     >
                                         <TileLayer
                                             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
@@ -402,13 +465,17 @@ export default function DispatchCenter() {
                                 </div>
                             </div>
                         )}
+                    </div>
 
+                    {/* ═══ RIGHT: UNITS ═══ */}
+                    <div className="w-64 flex-none flex flex-col">
                         {/* Unit Assignment */}
-                        <div className="flex-none h-52 border-t border-slate-800 flex flex-col">
-                            <div className="flex-none px-3 py-2 bg-slate-900 border-b border-slate-800">
-                                <span className="text-xs font-bold font-mono text-blue-400 tracking-widest">UNIT ASSIGNMENT</span>
+                        <div className="flex-none border-b border-[#1e2d4a]">
+                            <div className="px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                                <span className="text-[10px] font-bold text-blue-400 tracking-widest">UNIT ASSIGNMENT</span>
                             </div>
-                            <div className="flex-1 overflow-y-auto p-2">
+                            <div className="p-2 max-h-48 overflow-y-auto">
                                 <UnitAssignmentPanel
                                     call={selectedCall}
                                     units={units}
@@ -416,39 +483,40 @@ export default function DispatchCenter() {
                                 />
                             </div>
                         </div>
-                    </div>
-
-                    {/* ── COLUMN 3: CALL DETAIL + ACTIVE UNITS ── */}
-                    <div className="w-80 flex-none flex flex-col bg-slate-950">
-                        {/* Call Detail */}
-                        <div className="flex-1 min-h-0 overflow-hidden border-b border-slate-800">
-                            <CallDetailPanel
-                                call={selectedCall}
-                                currentUser={currentUser}
-                                onUpdate={handleUpdate}
-                                units={units}
-                            />
-                        </div>
 
                         {/* Active Units */}
-                        <div className="flex-none h-56 flex flex-col">
-                            <div className="flex-none px-3 py-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
-                                <span className="text-xs font-bold font-mono text-green-400 tracking-widest">ACTIVE UNITS</span>
-                                <span className="text-xs font-mono bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full border border-green-500/30">{units.filter(u => u.status && u.status !== 'Out of Service').length}</span>
+                        <div className="flex-1 min-h-0 flex flex-col">
+                            <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                                <span className="text-[10px] font-bold text-green-400 tracking-widest">ACTIVE UNITS</span>
+                                <span className="ml-auto text-[10px] bg-green-500/20 text-green-300 px-2 rounded-full border border-green-500/30">{units.filter(u => u.status && u.status !== 'Out of Service').length}</span>
                             </div>
-                            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                            {/* Units table header */}
+                            <div className="flex-none grid grid-cols-12 px-2 py-1 bg-[#111827] border-b border-[#1e2d4a] text-[9px] text-slate-500 uppercase">
+                                <div className="col-span-1"></div>
+                                <div className="col-span-7">UNIT</div>
+                                <div className="col-span-4">STATUS</div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto">
                                 {units.filter(u => u.status && u.status !== 'Out of Service').length === 0 ? (
-                                    <div className="text-xs text-slate-500 text-center mt-4 font-mono">NO ACTIVE UNITS</div>
+                                    <div className="text-[10px] text-slate-600 text-center py-4">NO ACTIVE UNITS</div>
                                 ) : units.filter(u => u.status && u.status !== 'Out of Service').map(unit => (
-                                    <div key={unit.id} className="flex items-center gap-2 px-2 py-1.5 rounded bg-slate-900 border border-slate-800">
-                                        <span className={`w-2 h-2 rounded-full flex-none ${statusDot(unit.status)}`} />
-                                        <span className="text-xs font-bold text-white font-mono flex-1 truncate">{unit.unit_number || unit.full_name}</span>
-                                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                                            unit.status === 'Available' ? 'bg-green-700/50 text-green-300' :
-                                            unit.status === 'Enroute' ? 'bg-yellow-700/50 text-yellow-300' :
-                                            unit.status === 'On Scene' ? 'bg-blue-700/50 text-blue-300' :
-                                            'bg-slate-700 text-slate-400'
-                                        }`}>{unit.status}</span>
+                                    <div key={unit.id} className="grid grid-cols-12 px-2 py-1.5 border-b border-[#1a2535] hover:bg-[#111827]">
+                                        <div className="col-span-1 flex items-center">
+                                            <span className={`w-2 h-2 rounded-full ${statusColor(unit.status)}`} />
+                                        </div>
+                                        <div className="col-span-7">
+                                            <div className="text-[10px] text-white font-bold truncate">{unit.unit_number || unit.full_name}</div>
+                                            {unit.current_call_info && <div className="text-[9px] text-slate-500 truncate">{unit.current_call_info}</div>}
+                                        </div>
+                                        <div className="col-span-4">
+                                            <span className={`text-[8px] px-1 py-0.5 rounded font-bold ${
+                                                unit.status === 'Available' ? 'bg-green-700/60 text-green-300' :
+                                                unit.status === 'Enroute' ? 'bg-yellow-700/60 text-yellow-300' :
+                                                unit.status === 'On Scene' ? 'bg-blue-700/60 text-blue-300' :
+                                                'bg-slate-700 text-slate-400'
+                                            }`}>{unit.status}</span>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -456,6 +524,15 @@ export default function DispatchCenter() {
                     </div>
                 </div>
             )}
+
+            {/* ══ BOTTOM STATUS BAR ══ */}
+            <div className="flex-none h-6 bg-[#0d1220] border-t border-[#1e2d4a] flex items-center px-3 gap-4 text-[9px] text-slate-500">
+                <span>CALLS: <span className="text-white">{allCalls.length}</span></span>
+                <span>UNITS ACTIVE: <span className="text-green-400">{units.filter(u => u.status && u.status !== 'Out of Service').length}</span></span>
+                <span>UNASSIGNED: <span className="text-yellow-400">{allCalls.filter(c => !c.assigned_units?.length).length}</span></span>
+                <div className="flex-1" />
+                <span className="text-green-400 font-bold">● ONLINE</span>
+            </div>
 
             {/* Messaging Panel */}
             <MessagingPanel
