@@ -120,14 +120,15 @@ export default function Navigation() {
         if (now - lastUpdateRef.current < 5000) return;
         lastUpdateRef.current = now;
         try {
+            // Only update location fields — never overwrite status here
+            // Status is only changed by explicit user action
             await base44.auth.updateMe({
                 latitude: coords[0], longitude: coords[1],
                 heading: hdg || 0, speed: spd || 0,
-                status: unitStatus, show_on_map: true,
                 last_updated: new Date().toISOString()
             });
         } catch (e) {}
-    }, [unitStatus]);
+    }, []);
 
     const recenter = () => {
         if (navigator.geolocation) {
