@@ -311,10 +311,29 @@ export default function Navigation() {
                 </button>
             </motion.div>
 
-            {/* Left panel: Unit Board + My Status */}
-            <div className="absolute bottom-6 left-3 z-[1001] pointer-events-auto flex flex-col gap-2 max-h-[calc(100vh-120px)]">
+            {/* Left panel: Unit Board + My Status side by side */}
+            <div className="absolute bottom-6 left-3 z-[1001] pointer-events-auto flex flex-row gap-2 items-end max-w-[calc(100vw-60px)]">
+                {/* My Status Selector */}
+                <div className="bg-slate-900/95 backdrop-blur border border-slate-700 rounded-xl p-2 flex flex-col gap-1 flex-shrink-0">
+                    <div className="text-[9px] text-slate-500 font-mono font-bold px-1 mb-0.5">MY STATUS</div>
+                    {ALL_STATUSES.map(({ label, color }) => (
+                        <button
+                            key={label}
+                            onClick={() => handleStatusChange(label)}
+                            className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all ${
+                                unitStatus === label
+                                    ? 'bg-white/10 text-white font-bold ring-1 ring-white/30'
+                                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                            }`}
+                        >
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${color}`} />
+                            {label}
+                        </button>
+                    ))}
+                </div>
+
                 {/* All Units Status Board */}
-                <div className="bg-slate-900/95 backdrop-blur border border-slate-700 rounded-xl p-2 overflow-y-auto flex-shrink min-h-0">
+                <div className="bg-slate-900/95 backdrop-blur border border-slate-700 rounded-xl p-2 overflow-y-auto max-h-[calc(100vh-120px)] min-w-[140px]">
                     <div className="text-[9px] text-slate-500 font-mono font-bold px-1 mb-1">UNIT STATUS BOARD</div>
                     <div className="space-y-0.5">
                         {ACTIVE_STATUSES.filter(s => s !== 'Supervisor' || isSupervisorUser).map(s => {
@@ -342,25 +361,6 @@ export default function Navigation() {
                             <div className="text-[9px] text-slate-600 font-mono px-1 py-1">No active units</div>
                         )}
                     </div>
-                </div>
-
-                {/* My Status Selector */}
-                <div className="bg-slate-900/95 backdrop-blur border border-slate-700 rounded-xl p-2 flex flex-col gap-1 flex-shrink-0">
-                    <div className="text-[9px] text-slate-500 font-mono font-bold px-1 mb-0.5">MY STATUS</div>
-                    {ALL_STATUSES.map(({ label, color }) => (
-                        <button
-                            key={label}
-                            onClick={() => handleStatusChange(label)}
-                            className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all ${
-                                unitStatus === label
-                                    ? 'bg-white/10 text-white font-bold ring-1 ring-white/30'
-                                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                            }`}
-                        >
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${color}`} />
-                            {label}
-                        </button>
-                    ))}
                 </div>
             </div>
 
