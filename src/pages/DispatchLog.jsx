@@ -48,6 +48,11 @@ export default function DispatchLog() {
         }
     };
 
+    const formatTimestamp = (dateStr) => {
+        if (!dateStr) return new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }) + ' EST';
+        return new Date(dateStr).toLocaleString('en-US', { timeZone: 'America/New_York' }) + ' EST';
+    };
+
     const allLogs = [
         ...statusLogs.map(log => ({ ...log, type: 'unit', timestamp: log.created_date })),
         ...callLogs.map(log => ({ ...log, type: 'call', timestamp: log.created_date }))
@@ -153,7 +158,7 @@ export default function DispatchLog() {
                                             </div>
                                             <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
                                                 <Clock className="w-3 h-3" />
-                                                {new Date(log.timestamp).toLocaleString('en-US', { timeZone: 'America/New_York' })} EST
+                                                {formatTimestamp(log.timestamp)}
                                             </div>
                                         </div>
                                         {log.type === 'unit' ? (
