@@ -67,12 +67,13 @@ export default function CommandDashboard() {
 
     useEffect(() => {
         loadData();
-        const interval = setInterval(loadData, 30000);
+        const interval = setInterval(() => loadData(), 20000);
         return () => clearInterval(interval);
     }, []);
 
     const loadData = async () => {
         try {
+            await base44.functions.invoke('ingestGractivecalls', {});
             const [callsData, usersData] = await Promise.all([
                 base44.entities.DispatchCall.list('-created_date', 200),
                 base44.entities.User.list()
@@ -86,7 +87,7 @@ export default function CommandDashboard() {
         } finally {
             setLoading(false);
         }
-    };
+    }
 
     const handleRefresh = async () => {
         setRefreshing(true);
