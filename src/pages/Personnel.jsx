@@ -103,54 +103,14 @@ export default function Personnel() {
     return (
         <div className="min-h-screen bg-slate-950">
             {/* Header */}
-            <div className="bg-slate-900 border-b-2 border-blue-500/30 shadow-lg">
+            <div className="bg-slate-900 border-b border-slate-800">
                 <div className="px-6 py-3">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <Button
-                                variant="ghost"
-                                onClick={() => window.location.href = createPageUrl('CADHome')}
-                                className="text-slate-400 hover:text-white font-mono text-xs"
-                            >
-                                ← CAD HOME
-                            </Button>
-                            <div className="h-6 w-px bg-slate-700" />
-                            <Users className="w-6 h-6 text-blue-400" />
-                            <h1 className="text-xl font-bold text-white tracking-tight font-mono">PERSONNEL ROSTER</h1>
-                            <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono">
-                                {filteredPersonnel.length} PERSONNEL
-                            </Badge>
-                        </div>
-                        <div className="flex gap-2">
-                            <Button
-                                size="sm"
-                                onClick={() => window.location.href = createPageUrl('ActiveCalls')}
-                                className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
-                            >
-                                CALLS
-                            </Button>
-                            <Button
-                                size="sm"
-                                onClick={() => window.location.href = createPageUrl('Units')}
-                                className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
-                            >
-                                UNITS
-                            </Button>
-                            <Button
-                                size="sm"
-                                onClick={() => window.location.href = createPageUrl('Reports')}
-                                className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
-                            >
-                                REPORTS
-                            </Button>
-                            <Button
-                                size="sm"
-                                onClick={() => window.location.href = createPageUrl('AdminPortal') + '#tracking'}
-                                className="bg-slate-800 hover:bg-slate-700 font-mono text-xs"
-                            >
-                                TRACKING
-                            </Button>
-                        </div>
+                    <div className="flex items-center gap-4">
+                        <Users className="w-5 h-5 text-gold" />
+                        <h1 className="text-lg font-bold text-white tracking-tight font-mono">PERSONNEL ROSTER</h1>
+                        <Badge className="bg-gold/20 text-gold border border-gold/30 font-mono">
+                            {filteredPersonnel.length} PERSONNEL
+                        </Badge>
                     </div>
                 </div>
             </div>
@@ -203,7 +163,7 @@ export default function Personnel() {
                                 <tbody>
                                     {filteredPersonnel.map((person) => (
                                         <tr key={person.id} className="border-b border-slate-800 hover:bg-slate-800/50">
-                                            <td className="p-3 text-white font-mono text-sm">{person.full_name}</td>
+                                            <td className="p-3 text-white font-mono text-sm">{(() => { const parts = (person.full_name || '').trim().split(' '); if (parts.length < 2) return person.full_name || '-'; return `${parts[parts.length - 1]}, ${parts.slice(0, parts.length - 1).join(' ')}`; })()}</td>
                                             <td className="p-3 text-white font-mono text-sm">
                                                 {person.unit_number ? `UNIT-${person.unit_number}` : '-'}
                                             </td>

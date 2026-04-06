@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-// eslint-disable-next-line no-unused-vars
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
     Radio, Activity, MapPin, Clock, Shield, Users, BarChart2,
-    ChevronLeft, ChevronRight, Bell, Search, LogOut, Settings,
-    Home, Zap, FileText, AlertTriangle, Menu, X
+    ChevronLeft, ChevronRight, Bell, Settings,
+    Home, Zap, FileText, Menu, X, LogOut
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from './utils';
@@ -21,7 +20,6 @@ const NAV_SECTIONS = [
     {
         label: 'DISPATCH',
         items: [
-            { label: 'Active Calls', icon: Radio, page: 'ActiveCalls' },
             { label: 'Dispatch Center', icon: Zap, page: 'DispatchCenter' },
             { label: 'Call History', icon: Clock, page: 'CallHistory' },
         ]
@@ -38,16 +36,14 @@ const NAV_SECTIONS = [
         label: 'SYSTEM',
         items: [
             { label: 'System Status', icon: Activity, page: 'SystemStatus' },
-            { label: 'Admin Portal', icon: Shield, page: 'AdminPortal', adminOnly: true },
+            { label: 'Admin Portal', icon: Shield, page: 'AdminPortal' },
         ]
     }
 ];
 
-// Pages that get their own full-screen layout (no sidebar)
 const FULLSCREEN_PAGES = new Set(['Navigation']);
 
 export default function Layout({ children, currentPageName }) {
-    const navigate = useNavigate();
     const location = useLocation();
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -58,14 +54,12 @@ export default function Layout({ children, currentPageName }) {
         return <div className="w-full h-full">{children}</div>;
     }
 
-    const handleLogout = () => {
-        base44.auth.logout('/');
-    };
+    const handleLogout = () => base44.auth.logout('/');
 
     const NavContent = ({ onNav }) => (
         <div className="flex flex-col h-full">
             {/* Logo */}
-            <div className={`flex items-center gap-3 px-4 py-4 border-b border-gold-900/30 ${collapsed ? 'justify-center' : ''}`}>
+            <div className={`flex items-center gap-3 px-4 py-4 border-b border-slate-800 ${collapsed ? 'justify-center' : ''}`}>
                 <div className="w-9 h-9 rounded-lg bg-gold flex items-center justify-center flex-shrink-0">
                     <Radio className="w-5 h-5 text-black" />
                 </div>
@@ -112,7 +106,7 @@ export default function Layout({ children, currentPageName }) {
             </nav>
 
             {/* Footer */}
-            <div className={`border-t border-slate-800 p-3 space-y-1 ${collapsed ? 'flex flex-col items-center' : ''}`}>
+            <div className={`border-t border-slate-800 p-3 ${collapsed ? 'flex flex-col items-center' : ''}`}>
                 <button
                     onClick={handleLogout}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-900/10 transition-all w-full"
@@ -127,20 +121,18 @@ export default function Layout({ children, currentPageName }) {
     return (
         <div className="w-full h-full flex bg-slate-950 overflow-hidden">
             {/* Desktop Sidebar */}
-            <motion.aside
-                animate={{ width: collapsed ? 64 : 220 }}
-                transition={{ duration: 0.2 }}
-                className="hidden md:flex flex-col bg-slate-900 border-r border-slate-800 flex-shrink-0 overflow-hidden relative z-30"
+            <div
+                style={{ width: collapsed ? 64 : 220, transition: 'width 0.2s', flexShrink: 0 }}
+                className="hidden md:flex flex-col bg-slate-900 border-r border-slate-800 overflow-hidden relative z-30"
             >
                 <NavContent />
-                {/* Collapse Toggle */}
                 <button
                     onClick={() => setCollapsed(c => !c)}
                     className="absolute top-4 -right-3 w-6 h-6 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-slate-400 hover:text-white z-40"
                 >
                     {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
                 </button>
-            </motion.aside>
+            </div>
 
             {/* Mobile Sidebar Overlay */}
             <AnimatePresence>
@@ -151,7 +143,7 @@ export default function Layout({ children, currentPageName }) {
                             className="md:hidden fixed inset-0 bg-black/60 z-40"
                             onClick={() => setMobileOpen(false)}
                         />
-                        <motion.aside
+                        <motion.div
                             initial={{ x: -240 }} animate={{ x: 0 }} exit={{ x: -240 }}
                             transition={{ duration: 0.2 }}
                             className="md:hidden fixed left-0 top-0 bottom-0 w-60 bg-slate-900 border-r border-slate-800 z-50"
@@ -163,7 +155,7 @@ export default function Layout({ children, currentPageName }) {
                                 <X className="w-5 h-5" />
                             </button>
                             <NavContent onNav={() => setMobileOpen(false)} />
-                        </motion.aside>
+                        </motion.div>
                     </>
                 )}
             </AnimatePresence>
@@ -172,7 +164,6 @@ export default function Layout({ children, currentPageName }) {
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Top Command Bar */}
                 <header className="flex-none h-12 bg-slate-900 border-b border-slate-800 flex items-center px-4 gap-3 z-20">
-                    {/* Mobile hamburger */}
                     <button
                         onClick={() => setMobileOpen(true)}
                         className="md:hidden text-slate-400 hover:text-white"
@@ -180,7 +171,6 @@ export default function Layout({ children, currentPageName }) {
                         <Menu className="w-5 h-5" />
                     </button>
 
-                    {/* Breadcrumb */}
                     <div className="hidden md:flex items-center gap-2 text-xs font-mono text-slate-500">
                         <Radio className="w-3 h-3 text-gold" />
                         <span className="text-gold">BPS CAD</span>
@@ -190,15 +180,10 @@ export default function Layout({ children, currentPageName }) {
 
                     <div className="flex-1" />
 
-                    {/* Status indicators */}
                     <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 border border-green-500/30 rounded text-green-400 font-mono text-[10px] font-bold">
                         <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                         LIVE
                     </div>
-
-                    <Link to={createPageUrl('ActiveCalls')} className="relative text-slate-400 hover:text-gold transition-colors">
-                        <Bell className="w-5 h-5" />
-                    </Link>
 
                     <Link to={createPageUrl('AdminPortal')} className="text-slate-400 hover:text-gold transition-colors">
                         <Settings className="w-5 h-5" />

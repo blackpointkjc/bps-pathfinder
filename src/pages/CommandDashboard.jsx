@@ -314,21 +314,6 @@ export default function CommandDashboard() {
                 </div>
             </div>
 
-            {/* Bottom nav shortcuts */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                    { label: 'ACTIVE CALLS', icon: Radio, page: 'ActiveCalls', cls: 'border-gold/30 hover:border-gold' },
-                    { label: 'DISPATCH CENTER', icon: Zap, page: 'DispatchCenter', cls: 'border-blue-500/30 hover:border-blue-400' },
-                    { label: 'DISPATCH LOG', icon: Activity, page: 'DispatchLog', cls: 'border-purple-500/30 hover:border-purple-400' },
-                    { label: 'ADMIN PORTAL', icon: Shield, page: 'AdminPortal', cls: 'border-red-500/30 hover:border-red-400' },
-                ].map(({ label, icon: Icon, page, cls }) => (
-                    <button key={page} onClick={() => navigate(createPageUrl(page))}
-                        className={`bg-slate-900 border rounded-xl p-4 flex flex-col items-center gap-2 transition-all ${cls}`}>
-                        <Icon className="w-6 h-6 text-slate-400" />
-                        <span className="text-slate-400 font-mono text-xs font-bold">{label}</span>
-                    </button>
-                ))}
-            </div>
         </div>
     );
 }
