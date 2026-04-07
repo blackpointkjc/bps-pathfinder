@@ -90,7 +90,7 @@ export default function CommandDashboard() {
 
     const loadData = async () => {
         try {
-            await base44.functions.invoke('ingestGractivecalls', {});
+            base44.functions.invoke('ingestGractivecalls', {}).catch(() => {}); // fire and forget
             const [callsData, usersData] = await Promise.all([
                 base44.entities.DispatchCall.list('-created_date', 200),
                 base44.entities.User.list()
@@ -130,7 +130,7 @@ export default function CommandDashboard() {
     const handleRefresh = async () => {
         setRefreshing(true);
         try {
-            await base44.functions.invoke('ingestGractivecalls', {});
+            base44.functions.invoke('ingestGractivecalls', {}).catch(() => {});
             await loadData();
         } catch (e) {
             await loadData();
