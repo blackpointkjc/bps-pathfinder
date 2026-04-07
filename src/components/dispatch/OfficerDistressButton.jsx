@@ -47,6 +47,8 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
     const progressTimer = useRef(null);
     const startTime = useRef(null);
     const audioCtxRef = useRef(null);
+    const watchIdRef = useRef(null);
+    const activeAlertIdRef = useRef(null);
 
     // Check if user already has an active distress alert on mount
     useEffect(() => {
@@ -111,17 +113,41 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
             longitude: coords?.lon || null,
             current_latitude: coords?.lat || null,
             current_longitude: coords?.lon || null,
-            location_description: `${coords?.lat?.toFixed(5) || '?'}, ${coords?.lon?.toFixed(5) || '?'}`,
+            location_description: coords ? `${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)}` : 'Location unavailable',
             status: 'active',
             activated_at: new Date().toISOString(),
         };
 
         try {
-            await base44.entities.OfficerDistress.create(distressData);
+            const created = await base44.entities.OfficerDistress.create(distressData);
+            activeAlertIdRef.current = created.id;
             setActivated(true);
             toast.error('🚨 OFFICER DISTRESS ACTIVATED — Help is being notified', { duration: 10000 });
-            // Dispatch global event so all open tabs/components react immediately
             window.dispatchEvent(new CustomEvent('officer-distress-activated', { detail: distressData }));
+
+            // Start live GPS tracking — update record continuously
+            if (navigator.geolocation) {
+                watchIdRef.current = navigator.geolocation.watchPosition(
+                    (pos) => {
+                        const lat = pos.coords.latitude;
+                        const lon = pos.coords.longitude;
+                        if (activeAlertIdRef.current) {
+                            base44.entities.OfficerDistress.update(activeAlertIdRef.current, {
+                                current_latitude: lat,
+                                current_longitude: lon,
+                                location_description: `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
+                            }).catch(() => {});
+                        }
+                        // Also update user's own location so they appear on the map for everyone
+                        base44.auth.updateMe({
+                            latitude: lat, longitude: lon,
+                            last_updated: new Date().toISOString()
+                        }).catch(() => {});
+                    },
+                    () => {},
+                    { enableHighAccuracy: true, maximumAge: 0 }
+                );
+            }
         } catch (err) {
             toast.error('Failed to send distress signal — try again');
             console.error(err);
@@ -130,6 +156,11 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
 
     const cancelDistress = async () => {
         if (!currentUser?.id) return;
+        // Stop live GPS watch
+        if (watchIdRef.current !== null) {
+            navigator.geolocation.clearWatch(watchIdRef.current);
+            watchIdRef.current = null;
+        }
         try {
             const alerts = await base44.entities.OfficerDistress.filter({ officer_id: currentUser.id, status: 'active' });
             for (const alert of alerts) {
@@ -141,6 +172,7 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
                     notes: 'Officer self-cancelled'
                 });
             }
+            activeAlertIdRef.current = null;
             setActivated(false);
             toast.success('Distress alert cancelled');
         } catch (err) {
