@@ -436,7 +436,7 @@ export default function Navigation() {
                                 <div className="text-white font-bold">{selectedCall.priority || '-'}</div>
                             </div>
                             <div className="bg-slate-800 rounded p-2">
-                                <div className="text-slate-500">ZONE</div>
+                                <div className="text-slate-500">DISTRICT/PCT</div>
                                 <div className="text-white font-bold">{selectedCall.zone || '-'}</div>
                             </div>
                         </div>

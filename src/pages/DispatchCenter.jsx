@@ -418,7 +418,7 @@ export default function DispatchCenter() {
                                         <div className="col-span-2"><span className="text-slate-500">LOCATION: </span><span className="text-white">{selectedCall.location}</span></div>
                                         {selectedCall.caller_name && <div><span className="text-slate-500">CALLER: </span><span className="text-white">{selectedCall.caller_name}</span></div>}
                                         {selectedCall.caller_phone && <div><span className="text-slate-500">PHONE: </span><span className="text-white">{selectedCall.caller_phone}</span></div>}
-                                        {selectedCall.zone && <div><span className="text-slate-500">ZONE: </span><span className="text-white">{selectedCall.zone}</span></div>}
+                                        {selectedCall.zone && <div><span className="text-slate-500">DISTRICT/PCT: </span><span className="text-white">{selectedCall.zone}</span></div>}
                                     </div>
                                     {selectedCall.description && (
                                         <div className="px-4 pb-2">
