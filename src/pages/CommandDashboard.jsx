@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { playDispatchAlert, playPropertyAlert, stopPropertyAlert, isCallNearMonitoredProperty } from '@/utils/alertUtils';
+import { playDispatchAlert, playPropertyAlert, stopAllAlerts, isCallNearMonitoredProperty } from '@/utils/alertUtils';
+import NewCallAlert from '@/components/dispatch/NewCallAlert';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -66,8 +67,8 @@ export default function CommandDashboard() {
     const [refreshing, setRefreshing] = useState(false);
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [monitoredProperties, setMonitoredProperties] = useState([]);
+    const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const knownCallIdsRef = React.useRef(null);
-    const propertyAlertRef = React.useRef(null);
 
     useEffect(() => {
         loadData();
@@ -109,10 +110,10 @@ export default function CommandDashboard() {
                     
                     if (nearProperty) {
                         playPropertyAlert();
-                        propertyAlertRef.current = { timeout: setTimeout(() => stopPropertyAlert(), 60000) };
                     } else {
                         playDispatchAlert();
                     }
+                    setPendingAlertCall(newCall);
                 }
                 knownCallIdsRef.current = currentIds;
             }
@@ -150,6 +151,11 @@ export default function CommandDashboard() {
 
     const sortedCalls = [...calls].sort((a, b) => new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date));
 
+    const handleAcknowledge = () => {
+        stopAllAlerts();
+        setPendingAlertCall(null);
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -163,6 +169,7 @@ export default function CommandDashboard() {
 
     return (
         <div className="bg-slate-950 p-4 md:p-5 space-y-4 min-h-full">
+            <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
