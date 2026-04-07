@@ -262,7 +262,7 @@ export default function CommandDashboard() {
                                                  const priority = getCallPriority(call);
                                                  return (
                                     <div key={call.id}
-                                        onClick={() => navigate(createPageUrl('CallHistory'))}
+                                        onClick={() => navigate(`${createPageUrl('Navigation')}?callId=${call.id}${call.latitude ? `&lat=${call.latitude}&lng=${call.longitude}` : ''}`)}
                                         className="flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 cursor-pointer transition-colors">
                                         <div className={`w-1.5 h-10 rounded-full flex-shrink-0 ${PRIORITY_COLORS[priority] || 'bg-slate-500'}`} />
                                         <div className="flex-1 min-w-0">

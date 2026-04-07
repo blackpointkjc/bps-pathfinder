@@ -50,13 +50,14 @@ export default function Navigation() {
     const lastPosition = useRef(null);
     const lastUpdateRef = useRef(0);
 
-    useEffect(() => {
-        const handleOnline = () => setIsOnline(true);
-        const handleOffline = () => setIsOnline(false);
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-        return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
-    }, []);
+    // Read callId/lat/lng from URL params (navigated from CommandDashboard)
+    const [focusCenter, setFocusCenter] = useState(() => {
+        const p = new URLSearchParams(window.location.search);
+        const lat = parseFloat(p.get('lat'));
+        const lng = parseFloat(p.get('lng'));
+        return lat && lng ? [lat, lng] : null;
+    });
+    const focusCallId = new URLSearchParams(window.location.search).get('callId');
 
     useEffect(() => {
         init();
@@ -176,22 +177,13 @@ export default function Navigation() {
         try {
             const all = await base44.entities.DispatchCall.list('-created_date', 200);
             const active = all.filter(c => !['Closed', 'Cleared', 'Cancelled'].includes(c.status));
-            
-            // Detect new calls
-            if (active.length > lastCallCountRef.current) {
-                const newCall = active[0]; // Most recent call
-                const nearProperty = isCallNearMonitoredProperty(newCall, monitoredProperties);
-                
-                if (nearProperty) {
-                    playPropertyAlert();
-                    propertyAlertRef.current = { timeout: setTimeout(() => stopPropertyAlert(), 60000) };
-                } else {
-                    playDispatchAlert();
-                }
-            }
             lastCallCountRef.current = active.length;
-            
             setActiveCalls(active);
+            // If navigated here with a callId, open that call's sidebar
+            if (focusCallId) {
+                const target = active.find(c => c.id === focusCallId);
+                if (target) { setSelectedCall(target); setShowCallSidebar(true); }
+            }
         } catch (e) {} finally { setIsLoadingCalls(false); }
     };
 
@@ -248,7 +240,7 @@ export default function Navigation() {
                     otherUnits={mapVisibleUnits}
                     currentUserId={currentUser?.id}
                     speed={speed}
-                    mapCenter={null}
+                    mapCenter={focusCenter}
                     isNavigating={false}
                     baseMapType={jurisdictionFilters.baseMapType}
                     jurisdictionFilters={jurisdictionFilters}
