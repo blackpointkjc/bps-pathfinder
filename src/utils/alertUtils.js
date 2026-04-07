@@ -53,30 +53,45 @@ const playTone = (freq, volume = 0.4) => {
   } catch (e) {}
 };
 
-// Police-style two-tone warble (Motorola MDC pre-dispatch style)
+// Police siren alert - fast ascending wail like a radio pre-alert
 const playPoliceTone = () => {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    const totalDuration = 2.0;
+
+    // Main siren oscillator
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.type = 'square';
-    const now = ctx.currentTime;
-    osc.frequency.setValueAtTime(770, now);
-    osc.frequency.setValueAtTime(960, now + 0.18);
-    osc.frequency.setValueAtTime(770, now + 0.36);
-    osc.frequency.setValueAtTime(960, now + 0.54);
-    osc.frequency.setValueAtTime(770, now + 0.72);
-    osc.frequency.setValueAtTime(960, now + 0.90);
-    osc.frequency.setValueAtTime(770, now + 1.08);
-    osc.frequency.setValueAtTime(960, now + 1.26);
+    osc.type = 'sawtooth';
+
+    // Sweep up 600→1400Hz three times rapidly - classic police wail
+    osc.frequency.setValueAtTime(600, now);
+    osc.frequency.linearRampToValueAtTime(1400, now + 0.5);
+    osc.frequency.setValueAtTime(600, now + 0.5);
+    osc.frequency.linearRampToValueAtTime(1400, now + 1.0);
+    osc.frequency.setValueAtTime(600, now + 1.0);
+    osc.frequency.linearRampToValueAtTime(1400, now + 1.5);
+    osc.frequency.setValueAtTime(600, now + 1.5);
+    osc.frequency.linearRampToValueAtTime(1000, now + totalDuration);
+
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.35, now + 0.02);
-    gain.gain.setValueAtTime(0.35, now + 1.32);
-    gain.gain.linearRampToValueAtTime(0, now + 1.4);
+    gain.gain.linearRampToValueAtTime(0.5, now + 0.05);
+    gain.gain.setValueAtTime(0.5, now + totalDuration - 0.1);
+    gain.gain.linearRampToValueAtTime(0, now + totalDuration);
+
+    // Low-pass filter to soften harsh sawtooth
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(2000, now);
+    osc.disconnect(gain);
+    osc.connect(filter);
+    filter.connect(gain);
+
     osc.start(now);
-    osc.stop(now + 1.45);
+    osc.stop(now + totalDuration + 0.05);
   } catch (e) {}
 };
 
