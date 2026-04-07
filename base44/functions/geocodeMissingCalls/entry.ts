@@ -74,22 +74,37 @@ Deno.serve(async (req) => {
 
         let geocoded = 0;
         let failed = 0;
-        const MAX = 5; // Small batch per run — automation runs every 10 min to handle remainder
+        const MAX = 3; // Small batch — automation runs every 10 min // Small batch per run — automation runs every 10 min to handle remainder
 
         for (const call of missingCoords.slice(0, MAX)) {
             const coords = await geocodeAddress(call.location, call.agency);
             if (coords) {
-                await base44.asServiceRole.entities.DispatchCall.update(call.id, {
-                    latitude: coords.latitude,
-                    longitude: coords.longitude
-                });
-                geocoded++;
-                console.log(`✅ Geocoded: ${call.location} -> (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
+                // Retry entity update once on rate limit
+                let updated = false;
+                for (let attempt = 0; attempt < 2; attempt++) {
+                    try {
+                        await base44.asServiceRole.entities.DispatchCall.update(call.id, {
+                            latitude: coords.latitude,
+                            longitude: coords.longitude
+                        });
+                        updated = true;
+                        break;
+                    } catch (err) {
+                        if (attempt === 0) await sleep(5000);
+                    }
+                }
+                if (updated) {
+                    geocoded++;
+                    console.log(`✅ Geocoded: ${call.location} -> (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
+                } else {
+                    failed++;
+                    console.log(`❌ Update failed (rate limit): ${call.location}`);
+                }
             } else {
                 failed++;
                 console.log(`❌ Failed: ${call.location}`);
             }
-            await sleep(4000);
+            await sleep(5000);
         }
 
         return Response.json({
