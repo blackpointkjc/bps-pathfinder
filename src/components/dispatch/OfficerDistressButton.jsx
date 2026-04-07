@@ -6,6 +6,39 @@ import { AlertTriangle } from 'lucide-react';
 // Hold for 2 seconds to activate
 const HOLD_MS = 2000;
 
+// Police-style yelp/warble tone during hold
+function startYelpTone() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sawtooth';
+        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+
+        // Yelp: rapid sweep 600Hz → 1400Hz → 600Hz repeating
+        const duration = HOLD_MS / 1000; // 2 seconds
+        const sweepRate = 6; // sweeps per second
+        const sweepCount = Math.floor(duration * sweepRate);
+        for (let i = 0; i < sweepCount; i++) {
+            const t = ctx.currentTime + (i / sweepRate);
+            const half = 1 / sweepRate / 2;
+            osc.frequency.setValueAtTime(600, t);
+            osc.frequency.linearRampToValueAtTime(1400, t + half);
+            osc.frequency.linearRampToValueAtTime(600, t + half * 2);
+        }
+        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + duration);
+        osc.onended = () => ctx.close();
+        return ctx;
+    } catch (e) {
+        return null;
+    }
+}
+
 export default function OfficerDistressButton({ currentUser, className = '' }) {
     const [holding, setHolding] = useState(false);
     const [progress, setProgress] = useState(0);
@@ -13,6 +46,7 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
     const holdTimer = useRef(null);
     const progressTimer = useRef(null);
     const startTime = useRef(null);
+    const audioCtxRef = useRef(null);
 
     // Check if user already has an active distress alert on mount
     useEffect(() => {
@@ -28,6 +62,9 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
         setHolding(true);
         startTime.current = Date.now();
 
+        // Start police yelp tone immediately on hold
+        audioCtxRef.current = startYelpTone();
+
         progressTimer.current = setInterval(() => {
             const elapsed = Date.now() - startTime.current;
             setProgress(Math.min((elapsed / HOLD_MS) * 100, 100));
@@ -41,6 +78,8 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
     const cancelHold = () => {
         clearTimeout(holdTimer.current);
         clearInterval(progressTimer.current);
+        try { audioCtxRef.current?.close(); } catch(e) {}
+        audioCtxRef.current = null;
         setHolding(false);
         setProgress(0);
     };
