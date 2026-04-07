@@ -71,6 +71,7 @@ export default function CommandDashboard() {
     const [currentUser, setCurrentUser] = useState(null);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const knownCallIdsRef = React.useRef(null);
+    const alertQueueRef = React.useRef([]);
 
     useEffect(() => {
         base44.auth.me().then(user => {
@@ -112,14 +113,17 @@ export default function CommandDashboard() {
             } else {
                 const newCallIds = [...currentIds].filter(id => !knownCallIdsRef.current.has(id));
                 if (newCallIds.length > 0 && soundEnabled) {
-                    const newCall = active.find(c => newCallIds.includes(c.id));
-                    const nearProperty = isCallNearMonitoredProperty(newCall, monitoredProperties);
-                    if (nearProperty) {
-                        playPropertyAlert();
-                    } else {
-                        playDispatchAlert();
+                    const newCalls = newCallIds.map(id => active.find(c => c.id === id)).filter(Boolean);
+                    // Add all new calls to queue
+                    alertQueueRef.current = [...alertQueueRef.current, ...newCalls];
+                    // Only trigger sound/banner if nothing is already showing
+                    if (!pendingAlertCallRef.current) {
+                        const next = alertQueueRef.current.shift();
+                        pendingAlertCallRef.current = next;
+                        setPendingAlertCall(next);
+                        const nearProperty = isCallNearMonitoredProperty(next, monitoredProperties);
+                        if (nearProperty) playPropertyAlert(); else playDispatchAlert();
                     }
-                    setPendingAlertCall(newCall);
                 }
                 knownCallIdsRef.current = currentIds;
             }
@@ -157,9 +161,19 @@ export default function CommandDashboard() {
 
     const sortedCalls = [...calls].sort((a, b) => new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date));
 
+    const pendingAlertCallRef = React.useRef(null);
+
     const handleAcknowledge = () => {
         stopAllAlerts();
-        setPendingAlertCall(null);
+        if (alertQueueRef.current.length > 0) {
+            const next = alertQueueRef.current.shift();
+            pendingAlertCallRef.current = next;
+            setPendingAlertCall(next);
+            playDispatchAlert();
+        } else {
+            pendingAlertCallRef.current = null;
+            setPendingAlertCall(null);
+        }
     };
 
     const toggleSound = () => {

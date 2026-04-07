@@ -53,37 +53,39 @@ const playTone = (freq, volume = 0.4) => {
   } catch (e) {}
 };
 
-const playChime = () => {
+// Police-style two-tone warble (Motorola MDC pre-dispatch style)
+const playPoliceTone = () => {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const tones = [
-      { freq: 880, start: 0, duration: 0.12 },
-      { freq: 1100, start: 0.15, duration: 0.12 },
-      { freq: 880, start: 0.30, duration: 0.12 },
-      { freq: 1100, start: 0.45, duration: 0.18 },
-    ];
-    tones.forEach(({ freq, start, duration }) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
-      gain.gain.setValueAtTime(0, ctx.currentTime + start);
-      gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + start + 0.01);
-      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + start + duration);
-      osc.start(ctx.currentTime + start);
-      osc.stop(ctx.currentTime + start + duration + 0.05);
-    });
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'square';
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(770, now);
+    osc.frequency.setValueAtTime(960, now + 0.18);
+    osc.frequency.setValueAtTime(770, now + 0.36);
+    osc.frequency.setValueAtTime(960, now + 0.54);
+    osc.frequency.setValueAtTime(770, now + 0.72);
+    osc.frequency.setValueAtTime(960, now + 0.90);
+    osc.frequency.setValueAtTime(770, now + 1.08);
+    osc.frequency.setValueAtTime(960, now + 1.26);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.35, now + 0.02);
+    gain.gain.setValueAtTime(0.35, now + 1.32);
+    gain.gain.linearRampToValueAtTime(0, now + 1.4);
+    osc.start(now);
+    osc.stop(now + 1.45);
   } catch (e) {}
 };
 
 // Play repeating dispatch alert until acknowledged
 export const playDispatchAlert = () => {
-  if (alertActive) return; // another page is already alerting
+  if (alertActive) return;
   alertActive = true;
-  playChime();
-  alertIntervalRef = setInterval(playChime, 2000);
+  playPoliceTone();
+  alertIntervalRef = setInterval(playPoliceTone, 3000);
 };
 
 // Play continuous high-priority beep for property alerts
