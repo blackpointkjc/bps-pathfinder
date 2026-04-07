@@ -378,7 +378,7 @@ export default function AdminPortal() {
                                                     </Badge>
                                                 </div>
                                                 <p className="text-xs text-slate-500 font-mono mt-2">
-                                                    {new Date(call.created_date).toLocaleString()}
+                                                    {new Date(call.time_received || call.created_date).toLocaleString('en-US', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
                                                 </p>
                                             </div>
                                         ))
