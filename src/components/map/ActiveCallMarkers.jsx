@@ -8,6 +8,7 @@ import { Clock, MapPin, Radio } from 'lucide-react';
 const createCallIcon = (call, isHighPriority = false) => {
     const incident = call.incident?.toLowerCase() || '';
     const agency = call.agency || '';
+    const isApproximate = call.geo_approximate === true;
     
     // Determine if it's EMS, Police, or Fire
     const isEMS = incident.includes('ems') || incident.includes('medical') || 
@@ -41,14 +42,25 @@ const createCallIcon = (call, isHighPriority = false) => {
         iconSvg = `<text x="20" y="26" font-size="16" text-anchor="middle" font-family="Arial" fill="white" font-weight="bold">PD</text>`;
     }
 
+    // Approximate locations: yellow ring + dashed border
+    const outerRing = isApproximate
+        ? `<circle cx="20" cy="20" r="18" fill="none" stroke="#FBBF24" stroke-width="3" stroke-dasharray="4 2"/>`
+        : '';
+    const approxBadge = isApproximate
+        ? `<circle cx="8" cy="8" r="6" fill="#FBBF24" stroke="white" stroke-width="1.5"/>
+           <text x="8" y="12" font-size="8" text-anchor="middle" font-family="Arial" fill="black" font-weight="bold">~</text>`
+        : '';
+
     return new L.DivIcon({
         className: 'custom-call-marker',
         html: `
             <div style="position:relative;width:40px;height:40px;">
                 <svg width="40" height="40" viewBox="0 0 40 40">
-                    <circle cx="20" cy="20" r="18" fill="${bgColor}" stroke="${isHighPriority ? '#EF4444' : 'white'}" stroke-width="3"/>
+                    <circle cx="20" cy="20" r="18" fill="${bgColor}" stroke="${isHighPriority ? '#EF4444' : 'white'}" stroke-width="${isApproximate ? 1.5 : 3}" ${isApproximate ? 'opacity="0.75"' : ''}/>
                     ${iconSvg}
                     <circle cx="32" cy="8" r="6" fill="${statusColor}" stroke="white" stroke-width="2"/>
+                    ${outerRing}
+                    ${approxBadge}
                 </svg>
             </div>
         `,
@@ -108,9 +120,12 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                parseFloat(call.latitude) !== 0 && parseFloat(call.longitude) !== 0;
         
         if (!hasCoords) {
-            console.log(`❌ NO COORDS: ${call.incident} @ ${call.location} [${call.agency}]`);
-        } else {
-            console.log(`✅ HAS COORDS: ${call.incident} @ ${call.location} [${call.agency}] (${call.latitude}, ${call.longitude})`);
+            const isUnmappable = call.geo_confidence === 'unmappable';
+            if (isUnmappable) {
+                console.log(`🚫 UNMAPPABLE: ${call.incident} @ ${call.location}`);
+            } else {
+                console.log(`❌ NO COORDS: ${call.incident} @ ${call.location} [${call.agency}]`);
+            }
         }
         
         return hasCoords;
@@ -153,6 +168,13 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                                         {call.incident}
                                     </h3>
                                 </div>
+                                {call.geo_approximate && (
+                                    <div className="flex items-center gap-1 mb-2 px-2 py-1 bg-yellow-50 border border-yellow-300 rounded text-xs text-yellow-800">
+                                        <span>⚠️</span>
+                                        <span className="font-semibold">Approximate Location</span>
+                                        <span className="text-yellow-600">({call.geo_method || 'estimated'})</span>
+                                    </div>
+                                )}
                                 
                                 <div className="space-y-2 text-xs">
                                     {call.ai_summary && (

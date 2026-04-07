@@ -1,0 +1,170 @@
+{
+  "name": "DispatchCall",
+  "type": "object",
+  "properties": {
+    "call_id": {
+      "type": "string",
+      "description": "Unique call identifier"
+    },
+    "incident": {
+      "type": "string",
+      "description": "Type of incident"
+    },
+    "location": {
+      "type": "string",
+      "description": "Call location"
+    },
+    "cross_street": {
+      "type": "string",
+      "description": "Nearest cross street"
+    },
+    "landmark": {
+      "type": "string",
+      "description": "Nearby landmark"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Geocoded latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Geocoded longitude"
+    },
+    "geo_confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        "unmappable"
+      ],
+      "description": "Geocoding confidence level"
+    },
+    "geo_method": {
+      "type": "string",
+      "enum": [
+        "exact",
+        "block",
+        "intersection",
+        "street",
+        "none"
+      ],
+      "description": "Method used to geocode the location"
+    },
+    "geo_approximate": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if coordinates are approximate, not exact"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description"
+    },
+    "ai_summary": {
+      "type": "string",
+      "description": "AI-generated summary of call"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium"
+    },
+    "agency": {
+      "type": "string",
+      "description": "Responding agency"
+    },
+    "zone": {
+      "type": "string",
+      "description": "Dispatch zone or beat"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "New",
+        "Pending",
+        "Dispatched",
+        "Enroute",
+        "On Scene",
+        "Arrived",
+        "Cleared",
+        "Closed",
+        "Cancelled"
+      ],
+      "default": "New"
+    },
+    "assigned_units": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of assigned unit IDs"
+    },
+    "caller_name": {
+      "type": "string",
+      "description": "Name of caller"
+    },
+    "caller_phone": {
+      "type": "string",
+      "description": "Caller phone number"
+    },
+    "hazards": {
+      "type": "string",
+      "description": "Known hazards or warnings"
+    },
+    "time_received": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When call was received"
+    },
+    "time_dispatched": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When call was dispatched"
+    },
+    "time_enroute": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When unit(s) went enroute"
+    },
+    "time_on_scene": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When unit(s) arrived on scene"
+    },
+    "time_cleared": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When call was cleared"
+    },
+    "time_closed": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When call was closed"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "File URLs for attachments"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "richmond",
+        "henrico",
+        "chesterfield"
+      ],
+      "description": "Data source (richmond, henrico, or chesterfield)"
+    }
+  },
+  "required": [
+    "incident",
+    "location"
+  ]
+}
