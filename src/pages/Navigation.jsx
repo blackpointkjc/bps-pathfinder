@@ -442,12 +442,12 @@ export default function Navigation() {
                             </div>
                             <div className="bg-slate-800 rounded p-2">
                                 <div className="text-slate-500">PRIORITY</div>
-                                <div className="text-white font-bold">{selectedCall.priority || '-'}</div>
+                                <div className="text-white font-bold">{selectedCall.priority ? selectedCall.priority.charAt(0).toUpperCase() + selectedCall.priority.slice(1).toLowerCase() : '-'}</div>
                             </div>
                             <div className="bg-slate-800 rounded p-2">
                                 <div className="text-slate-500">DISTRICT/PCT</div>
                                 <div className="text-white font-bold">
-                                    {callDistrict || selectedCall.zone || (selectedCall.latitude ? 'Looking up…' : '-')}
+                                    {callDistrict !== null ? callDistrict : selectedCall.zone || '—'}
                                 </div>
                             </div>
                         </div>

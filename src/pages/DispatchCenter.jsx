@@ -421,10 +421,11 @@ export default function DispatchCenter() {
                                     <div className="px-4 py-2 grid grid-cols-2 gap-x-6 gap-y-1 text-[10px]">
                                         <div><span className="text-slate-500">INCIDENT: </span><span className="text-white font-bold">{selectedCall.incident}</span></div>
                                         <div><span className="text-slate-500">AGENCY: </span><span className="text-white">{selectedCall.agency || '—'}</span></div>
+                                        <div><span className="text-slate-500">PRIORITY: </span><span className="text-white">{selectedCall.priority ? selectedCall.priority.charAt(0).toUpperCase() + selectedCall.priority.slice(1).toLowerCase() : '—'}</span></div>
                                         <div className="col-span-2"><span className="text-slate-500">LOCATION: </span><span className="text-white">{selectedCall.location}</span></div>
                                         {selectedCall.caller_name && <div><span className="text-slate-500">CALLER: </span><span className="text-white">{selectedCall.caller_name}</span></div>}
                                         {selectedCall.caller_phone && <div><span className="text-slate-500">PHONE: </span><span className="text-white">{selectedCall.caller_phone}</span></div>}
-                                        <div><span className="text-slate-500">DISTRICT/PCT: </span><span className="text-white">{callDistrict || selectedCall.zone || (selectedCall.latitude ? 'Looking up…' : '—')}</span></div>
+                                        <div><span className="text-slate-500">DISTRICT/PCT: </span><span className="text-white">{callDistrict !== null ? callDistrict : selectedCall.zone || '—'}</span></div>
                                     </div>
                                     {selectedCall.description && (
                                         <div className="px-4 pb-2">
