@@ -36,18 +36,21 @@ function parseTimeToISO(timeStr) {
     return new Date().toISOString();
 }
 
+function getSource(agency) {
+    if (!agency) return 'richmond';
+    const ag = agency.toUpperCase();
+    if (ag.includes('HENRICO') || ag.includes('HPD') || ag.includes('HCPD') || ag.includes('HFD') || ag.includes('HCFD')) return 'henrico';
+    if (ag.includes('CHESTERFIELD') || ag.includes('CCPD') || ag.includes('CFD') || ag.includes('CCFD')) return 'chesterfield';
+    return 'richmond';
+}
+
 function cleanAddress(address, agency) {
     let clean = address.replace(/\b(\d+)\s+Block\b/i, '$1');
     clean = clean.replace(/\bRICH\b$/, 'Richmond').trim();
+    const src = getSource(agency);
     let city = 'Richmond, Virginia';
-    if (agency) {
-        const ag = agency.toUpperCase();
-        if (ag.includes('HENRICO') || ag.includes('HFD') || ag.includes('HPD') || ag.includes('HCPD') || ag.includes('HCFD')) {
-            city = 'Henrico County, Virginia';
-        } else if (ag.includes('CHESTERFIELD') || ag.includes('CFD') || ag.includes('CCPD') || ag.includes('CCFD')) {
-            city = 'Chesterfield County, Virginia';
-        }
-    }
+    if (src === 'henrico') city = 'Henrico County, Virginia';
+    else if (src === 'chesterfield') city = 'Chesterfield County, Virginia';
     return `${clean}, ${city}`;
 }
 
@@ -131,7 +134,7 @@ Deno.serve(async (req) => {
                         status,
                         priority: 'medium',
                         time_received: parseTimeToISO(timeStr),
-                        source: 'gractivecalls',
+                        source: getSource(agency),
                         description: `${incident} at ${location}`
                     });
                 }
@@ -140,7 +143,13 @@ Deno.serve(async (req) => {
 
         console.log(`HTML parsed ${allCalls.length} calls`);
 
-        const existingCalls = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'gractivecalls' });
+        // Fetch all auto-ingested calls (all valid source values)
+        const [richmondCalls, henricoCalls, chesterfieldCalls] = await Promise.all([
+            base44.asServiceRole.entities.DispatchCall.filter({ source: 'richmond' }),
+            base44.asServiceRole.entities.DispatchCall.filter({ source: 'henrico' }),
+            base44.asServiceRole.entities.DispatchCall.filter({ source: 'chesterfield' }),
+        ]);
+        const existingCalls = [...richmondCalls, ...henricoCalls, ...chesterfieldCalls];
         const existingMap = new Map(existingCalls.map(c => [c.call_id, c]));
         console.log(`Found ${existingCalls.length} existing calls in database`);
 
