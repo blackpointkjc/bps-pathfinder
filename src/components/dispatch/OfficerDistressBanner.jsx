@@ -213,7 +213,7 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
                                     </div>
 
                                     <div className="text-white font-mono font-bold text-base mt-1">
-                                        UNIT {alert.unit_number || '???'} — {alert.rank ? `${alert.rank.toUpperCase()} ` : ''}{alert.last_name?.toUpperCase() || alert.officer_name?.toUpperCase()}
+                                        UNIT {alert.unit_number || '???'} — {alert.rank ? `${String(alert.rank).toUpperCase()} ` : ''}{String(alert.last_name || alert.officer_name || '').toUpperCase()}
                                     </div>
 
                                     <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-1.5">
@@ -222,7 +222,7 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
                                                 <MapPin className="w-3 h-3" />
                                                 {addresses[alert.id]
                                                     ? addresses[alert.id]
-                                                    : `${(alert.current_latitude || alert.latitude).toFixed(4)}, ${(alert.current_longitude || alert.longitude).toFixed(4)}`
+                                                    : `${(alert.current_latitude ?? alert.latitude ?? 0).toFixed(4)}, ${(alert.current_longitude ?? alert.longitude ?? 0).toFixed(4)}`
                                                 }
                                             </span>
                                         )}
