@@ -79,7 +79,8 @@ const SOURCES = [
 ];
 
 export async function lookupDistrict(lat, lng) {
-    if (!lat || !lng) return null;
+    if (lat === null || lat === undefined || lng === null || lng === undefined) return '—';
+    if (typeof lat !== 'number' || typeof lng !== 'number') return '—';
 
     const datasets = await Promise.allSettled(SOURCES.map(s => fetchGeoJSON(s.url)));
 

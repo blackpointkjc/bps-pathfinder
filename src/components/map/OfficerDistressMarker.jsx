@@ -94,7 +94,7 @@ export default function OfficerDistressMarker({ autoCenter = false }) {
     if (activeAlerts.length === 0) return null;
 
     return (
-        <>
+        <React.Fragment>
             {activeAlerts.map(alert => {
                 const pos = [alert.current_latitude || alert.latitude, alert.current_longitude || alert.longitude];
                 return (
@@ -127,6 +127,6 @@ export default function OfficerDistressMarker({ autoCenter = false }) {
                     </React.Fragment>
                 );
             })}
-        </>
+        </React.Fragment>
     );
 }
