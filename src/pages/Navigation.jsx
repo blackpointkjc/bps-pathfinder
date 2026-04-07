@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { playDispatchAlert, playPropertyAlert, stopPropertyAlert, isCallNearMonitoredProperty } from '@/utils/alertUtils';
+import { lookupDistrict } from '@/utils/districtLookup';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
@@ -42,6 +43,7 @@ export default function Navigation() {
     });
     const [showCallSidebar, setShowCallSidebar] = useState(false);
     const [selectedCall, setSelectedCall] = useState(null);
+    const [callDistrict, setCallDistrict] = useState(null);
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const [jurisdictionFilters] = useState({
         baseMapType: 'street', showPoliceStations: true, showFireStations: false,
@@ -255,7 +257,14 @@ export default function Navigation() {
                     showJails={jurisdictionFilters.showJails}
                     searchPin={null}
                     mapTheme={mapTheme}
-                    onCallClick={(call) => { setSelectedCall(call); setShowCallSidebar(true); }}
+                    onCallClick={(call) => {
+                setSelectedCall(call);
+                setShowCallSidebar(true);
+                setCallDistrict(null);
+                if (call.latitude && call.longitude) {
+                    lookupDistrict(call.latitude, call.longitude).then(d => setCallDistrict(d));
+                }
+            }}
                 >
                     <VACountiesBoundaries />
                     <OfficerDistressMarker autoCenter={false} />
@@ -437,7 +446,9 @@ export default function Navigation() {
                             </div>
                             <div className="bg-slate-800 rounded p-2">
                                 <div className="text-slate-500">DISTRICT/PCT</div>
-                                <div className="text-white font-bold">{selectedCall.zone || '-'}</div>
+                                <div className="text-white font-bold">
+                                    {callDistrict || selectedCall.zone || (selectedCall.latitude ? 'Looking up…' : '-')}
+                                </div>
                             </div>
                         </div>
                         {selectedCall.description && (

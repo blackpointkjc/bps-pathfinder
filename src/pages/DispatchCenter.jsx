@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Plus, Shield, Radio, Map as MapIcon, RefreshCw } from 'lucide-react';
+import { lookupDistrict } from '@/utils/districtLookup';
 import { createPageUrl } from '../utils';
 import { stopAllAlerts } from '@/utils/alertUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
@@ -32,6 +33,7 @@ export default function DispatchCenter() {
     const [currentUser, setCurrentUser] = useState(null);
     const [units, setUnits] = useState([]);
     const [activeCalls, setActiveCalls] = useState([]);
+    const [callDistrict, setCallDistrict] = useState(null);
     const [selectedCall, setSelectedCall] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -161,6 +163,10 @@ export default function DispatchCenter() {
 
     const handleSelectCall = (call) => {
         setSelectedCall(call);
+        setCallDistrict(null);
+        if (call?.latitude && call?.longitude) {
+            lookupDistrict(call.latitude, call.longitude).then(d => setCallDistrict(d));
+        }
     };
 
     const handleCallCreated = async () => {
@@ -418,7 +424,7 @@ export default function DispatchCenter() {
                                         <div className="col-span-2"><span className="text-slate-500">LOCATION: </span><span className="text-white">{selectedCall.location}</span></div>
                                         {selectedCall.caller_name && <div><span className="text-slate-500">CALLER: </span><span className="text-white">{selectedCall.caller_name}</span></div>}
                                         {selectedCall.caller_phone && <div><span className="text-slate-500">PHONE: </span><span className="text-white">{selectedCall.caller_phone}</span></div>}
-                                        {selectedCall.zone && <div><span className="text-slate-500">DISTRICT/PCT: </span><span className="text-white">{selectedCall.zone}</span></div>}
+                                        <div><span className="text-slate-500">DISTRICT/PCT: </span><span className="text-white">{callDistrict || selectedCall.zone || (selectedCall.latitude ? 'Looking up…' : '—')}</span></div>
                                     </div>
                                     {selectedCall.description && (
                                         <div className="px-4 pb-2">
