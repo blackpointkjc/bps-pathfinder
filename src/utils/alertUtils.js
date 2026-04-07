@@ -21,53 +21,49 @@ export const isCallNearMonitoredProperty = (call, monitoredProperties) => {
   });
 };
 
-// Shared interval ref for all repeating alerts
+// Shared refs for all repeating alerts
 let alertIntervalRef = null;
 let alertActive = false;
+let activeContexts = [];
 
 export const stopAllAlerts = () => {
   if (alertIntervalRef) {
     clearInterval(alertIntervalRef);
     alertIntervalRef = null;
   }
+  // Stop all active audio contexts immediately
+  activeContexts.forEach(ctx => {
+    try { ctx.close(); } catch (e) {}
+  });
+  activeContexts = [];
   alertActive = false;
 };
 
 // Alias for backwards compat
 export const stopPropertyAlert = stopAllAlerts;
 
-const playTone = (freq, volume = 0.4) => {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, ctx.currentTime);
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + 0.05);
-    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.25);
-  } catch (e) {}
-};
-
 // Police siren alert - fast ascending wail like a radio pre-alert
 const playPoliceTone = () => {
+  if (!alertActive) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    activeContexts.push(ctx);
+    // Clean up closed contexts periodically
+    activeContexts = activeContexts.filter(c => c.state !== 'closed');
     const now = ctx.currentTime;
     const totalDuration = 2.0;
 
-    // Main siren oscillator
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.connect(gain);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(2000, now);
+
+    osc.connect(filter);
+    filter.connect(gain);
     gain.connect(ctx.destination);
     osc.type = 'sawtooth';
 
-    // Sweep up 600→1400Hz three times rapidly - classic police wail
     osc.frequency.setValueAtTime(600, now);
     osc.frequency.linearRampToValueAtTime(1400, now + 0.5);
     osc.frequency.setValueAtTime(600, now + 0.5);
@@ -82,16 +78,9 @@ const playPoliceTone = () => {
     gain.gain.setValueAtTime(0.5, now + totalDuration - 0.1);
     gain.gain.linearRampToValueAtTime(0, now + totalDuration);
 
-    // Low-pass filter to soften harsh sawtooth
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(2000, now);
-    osc.disconnect(gain);
-    osc.connect(filter);
-    filter.connect(gain);
-
     osc.start(now);
     osc.stop(now + totalDuration + 0.05);
+    osc.onended = () => { try { ctx.close(); } catch(e) {} };
   } catch (e) {}
 };
 
