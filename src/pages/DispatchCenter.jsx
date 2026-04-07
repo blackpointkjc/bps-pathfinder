@@ -41,8 +41,18 @@ export default function DispatchCenter() {
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const knownCallIdsRef = React.useRef(null);
+    const soundEnabledRef = React.useRef(true);
 
     useEffect(() => {
+        // Load per-user sound preference
+        base44.auth.me().then(user => {
+            const stored = localStorage.getItem(`bps_alerts_${user?.id}`);
+            if (stored !== null) {
+                const val = stored === 'true';
+                setSoundEnabled(val);
+                soundEnabledRef.current = val;
+            }
+        }).catch(() => {});
         init();
         loadMonitoredProperties();
         
@@ -143,7 +153,7 @@ export default function DispatchCenter() {
                 knownCallIdsRef.current = currentIds;
             } else {
                 const newCallIds = [...currentIds].filter(id => !knownCallIdsRef.current.has(id));
-                if (newCallIds.length > 0 && soundEnabled) {
+                if (newCallIds.length > 0 && soundEnabledRef.current) {
                     const newCall = recentCalls.find(c => newCallIds.includes(c.id));
                     const nearProperty = isCallNearMonitoredProperty(newCall, monitoredProperties);
                     if (nearProperty) {
@@ -244,6 +254,14 @@ export default function DispatchCenter() {
         setPendingAlertCall(null);
     };
 
+    const toggleSound = () => {
+        const next = !soundEnabled;
+        setSoundEnabled(next);
+        soundEnabledRef.current = next;
+        if (currentUser?.id) localStorage.setItem(`bps_alerts_${currentUser.id}`, String(next));
+        if (!next) stopAllAlerts();
+    };
+
     return (
         <div className="h-screen flex flex-col bg-[#0a0e1a] text-white overflow-hidden font-mono">
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
@@ -265,12 +283,14 @@ export default function DispatchCenter() {
                         <RefreshCw className={`w-2.5 h-2.5 ${refreshing ? 'animate-spin' : ''}`} />
                         {refreshing ? 'REFRESHING' : 'REFRESH FEED'}
                     </button>
-                    <button onClick={() => setSoundEnabled(!soundEnabled)}
+                    {(currentUser?.is_supervisor || currentUser?.role === 'admin') && (
+                    <button onClick={toggleSound}
                         className={`px-2 py-1 border rounded text-[10px] ${
-                            soundEnabled ? 'border-green-500/40 text-green-400 bg-green-900/20' : 'border-slate-600 text-slate-500'
+                            soundEnabled ? 'border-green-500/40 text-green-400 bg-green-900/20' : 'border-red-500/40 text-red-400 bg-red-900/20'
                         }`}>
                         {soundEnabled ? <Volume2 className="w-2.5 h-2.5" /> : <VolumeX className="w-2.5 h-2.5" />}
                     </button>
+                    )}
                     <button onClick={() => setShowMap(!showMap)}
                         className={`px-2 py-1 border rounded text-[10px] ${
                             showMap ? 'border-blue-500/40 text-blue-400 bg-blue-900/20' : 'border-slate-600 text-slate-500'

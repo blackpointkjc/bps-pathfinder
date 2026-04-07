@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import {
     Radio, AlertTriangle, Users, Activity, Clock, MapPin, Zap,
     TrendingUp, RefreshCw, CheckCircle2, PhoneCall, Shield,
-    ArrowRight, Timer
+    ArrowRight, Timer, Volume2, VolumeX
 } from 'lucide-react';
 
 const PRIORITY_COLORS = {
@@ -68,9 +68,16 @@ export default function CommandDashboard() {
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [soundEnabled, setSoundEnabled] = useState(true);
     const knownCallIdsRef = React.useRef(null);
 
     useEffect(() => {
+        base44.auth.me().then(user => {
+            setCurrentUser(user);
+            const stored = localStorage.getItem(`bps_alerts_${user?.id}`);
+            if (stored !== null) setSoundEnabled(stored === 'true');
+        }).catch(() => {});
         loadData();
         loadMonitoredProperties();
         const interval = setInterval(() => {
@@ -104,10 +111,9 @@ export default function CommandDashboard() {
                 knownCallIdsRef.current = currentIds;
             } else {
                 const newCallIds = [...currentIds].filter(id => !knownCallIdsRef.current.has(id));
-                if (newCallIds.length > 0) {
+                if (newCallIds.length > 0 && soundEnabled) {
                     const newCall = active.find(c => newCallIds.includes(c.id));
                     const nearProperty = isCallNearMonitoredProperty(newCall, monitoredProperties);
-                    
                     if (nearProperty) {
                         playPropertyAlert();
                     } else {
@@ -117,7 +123,7 @@ export default function CommandDashboard() {
                 }
                 knownCallIdsRef.current = currentIds;
             }
-            
+
             setCalls(active);
             setUnits(usersData || []);
             setLastRefresh(new Date());
@@ -156,6 +162,13 @@ export default function CommandDashboard() {
         setPendingAlertCall(null);
     };
 
+    const toggleSound = () => {
+        const next = !soundEnabled;
+        setSoundEnabled(next);
+        if (currentUser?.id) localStorage.setItem(`bps_alerts_${currentUser.id}`, String(next));
+        if (!next) stopAllAlerts();
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -179,6 +192,12 @@ export default function CommandDashboard() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
+                    {(currentUser?.is_supervisor || currentUser?.role === 'admin') && (
+                        <Button onClick={toggleSound} size="sm" title={soundEnabled ? 'Mute alerts' : 'Enable alerts'}
+                            className={`border font-mono text-xs ${soundEnabled ? 'bg-slate-800 border-green-500/40 text-green-400 hover:bg-slate-700' : 'bg-slate-800 border-red-500/40 text-red-400 hover:bg-slate-700'}`}>
+                            {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                        </Button>
+                    )}
                     <Button onClick={handleRefresh} disabled={refreshing} size="sm"
                         className="bg-slate-800 border border-slate-700 text-slate-300 hover:border-gold hover:text-gold font-mono text-xs">
                         <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
