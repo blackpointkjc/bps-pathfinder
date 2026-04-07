@@ -1,38 +1,96 @@
 /**
- * Given lat/lng, queries ArcGIS services to find the containing police beat / district.
- * Returns a human-readable string like "Richmond Beat 111A" or null.
+ * Point-in-polygon district lookup using the same GeoJSON sources as the map.
+ * Caches datasets in memory to avoid repeated fetches.
  */
-function fetchWithTimeout(url, ms = 5000) {
-    return Promise.race([
-        fetch(url).then(r => r.json()),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
-    ]);
+
+const cache = {};
+
+async function fetchGeoJSON(url) {
+    if (cache[url]) return cache[url];
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data?.features?.length > 0) cache[url] = data;
+        return data;
+    } catch {
+        return null;
+    }
 }
+
+// Ray casting algorithm - returns true if [lng, lat] is inside the polygon ring
+function pointInRing(point, ring) {
+    const [x, y] = point;
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i];
+        const [xj, yj] = ring[j];
+        const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
+
+function pointInGeometry(point, geometry) {
+    if (!geometry) return false;
+    if (geometry.type === 'Polygon') {
+        return pointInRing(point, geometry.coordinates[0]);
+    }
+    if (geometry.type === 'MultiPolygon') {
+        return geometry.coordinates.some(poly => pointInRing(point, poly[0]));
+    }
+    return false;
+}
+
+function findFeatureForPoint(geojson, lng, lat) {
+    if (!geojson?.features) return null;
+    return geojson.features.find(f => pointInGeometry([lng, lat], f.geometry)) || null;
+}
+
+const SOURCES = [
+    {
+        url: 'https://services1.arcgis.com/k3vhq11XkBNeeOfM/arcgis/rest/services/Police_Beats/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson',
+        label: (attrs) => {
+            const name = attrs.Name || attrs.NAME;
+            return name ? `Richmond Beat ${name}` : null;
+        }
+    },
+    {
+        url: 'https://portal.henrico.gov/mapping/rest/services/Layers/Magisterial_Districts_2021/MapServer/0/query?outFields=*&where=1%3D1&f=geojson',
+        label: (attrs) => {
+            const name = attrs.MAG_DIST_NAME || attrs.NAME || attrs.DISTRICT;
+            return name ? `Henrico — ${name}` : null;
+        }
+    },
+    {
+        url: 'https://services3.arcgis.com/TsynfzBSE6sXfoLq/ArcGIS/rest/services/Administrative_ProdA/FeatureServer/9/query?outFields=*&where=1%3D1&f=geojson',
+        label: (attrs) => {
+            const name = attrs.MAG_DIST || attrs.DISTRICT || attrs.NAME || attrs.District ||
+                Object.values(attrs).find(v => typeof v === 'string' && v.length > 1 && v.length < 40 && isNaN(v));
+            return name ? `Chesterfield — ${name}` : null;
+        }
+    },
+    {
+        url: 'https://services2.arcgis.com/sKZWgJlU6SekCzQV/arcgis/rest/services/Magisterial_Districts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson',
+        label: (attrs) => {
+            const name = attrs.MagDistName || attrs.NAME || attrs.DISTRICT;
+            return name ? `Hanover — ${name}` : null;
+        }
+    },
+];
 
 export async function lookupDistrict(lat, lng) {
     if (!lat || !lng) return null;
-    const point = `${lng},${lat}`;
-    const qs = `geometry=${point}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&returnGeometry=false&f=json`;
 
-    const [richmond, henrico, chesterfield] = await Promise.allSettled([
-        fetchWithTimeout(`https://services1.arcgis.com/k3vhq11XkBNeeOfM/arcgis/rest/services/Police_Beats/FeatureServer/0/query?${qs}&outFields=Name`),
-        fetchWithTimeout(`https://portal.henrico.gov/mapping/rest/services/Layers/Magisterial_Districts_2021/MapServer/0/query?${qs}&outFields=MAG_DIST_NAME,NAME`),
-        fetchWithTimeout(`https://services3.arcgis.com/TsynfzBSE6sXfoLq/ArcGIS/rest/services/Administrative_ProdA/FeatureServer/9/query?${qs}&outFields=*`),
-    ]);
+    const datasets = await Promise.allSettled(SOURCES.map(s => fetchGeoJSON(s.url)));
 
-    if (richmond.status === 'fulfilled' && richmond.value.features?.length > 0) {
-        const beat = richmond.value.features[0].attributes?.Name;
-        if (beat) return `Richmond Beat ${beat}`;
+    for (let i = 0; i < SOURCES.length; i++) {
+        if (datasets[i].status !== 'fulfilled' || !datasets[i].value) continue;
+        const feature = findFeatureForPoint(datasets[i].value, lng, lat);
+        if (feature) {
+            const label = SOURCES[i].label(feature.properties || {});
+            if (label) return label;
+        }
     }
-    if (henrico.status === 'fulfilled' && henrico.value.features?.length > 0) {
-        const attrs = henrico.value.features[0].attributes || {};
-        const name = attrs.MAG_DIST_NAME || attrs.NAME;
-        if (name) return `Henrico — ${name}`;
-    }
-    if (chesterfield.status === 'fulfilled' && chesterfield.value.features?.length > 0) {
-        const attrs = chesterfield.value.features[0].attributes || {};
-        const name = Object.values(attrs).find(v => typeof v === 'string' && v.length > 1 && v.length < 40);
-        if (name) return `Chesterfield — ${name}`;
-    }
-    return 'Unknown';
+
+    return '—';
 }
