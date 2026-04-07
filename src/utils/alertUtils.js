@@ -23,12 +23,14 @@ export const isCallNearMonitoredProperty = (call, monitoredProperties) => {
 
 // Shared interval ref for all repeating alerts
 let alertIntervalRef = null;
+let alertActive = false;
 
 export const stopAllAlerts = () => {
   if (alertIntervalRef) {
     clearInterval(alertIntervalRef);
     alertIntervalRef = null;
   }
+  alertActive = false;
 };
 
 // Alias for backwards compat
@@ -78,14 +80,16 @@ const playChime = () => {
 
 // Play repeating dispatch alert until acknowledged
 export const playDispatchAlert = () => {
-  stopAllAlerts();
+  if (alertActive) return; // another page is already alerting
+  alertActive = true;
   playChime();
   alertIntervalRef = setInterval(playChime, 2000);
 };
 
 // Play continuous high-priority beep for property alerts
 export const playPropertyAlert = () => {
-  stopAllAlerts();
+  if (alertActive) return;
+  alertActive = true;
   playTone(1000, 0.5);
   alertIntervalRef = setInterval(() => playTone(1000, 0.5), 500);
 };
