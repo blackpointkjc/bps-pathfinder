@@ -70,6 +70,7 @@ export default function CommandDashboard() {
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
     const [soundEnabled, setSoundEnabled] = useState(true);
+    const soundEnabledRef = React.useRef(true);
     const knownCallIdsRef = React.useRef(null);
     const alertQueueRef = React.useRef([]);
 
@@ -77,7 +78,11 @@ export default function CommandDashboard() {
         base44.auth.me().then(user => {
             setCurrentUser(user);
             const stored = localStorage.getItem(`bps_alerts_${user?.id}`);
-            if (stored !== null) setSoundEnabled(stored === 'true');
+            if (stored !== null) {
+                const val = stored === 'true';
+                setSoundEnabled(val);
+                soundEnabledRef.current = val;
+            }
         }).catch(() => {});
         loadData();
         loadMonitoredProperties();
@@ -112,7 +117,7 @@ export default function CommandDashboard() {
                 knownCallIdsRef.current = currentIds;
             } else {
                 const newCallIds = [...currentIds].filter(id => !knownCallIdsRef.current.has(id));
-                if (newCallIds.length > 0 && soundEnabled) {
+                if (newCallIds.length > 0 && soundEnabledRef.current) {
                     const newCalls = newCallIds.map(id => active.find(c => c.id === id)).filter(Boolean);
                     // Add all new calls to queue
                     alertQueueRef.current = [...alertQueueRef.current, ...newCalls];
@@ -179,6 +184,7 @@ export default function CommandDashboard() {
     const toggleSound = () => {
         const next = !soundEnabled;
         setSoundEnabled(next);
+        soundEnabledRef.current = next;
         if (currentUser?.id) localStorage.setItem(`bps_alerts_${currentUser.id}`, String(next));
         if (!next) stopAllAlerts();
     };
