@@ -1,7 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { base44 } from '@/api/base44Client';
+
+async function reverseGeocode(lat, lon) {
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+        const data = await res.json();
+        const a = data.address || {};
+        return [
+            a.house_number && a.road ? `${a.house_number} ${a.road}` : a.road || '',
+            a.city || a.town || a.village || a.county || ''
+        ].filter(Boolean).join(', ') || data.display_name?.split(',').slice(0,2).join(',') || null;
+    } catch { return null; }
+}
 
 function createDistressIcon() {
     return new L.DivIcon({
@@ -39,6 +51,8 @@ function AutoCenter({ position }) {
 
 export default function OfficerDistressMarker({ autoCenter = false }) {
     const [activeAlerts, setActiveAlerts] = useState([]);
+    const [addresses, setAddresses] = useState({});
+    const geocodedRef = useRef(new Set());
     const icon = createDistressIcon();
 
     useEffect(() => {
@@ -50,10 +64,31 @@ export default function OfficerDistressMarker({ autoCenter = false }) {
                 )))
                 .catch(() => {});
         };
-        loadAlerts();
-        const interval = setInterval(loadAlerts, 8000);
-        window.addEventListener('officer-distress-activated', loadAlerts);
-        return () => { clearInterval(interval); window.removeEventListener('officer-distress-activated', loadAlerts); };
+        const fetchAndGeocode = () => {
+            base44.entities.OfficerDistress.list('-activated_at', 10)
+                .then(all => {
+                    const active = all.filter(a =>
+                        ['active', 'acknowledged', 'responders_enroute'].includes(a.status)
+                        && a.current_latitude && a.current_longitude
+                    );
+                    setActiveAlerts(active);
+                    active.forEach(alert => {
+                        const lat = alert.current_latitude || alert.latitude;
+                        const lon = alert.current_longitude || alert.longitude;
+                        if (lat && lon && !geocodedRef.current.has(alert.id)) {
+                            geocodedRef.current.add(alert.id);
+                            reverseGeocode(lat, lon).then(addr => {
+                                if (addr) setAddresses(prev => ({ ...prev, [alert.id]: addr }));
+                            });
+                        }
+                    });
+                })
+                .catch(() => {});
+        };
+        fetchAndGeocode();
+        const interval = setInterval(fetchAndGeocode, 8000);
+        window.addEventListener('officer-distress-activated', fetchAndGeocode);
+        return () => { clearInterval(interval); window.removeEventListener('officer-distress-activated', fetchAndGeocode); };
     }, []);
 
     if (activeAlerts.length === 0) return null;
@@ -84,7 +119,7 @@ export default function OfficerDistressMarker({ autoCenter = false }) {
                                         ACTIVATED: {new Date(alert.activated_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: true })}
                                     </div>
                                     <div style={{ color: '#6B7280', fontSize: '10px', marginTop: '4px' }}>
-                                        {pos[0].toFixed(5)}, {pos[1].toFixed(5)}
+                                        📍 {addresses[alert.id] || `${pos[0].toFixed(5)}, ${pos[1].toFixed(5)}`}
                                     </div>
                                 </div>
                             </Popup>
