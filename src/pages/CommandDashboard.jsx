@@ -165,7 +165,10 @@ export default function CommandDashboard() {
         setSoundEnabled(next);
         soundEnabledRef.current = next;
         if (currentUser?.id) localStorage.setItem(`bps_alerts_${currentUser.id}`, String(next));
-        if (!next) stopAllAlerts();
+        if (!next) {
+            stopAllAlerts();
+            window.dispatchEvent(new CustomEvent('bps-alert-cleared'));
+        }
     };
 
     if (loading) {

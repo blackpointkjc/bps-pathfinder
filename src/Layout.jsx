@@ -57,8 +57,13 @@ export default function Layout({ children, currentPageName }) {
 
     useEffect(() => {
         const handler = (e) => setActiveAlert(e.detail);
+        const clearHandler = () => setActiveAlert(null);
         window.addEventListener('bps-new-call', handler);
-        return () => window.removeEventListener('bps-new-call', handler);
+        window.addEventListener('bps-alert-cleared', clearHandler);
+        return () => {
+            window.removeEventListener('bps-new-call', handler);
+            window.removeEventListener('bps-alert-cleared', clearHandler);
+        };
     }, []);
 
     const handleAcknowledge = () => {
@@ -73,7 +78,21 @@ export default function Layout({ children, currentPageName }) {
     }, []);
 
     const isFullscreen = FULLSCREEN_PAGES.has(currentPageName);
-    if (isFullscreen) return <div className="w-full h-full">{children}</div>;
+    if (isFullscreen) return (
+        <div className="w-full h-full relative">
+            {activeAlert && (
+                <div className="fixed top-0 left-0 right-0 z-[9999] flex items-center gap-3 px-4 py-2 bg-red-900/95 border-b-2 border-red-500 animate-pulse">
+                    <span className="text-red-300 text-xs font-mono font-bold flex-shrink-0">🚨 NEW CALL:</span>
+                    <span className="text-white text-xs font-mono truncate flex-1">{activeAlert.incident} @ {activeAlert.location}</span>
+                    <button onClick={handleAcknowledge}
+                        className="flex-shrink-0 px-3 py-1 bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-bold rounded border border-red-400">
+                        ACKNOWLEDGE
+                    </button>
+                </div>
+            )}
+            {children}
+        </div>
+    );
 
     const navSections = buildSections(getNavItems(userRole));
 
