@@ -11,6 +11,8 @@ import {
     TrendingUp, RefreshCw, CheckCircle2, PhoneCall, Shield,
     ArrowRight, Timer, Volume2, VolumeX
 } from 'lucide-react';
+import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
+import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import { isCallNearMonitoredProperty } from '@/utils/alertUtils';
 
 const PRIORITY_COLORS = {
@@ -182,8 +184,11 @@ export default function CommandDashboard() {
         );
     }
 
+    const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
+
     return (
         <div className="bg-slate-950 p-4 md:p-5 space-y-4 min-h-full">
+            <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={isDispatchOrAdmin} />
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
@@ -208,6 +213,7 @@ export default function CommandDashboard() {
                         className="bg-gold text-black font-bold font-mono text-xs hover:bg-yellow-400">
                         <Zap className="w-3.5 h-3.5 mr-1.5" />DISPATCH
                     </Button>
+                    <OfficerDistressButton currentUser={currentUser} />
                 </div>
             </div>
 

@@ -12,6 +12,9 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { playDispatchAlert, playPropertyAlert, stopPropertyAlert, isCallNearMonitoredProperty } from '@/utils/alertUtils';
+import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
+import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
+import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 
 export default function Navigation() {
     const navigate = useNavigate();
@@ -222,8 +225,11 @@ export default function Navigation() {
         { label: 'Out of Service', color: 'bg-slate-600' },
     ];
 
+    const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
+
     return (
         <div className="h-screen w-screen relative overflow-hidden bg-slate-950">
+            <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={isDispatchOrAdmin} />
             {/* Map fills everything */}
             <div className="absolute inset-0">
                 <MapView
@@ -252,7 +258,13 @@ export default function Navigation() {
                     onCallClick={(call) => { setSelectedCall(call); setShowCallSidebar(true); }}
                 >
                     <VACountiesBoundaries />
+                    <OfficerDistressMarker autoCenter={false} />
                 </MapView>
+            </div>
+
+            {/* Officer Distress Button — bottom right, above map controls */}
+            <div className="absolute bottom-6 right-16 z-[1002] pointer-events-auto">
+                <OfficerDistressButton currentUser={currentUser} />
             </div>
 
             {/* Back button */}

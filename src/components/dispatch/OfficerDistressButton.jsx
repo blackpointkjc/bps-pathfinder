@@ -1,0 +1,155 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
+import { AlertTriangle } from 'lucide-react';
+
+// Hold for 2 seconds to activate
+const HOLD_MS = 2000;
+
+export default function OfficerDistressButton({ currentUser, className = '' }) {
+    const [holding, setHolding] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [activated, setActivated] = useState(false);
+    const holdTimer = useRef(null);
+    const progressTimer = useRef(null);
+    const startTime = useRef(null);
+
+    // Check if user already has an active distress alert on mount
+    useEffect(() => {
+        if (!currentUser?.id) return;
+        base44.entities.OfficerDistress.filter({ officer_id: currentUser.id, status: 'active' })
+            .then(alerts => { if (alerts.length > 0) setActivated(true); })
+            .catch(() => {});
+    }, [currentUser?.id]);
+
+    const startHold = (e) => {
+        e.preventDefault();
+        if (activated) return;
+        setHolding(true);
+        startTime.current = Date.now();
+
+        progressTimer.current = setInterval(() => {
+            const elapsed = Date.now() - startTime.current;
+            setProgress(Math.min((elapsed / HOLD_MS) * 100, 100));
+        }, 30);
+
+        holdTimer.current = setTimeout(() => {
+            triggerDistress();
+        }, HOLD_MS);
+    };
+
+    const cancelHold = () => {
+        clearTimeout(holdTimer.current);
+        clearInterval(progressTimer.current);
+        setHolding(false);
+        setProgress(0);
+    };
+
+    const triggerDistress = async () => {
+        clearInterval(progressTimer.current);
+        setHolding(false);
+        setProgress(0);
+
+        // Get GPS
+        const getCoords = () => new Promise((resolve) => {
+            if (!navigator.geolocation) return resolve(null);
+            navigator.geolocation.getCurrentPosition(
+                pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+                () => resolve(null),
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
+        });
+
+        const coords = await getCoords();
+
+        const distressData = {
+            officer_id: currentUser.id,
+            officer_name: currentUser.full_name || 'Unknown Officer',
+            unit_number: currentUser.unit_number || '???',
+            rank: currentUser.rank || '',
+            last_name: currentUser.last_name || currentUser.full_name?.split(' ').pop() || '',
+            latitude: coords?.lat || null,
+            longitude: coords?.lon || null,
+            current_latitude: coords?.lat || null,
+            current_longitude: coords?.lon || null,
+            location_description: `${coords?.lat?.toFixed(5) || '?'}, ${coords?.lon?.toFixed(5) || '?'}`,
+            status: 'active',
+            activated_at: new Date().toISOString(),
+        };
+
+        try {
+            await base44.entities.OfficerDistress.create(distressData);
+            setActivated(true);
+            toast.error('🚨 OFFICER DISTRESS ACTIVATED — Help is being notified', { duration: 10000 });
+            // Dispatch global event so all open tabs/components react immediately
+            window.dispatchEvent(new CustomEvent('officer-distress-activated', { detail: distressData }));
+        } catch (err) {
+            toast.error('Failed to send distress signal — try again');
+            console.error(err);
+        }
+    };
+
+    const cancelDistress = async () => {
+        if (!currentUser?.id) return;
+        try {
+            const alerts = await base44.entities.OfficerDistress.filter({ officer_id: currentUser.id, status: 'active' });
+            for (const alert of alerts) {
+                await base44.entities.OfficerDistress.update(alert.id, {
+                    status: 'cleared',
+                    cleared_at: new Date().toISOString(),
+                    cleared_by: currentUser.id,
+                    cleared_by_name: currentUser.full_name,
+                    notes: 'Officer self-cancelled'
+                });
+            }
+            setActivated(false);
+            toast.success('Distress alert cancelled');
+        } catch (err) {
+            toast.error('Failed to cancel distress alert');
+        }
+    };
+
+    if (!currentUser) return null;
+
+    if (activated) {
+        return (
+            <button
+                onClick={cancelDistress}
+                className={`flex items-center gap-2 px-4 py-2 bg-red-600 border-2 border-red-400 rounded-xl text-white font-mono font-bold text-xs animate-pulse shadow-lg shadow-red-900/60 ${className}`}
+            >
+                <AlertTriangle className="w-4 h-4 animate-bounce" />
+                DISTRESS ACTIVE — TAP TO CANCEL
+            </button>
+        );
+    }
+
+    return (
+        <div className={`relative select-none ${className}`}>
+            <button
+                onMouseDown={startHold}
+                onMouseUp={cancelHold}
+                onMouseLeave={cancelHold}
+                onTouchStart={startHold}
+                onTouchEnd={cancelHold}
+                className={`relative overflow-hidden flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-mono font-bold text-xs transition-all
+                    ${holding
+                        ? 'bg-red-700 border-red-400 text-white scale-95'
+                        : 'bg-red-950/60 border-red-600/60 text-red-400 hover:bg-red-900/60 hover:border-red-500 hover:text-red-300'
+                    }`}
+                title="Hold 2 seconds to activate Officer Distress"
+            >
+                {/* Progress bar fill */}
+                {holding && (
+                    <div
+                        className="absolute inset-0 bg-red-500/40 transition-none"
+                        style={{ width: `${progress}%` }}
+                    />
+                )}
+                <AlertTriangle className={`w-4 h-4 relative z-10 ${holding ? 'animate-pulse' : ''}`} />
+                <span className="relative z-10">
+                    {holding ? `HOLD... ${Math.round(progress)}%` : 'OFFICER DISTRESS'}
+                </span>
+            </button>
+        </div>
+    );
+}

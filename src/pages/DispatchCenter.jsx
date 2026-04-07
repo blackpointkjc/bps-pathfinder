@@ -7,6 +7,9 @@ import { toast } from 'sonner';
 import { Plus, Shield, Radio, Map as MapIcon, RefreshCw } from 'lucide-react';
 import { createPageUrl } from '../utils';
 import { stopAllAlerts } from '@/utils/alertUtils';
+import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
+import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
+import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import NewCallAlert from '@/components/dispatch/NewCallAlert';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
@@ -243,6 +246,7 @@ export default function DispatchCenter() {
 
     return (
         <div className="h-screen flex flex-col bg-[#0a0e1a] text-white overflow-hidden font-mono">
+            <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={true} />
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
             {/* ══ TOP SYSTEM BAR ══ */}
@@ -283,6 +287,7 @@ export default function DispatchCenter() {
                             <Shield className="w-2.5 h-2.5" /> ADMIN
                         </button>
                     )}
+                    <OfficerDistressButton currentUser={currentUser} className="text-[10px]" />
                     <button onClick={() => setShowCreateDialog(true)}
                         className="flex items-center gap-1 px-3 py-1 bg-red-700 hover:bg-red-600 rounded text-[10px] text-white font-bold">
                         <Plus className="w-2.5 h-2.5" /> NEW CALL
@@ -451,6 +456,7 @@ export default function DispatchCenter() {
                                             calls={activeCalls}
                                             onCallClick={handleSelectCall}
                                         />
+                                        <OfficerDistressMarker autoCenter={true} />
                                     </MapContainer>
                                 </div>
                             </div>

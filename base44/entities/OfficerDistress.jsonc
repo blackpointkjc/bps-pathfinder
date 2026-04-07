@@ -1,0 +1,89 @@
+{
+  "name": "OfficerDistress",
+  "type": "object",
+  "properties": {
+    "officer_id": {
+      "type": "string",
+      "description": "User ID of distressed officer"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Full name"
+    },
+    "unit_number": {
+      "type": "string",
+      "description": "Unit number"
+    },
+    "rank": {
+      "type": "string",
+      "description": "Officer rank"
+    },
+    "last_name": {
+      "type": "string",
+      "description": "Last name"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "GPS latitude at activation"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "GPS longitude at activation"
+    },
+    "current_latitude": {
+      "type": "number",
+      "description": "Live updating latitude"
+    },
+    "current_longitude": {
+      "type": "number",
+      "description": "Live updating longitude"
+    },
+    "location_description": {
+      "type": "string",
+      "description": "Human-readable location"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "acknowledged",
+        "responders_enroute",
+        "cleared"
+      ],
+      "default": "active"
+    },
+    "activated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "acknowledged_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "acknowledged_by": {
+      "type": "string"
+    },
+    "acknowledged_by_name": {
+      "type": "string"
+    },
+    "cleared_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cleared_by": {
+      "type": "string"
+    },
+    "cleared_by_name": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "officer_id",
+    "officer_name",
+    "status",
+    "activated_at"
+  ]
+}
