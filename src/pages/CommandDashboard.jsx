@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { playDispatchAlert, playPropertyAlert, stopAllAlerts, isCallNearMonitoredProperty } from '@/utils/alertUtils';
-import NewCallAlert from '@/components/dispatch/NewCallAlert';
+import { playDispatchAlert, stopAllAlerts } from '@/utils/alertUtils';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +11,7 @@ import {
     TrendingUp, RefreshCw, CheckCircle2, PhoneCall, Shield,
     ArrowRight, Timer, Volume2, VolumeX
 } from 'lucide-react';
+import { isCallNearMonitoredProperty } from '@/utils/alertUtils';
 
 const PRIORITY_COLORS = {
     critical: 'bg-red-500',
@@ -67,12 +67,10 @@ export default function CommandDashboard() {
     const [refreshing, setRefreshing] = useState(false);
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [monitoredProperties, setMonitoredProperties] = useState([]);
-    const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const soundEnabledRef = React.useRef(true);
     const knownCallIdsRef = React.useRef(null);
-    const alertQueueRef = React.useRef([]);
 
     useEffect(() => {
         base44.auth.me().then(user => {
@@ -118,16 +116,10 @@ export default function CommandDashboard() {
             } else {
                 const newCallIds = [...currentIds].filter(id => !knownCallIdsRef.current.has(id));
                 if (newCallIds.length > 0 && soundEnabledRef.current) {
-                    const newCalls = newCallIds.map(id => active.find(c => c.id === id)).filter(Boolean);
-                    // Add all new calls to queue
-                    alertQueueRef.current = [...alertQueueRef.current, ...newCalls];
-                    // Only trigger sound/banner if nothing is already showing
-                    if (!pendingAlertCallRef.current) {
-                        const next = alertQueueRef.current.shift();
-                        pendingAlertCallRef.current = next;
-                        setPendingAlertCall(next);
-                        const nearProperty = isCallNearMonitoredProperty(next, monitoredProperties);
-                        if (nearProperty) playPropertyAlert(); else playDispatchAlert();
+                    const newCall = active.find(c => c.id === newCallIds[0]);
+                    if (newCall) {
+                        playDispatchAlert();
+                        window.dispatchEvent(new CustomEvent('bps-new-call', { detail: newCall }));
                     }
                 }
                 knownCallIdsRef.current = currentIds;
@@ -166,20 +158,7 @@ export default function CommandDashboard() {
 
     const sortedCalls = [...calls].sort((a, b) => new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date));
 
-    const pendingAlertCallRef = React.useRef(null);
 
-    const handleAcknowledge = () => {
-        stopAllAlerts();
-        if (alertQueueRef.current.length > 0) {
-            const next = alertQueueRef.current.shift();
-            pendingAlertCallRef.current = next;
-            setPendingAlertCall(next);
-            playDispatchAlert();
-        } else {
-            pendingAlertCallRef.current = null;
-            setPendingAlertCall(null);
-        }
-    };
 
     const toggleSound = () => {
         const next = !soundEnabled;
@@ -202,7 +181,6 @@ export default function CommandDashboard() {
 
     return (
         <div className="bg-slate-950 p-4 md:p-5 space-y-4 min-h-full">
-            <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>

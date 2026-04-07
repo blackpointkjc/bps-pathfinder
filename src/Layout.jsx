@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { stopAllAlerts } from '@/utils/alertUtils';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     Radio, Activity, MapPin, Clock, Shield, Users, BarChart2,
@@ -52,6 +53,18 @@ export default function Layout({ children, currentPageName }) {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [userRole, setUserRole] = useState('user');
+    const [activeAlert, setActiveAlert] = useState(null);
+
+    useEffect(() => {
+        const handler = (e) => setActiveAlert(e.detail);
+        window.addEventListener('bps-new-call', handler);
+        return () => window.removeEventListener('bps-new-call', handler);
+    }, []);
+
+    const handleAcknowledge = () => {
+        stopAllAlerts();
+        setActiveAlert(null);
+    };
 
     useEffect(() => {
         base44.auth.me().then(user => {
@@ -184,6 +197,18 @@ export default function Layout({ children, currentPageName }) {
                         <Settings className="w-5 h-5" />
                     </Link>
                 </header>
+
+                {/* Global Alert Banner */}
+                {activeAlert && (
+                    <div className="flex-none flex items-center gap-3 px-4 py-2 bg-red-900/90 border-b-2 border-red-500 animate-pulse z-50">
+                        <span className="text-red-300 text-xs font-mono font-bold flex-shrink-0">🚨 NEW CALL:</span>
+                        <span className="text-white text-xs font-mono truncate flex-1">{activeAlert.incident} @ {activeAlert.location}</span>
+                        <button onClick={handleAcknowledge}
+                            className="flex-shrink-0 px-3 py-1 bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-bold rounded border border-red-400">
+                            ACKNOWLEDGE
+                        </button>
+                    </div>
+                )}
 
                 {/* Page Content */}
                 <main className="flex-1 overflow-auto min-h-0">
