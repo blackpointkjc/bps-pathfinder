@@ -66,12 +66,10 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
 
     useDistressSound(soundActive);
 
-    const fetchAlerts = async () => {
-        try {
-            const all = await base44.entities.OfficerDistress.list('-activated_at', 20);
-            const recent = all.filter(a => ['active', 'acknowledged', 'responders_enroute'].includes(a.status));
-            setAlerts(recent);
-        } catch (e) {}
+    const fetchAlerts = () => {
+        base44.entities.OfficerDistress.list('-activated_at', 20)
+            .then(all => setAlerts(all.filter(a => ['active', 'acknowledged', 'responders_enroute'].includes(a.status))))
+            .catch(() => {});
     };
 
     useEffect(() => {

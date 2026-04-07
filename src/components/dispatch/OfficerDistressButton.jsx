@@ -52,7 +52,7 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
     useEffect(() => {
         if (!currentUser?.id) return;
         base44.entities.OfficerDistress.filter({ officer_id: currentUser.id, status: 'active' })
-            .then(alerts => { if (alerts.length > 0) setActivated(true); })
+            .then(results => { if (Array.isArray(results) && results.length > 0) setActivated(true); })
             .catch(() => {});
     }, [currentUser?.id]);
 

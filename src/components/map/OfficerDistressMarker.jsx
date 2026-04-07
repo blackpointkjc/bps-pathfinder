@@ -42,16 +42,18 @@ export default function OfficerDistressMarker({ autoCenter = false }) {
     const icon = createDistressIcon();
 
     useEffect(() => {
-        const fetch = async () => {
-            try {
-                const all = await base44.entities.OfficerDistress.list('-activated_at', 10);
-                setActiveAlerts(all.filter(a => ['active', 'acknowledged', 'responders_enroute'].includes(a.status) && a.current_latitude && a.current_longitude));
-            } catch (e) {}
+        const loadAlerts = () => {
+            base44.entities.OfficerDistress.list('-activated_at', 10)
+                .then(all => setActiveAlerts(all.filter(a =>
+                    ['active', 'acknowledged', 'responders_enroute'].includes(a.status)
+                    && a.current_latitude && a.current_longitude
+                )))
+                .catch(() => {});
         };
-        fetch();
-        const interval = setInterval(fetch, 8000);
-        window.addEventListener('officer-distress-activated', fetch);
-        return () => { clearInterval(interval); window.removeEventListener('officer-distress-activated', fetch); };
+        loadAlerts();
+        const interval = setInterval(loadAlerts, 8000);
+        window.addEventListener('officer-distress-activated', loadAlerts);
+        return () => { clearInterval(interval); window.removeEventListener('officer-distress-activated', loadAlerts); };
     }, []);
 
     if (activeAlerts.length === 0) return null;
