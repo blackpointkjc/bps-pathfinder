@@ -36,25 +36,54 @@ function parseTimeToISO(timeStr) {
     return new Date().toISOString();
 }
 
-async function geocodeAddress(address) {
+function cleanAddress(address, agency) {
+    let clean = address.replace(/\b(\d+)\s+Block\b/i, '$1');
+    clean = clean.replace(/\bRICH\b$/, 'Richmond').trim();
+    let city = 'Richmond, Virginia';
+    if (agency) {
+        const ag = agency.toUpperCase();
+        if (ag.includes('HENRICO') || ag.includes('HFD') || ag.includes('HPD') || ag.includes('HCPD') || ag.includes('HCFD')) {
+            city = 'Henrico County, Virginia';
+        } else if (ag.includes('CHESTERFIELD') || ag.includes('CFD') || ag.includes('CCPD') || ag.includes('CCFD')) {
+            city = 'Chesterfield County, Virginia';
+        }
+    }
+    return `${clean}, ${city}`;
+}
+
+async function geocodeAddress(address, agency) {
+    const fullAddress = cleanAddress(address, agency);
+    // Try Census Geocoder first (free, US-only)
     try {
-        const query = encodeURIComponent(address + ', Virginia, USA');
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&countrycodes=us`;
-        const res = await fetch(url, {
-            headers: { 'User-Agent': 'BPS-CAD-Dispatch/1.0 (emergency-services)' },
-            signal: AbortSignal.timeout(5000)
-        });
+        const encoded = encodeURIComponent(fullAddress);
+        const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encoded}&benchmark=2020&format=json`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
         const data = await res.json();
-        if (data?.length > 0) {
-            return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };
+        const match = data?.result?.addressMatches?.[0];
+        if (match) {
+            return { latitude: parseFloat(match.coordinates.y), longitude: parseFloat(match.coordinates.x) };
         }
     } catch (e) { /* silent */ }
+
+    // Fallback: Photon
+    try {
+        const query = encodeURIComponent(fullAddress);
+        const url = `https://photon.komoot.io/api/?q=${query}&limit=1&lang=en`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        const data = await res.json();
+        const feat = data?.features?.[0];
+        if (feat) {
+            const [lon, lat] = feat.geometry.coordinates;
+            return { latitude: lat, longitude: lon };
+        }
+    } catch (e) { /* silent */ }
+
     return null;
 }
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-const MAX_GEOCODE_PER_RUN = 10;
+const MAX_GEOCODE_PER_RUN = 30;
 
 Deno.serve(async (req) => {
     try {
@@ -123,14 +152,14 @@ Deno.serve(async (req) => {
 
             if (existing) {
                 const locationChanged = existing.location !== callData.location;
-                if (locationChanged && geocoded < MAX_GEOCODE_PER_RUN) {
-                    const coords = await geocodeAddress(callData.location);
+                const missingCoords = !existing.latitude || !existing.longitude;
+                if ((locationChanged || missingCoords) && geocoded < MAX_GEOCODE_PER_RUN) {
+                    const coords = await geocodeAddress(callData.location, callData.agency);
                     if (coords) {
                         callData.latitude = coords.latitude;
                         callData.longitude = coords.longitude;
                         geocoded++;
                     }
-                    await sleep(1100);
                 } else {
                     callData.latitude = existing.latitude;
                     callData.longitude = existing.longitude;
@@ -150,7 +179,7 @@ Deno.serve(async (req) => {
                 }
             } else {
                 if (geocoded < MAX_GEOCODE_PER_RUN) {
-                    const coords = await geocodeAddress(callData.location);
+                    const coords = await geocodeAddress(callData.location, callData.agency);
                     if (coords) {
                         callData.latitude = coords.latitude;
                         callData.longitude = coords.longitude;
@@ -159,7 +188,6 @@ Deno.serve(async (req) => {
                     } else {
                         console.log(`Could not geocode: ${callData.location}`);
                     }
-                    await sleep(1100);
                 } else {
                     geocodeSkipped++;
                 }

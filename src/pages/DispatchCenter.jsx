@@ -198,6 +198,8 @@ export default function DispatchCenter() {
         try {
             toast.loading('Scraping live feed...', { id: 'refresh' });
             await base44.functions.invoke('ingestGractivecalls', {});
+            // Also geocode any calls still missing coordinates
+            base44.functions.invoke('geocodeMissingCalls', {}).catch(() => {});
             await Promise.all([loadActiveCalls(), loadUnits()]);
             toast.success('Feed refreshed', { id: 'refresh', duration: 3000 });
         } catch (error) {
