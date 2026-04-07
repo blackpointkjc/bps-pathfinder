@@ -76,9 +76,23 @@ function timeStr(iso) {
     return new Date(iso).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 }
 
+async function reverseGeocode(lat, lon) {
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+        const data = await res.json();
+        const a = data.address || {};
+        return [
+            a.house_number && a.road ? `${a.house_number} ${a.road}` : a.road || '',
+            a.city || a.town || a.village || a.county || ''
+        ].filter(Boolean).join(', ') || data.display_name?.split(',').slice(0,2).join(',') || null;
+    } catch { return null; }
+}
+
 export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin = false }) {
     const [alerts, setAlerts] = useState([]);
     const [dismissed, setDismissed] = useState(new Set());
+    const [addresses, setAddresses] = useState({});  // alertId -> address string
+    const geocodedRef = useRef(new Set());
 
     const activeAlerts = alerts.filter(a => a.status === 'active' || a.status === 'acknowledged' || a.status === 'responders_enroute');
     const visible = activeAlerts.filter(a => !dismissed.has(a.id));
@@ -88,7 +102,21 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
 
     const fetchAlerts = () => {
         base44.entities.OfficerDistress.list('-activated_at', 20)
-            .then(all => setAlerts(all.filter(a => ['active', 'acknowledged', 'responders_enroute'].includes(a.status))))
+            .then(all => {
+                const active = all.filter(a => ['active', 'acknowledged', 'responders_enroute'].includes(a.status));
+                setAlerts(active);
+                // Reverse geocode any alert we haven't geocoded yet
+                active.forEach(alert => {
+                    const lat = alert.current_latitude || alert.latitude;
+                    const lon = alert.current_longitude || alert.longitude;
+                    if (lat && lon && !geocodedRef.current.has(alert.id)) {
+                        geocodedRef.current.add(alert.id);
+                        reverseGeocode(lat, lon).then(addr => {
+                            if (addr) setAddresses(prev => ({ ...prev, [alert.id]: addr }));
+                        });
+                    }
+                });
+            })
             .catch(() => {});
     };
 
@@ -192,7 +220,10 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
                                         {(alert.latitude || alert.current_latitude) && (
                                             <span className="text-red-300 text-xs font-mono flex items-center gap-1">
                                                 <MapPin className="w-3 h-3" />
-                                                {alert.location_description || `${(alert.current_latitude || alert.latitude).toFixed(4)}, ${(alert.current_longitude || alert.longitude).toFixed(4)}`}
+                                                {addresses[alert.id]
+                                                    ? addresses[alert.id]
+                                                    : `${(alert.current_latitude || alert.latitude).toFixed(4)}, ${(alert.current_longitude || alert.longitude).toFixed(4)}`
+                                                }
                                             </span>
                                         )}
                                         <span className="text-red-400 text-xs font-mono flex items-center gap-1">
