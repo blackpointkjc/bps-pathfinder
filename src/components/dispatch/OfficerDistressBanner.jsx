@@ -3,47 +3,67 @@ import { base44 } from '@/api/base44Client';
 import { AlertTriangle, MapPin, Clock, CheckCircle, X, Siren } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Play a loud repeating emergency tone
+// Police-style yelp/warble tone — repeating every 3.5s
 function useDistressSound(isActive) {
     const audioCtxRef = useRef(null);
     const intervalRef = useRef(null);
 
-    const playTone = () => {
+    const playYelp = (ctx) => {
+        try {
+            const now = ctx.currentTime;
+            const duration = 2.2;
+            const sweepsPerSec = 6;
+            const sweepCount = Math.floor(duration * sweepsPerSec);
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            const filter = ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 2400;
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.type = 'sawtooth';
+            // Rapid yelp sweeps: 600 → 1500 Hz
+            for (let i = 0; i < sweepCount; i++) {
+                const t = now + (i / sweepsPerSec);
+                const half = 1 / sweepsPerSec / 2;
+                osc.frequency.setValueAtTime(600, t);
+                osc.frequency.linearRampToValueAtTime(1500, t + half);
+                osc.frequency.linearRampToValueAtTime(600, t + half * 2);
+            }
+
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.6, now + 0.04);
+            gain.gain.setValueAtTime(0.6, now + duration - 0.1);
+            gain.gain.linearRampToValueAtTime(0, now + duration);
+
+            osc.start(now);
+            osc.stop(now + duration + 0.05);
+        } catch (e) {}
+    };
+
+    const startTone = () => {
         try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             audioCtxRef.current = ctx;
-
-            const playBurst = (startTime) => {
-                [800, 1200, 800, 1200].forEach((freq, i) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.frequency.value = freq;
-                    osc.type = 'square';
-                    gain.gain.setValueAtTime(0.4, startTime + i * 0.15);
-                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + i * 0.15 + 0.14);
-                    osc.start(startTime + i * 0.15);
-                    osc.stop(startTime + i * 0.15 + 0.15);
-                });
-            };
-
-            playBurst(ctx.currentTime);
-            intervalRef.current = setInterval(() => {
-                playBurst(ctx.currentTime);
-            }, 3000);
+            playYelp(ctx);
+            intervalRef.current = setInterval(() => playYelp(ctx), 3500);
         } catch (e) {}
     };
 
     const stopTone = () => {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
         try { audioCtxRef.current?.close(); } catch (e) {}
         audioCtxRef.current = null;
     };
 
     useEffect(() => {
         if (isActive) {
-            playTone();
+            startTone();
         } else {
             stopTone();
         }
