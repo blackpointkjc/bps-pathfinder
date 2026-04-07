@@ -21,81 +21,103 @@ export const isCallNearMonitoredProperty = (call, monitoredProperties) => {
   });
 };
 
-// Shared refs for all repeating alerts
-let alertIntervalRef = null;
-let alertActive = false;
-let activeContexts = [];
+// Single master AudioContext — we suspend/resume it to start/stop sound
+let masterCtx = null;
+let alertInterval = null;
+let alertRunning = false;
+
+const getMasterCtx = () => {
+  if (!masterCtx || masterCtx.state === 'closed') {
+    masterCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return masterCtx;
+};
 
 export const stopAllAlerts = () => {
-  if (alertIntervalRef) {
-    clearInterval(alertIntervalRef);
-    alertIntervalRef = null;
+  alertRunning = false;
+  if (alertInterval) {
+    clearInterval(alertInterval);
+    alertInterval = null;
   }
-  // Stop all active audio contexts immediately
-  activeContexts.forEach(ctx => {
-    try { ctx.close(); } catch (e) {}
-  });
-  activeContexts = [];
-  alertActive = false;
+  // Close the master context — this kills all audio immediately
+  if (masterCtx) {
+    try { masterCtx.close(); } catch (e) {}
+    masterCtx = null;
+  }
 };
 
 // Alias for backwards compat
 export const stopPropertyAlert = stopAllAlerts;
 
-// Police siren alert - fast ascending wail like a radio pre-alert
-const playPoliceTone = () => {
-  if (!alertActive) return;
+const playSirenTone = () => {
+  if (!alertRunning) return;
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    activeContexts.push(ctx);
-    // Clean up closed contexts periodically
-    activeContexts = activeContexts.filter(c => c.state !== 'closed');
+    const ctx = getMasterCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+
     const now = ctx.currentTime;
-    const totalDuration = 2.0;
+    const duration = 2.0;
 
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     const filter = ctx.createBiquadFilter();
+
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(2000, now);
+    filter.frequency.value = 2200;
 
     osc.connect(filter);
     filter.connect(gain);
     gain.connect(ctx.destination);
-    osc.type = 'sawtooth';
 
+    osc.type = 'sawtooth';
+    // 3-sweep wail: 600→1400 Hz
     osc.frequency.setValueAtTime(600, now);
-    osc.frequency.linearRampToValueAtTime(1400, now + 0.5);
-    osc.frequency.setValueAtTime(600, now + 0.5);
-    osc.frequency.linearRampToValueAtTime(1400, now + 1.0);
-    osc.frequency.setValueAtTime(600, now + 1.0);
-    osc.frequency.linearRampToValueAtTime(1400, now + 1.5);
-    osc.frequency.setValueAtTime(600, now + 1.5);
-    osc.frequency.linearRampToValueAtTime(1000, now + totalDuration);
+    osc.frequency.linearRampToValueAtTime(1400, now + 0.6);
+    osc.frequency.setValueAtTime(600, now + 0.6);
+    osc.frequency.linearRampToValueAtTime(1400, now + 1.2);
+    osc.frequency.setValueAtTime(600, now + 1.2);
+    osc.frequency.linearRampToValueAtTime(1200, now + duration);
 
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.5, now + 0.05);
-    gain.gain.setValueAtTime(0.5, now + totalDuration - 0.1);
-    gain.gain.linearRampToValueAtTime(0, now + totalDuration);
+    gain.gain.linearRampToValueAtTime(0.45, now + 0.05);
+    gain.gain.setValueAtTime(0.45, now + duration - 0.1);
+    gain.gain.linearRampToValueAtTime(0, now + duration);
 
     osc.start(now);
-    osc.stop(now + totalDuration + 0.05);
-    osc.onended = () => { try { ctx.close(); } catch(e) {} };
+    osc.stop(now + duration + 0.1);
   } catch (e) {}
 };
 
-// Play repeating dispatch alert until acknowledged
-export const playDispatchAlert = () => {
-  if (alertActive) return;
-  alertActive = true;
-  playPoliceTone();
-  alertIntervalRef = setInterval(playPoliceTone, 3000);
+const playBeepTone = (freq = 1000, vol = 0.5) => {
+  if (!alertRunning) return;
+  try {
+    const ctx = getMasterCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(vol, now + 0.02);
+    gain.gain.linearRampToValueAtTime(0, now + 0.18);
+    osc.start(now);
+    osc.stop(now + 0.2);
+  } catch (e) {}
 };
 
-// Play continuous high-priority beep for property alerts
+export const playDispatchAlert = () => {
+  if (alertRunning) return;
+  alertRunning = true;
+  playSirenTone();
+  alertInterval = setInterval(playSirenTone, 3500);
+};
+
 export const playPropertyAlert = () => {
-  if (alertActive) return;
-  alertActive = true;
-  playTone(1000, 0.5);
-  alertIntervalRef = setInterval(() => playTone(1000, 0.5), 500);
+  if (alertRunning) return;
+  alertRunning = true;
+  playBeepTone(1000, 0.5);
+  alertInterval = setInterval(() => playBeepTone(1000, 0.5), 500);
 };
