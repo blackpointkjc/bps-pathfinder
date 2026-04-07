@@ -1,8 +1,6 @@
 import React from 'react';
-import { Marker, Popup } from 'react-leaflet';
+import { Marker } from 'react-leaflet';
 import L from 'leaflet';
-import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, Radio } from 'lucide-react';
 
 // Icon based on incident type and agency
 const createCallIcon = (call, isHighPriority = false) => {
@@ -153,77 +151,10 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
                         icon={icon}
                         eventHandlers={{
                             click: () => {
-                                console.log('📍 Call marker clicked:', call.incident);
-                                if (onCallClick) {
-                                    onCallClick(call);
-                                }
+                                if (onCallClick) onCallClick(call);
                             }
                         }}
-                    >
-                        <Popup maxWidth={300}>
-                            <div className="p-2">
-                                <div className="flex items-start gap-2 mb-2">
-                                    <Radio className="w-4 h-4 text-red-500 flex-shrink-0 mt-1" />
-                                    <h3 className="font-bold text-sm text-[#1D1D1F] leading-tight">
-                                        {call.incident}
-                                    </h3>
-                                </div>
-                                {call.geo_approximate && (
-                                    <div className="flex items-center gap-1 mb-2 px-2 py-1 bg-yellow-50 border border-yellow-300 rounded text-xs text-yellow-800">
-                                        <span>⚠️</span>
-                                        <span className="font-semibold">Approximate Location</span>
-                                        <span className="text-yellow-600">({call.geo_method || 'estimated'})</span>
-                                    </div>
-                                )}
-                                
-                                <div className="space-y-2 text-xs">
-                                    {call.ai_summary && (
-                                        <div className="bg-blue-50 p-2 rounded text-xs text-blue-900 font-medium mb-2">
-                                            {call.ai_summary}
-                                        </div>
-                                    )}
-                                    
-                                    <div className="flex items-start gap-2">
-                                        <MapPin className="w-3 h-3 text-gray-500 flex-shrink-0 mt-0.5" />
-                                        <span className="text-gray-700">{call.location}</span>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-2">
-                                        <Clock className="w-3 h-3 text-gray-500 flex-shrink-0" />
-                                        <span className="text-gray-600">
-                                            {call.time_received ? 
-                                                new Date(call.time_received).toLocaleTimeString('en-US', { hour12: false }) :
-                                                call.timeReceived || 'Unknown time'
-                                            }
-                                        </span>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-2 flex-wrap pt-1">
-                                        <Badge 
-                                            variant="secondary" 
-                                            className="bg-blue-100 text-blue-700 text-xs"
-                                        >
-                                            {call.agency}
-                                        </Badge>
-                                        <Badge 
-                                            variant="secondary"
-                                            className={`text-xs ${
-                                                call.incident.includes('EMS')
-                                                    ? 'bg-yellow-100 text-yellow-700'
-                                                    : call.status.includes('Arrived') || call.status.includes('ARRIVED')
-                                                    ? 'bg-green-100 text-green-700'
-                                                    : call.status.includes('Enroute') || call.status.includes('ENROUTE')
-                                                    ? 'bg-red-100 text-red-700'
-                                                    : 'bg-gray-100 text-gray-700'
-                                            }`}
-                                        >
-                                            {call.status}
-                                        </Badge>
-                                    </div>
-                                </div>
-                            </div>
-                        </Popup>
-                    </Marker>
+                    />
                 );
             })}
         </>
