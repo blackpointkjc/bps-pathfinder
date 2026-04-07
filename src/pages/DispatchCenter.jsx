@@ -6,7 +6,8 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Plus, Shield, Radio, Map as MapIcon, Volume2, VolumeX, RefreshCw } from 'lucide-react';
 import { createPageUrl } from '../utils';
-import { playDispatchAlert, playPropertyAlert, stopPropertyAlert, isCallNearMonitoredProperty } from '@/utils/alertUtils';
+import { playDispatchAlert, playPropertyAlert, stopAllAlerts, isCallNearMonitoredProperty } from '@/utils/alertUtils';
+import NewCallAlert from '@/components/dispatch/NewCallAlert';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
@@ -38,8 +39,8 @@ export default function DispatchCenter() {
     const [soundEnabled, setSoundEnabled] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [monitoredProperties, setMonitoredProperties] = useState([]);
+    const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const knownCallIdsRef = React.useRef(null);
-    const propertyAlertRef = React.useRef(null);
 
     useEffect(() => {
         init();
@@ -145,23 +146,12 @@ export default function DispatchCenter() {
                 if (newCallIds.length > 0 && soundEnabled) {
                     const newCall = recentCalls.find(c => newCallIds.includes(c.id));
                     const nearProperty = isCallNearMonitoredProperty(newCall, monitoredProperties);
-
                     if (nearProperty) {
-                        // Property alert: continuous beeping
                         playPropertyAlert();
-                        propertyAlertRef.current = { callId: newCall.id, timeout: setTimeout(() => stopPropertyAlert(), 60000) };
-                        toast.warning(`ALERT: Call near monitored property!`, {
-                            duration: 10000,
-                            style: { background: '#7c2d12', color: 'white', border: '1px solid #ea580c' }
-                        });
                     } else {
-                        // Standard dispatch alert
                         playDispatchAlert();
-                        toast.info(`${newCallIds.length} new call${newCallIds.length > 1 ? 's' : ''} received`, {
-                            duration: 4000,
-                            style: { background: '#1e3a5f', color: 'white', border: '1px solid #3b82f6' }
-                        });
                     }
+                    setPendingAlertCall(newCall);
                 }
                 knownCallIdsRef.current = currentIds;
             }
@@ -249,8 +239,14 @@ export default function DispatchCenter() {
 
     const allCalls = activeCalls;
 
+    const handleAcknowledge = () => {
+        stopAllAlerts();
+        setPendingAlertCall(null);
+    };
+
     return (
         <div className="h-screen flex flex-col bg-[#0a0e1a] text-white overflow-hidden font-mono">
+            <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
             {/* ══ TOP SYSTEM BAR ══ */}
             <div className="flex-none h-9 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center px-3 gap-3">
