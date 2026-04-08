@@ -448,7 +448,7 @@ export default function DispatchCenter() {
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                     <span className="text-[10px] font-bold text-emerald-400 tracking-widest">LIVE TACTICAL MAP</span>
                                 </div>
-                                <div className="flex-1" style={{minHeight: '200px'}}>
+                                <div className="flex-1" style={{minHeight: '200px', position: 'relative', zIndex: 0}}>
                                     <MapContainer
                                         center={[37.5407, -77.4360]}
                                         zoom={11}
