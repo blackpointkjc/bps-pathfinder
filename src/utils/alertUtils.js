@@ -25,6 +25,12 @@ export const isCallNearMonitoredProperty = (call, monitoredProperties) => {
 let masterCtx = null;
 let alertInterval = null;
 let alertRunning = false;
+let dispatchAlertMuted = false;
+
+export const setDispatchAlertMuted = (muted) => {
+  dispatchAlertMuted = muted;
+  if (muted) stopDispatchAlert();
+};
 
 const getMasterCtx = () => {
   if (!masterCtx || masterCtx.state === 'closed') {
@@ -111,7 +117,7 @@ const playBeepTone = (freq = 1000, vol = 0.5) => {
 };
 
 export const playDispatchAlert = () => {
-  if (alertRunning) return;
+  if (alertRunning || dispatchAlertMuted) return;
   alertRunning = true;
   playSirenTone();
   alertInterval = setInterval(playSirenTone, 3500);

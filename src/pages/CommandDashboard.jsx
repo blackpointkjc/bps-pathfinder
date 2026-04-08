@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { playDispatchAlert, stopDispatchAlert } from '@/utils/alertUtils';
+import { playDispatchAlert, stopDispatchAlert, setDispatchAlertMuted } from '@/utils/alertUtils';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -82,6 +82,7 @@ export default function CommandDashboard() {
                 const val = stored === 'true';
                 setSoundEnabled(val);
                 soundEnabledRef.current = val;
+                setDispatchAlertMuted(!val);
             }
         }).catch(() => {});
         loadData();
@@ -167,7 +168,7 @@ export default function CommandDashboard() {
         setSoundEnabled(next);
         soundEnabledRef.current = next;
         if (currentUser?.id) localStorage.setItem(`bps_alerts_${currentUser.id}`, String(next));
-        if (!next) stopDispatchAlert();
+        setDispatchAlertMuted(!next);
     };
 
     if (loading) {
