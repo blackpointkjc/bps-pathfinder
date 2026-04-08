@@ -15,6 +15,16 @@ import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import { isCallNearMonitoredProperty } from '@/utils/alertUtils';
 
+const UNIT_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
+
+const STATUS_COLORS = {
+    Available: 'bg-green-500/20 text-green-400 border-green-500/40 hover:bg-green-500/30',
+    Enroute: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40 hover:bg-yellow-500/30',
+    'On Scene': 'bg-blue-500/20 text-blue-400 border-blue-500/40 hover:bg-blue-500/30',
+    Busy: 'bg-orange-500/20 text-orange-400 border-orange-500/40 hover:bg-orange-500/30',
+    'Out of Service': 'bg-gray-500/20 text-gray-400 border-gray-500/40 hover:bg-gray-500/30',
+};
+
 const PRIORITY_COLORS = {
     critical: 'bg-red-500',
     high: 'bg-orange-500',
@@ -192,6 +202,14 @@ export default function CommandDashboard() {
     }
 
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
+    const isOfficer = !isDispatchOrAdmin;
+
+    const handleStatusChange = async (newStatus) => {
+        try {
+            await base44.auth.updateMe({ status: newStatus, last_updated: new Date().toISOString() });
+            setCurrentUser(prev => ({ ...prev, status: newStatus }));
+        } catch (e) {}
+    };
 
     return (
         <div className="bg-slate-950 p-4 md:p-5 space-y-4 min-h-full">
@@ -223,6 +241,31 @@ export default function CommandDashboard() {
                     <OfficerDistressButton currentUser={currentUser} />
                 </div>
             </div>
+
+            {/* Officer Status Bar */}
+            {isOfficer && currentUser && (
+                <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5">
+                    <span className="text-slate-400 font-mono text-xs font-bold flex-shrink-0">MY STATUS:</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        {UNIT_STATUSES.map(s => (
+                            <button
+                                key={s}
+                                onClick={() => handleStatusChange(s)}
+                                className={`px-3 py-1 rounded-lg border font-mono text-xs font-bold transition-all ${
+                                    currentUser.status === s
+                                        ? STATUS_COLORS[s] + ' ring-1 ring-offset-1 ring-offset-slate-900'
+                                        : 'bg-slate-800 text-slate-500 border-slate-700 hover:text-slate-300 hover:border-slate-500'
+                                }`}
+                            >
+                                {s.toUpperCase()}
+                            </button>
+                        ))}
+                    </div>
+                    {currentUser.unit_number && (
+                        <span className="ml-auto text-slate-500 font-mono text-xs">UNIT-{currentUser.unit_number}</span>
+                    )}
+                </div>
+            )}
 
             {/* Critical Alert Banner */}
             {criticalCalls.length > 0 && (
