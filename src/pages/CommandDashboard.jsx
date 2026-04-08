@@ -242,8 +242,8 @@ export default function CommandDashboard() {
                 </div>
             </div>
 
-            {/* Officer Status Bar */}
-            {isOfficer && currentUser && (
+            {/* Status Bar */}
+            {currentUser && (
                 <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5">
                     <span className="text-slate-400 font-mono text-xs font-bold flex-shrink-0">MY STATUS:</span>
                     <div className="flex items-center gap-1.5 flex-wrap">
