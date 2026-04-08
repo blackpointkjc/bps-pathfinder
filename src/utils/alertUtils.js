@@ -46,6 +46,8 @@ export const stopDispatchAlert = () => {
     alertInterval = null;
   }
   if (masterCtx) {
+    try { masterCtx.suspend(); } catch (e) {}
+    // Close and null it so next alert gets a fresh context
     try { masterCtx.close(); } catch (e) {}
     masterCtx = null;
   }
