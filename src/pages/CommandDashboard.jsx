@@ -75,6 +75,15 @@ export default function CommandDashboard() {
     const knownCallIdsRef = React.useRef(null);
 
     useEffect(() => {
+        // Synchronously apply mute from any stored user preference before data loads
+        const anyStoredMute = Object.keys(localStorage).find(k => k.startsWith('bps_alerts_'));
+        if (anyStoredMute) {
+            const val = localStorage.getItem(anyStoredMute) === 'true';
+            setSoundEnabled(val);
+            soundEnabledRef.current = val;
+            setDispatchAlertMuted(!val);
+        }
+
         base44.auth.me().then(user => {
             setCurrentUser(user);
             const stored = localStorage.getItem(`bps_alerts_${user?.id}`);
