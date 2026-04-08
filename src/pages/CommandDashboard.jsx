@@ -73,8 +73,6 @@ export default function CommandDashboard() {
     const [soundEnabled, setSoundEnabled] = useState(true);
     const soundEnabledRef = React.useRef(true);
     const knownCallIdsRef = React.useRef(null);
-    const [officerStatus, setOfficerStatus] = useState(null);
-    const [updatingStatus, setUpdatingStatus] = useState(false);
 
     useEffect(() => {
         // Synchronously apply mute from any stored user preference before data loads
@@ -88,7 +86,6 @@ export default function CommandDashboard() {
 
         base44.auth.me().then(user => {
             setCurrentUser(user);
-            setOfficerStatus(user?.status || null);
             const stored = localStorage.getItem(`bps_alerts_${user?.id}`);
             if (stored !== null) {
                 const val = stored === 'true';
@@ -167,27 +164,13 @@ export default function CommandDashboard() {
     const enroute = activeUnits.filter(u => u.status === 'Enroute').length;
     const onScene = activeUnits.filter(u => u.status === 'On Scene').length;
 
-    // Only show manually dispatched calls (no source = entered from dispatch center)
-    const dispatchCalls = calls.filter(c => !c.source);
-    const criticalCalls = dispatchCalls.filter(c => getCallPriority(c) === 'critical');
-    const highCalls = dispatchCalls.filter(c => getCallPriority(c) === 'high');
-    const unassigned = dispatchCalls.filter(c => !c.assigned_units || c.assigned_units.length === 0);
-    const sortedCalls = [...dispatchCalls].sort((a, b) => new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date));
+    const criticalCalls = calls.filter(c => getCallPriority(c) === 'critical');
+    const highCalls = calls.filter(c => getCallPriority(c) === 'high');
+    const unassigned = calls.filter(c => !c.assigned_units || c.assigned_units.length === 0);
+
+    const sortedCalls = [...calls].sort((a, b) => new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date));
 
 
-
-    const handleStatusUpdate = async (newStatus) => {
-        if (updatingStatus || !currentUser) return;
-        setUpdatingStatus(true);
-        try {
-            await base44.auth.updateMe({ status: newStatus });
-            setOfficerStatus(newStatus);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setUpdatingStatus(false);
-        }
-    };
 
     const toggleSound = () => {
         const next = !soundEnabled;
@@ -241,34 +224,6 @@ export default function CommandDashboard() {
                 </div>
             </div>
 
-            {/* Officer Status Bar */}
-            {currentUser && (
-                <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5">
-                    <span className="text-slate-400 font-mono text-xs font-bold flex-shrink-0">MY STATUS:</span>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                        {['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'].map(s => (
-                            <button
-                                key={s}
-                                disabled={updatingStatus}
-                                onClick={() => handleStatusUpdate(s)}
-                                className={`px-3 py-1 rounded-lg font-mono text-xs font-bold border transition-all ${
-                                    officerStatus === s
-                                        ? s === 'Available' ? 'bg-green-500/30 border-green-400 text-green-300'
-                                        : s === 'Enroute' ? 'bg-yellow-500/30 border-yellow-400 text-yellow-300'
-                                        : s === 'On Scene' ? 'bg-blue-500/30 border-blue-400 text-blue-300'
-                                        : s === 'Busy' ? 'bg-orange-500/30 border-orange-400 text-orange-300'
-                                        : 'bg-gray-500/30 border-gray-400 text-gray-300'
-                                        : 'bg-transparent border-slate-700 text-slate-500 hover:border-slate-500 hover:text-slate-300'
-                                }`}
-                            >
-                                {s.toUpperCase()}
-                            </button>
-                        ))}
-                    </div>
-                    {updatingStatus && <span className="text-slate-500 font-mono text-[10px] ml-2">UPDATING...</span>}
-                </div>
-            )}
-
             {/* Critical Alert Banner */}
             {criticalCalls.length > 0 && (
                 <div className="bg-red-950/60 border-2 border-red-500 rounded-xl p-3 flex items-center gap-3 animate-pulse-border">
@@ -290,7 +245,7 @@ export default function CommandDashboard() {
 
             {/* KPI Row */}
             <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                <KPICard label="ACTIVE CALLS" value={dispatchCalls.length} icon={Radio} color="text-gold" />
+                <KPICard label="ACTIVE CALLS" value={calls.length} icon={Radio} color="text-gold" />
                 <KPICard label="CRITICAL" value={criticalCalls.length} icon={AlertTriangle} color="text-red-400" />
                 <KPICard label="UNASSIGNED" value={unassigned.length} icon={PhoneCall} color="text-orange-400" />
                 <KPICard label="UNITS AVAILABLE" value={available} icon={CheckCircle2} color="text-green-400" />
@@ -307,7 +262,7 @@ export default function CommandDashboard() {
                             <div className="flex items-center gap-2">
                                 <Radio className="w-4 h-4 text-gold" />
                                 <span className="text-white font-mono font-bold text-sm">LIVE INCIDENT QUEUE</span>
-                                <Badge className="bg-gold/20 text-gold border-gold/30 font-mono text-xs">{dispatchCalls.length}</Badge>
+                                <Badge className="bg-gold/20 text-gold border-gold/30 font-mono text-xs">{calls.length}</Badge>
                             </div>
                             <Button size="sm" variant="ghost" onClick={() => navigate(createPageUrl('DispatchCenter'))}
                                 className="text-slate-400 hover:text-gold font-mono text-xs">
