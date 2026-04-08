@@ -33,21 +33,23 @@ const getMasterCtx = () => {
   return masterCtx;
 };
 
-export const stopAllAlerts = () => {
+export const stopDispatchAlert = () => {
   alertRunning = false;
   if (alertInterval) {
     clearInterval(alertInterval);
     alertInterval = null;
   }
-  // Close the master context — this kills all audio immediately
   if (masterCtx) {
     try { masterCtx.close(); } catch (e) {}
     masterCtx = null;
   }
 };
 
+// stopAllAlerts is an alias — does NOT affect officer distress (separate AudioContext)
+export const stopAllAlerts = stopDispatchAlert;
+
 // Alias for backwards compat
-export const stopPropertyAlert = stopAllAlerts;
+export const stopPropertyAlert = stopDispatchAlert;
 
 const playSirenTone = () => {
   if (!alertRunning) return;
