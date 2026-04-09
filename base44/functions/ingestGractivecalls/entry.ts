@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 import * as cheerio from 'npm:cheerio@1.0.0';
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -183,6 +183,7 @@ Deno.serve(async (req) => {
                         longitude: callData.longitude,
                     });
                     updated++;
+                    await sleep(150);
                 } catch (_e) {
                     // Record may have been deleted — skip update
                 }
@@ -204,6 +205,7 @@ Deno.serve(async (req) => {
                 try {
                     await base44.asServiceRole.entities.DispatchCall.create(callData);
                     inserted++;
+                    await sleep(200);
                 } catch (_e) {
                     // Duplicate — skip
                 }

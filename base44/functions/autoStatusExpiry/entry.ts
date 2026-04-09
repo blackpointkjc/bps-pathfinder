@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 // Runs on a schedule: marks officers "Out of Service" if their last_updated is > 12 hours ago
 // and their status is not already OOS or Off Duty
