@@ -86,8 +86,8 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     const processedUnionIds = new Set();
     
     units.forEach(unit => {
-        // Skip current user and units that explicitly opt out
-        if (unit.id === currentUserId || unit.show_on_map === false) return;
+        // Skip current user only
+        if (unit.id === currentUserId) return;
         
         // If unit is in a union
         if (unit.union_id) {
