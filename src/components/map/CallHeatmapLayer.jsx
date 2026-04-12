@@ -1,26 +1,29 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
-import L from 'leaflet';
 import { base44 } from '@/api/base44Client';
 
-// Draws a radial gradient "heat blob" on a canvas for each call point
 function drawHeatmap(canvas, map, points) {
+    const size = map.getSize();
+    canvas.width = size.x;
+    canvas.height = size.y;
+
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const RADIUS = 40;
-    const BLUR = 25;
+    const RADIUS = 35;
 
-    points.forEach(([lat, lng, weight = 1]) => {
+    points.forEach(([lat, lng]) => {
         const p = map.latLngToContainerPoint([lat, lng]);
-        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, RADIUS + BLUR);
-        const alpha = Math.min(0.6, 0.15 * weight);
-        gradient.addColorStop(0, `rgba(255, 30, 30, ${alpha})`);
-        gradient.addColorStop(0.4, `rgba(255, 120, 0, ${alpha * 0.6})`);
-        gradient.addColorStop(0.7, `rgba(255, 220, 0, ${alpha * 0.3})`);
-        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        // Skip points far outside viewport
+        if (p.x < -RADIUS || p.x > size.x + RADIUS || p.y < -RADIUS || p.y > size.y + RADIUS) return;
+
+        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, RADIUS);
+        gradient.addColorStop(0,   'rgba(255, 30,  30,  0.55)');
+        gradient.addColorStop(0.4, 'rgba(255, 120, 0,   0.30)');
+        gradient.addColorStop(0.7, 'rgba(255, 220, 0,   0.15)');
+        gradient.addColorStop(1,   'rgba(0,   0,   0,   0)');
         ctx.beginPath();
-        ctx.arc(p.x, p.y, RADIUS + BLUR, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, RADIUS, 0, Math.PI * 2);
         ctx.fillStyle = gradient;
         ctx.fill();
     });
@@ -30,60 +33,52 @@ export default function CallHeatmapLayer({ enabled }) {
     const map = useMap();
     const canvasRef = useRef(null);
     const pointsRef = useRef([]);
-    const overlayRef = useRef(null);
 
-    // Load historical call data once
+    const redraw = () => {
+        if (!canvasRef.current || !map || pointsRef.current.length === 0) return;
+        drawHeatmap(canvasRef.current, map, pointsRef.current);
+    };
+
+    // Load data when enabled
     useEffect(() => {
         if (!enabled) return;
         base44.entities.DispatchCall.list('-created_date', 500)
             .then(calls => {
                 pointsRef.current = calls
                     .filter(c => c.latitude && c.longitude)
-                    .map(c => [c.latitude, c.longitude, 1]);
+                    .map(c => [c.latitude, c.longitude]);
                 redraw();
             })
             .catch(() => {});
     }, [enabled]);
 
-    const redraw = () => {
-        if (!canvasRef.current || !map) return;
-        const size = map.getSize();
-        canvasRef.current.width = size.x;
-        canvasRef.current.height = size.y;
-        drawHeatmap(canvasRef.current, map, pointsRef.current);
-    };
-
+    // Mount/unmount canvas, attach map events
     useEffect(() => {
         if (!enabled) {
-            if (overlayRef.current) {
-                overlayRef.current.remove();
-                overlayRef.current = null;
+            if (canvasRef.current) {
+                canvasRef.current.remove();
+                canvasRef.current = null;
             }
             return;
         }
 
-        // Create a canvas overlay using Leaflet's overlay pane
+        // Attach canvas directly to map container (not overlay pane) so no pane transform affects it
+        const mapContainer = map.getContainer();
         const canvas = document.createElement('canvas');
-        canvas.style.position = 'absolute';
-        canvas.style.top = '0';
-        canvas.style.left = '0';
-        canvas.style.pointerEvents = 'none';
-        canvas.style.zIndex = '400';
+        canvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:450;';
+        mapContainer.appendChild(canvas);
         canvasRef.current = canvas;
 
-        map.getPanes().overlayPane.appendChild(canvas);
-        overlayRef.current = canvas;
+        // Redraw on every map movement/zoom event
+        const events = ['move', 'zoom', 'viewreset', 'resize', 'zoomend', 'moveend'];
+        events.forEach(e => map.on(e, redraw));
 
-        const onRedraw = () => redraw();
-        map.on('moveend zoomend resize', onRedraw);
-
-        // Initial draw if we already have data
         if (pointsRef.current.length > 0) redraw();
 
         return () => {
-            map.off('moveend zoomend resize', onRedraw);
+            events.forEach(e => map.off(e, redraw));
             canvas.remove();
-            overlayRef.current = null;
+            canvasRef.current = null;
         };
     }, [enabled, map]);
 

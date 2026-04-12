@@ -194,7 +194,7 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             if (baseMapType === 'satellite') {
                 return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
             }
-            return 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+            return 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png';
         }
 
         switch (baseMapType) {
@@ -210,7 +210,7 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
 
     const getTileAttribution = () => {
         if (mapTheme === 'night' && baseMapType !== 'satellite') {
-            return '&copy; <a href="https://www.esri.com/">Esri</a>';
+            return '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>';
         }
         
         switch (baseMapType) {
@@ -238,7 +238,7 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
                 attribution={getTileAttribution()}
                 url={getTileLayerUrl()}
                 maxZoom={20}
-                maxNativeZoom={baseMapType === 'satellite' ? 19 : 18}
+                maxNativeZoom={baseMapType === 'satellite' ? 19 : mapTheme === 'night' && baseMapType !== 'satellite' ? 19 : 18}
                 className={mapTheme === 'night' ? 'map-night-mode' : ''}
             />
 
