@@ -153,6 +153,33 @@ Deno.serve(async (req) => {
         const existingMap = new Map(existingCalls.map(c => [c.call_id, c]));
         console.log(`Found ${existingCalls.length} existing calls in database`);
 
+        // Classify all new calls (not already in DB) using AI priority system
+        const newCallsToInsert = allCalls.filter(c => !existingMap.has(c.call_id));
+        const classificationMap = new Map();
+        if (newCallsToInsert.length > 0) {
+            try {
+                const BATCH_SIZE = 20;
+                for (let i = 0; i < newCallsToInsert.length; i += BATCH_SIZE) {
+                    const batch = newCallsToInsert.slice(i, i + BATCH_SIZE);
+                    const classifyRes = await fetch(`https://${req.headers.get('host')}/classifyCallPriority`, {
+                        method: 'POST',
+                        headers: { ...Object.fromEntries(req.headers), 'content-type': 'application/json' },
+                        body: JSON.stringify({ calls: batch })
+                    });
+                    if (classifyRes.ok) {
+                        const classifyData = await classifyRes.json();
+                        (classifyData.results || []).forEach((r, idx) => {
+                            classificationMap.set(batch[idx].call_id, r);
+                        });
+                    }
+                    await sleep(300);
+                }
+                console.log(`Classified ${classificationMap.size} new calls`);
+            } catch (classifyErr) {
+                console.error('Classification step failed (non-fatal):', classifyErr);
+            }
+        }
+
         let inserted = 0, updated = 0, geocoded = 0, geocodeSkipped = 0;
         const newCallIds = new Set(allCalls.map(c => c.call_id));
 
@@ -200,6 +227,18 @@ Deno.serve(async (req) => {
                     }
                 } else {
                     geocodeSkipped++;
+                }
+
+                // Attach AI classification if available
+                const classification = classificationMap.get(callData.call_id);
+                if (classification) {
+                    callData.priority_level = classification.priority_level;
+                    callData.priority_label = classification.priority_label;
+                    callData.ai_call_category = classification.ai_call_category;
+                    callData.priority_reason = classification.priority_reason;
+                    // Map to existing priority field for backwards compat
+                    const levelMap = { 1: 'critical', 2: 'high', 3: 'medium', 4: 'low' };
+                    callData.priority = levelMap[classification.priority_level] || 'medium';
                 }
 
                 try {

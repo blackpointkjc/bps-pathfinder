@@ -47,6 +47,12 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
         }
     };
 
+    const getAIPriorityBadge = (call) => {
+        if (!call.priority_label) return null;
+        const colors = { CRITICAL: 'bg-red-700 text-red-100', URGENT: 'bg-orange-600 text-orange-100', MODERATE: 'bg-yellow-600 text-yellow-100', LOW: 'bg-slate-600 text-slate-200' };
+        return { color: colors[call.priority_label] || 'bg-slate-600 text-slate-200', label: `P${call.priority_level} ${call.priority_label}` };
+    };
+
     const getAssignedUnitsForCall = (call) => {
         if (!call.assigned_units) return [];
         return units.filter(u => call.assigned_units.includes(u.id));
@@ -175,9 +181,15 @@ export default function ActiveCallsQueue({ calls, selectedCallId, onSelectCall, 
                                             </div>
                                         </div>
                                         <div className="flex flex-col gap-1 ml-2">
-                                            <Badge className={`${getPriorityColor(call.priority)} text-white text-xs`}>
-                                                {call.priority}
-                                            </Badge>
+                                            {(() => { const ai = getAIPriorityBadge(call); return ai ? (
+                                                <Badge className={`${ai.color} text-xs font-mono font-bold`} title={call.priority_reason}>
+                                                    {ai.label}
+                                                </Badge>
+                                            ) : (
+                                                <Badge className={`${getPriorityColor(call.priority)} text-white text-xs`}>
+                                                    {call.priority}
+                                                </Badge>
+                                            ); })()}
                                             {(!call.assigned_units || call.assigned_units.length === 0) && (
                                                 <Button
                                                     size="sm"
