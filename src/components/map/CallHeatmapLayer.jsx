@@ -39,17 +39,19 @@ export default function CallHeatmapLayer({ enabled }) {
         drawHeatmap(canvasRef.current, map, pointsRef.current);
     };
 
-    // Load data when enabled
+    // Load data when enabled — pulls from both historical archive and current active calls
     useEffect(() => {
         if (!enabled) return;
-        base44.entities.DispatchCall.list('-created_date', 500)
-            .then(calls => {
-                pointsRef.current = calls
-                    .filter(c => c.latitude && c.longitude)
-                    .map(c => [c.latitude, c.longitude]);
-                redraw();
-            })
-            .catch(() => {});
+        Promise.all([
+            base44.entities.CallHistory.list('-created_date', 2000),
+            base44.entities.DispatchCall.list('-created_date', 500)
+        ]).then(([history, active]) => {
+            const all = [...history, ...active];
+            pointsRef.current = all
+                .filter(c => c.latitude && c.longitude)
+                .map(c => [c.latitude, c.longitude]);
+            redraw();
+        }).catch(() => {});
     }, [enabled]);
 
     // Mount/unmount canvas, attach map events
