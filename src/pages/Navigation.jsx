@@ -125,8 +125,22 @@ export default function Navigation() {
                     setTimeout(startTracking, 3000);
                 }
             },
-            { enableHighAccuracy: true, maximumAge: 0 }
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
         );
+
+        // Fallback: force a location push every 30s in case watchPosition stalls
+        const forcePushInterval = setInterval(() => {
+            if (lastPosition.current) {
+                const [lat, lng] = lastPosition.current;
+                base44.auth.updateMe({
+                    latitude: lat, longitude: lng,
+                    last_updated: new Date().toISOString()
+                }).catch(e => console.error('Force location push failed:', e));
+            }
+        }, 30000);
+
+        // Store interval id for cleanup
+        locationWatchId._forceInterval = forcePushInterval;
     };
 
     const stopTracking = () => {
@@ -134,22 +148,26 @@ export default function Navigation() {
             navigator.geolocation.clearWatch(locationWatchId.current);
             locationWatchId.current = null;
         }
+        if (locationWatchId._forceInterval) {
+            clearInterval(locationWatchId._forceInterval);
+            locationWatchId._forceInterval = null;
+        }
         setIsLiveTracking(false);
     };
 
     const pushLocationUpdate = useCallback(async (coords, hdg, spd) => {
         const now = Date.now();
-        if (now - lastUpdateRef.current < 5000) return;
+        if (now - lastUpdateRef.current < 8000) return;
         lastUpdateRef.current = now;
         try {
-            // Only update location fields — never overwrite status here
-            // Status is only changed by explicit user action
             await base44.auth.updateMe({
                 latitude: coords[0], longitude: coords[1],
                 heading: hdg || 0, speed: spd || 0,
                 last_updated: new Date().toISOString()
             });
-        } catch (e) {}
+        } catch (e) {
+            console.error('Location update failed:', e);
+        }
     }, []);
 
     const recenter = () => {
