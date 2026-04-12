@@ -327,9 +327,15 @@ export default function CommandDashboard() {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-white font-mono font-bold text-sm truncate">{call.incident}</span>
-                                                <Badge className={`text-[10px] font-mono border ${priority === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/30' : priority === 'high' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
-                                                    {priority.toUpperCase()}
-                                                </Badge>
+                                                {call.priority_label ? (
+                                                    <Badge className={`text-[10px] font-mono border ${call.priority_level === 1 ? 'bg-red-500/20 text-red-400 border-red-500/30' : call.priority_level === 2 ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : call.priority_level === 3 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`} title={call.priority_reason}>
+                                                        P{call.priority_level} {call.priority_label}
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge className={`text-[10px] font-mono border ${priority === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/30' : priority === 'high' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
+                                                        {priority.toUpperCase()}
+                                                    </Badge>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-3 mt-0.5">
                                                 <span className="text-slate-400 text-xs font-mono flex items-center gap-1 truncate">

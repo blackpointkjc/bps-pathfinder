@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Layers, RefreshCw, Radio, MapPin, Users, Activity,
-    Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft
+    Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { playDispatchAlert, playPropertyAlert, stopPropertyAlert, isCallNearMonitoredProperty } from '@/utils/alertUtils';
@@ -50,6 +50,7 @@ export default function Navigation() {
         showEMS: false, showJails: true
     });
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
+    const [showHeatmap, setShowHeatmap] = useState(false);
 
     const locationWatchId = useRef(null);
     const lastPosition = useRef(null);
@@ -275,6 +276,7 @@ export default function Navigation() {
                     showJails={jurisdictionFilters.showJails}
                     searchPin={null}
                     mapTheme={mapTheme}
+                    showHeatmap={showHeatmap}
                     onCallClick={(call) => {
                 setSelectedCall(call);
                 setShowCallSidebar(true);
@@ -366,6 +368,13 @@ export default function Navigation() {
                     className="w-10 h-10 rounded-xl bg-slate-900/90 backdrop-blur border border-slate-700 flex items-center justify-center text-slate-300 hover:text-white hover:border-gold transition-all"
                 >
                     <Layers className="w-4 h-4" />
+                </button>
+                <button
+                    onClick={() => setShowHeatmap(v => !v)}
+                    title="Toggle call heatmap"
+                    className={`w-10 h-10 rounded-xl backdrop-blur border flex items-center justify-center transition-all ${showHeatmap ? 'bg-orange-500/20 border-orange-500/50 text-orange-400' : 'bg-slate-900/90 border-slate-700 text-slate-400 hover:text-white'}`}
+                >
+                    <Flame className="w-4 h-4" />
                 </button>
                 <button
                     onClick={fetchCalls}
