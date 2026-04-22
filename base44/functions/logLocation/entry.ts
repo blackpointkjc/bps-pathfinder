@@ -43,6 +43,14 @@ Deno.serve(async (req) => {
 
         await base44.asServiceRole.entities.LocationLog.create(logData);
 
+        // CRITICAL: Update the user's live coordinates so other units can see them
+        await base44.auth.updateMe({
+            latitude: latitude,
+            longitude: longitude,
+            last_updated: new Date().toISOString(),
+            ...(status ? { status } : {})
+        });
+
         return Response.json({ success: true, message: 'Location logged' });
     } catch (error) {
         console.error('Error logging location:', error);

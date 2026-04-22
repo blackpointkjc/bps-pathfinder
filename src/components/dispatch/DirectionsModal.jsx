@@ -20,6 +20,13 @@ export default function DirectionsModal({
     const [isDragging, setIsDragging] = useState(false);
     const [position, setPosition] = useState({ x: 0, y: 0 });
 
+    React.useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (e) => { if (e.key === 'Escape') onClose(); };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     const handleMouseDown = (e) => {
@@ -27,16 +34,7 @@ export default function DirectionsModal({
         setIsDragging(true);
     };
 
-    const handleKeyDown = (e) => {
-        if (e.key === 'Escape') {
-            onClose();
-        }
-    };
 
-    React.useEffect(() => {
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, []);
 
     return (
         <AnimatePresence>

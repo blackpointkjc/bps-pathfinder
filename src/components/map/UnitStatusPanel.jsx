@@ -140,7 +140,7 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
 
                                     {activeCall && (
                                         <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                                            <Navigation className="w-5 h-5 text-red-600 mt-0.5" />
+                                            <NavigationIcon className="w-5 h-5 text-red-600 mt-0.5" />
                                             <div>
                                                 <p className="text-sm text-gray-600">Active Call</p>
                                                 <p className="text-sm font-semibold text-gray-900">{activeCall}</p>
