@@ -122,7 +122,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     return (
         <MarkerClusterGroup
             chunkedLoading
-            maxClusterRadius={50}
+            maxClusterRadius={20}
             spiderfyOnMaxZoom={true}
             showCoverageOnHover={false}
             zoomToBoundsOnClick={true}
