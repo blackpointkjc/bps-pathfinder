@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
 
         // Regular users see active field units only
         // Admin/Dispatch also see Supervisor status units and Out of Service
-        const REGULAR_STATUSES = new Set(['Available', 'On Patrol', 'On Scene', 'Enroute']);
+        const REGULAR_STATUSES = new Set(['Available', 'On Patrol', 'On Scene', 'Enroute', 'Busy']);
         const PRIVILEGED_STATUSES = new Set(['Available', 'On Patrol', 'On Scene', 'Enroute', 'Supervisor', 'Out of Service', 'Busy']);
         const allowedStatuses = isPrivileged ? PRIVILEGED_STATUSES : REGULAR_STATUSES;
 

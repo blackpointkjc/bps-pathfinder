@@ -158,18 +158,30 @@ export default function Navigation() {
 
     const pushLocationUpdate = useCallback(async (coords, hdg, spd) => {
         const now = Date.now();
-        if (now - lastUpdateRef.current < 8000) return;
+        if (now - lastUpdateRef.current < 10000) return;
         lastUpdateRef.current = now;
         try {
-            await base44.auth.updateMe({
-                latitude: coords[0], longitude: coords[1],
-                heading: hdg || 0, speed: spd || 0,
-                last_updated: new Date().toISOString()
+            // Update via logLocation so service role writes coords — visible to all units
+            await base44.functions.invoke('logLocation', {
+                latitude: coords[0],
+                longitude: coords[1],
+                heading: hdg || 0,
+                speed: spd || 0,
+                status: unitStatus
             });
         } catch (e) {
-            console.error('Location update failed:', e);
+            // Fallback: direct updateMe
+            try {
+                await base44.auth.updateMe({
+                    latitude: coords[0], longitude: coords[1],
+                    heading: hdg || 0, speed: spd || 0,
+                    last_updated: new Date().toISOString()
+                });
+            } catch (e2) {
+                console.error('Location update failed:', e2);
+            }
         }
-    }, []);
+    }, [unitStatus]);
 
     const recenter = () => {
         if (navigator.geolocation) {

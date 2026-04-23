@@ -43,8 +43,16 @@ Deno.serve(async (req) => {
 
         await base44.asServiceRole.entities.LocationLog.create(logData);
 
-        // CRITICAL: Update the user's live coordinates so other units can see them
+        // Update via auth.updateMe for session-level fields
         await base44.auth.updateMe({
+            latitude: latitude,
+            longitude: longitude,
+            last_updated: new Date().toISOString(),
+            ...(status ? { status } : {})
+        });
+
+        // ALSO update via service role so it's immediately readable by fetchAllUsers
+        await base44.asServiceRole.entities.User.update(user.id, {
             latitude: latitude,
             longitude: longitude,
             last_updated: new Date().toISOString(),
