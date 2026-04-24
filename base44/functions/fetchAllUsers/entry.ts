@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
         const PRIVILEGED_STATUSES = new Set(['Available', 'On Patrol', 'On Scene', 'Enroute', 'Supervisor', 'Out of Service', 'Busy']);
         const allowedStatuses = isPrivileged ? PRIVILEGED_STATUSES : REGULAR_STATUSES;
 
-        const cutoff = Date.now() - 2 * 60 * 60 * 1000; // 2 hours - only show recently active units
+        const cutoff = Date.now() - 8 * 60 * 60 * 1000; // 8 hours - full shift window
 
         const activeUsers = (allUsers || []).filter(u => {
             if (u.id === user.id) return false;

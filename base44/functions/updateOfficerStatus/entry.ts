@@ -34,7 +34,11 @@ Deno.serve(async (req) => {
             updateData.current_call_info = null;
         }
 
+        // Write via auth.updateMe (session fields)
         await base44.auth.updateMe(updateData);
+
+        // CRITICAL: Also write via service role so fetchAllUsers sees it immediately
+        await base44.asServiceRole.entities.User.update(user.id, updateData);
 
         // Log status change
         await base44.entities.UnitStatusLog.create({

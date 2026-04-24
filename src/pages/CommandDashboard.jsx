@@ -206,9 +206,12 @@ export default function CommandDashboard() {
 
     const handleStatusChange = async (newStatus) => {
         try {
-            await base44.auth.updateMe({ status: newStatus, last_updated: new Date().toISOString() });
+            // Use updateOfficerStatus so service role writes it and call sync runs
+            await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
             setCurrentUser(prev => ({ ...prev, status: newStatus }));
-        } catch (e) {}
+        } catch (e) {
+            console.error('Status change failed:', e);
+        }
     };
 
     return (

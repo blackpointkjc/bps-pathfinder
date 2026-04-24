@@ -81,10 +81,10 @@ export default function UnitStatusPanel({ isOpen, onClose, currentStatus, unitNa
         
         try {
             const { base44 } = await import('@/api/base44Client');
-            await base44.auth.updateMe({
+            // Invoke logLocation so service role writes it — visible to all units
+            await base44.functions.invoke('logLocation', {
                 latitude: lat,
-                longitude: lng,
-                last_updated: new Date().toISOString()
+                longitude: lng
             });
             toast.success('Location updated manually');
             setShowManualLocation(false);

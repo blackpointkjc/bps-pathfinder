@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { latitude, longitude, status, speed } = await req.json();
+        const { latitude, longitude, status, speed, heading } = await req.json();
 
         if (!latitude || !longitude) {
             return Response.json({ error: 'Latitude and longitude required' }, { status: 400 });
@@ -43,21 +43,20 @@ Deno.serve(async (req) => {
 
         await base44.asServiceRole.entities.LocationLog.create(logData);
 
-        // Update via auth.updateMe for session-level fields
-        await base44.auth.updateMe({
-            latitude: latitude,
-            longitude: longitude,
+        const locationFields = {
+            latitude,
+            longitude,
+            heading: heading || 0,
+            speed: speed || 0,
             last_updated: new Date().toISOString(),
             ...(status ? { status } : {})
-        });
+        };
 
-        // ALSO update via service role so it's immediately readable by fetchAllUsers
-        await base44.asServiceRole.entities.User.update(user.id, {
-            latitude: latitude,
-            longitude: longitude,
-            last_updated: new Date().toISOString(),
-            ...(status ? { status } : {})
-        });
+        // Update via auth.updateMe for session-level fields
+        await base44.auth.updateMe(locationFields);
+
+        // CRITICAL: Also write via service role so fetchAllUsers sees live position immediately
+        await base44.asServiceRole.entities.User.update(user.id, locationFields);
 
         return Response.json({ success: true, message: 'Location logged' });
     } catch (error) {
