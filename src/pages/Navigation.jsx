@@ -73,7 +73,7 @@ export default function Navigation() {
     useEffect(() => {
         if (!currentUser) return;
         fetchOtherUnits();
-        const i = setInterval(fetchOtherUnits, 8000);
+        const i = setInterval(fetchOtherUnits, 5000); // poll every 5s for near-real-time unit positions
         return () => clearInterval(i);
     }, [currentUser]);
 
@@ -129,16 +129,21 @@ export default function Navigation() {
             { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
         );
 
-        // Fallback: force a location push every 30s in case watchPosition stalls
+        // Fallback: force a location push every 20s in case watchPosition stalls
         const forcePushInterval = setInterval(() => {
             if (lastPosition.current) {
                 const [lat, lng] = lastPosition.current;
-                base44.auth.updateMe({
-                    latitude: lat, longitude: lng,
-                    last_updated: new Date().toISOString()
+                // Must go through logLocation so service role writes coords — visible to all
+                base44.functions.invoke('logLocation', {
+                    latitude: lat,
+                    longitude: lng,
+                    heading: 0,
+                    speed: 0
                 }).catch(e => console.error('Force location push failed:', e));
+                // Reset throttle so the next watchPosition event fires immediately
+                lastUpdateRef.current = 0;
             }
-        }, 30000);
+        }, 20000);
 
         // Store interval id for cleanup
         locationWatchId._forceInterval = forcePushInterval;
@@ -158,10 +163,10 @@ export default function Navigation() {
 
     const pushLocationUpdate = useCallback(async (coords, hdg, spd) => {
         const now = Date.now();
-        if (now - lastUpdateRef.current < 10000) return;
+        if (now - lastUpdateRef.current < 8000) return; // throttle to 8s max
         lastUpdateRef.current = now;
         try {
-            // Update via logLocation so service role writes coords — visible to all units
+            // logLocation writes via service role — immediately visible to all units
             await base44.functions.invoke('logLocation', {
                 latitude: coords[0],
                 longitude: coords[1],
@@ -170,16 +175,7 @@ export default function Navigation() {
                 status: unitStatus
             });
         } catch (e) {
-            // Fallback: direct updateMe
-            try {
-                await base44.auth.updateMe({
-                    latitude: coords[0], longitude: coords[1],
-                    heading: hdg || 0, speed: spd || 0,
-                    last_updated: new Date().toISOString()
-                });
-            } catch (e2) {
-                console.error('Location update failed:', e2);
-            }
+            console.error('Location update failed:', e);
         }
     }, [unitStatus]);
 

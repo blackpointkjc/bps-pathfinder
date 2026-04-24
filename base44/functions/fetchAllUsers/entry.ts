@@ -20,15 +20,17 @@ Deno.serve(async (req) => {
         const PRIVILEGED_STATUSES = new Set(['Available', 'On Patrol', 'On Scene', 'Enroute', 'Supervisor', 'Out of Service', 'Busy']);
         const allowedStatuses = isPrivileged ? PRIVILEGED_STATUSES : REGULAR_STATUSES;
 
-        const cutoff = Date.now() - 8 * 60 * 60 * 1000; // 8 hours - full shift window
+        const cutoff = Date.now() - 12 * 60 * 60 * 1000; // 12 hours - full shift window
 
         const activeUsers = (allUsers || []).filter(u => {
             if (u.id === user.id) return false;
             if (!allowedStatuses.has(u.status)) return false;
             // Supervisor status: hide from regular users (extra guard)
             if (!isPrivileged && u.status === 'Supervisor') return false;
+            // Must have valid GPS coordinates
             const lat = parseFloat(u.latitude), lng = parseFloat(u.longitude);
-            if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return false;
+            if (isNaN(lat) || isNaN(lng)) return false;
+            // Must have been updated within the shift window
             const lastUpdated = u.last_updated ? new Date(u.last_updated).getTime() : 0;
             return lastUpdated > cutoff;
         });
