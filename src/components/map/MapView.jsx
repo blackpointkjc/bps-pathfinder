@@ -171,7 +171,7 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
     return null;
 }
 
-const MapView = memo(function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail, mapTheme = 'day', showHeatmap = false, children }) {
+const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail, mapTheme = 'day', showHeatmap = false, children }) {
     const defaultCenter = currentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
     
     // Calculate route bounds if route exists
@@ -291,13 +291,12 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             )}
 
             {currentLocation && (
-                <>
-                    <Marker 
-                        position={currentLocation} 
-                        icon={heading !== null ? createLocationWithHeading(heading, showLights) : createCurrentLocationIcon(showLights)}
-                    />
-                        </>
-                        )}
+                <Marker
+                    key={`self-${currentLocation[0].toFixed(6)}-${currentLocation[1].toFixed(6)}`}
+                    position={currentLocation}
+                    icon={heading !== null ? createLocationWithHeading(heading, showLights) : createCurrentLocationIcon(showLights)}
+                />
+            )}
             
             {/* Location History Trail */}
             {locationHistory && locationHistory.length > 1 && (
@@ -356,7 +355,7 @@ const MapView = memo(function MapView({ currentLocation, destination, route, tra
             {/* Additional children (e.g., VA Counties) */}
             {children}
         </MapContainer>
-        );
-        });
+    );
+}
 
-        export default MapView;
+export default MapView;
