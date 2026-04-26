@@ -107,45 +107,47 @@ export default function Navigation() {
         if (!navigator.geolocation) return;
         if (locationWatchId.current) navigator.geolocation.clearWatch(locationWatchId.current);
         setIsLiveTracking(true);
+
+        const handlePosition = (pos) => {
+            const coords = [pos.coords.latitude, pos.coords.longitude];
+            setCurrentLocation(coords);
+            if (pos.coords.heading !== null && pos.coords.heading >= 0) setHeading(pos.coords.heading);
+            if (pos.coords.speed !== null) setSpeed(Math.round((pos.coords.speed || 0) * 2.237));
+            setLocationHistory(prev => [...prev, coords].slice(-30));
+            lastPosition.current = coords;
+            pushLocationUpdate(coords, pos.coords.heading, pos.coords.speed ? pos.coords.speed * 2.237 : 0);
+        };
+
+        const handleError = (err) => {
+            if (err.code === err.PERMISSION_DENIED) {
+                setIsLiveTracking(false);
+                toast.error('Location permission denied');
+            }
+        };
+
+        // watchPosition for real-time updates
         locationWatchId.current = navigator.geolocation.watchPosition(
-            (pos) => {
-                const coords = [pos.coords.latitude, pos.coords.longitude];
-                setCurrentLocation(coords);
-                if (pos.coords.heading !== null && pos.coords.heading >= 0) setHeading(pos.coords.heading);
-                if (pos.coords.speed !== null) setSpeed(Math.round((pos.coords.speed || 0) * 2.237));
-                setLocationHistory(prev => [...prev, coords].slice(-30));
-                lastPosition.current = coords;
-                pushLocationUpdate(coords, pos.coords.heading, pos.coords.speed ? pos.coords.speed * 2.237 : 0);
-            },
-            (err) => {
-                if (err.code === err.PERMISSION_DENIED) {
-                    setIsLiveTracking(false);
-                    toast.error('Location permission denied');
-                } else {
-                    navigator.geolocation.clearWatch(locationWatchId.current);
-                    setTimeout(startTracking, 3000);
-                }
-            },
+            handlePosition, handleError,
             { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
         );
 
-        // Fallback: force a location push every 20s in case watchPosition stalls
+        // Aggressive fallback: poll GPS every 10s via getCurrentPosition
+        // This fires even when watchPosition stalls (screen lock, tab background, etc.)
         const forcePushInterval = setInterval(() => {
-            if (lastPosition.current) {
-                const [lat, lng] = lastPosition.current;
-                // Must go through logLocation so service role writes coords — visible to all
-                base44.functions.invoke('logLocation', {
-                    latitude: lat,
-                    longitude: lng,
-                    heading: 0,
-                    speed: 0
-                }).catch(e => console.error('Force location push failed:', e));
-                // Reset throttle so the next watchPosition event fires immediately
-                lastUpdateRef.current = 0;
-            }
-        }, 20000);
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const coords = [pos.coords.latitude, pos.coords.longitude];
+                    lastPosition.current = coords;
+                    setCurrentLocation(coords);
+                    // Always force-push regardless of throttle
+                    lastUpdateRef.current = 0;
+                    pushLocationUpdate(coords, pos.coords.heading, pos.coords.speed ? pos.coords.speed * 2.237 : 0);
+                },
+                () => {}, // silent fail
+                { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 }
+            );
+        }, 10000);
 
-        // Store interval id for cleanup
         locationWatchId._forceInterval = forcePushInterval;
     };
 
@@ -163,7 +165,7 @@ export default function Navigation() {
 
     const pushLocationUpdate = useCallback(async (coords, hdg, spd) => {
         const now = Date.now();
-        if (now - lastUpdateRef.current < 8000) return; // throttle to 8s max
+        if (now - lastUpdateRef.current < 6000) return; // throttle to 6s min between server pushes
         lastUpdateRef.current = now;
         try {
             // logLocation writes via service role — immediately visible to all units
