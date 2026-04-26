@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
     try {
@@ -15,34 +15,6 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Latitude and longitude required' }, { status: 400 });
         }
 
-        // Reverse geocode to get address
-        let address = '';
-        try {
-            const geoResponse = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
-                { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' } }
-            );
-            const geoData = await geoResponse.json();
-            address = geoData.display_name || '';
-        } catch (error) {
-            console.log('Geocoding failed:', error);
-        }
-
-        // Create location log
-        const logData = {
-            user_id: user.id,
-            user_name: user.full_name,
-            unit_number: user.unit_number || '',
-            latitude,
-            longitude,
-            address,
-            shift_date: new Date().toISOString().split('T')[0],
-            status: status || 'Active',
-            speed: speed || 0
-        };
-
-        await base44.asServiceRole.entities.LocationLog.create(logData);
-
         const locationFields = {
             latitude,
             longitude,
@@ -52,11 +24,39 @@ Deno.serve(async (req) => {
             ...(status ? { status } : {})
         };
 
-        // Update via auth.updateMe for session-level fields
-        await base44.auth.updateMe(locationFields);
+        // CRITICAL: Write position immediately via service role so fetchAllUsers sees it right away
+        // Run both writes in parallel — do NOT await geocoding first
+        await Promise.all([
+            base44.asServiceRole.entities.User.update(user.id, locationFields),
+            base44.auth.updateMe(locationFields)
+        ]);
 
-        // CRITICAL: Also write via service role so fetchAllUsers sees live position immediately
-        await base44.asServiceRole.entities.User.update(user.id, locationFields);
+        // Fire-and-forget: create location log + geocode asynchronously (does NOT block the response)
+        (async () => {
+            let address = '';
+            try {
+                const geoResponse = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+                    { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' }, signal: AbortSignal.timeout(3000) }
+                );
+                const geoData = await geoResponse.json();
+                address = geoData.display_name || '';
+            } catch (_) {}
+
+            try {
+                await base44.asServiceRole.entities.LocationLog.create({
+                    user_id: user.id,
+                    user_name: user.full_name,
+                    unit_number: user.unit_number || '',
+                    latitude,
+                    longitude,
+                    address,
+                    shift_date: new Date().toISOString().split('T')[0],
+                    status: status || 'Active',
+                    speed: speed || 0
+                });
+            } catch (_) {}
+        })();
 
         return Response.json({ success: true, message: 'Location logged' });
     } catch (error) {
