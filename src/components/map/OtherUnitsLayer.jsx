@@ -148,9 +148,12 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                 });
             }}
         >
-            {unitsToShow.map((unit) => (
+            {unitsToShow.map((unit) => {
+                const markerKey = `${unit.id}-${unit.latitude?.toFixed(5)}-${unit.longitude?.toFixed(5)}-${unit.status}-${unit.last_updated || ''}`;
+                console.log(`[Map] Rendering marker: ${unit.unit_number||unit.id} key=${markerKey}`);
+                return (
                 <Marker
-                    key={`${unit.id}-${unit.latitude?.toFixed(5)}-${unit.longitude?.toFixed(5)}-${unit.status}`}
+                    key={markerKey}
                     position={[unit.latitude, unit.longitude]}
                     icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor, unit.unit_number, unit.isUnionLead)}
                 >
@@ -210,7 +213,8 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                             </div>
                         </Popup>
                         </Marker>
-                        ))}
+                        );
+                        })}
                         </MarkerClusterGroup>
                         );
                         }

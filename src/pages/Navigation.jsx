@@ -53,8 +53,10 @@ export default function Navigation() {
     const [showHeatmap, setShowHeatmap] = useState(false);
 
     const locationWatchId = useRef(null);
+    const forcePollRef = useRef(null);
     const lastPosition = useRef(null);
     const lastUpdateRef = useRef(0);
+    const unitStatusRef = useRef(unitStatus); // always-fresh status for callbacks
 
     // Read callId/lat/lng from URL params (navigated from CommandDashboard)
     const [focusCenter, setFocusCenter] = useState(() => {
@@ -96,59 +98,98 @@ export default function Navigation() {
         startTracking();
     };
 
+    // Keep ref in sync so GPS callbacks always see latest status
+    useEffect(() => { unitStatusRef.current = unitStatus; }, [unitStatus]);
+
     const handleStatusChange = async (newStatus) => {
         setUnitStatus(newStatus);
+        unitStatusRef.current = newStatus;
         try {
             await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
         } catch (e) {}
     };
 
+    const pushLocationUpdate = useCallback(async (coords, hdg, spd, acc) => {
+        const now = Date.now();
+        // Throttle to max 1 push every 4 seconds to avoid hammering the server
+        if (now - lastUpdateRef.current < 4000) return;
+        lastUpdateRef.current = now;
+        try {
+            console.log(`[GPS] Pushing to DB: lat=${coords[0].toFixed(6)} lng=${coords[1].toFixed(6)} status=${unitStatusRef.current}`);
+            const res = await base44.functions.invoke('logLocation', {
+                latitude: coords[0],
+                longitude: coords[1],
+                heading: hdg || 0,
+                speed: spd || 0,
+                accuracy: acc || 0,
+                status: unitStatusRef.current
+            });
+            console.log(`[GPS] DB updated:`, res?.data);
+        } catch (e) {
+            console.error('[GPS] Location update failed:', e);
+        }
+    }, []);
+
     const startTracking = () => {
-        if (!navigator.geolocation) return;
+        if (!navigator.geolocation) {
+            toast.error('Geolocation not supported on this device');
+            return;
+        }
+
+        // Clear any existing watchers
         if (locationWatchId.current) navigator.geolocation.clearWatch(locationWatchId.current);
+        if (forcePollRef.current) clearInterval(forcePollRef.current);
+
         setIsLiveTracking(true);
+        console.log('[GPS] Watcher started');
 
         const handlePosition = (pos) => {
             const coords = [pos.coords.latitude, pos.coords.longitude];
+            const hdg = (pos.coords.heading !== null && pos.coords.heading >= 0) ? pos.coords.heading : null;
+            const spd = pos.coords.speed ? Math.round(pos.coords.speed * 2.237) : 0;
+            const acc = pos.coords.accuracy || 0;
+
+            console.log(`[GPS] New coordinates: lat=${coords[0].toFixed(6)} lng=${coords[1].toFixed(6)} acc=${acc.toFixed(0)}m`);
+
             setCurrentLocation(coords);
-            if (pos.coords.heading !== null && pos.coords.heading >= 0) setHeading(pos.coords.heading);
-            if (pos.coords.speed !== null) setSpeed(Math.round((pos.coords.speed || 0) * 2.237));
+            if (hdg !== null) setHeading(hdg);
+            setSpeed(spd);
             setLocationHistory(prev => [...prev, coords].slice(-30));
             lastPosition.current = coords;
-            pushLocationUpdate(coords, pos.coords.heading, pos.coords.speed ? pos.coords.speed * 2.237 : 0);
+
+            pushLocationUpdate(coords, hdg, spd, acc);
         };
 
         const handleError = (err) => {
+            console.error('[GPS] Error:', err.message);
             if (err.code === err.PERMISSION_DENIED) {
                 setIsLiveTracking(false);
-                toast.error('Location permission denied');
+                toast.error('Location permission denied. Please enable in browser settings.');
             }
         };
 
-        // watchPosition for real-time updates
+        // Primary: watchPosition fires on every movement
         locationWatchId.current = navigator.geolocation.watchPosition(
             handlePosition, handleError,
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
         );
 
-        // Aggressive fallback: poll GPS every 10s via getCurrentPosition
-        // This fires even when watchPosition stalls (screen lock, tab background, etc.)
-        const forcePushInterval = setInterval(() => {
+        // Fallback: force-poll every 8s in case watchPosition stalls (background tab, iOS throttle)
+        forcePollRef.current = setInterval(() => {
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     const coords = [pos.coords.latitude, pos.coords.longitude];
                     lastPosition.current = coords;
                     setCurrentLocation(coords);
-                    // Always force-push regardless of throttle
+                    console.log(`[GPS] Force-poll: lat=${coords[0].toFixed(6)} lng=${coords[1].toFixed(6)}`);
+                    // Bypass throttle for force-polls
                     lastUpdateRef.current = 0;
-                    pushLocationUpdate(coords, pos.coords.heading, pos.coords.speed ? pos.coords.speed * 2.237 : 0);
+                    pushLocationUpdate(coords, pos.coords.heading, pos.coords.speed ? pos.coords.speed * 2.237 : 0, pos.coords.accuracy);
                 },
-                () => {}, // silent fail
-                { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 }
+                (err) => console.warn('[GPS] Force-poll failed:', err.message),
+                { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
             );
-        }, 10000);
-
-        locationWatchId._forceInterval = forcePushInterval;
+        }, 8000);
     };
 
     const stopTracking = () => {
@@ -156,30 +197,13 @@ export default function Navigation() {
             navigator.geolocation.clearWatch(locationWatchId.current);
             locationWatchId.current = null;
         }
-        if (locationWatchId._forceInterval) {
-            clearInterval(locationWatchId._forceInterval);
-            locationWatchId._forceInterval = null;
+        if (forcePollRef.current) {
+            clearInterval(forcePollRef.current);
+            forcePollRef.current = null;
         }
         setIsLiveTracking(false);
+        console.log('[GPS] Watcher stopped');
     };
-
-    const pushLocationUpdate = useCallback(async (coords, hdg, spd) => {
-        const now = Date.now();
-        if (now - lastUpdateRef.current < 6000) return; // throttle to 6s min between server pushes
-        lastUpdateRef.current = now;
-        try {
-            // logLocation writes via service role — immediately visible to all units
-            await base44.functions.invoke('logLocation', {
-                latitude: coords[0],
-                longitude: coords[1],
-                heading: hdg || 0,
-                speed: spd || 0,
-                status: unitStatus
-            });
-        } catch (e) {
-            console.error('Location update failed:', e);
-        }
-    }, [unitStatus]);
 
     const recenter = () => {
         if (navigator.geolocation) {
@@ -193,7 +217,9 @@ export default function Navigation() {
     const fetchOtherUnits = async () => {
         try {
             const res = await base44.functions.invoke('fetchAllUsers', {});
-            setOtherUnits(res.data?.users || []);
+            const users = res.data?.users || [];
+            console.log(`[Map] Received ${users.length} units from DB`, users.map(u => `${u.unit_number||u.id}@(${u.latitude?.toFixed(4)},${u.longitude?.toFixed(4)})`));
+            setOtherUnits(users);
         } catch (e) {}
     };
 

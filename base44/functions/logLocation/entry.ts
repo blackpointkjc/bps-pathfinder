@@ -9,18 +9,22 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { latitude, longitude, status, speed, heading } = await req.json();
+        const { latitude, longitude, status, speed, heading, accuracy } = await req.json();
 
         if (!latitude || !longitude) {
             return Response.json({ error: 'Latitude and longitude required' }, { status: 400 });
         }
+
+        const now = new Date().toISOString();
+        console.log(`[logLocation] user=${user.id} lat=${latitude} lng=${longitude} status=${status}`);
 
         const locationFields = {
             latitude,
             longitude,
             heading: heading || 0,
             speed: speed || 0,
-            last_updated: new Date().toISOString(),
+            accuracy: accuracy || 0,
+            last_updated: now,
             ...(status ? { status } : {})
         };
 
@@ -58,7 +62,8 @@ Deno.serve(async (req) => {
             } catch (_) {}
         })();
 
-        return Response.json({ success: true, message: 'Location logged' });
+        console.log(`[logLocation] DB updated for user=${user.id}`);
+        return Response.json({ success: true, message: 'Location logged', latitude, longitude, last_updated: now });
     } catch (error) {
         console.error('Error logging location:', error);
         return Response.json({ error: error.message }, { status: 500 });
