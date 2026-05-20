@@ -1,0 +1,53 @@
+{
+  "name": "LocationLog",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User ID of the officer"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Name of the officer"
+    },
+    "unit_number": {
+      "type": "string",
+      "description": "Unit number"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "GPS latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "GPS longitude"
+    },
+    "address": {
+      "type": "string",
+      "description": "Geocoded address"
+    },
+    "shift_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of shift"
+    },
+    "status": {
+      "type": "string",
+      "description": "Officer status at time of log"
+    },
+    "speed": {
+      "type": "number",
+      "description": "Speed in mph (if available)"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional notes about this location entry"
+    }
+  },
+  "required": [
+    "user_id",
+    "latitude",
+    "longitude"
+  ]
+}

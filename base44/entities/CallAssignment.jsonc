@@ -1,0 +1,61 @@
+{
+  "name": "CallAssignment",
+  "type": "object",
+  "properties": {
+    "call_id": {
+      "type": "string",
+      "description": "ID of the dispatch call"
+    },
+    "unit_id": {
+      "type": "string",
+      "description": "ID of the assigned unit/user"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "primary",
+        "backup"
+      ],
+      "default": "primary",
+      "description": "Unit role on this call"
+    },
+    "assigned_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When unit was assigned"
+    },
+    "cleared_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When unit cleared from call"
+    },
+    "accepted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When unit accepted the call"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "accepted",
+        "enroute",
+        "on_scene",
+        "cleared"
+      ],
+      "default": "pending",
+      "description": "Assignment status"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional notes about this assignment"
+    }
+  },
+  "required": [
+    "call_id",
+    "unit_id",
+    "role",
+    "assigned_at"
+  ]
+}

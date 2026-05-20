@@ -1,0 +1,49 @@
+{
+  "name": "CallAlert",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User ID who received the alert"
+    },
+    "call_id": {
+      "type": "string",
+      "description": "Dispatch call ID"
+    },
+    "seen_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When alert was first seen"
+    },
+    "dismissed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When alert was dismissed"
+    },
+    "accepted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When call was accepted"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "seen",
+        "dismissed",
+        "accepted"
+      ],
+      "default": "pending",
+      "description": "Alert status"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional notes about this alert"
+    }
+  },
+  "required": [
+    "user_id",
+    "call_id"
+  ]
+}

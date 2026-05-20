@@ -1,0 +1,61 @@
+{
+  "name": "Unit",
+  "type": "object",
+  "properties": {
+    "unit_id": {
+      "type": "string",
+      "description": "Unique unit identifier"
+    },
+    "label": {
+      "type": "string",
+      "description": "Unit display name (e.g., Unit 23)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Available",
+        "Assigned",
+        "Enroute",
+        "On Scene",
+        "Busy",
+        "Out of Service"
+      ],
+      "default": "Available",
+      "description": "Current operational status"
+    },
+    "assigned_call_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of currently assigned call IDs"
+    },
+    "current_latitude": {
+      "type": "number",
+      "description": "Current GPS latitude"
+    },
+    "current_longitude": {
+      "type": "number",
+      "description": "Current GPS longitude"
+    },
+    "last_update_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last status/location update timestamp"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Linked user ID"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional notes or description for this unit"
+    }
+  },
+  "required": [
+    "unit_id",
+    "label",
+    "status"
+  ]
+}

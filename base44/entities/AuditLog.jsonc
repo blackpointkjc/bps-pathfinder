@@ -1,0 +1,63 @@
+{
+  "name": "AuditLog",
+  "type": "object",
+  "properties": {
+    "entity_type": {
+      "type": "string",
+      "description": "Type of entity (e.g., DispatchCall, CallAssignment)"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "ID of the entity that was modified"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "create",
+        "update",
+        "delete",
+        "assign",
+        "unassign",
+        "status_change"
+      ],
+      "description": "Action performed"
+    },
+    "actor_id": {
+      "type": "string",
+      "description": "User ID who performed the action"
+    },
+    "actor_name": {
+      "type": "string",
+      "description": "Name of user who performed action"
+    },
+    "before_value": {
+      "type": "string",
+      "description": "Previous value (JSON string)"
+    },
+    "after_value": {
+      "type": "string",
+      "description": "New value (JSON string)"
+    },
+    "field_changed": {
+      "type": "string",
+      "description": "Specific field that was changed"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When action occurred"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional human-readable description of this audit event"
+    }
+  },
+  "required": [
+    "entity_type",
+    "entity_id",
+    "action",
+    "actor_id",
+    "actor_name"
+  ]
+}

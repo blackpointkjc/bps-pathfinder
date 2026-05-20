@@ -1,0 +1,46 @@
+{
+  "name": "Message",
+  "type": "object",
+  "properties": {
+    "sender_id": {
+      "type": "string",
+      "description": "ID of sender"
+    },
+    "sender_name": {
+      "type": "string",
+      "description": "Name of sender"
+    },
+    "recipient_id": {
+      "type": "string",
+      "description": "ID of recipient (user or 'dispatch' for all dispatchers)"
+    },
+    "recipient_name": {
+      "type": "string",
+      "description": "Name of recipient"
+    },
+    "message": {
+      "type": "string",
+      "description": "Message content"
+    },
+    "read": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether message has been read"
+    },
+    "call_id": {
+      "type": "string",
+      "description": "Related call ID if applicable"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional description or context for this message thread"
+    }
+  },
+  "required": [
+    "sender_id",
+    "sender_name",
+    "recipient_id",
+    "message"
+  ]
+}

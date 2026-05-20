@@ -1,0 +1,36 @@
+{
+  "name": "UserUnitProfile",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "User ID"
+    },
+    "current_unit_number": {
+      "type": "string",
+      "description": "Current unit/car number"
+    },
+    "current_asset_id": {
+      "type": "string",
+      "description": "Current vehicle/asset ID"
+    },
+    "last_updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last update timestamp"
+    },
+    "last_updated_by": {
+      "type": "string",
+      "description": "Who made the last update"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional notes about this officer's unit profile"
+    }
+  },
+  "required": [
+    "user_id",
+    "current_unit_number"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "name": "MonitoredProperty",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Property name or identifier"
+    },
+    "address": {
+      "type": "string",
+      "description": "Property address"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Property latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Property longitude"
+    },
+    "radiusMeters": {
+      "type": "number",
+      "description": "Monitoring radius in meters",
+      "default": 500
+    },
+    "enabled": {
+      "type": "boolean",
+      "description": "Whether property monitoring is active",
+      "default": true
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional notes or details about this monitored property"
+    }
+  },
+  "required": [
+    "name",
+    "address",
+    "latitude",
+    "longitude",
+    "radiusMeters"
+  ]
+}

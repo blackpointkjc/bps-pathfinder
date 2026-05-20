@@ -1,0 +1,44 @@
+{
+  "name": "CallNote",
+  "type": "object",
+  "properties": {
+    "call_id": {
+      "type": "string",
+      "description": "ID of the dispatch call"
+    },
+    "author_id": {
+      "type": "string",
+      "description": "User ID who created the note"
+    },
+    "author_name": {
+      "type": "string",
+      "description": "Name of note author"
+    },
+    "note": {
+      "type": "string",
+      "description": "Note content"
+    },
+    "note_type": {
+      "type": "string",
+      "enum": [
+        "general",
+        "arrival",
+        "clear",
+        "update",
+        "hazard"
+      ],
+      "default": "general",
+      "description": "Type of note"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional extended description for this note"
+    }
+  },
+  "required": [
+    "call_id",
+    "author_id",
+    "note"
+  ]
+}

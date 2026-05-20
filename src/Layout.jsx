@@ -149,12 +149,18 @@ export default function Layout({ children, currentPageName }) {
 
             {/* Footer */}
             <div className={`border-t border-slate-800 p-3 flex-shrink-0 ${collapsed ? 'flex flex-col items-center' : ''}`}>
+                {!collapsed && (
+                    <div className="flex gap-3 px-3 py-1.5 mb-1">
+                        <Link to="/About" className="text-slate-500 hover:text-slate-300 text-[10px] font-mono transition-colors">About</Link>
+                        <Link to="/Contact" className="text-slate-500 hover:text-slate-300 text-[10px] font-mono transition-colors">Contact</Link>
+                    </div>
+                )}
                 <button
                     onClick={handleLogout}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-900/10 transition-all w-full"
                 >
                     <LogOut className="w-4 h-4 flex-shrink-0" />
-                    {!collapsed && <span className="text-sm font-mono">Sign Out</span>}
+                {!collapsed && <span className="text-sm font-mono">Sign Out</span>}
                 </button>
             </div>
         </div>

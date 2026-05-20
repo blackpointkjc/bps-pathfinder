@@ -1,0 +1,48 @@
+{
+  "name": "PropertyAlert",
+  "type": "object",
+  "properties": {
+    "callId": {
+      "type": "string",
+      "description": "ID of the dispatch call"
+    },
+    "propertyId": {
+      "type": "string",
+      "description": "ID of the monitored property"
+    },
+    "propertyName": {
+      "type": "string",
+      "description": "Name of the property"
+    },
+    "callIncident": {
+      "type": "string",
+      "description": "Call incident type"
+    },
+    "callLocation": {
+      "type": "string",
+      "description": "Call location"
+    },
+    "distanceMeters": {
+      "type": "number",
+      "description": "Distance from property to call in meters"
+    },
+    "acknowledged": {
+      "type": "boolean",
+      "description": "Whether alert has been acknowledged",
+      "default": false
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional notes about this property alert"
+    }
+  },
+  "required": [
+    "callId",
+    "propertyId",
+    "propertyName",
+    "callIncident",
+    "callLocation",
+    "distanceMeters"
+  ]
+}
