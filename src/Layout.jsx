@@ -125,14 +125,17 @@ export default function Layout({ children, currentPageName }) {
             </div>
 
             {/* Nav Items */}
-            <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-3">
+            <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
                 {navSections.map(section => (
                     <div key={section.label}>
                         {!collapsed && (
-                            <div className="text-[10px] font-bold text-slate-500 tracking-widest px-2 mb-1 font-mono">
-                                {section.label}
+                            <div className="flex items-center gap-2 px-2 pt-3 pb-1">
+                                <div className="h-px flex-1 bg-slate-800" />
+                                <span className="text-[9px] font-black text-slate-500 tracking-[0.25em] font-mono uppercase">{section.label}</span>
+                                <div className="h-px flex-1 bg-slate-800" />
                             </div>
                         )}
+                        {collapsed && <div className="h-px bg-slate-800 mx-2 my-2" />}
                         <div className="space-y-0.5">
                             {section.items.map(({ label, icon: Icon, page }) => {
                                 const isActive = currentPageName === page;
@@ -142,14 +145,18 @@ export default function Layout({ children, currentPageName }) {
                                         to={createPageUrl(page)}
                                         onClick={() => onNav?.()}
                                         title={collapsed ? label : undefined}
-                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all select-none ${
+                                        className={`group flex items-center gap-3 px-3 py-2 rounded transition-all select-none relative ${
                                             isActive
-                                                ? 'bg-gold text-black font-bold'
-                                                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                                ? 'bg-gold/15 text-gold border border-gold/30'
+                                                : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
                                         } ${collapsed ? 'justify-center' : ''}`}
                                     >
-                                        <Icon className="w-4 h-4 flex-shrink-0" />
-                                        {!collapsed && <span className="text-sm font-mono">{label}</span>}
+                                        {isActive && !collapsed && (
+                                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-gold rounded-r" />
+                                        )}
+                                        <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-gold' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                                        {!collapsed && <span className={`text-xs font-mono tracking-wide ${isActive ? 'font-bold text-gold' : ''}`}>{label}</span>}
+                                        {isActive && !collapsed && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />}
                                     </Link>
                                 );
                             })}
