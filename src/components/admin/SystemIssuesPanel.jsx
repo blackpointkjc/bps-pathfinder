@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import moment from 'moment-timezone';
 
 const severityConfig = {
   outage: { label: 'Outage', color: 'text-red-400', bg: 'bg-red-900/30 border-red-700' },
@@ -92,11 +93,11 @@ export default function SystemIssuesPanel({ currentUser }) {
                     <div className="text-white font-mono font-bold text-sm">{issue.title}</div>
                     {issue.description && <div className="text-slate-400 text-xs mt-1">{issue.description}</div>}
                     <div className="text-slate-500 text-xs mt-2 font-mono">
-                      Reported by {userMap[issue.reported_by] || issue.reported_by} · {new Date(issue.created_date).toLocaleString('en-US', { timeZone: 'America/New_York' })}
+                      Reported by {userMap[issue.reported_by] || issue.reported_by} · {moment(issue.created_date).tz('America/New_York').format('MMM DD, YYYY HH:mm:ss z')}
                     </div>
                     {issue.resolved_at && (
                       <div className="text-green-500 text-xs mt-1 font-mono">
-                        ✓ Resolved by {userMap[issue.resolved_by] || issue.resolved_by} · {new Date(issue.resolved_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}
+                        ✓ Resolved by {userMap[issue.resolved_by] || issue.resolved_by} · {moment(issue.resolved_at).tz('America/New_York').format('MMM DD, YYYY HH:mm:ss z')}
                       </div>
                     )}
                   </div>
