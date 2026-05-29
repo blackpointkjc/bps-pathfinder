@@ -411,7 +411,7 @@ export default function DispatchCenter() {
                             {selectedCall ? (
                                 <div className="overflow-auto" style={{maxHeight: '220px'}}>
                                     <div className="px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-3">
-                                        <span className="text-[#f5a623] font-bold text-xs">EVENT #{selectedCall.call_id || selectedCall.id?.slice(-8).toUpperCase()}</span>
+                                        <span className="text-[#f5a623] font-bold text-xs">EVENT #{selectedCall.id?.slice(-8).toUpperCase()}</span>
                                         <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(selectedCall.priority)}`}>{(selectedCall.priority || 'low').toUpperCase()}</span>
                                         <span className="text-[10px] text-slate-400">{selectedCall.status}</span>
                                         <span className="ml-auto text-[9px] text-slate-500">

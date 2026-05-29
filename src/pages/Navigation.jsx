@@ -588,8 +588,8 @@ export default function Navigation() {
                                 {(selectedCall.priority || 'LOW').toUpperCase()}
                             </span>
                             <span className="text-[10px] font-mono text-slate-400">
-                                #{selectedCall.call_id || selectedCall.id?.slice(-8).toUpperCase()}
-                            </span>
+                                        #{selectedCall.id?.slice(-8).toUpperCase()}
+                                    </span>
                             <span className="ml-auto text-[9px] font-mono text-slate-500">{selectedCall.status}</span>
                         </div>
 
