@@ -182,7 +182,7 @@ export default function AdminPortal() {
                     {users.length} USERS
                 </div>
                 <div className="flex-1" />
-                <span className="text-slate-500 text-[10px]">{currentUser?.full_name?.toUpperCase() || 'ADMIN'}</span>
+                <span className="text-slate-500 text-[10px]">{currentUser?.rank || '—'} {currentUser?.last_name?.toUpperCase() || currentUser?.full_name?.split(' ').pop().toUpperCase() || 'ADMIN'}</span>
             </div>
 
             {/* Tab Bar */}
