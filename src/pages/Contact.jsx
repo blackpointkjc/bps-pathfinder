@@ -1,11 +1,19 @@
 import { useState } from 'react';
+import { base44 } from '@/api/base44Client';
 
 export default function Contact() {
     const [submitted, setSubmitted] = useState(false);
     const [form, setForm] = useState({ name: '', email: '', message: '' });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        try {
+            await base44.integrations.Core.SendEmail({
+                to: 'management@blackpointkjc.com',
+                subject: `BPS CAD Contact: Message from ${form.name}`,
+                body: `Name: ${form.name}\nEmail: ${form.email}\n\nMessage:\n${form.message}`
+            });
+        } catch {}
         setSubmitted(true);
     };
 
@@ -19,14 +27,8 @@ export default function Contact() {
             <div className="mb-8 space-y-3 text-sm font-mono">
                 <div className="flex items-center gap-3">
                     <span className="text-slate-500">Email:</span>
-                    <a href="mailto:support@bpscad.com" className="text-gold hover:underline">
-                        support@bpscad.com
-                    </a>
-                </div>
-                <div className="flex items-center gap-3">
-                    <span className="text-slate-500">Sales:</span>
-                    <a href="mailto:sales@bpscad.com" className="text-gold hover:underline">
-                        sales@bpscad.com
+                    <a href="mailto:management@blackpointkjc.com" className="text-gold hover:underline">
+                        management@blackpointkjc.com
                     </a>
                 </div>
             </div>

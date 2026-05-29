@@ -190,13 +190,9 @@ export default function CommandDashboard() {
     };
 
     const activeUnits = units.filter(u => u.status && u.status !== 'Out of Service' && u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
-    const sortedCalls = [...calls].sort((a, b) => {
-        const pOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-        const pA = pOrder[getCallPriority(a)] ?? 2;
-        const pB = pOrder[getCallPriority(b)] ?? 2;
-        if (pA !== pB) return pA - pB;
-        return new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date);
-    });
+    const sortedCalls = [...calls].sort((a, b) =>
+        new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date)
+    );
 
     const criticalCalls = calls.filter(c => getCallPriority(c) === 'critical');
     const highCalls = calls.filter(c => getCallPriority(c) === 'high');
