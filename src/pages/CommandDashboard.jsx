@@ -151,7 +151,7 @@ export default function CommandDashboard() {
                             currentUserRef.current,
                             monitoredPropertiesRef.current
                         );
-                        if (!isCritical && inGeofence) {
+                        if (isCritical || inGeofence) {
                             playDispatchAlert();
                             window.dispatchEvent(new CustomEvent('bps-new-call', { detail: newCall }));
                         }
