@@ -41,18 +41,20 @@ const STATUS_BADGE = {
     'Out of Service': 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 };
 
-function KPICard({ label, value, sub, icon: Icon, color = 'text-gold' }) {
+function KPICard({ label, value, sub, icon: Icon, color = 'text-gold', alert = false }) {
     return (
-        <Card className="bg-slate-900 border-slate-800 p-4 flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center ${color}`}>
-                <Icon className="w-5 h-5" />
+        <div className={`relative overflow-hidden rounded-xl border px-4 py-3 flex items-center gap-3 ${
+            alert ? 'bg-red-950/40 border-red-500/40' : 'bg-slate-900 border-slate-800'
+        }`}>
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${color} bg-slate-800/80`}>
+                <Icon className="w-4 h-4" />
             </div>
-            <div>
-                <p className="text-2xl font-bold text-white font-mono">{value}</p>
-                <p className="text-xs text-slate-400 font-mono">{label}</p>
-                {sub && <p className="text-[10px] text-slate-500 font-mono">{sub}</p>}
+            <div className="min-w-0">
+                <p className={`text-2xl font-bold font-mono leading-none ${alert ? 'text-red-300' : 'text-white'}`}>{value}</p>
+                <p className="text-[10px] text-slate-500 font-mono tracking-widest mt-0.5">{label}</p>
             </div>
-        </Card>
+            {alert && value > 0 && <div className="absolute right-0 top-0 bottom-0 w-1 bg-red-500" />}
+        </div>
     );
 }
 
@@ -148,13 +150,13 @@ export default function CommandDashboard() {
                 if (newCallIds.length > 0 && soundEnabledRef.current) {
                     const newCall = active.find(c => c.id === newCallIds[0]);
                     if (newCall) {
-                        const isCritical = getCallPriority(newCall) === 'critical';
+                        // Only alert if BOTH the call AND the current officer are inside the same monitored geofence
                         const inGeofence = shouldAlertForGeofence(
                             newCall,
                             currentUserRef.current,
                             monitoredPropertiesRef.current
                         );
-                        if (isCritical || inGeofence) {
+                        if (inGeofence) {
                             playDispatchAlert();
                             window.dispatchEvent(new CustomEvent('bps-new-call', { detail: newCall }));
                         }
@@ -306,11 +308,11 @@ export default function CommandDashboard() {
             )}
 
             {/* KPI Row */}
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                 <KPICard label="ACTIVE CALLS" value={calls.length} icon={Radio} color="text-gold" />
-                <KPICard label="CRITICAL" value={criticalCalls.length} icon={AlertTriangle} color="text-red-400" />
-                <KPICard label="UNASSIGNED" value={unassigned.length} icon={PhoneCall} color="text-orange-400" />
-                <KPICard label="UNITS AVAILABLE" value={available} icon={CheckCircle2} color="text-green-400" />
+                <KPICard label="CRITICAL" value={criticalCalls.length} icon={AlertTriangle} color="text-red-400" alert={criticalCalls.length > 0} />
+                <KPICard label="UNASSIGNED" value={unassigned.length} icon={PhoneCall} color="text-orange-400" alert={unassigned.length > 0} />
+                <KPICard label="AVAILABLE" value={available} icon={CheckCircle2} color="text-green-400" />
                 <KPICard label="EN ROUTE" value={enroute} icon={Zap} color="text-yellow-400" />
                 <KPICard label="ON SCENE" value={onScene} icon={MapPin} color="text-blue-400" />
             </div>
@@ -368,14 +370,14 @@ export default function CommandDashboard() {
                                                 <Timer className="w-3 h-3" />{timeAgo(call.time_received || call.created_date)}
                                             </div>
                                             {call.assigned_units?.length > 0 ? (
-                                                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px] font-mono mt-1">
-                                                    {call.assigned_units.length}U
-                                                </Badge>
-                                            ) : (
-                                                <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px] font-mono mt-1">
-                                                    UNASSIGNED
-                                                </Badge>
-                                            )}
+                                               <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px] font-mono mt-1">
+                                                   {call.assigned_units.length}U
+                                               </Badge>
+                                            ) : !call.source ? (
+                                               <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px] font-mono mt-1">
+                                                   UNSGN
+                                               </Badge>
+                                            ) : null}
                                         </div>
                                     </div>
                                 );

@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BarChart, FileText, Download, TrendingUp, Radio, Clock, Users, Calendar } from 'lucide-react';
+import { BarChart, FileText, Download, TrendingUp, Clock } from 'lucide-react';
+import PredictiveAnalyticsPanel from '@/components/reports/PredictiveAnalyticsPanel';
 import { createPageUrl } from '../utils';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -22,22 +23,18 @@ export default function Reports() {
     const [generating, setGenerating] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        init();
-    }, []);
+    useEffect(() => { init(); }, []);
 
     const init = async () => {
         try {
             const user = await base44.auth.me();
             setCurrentUser(user);
-            
             if (user.role !== 'admin') {
                 toast.error('Admin access required');
                 navigate(createPageUrl('CommandDashboard'));
                 return;
             }
         } catch (error) {
-            console.error('Error initializing:', error);
             navigate(createPageUrl('CommandDashboard'));
         } finally {
             setLoading(false);
@@ -49,50 +46,36 @@ export default function Reports() {
         try {
             const fromDate = new Date(dateFrom + 'T00:00:00');
             const toDate = new Date(dateTo + 'T23:59:59');
-            
+
             if (reportType === 'call_volume') {
                 const calls = await base44.entities.DispatchCall.list('-created_date', 5000);
-                const filtered = calls.filter(call => {
-                    const callDate = new Date(call.created_date);
-                    return callDate >= fromDate && callDate <= toDate;
-                });
-                
+                const filtered = calls.filter(c => { const d = new Date(c.created_date); return d >= fromDate && d <= toDate; });
                 const byAgency = {};
                 filtered.forEach(call => {
                     const agency = call.agency || 'Unknown';
-                    if (!byAgency[agency]) {
-                        byAgency[agency] = { total: 0, byType: {}, byPriority: {} };
-                    }
+                    if (!byAgency[agency]) byAgency[agency] = { total: 0, byType: {}, byPriority: {} };
                     byAgency[agency].total++;
                     byAgency[agency].byType[call.incident] = (byAgency[agency].byType[call.incident] || 0) + 1;
                     byAgency[agency].byPriority[call.priority || 'medium'] = (byAgency[agency].byPriority[call.priority || 'medium'] || 0) + 1;
                 });
-                
                 setReportData({ type: 'call_volume', data: byAgency, total: filtered.length, dateRange: { from: dateFrom, to: dateTo } });
+
             } else if (reportType === 'response_time') {
                 const calls = await base44.entities.DispatchCall.list('-created_date', 5000);
-                const filtered = calls.filter(call => {
-                    const callDate = new Date(call.created_date);
-                    return callDate >= fromDate && callDate <= toDate;
-                });
-
-                const withTimes = filtered.filter(call => call.time_received && call.time_on_scene);
+                const filtered = calls.filter(c => { const d = new Date(c.created_date); return d >= fromDate && d <= toDate; });
+                const withTimes = filtered.filter(c => c.time_received && c.time_on_scene);
                 const responseTimes = withTimes.map(call => {
-                    const received = new Date(call.time_received);
-                    const onScene = new Date(call.time_on_scene);
-                    const minutes = (onScene - received) / 60000;
+                    const minutes = (new Date(call.time_on_scene) - new Date(call.time_received)) / 60000;
                     return { call, minutes };
-                }).filter(r => r.minutes > 0 && r.minutes < 600); // sanity check
-
+                }).filter(r => r.minutes > 0 && r.minutes < 600);
                 const times = responseTimes.map(r => r.minutes);
                 const avg = times.length > 0 ? times.reduce((a,b) => a+b, 0) / times.length : 0;
                 const under5 = times.filter(t => t <= 5).length;
                 const under10 = times.filter(t => t <= 10).length;
                 const over10 = times.filter(t => t > 10).length;
-                
-                setReportData({ 
-                    type: 'response_time', 
-                    average: avg.toFixed(2), 
+                setReportData({
+                    type: 'response_time',
+                    average: avg.toFixed(2),
                     total: responseTimes.length,
                     totalFiltered: filtered.length,
                     times,
@@ -100,30 +83,74 @@ export default function Reports() {
                     breakdown: { under5, under10: under10 - under5, over10 },
                     dateRange: { from: dateFrom, to: dateTo }
                 });
+
+            } else if (reportType === 'predictive_analytics') {
+                const calls = await base44.entities.DispatchCall.list('-created_date', 5000);
+                const filtered = calls.filter(c => { const d = new Date(c.created_date); return d >= fromDate && d <= toDate; });
+                const hourlyMap = Array.from({ length: 24 }, (_, h) => ({
+                    hour: h,
+                    label: h === 0 ? '12A' : h < 12 ? `${h}A` : h === 12 ? '12P' : `${h - 12}P`,
+                    count: 0
+                }));
+                const dayMap = Array.from({ length: 7 }, (_, d) => ({ day: d, count: 0 }));
+                const locMap = {};
+                filtered.forEach(c => {
+                    const d = new Date(c.created_date);
+                    hourlyMap[d.getHours()].count++;
+                    dayMap[d.getDay()].count++;
+                    const loc = (c.location || '').trim().split(',')[0].substring(0, 60);
+                    if (loc) {
+                        if (!locMap[loc]) locMap[loc] = { count: 0, incidents: {} };
+                        locMap[loc].count++;
+                        const inc = c.incident || 'Unknown';
+                        locMap[loc].incidents[inc] = (locMap[loc].incidents[inc] || 0) + 1;
+                    }
+                });
+                const hotLocations = Object.entries(locMap)
+                    .sort((a, b) => b[1].count - a[1].count)
+                    .slice(0, 10)
+                    .map(([location, stats]) => ({
+                        location,
+                        count: stats.count,
+                        topIncident: Object.entries(stats.incidents).sort((a,b) => b[1]-a[1])[0]?.[0] || 'N/A'
+                    }));
+                const peakHourObj = hourlyMap.reduce((a, b) => b.count > a.count ? b : a);
+                const peakDayObj = dayMap.reduce((a, b) => b.count > a.count ? b : a);
+                const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                const recs = [
+                    `Pre-position units 30-45 min before peak hour (${peakHourObj.label}) - highest call volume window.`,
+                    `${dayNames[peakDayObj.day]}s show highest weekly demand - ensure maximum available units for that shift.`,
+                    ...hotLocations.slice(0, 3).map((l, i) => `Zone ${i+1}: Stage a unit near "${l.location}" - ${l.count} historical calls, primary type: ${l.topIncident}.`),
+                    'Use demand data to stagger unit breaks during off-peak hours to maintain coverage during surges.'
+                ];
+                setReportData({
+                    type: 'predictive_analytics',
+                    hourly: hourlyMap,
+                    dayOfWeek: dayMap,
+                    hotLocations,
+                    totalCalls: filtered.length,
+                    peakHour: peakHourObj.label,
+                    peakDay: dayNames[peakDayObj.day].substring(0, 3),
+                    recommendations: recs,
+                    dateRange: { from: dateFrom, to: dateTo }
+                });
+
             } else if (reportType === 'unit_activity') {
                 const logs = await base44.entities.UnitStatusLog.list('-created_date', 5000);
-                const filtered = logs.filter(log => {
-                    const logDate = new Date(log.created_date);
-                    return logDate >= fromDate && logDate <= toDate;
-                });
-                
+                const filtered = logs.filter(log => { const d = new Date(log.created_date); return d >= fromDate && d <= toDate; });
                 const byUnit = {};
                 filtered.forEach(log => {
                     const unit = log.unit_name || log.unit_id || 'Unknown';
-                    if (!byUnit[unit]) {
-                        byUnit[unit] = { statusChanges: 0, statuses: {}, lastSeen: log.created_date };
-                    }
+                    if (!byUnit[unit]) byUnit[unit] = { statusChanges: 0, statuses: {}, lastSeen: log.created_date };
                     byUnit[unit].statusChanges++;
                     byUnit[unit].statuses[log.new_status] = (byUnit[unit].statuses[log.new_status] || 0) + 1;
                     if (log.created_date > byUnit[unit].lastSeen) byUnit[unit].lastSeen = log.created_date;
                 });
-                
                 setReportData({ type: 'unit_activity', data: byUnit, total: filtered.length, dateRange: { from: dateFrom, to: dateTo } });
             }
-            
+
             toast.success('Report generated');
         } catch (error) {
-            console.error('Error generating report:', error);
             toast.error('Failed to generate report: ' + error.message);
         } finally {
             setGenerating(false);
@@ -132,9 +159,7 @@ export default function Reports() {
 
     const exportCSV = () => {
         if (!reportData) return;
-        
         let csv = '';
-        
         if (reportData.type === 'call_volume') {
             csv = 'Agency,Total Calls,Call Types,Priorities\n';
             Object.entries(reportData.data).forEach(([agency, stats]) => {
@@ -152,7 +177,6 @@ export default function Reports() {
                 csv += `${unit},${stats.statusChanges},"${statuses}"\n`;
             });
         }
-        
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -164,36 +188,24 @@ export default function Reports() {
 
     const exportPDF = () => {
         if (!reportData) return;
-        
         const doc = new jsPDF();
-        
-        // Header
         doc.setFontSize(18);
         doc.text('CAD System Report', 14, 20);
         doc.setFontSize(10);
         doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 28);
         doc.text(`Date Range: ${reportData.dateRange.from} to ${reportData.dateRange.to}`, 14, 34);
-        
         if (reportData.type === 'call_volume') {
             doc.setFontSize(14);
             doc.text('Call Volume by Agency', 14, 45);
-            
             const tableData = Object.entries(reportData.data).map(([agency, stats]) => [
-                agency,
-                stats.total,
+                agency, stats.total,
                 Object.entries(stats.byType).map(([t,c]) => `${t}: ${c}`).join('\n'),
                 Object.entries(stats.byPriority).map(([p,c]) => `${p}: ${c}`).join('\n')
             ]);
-            
-            doc.autoTable({
-                startY: 50,
-                head: [['Agency', 'Total Calls', 'Call Types', 'Priorities']],
-                body: tableData,
-            });
+            doc.autoTable({ startY: 50, head: [['Agency', 'Total Calls', 'Call Types', 'Priorities']], body: tableData });
         } else if (reportData.type === 'response_time') {
             doc.setFontSize(14);
             doc.text('Response Time Analysis', 14, 45);
-            
             doc.autoTable({
                 startY: 50,
                 head: [['Metric', 'Value']],
@@ -202,25 +214,17 @@ export default function Reports() {
                     ['Total Calls', reportData.total],
                     ['Fastest Response', `${Math.min(...reportData.times).toFixed(2)} minutes`],
                     ['Slowest Response', `${Math.max(...reportData.times).toFixed(2)} minutes`]
-                ],
+                ]
             });
         } else if (reportData.type === 'unit_activity') {
             doc.setFontSize(14);
             doc.text('Unit Activity Report', 14, 45);
-            
             const tableData = Object.entries(reportData.data).map(([unit, stats]) => [
-                unit,
-                stats.statusChanges,
+                unit, stats.statusChanges,
                 Object.entries(stats.statuses).map(([s,c]) => `${s}: ${c}`).join('\n')
             ]);
-            
-            doc.autoTable({
-                startY: 50,
-                head: [['Unit', 'Status Changes', 'Status Breakdown']],
-                body: tableData,
-            });
+            doc.autoTable({ startY: 50, head: [['Unit', 'Status Changes', 'Status Breakdown']], body: tableData });
         }
-        
         doc.save(`${reportData.type}_report_${Date.now()}.pdf`);
         toast.success('PDF exported');
     };
@@ -235,23 +239,18 @@ export default function Reports() {
 
     return (
         <div className="min-h-screen bg-slate-950">
-            {/* Header */}
             <div className="bg-slate-900 border-b-2 border-blue-500/30 shadow-lg">
                 <div className="px-6 py-3">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <BarChart className="w-6 h-6 text-blue-400" />
-                            <h1 className="text-xl font-bold text-white tracking-tight font-mono">COMMAND REPORTS</h1>
-                        </div>
-
+                    <div className="flex items-center gap-4">
+                        <BarChart className="w-6 h-6 text-blue-400" />
+                        <h1 className="text-xl font-bold text-white tracking-tight font-mono">COMMAND REPORTS</h1>
                     </div>
                 </div>
             </div>
 
-            {/* Main Content */}
             <div className="p-4 md:p-6">
                 <div className="flex flex-col md:grid md:grid-cols-12 gap-4 md:gap-6">
-                    {/* Report Configuration */}
+                    {/* Config Panel */}
                     <div className="w-full md:col-span-4">
                         <Card className="bg-slate-900 border-slate-800">
                             <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
@@ -268,42 +267,26 @@ export default function Reports() {
                                             <SelectItem value="call_volume">Call Volume by Agency</SelectItem>
                                             <SelectItem value="response_time">Response Time Analysis</SelectItem>
                                             <SelectItem value="unit_activity">Unit Activity Report</SelectItem>
+                                            <SelectItem value="predictive_analytics">Predictive Analytics</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                
                                 <div>
                                     <label className="text-xs text-slate-400 font-mono mb-2 block">DATE FROM</label>
-                                    <Input
-                                        type="date"
-                                        value={dateFrom}
-                                        onChange={(e) => setDateFrom(e.target.value)}
-                                        className="bg-slate-800 border-slate-700 text-white font-mono"
-                                    />
+                                    <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="bg-slate-800 border-slate-700 text-white font-mono" />
                                 </div>
-                                
                                 <div>
                                     <label className="text-xs text-slate-400 font-mono mb-2 block">DATE TO</label>
-                                    <Input
-                                        type="date"
-                                        value={dateTo}
-                                        onChange={(e) => setDateTo(e.target.value)}
-                                        className="bg-slate-800 border-slate-700 text-white font-mono"
-                                    />
+                                    <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="bg-slate-800 border-slate-700 text-white font-mono" />
                                 </div>
-                                
-                                <Button
-                                    onClick={generateReport}
-                                    disabled={generating}
-                                    className="w-full bg-blue-600 hover:bg-blue-700 font-mono"
-                                >
+                                <Button onClick={generateReport} disabled={generating} className="w-full bg-blue-600 hover:bg-blue-700 font-mono">
                                     {generating ? 'GENERATING...' : 'GENERATE REPORT'}
                                 </Button>
                             </div>
                         </Card>
                     </div>
 
-                    {/* Report Results */}
+                    {/* Results Panel */}
                     <div className="w-full md:col-span-8">
                         {!reportData ? (
                             <Card className="bg-slate-900 border-slate-800 h-[calc(100vh-180px)] flex items-center justify-center">
@@ -318,37 +301,25 @@ export default function Reports() {
                                     <div className="flex items-center justify-between">
                                         <h2 className="text-lg font-bold text-white font-mono">REPORT RESULTS</h2>
                                         <div className="flex gap-2">
-                                            <Button
-                                                size="sm"
-                                                onClick={exportCSV}
-                                                className="bg-green-600 hover:bg-green-700 font-mono text-xs"
-                                            >
-                                                <Download className="w-3 h-3 mr-2" />
-                                                CSV
+                                            <Button size="sm" onClick={exportCSV} className="bg-green-600 hover:bg-green-700 font-mono text-xs">
+                                                <Download className="w-3 h-3 mr-2" />CSV
                                             </Button>
-                                            <Button
-                                                size="sm"
-                                                onClick={exportPDF}
-                                                className="bg-red-600 hover:bg-red-700 font-mono text-xs"
-                                            >
-                                                <FileText className="w-3 h-3 mr-2" />
-                                                PDF
+                                            <Button size="sm" onClick={exportPDF} className="bg-red-600 hover:bg-red-700 font-mono text-xs">
+                                                <FileText className="w-3 h-3 mr-2" />PDF
                                             </Button>
                                         </div>
                                     </div>
                                 </div>
                                 <ScrollArea className="h-[calc(100vh-280px)]">
                                     <div className="p-4">
+
                                         {reportData.type === 'call_volume' && (
                                             <div className="space-y-4">
                                                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
                                                     <p className="text-xs text-slate-400 font-mono mb-1">TOTAL CALLS</p>
                                                     <p className="text-4xl font-bold text-blue-400 font-mono">{reportData.total}</p>
-                                                    <p className="text-xs text-slate-400 font-mono mt-2">
-                                                        {reportData.dateRange.from} to {reportData.dateRange.to}
-                                                    </p>
+                                                    <p className="text-xs text-slate-400 font-mono mt-2">{reportData.dateRange.from} to {reportData.dateRange.to}</p>
                                                 </div>
-                                                
                                                 {Object.entries(reportData.data).map(([agency, stats]) => (
                                                     <div key={agency} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
                                                         <div className="flex items-center justify-between mb-3">
@@ -379,7 +350,7 @@ export default function Reports() {
                                                 ))}
                                             </div>
                                         )}
-                                        
+
                                         {reportData.type === 'response_time' && (
                                             <div className="space-y-4">
                                                 {reportData.total === 0 ? (
@@ -399,7 +370,7 @@ export default function Reports() {
                                                             <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 space-y-1">
                                                                 <p className="text-xs text-slate-400 font-mono mb-2">DISTRIBUTION</p>
                                                                 <div className="flex justify-between text-xs"><span className="text-green-400">Under 5 min</span><span className="text-white font-mono">{reportData.breakdown.under5}</span></div>
-                                                                <div className="flex justify-between text-xs"><span className="text-yellow-400">5–10 min</span><span className="text-white font-mono">{reportData.breakdown.under10}</span></div>
+                                                                <div className="flex justify-between text-xs"><span className="text-yellow-400">5-10 min</span><span className="text-white font-mono">{reportData.breakdown.under10}</span></div>
                                                                 <div className="flex justify-between text-xs"><span className="text-red-400">Over 10 min</span><span className="text-white font-mono">{reportData.breakdown.over10}</span></div>
                                                             </div>
                                                         </div>
@@ -431,13 +402,16 @@ export default function Reports() {
                                             </div>
                                         )}
 
+                                        {reportData.type === 'predictive_analytics' && (
+                                            <PredictiveAnalyticsPanel data={reportData} />
+                                        )}
+
                                         {reportData.type === 'unit_activity' && (
                                             <div className="space-y-4">
                                                 <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
                                                     <p className="text-xs text-slate-400 font-mono mb-1">TOTAL STATUS CHANGES</p>
                                                     <p className="text-4xl font-bold text-purple-400 font-mono">{reportData.total}</p>
                                                 </div>
-                                                
                                                 {Object.entries(reportData.data).map(([unit, stats]) => (
                                                     <div key={unit} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
                                                         <div className="flex items-center justify-between mb-3">
@@ -457,6 +431,7 @@ export default function Reports() {
                                                 ))}
                                             </div>
                                         )}
+
                                     </div>
                                 </ScrollArea>
                             </Card>
