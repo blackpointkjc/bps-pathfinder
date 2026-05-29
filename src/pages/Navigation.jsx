@@ -65,6 +65,7 @@ export default function Navigation() {
     const [selectedCall, setSelectedCall] = useState(null);
     const [callDistrict, setCallDistrict] = useState(null);
     const [showHeatmap, setShowHeatmap] = useState(false);
+    const [assigning, setAssigning] = useState(false);
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
     const [leftPanelOpen, setLeftPanelOpen] = useState(true);
     const [leftTab, setLeftTab] = useState('units'); // 'units' | 'calls'
@@ -119,6 +120,47 @@ export default function Navigation() {
             if (user.status) setUnitStatus(user.status);
         } catch (e) {}
         startTracking();
+    };
+
+    const handleSelfAssign = async () => {
+        if (!currentUser || !selectedCall) return;
+        setAssigning(true);
+        try {
+            const alreadyAssigned = selectedCall.assigned_units?.includes(currentUser.id);
+            if (!alreadyAssigned) {
+                await base44.entities.CallAssignment.create({
+                    call_id: selectedCall.id,
+                    unit_id: currentUser.id,
+                    role: 'primary',
+                    assigned_at: new Date().toISOString(),
+                    status: 'accepted'
+                });
+                const updatedUnits = [...(selectedCall.assigned_units || []), currentUser.id];
+                await base44.entities.DispatchCall.update(selectedCall.id, { assigned_units: updatedUnits });
+                setSelectedCall(prev => ({ ...prev, assigned_units: updatedUnits }));
+                await handleStatusChange('Enroute');
+                toast.success('Assigned to call — status set to Enroute');
+            }
+        } catch (e) {
+            toast.error('Failed to assign');
+        } finally {
+            setAssigning(false);
+        }
+    };
+
+    const handleSelfUnassign = async () => {
+        if (!currentUser || !selectedCall) return;
+        setAssigning(true);
+        try {
+            const updatedUnits = (selectedCall.assigned_units || []).filter(id => id !== currentUser.id);
+            await base44.entities.DispatchCall.update(selectedCall.id, { assigned_units: updatedUnits });
+            setSelectedCall(prev => ({ ...prev, assigned_units: updatedUnits }));
+            toast.success('Unassigned from call');
+        } catch (e) {
+            toast.error('Failed to unassign');
+        } finally {
+            setAssigning(false);
+        }
     };
 
     const handleStatusChange = async (newStatus) => {
@@ -580,6 +622,26 @@ export default function Navigation() {
                                 className="w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-white hover:bg-[#1e2d4a] transition-colors">
                                 <X className="w-4 h-4" />
                             </button>
+                        </div>
+
+                        {/* Self-assign action bar */}
+                        <div className="flex-none flex items-center gap-2 px-4 py-2.5 border-b border-[#1e2d4a] bg-[#0a0e1a]">
+                            {selectedCall.assigned_units?.includes(currentUser?.id) ? (
+                                <>
+                                    <span className="text-[9px] font-mono text-green-400 font-bold flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-400" /> YOU ARE ASSIGNED
+                                    </span>
+                                    <button onClick={handleSelfUnassign} disabled={assigning}
+                                        className="ml-auto px-3 py-1 rounded border border-red-500/40 text-red-400 text-[9px] font-mono font-bold hover:bg-red-500/10 transition-all disabled:opacity-50">
+                                        UNASSIGN ME
+                                    </button>
+                                </>
+                            ) : (
+                                <button onClick={handleSelfAssign} disabled={assigning}
+                                    className="flex-1 py-2 rounded border border-[#f5a623]/50 bg-[#f5a623]/10 text-[#f5a623] text-[10px] font-mono font-bold hover:bg-[#f5a623]/20 transition-all disabled:opacity-50">
+                                    {assigning ? 'ASSIGNING...' : '⚡ ASSIGN ME TO THIS CALL'}
+                                </button>
+                            )}
                         </div>
 
                         {/* Call ID / Priority bar */}
