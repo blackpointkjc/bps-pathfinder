@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from './utils';
+import CollapsePanelButton from '@/components/CollapsePanelButton';
 
 // Nav item definitions with role requirements
 const ALL_NAV = [
@@ -192,12 +193,9 @@ export default function Layout({ children, currentPageName }) {
                 className="hidden md:flex flex-col bg-slate-900 border-r border-slate-800 flex-shrink-0 relative z-30 h-full"
             >
                 <NavContent />
-                <button
-                    onClick={() => setCollapsed(c => !c)}
-                    className="absolute top-16 -right-3 w-6 h-6 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-slate-400 hover:text-white z-40"
-                >
-                    {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
-                </button>
+                <div className="absolute top-16 -right-3 z-40">
+                    <CollapsePanelButton isOpen={!collapsed} onClick={() => setCollapsed(c => !c)} className="w-5 h-16 bg-[#0d1220]/90 backdrop-blur border border-l-0 border-[#1e2d4a] rounded-r-lg flex items-center justify-center text-slate-500 hover:text-white hover:bg-[#1a2535] transition-all" />
+                </div>
             </div>
 
             {/* Mobile Sidebar Overlay */}
