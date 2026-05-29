@@ -53,7 +53,7 @@ import AdminPortal from './pages/AdminPortal';
 import ArchiveManager from './pages/ArchiveManager';
 import AssetManagement from './pages/AssetManagement';
 import CADHome from './pages/CADHome';
-
+import CallHistory from './pages/CallHistory';
 import CommandDashboard from './pages/CommandDashboard';
 import DispatchCenter from './pages/DispatchCenter';
 import DispatchLog from './pages/DispatchLog';
@@ -74,7 +74,7 @@ export const PAGES = {
     "ArchiveManager": ArchiveManager,
     "AssetManagement": AssetManagement,
     "CADHome": CADHome,
-
+    "CallHistory": CallHistory,
     "CommandDashboard": CommandDashboard,
     "DispatchCenter": DispatchCenter,
     "DispatchLog": DispatchLog,
