@@ -112,204 +112,165 @@ export default function MaintenanceTracking({ units }) {
     const completed = maintenance.filter(m => m.completed);
 
     return (
-        <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                    <Wrench className="w-5 h-5 text-orange-500" />
-                    Maintenance Tracking
-                </h2>
-                <Button onClick={() => setShowForm(!showForm)} size="sm" className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Record
-                </Button>
+        <div className="font-mono">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                    <div className="w-1 h-5 bg-gold rounded-sm" />
+                    <Wrench className="w-4 h-4 text-gold" />
+                    <span className="text-white font-bold text-sm tracking-widest">MAINTENANCE TRACKING</span>
+                    <span className="text-slate-500 text-[10px] ml-1">{maintenance.length} RECORDS</span>
+                </div>
+                <button onClick={() => setShowForm(!showForm)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gold/10 border border-gold/40 text-gold hover:bg-gold/20 text-[10px] font-bold rounded transition-all">
+                    <Plus className="w-3 h-3" />
+                    ADD RECORD
+                </button>
             </div>
 
             {overdue.length > 0 && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-300 rounded-lg">
-                    <div className="flex items-center gap-2 text-red-700">
-                        <AlertTriangle className="w-5 h-5" />
-                        <span className="font-semibold">{overdue.length} overdue maintenance item(s)</span>
-                    </div>
+                <div className="mb-3 flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded text-[10px]">
+                    <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+                    <span className="text-red-400 font-bold">{overdue.length} OVERDUE MAINTENANCE ITEM(S)</span>
                 </div>
             )}
 
             {showForm && (
-                <Card className="p-4 mb-4 border-gray-200">
-                    <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label>Vehicle</Label>
-                                <select
-                                    value={formData.vehicle_id}
-                                    onChange={(e) => {
-                                        const selectedVehicle = vehicles.find(v => v.vehicle_id === e.target.value);
-                                        setFormData({
-                                            ...formData, 
-                                            vehicle_id: e.target.value,
-                                            unit_number: units?.find(u => u.id === selectedVehicle?.assigned_to)?.unit_number || ''
-                                        });
-                                    }}
-                                    className="flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                                >
-                                    <option value="">Select Vehicle</option>
-                                    {vehicles.map(vehicle => (
-                                        <option key={vehicle.id} value={vehicle.vehicle_id}>
-                                            {vehicle.vehicle_id} - {vehicle.year} {vehicle.make} {vehicle.model}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <Label>Unit Number</Label>
-                                <select
-                                    value={formData.unit_number}
-                                    onChange={(e) => setFormData({...formData, unit_number: e.target.value})}
-                                    className="flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                                >
-                                    <option value="">Select Unit</option>
-                                    {units?.map(unit => (
-                                        <option key={unit.id} value={unit.unit_number}>
-                                            {unit.unit_number || unit.full_name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
+                <div className="bg-slate-900 border border-slate-700 rounded p-4 mb-4 space-y-3">
+                    <div className="text-[10px] text-gold font-bold tracking-widest mb-2">NEW MAINTENANCE RECORD</div>
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <Label>Type</Label>
-                            <select
-                                value={formData.maintenance_type}
-                                onChange={(e) => setFormData({...formData, maintenance_type: e.target.value})}
-                                className="flex h-10 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                            >
-                                <option value="oil_change">Oil Change</option>
-                                <option value="tire_rotation">Tire Rotation</option>
-                                <option value="inspection">Inspection</option>
-                                <option value="repair">Repair</option>
-                                <option value="other">Other</option>
+                            <Label className="text-slate-500 font-mono text-[10px] tracking-widest">VEHICLE</Label>
+                            <select value={formData.vehicle_id}
+                                onChange={e => {
+                                    const sel = vehicles.find(v => v.vehicle_id === e.target.value);
+                                    setFormData({ ...formData, vehicle_id: e.target.value, unit_number: units?.find(u => u.id === sel?.assigned_to)?.unit_number || '' });
+                                }}
+                                className="mt-1 w-full h-9 bg-slate-800 border border-slate-700 text-white font-mono text-xs rounded px-2">
+                                <option value="">Select Vehicle</option>
+                                {vehicles.map(v => <option key={v.id} value={v.vehicle_id}>{v.vehicle_id} — {v.year} {v.make} {v.model}</option>)}
                             </select>
                         </div>
                         <div>
-                            <Label>Description</Label>
-                            <Textarea
-                                value={formData.description}
-                                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                placeholder="Describe the maintenance..."
-                                rows={2}
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label>Due Date</Label>
-                                <Input
-                                    type="date"
-                                    value={formData.due_date}
-                                    onChange={(e) => setFormData({...formData, due_date: e.target.value})}
-                                />
-                            </div>
-                            <div>
-                                <Label>Due Mileage</Label>
-                                <Input
-                                    type="number"
-                                    value={formData.due_mileage}
-                                    onChange={(e) => setFormData({...formData, due_mileage: e.target.value})}
-                                    placeholder="Optional"
-                                />
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                            <Button onClick={createMaintenance} className="flex-1 bg-blue-600 hover:bg-blue-700">Create</Button>
-                            <Button onClick={() => setShowForm(false)} variant="outline" className="flex-1">Cancel</Button>
+                            <Label className="text-slate-500 font-mono text-[10px] tracking-widest">UNIT NUMBER</Label>
+                            <select value={formData.unit_number}
+                                onChange={e => setFormData({...formData, unit_number: e.target.value})}
+                                className="mt-1 w-full h-9 bg-slate-800 border border-slate-700 text-white font-mono text-xs rounded px-2">
+                                <option value="">Select Unit</option>
+                                {units?.map(u => <option key={u.id} value={u.unit_number}>{u.unit_number || u.full_name}</option>)}
+                            </select>
                         </div>
                     </div>
-                </Card>
+                    <div>
+                        <Label className="text-slate-500 font-mono text-[10px] tracking-widest">TYPE</Label>
+                        <select value={formData.maintenance_type}
+                            onChange={e => setFormData({...formData, maintenance_type: e.target.value})}
+                            className="mt-1 w-full h-9 bg-slate-800 border border-slate-700 text-white font-mono text-xs rounded px-2">
+                            <option value="oil_change">Oil Change</option>
+                            <option value="tire_rotation">Tire Rotation</option>
+                            <option value="inspection">Inspection</option>
+                            <option value="repair">Repair</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <Label className="text-slate-500 font-mono text-[10px] tracking-widest">DESCRIPTION</Label>
+                        <Textarea value={formData.description}
+                            onChange={e => setFormData({...formData, description: e.target.value})}
+                            placeholder="Describe the maintenance..."
+                            rows={2}
+                            className="mt-1 bg-slate-800 border-slate-700 text-white font-mono text-xs" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <Label className="text-slate-500 font-mono text-[10px] tracking-widest">DUE DATE</Label>
+                            <Input type="date" value={formData.due_date}
+                                onChange={e => setFormData({...formData, due_date: e.target.value})}
+                                className="mt-1 bg-slate-800 border-slate-700 text-white font-mono text-xs" />
+                        </div>
+                        <div>
+                            <Label className="text-slate-500 font-mono text-[10px] tracking-widest">DUE MILEAGE</Label>
+                            <Input type="number" value={formData.due_mileage}
+                                onChange={e => setFormData({...formData, due_mileage: e.target.value})}
+                                placeholder="Optional"
+                                className="mt-1 bg-slate-800 border-slate-700 text-white font-mono text-xs" />
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={createMaintenance}
+                            className="flex-1 py-2 bg-gold/10 border border-gold/50 text-gold hover:bg-gold/20 font-mono text-xs font-bold rounded transition-all">CREATE</button>
+                        <button onClick={() => setShowForm(false)}
+                            className="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-400 hover:text-white font-mono text-xs rounded transition-all">CANCEL</button>
+                    </div>
+                </div>
             )}
 
-            <ScrollArea className="h-[400px]">
-                <div className="space-y-4">
-                    {overdue.length > 0 && (
-                        <div>
-                            <h3 className="text-sm font-semibold text-red-600 mb-2">Overdue</h3>
-                            {overdue.map(item => (
-                                <MaintenanceCard key={item.id} item={item} onComplete={completeMaintenance} onDelete={deleteMaintenance} isOverdue />
-                            ))}
-                        </div>
-                    )}
-
-                    {upcoming.length > 0 && (
-                        <div>
-                            <h3 className="text-sm font-semibold text-yellow-600 mb-2">Upcoming</h3>
-                            {upcoming.map(item => (
-                                <MaintenanceCard key={item.id} item={item} onComplete={completeMaintenance} onDelete={deleteMaintenance} />
-                            ))}
-                        </div>
-                    )}
-
-                    {completed.length > 0 && (
-                        <div>
-                            <h3 className="text-sm font-semibold text-green-600 mb-2">Completed</h3>
-                            {completed.map(item => (
-                                <MaintenanceCard key={item.id} item={item} onDelete={deleteMaintenance} isCompleted />
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </ScrollArea>
-        </Card>
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+                {overdue.length > 0 && (
+                    <div>
+                        <div className="text-[9px] text-red-400 font-bold tracking-widest mb-2 px-1">OVERDUE</div>
+                        {overdue.map(item => <MaintenanceCard key={item.id} item={item} onComplete={completeMaintenance} onDelete={deleteMaintenance} isOverdue />)}
+                    </div>
+                )}
+                {upcoming.length > 0 && (
+                    <div>
+                        <div className="text-[9px] text-yellow-400 font-bold tracking-widest mb-2 px-1">UPCOMING</div>
+                        {upcoming.map(item => <MaintenanceCard key={item.id} item={item} onComplete={completeMaintenance} onDelete={deleteMaintenance} />)}
+                    </div>
+                )}
+                {completed.length > 0 && (
+                    <div>
+                        <div className="text-[9px] text-green-400 font-bold tracking-widest mb-2 px-1">COMPLETED</div>
+                        {completed.map(item => <MaintenanceCard key={item.id} item={item} onDelete={deleteMaintenance} isCompleted />)}
+                    </div>
+                )}
+                {maintenance.length === 0 && (
+                    <div className="text-center py-12">
+                        <Wrench className="w-10 h-10 text-slate-700 mx-auto mb-3" />
+                        <p className="text-slate-600 text-xs font-mono">NO MAINTENANCE RECORDS</p>
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }
 
 function MaintenanceCard({ item, onComplete, onDelete, isOverdue, isCompleted }) {
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`p-3 rounded-lg mb-2 ${
-                isOverdue ? 'bg-red-50 border border-red-300' :
-                isCompleted ? 'bg-green-50 border border-green-300 opacity-60' :
-                'bg-white border border-gray-200'
-            }`}
-        >
-            <div className="flex items-start justify-between mb-2">
-                <div>
-                    <h4 className="font-semibold text-gray-900">
-                        {item.vehicle_id} {item.unit_number && `(${item.unit_number})`}
-                    </h4>
-                    <p className="text-sm text-gray-600">{item.maintenance_type.replace('_', ' ')}</p>
-                </div>
+        <div className={`flex items-start justify-between px-3 py-2.5 rounded mb-1.5 border font-mono text-[10px] ${
+            isOverdue ? 'bg-red-500/5 border-red-500/25' :
+            isCompleted ? 'bg-slate-900/40 border-slate-800 opacity-60' :
+            'bg-slate-900 border-slate-800'
+        }`}>
+            <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                    {!isCompleted && (
-                        <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => onComplete(item.id)}
-                            className="h-7 w-7 text-green-600 hover:text-green-700"
-                        >
-                            <CheckCircle className="w-4 h-4" />
-                        </Button>
-                    )}
-                    <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => onDelete(item.id)}
-                        className="h-7 w-7 text-red-600 hover:text-red-700"
-                    >
-                        <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <span className="text-white font-bold">{item.vehicle_id}</span>
+                    {item.unit_number && <span className="text-slate-500">#{item.unit_number}</span>}
+                    <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${
+                        isOverdue ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                        isCompleted ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                        'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                    }`}>{item.maintenance_type.replace('_', ' ').toUpperCase()}</span>
+                </div>
+                {item.description && <div className="text-slate-500 mt-0.5 truncate">{item.description}</div>}
+                <div className="flex items-center gap-3 mt-1 text-[9px]">
+                    <span className={isOverdue ? 'text-red-400' : 'text-slate-500'}>DUE: {new Date(item.due_date).toLocaleDateString()}</span>
+                    {item.due_mileage && <span className="text-slate-600">@ {item.due_mileage} MI</span>}
+                    {isCompleted && <span className="text-green-400">✓ {new Date(item.completed_date).toLocaleDateString()}</span>}
                 </div>
             </div>
-            {item.description && <p className="text-xs text-gray-600 mb-2">{item.description}</p>}
-            <div className="flex items-center gap-3 text-xs">
-                <span className={isOverdue ? 'text-red-600' : 'text-gray-600'}>
-                    Due: {new Date(item.due_date).toLocaleDateString()}
-                </span>
-                {item.due_mileage && <span className="text-gray-600">@ {item.due_mileage} mi</span>}
-                {isCompleted && (
-                    <Badge className="bg-green-600 text-white">
-                        Completed {new Date(item.completed_date).toLocaleDateString()}
-                    </Badge>
+            <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                {!isCompleted && (
+                    <button onClick={() => onComplete(item.id)}
+                        className="p-1 text-slate-500 hover:text-green-400 transition-colors">
+                        <CheckCircle className="w-3.5 h-3.5" />
+                    </button>
                 )}
+                <button onClick={() => onDelete(item.id)}
+                    className="p-1 text-slate-600 hover:text-red-400 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                </button>
             </div>
-        </motion.div>
+        </div>
     );
 }
