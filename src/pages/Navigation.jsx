@@ -65,6 +65,7 @@ export default function Navigation() {
     const [showCallSidebar, setShowCallSidebar] = useState(false);
     const [selectedCall, setSelectedCall] = useState(null);
     const [callDistrict, setCallDistrict] = useState(null);
+    const [mapCenter, setMapCenter] = useState(focusCenter);
     const [showHeatmap, setShowHeatmap] = useState(false);
     const [assigning, setAssigning] = useState(false);
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
@@ -301,7 +302,7 @@ export default function Navigation() {
                     otherUnits={mapVisibleUnits}
                     currentUserId={currentUser?.id}
                     speed={speed}
-                    mapCenter={focusCenter}
+                    mapCenter={mapCenter}
                     isNavigating={false}
                     baseMapType={jurisdictionFilters.baseMapType}
                     jurisdictionFilters={jurisdictionFilters}
@@ -642,8 +643,19 @@ export default function Navigation() {
                             </button>
                         </div>
 
-                        {/* Self-assign action bar */}
+                        {/* Action Bar - Show on Map + Assign */}
                         <div className="flex-none flex items-center gap-2 px-4 py-2.5 border-b border-[#1e2d4a] bg-[#0a0e1a]">
+                            <button
+                                onClick={() => {
+                                    if (selectedCall.latitude && selectedCall.longitude) {
+                                        setMapCenter([selectedCall.latitude, selectedCall.longitude]);
+                                        setShowActiveCalls(true);
+                                    }
+                                }}
+                                className="px-3 py-1 rounded border border-blue-500/40 text-blue-400 text-[9px] font-mono font-bold hover:bg-blue-500/10 transition-all"
+                            >
+                                📍 SHOW ON MAP
+                            </button>
                             {selectedCall.assigned_units?.includes(currentUser?.id) ? (
                                 <>
                                     <span className="text-[9px] font-mono text-green-400 font-bold flex items-center gap-1">
