@@ -88,23 +88,22 @@ export default function AdminPortal() {
             // Compute uptime: rolling year basis with actual outage durations
             const oneYearAgo = new Date();
             oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-            const rollingYearOutages = (outages || []).filter(o => {
-                const createdDate = new Date(o.created_date || 0);
-                return createdDate >= oneYearAgo;
-            });
             
             let totalOutageMinutes = 0;
-            rollingYearOutages.forEach(o => {
-                const startTime = new Date(o.created_date || 0);
+            (outages || []).forEach(o => {
+                if (!o.created_date) return; // Skip if no created_date
+                const createdDate = new Date(o.created_date);
+                if (createdDate < oneYearAgo) return; // Skip if older than 1 year
+                
+                const startTime = createdDate;
                 const endTime = o.resolved_at ? new Date(o.resolved_at) : new Date();
                 const durationMs = endTime - startTime;
-                const durationMinutes = durationMs / (1000 * 60);
-                totalOutageMinutes += Math.max(0, durationMinutes);
+                if (durationMs > 0) totalOutageMinutes += durationMs / (1000 * 60);
             });
             
             const totalMinutesInYear = 365.25 * 24 * 60;
-            const uptimeFraction = Math.max(0, (totalMinutesInYear - totalOutageMinutes) / totalMinutesInYear);
-            const uptimePct = `${(uptimeFraction * 100).toFixed(2)}%`;
+            const uptimeFraction = (totalMinutesInYear - totalOutageMinutes) / totalMinutesInYear;
+            const uptimePct = `${Math.max(0, Math.min(100, uptimeFraction * 100)).toFixed(2)}%`;
 
             const critical = calls.filter(c =>
                 c.priority === 'critical' || c.priority === 'high' ||
