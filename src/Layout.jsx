@@ -104,7 +104,7 @@ export default function Layout({ children, currentPageName }) {
             {/* Logo */}
             <div className={`flex items-center gap-3 px-3 py-3 border-b border-slate-800 flex-shrink-0 ${collapsed ? 'justify-center' : ''}`}>
                 <div className="relative flex-shrink-0">
-                    <img src="https://media.base44.com/images/public/694de31c7e0f5645fb95de52/d49b7bb4a_UntitledProject2.png" alt="KIC Security Services" className="w-10 h-10" />
+                    <img src="https://media.base44.com/images/public/694de31c7e0f5645fb95de52/e9bbe2fdb_image.png" alt="KIC Security Services" className="w-10 h-10" />
                     <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse hidden" />
                 </div>
                 {!collapsed && (
