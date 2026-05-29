@@ -104,24 +104,7 @@ export default function Layout({ children, currentPageName }) {
             {/* Logo */}
             <div className={`flex items-center gap-3 px-3 py-3 border-b border-slate-800 flex-shrink-0 ${collapsed ? 'justify-center' : ''}`}>
                 <div className="relative flex-shrink-0">
-                    <svg viewBox="0 0 80 100" className="w-10 h-10" xmlns="http://www.w3.org/2000/svg">
-                        {/* Gold shield background */}
-                        <path d="M 40 8 L 20 22 L 20 48 Q 20 72 40 92 Q 60 72 60 48 L 60 22 Z" fill="#D4AF37"/>
-                        {/* Eagle wings top */}
-                        <path d="M 30 18 Q 20 12 15 18 M 50 18 Q 60 12 65 18" stroke="#D4AF37" strokeWidth="2" fill="none"/>
-                        {/* Black inner shield */}
-                        <path d="M 40 14 L 28 24 L 28 48 Q 28 68 40 82 Q 52 68 52 48 L 52 24 Z" fill="#1a1a1a"/>
-                        {/* Gold eagle head outline */}
-                        <circle cx="40" cy="26" r="3.5" fill="#D4AF37"/>
-                        <circle cx="42" cy="25" r="1.5" fill="#1a1a1a"/>
-                        {/* Black banner for text */}
-                        <rect x="26" y="38" width="28" height="12" fill="#1a1a1a" stroke="#D4AF37" strokeWidth="0.5"/>
-                        {/* Text */}
-                        <text x="40" y="43" fontSize="4" fontWeight="bold" fill="#D4AF37" textAnchor="middle" fontFamily="monospace">BLACK</text>
-                        <text x="40" y="47" fontSize="4" fontWeight="bold" fill="#D4AF37" textAnchor="middle" fontFamily="monospace">POINT</text>
-                        {/* Bottom accent */}
-                        <circle cx="40" cy="85" r="1.5" fill="#D4AF37"/>
-                    </svg>
+                    <img src="https://media.base44.com/images/public/694de31c7e0f5645fb95de52/d49b7bb4a_UntitledProject2.png" alt="KIC Security Services" className="w-10 h-10" />
                     <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse hidden" />
                 </div>
                 {!collapsed && (
