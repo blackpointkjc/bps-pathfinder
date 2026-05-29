@@ -145,7 +145,11 @@ export default function CommandDashboard() {
                 base44.entities.DispatchCall.list('-created_date', 200),
                 base44.entities.User.list()
             ]);
-            const active = (callsData || []).filter(c => !['Closed', 'Cleared', 'Cancelled'].includes(c.status));
+            const ONE_HOUR_MS = 60 * 60 * 1000;
+            const active = (callsData || []).filter(c =>
+                !['Closed', 'Cleared', 'Cancelled'].includes(c.status) &&
+                (Date.now() - new Date(c.time_received || c.created_date)) < ONE_HOUR_MS
+            );
             const currentIds = new Set(active.map(c => c.id));
             if (knownCallIdsRef.current === null) {
                 knownCallIdsRef.current = currentIds;
