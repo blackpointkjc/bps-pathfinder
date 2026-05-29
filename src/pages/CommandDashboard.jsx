@@ -25,7 +25,14 @@ const UNIT_STATUS_COLORS = {
 
 const MY_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
 
+function cleanIncident(name) {
+    if (!name) return 'UNKNOWN';
+    // Strip trailing timestamps like "1:07 PM" or "13:45" that scrapers inject
+    return name.replace(/\s+\d{1,2}:\d{2}(\s*(AM|PM))?\s*$/i, '').trim() || name;
+}
+
 function getCallPriority(call) {
+    if (call.priority_override && call.priority) return call.priority;
     const classification = classifyCall(`${call.incident || ''} ${call.description || ''}`);
     if (classification.matched_type) return classification.matched_type.priority;
     return call.priority || 'medium';
@@ -202,7 +209,18 @@ export default function CommandDashboard() {
     const onSceneUnits = activeUnits.filter(u => u.status === 'On Scene');
     const busyUnits = activeUnits.filter(u => u.status === 'Busy');
 
-    const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
+    const isAdmin = currentUser?.role === 'admin';
+    const isDispatchOrAdmin = isAdmin || currentUser?.is_supervisor || currentUser?.dispatch_role;
+
+    const handlePriorityOverride = async (call, e) => {
+        e.stopPropagation();
+        const order = ['critical', 'high', 'medium', 'low'];
+        const current = getCallPriority(call);
+        const nextIdx = (order.indexOf(current) + 1) % order.length;
+        const next = order[nextIdx];
+        await base44.entities.DispatchCall.update(call.id, { priority: next, priority_override: true });
+        loadData();
+    };
 
     if (loading) return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -342,7 +360,16 @@ export default function CommandDashboard() {
                                     
                                     {/* Priority */}
                                     <div className="w-8 flex-shrink-0">
-                                        <span className={`text-[10px] font-mono font-bold ${cfg.text}`}>{cfg.label}</span>
+                                        {isAdmin ? (
+                                            <button
+                                                onClick={(e) => handlePriorityOverride(call, e)}
+                                                title="Click to cycle priority"
+                                                className={`text-[10px] font-mono font-bold ${cfg.text} hover:ring-1 ring-current rounded px-0.5 transition-all`}>
+                                                {cfg.label}
+                                            </button>
+                                        ) : (
+                                            <span className={`text-[10px] font-mono font-bold ${cfg.text}`}>{cfg.label}</span>
+                                        )}
                                     </div>
 
                                     {/* Time */}
@@ -357,7 +384,7 @@ export default function CommandDashboard() {
 
                                     {/* Incident + Location */}
                                     <div className="flex-1 min-w-0 pr-2">
-                                        <div className="text-white font-mono font-bold text-xs truncate">{call.incident}</div>
+                                        <div className="text-white font-mono font-bold text-xs truncate">{cleanIncident(call.incident)}</div>
                                         <div className="text-slate-400 font-mono text-[10px] truncate flex items-center gap-1 mt-0.5">
                                             <MapPin className="w-2.5 h-2.5 flex-shrink-0 text-slate-600" />
                                             {call.location}
@@ -452,11 +479,15 @@ export default function CommandDashboard() {
                             {[
                                 { label: 'DISPATCH CTR', icon: Zap, page: 'DispatchCenter', color: 'border-gold/40 text-gold hover:bg-gold/10' },
                                 { label: 'LIVE MAP', icon: MapPin, page: 'Navigation', color: 'border-blue-500/40 text-blue-400 hover:bg-blue-500/10' },
-                                { label: 'PERSONNEL', icon: Users, page: 'Personnel', color: 'border-green-500/40 text-green-400 hover:bg-green-500/10' },
-                                { label: 'REPORTS', icon: TrendingUp, page: 'Reports', color: 'border-purple-500/40 text-purple-400 hover:bg-purple-500/10' },
-                                { label: 'CALL HISTORY', icon: Radio, page: 'CallHistory', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
-                                { label: 'ADMIN', icon: Shield, page: 'AdminPortal', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
-                            ].map(({ label, icon: Icon, page, color }) => (
+                                ...(isAdmin ? [
+                                       { label: 'PERSONNEL', icon: Users, page: 'Personnel', color: 'border-green-500/40 text-green-400 hover:bg-green-500/10' },
+                                       { label: 'REPORTS', icon: TrendingUp, page: 'Reports', color: 'border-purple-500/40 text-purple-400 hover:bg-purple-500/10' },
+                                       { label: 'CALL HISTORY', icon: Radio, page: 'CallHistory', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
+                                       { label: 'ADMIN', icon: Shield, page: 'AdminPortal', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
+                                   ] : [
+                                       { label: 'CALL HISTORY', icon: Radio, page: 'CallHistory', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
+                                   ]),
+                                ].map(({ label, icon: Icon, page, color }) => (
                                 <button key={page} onClick={() => navigate(createPageUrl(page))}
                                     className={`flex items-center gap-1.5 px-2 py-2 rounded border bg-transparent font-mono text-[10px] font-bold transition-all ${color}`}>
                                     <Icon className="w-3 h-3 flex-shrink-0" />{label}
