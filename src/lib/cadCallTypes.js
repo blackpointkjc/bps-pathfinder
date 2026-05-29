@@ -4,7 +4,7 @@ export const CALL_TYPES = [
     code: "01",
     label: "Active Shooter",
     priority: "critical",
-    keywords: ["active shooter", "shooter", "shooting spree", "multiple shots", "gunfire"],
+    keywords: ["active shooter", "shooter", "shooting spree", "multiple shots", "gunfire", "active threat"],
   },
   {
     code: "02",
@@ -28,13 +28,13 @@ export const CALL_TYPES = [
     code: "05",
     label: "Shooting / Gunshot Wound",
     priority: "critical",
-    keywords: ["shots fired", "gunshot", "shooting", "shot", "gun", "firearm", "shotgun", "rifle"],
+    keywords: ["shots fired", "gunshot", "shooting", "shot", "gun", "firearm", "shotgun", "rifle", "person with gun", "armed person", "gunshot wound"],
   },
   {
     code: "06",
     label: "Domestic Violence (In Progress)",
     priority: "critical",
-    keywords: ["domestic violence", "domestic", "domestic dispute", "family violence", "spouse assault"],
+    keywords: ["domestic violence", "domestic", "domestic dispute", "family violence", "spouse assault", "family fight", "domestic disturbance"],
   },
   {
     code: "07",
@@ -64,19 +64,19 @@ export const CALL_TYPES = [
     code: "11",
     label: "Assault (Physical Fight)",
     priority: "high",
-    keywords: ["assault", "fight", "physical fight", "beating", "attacked", "punch"],
+    keywords: ["assault", "fight", "physical fight", "beating", "attacked", "punch", "disturbance", "altercation", "brawl", "disorderly conduct"],
   },
   {
     code: "12",
     label: "Burglary In Progress",
     priority: "high",
-    keywords: ["burglary", "break-in", "home invasion", "burglary in progress", "breaking and entering"],
+    keywords: ["burglary", "break-in", "home invasion", "burglary in progress", "breaking and entering", "shoplifting", "theft", "stolen", "vandalism"],
   },
   {
     code: "13",
     label: "Suspicious Person / Activity",
     priority: "medium",
-    keywords: ["suspicious", "suspicious person", "suspicious activity", "weird", "strange"],
+    keywords: ["suspicious", "suspicious person", "suspicious activity", "weird", "strange", "activesubject", "active subject", "prowler", "trespassing", "loitering", "welfare check", "check the welfare"],
   },
   {
     code: "14",
@@ -137,6 +137,46 @@ export function getCallTypePriority(code) {
   return type?.priority || "low";
 }
 
+// External incident type mappings (police dispatch terminology)
+const EXTERNAL_INCIDENT_MAPPINGS = {
+  "traffic stop": "15",
+  "welfare check": "13",
+  "check the welfare": "13",
+  "officer initiated": "13",
+  "activesubject stop": "13",
+  "suspicious vehicle": "13",
+  "person with gun": "05",
+  "shots heard": "05",
+  "disorderly conduct": "11",
+  "loud party": "11",
+  "trespassing": "13",
+  "prowler": "13",
+  "shoplifting": "12",
+  "alarm": "12",
+  "vandalism": "12",
+  "hit and run": "15",
+  "traffic accident": "15",
+  "motor vehicle accident": "15",
+  "mva": "15",
+  "medical emergency": "04",
+  "unconscious": "10",
+  "welfare": "13",
+  "animal complaint": "13",
+  "noise complaint": "13",
+};
+
+// Normalize external incident data to CAD code (Option 2 - Pre-processing)
+export function normalizeExternalIncident(externalIncidentText) {
+  if (!externalIncidentText) return null;
+  const normalized = normalize(externalIncidentText);
+  for (const [pattern, cadCode] of Object.entries(EXTERNAL_INCIDENT_MAPPINGS)) {
+    if (normalized.includes(normalize(pattern))) {
+      return cadCode;
+    }
+  }
+  return null;
+}
+
 // Calculate confidence score between input and keywords
 function keywordMatchScore(input, keywords) {
   if (!keywords || keywords.length === 0) return 0;
@@ -156,7 +196,7 @@ function keywordMatchScore(input, keywords) {
   return bestScore;
 }
 
-// Main CAD call classification function
+// Main CAD call classification function with fallback normalization
 // Returns: { matched_code, matched_label, confidence, matched_type }
 export function classifyCall(inputText) {
   if (!inputText || inputText.trim().length === 0) {
@@ -196,7 +236,21 @@ export function classifyCall(inputText) {
     };
   }
 
-  // No confident match
+  // Fallback: Try external incident mapping (Option 2)
+  const normalizedCode = normalizeExternalIncident(inputText);
+  if (normalizedCode) {
+    const fallbackMatch = CALL_TYPES.find((t) => t.code === normalizedCode);
+    if (fallbackMatch) {
+      return {
+        matched_code: fallbackMatch.code,
+        matched_label: fallbackMatch.label,
+        confidence: 0.65,
+        matched_type: fallbackMatch,
+      };
+    }
+  }
+
+  // No match found
   return {
     matched_code: null,
     matched_label: null,
