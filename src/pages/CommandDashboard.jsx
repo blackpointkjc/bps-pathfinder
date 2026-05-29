@@ -1,79 +1,83 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { playDispatchAlert, stopDispatchAlert, setDispatchAlertMuted } from '@/utils/alertUtils';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-    Radio, AlertTriangle, Users, Activity, Clock, MapPin, Zap,
-    TrendingUp, RefreshCw, CheckCircle2, PhoneCall, Shield,
-    ArrowRight, Timer, Volume2, VolumeX
-} from 'lucide-react';
+import { playDispatchAlert, stopDispatchAlert, setDispatchAlertMuted, shouldAlertForGeofence } from '@/utils/alertUtils';
+import { classifyCall } from '@/lib/cadCallTypes';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
-import { shouldAlertForGeofence } from '@/utils/alertUtils';
-import { classifyCall } from '@/lib/cadCallTypes';
+import { RefreshCw, Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight } from 'lucide-react';
 
-const UNIT_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
-
-const STATUS_COLORS = {
-    Available: 'bg-green-500/20 text-green-400 border-green-500/40 hover:bg-green-500/30',
-    Enroute: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40 hover:bg-yellow-500/30',
-    'On Scene': 'bg-blue-500/20 text-blue-400 border-blue-500/40 hover:bg-blue-500/30',
-    Busy: 'bg-orange-500/20 text-orange-400 border-orange-500/40 hover:bg-orange-500/30',
-    'Out of Service': 'bg-gray-500/20 text-gray-400 border-gray-500/40 hover:bg-gray-500/30',
+const PRIORITY_CONFIG = {
+    critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
+    high:     { label: 'P2', color: '#f97316', bg: 'bg-orange-500', text: 'text-orange-400', border: 'border-orange-500', row: 'bg-orange-950/20 hover:bg-orange-950/40', badge: 'bg-orange-500/20 text-orange-300 border-orange-500/40' },
+    medium:   { label: 'P3', color: '#eab308', bg: 'bg-yellow-500', text: 'text-yellow-400', border: 'border-yellow-500', row: 'bg-slate-900 hover:bg-slate-800/60', badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' },
+    low:      { label: 'P4', color: '#3b82f6', bg: 'bg-blue-500', text: 'text-blue-400', border: 'border-blue-500', row: 'bg-slate-900 hover:bg-slate-800/60', badge: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
 };
 
-const PRIORITY_COLORS = {
-    critical: 'bg-red-500',
-    high: 'bg-orange-500',
-    medium: 'bg-yellow-500',
-    low: 'bg-blue-500',
+const UNIT_STATUS_COLORS = {
+    Available:        { dot: 'bg-green-400',  text: 'text-green-300',  badge: 'bg-green-900/40 text-green-300 border-green-600/50' },
+    Enroute:          { dot: 'bg-yellow-400', text: 'text-yellow-300', badge: 'bg-yellow-900/40 text-yellow-300 border-yellow-600/50' },
+    'On Scene':       { dot: 'bg-blue-400',   text: 'text-blue-300',   badge: 'bg-blue-900/40 text-blue-300 border-blue-600/50' },
+    Busy:             { dot: 'bg-orange-400', text: 'text-orange-300', badge: 'bg-orange-900/40 text-orange-300 border-orange-600/50' },
+    'Out of Service': { dot: 'bg-gray-500',   text: 'text-gray-400',   badge: 'bg-gray-900/40 text-gray-400 border-gray-600/50' },
 };
 
-const STATUS_BADGE = {
-    Available: 'bg-green-500/20 text-green-400 border-green-500/30',
-    Enroute: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    'On Scene': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    Busy: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    'Out of Service': 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-};
+const MY_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
 
-function KPICard({ label, value, sub, icon: Icon, color = 'text-gold', alert = false }) {
+function getCallPriority(call) {
+    const classification = classifyCall(`${call.incident || ''} ${call.description || ''}`);
+    if (classification.matched_type) return classification.matched_type.priority;
+    return call.priority || 'medium';
+}
+
+function fmtTime(dateStr) {
+    if (!dateStr) return '----';
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+}
+
+function elapsed(dateStr) {
+    if (!dateStr) return '';
+    const secs = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+    if (secs < 60) return `${secs}s`;
+    if (secs < 3600) return `${Math.floor(secs/60)}m ${secs%60}s`;
+    return `${Math.floor(secs/3600)}h ${Math.floor((secs%3600)/60)}m`;
+}
+
+function LiveClock() {
+    const [t, setT] = useState(new Date());
+    useEffect(() => { const id = setInterval(() => setT(new Date()), 1000); return () => clearInterval(id); }, []);
     return (
-        <div className={`relative overflow-hidden rounded-xl border px-4 py-3 flex items-center gap-3 ${
-            alert ? 'bg-red-950/40 border-red-500/40' : 'bg-slate-900 border-slate-800'
-        }`}>
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${color} bg-slate-800/80`}>
-                <Icon className="w-4 h-4" />
+        <div className="text-right">
+            <div className="text-white font-mono font-bold text-lg leading-none">
+                {t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
             </div>
-            <div className="min-w-0">
-                <p className={`text-2xl font-bold font-mono leading-none ${alert ? 'text-red-300' : 'text-white'}`}>{value}</p>
-                <p className="text-[10px] text-slate-500 font-mono tracking-widest mt-0.5">{label}</p>
+            <div className="text-slate-500 font-mono text-[10px] tracking-widest">
+                {t.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
             </div>
-            {alert && value > 0 && <div className="absolute right-0 top-0 bottom-0 w-1 bg-red-500" />}
         </div>
     );
 }
 
-function getCallPriority(call) {
-    // Use CAD classifier for accurate priority assignment
-    const classification = classifyCall(`${call.incident || ''} ${call.description || ''}`);
-    if (classification.matched_type) {
-        return classification.matched_type.priority;
-    }
-    // Fallback: check if call has explicit priority set
-    return call.priority || 'medium';
-}
-
-function timeAgo(dateStr) {
-    if (!dateStr) return '';
-    const mins = Math.floor((Date.now() - new Date(dateStr)) / 60000);
-    if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins}m ago`;
-    return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
+function PanelHeader({ children, count, accent = 'gold' }) {
+    const accents = {
+        gold: 'border-t-gold',
+        red: 'border-t-red-500',
+        blue: 'border-t-blue-500',
+        green: 'border-t-green-500',
+    };
+    return (
+        <div className={`bg-slate-800 border-b border-slate-700 border-t-2 ${accents[accent]} px-3 py-2 flex items-center justify-between`}>
+            <div className="flex items-center gap-2">
+                <div className="w-1.5 h-4 bg-gold rounded-sm flex-shrink-0" />
+                <span className="text-white font-mono font-bold text-xs tracking-widest">{children}</span>
+            </div>
+            {count !== undefined && (
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-slate-700 border border-slate-600 text-slate-300 rounded">{count}</span>
+            )}
+        </div>
+    );
 }
 
 export default function CommandDashboard() {
@@ -86,13 +90,19 @@ export default function CommandDashboard() {
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [currentUser, setCurrentUser] = useState(null);
     const [soundEnabled, setSoundEnabled] = useState(true);
-    const soundEnabledRef = React.useRef(true);
-    const currentUserRef = React.useRef(null);
-    const monitoredPropertiesRef = React.useRef([]);
-    const knownCallIdsRef = React.useRef(null);
+    const [, setTick] = useState(0);
+    const soundEnabledRef = useRef(true);
+    const currentUserRef = useRef(null);
+    const monitoredPropertiesRef = useRef([]);
+    const knownCallIdsRef = useRef(null);
+
+    // Re-render every second for live elapsed timers
+    useEffect(() => {
+        const id = setInterval(() => setTick(t => t + 1), 1000);
+        return () => clearInterval(id);
+    }, []);
 
     useEffect(() => {
-        // Synchronously apply mute from any stored user preference before data loads
         const anyStoredMute = Object.keys(localStorage).find(k => k.startsWith('bps_alerts_'));
         if (anyStoredMute) {
             const val = localStorage.getItem(anyStoredMute) === 'true';
@@ -100,7 +110,6 @@ export default function CommandDashboard() {
             soundEnabledRef.current = val;
             setDispatchAlertMuted(!val);
         }
-
         base44.auth.me().then(user => {
             setCurrentUser(user);
             currentUserRef.current = user;
@@ -114,10 +123,7 @@ export default function CommandDashboard() {
         }).catch(() => {});
         loadData();
         loadMonitoredProperties();
-        const interval = setInterval(() => {
-            loadData();
-            loadMonitoredProperties();
-        }, 20000);
+        const interval = setInterval(() => { loadData(); loadMonitoredProperties(); }, 20000);
         return () => clearInterval(interval);
     }, []);
 
@@ -127,21 +133,17 @@ export default function CommandDashboard() {
             const enabled = props?.filter(p => p.enabled) || [];
             setMonitoredProperties(enabled);
             monitoredPropertiesRef.current = enabled;
-        } catch (error) {
-            console.error('Error loading monitored properties:', error);
-        }
+        } catch {}
     };
 
     const loadData = async () => {
         try {
-            base44.functions.invoke('ingestGractivecalls', {}).catch(() => {}); // fire and forget
+            base44.functions.invoke('ingestGractivecalls', {}).catch(() => {});
             const [callsData, usersData] = await Promise.all([
                 base44.entities.DispatchCall.list('-created_date', 200),
                 base44.entities.User.list()
             ]);
             const active = (callsData || []).filter(c => !['Closed', 'Cleared', 'Cancelled'].includes(c.status));
-            
-            // Detect new calls and play alerts
             const currentIds = new Set(active.map(c => c.id));
             if (knownCallIdsRef.current === null) {
                 knownCallIdsRef.current = currentIds;
@@ -150,12 +152,7 @@ export default function CommandDashboard() {
                 if (newCallIds.length > 0 && soundEnabledRef.current) {
                     const newCall = active.find(c => c.id === newCallIds[0]);
                     if (newCall) {
-                        // Only alert if BOTH the call AND the current officer are inside the same monitored geofence
-                        const inGeofence = shouldAlertForGeofence(
-                            newCall,
-                            currentUserRef.current,
-                            monitoredPropertiesRef.current
-                        );
+                        const inGeofence = shouldAlertForGeofence(newCall, currentUserRef.current, monitoredPropertiesRef.current);
                         if (inGeofence) {
                             playDispatchAlert();
                             window.dispatchEvent(new CustomEvent('bps-new-call', { detail: newCall }));
@@ -164,41 +161,25 @@ export default function CommandDashboard() {
                 }
                 knownCallIdsRef.current = currentIds;
             }
-
             setCalls(active);
             setUnits(usersData || []);
             setLastRefresh(new Date());
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    }
+        } catch (e) { console.error(e); }
+        finally { setLoading(false); }
+    };
 
     const handleRefresh = async () => {
         setRefreshing(true);
-        try {
-            base44.functions.invoke('ingestGractivecalls', {}).catch(() => {});
-            await loadData();
-        } catch (e) {
-            await loadData();
-        } finally {
-            setRefreshing(false);
-        }
+        await loadData();
+        setRefreshing(false);
     };
 
-    const activeUnits = units.filter(u => u.status && u.status !== 'Out of Service' && u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
-    const available = activeUnits.filter(u => u.status === 'Available').length;
-    const enroute = activeUnits.filter(u => u.status === 'Enroute').length;
-    const onScene = activeUnits.filter(u => u.status === 'On Scene').length;
-
-    const criticalCalls = calls.filter(c => getCallPriority(c) === 'critical');
-    const highCalls = calls.filter(c => getCallPriority(c) === 'high');
-    const unassigned = calls.filter(c => (!c.assigned_units || c.assigned_units.length === 0) && !c.source);
-
-    const sortedCalls = [...calls].sort((a, b) => new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date));
-
-
+    const handleStatusChange = async (newStatus) => {
+        try {
+            await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
+            setCurrentUser(prev => ({ ...prev, status: newStatus }));
+        } catch {}
+    };
 
     const toggleSound = () => {
         const next = !soundEnabled;
@@ -208,258 +189,310 @@ export default function CommandDashboard() {
         setDispatchAlertMuted(!next);
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-3">
-                    <div className="animate-spin rounded-full h-10 w-10 border-2 border-gold border-t-transparent" />
-                    <p className="text-gold font-mono text-sm">LOADING COMMAND CENTER...</p>
-                </div>
-            </div>
-        );
-    }
+    const activeUnits = units.filter(u => u.status && u.status !== 'Out of Service' && u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
+    const sortedCalls = [...calls].sort((a, b) => {
+        const pOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+        const pA = pOrder[getCallPriority(a)] ?? 2;
+        const pB = pOrder[getCallPriority(b)] ?? 2;
+        if (pA !== pB) return pA - pB;
+        return new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date);
+    });
+
+    const criticalCalls = calls.filter(c => getCallPriority(c) === 'critical');
+    const highCalls = calls.filter(c => getCallPriority(c) === 'high');
+    const unassigned = calls.filter(c => (!c.assigned_units || c.assigned_units.length === 0) && !c.source);
+    const availUnits = activeUnits.filter(u => u.status === 'Available');
+    const enrouteUnits = activeUnits.filter(u => u.status === 'Enroute');
+    const onSceneUnits = activeUnits.filter(u => u.status === 'On Scene');
+    const busyUnits = activeUnits.filter(u => u.status === 'Busy');
 
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
-    const isOfficer = !isDispatchOrAdmin;
 
-    const handleStatusChange = async (newStatus) => {
-        try {
-            // Use updateOfficerStatus so service role writes it and call sync runs
-            await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
-            setCurrentUser(prev => ({ ...prev, status: newStatus }));
-        } catch (e) {
-            console.error('Status change failed:', e);
-        }
-    };
+    if (loading) return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+            <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gold border-t-transparent mx-auto mb-3" />
+                <p className="text-gold font-mono text-xs tracking-widest">INITIALIZING COMMAND SYSTEM...</p>
+            </div>
+        </div>
+    );
 
     return (
-        <div className="bg-slate-950 p-4 md:p-5 space-y-4 min-h-full">
+        <div className="bg-slate-950 min-h-full flex flex-col">
             <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={isDispatchOrAdmin} />
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-white font-mono tracking-tight">COMMAND CENTER</h1>
-                    <p className="text-xs text-slate-400 font-mono">
-                        Live ops — refreshed {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
-                    </p>
+
+            {/* ── SYSTEM HEADER BAR ── */}
+            <div className="flex-none bg-slate-900 border-b-2 border-gold/60 px-4 py-2 flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                        <span className="text-green-400 font-mono text-[10px] font-bold tracking-widest">SYSTEM ONLINE</span>
+                    </div>
+                    <div className="w-px h-4 bg-slate-700" />
+                    <span className="text-slate-500 font-mono text-[10px]">REFRESHED {fmtTime(lastRefresh)}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    {(currentUser?.is_supervisor || currentUser?.role === 'admin') && (
-                        <Button onClick={toggleSound} size="sm" title={soundEnabled ? 'Mute alerts' : 'Enable alerts'}
-                            className={`border font-mono text-xs ${soundEnabled ? 'bg-slate-800 border-green-500/40 text-green-400 hover:bg-slate-700' : 'bg-slate-800 border-red-500/40 text-red-400 hover:bg-slate-700'}`}>
+                <div className="flex-1" />
+                <div className="flex items-center gap-1.5">
+                    {isDispatchOrAdmin && (
+                        <button onClick={toggleSound} title={soundEnabled ? 'Mute' : 'Unmute'}
+                            className={`w-7 h-7 flex items-center justify-center rounded border font-mono text-xs transition-all ${soundEnabled ? 'bg-slate-800 border-green-600/40 text-green-400' : 'bg-slate-800 border-red-600/40 text-red-400'}`}>
                             {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-                        </Button>
+                        </button>
                     )}
-                    <Button onClick={handleRefresh} disabled={refreshing} size="sm"
-                        className="bg-slate-800 border border-slate-700 text-slate-300 hover:border-gold hover:text-gold font-mono text-xs">
-                        <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
-                        REFRESH
-                    </Button>
-                    <Button onClick={() => navigate(createPageUrl('DispatchCenter'))} size="sm"
-                        className="bg-gold text-black font-bold font-mono text-xs hover:bg-yellow-400">
-                        <Zap className="w-3.5 h-3.5 mr-1.5" />DISPATCH
-                    </Button>
+                    <button onClick={handleRefresh} disabled={refreshing}
+                        className="w-7 h-7 flex items-center justify-center rounded border border-slate-700 bg-slate-800 text-slate-400 hover:text-white hover:border-slate-500 transition-all">
+                        <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button onClick={() => navigate(createPageUrl('DispatchCenter'))}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gold text-black font-mono font-bold text-xs rounded hover:bg-yellow-400 transition-colors">
+                        <Zap className="w-3 h-3" />DISPATCH CTR
+                    </button>
                     <OfficerDistressButton currentUser={currentUser} />
                 </div>
+                <LiveClock />
             </div>
 
-            {/* Status Bar */}
+            {/* ── MASTER STATUS TILES ── */}
+            <div className="flex-none grid grid-cols-4 md:grid-cols-8 border-b border-slate-800">
+                {[
+                    { label: 'ACTIVE CALLS', val: calls.length, color: 'text-gold', bg: 'bg-gold/10', border: 'border-r border-slate-800' },
+                    { label: 'P1 CRITICAL', val: criticalCalls.length, color: criticalCalls.length > 0 ? 'text-red-400' : 'text-slate-500', bg: criticalCalls.length > 0 ? 'bg-red-950/40' : '', border: 'border-r border-slate-800', flash: criticalCalls.length > 0 },
+                    { label: 'P2 HIGH', val: highCalls.length, color: highCalls.length > 0 ? 'text-orange-400' : 'text-slate-500', bg: '', border: 'border-r border-slate-800' },
+                    { label: 'UNASSIGNED', val: unassigned.length, color: unassigned.length > 0 ? 'text-yellow-400' : 'text-slate-500', bg: unassigned.length > 0 ? 'bg-yellow-950/20' : '', border: 'border-r border-slate-800' },
+                    { label: 'AVAILABLE', val: availUnits.length, color: 'text-green-400', bg: '', border: 'border-r border-slate-800' },
+                    { label: 'EN ROUTE', val: enrouteUnits.length, color: 'text-yellow-400', bg: '', border: 'border-r border-slate-800' },
+                    { label: 'ON SCENE', val: onSceneUnits.length, color: 'text-blue-400', bg: '', border: 'border-r border-slate-800' },
+                    { label: 'BUSY', val: busyUnits.length, color: 'text-orange-400', bg: '', border: '' },
+                ].map(({ label, val, color, bg, border, flash }) => (
+                    <div key={label} className={`${bg} ${border} px-3 py-2.5 flex flex-col items-center justify-center ${flash ? 'animate-pulse' : ''}`}>
+                        <span className={`text-2xl font-mono font-bold leading-none ${color}`}>{val}</span>
+                        <span className="text-[9px] text-slate-500 font-mono tracking-widest mt-0.5 text-center">{label}</span>
+                    </div>
+                ))}
+            </div>
+
+            {/* ── MY STATUS BAR (officers) ── */}
             {currentUser && (
-                <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5">
-                    <span className="text-slate-400 font-mono text-xs font-bold flex-shrink-0">MY STATUS:</span>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                        {UNIT_STATUSES.map(s => (
-                            <button
-                                key={s}
-                                onClick={() => handleStatusChange(s)}
-                                className={`px-3 py-1 rounded-lg border font-mono text-xs font-bold transition-all ${
-                                    currentUser.status === s
-                                        ? STATUS_COLORS[s] + ' ring-1 ring-offset-1 ring-offset-slate-900'
-                                        : 'bg-slate-800 text-slate-500 border-slate-700 hover:text-slate-300 hover:border-slate-500'
-                                }`}
-                            >
-                                {s.toUpperCase()}
-                            </button>
-                        ))}
+                <div className="flex-none flex items-center gap-2 px-3 py-1.5 bg-slate-900/80 border-b border-slate-800">
+                    <span className="text-slate-500 font-mono text-[10px] tracking-widest flex-shrink-0">
+                        {currentUser.unit_number ? `UNIT-${currentUser.unit_number}` : currentUser.full_name?.toUpperCase()} STATUS:
+                    </span>
+                    <div className="flex items-center gap-1 flex-wrap">
+                        {MY_STATUSES.map(s => {
+                            const cfg = UNIT_STATUS_COLORS[s];
+                            const isActive = currentUser.status === s;
+                            return (
+                                <button key={s} onClick={() => handleStatusChange(s)}
+                                    className={`px-2.5 py-0.5 rounded font-mono text-[10px] font-bold border transition-all ${
+                                        isActive ? `${cfg.badge} ring-1 ring-offset-1 ring-offset-slate-900 ring-current` : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-500'
+                                    }`}>
+                                    {s.toUpperCase()}
+                                </button>
+                            );
+                        })}
                     </div>
-                    {currentUser.unit_number && (
-                        <span className="ml-auto text-slate-500 font-mono text-xs">UNIT-{currentUser.unit_number}</span>
-                    )}
                 </div>
             )}
 
-            {/* Critical Alert Banner */}
+            {/* ── CRITICAL INCIDENT FLASH BANNER ── */}
             {criticalCalls.length > 0 && (
-                <div className="bg-red-950/60 border-2 border-red-500 rounded-xl p-3 flex items-center gap-3 animate-pulse-border">
-                    <AlertTriangle className="w-5 h-5 text-red-400 animate-pulse flex-shrink-0" />
-                    <div className="flex-1">
-                        <span className="text-red-300 font-mono font-bold text-sm">
-                            {criticalCalls.length} CRITICAL INCIDENT{criticalCalls.length > 1 ? 'S' : ''} ACTIVE
-                        </span>
-                        <span className="text-red-400 font-mono text-xs ml-3">
-                            {criticalCalls[0].incident} @ {criticalCalls[0].location}
-                        </span>
-                    </div>
-                    <Button size="sm" onClick={() => navigate(createPageUrl('Navigation'))}
-                        className="bg-red-600 hover:bg-red-500 text-white font-mono text-xs">
-                        VIEW <ArrowRight className="w-3 h-3 ml-1" />
-                    </Button>
+                <div className="flex-none flex items-center gap-3 bg-red-900/80 border-b-2 border-red-500 px-4 py-1.5">
+                    <AlertTriangle className="w-4 h-4 text-red-300 animate-pulse flex-shrink-0" />
+                    <span className="text-red-200 font-mono font-bold text-xs tracking-wider">
+                        ⚠ {criticalCalls.length} CRITICAL INCIDENT{criticalCalls.length > 1 ? 'S' : ''} ACTIVE
+                    </span>
+                    <span className="text-red-300/70 font-mono text-xs flex-1 truncate">
+                        {criticalCalls.slice(0, 2).map(c => `${c.incident} @ ${c.location}`).join('  |  ')}
+                    </span>
+                    <button onClick={() => navigate(createPageUrl('Navigation'))}
+                        className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white font-mono font-bold text-[10px] rounded border border-red-400 transition-colors">
+                        MAP <ChevronRight className="w-3 h-3" />
+                    </button>
                 </div>
             )}
 
-            {/* KPI Row */}
-            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-                <KPICard label="ACTIVE CALLS" value={calls.length} icon={Radio} color="text-gold" />
-                <KPICard label="CRITICAL" value={criticalCalls.length} icon={AlertTriangle} color="text-red-400" alert={criticalCalls.length > 0} />
-                <KPICard label="UNASSIGNED" value={unassigned.length} icon={PhoneCall} color="text-orange-400" alert={unassigned.length > 0} />
-                <KPICard label="AVAILABLE" value={available} icon={CheckCircle2} color="text-green-400" />
-                <KPICard label="EN ROUTE" value={enroute} icon={Zap} color="text-yellow-400" />
-                <KPICard label="ON SCENE" value={onScene} icon={MapPin} color="text-blue-400" />
-            </div>
+            {/* ── MAIN GRID ── */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 min-h-0">
 
-            {/* Main Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                {/* Priority Call Queue */}
-                <div className="lg:col-span-2">                    
-                    <Card className="bg-slate-900 border-slate-800">
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-                            <div className="flex items-center gap-2">
-                                <Radio className="w-4 h-4 text-gold" />
-                                <span className="text-white font-mono font-bold text-sm">LIVE INCIDENT QUEUE</span>
-                                <Badge className="bg-gold/20 text-gold border-gold/30 font-mono text-xs">{calls.length}</Badge>
+                {/* ── CALL QUEUE (3 cols) ── */}
+                <div className="lg:col-span-3 flex flex-col border-r border-slate-800 min-h-0">
+                    <PanelHeader count={calls.length}>ACTIVE INCIDENT QUEUE</PanelHeader>
+
+                    {/* Column Headers */}
+                    <div className="flex items-center bg-slate-900 border-b border-slate-700 px-3 py-1 text-[9px] font-mono text-slate-500 tracking-widest flex-none">
+                        <div className="w-8 flex-shrink-0">PRI</div>
+                        <div className="w-16 flex-shrink-0">TIME</div>
+                        <div className="w-20 flex-shrink-0 hidden md:block">ELAPSED</div>
+                        <div className="flex-1">INCIDENT / LOCATION</div>
+                        <div className="w-24 flex-shrink-0 hidden lg:block">AGENCY</div>
+                        <div className="w-20 flex-shrink-0 text-center">STATUS</div>
+                        <div className="w-16 flex-shrink-0 text-center">UNITS</div>
+                    </div>
+
+                    {/* Call Rows */}
+                    <div className="flex-1 overflow-y-auto">
+                        {sortedCalls.length === 0 ? (
+                            <div className="flex items-center justify-center h-32 text-slate-600 font-mono text-xs tracking-widest">
+                                — NO ACTIVE INCIDENTS —
                             </div>
-                            <Button size="sm" variant="ghost" onClick={() => navigate(createPageUrl('DispatchCenter'))}
-                                className="text-slate-400 hover:text-gold font-mono text-xs">
-                                ALL CALLS <ArrowRight className="w-3 h-3 ml-1" />
-                            </Button>
-                        </div>
-                        <div className="divide-y divide-slate-800 max-h-[420px] overflow-y-auto">
-                            {sortedCalls.length === 0 ? (
-                                <div className="flex items-center justify-center py-12 text-slate-500 font-mono text-sm">
-                                    NO ACTIVE CALLS
+                        ) : sortedCalls.map((call, idx) => {
+                            const priority = getCallPriority(call);
+                            const cfg = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG.medium;
+                            const isUnassigned = (!call.assigned_units || call.assigned_units.length === 0) && !call.source;
+                            return (
+                                <div key={call.id}
+                                    onClick={() => navigate(`${createPageUrl('Navigation')}?callId=${call.id}${call.latitude ? `&lat=${call.latitude}&lng=${call.longitude}` : ''}`)}
+                                    className={`flex items-center px-3 py-2 border-b border-slate-800/60 cursor-pointer transition-colors ${cfg.row} ${priority === 'critical' ? 'border-l-2 border-l-red-500' : priority === 'high' ? 'border-l-2 border-l-orange-500' : 'border-l-2 border-l-transparent'}`}>
+                                    
+                                    {/* Priority */}
+                                    <div className="w-8 flex-shrink-0">
+                                        <span className={`text-[10px] font-mono font-bold ${cfg.text}`}>{cfg.label}</span>
+                                    </div>
+
+                                    {/* Time */}
+                                    <div className="w-16 flex-shrink-0 font-mono text-[10px] text-slate-400">
+                                        {fmtTime(call.time_received || call.created_date)}
+                                    </div>
+
+                                    {/* Elapsed */}
+                                    <div className="w-20 flex-shrink-0 font-mono text-[10px] text-slate-500 hidden md:block">
+                                        {elapsed(call.time_received || call.created_date)}
+                                    </div>
+
+                                    {/* Incident + Location */}
+                                    <div className="flex-1 min-w-0 pr-2">
+                                        <div className="text-white font-mono font-bold text-xs truncate">{call.incident}</div>
+                                        <div className="text-slate-400 font-mono text-[10px] truncate flex items-center gap-1 mt-0.5">
+                                            <MapPin className="w-2.5 h-2.5 flex-shrink-0 text-slate-600" />
+                                            {call.location}
+                                            {call.cross_street ? <span className="text-slate-600 ml-1">@ {call.cross_street}</span> : ''}
+                                        </div>
+                                    </div>
+
+                                    {/* Agency */}
+                                    <div className="w-24 flex-shrink-0 hidden lg:block">
+                                        <span className="text-slate-500 font-mono text-[10px] truncate">{call.agency || '—'}</span>
+                                    </div>
+
+                                    {/* Status */}
+                                    <div className="w-20 flex-shrink-0 text-center">
+                                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${
+                                            call.status === 'New' ? 'bg-red-900/40 text-red-300 border-red-700/40' :
+                                            call.status === 'Dispatched' || call.status === 'Enroute' ? 'bg-yellow-900/40 text-yellow-300 border-yellow-700/40' :
+                                            call.status === 'On Scene' || call.status === 'Arrived' ? 'bg-blue-900/40 text-blue-300 border-blue-700/40' :
+                                            'bg-slate-800 text-slate-400 border-slate-700'
+                                        }`}>{(call.status || 'NEW').toUpperCase()}</span>
+                                    </div>
+
+                                    {/* Units */}
+                                    <div className="w-16 flex-shrink-0 text-center">
+                                        {call.assigned_units?.length > 0 ? (
+                                            <span className="text-[10px] font-mono font-bold text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded border border-green-700/30">
+                                                {call.assigned_units.length} UNIT{call.assigned_units.length > 1 ? 'S' : ''}
+                                            </span>
+                                        ) : isUnassigned ? (
+                                            <span className="text-[10px] font-mono font-bold text-red-400 bg-red-900/30 px-1 py-0.5 rounded border border-red-700/30 animate-pulse">
+                                                UNSGN
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] font-mono text-slate-600">EXT</span>
+                                        )}
+                                    </div>
                                 </div>
-                            ) : sortedCalls.slice(0, 15).map(call => {
-                                                 const priority = getCallPriority(call);
-                                                 return (
-                                    <div key={call.id}
-                                        onClick={() => navigate(`${createPageUrl('Navigation')}?callId=${call.id}${call.latitude ? `&lat=${call.latitude}&lng=${call.longitude}` : ''}`)}
-                                        className="flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 cursor-pointer transition-colors">
-                                        <div className={`w-1.5 h-10 rounded-full flex-shrink-0 ${PRIORITY_COLORS[priority] || 'bg-slate-500'}`} />
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* ── RIGHT COLUMN ── */}
+                <div className="flex flex-col border-t border-slate-800 lg:border-t-0 min-h-0">
+
+                    {/* UNIT STATUS BOARD */}
+                    <div className="flex flex-col" style={{ maxHeight: '50%' }}>
+                        <PanelHeader count={activeUnits.length} accent="blue">UNIT STATUS BOARD</PanelHeader>
+                        
+                        {/* Mini status summary */}
+                        <div className="grid grid-cols-4 border-b border-slate-800 flex-none">
+                            {[
+                                { label: 'AVAIL', val: availUnits.length, color: 'text-green-400' },
+                                { label: 'ENRT', val: enrouteUnits.length, color: 'text-yellow-400' },
+                                { label: 'SCNE', val: onSceneUnits.length, color: 'text-blue-400' },
+                                { label: 'BUSY', val: busyUnits.length, color: 'text-orange-400' },
+                            ].map(({ label, val, color }) => (
+                                <div key={label} className="flex flex-col items-center py-1.5 border-r last:border-r-0 border-slate-800">
+                                    <span className={`text-base font-mono font-bold leading-none ${color}`}>{val}</span>
+                                    <span className="text-[8px] text-slate-600 font-mono tracking-wider">{label}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="overflow-y-auto flex-1">
+                            {activeUnits.length === 0 ? (
+                                <div className="py-6 text-center text-slate-600 font-mono text-[10px] tracking-widest">NO UNITS ONLINE</div>
+                            ) : activeUnits.map(unit => {
+                                const cfg = UNIT_STATUS_COLORS[unit.status] || UNIT_STATUS_COLORS['Out of Service'];
+                                return (
+                                    <div key={unit.id} className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-800/60 hover:bg-slate-800/30">
+                                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot}`} />
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-white font-mono font-bold text-sm truncate">{call.incident}</span>
-                                                {call.priority_label ? (
-                                                    <Badge className={`text-[10px] font-mono border ${call.priority_level === 1 ? 'bg-red-500/20 text-red-400 border-red-500/30' : call.priority_level === 2 ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : call.priority_level === 3 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`} title={call.priority_reason}>
-                                                        P{call.priority_level} {call.priority_label}
-                                                    </Badge>
-                                                ) : (
-                                                    <Badge className={`text-[10px] font-mono border ${priority === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/30' : priority === 'high' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
-                                                        {priority.toUpperCase()}
-                                                    </Badge>
-                                                )}
+                                            <div className="text-white font-mono text-[11px] font-bold truncate">
+                                                {unit.unit_number ? `UNIT-${unit.unit_number}` : unit.full_name?.toUpperCase()}
                                             </div>
-                                            <div className="flex items-center gap-3 mt-0.5">
-                                                <span className="text-slate-400 text-xs font-mono flex items-center gap-1 truncate">
-                                                    <MapPin className="w-3 h-3 flex-shrink-0" />{call.location}
-                                                </span>
-                                                <span className="text-slate-500 text-[10px] font-mono flex-shrink-0">{call.agency}</span>
-                                            </div>
+                                            {unit.current_call_info && <div className="text-slate-500 text-[9px] font-mono truncate">{unit.current_call_info}</div>}
                                         </div>
-                                        <div className="text-right flex-shrink-0">
-                                            <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
-                                                <Timer className="w-3 h-3" />{timeAgo(call.time_received || call.created_date)}
-                                            </div>
-                                            {call.assigned_units?.length > 0 ? (
-                                               <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px] font-mono mt-1">
-                                                   {call.assigned_units.length}U
-                                               </Badge>
-                                            ) : !call.source ? (
-                                               <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px] font-mono mt-1">
-                                                   UNSGN
-                                               </Badge>
-                                            ) : null}
-                                        </div>
+                                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${cfg.badge}`}>
+                                            {(unit.status || 'UNK').substring(0,6).toUpperCase()}
+                                        </span>
                                     </div>
                                 );
                             })}
                         </div>
-                    </Card>
-                </div>
+                    </div>
 
-                {/* Unit Status Board */}
-                <div className="space-y-4">
-                    <Card className="bg-slate-900 border-slate-800">
-                        <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-800">
-                            <Users className="w-4 h-4 text-gold" />
-                            <span className="text-white font-mono font-bold text-sm">UNIT STATUS</span>
-                            <Badge className="bg-gold/20 text-gold border-gold/30 font-mono text-xs ml-auto">{activeUnits.length}</Badge>
-                        </div>
-                        <div className="divide-y divide-slate-800 max-h-[300px] overflow-y-auto">
-                            {activeUnits.length === 0 ? (
-                                <div className="py-8 text-center text-slate-500 font-mono text-xs">NO UNITS ONLINE</div>
-                            ) : activeUnits.map(unit => (
-                                <div key={unit.id} className="flex items-center gap-3 px-4 py-2.5">
-                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                        unit.status === 'Available' ? 'bg-green-400' :
-                                        unit.status === 'Enroute' ? 'bg-yellow-400' :
-                                        unit.status === 'On Scene' ? 'bg-blue-400' : 'bg-orange-400'
-                                    }`} />
-                                    <div className="flex-1 min-w-0">
-                                        <div className="text-white font-mono text-xs font-bold truncate">
-                                            {unit.unit_number ? `UNIT-${unit.unit_number}` : unit.full_name}
-                                        </div>
-                                        {unit.current_call_info && (
-                                            <div className="text-slate-500 text-[10px] font-mono truncate">{unit.current_call_info}</div>
-                                        )}
-                                    </div>
-                                    <Badge className={`text-[10px] font-mono border ${STATUS_BADGE[unit.status] || 'bg-slate-700 text-slate-300 border-slate-600'}`}>
-                                        {(unit.status || 'UNK').toUpperCase()}
-                                    </Badge>
-                                </div>
-                            ))}
-                        </div>
-                    </Card>
-
-                    {/* Quick Actions */}
-                    <Card className="bg-slate-900 border-slate-800 p-3">
-                        <div className="text-[10px] text-slate-500 font-mono font-bold mb-2 px-1">QUICK ACTIONS</div>
-                        <div className="grid grid-cols-2 gap-2">
+                    {/* QUICK NAV */}
+                    <div className="border-t border-slate-800">
+                        <PanelHeader accent="gold">QUICK ACCESS</PanelHeader>
+                        <div className="p-2 grid grid-cols-2 gap-1.5">
                             {[
-                                { label: 'DISPATCH', icon: Zap, page: 'DispatchCenter', cls: 'border-gold/40 text-gold hover:bg-gold/10' },
-                                { label: 'LIVE MAP', icon: MapPin, page: 'Navigation', cls: 'border-blue-500/40 text-blue-400 hover:bg-blue-500/10' },
-                                { label: 'PERSONNEL', icon: Users, page: 'Personnel', cls: 'border-green-500/40 text-green-400 hover:bg-green-500/10' },
-                                { label: 'REPORTS', icon: TrendingUp, page: 'Reports', cls: 'border-purple-500/40 text-purple-400 hover:bg-purple-500/10' },
-                            ].map(({ label, icon: Icon, page, cls }) => (
-                                <Button key={page} size="sm" onClick={() => navigate(createPageUrl(page))}
-                                    className={`bg-transparent border font-mono text-xs h-10 ${cls}`}>
-                                    <Icon className="w-3.5 h-3.5 mr-1.5" />{label}
-                                </Button>
+                                { label: 'DISPATCH CTR', icon: Zap, page: 'DispatchCenter', color: 'border-gold/40 text-gold hover:bg-gold/10' },
+                                { label: 'LIVE MAP', icon: MapPin, page: 'Navigation', color: 'border-blue-500/40 text-blue-400 hover:bg-blue-500/10' },
+                                { label: 'PERSONNEL', icon: Users, page: 'Personnel', color: 'border-green-500/40 text-green-400 hover:bg-green-500/10' },
+                                { label: 'REPORTS', icon: TrendingUp, page: 'Reports', color: 'border-purple-500/40 text-purple-400 hover:bg-purple-500/10' },
+                                { label: 'CALL HISTORY', icon: Radio, page: 'CallHistory', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
+                                { label: 'ADMIN', icon: Shield, page: 'AdminPortal', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
+                            ].map(({ label, icon: Icon, page, color }) => (
+                                <button key={page} onClick={() => navigate(createPageUrl(page))}
+                                    className={`flex items-center gap-1.5 px-2 py-2 rounded border bg-transparent font-mono text-[10px] font-bold transition-all ${color}`}>
+                                    <Icon className="w-3 h-3 flex-shrink-0" />{label}
+                                </button>
                             ))}
                         </div>
-                    </Card>
+                    </div>
 
-                    {/* Unassigned Alert */}
+                    {/* UNASSIGNED CALLS ALERT */}
                     {unassigned.length > 0 && (
-                        <Card className="bg-orange-950/40 border-orange-500/40 p-3">
-                            <div className="flex items-center gap-2 mb-2">
-                                <AlertTriangle className="w-4 h-4 text-orange-400" />
-                                <span className="text-orange-300 font-mono text-xs font-bold">NEEDS ASSIGNMENT</span>
+                        <div className="border-t-2 border-yellow-600/60 bg-yellow-950/20">
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-yellow-800/30">
+                                <AlertTriangle className="w-3 h-3 text-yellow-400 animate-pulse" />
+                                <span className="text-yellow-300 font-mono font-bold text-[10px] tracking-widest">NEEDS ASSIGNMENT ({unassigned.length})</span>
                             </div>
-                            <div className="space-y-1.5">
-                                {unassigned.slice(0, 3).map(call => (
-                                    <div key={call.id} className="text-orange-400 text-[10px] font-mono truncate">
-                                        • {call.incident} @ {call.location}
+                            <div className="px-3 py-1.5 space-y-1">
+                                {unassigned.slice(0, 4).map(call => (
+                                    <div key={call.id}
+                                        onClick={() => navigate(createPageUrl('DispatchCenter'))}
+                                        className="flex items-start gap-1.5 cursor-pointer hover:bg-yellow-950/30 px-1 py-0.5 rounded">
+                                        <span className="text-yellow-600 font-mono text-[9px] mt-0.5">►</span>
+                                        <div className="min-w-0">
+                                            <div className="text-yellow-300 font-mono text-[10px] font-bold truncate">{call.incident}</div>
+                                            <div className="text-yellow-600 font-mono text-[9px] truncate">{call.location}</div>
+                                        </div>
                                     </div>
                                 ))}
-                                {unassigned.length > 3 && (
-                                    <div className="text-orange-500 text-[10px] font-mono">+{unassigned.length - 3} more</div>
-                                )}
                             </div>
-                        </Card>
+                        </div>
                     )}
                 </div>
             </div>
-
         </div>
     );
 }
