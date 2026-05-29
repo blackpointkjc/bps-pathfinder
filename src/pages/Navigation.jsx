@@ -269,7 +269,12 @@ export default function Navigation() {
     const onlineUnits = selfEntry ? [selfEntry, ...otherOnline] : otherOnline;
     const mapVisibleUnits = isSupervisorUser ? otherUnits : otherUnits.filter(u => u.status !== 'Out of Service');
 
-    const criticalCalls = activeCalls.filter(c => c.priority === 'critical' || c.priority === 'high');
+    const criticalCalls = activeCalls.filter(c => {
+        const incident = c.incident?.toLowerCase() || '';
+        return incident.includes('shooting') || incident.includes('officer') || 
+               incident.includes('assault') || incident.includes('robbery') ||
+               c.priority === 'critical' || c.priority === 'high';
+    });
     const unassignedCalls = activeCalls.filter(c => !c.assigned_units?.length && !c.source);
     const displayedCalls = showOnlyCriticalCalls ? criticalCalls : activeCalls;
 
