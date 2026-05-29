@@ -56,12 +56,12 @@ import CADHome from './pages/CADHome';
 import CallHistory from './pages/CallHistory';
 import CommandDashboard from './pages/CommandDashboard';
 import DispatchCenter from './pages/DispatchCenter';
-import DispatchLog from './pages/DispatchLog';
+
 import LinkedAppSearch from './pages/LinkedAppSearch';
 import Navigation from './pages/Navigation';
 import Personnel from './pages/Personnel';
 import RecordsAssistant from './pages/RecordsAssistant';
-import Reports from './pages/Reports';
+
 import SystemStatus from './pages/SystemStatus.jsx';
 import __Layout from './Layout.jsx';
 
@@ -76,12 +76,12 @@ export const PAGES = {
     "CallHistory": CallHistory,
     "CommandDashboard": CommandDashboard,
     "DispatchCenter": DispatchCenter,
-    "DispatchLog": DispatchLog,
+
     "LinkedAppSearch": LinkedAppSearch,
     "Navigation": Navigation,
     "Personnel": Personnel,
     "RecordsAssistant": RecordsAssistant,
-    "Reports": Reports,
+
     "SystemStatus": SystemStatus,
 }
 
