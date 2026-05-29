@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { playDispatchAlert, stopDispatchAlert, setDispatchAlertMuted, shouldAlertForGeofence } from '@/utils/alertUtils';
 import { classifyCall } from '@/lib/cadCallTypes';
+import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import { RefreshCw, Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight } from 'lucide-react';
@@ -24,21 +25,6 @@ const UNIT_STATUS_COLORS = {
 };
 
 const MY_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
-
-const STATUS_WORDS = new Set(['ENROUTE', 'ARRIVED', 'ASSIGNED', 'DISPATCHED', 'CLEARED', 'CLOSED', 'PENDING', 'NEW', 'ON SCENE', 'CANCELLED']);
-
-function cleanIncident(call) {
-    let name = call?.incident || '';
-    // Strip trailing timestamps like "1:07 PM" or "13:45" that scrapers inject
-    name = name.replace(/\s+\d{1,2}:\d{2}(\s*(AM|PM))?\s*$/i, '').trim();
-    // If what remains is just a status word, fall back to description or call_id
-    if (!name || STATUS_WORDS.has(name.toUpperCase())) {
-        const desc = call?.description?.split('\n')[0]?.trim();
-        if (desc && !STATUS_WORDS.has(desc.toUpperCase())) return desc;
-        return call?.call_id ? `CALL ${call.call_id}` : 'INCIDENT';
-    }
-    return name;
-}
 
 function getCallPriority(call) {
     if (call.priority_override && call.priority) return call.priority;

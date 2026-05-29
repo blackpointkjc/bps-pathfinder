@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { MapPin, Clock, User, Phone, AlertTriangle, FileText, Send, Save } from 'lucide-react';
+import { cleanIncident } from '@/utils/callUtils';
 import { motion } from 'framer-motion';
 
 export default function CallDetailPanel({ call, currentUser, onUpdate, units }) {
@@ -146,7 +147,7 @@ export default function CallDetailPanel({ call, currentUser, onUpdate, units }) 
             <div className="p-4 border-b border-slate-700">
                 <div className="flex items-start justify-between mb-3">
                     <div>
-                        <h2 className="text-2xl font-bold text-white">{call.incident}</h2>
+                        <h2 className="text-2xl font-bold text-white">{cleanIncident(call)}</h2>
                         <p className="text-sm text-slate-400">
                             {call.time_received 
                                 ? new Date(call.time_received).toLocaleString('en-US', { 

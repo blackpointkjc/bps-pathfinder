@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { X, MapPin, Clock, Radio, Navigation as NavigationIcon, AlertCircle } from 'lucide-react';
+import { cleanIncident } from '@/utils/callUtils';
 
 const getAgencyBadgeColor = (agency) => {
     if (agency?.includes('RPD')) return 'bg-red-100 text-red-700 border-red-300';
@@ -76,7 +77,7 @@ export default function CallDetailView({ call, onClose, onEnroute }) {
                                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">
                                     Incident Type
                                 </label>
-                                <p className="text-xl font-bold text-gray-900">{call.incident}</p>
+                                <p className="text-xl font-bold text-gray-900">{cleanIncident(call)}</p>
                             </div>
 
                             {/* Location */}
