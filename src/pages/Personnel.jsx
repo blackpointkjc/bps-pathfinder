@@ -155,7 +155,7 @@ export default function Personnel() {
                                 <tr className="border-b border-[#1e2d4a] bg-[#111827]">
                                     <th className="text-left p-3 text-xs font-mono text-slate-400">NAME</th>
                                     <th className="text-left p-3 text-xs font-mono text-slate-400">UNIT</th>
-                                    <th className="text-left p-3 text-xs font-mono text-slate-400">RANK</th>
+
                                     <th className="text-left p-3 text-xs font-mono text-slate-400">STATUS</th>
                                     <th className="text-left p-3 text-xs font-mono text-slate-400">ROLE</th>
                                     <th className="text-left p-3 text-xs font-mono text-slate-400">ACTIONS</th>
@@ -171,7 +171,7 @@ export default function Personnel() {
                                             <td className="p-3 text-[#f5a623] font-mono text-xs">
                                                 {person.unit_number ? `UNIT-${person.unit_number}` : '-'}
                                             </td>
-                                            <td className="p-3 text-slate-400 text-xs">{person.rank || '-'}</td>
+
                                             <td className="p-3">
                                                 <Badge className={`border font-mono text-xs ${
                                                     person.status === 'Available' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
