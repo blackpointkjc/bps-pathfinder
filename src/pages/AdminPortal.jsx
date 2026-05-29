@@ -158,345 +158,218 @@ export default function AdminPortal() {
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="animate-spin rounded-full h-12 w-12 border-2 border-blue-500 border-t-transparent" />
-                    <div className="text-blue-400 font-mono text-sm">LOADING SYSTEM...</div>
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-gold border-t-transparent mx-auto mb-3" />
+                    <p className="text-gold font-mono text-xs tracking-widest">LOADING ADMIN PORTAL...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950">
-            {/* Header Bar */}
-            <div className="bg-slate-900 border-b border-slate-800 shadow-lg">
-                <div className="px-6 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                                    <Shield className="w-6 h-6 text-white" />
-                                </div>
-                                <div>
-                                    <h1 className="text-xl font-bold text-white tracking-tight">ADMIN CONTROL CENTER</h1>
-                                    <p className="text-xs text-slate-400 font-mono">System Management Portal</p>
-                                </div>
-                            </div>
-                            <div className="h-8 w-px bg-slate-700 mx-2" />
-                            <div className="flex items-center gap-2 text-xs">
-                                <div className="flex items-center gap-1.5 px-2 py-1 bg-green-500/10 border border-green-500/30 rounded">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                                    <span className="text-green-400 font-mono">ONLINE</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-800 border border-slate-700 rounded">
-                                    <Users className="w-3 h-3 text-blue-400" />
-                                    <span className="text-slate-300 font-mono">{users.length} USERS</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Button 
-                                variant="outline" 
-                                onClick={() => window.location.href = createPageUrl('CADHome')}
-                                className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white font-mono text-xs"
-                            >
-                                ← CAD HOME
-                            </Button>
-                            <Button 
-                                variant="outline" 
-                                onClick={() => window.location.href = createPageUrl('DispatchCenter')}
-                                className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white font-mono text-xs"
-                            >
-                                <Activity className="w-3 h-3 mr-2" />
-                                DISPATCH
-                            </Button>
-                            <Button 
-                                variant="outline" 
-                                onClick={() => window.location.href = createPageUrl('Navigation')}
-                                className="bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 hover:text-white font-mono text-xs"
-                            >
-                                <MapPin className="w-3 h-3 mr-2" />
-                                MAP
-                            </Button>
-                        </div>
-                    </div>
+        <div className="bg-slate-950 min-h-full flex flex-col font-mono">
+            {/* Header */}
+            <div className="flex-none bg-slate-900 border-b-2 border-gold/50 px-4 py-2 flex items-center gap-3">
+                <div className="w-1 h-6 bg-gold rounded-sm" />
+                <Shield className="w-4 h-4 text-gold" />
+                <span className="text-white font-bold text-sm tracking-widest">ADMIN CONTROL CENTER</span>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-500/10 border border-green-500/30 rounded">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-green-400 font-mono text-[10px]">ONLINE</span>
                 </div>
-
-                {/* Navigation Tabs */}
-                <div className="border-t border-slate-800">
-                    <div className="flex">
-                        <button
-                            onClick={() => setActiveTab('dashboard')}
-                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
-                                activeTab === 'dashboard' 
-                                    ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-500' 
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                            }`}
-                        >
-                            <BarChart3 className="w-4 h-4" />
-                            DASHBOARD
-                        </button>
-
-                        <button
-                            onClick={() => setActiveTab('assets')}
-                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
-                                activeTab === 'assets' 
-                                    ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-500' 
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                            }`}
-                        >
-                            <Car className="w-4 h-4" />
-                            FLEET
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('maintenance')}
-                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
-                                activeTab === 'maintenance' 
-                                    ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-500' 
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                            }`}
-                        >
-                            <Wrench className="w-4 h-4" />
-                            MAINTENANCE
-                        </button>
-
-                        <button
-                            onClick={() => setActiveTab('properties')}
-                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
-                                activeTab === 'properties' 
-                                    ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-500' 
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                            }`}
-                        >
-                            <MapPin className="w-4 h-4" />
-                            PROPERTIES
-                        </button>
-
-
-
-                        <button
-                            onClick={() => setActiveTab('sysissues')}
-                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
-                                activeTab === 'sysissues' 
-                                    ? 'bg-slate-800 text-red-400 border-b-2 border-red-500' 
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                            }`}
-                        >
-                            <XCircle className="w-4 h-4" />
-                            SYSTEM ISSUES
-                        </button>
-
-                    </div>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-400">
+                    <Users className="w-3 h-3 text-gold" />
+                    {users.length} USERS
                 </div>
+                <div className="flex-1" />
+                <span className="text-slate-500 text-[10px]">{currentUser?.full_name?.toUpperCase() || 'ADMIN'}</span>
+            </div>
+
+            {/* Tab Bar */}
+            <div className="flex-none flex border-b border-slate-800 bg-slate-900/50">
+                {[
+                    { key: 'dashboard', label: 'DASHBOARD', icon: BarChart3 },
+                    { key: 'assets', label: 'FLEET', icon: Car },
+                    { key: 'maintenance', label: 'MAINTENANCE', icon: Wrench },
+                    { key: 'properties', label: 'PROPERTIES', icon: MapPin },
+                    { key: 'sysissues', label: 'SYSTEM ISSUES', icon: XCircle },
+                ].map(({ key, label, icon: Icon }) => (
+                    <button key={key} onClick={() => setActiveTab(key)}
+                        className={`flex items-center gap-1.5 px-4 py-2.5 text-[11px] font-mono font-bold border-r border-slate-800 border-b-2 transition-all ${
+                            activeTab === key
+                                ? 'border-b-gold text-gold bg-slate-800'
+                                : 'border-b-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+                        }`}>
+                        <Icon className="w-3.5 h-3.5" />
+                        {label}
+                    </button>
+                ))}
             </div>
 
             {/* Content Area */}
-            <div className="p-6">
+            <div className="flex-1 overflow-auto p-4">
 
                 {/* Dashboard Tab */}
                 {activeTab === 'dashboard' && (
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <Card className="bg-slate-900 border-slate-800 p-4">
-                                <div className="flex items-center justify-between">
+                    <div className="space-y-4">
+                        {/* Stat Cards */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {[
+                                { label: 'SYSTEM UPTIME', value: dashboardData.systemHealth.uptime, icon: Server, color: 'text-green-400', border: 'border-green-500/30' },
+                                { label: 'REGISTERED USERS', value: users.length, icon: Users, color: 'text-gold', border: 'border-gold/30' },
+                                { label: 'AVG RESPONSE', value: dashboardData.systemHealth.avgResponse, icon: Clock, color: 'text-blue-400', border: 'border-blue-500/30' },
+                                { label: 'CRITICAL CALLS', value: dashboardData.criticalIncidents.length, icon: AlertTriangle, color: 'text-red-400', border: 'border-red-500/30' },
+                            ].map(({ label, value, icon: Icon, color, border }) => (
+                                <div key={label} className={`bg-slate-900 border ${border} rounded p-3 flex items-center justify-between`}>
                                     <div>
-                                        <p className="text-xs font-mono text-slate-400 mb-1">SYSTEM UPTIME</p>
-                                        <p className="text-3xl font-bold text-green-400 font-mono">{dashboardData.systemHealth.uptime}</p>
+                                        <div className="text-[9px] text-slate-500 tracking-widest mb-1">{label}</div>
+                                        <div className={`text-2xl font-bold font-mono ${color}`}>{value}</div>
                                     </div>
-                                    <Server className="w-8 h-8 text-green-400" />
+                                    <Icon className={`w-7 h-7 ${color} opacity-60`} />
                                 </div>
-                            </Card>
-
-                            <Card className="bg-slate-900 border-slate-800 p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-xs font-mono text-slate-400 mb-1">ACTIVE USERS</p>
-                                        <p className="text-3xl font-bold text-blue-400 font-mono">{users.length}</p>
-                                    </div>
-                                    <Users className="w-8 h-8 text-blue-400" />
-                                </div>
-                            </Card>
-
-                            <Card className="bg-slate-900 border-slate-800 p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-xs font-mono text-slate-400 mb-1">AVG RESPONSE</p>
-                                        <p className="text-3xl font-bold text-purple-400 font-mono">{dashboardData.systemHealth.avgResponse}</p>
-                                    </div>
-                                    <Clock className="w-8 h-8 text-purple-400" />
-                                </div>
-                            </Card>
-
-                            <Card className="bg-slate-900 border-slate-800 p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-xs font-mono text-slate-400 mb-1">CRITICAL CALLS</p>
-                                        <p className="text-3xl font-bold text-red-400 font-mono">{dashboardData.criticalIncidents.length}</p>
-                                    </div>
-                                    <AlertTriangle className="w-8 h-8 text-red-400" />
-                                </div>
-                            </Card>
+                            ))}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Card className="bg-slate-900 border-slate-800">
-                                <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
-                                    <h2 className="text-lg font-bold text-white font-mono flex items-center gap-2">
-                                        <TrendingUp className="w-5 h-5 text-blue-400" />
-                                        CALL VOLUME (7 DAYS)
-                                    </h2>
+                        {/* Call Volume + Critical Incidents */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Call Volume */}
+                            <div className="bg-slate-900 border border-slate-800 rounded">
+                                <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-800">
+                                    <TrendingUp className="w-3.5 h-3.5 text-gold" />
+                                    <span className="text-[11px] font-mono font-bold text-white tracking-widest">CALL VOLUME — LAST 7 DAYS</span>
                                 </div>
-                                <div className="p-4">
-                                    <div className="space-y-2">
-                                        {dashboardData.callVolume.map((day, idx) => (
-                                            <div key={idx} className="flex items-center gap-3">
-                                                <span className="text-xs font-mono text-slate-400 w-24">{day.date}</span>
-                                                <div className="flex-1 bg-slate-800 rounded-full h-6 overflow-hidden">
-                                                    <div 
-                                                        className="h-full bg-blue-500" 
-                                                        style={{ width: `${Math.min((day.count / 50) * 100, 100)}%` }}
-                                                    />
+                                <div className="p-3 space-y-1.5">
+                                    {dashboardData.callVolume.length === 0 ? (
+                                        <div className="text-center py-6 text-slate-600 text-[10px] font-mono">NO DATA</div>
+                                    ) : dashboardData.callVolume.map((day, idx) => {
+                                        const max = Math.max(...dashboardData.callVolume.map(d => d.count), 1);
+                                        return (
+                                            <div key={idx} className="flex items-center gap-2">
+                                                <span className="text-[9px] font-mono text-slate-500 w-20 flex-shrink-0">{day.date.slice(5)}</span>
+                                                <div className="flex-1 bg-slate-800 rounded h-4 overflow-hidden">
+                                                    <div className="h-full bg-gold/70 transition-all" style={{ width: `${(day.count / max) * 100}%` }} />
                                                 </div>
-                                                <span className="text-sm font-mono text-white w-8 text-right">{day.count}</span>
+                                                <span className="text-[10px] font-mono text-white w-6 text-right">{day.count}</span>
                                             </div>
-                                        ))}
-                                    </div>
+                                        );
+                                    })}
                                 </div>
-                            </Card>
+                            </div>
 
-                            <Card className="bg-slate-900 border-slate-800">
-                                <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
-                                    <h2 className="text-lg font-bold text-white font-mono flex items-center gap-2">
-                                        <AlertTriangle className="w-5 h-5 text-red-400" />
-                                        RECENT CRITICAL INCIDENTS
-                                    </h2>
+                            {/* Critical Incidents */}
+                            <div className="bg-slate-900 border border-slate-800 rounded">
+                                <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-800">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+                                    <span className="text-[11px] font-mono font-bold text-white tracking-widest">RECENT CRITICAL INCIDENTS</span>
                                 </div>
-                                <div className="p-4 space-y-2">
+                                <div className="p-3 space-y-1.5">
                                     {dashboardData.criticalIncidents.length === 0 ? (
-                                        <div className="text-center py-8 text-slate-500 font-mono text-sm">
-                                            NO CRITICAL INCIDENTS
-                                        </div>
-                                    ) : (
-                                        dashboardData.criticalIncidents.map((call, idx) => (
-                                            <div key={idx} className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                                                <div className="flex items-start justify-between">
-                                                    <div>
-                                                        <p className="text-white font-mono font-bold text-sm">{call.incident}</p>
-                                                        <p className="text-slate-400 text-xs font-mono mt-1">{call.location}</p>
-                                                    </div>
-                                                    <Badge className="bg-red-500 text-white font-mono text-xs">
-                                                        {call.priority?.toUpperCase() || 'CRITICAL'}
-                                                    </Badge>
-                                                </div>
-                                                <p className="text-xs text-slate-500 font-mono mt-2">
-                                                    {new Date(call.time_received || call.created_date).toLocaleString('en-US', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
-                                                </p>
+                                        <div className="text-center py-6 text-slate-600 text-[10px] font-mono">NO CRITICAL INCIDENTS</div>
+                                    ) : dashboardData.criticalIncidents.map((call, idx) => (
+                                        <div key={idx} className="flex items-start gap-2 px-2 py-1.5 bg-red-500/5 border border-red-500/20 rounded">
+                                            <span className="text-[8px] px-1.5 py-0.5 bg-red-600/30 text-red-300 font-bold rounded mt-0.5 flex-shrink-0">
+                                                {(call.priority || 'HI').toUpperCase().slice(0,2)}
+                                            </span>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-[11px] text-white font-bold font-mono truncate">{call.incident}</div>
+                                                <div className="text-[9px] text-slate-500 font-mono truncate">{call.location}</div>
                                             </div>
-                                        ))
-                                    )}
+                                        </div>
+                                    ))}
                                 </div>
-                            </Card>
+                            </div>
                         </div>
 
+                        {/* Personnel Table */}
+                        <div className="bg-slate-900 border border-slate-800 rounded">
+                            <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-800">
+                                <Users className="w-3.5 h-3.5 text-gold" />
+                                <span className="text-[11px] font-mono font-bold text-white tracking-widest">PERSONNEL ROSTER</span>
+                                <span className="ml-auto text-[9px] text-slate-500 font-mono">{users.length} RECORDS</span>
+                            </div>
+                            {/* Table Header */}
+                            <div className="flex items-center px-3 py-1.5 bg-slate-800 border-b border-slate-700 text-[9px] text-slate-500 tracking-widest">
+                                <div className="w-36 flex-shrink-0">NAME</div>
+                                <div className="w-24 flex-shrink-0">RANK</div>
+                                <div className="w-16 flex-shrink-0">UNIT</div>
+                                <div className="w-20 flex-shrink-0">ROLE</div>
+                                <div className="flex-1">EMAIL</div>
+                                <div className="w-16 flex-shrink-0 text-right">ACTIONS</div>
+                            </div>
+                            <div className="max-h-64 overflow-y-auto">
+                                {users.map((u, idx) => (
+                                    <div key={u.id} className={`flex items-center px-3 py-2 border-b border-slate-800/60 text-[10px] hover:bg-slate-800/30 ${idx % 2 === 0 ? '' : 'bg-slate-900/30'}`}>
+                                        <div className="w-36 flex-shrink-0 text-white font-bold truncate pr-2">{u.full_name || '—'}</div>
+                                        <div className="w-24 flex-shrink-0 text-slate-400 truncate pr-2">{u.rank || '—'}</div>
+                                        <div className="w-16 flex-shrink-0 text-gold font-bold">{u.unit_number ? `#${u.unit_number}` : '—'}</div>
+                                        <div className="w-20 flex-shrink-0">
+                                            <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${
+                                                u.role === 'admin' ? 'bg-gold/20 text-gold border border-gold/30' : 'bg-slate-800 text-slate-400 border border-slate-700'
+                                            }`}>{(u.role || 'user').toUpperCase()}</span>
+                                        </div>
+                                        <div className="flex-1 text-slate-500 truncate pr-2">{u.email}</div>
+                                        <div className="w-16 flex-shrink-0 text-right">
+                                            <button onClick={() => handleEditUser(u)}
+                                                className="px-2 py-1 text-[8px] font-mono font-bold bg-slate-800 border border-slate-700 text-slate-400 hover:text-gold hover:border-gold/50 rounded transition-all">
+                                                EDIT
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 )}
 
 
 
-                {/* Assets Tab */}
-                {activeTab === 'assets' && (
-                    <VehicleManagement />
-                )}
+                {activeTab === 'assets' && <VehicleManagement />}
 
-                {/* Maintenance Tab */}
-                {activeTab === 'maintenance' && (
-                    <MaintenanceTracking units={users} />
-                )}
+                {activeTab === 'maintenance' && <MaintenanceTracking units={users} />}
 
-                {/* Properties Tab */}
-                {activeTab === 'properties' && (
-                    <PropertyMonitoring />
-                )}
+                {activeTab === 'properties' && <PropertyMonitoring />}
 
 
 
-                {/* System Issues Tab */}
-                {activeTab === 'sysissues' && (
-                    <SystemIssuesPanel currentUser={currentUser} />
-                )}
+                {activeTab === 'sysissues' && <SystemIssuesPanel currentUser={currentUser} />}
 
             </div>
 
             <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-                <DialogContent className="max-w-md pointer-events-auto bg-slate-900 border-slate-700">
+                <DialogContent className="max-w-md pointer-events-auto bg-slate-900 border-slate-800">
                     <DialogHeader>
-                        <DialogTitle className="text-white font-mono flex items-center gap-2">
-                            <Edit2 className="w-4 h-4 text-blue-400" />
+                        <DialogTitle className="text-white font-mono text-sm flex items-center gap-2">
+                            <Edit2 className="w-4 h-4 text-gold" />
                             EDIT PERSONNEL RECORD
                         </DialogTitle>
                     </DialogHeader>
                     {editingUser && (
-                        <div className="space-y-4 pointer-events-auto">
+                        <div className="space-y-3 pointer-events-auto">
+                            {[['FULL NAME', 'full_name', 'text'], ['LAST NAME', 'last_name', 'text'], ['UNIT NUMBER', 'unit_number', 'text']].map(([label, field]) => (
+                                <div key={field}>
+                                    <Label className="text-slate-500 font-mono text-[10px] tracking-widest">{label}</Label>
+                                    <Input value={editingUser[field] || ''}
+                                        onChange={e => setEditingUser({ ...editingUser, [field]: e.target.value })}
+                                        className="pointer-events-auto bg-slate-800 border-slate-700 text-white font-mono text-sm mt-1" />
+                                </div>
+                            ))}
                             <div>
-                                <Label className="text-slate-300 font-mono text-xs">FULL NAME</Label>
-                                <Input
-                                    value={editingUser.full_name || ''}
-                                    onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
-                                    className="pointer-events-auto bg-slate-800 border-slate-700 text-white font-mono"
-                                />
-                            </div>
-
-                            <div>
-                                <Label className="text-slate-300 font-mono text-xs">LAST NAME</Label>
-                                <Input
-                                    value={editingUser.last_name || ''}
-                                    onChange={(e) => setEditingUser({ ...editingUser, last_name: e.target.value })}
-                                    placeholder="Last name"
-                                    className="pointer-events-auto bg-slate-800 border-slate-700 text-white font-mono"
-                                />
-                            </div>
-
-                            <div>
-                                <Label className="text-slate-300 font-mono text-xs">RANK</Label>
-                                <Select
-                                    value={editingUser.rank || ''}
-                                    onValueChange={(value) => setEditingUser({ ...editingUser, rank: value })}
-                                >
-                                    <SelectTrigger className="pointer-events-auto bg-slate-800 border-slate-700 text-white font-mono">
+                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">RANK</Label>
+                                <Select value={editingUser.rank || ''} onValueChange={v => setEditingUser({ ...editingUser, rank: v })}>
+                                    <SelectTrigger className="pointer-events-auto bg-slate-800 border-slate-700 text-white font-mono mt-1">
                                         <SelectValue placeholder="Select rank" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-slate-800 border-slate-700">
-                                        <SelectItem value="Colonel" className="text-white font-mono">Colonel</SelectItem>
-                                        <SelectItem value="Lieutenant Colonel" className="text-white font-mono">Lieutenant Colonel</SelectItem>
-                                        <SelectItem value="Major" className="text-white font-mono">Major</SelectItem>
-                                        <SelectItem value="Captain" className="text-white font-mono">Captain</SelectItem>
-                                        <SelectItem value="Lieutenant" className="text-white font-mono">Lieutenant</SelectItem>
-                                        <SelectItem value="First Sergeant" className="text-white font-mono">First Sergeant</SelectItem>
-                                        <SelectItem value="Sergeant" className="text-white font-mono">Sergeant</SelectItem>
-                                        <SelectItem value="Corporal" className="text-white font-mono">Corporal</SelectItem>
-                                        <SelectItem value="Senior Officer" className="text-white font-mono">Senior Officer</SelectItem>
-                                        <SelectItem value="Officer" className="text-white font-mono">Officer</SelectItem>
+                                        {['Colonel','Lieutenant Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior Officer','Officer'].map(r => (
+                                            <SelectItem key={r} value={r} className="text-white font-mono">{r}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
-
                             <div>
-                                <Label className="text-slate-300 font-mono text-xs">UNIT NUMBER</Label>
-                                <Input
-                                    value={editingUser.unit_number || ''}
-                                    onChange={(e) => setEditingUser({ ...editingUser, unit_number: e.target.value })}
-                                    placeholder="e.g., 23"
-                                    className="pointer-events-auto bg-slate-800 border-slate-700 text-white font-mono"
-                                />
-                            </div>
-
-                            <div>
-                                <Label className="text-slate-300 font-mono text-xs">ROLE</Label>
-                                <Select
-                                    value={editingUser.role}
-                                    onValueChange={(value) => setEditingUser({ ...editingUser, role: value })}
-                                >
-                                    <SelectTrigger className="pointer-events-auto bg-slate-800 border-slate-700 text-white font-mono">
+                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">ROLE</Label>
+                                <Select value={editingUser.role} onValueChange={v => setEditingUser({ ...editingUser, role: v })}>
+                                    <SelectTrigger className="pointer-events-auto bg-slate-800 border-slate-700 text-white font-mono mt-1">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-slate-800 border-slate-700">
@@ -505,45 +378,22 @@ export default function AdminPortal() {
                                     </SelectContent>
                                 </Select>
                             </div>
-
-                            <div className="flex items-center justify-between py-2 px-3 bg-slate-800/50 border border-slate-700 rounded-lg">
-                                <Label className="text-slate-300 font-mono text-xs">DISPATCH ACCESS</Label>
-                                <Switch
-                                    checked={editingUser.dispatch_role || false}
-                                    onCheckedChange={(checked) => setEditingUser({ ...editingUser, dispatch_role: checked })}
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-between py-2 px-3 bg-slate-800/50 border border-slate-700 rounded-lg">
-                                <Label className="text-slate-300 font-mono text-xs">SUPERVISOR ROLE</Label>
-                                <Switch
-                                    checked={editingUser.is_supervisor || false}
-                                    onCheckedChange={(checked) => setEditingUser({ ...editingUser, is_supervisor: checked })}
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-between py-2 px-3 bg-slate-800/50 border border-slate-700 rounded-lg">
-                                <Label className="text-slate-300 font-mono text-xs">SHOW ON MAP</Label>
-                                <Switch
-                                    checked={editingUser.show_on_map !== false}
-                                    onCheckedChange={(checked) => setEditingUser({ ...editingUser, show_on_map: checked })}
-                                />
-                            </div>
-
-                            <div className="flex gap-2 pt-4">
-                                <Button 
-                                    variant="outline" 
-                                    onClick={() => setShowEditDialog(false)} 
-                                    className="flex-1 pointer-events-auto bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white font-mono"
-                                >
+                            {[['DISPATCH ACCESS', 'dispatch_role'], ['SUPERVISOR ROLE', 'is_supervisor'], ['SHOW ON MAP', 'show_on_map']].map(([label, field]) => (
+                                <div key={field} className="flex items-center justify-between py-2 px-3 bg-slate-800/50 border border-slate-700 rounded">
+                                    <Label className="text-slate-400 font-mono text-[10px] tracking-widest">{label}</Label>
+                                    <Switch checked={field === 'show_on_map' ? editingUser[field] !== false : (editingUser[field] || false)}
+                                        onCheckedChange={v => setEditingUser({ ...editingUser, [field]: v })} />
+                                </div>
+                            ))}
+                            <div className="flex gap-2 pt-2">
+                                <button onClick={() => setShowEditDialog(false)}
+                                    className="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-400 hover:text-white font-mono text-xs rounded transition-all">
                                     CANCEL
-                                </Button>
-                                <Button 
-                                    onClick={handleSaveUser} 
-                                    className="flex-1 bg-blue-600 hover:bg-blue-700 pointer-events-auto font-mono"
-                                >
-                                    SAVE
-                                </Button>
+                                </button>
+                                <button onClick={handleSaveUser}
+                                    className="flex-1 py-2 bg-gold/10 border border-gold/50 text-gold hover:bg-gold/20 font-mono text-xs font-bold rounded transition-all">
+                                    SAVE RECORD
+                                </button>
                             </div>
                         </div>
                     )}
