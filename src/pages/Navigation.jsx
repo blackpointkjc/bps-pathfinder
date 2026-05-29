@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
-import { classifyCall } from '@/lib/cadCallTypes';
+import { isCriticalCall } from '@/lib/cadCallUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
@@ -271,10 +271,7 @@ export default function Navigation() {
     const onlineUnits = selfEntry ? [selfEntry, ...otherOnline] : otherOnline;
     const mapVisibleUnits = isSupervisorUser ? otherUnits : otherUnits.filter(u => u.status !== 'Out of Service');
 
-    const criticalCalls = activeCalls.filter(c => {
-        const classified = classifyCall(c.incident || '');
-        return classified.matched_type?.priority === 'critical' || c.priority === 'critical';
-    });
+    const criticalCalls = activeCalls.filter(isCriticalCall);
     const unassignedCalls = activeCalls.filter(c => !c.assigned_units?.length && !c.source);
     const displayedCalls = showOnlyCriticalCalls ? criticalCalls : activeCalls;
 
@@ -635,7 +632,7 @@ export default function Navigation() {
                         <div className="flex-none flex items-center justify-between px-4 py-3 border-b border-[#1e2d4a] bg-[#0d1220]">
                             <div className="flex items-center gap-2">
                                 <div className="w-2 h-2 rounded-full bg-[#f5a623]" />
-                                <span className="text-white font-mono font-bold text-xs tracking-widest">EVENT DETAIL</span>
+                                <span className="text-white font-mono font-bold text-xs tracking-widest">CALL DETAIL</span>
                             </div>
                             <button onClick={() => setShowCallSidebar(false)}
                                 className="w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-white hover:bg-[#1e2d4a] transition-colors">
