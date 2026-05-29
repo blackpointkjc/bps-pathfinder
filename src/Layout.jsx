@@ -101,14 +101,21 @@ export default function Layout({ children, currentPageName }) {
     const NavContent = ({ onNav }) => (
         <div className="flex flex-col h-full">
             {/* Logo */}
-            <div className={`flex items-center gap-3 px-4 py-4 border-b border-slate-800 flex-shrink-0 ${collapsed ? 'justify-center' : ''}`}>
-                <div className="w-9 h-9 rounded-lg bg-gold flex items-center justify-center flex-shrink-0">
-                    <Radio className="w-5 h-5 text-black" />
+            <div className={`flex items-center gap-3 px-3 py-3 border-b border-slate-800 flex-shrink-0 ${collapsed ? 'justify-center' : ''}`}>
+                <div className="relative flex-shrink-0">
+                    <div className="w-10 h-10 rounded bg-slate-800 border border-slate-700 flex items-center justify-center">
+                        <Shield className="w-5 h-5 text-gold" />
+                    </div>
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse" />
                 </div>
                 {!collapsed && (
-                    <div>
-                        <div className="text-white font-bold text-sm tracking-widest font-mono">BPS CAD</div>
-                        <div className="text-gold text-[10px] font-mono tracking-wider">COMMAND SYSTEM</div>
+                    <div className="min-w-0">
+                        <div className="text-gold font-black text-sm tracking-[0.2em] font-mono leading-none">BPS CAD</div>
+                        <div className="text-slate-500 text-[9px] font-mono tracking-[0.15em] mt-0.5">COMMAND &amp; DISPATCH</div>
+                        <div className="flex items-center gap-1 mt-1">
+                            <span className="w-1 h-1 rounded-full bg-green-500" />
+                            <span className="text-green-400 text-[8px] font-mono tracking-widest">SYSTEM ONLINE</span>
+                        </div>
                     </div>
                 )}
             </div>
