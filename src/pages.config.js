@@ -62,7 +62,7 @@ import Navigation from './pages/Navigation';
 import Personnel from './pages/Personnel';
 import RecordsAssistant from './pages/RecordsAssistant';
 import Reports from './pages/Reports';
-import SystemStatus from './pages/SystemStatus';
+import SystemStatus from './pages/SystemStatus.jsx';
 import __Layout from './Layout.jsx';
 
 
