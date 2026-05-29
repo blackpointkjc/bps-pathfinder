@@ -367,7 +367,7 @@ export default function Navigation() {
                             {leftTab === 'units' && (
                                 <div className="flex-1 overflow-y-auto">
                                     {['Available','On Patrol','Enroute','On Scene','Busy','Supervisor','Out of Service']
-                                        .filter(s => s !== 'Supervisor' || isSupervisorUser)
+                                        .filter(s => (s !== 'Supervisor' && s !== 'Out of Service') || isSupervisorUser)
                                         .map(status => {
                                             const units = onlineUnits.filter(u => u.status === status);
                                             if (units.length === 0) return null;
