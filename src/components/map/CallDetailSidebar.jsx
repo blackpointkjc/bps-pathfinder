@@ -245,7 +245,12 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
                                     <Clock className="w-4 h-4" />
                                     Time
                                 </label>
-                                <p className="text-sm text-gray-900 font-medium">{call.timeReceived}</p>
+                                <p className="text-sm text-gray-900 font-medium">
+                                    {call.time_received
+                                        ? new Date(call.time_received).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })
+                                        : '—'
+                                    }
+                                </p>
                             </div>
                             <div>
                                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">

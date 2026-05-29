@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Users, Search, Edit2, MapPin, Save, X } from 'lucide-react';
 import { createPageUrl } from '../utils';
@@ -13,13 +11,11 @@ import { createPageUrl } from '../utils';
 export default function Personnel() {
     const [currentUser, setCurrentUser] = useState(null);
     const [personnel, setPersonnel] = useState([]);
-    const [selectedPerson, setSelectedPerson] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterRole, setFilterRole] = useState('all');
     const [loading, setLoading] = useState(true);
     const [editDialog, setEditDialog] = useState(false);
     const [editForm, setEditForm] = useState({});
-    const [showTracking, setShowTracking] = useState(false);
 
     useEffect(() => {
         init();
@@ -85,11 +81,11 @@ export default function Personnel() {
     };
 
     const filteredPersonnel = personnel.filter(person => {
-        const matchesRole = filterRole === 'all' || 
+        const matchesRole = filterRole === 'all' ||
             (filterRole === 'officer' && person.role !== 'admin') ||
             (filterRole === 'admin' && person.role === 'admin') ||
             (filterRole === 'dispatch' && person.dispatch_role);
-        const matchesSearch = !searchQuery || 
+        const matchesSearch = !searchQuery ||
             person.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             person.unit_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             person.email?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -98,189 +94,169 @@ export default function Personnel() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-2 border-blue-500 border-t-transparent" />
+            <div className="min-h-screen bg-[#0a0e1a] flex items-center justify-center">
+                <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-950">
+        <div className="min-h-screen bg-[#0a0e1a] font-mono">
             {/* Header */}
-            <div className="bg-slate-900 border-b border-slate-800">
-                <div className="px-6 py-3">
-                    <div className="flex items-center gap-4">
-                        <Users className="w-5 h-5 text-gold" />
-                        <h1 className="text-lg font-bold text-white tracking-tight font-mono">PERSONNEL ROSTER</h1>
-                        <Badge className="bg-gold/20 text-gold border border-gold/30 font-mono">
-                            {filteredPersonnel.length} PERSONNEL
-                        </Badge>
+            <div className="bg-[#0d1220] border-b border-[#1e2d4a] px-6 py-3 flex items-center gap-3">
+                <Users className="w-4 h-4 text-gold" />
+                <h1 className="text-sm font-bold text-white tracking-widest">PERSONNEL ROSTER</h1>
+                <span className="text-[10px] bg-gold/20 text-gold px-2 py-0.5 rounded-full border border-gold/30">
+                    {filteredPersonnel.length} PERSONNEL
+                </span>
+            </div>
+
+            {/* Main Content */}
+            <div className="p-4 md:p-6">
+                <div className="bg-[#0d1220] border border-[#1e2d4a] rounded-xl overflow-hidden">
+                    {/* Toolbar */}
+                    <div className="px-4 py-3 border-b border-[#1e2d4a] flex items-center gap-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                            <Input
+                                placeholder="Search personnel..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 h-8 text-xs bg-[#111827] border-[#1e2d4a] text-white placeholder:text-slate-600"
+                            />
+                        </div>
+                        <div className="flex gap-1.5">
+                            {['all', 'officer', 'admin', 'dispatch'].map(role => (
+                                <button
+                                    key={role}
+                                    onClick={() => setFilterRole(role)}
+                                    className={`px-3 py-1 rounded text-[10px] font-bold border transition-all ${
+                                        filterRole === role
+                                            ? 'bg-blue-600 border-blue-500 text-white'
+                                            : 'border-[#1e2d4a] text-slate-500 hover:text-white hover:border-slate-500'
+                                    }`}
+                                >
+                                    {role.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Table */}
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-[#1e2d4a] bg-[#111827]">
+                                    <th className="text-left px-4 py-2.5 text-[9px] font-bold text-slate-500 tracking-widest">NAME</th>
+                                    <th className="text-left px-4 py-2.5 text-[9px] font-bold text-slate-500 tracking-widest">UNIT</th>
+                                    <th className="text-left px-4 py-2.5 text-[9px] font-bold text-slate-500 tracking-widest">RANK</th>
+                                    <th className="text-left px-4 py-2.5 text-[9px] font-bold text-slate-500 tracking-widest">STATUS</th>
+                                    <th className="text-left px-4 py-2.5 text-[9px] font-bold text-slate-500 tracking-widest">ROLE</th>
+                                    <th className="text-left px-4 py-2.5 text-[9px] font-bold text-slate-500 tracking-widest">ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredPersonnel.map((person) => (
+                                    <tr key={person.id} className="border-b border-[#1e2d4a] hover:bg-[#111827] transition-colors">
+                                        <td className="px-4 py-2.5 text-white font-mono text-xs">
+                                            {person.last_name || (() => {
+                                                const parts = (person.full_name || '').trim().split(' ');
+                                                return parts.length > 1 ? parts[parts.length - 1] : parts[0] || '-';
+                                            })()}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-[#f5a623] font-mono text-xs">
+                                            {person.unit_number ? `UNIT-${person.unit_number}` : '-'}
+                                        </td>
+                                        <td className="px-4 py-2.5 text-slate-400 text-xs">{person.rank || '-'}</td>
+                                        <td className="px-4 py-2.5">
+                                            <span className={`text-[9px] px-2 py-0.5 rounded-full border font-bold ${
+                                                person.status === 'Available' ? 'bg-green-500/10 text-green-400 border-green-500/30' :
+                                                person.status === 'Enroute' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' :
+                                                person.status === 'On Scene' ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' :
+                                                'bg-orange-500/10 text-orange-400 border-orange-500/30'
+                                            }`}>
+                                                {person.status || 'UNKNOWN'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-2.5">
+                                            <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${
+                                                person.role === 'admin'
+                                                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30'
+                                                    : 'bg-slate-700/50 text-slate-400 border border-slate-600'
+                                            }`}>
+                                                {person.role?.toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-2.5">
+                                            <div className="flex gap-1.5">
+                                                <button
+                                                    onClick={() => handleEdit(person)}
+                                                    className="flex items-center gap-1 px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 text-blue-400 text-[9px] rounded transition-colors"
+                                                >
+                                                    <Edit2 className="w-3 h-3" /> EDIT
+                                                </button>
+                                                <button
+                                                    onClick={() => window.location.href = createPageUrl('Navigation')}
+                                                    className="flex items-center gap-1 px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/30 text-purple-400 text-[9px] rounded transition-colors"
+                                                >
+                                                    <MapPin className="w-3 h-3" /> TRACK
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
-            {/* Main Content */}
-            <div className="p-6">
-                <Card className="bg-slate-900 border-slate-800">
-                    <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
-                        <div className="flex items-center gap-4">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <Input
-                                    placeholder="Search personnel..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-10 bg-slate-900 border-slate-700 text-white font-mono text-sm"
-                                />
-                            </div>
-                            <div className="flex gap-2">
-                                {['all', 'officer', 'admin', 'dispatch'].map(role => (
-                                    <Button
-                                        key={role}
-                                        size="sm"
-                                        variant={filterRole === role ? 'default' : 'outline'}
-                                        onClick={() => setFilterRole(role)}
-                                        className={filterRole === role ? 
-                                            'bg-blue-600 hover:bg-blue-700 font-mono text-xs' : 
-                                            'border-slate-700 text-slate-400 hover:text-white font-mono text-xs'
-                                        }
-                                    >
-                                        {role.toUpperCase()}
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    <ScrollArea className="h-[calc(100vh-240px)]">
-                        <div className="p-4">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="border-b border-slate-700">
-                                        <th className="text-left p-3 text-xs font-mono text-slate-400">NAME</th>
-                                        <th className="text-left p-3 text-xs font-mono text-slate-400">UNIT</th>
-                                        <th className="text-left p-3 text-xs font-mono text-slate-400">RANK</th>
-                                        <th className="text-left p-3 text-xs font-mono text-slate-400">STATUS</th>
-                                        <th className="text-left p-3 text-xs font-mono text-slate-400">ROLE</th>
-                                        <th className="text-left p-3 text-xs font-mono text-slate-400">ACTIONS</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredPersonnel.map((person) => (
-                                        <tr key={person.id} className="border-b border-slate-800 hover:bg-slate-800/50">
-                                            <td className="p-3 text-white font-mono text-sm">{person.last_name || (() => { const parts = (person.full_name || '').trim().split(' '); return parts.length > 1 ? parts[parts.length - 1] : parts[0] || '-'; })()}</td>
-                                            <td className="p-3 text-white font-mono text-sm">
-                                                {person.unit_number ? `UNIT-${person.unit_number}` : '-'}
-                                            </td>
-                                            <td className="p-3 text-slate-300 text-sm">{person.rank || '-'}</td>
-                                            <td className="p-3">
-                                                <Badge className={`${
-                                                    person.status === 'Available' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                                                    person.status === 'Enroute' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                                                    person.status === 'On Scene' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                                                    'bg-orange-500/20 text-orange-400 border-orange-500/30'
-                                                } border font-mono text-xs`}>
-                                                    {person.status || 'UNKNOWN'}
-                                                </Badge>
-                                            </td>
-                                            <td className="p-3">
-                                                <Badge className={person.role === 'admin' ? 
-                                                    'bg-purple-500/20 text-purple-400 border border-purple-500/30 font-mono text-xs' : 
-                                                    'bg-slate-700 text-slate-300 font-mono text-xs'
-                                                }>
-                                                    {person.role?.toUpperCase()}
-                                                </Badge>
-                                            </td>
-                                            <td className="p-3">
-                                                <div className="flex gap-2">
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => handleEdit(person)}
-                                                        className="bg-blue-600 hover:bg-blue-700 font-mono text-xs"
-                                                    >
-                                                        <Edit2 className="w-3 h-3 mr-1" />
-                                                        EDIT
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => window.location.href = createPageUrl('Navigation')}
-                                                        className="bg-purple-600 hover:bg-purple-700 font-mono text-xs"
-                                                    >
-                                                        <MapPin className="w-3 h-3 mr-1" />
-                                                        TRACK
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </ScrollArea>
-                </Card>
-            </div>
-
             {/* Edit Dialog */}
             <Dialog open={editDialog} onOpenChange={setEditDialog}>
-                <DialogContent className="bg-slate-900 border-slate-700 text-white">
+                <DialogContent className="bg-[#0d1220] border-[#1e2d4a] text-white font-mono">
                     <DialogHeader>
-                        <DialogTitle className="font-mono">EDIT PERSONNEL</DialogTitle>
+                        <DialogTitle className="font-mono text-sm tracking-widest">EDIT PERSONNEL</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <div>
-                             <label className="text-xs text-slate-400 font-mono mb-2 block">LAST NAME</label>
-                             <Input
-                                 value={editForm.last_name}
-                                 onChange={(e) => setEditForm({...editForm, last_name: e.target.value})}
-                                 className="bg-slate-800 border-slate-700 text-white font-mono"
-                             />
-                         </div>
-                        <div>
-                            <label className="text-xs text-slate-400 font-mono mb-2 block">UNIT NUMBER</label>
-                            <Input
-                                value={editForm.unit_number}
-                                onChange={(e) => setEditForm({...editForm, unit_number: e.target.value})}
-                                className="bg-slate-800 border-slate-700 text-white font-mono"
-                            />
+                            <label className="text-[10px] text-slate-400 mb-1.5 block tracking-widest">LAST NAME</label>
+                            <Input value={editForm.last_name || ''}
+                                onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                                className="bg-[#111827] border-[#1e2d4a] text-white font-mono text-sm" />
                         </div>
                         <div>
-                            <label className="text-xs text-slate-400 font-mono mb-2 block">RANK</label>
-                            <Input
-                                value={editForm.rank}
-                                onChange={(e) => setEditForm({...editForm, rank: e.target.value})}
-                                className="bg-slate-800 border-slate-700 text-white font-mono"
-                            />
+                            <label className="text-[10px] text-slate-400 mb-1.5 block tracking-widest">UNIT NUMBER</label>
+                            <Input value={editForm.unit_number || ''}
+                                onChange={(e) => setEditForm({ ...editForm, unit_number: e.target.value })}
+                                className="bg-[#111827] border-[#1e2d4a] text-white font-mono text-sm" />
                         </div>
                         <div>
-                            <label className="text-xs text-slate-400 font-mono mb-2 block">STATUS</label>
-                            <select
-                                value={editForm.status}
-                                onChange={(e) => setEditForm({...editForm, status: e.target.value})}
-                                className="w-full h-10 rounded-md bg-slate-800 border border-slate-700 text-white font-mono px-3 py-2 text-sm"
-                            >
+                            <label className="text-[10px] text-slate-400 mb-1.5 block tracking-widest">RANK</label>
+                            <Input value={editForm.rank || ''}
+                                onChange={(e) => setEditForm({ ...editForm, rank: e.target.value })}
+                                className="bg-[#111827] border-[#1e2d4a] text-white font-mono text-sm" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-slate-400 mb-1.5 block tracking-widest">STATUS</label>
+                            <select value={editForm.status || 'Available'}
+                                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                                className="w-full h-9 rounded-md bg-[#111827] border border-[#1e2d4a] text-white font-mono px-3 text-sm">
                                 <option value="Available">Available</option>
                                 <option value="Enroute">Enroute</option>
                                 <option value="On Scene">On Scene</option>
                                 <option value="Busy">Busy</option>
                                 <option value="Out of Service">Out of Service</option>
                                 <option value="On Patrol">On Patrol</option>
-                                <option value="Supervisor">Supervisor (Hidden from field)</option>
+                                <option value="Supervisor">Supervisor</option>
                             </select>
                         </div>
-                        <div className="flex gap-2">
-                            <Button
-                                onClick={handleSave}
-                                className="flex-1 bg-blue-600 hover:bg-blue-700 font-mono"
-                            >
-                                <Save className="w-4 h-4 mr-2" />
-                                SAVE
+                        <div className="flex gap-2 pt-2">
+                            <Button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 font-mono text-xs">
+                                <Save className="w-3.5 h-3.5 mr-1.5" /> SAVE
                             </Button>
-                            <Button
-                                onClick={() => setEditDialog(false)}
-                                variant="outline"
-                                className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800 font-mono"
-                            >
-                                <X className="w-4 h-4 mr-2" />
-                                CANCEL
+                            <Button onClick={() => setEditDialog(false)} variant="outline"
+                                className="flex-1 border-[#1e2d4a] text-slate-300 hover:bg-[#111827] font-mono text-xs">
+                                <X className="w-3.5 h-3.5 mr-1.5" /> CANCEL
                             </Button>
                         </div>
                     </div>
