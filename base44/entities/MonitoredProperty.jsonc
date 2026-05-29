@@ -12,16 +12,35 @@
     },
     "latitude": {
       "type": "number",
-      "description": "Property latitude"
+      "description": "Center latitude (used for circle boundary)"
     },
     "longitude": {
       "type": "number",
-      "description": "Property longitude"
+      "description": "Center longitude (used for circle boundary)"
     },
     "radiusMeters": {
       "type": "number",
-      "description": "Monitoring radius in meters",
+      "description": "Monitoring radius in meters (circle mode only)",
       "default": 500
+    },
+    "boundary_type": {
+      "type": "string",
+      "enum": [
+        "circle",
+        "polygon"
+      ],
+      "default": "circle",
+      "description": "How the boundary is defined"
+    },
+    "polygon": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        }
+      },
+      "description": "Polygon vertices as [[lat, lng], ...] pairs (polygon mode only)"
     },
     "enabled": {
       "type": "boolean",
@@ -36,9 +55,6 @@
   },
   "required": [
     "name",
-    "address",
-    "latitude",
-    "longitude",
-    "radiusMeters"
+    "address"
   ]
 }
