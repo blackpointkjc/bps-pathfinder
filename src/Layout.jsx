@@ -104,21 +104,23 @@ export default function Layout({ children, currentPageName }) {
             {/* Logo */}
             <div className={`flex items-center gap-3 px-3 py-3 border-b border-slate-800 flex-shrink-0 ${collapsed ? 'justify-center' : ''}`}>
                 <div className="relative flex-shrink-0">
-                    <svg viewBox="0 0 100 120" className="w-10 h-10" xmlns="http://www.w3.org/2000/svg">
-                        {/* Shield */}
-                        <path d="M 50 10 L 25 25 L 25 55 Q 25 85 50 110 Q 75 85 75 55 L 75 25 Z" fill="#D4AF37" stroke="#B8860B" strokeWidth="1"/>
-                        {/* Inner black area */}
-                        <path d="M 50 20 L 32 32 L 32 55 Q 32 80 50 102 Q 68 80 68 55 L 68 32 Z" fill="#1a1a1a"/>
-                        {/* Eagle head simplified */}
-                        <circle cx="50" cy="28" r="6" fill="#D4AF37"/>
-                        <polygon points="54,26 58,25 56,28" fill="#D4AF37"/>
-                        {/* Center text area */}
-                        <rect x="28" y="45" width="44" height="22" rx="2" fill="#1a1a1a" stroke="#D4AF37" strokeWidth="0.5"/>
-                        <text x="50" y="52" fontSize="6" fontWeight="bold" fill="#D4AF37" textAnchor="middle" fontFamily="monospace">BLACK POINT</text>
-                        <text x="50" y="60" fontSize="3.5" fill="#D4AF37" textAnchor="middle" fontFamily="monospace">PROTECTING</text>
-                        <text x="50" y="64" fontSize="3.5" fill="#D4AF37" textAnchor="middle" fontFamily="monospace">YOUR ASSETS</text>
-                        {/* Stars at bottom */}
-                        <circle cx="50" cy="95" r="2" fill="#D4AF37"/>
+                    <svg viewBox="0 0 80 100" className="w-10 h-10" xmlns="http://www.w3.org/2000/svg">
+                        {/* Gold shield background */}
+                        <path d="M 40 8 L 20 22 L 20 48 Q 20 72 40 92 Q 60 72 60 48 L 60 22 Z" fill="#D4AF37"/>
+                        {/* Eagle wings top */}
+                        <path d="M 30 18 Q 20 12 15 18 M 50 18 Q 60 12 65 18" stroke="#D4AF37" strokeWidth="2" fill="none"/>
+                        {/* Black inner shield */}
+                        <path d="M 40 14 L 28 24 L 28 48 Q 28 68 40 82 Q 52 68 52 48 L 52 24 Z" fill="#1a1a1a"/>
+                        {/* Gold eagle head outline */}
+                        <circle cx="40" cy="26" r="3.5" fill="#D4AF37"/>
+                        <circle cx="42" cy="25" r="1.5" fill="#1a1a1a"/>
+                        {/* Black banner for text */}
+                        <rect x="26" y="38" width="28" height="12" fill="#1a1a1a" stroke="#D4AF37" strokeWidth="0.5"/>
+                        {/* Text */}
+                        <text x="40" y="43" fontSize="4" fontWeight="bold" fill="#D4AF37" textAnchor="middle" fontFamily="monospace">BLACK</text>
+                        <text x="40" y="47" fontSize="4" fontWeight="bold" fill="#D4AF37" textAnchor="middle" fontFamily="monospace">POINT</text>
+                        {/* Bottom accent */}
+                        <circle cx="40" cy="85" r="1.5" fill="#D4AF37"/>
                     </svg>
                     <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse hidden" />
                 </div>
