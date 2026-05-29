@@ -1,10 +1,10 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-export default function CollapsePanelButton({ isOpen, onClick, orientation = 'vertical' }) {
+export default function CollapsePanelButton({ isOpen, onClick, orientation = 'vertical', className }) {
     return (
         <button
             onClick={onClick}
-            className={`${
+            className={className || `${
                 orientation === 'vertical'
                     ? 'w-5 h-16 rounded-r-lg'
                     : 'h-5 w-16 rounded-b-lg'
