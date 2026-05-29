@@ -111,222 +111,165 @@ export default function VehicleManagement() {
 
     const getStatusColor = (status) => {
         const colors = {
-            'Active': 'bg-green-100 text-green-800',
-            'Maintenance': 'bg-yellow-100 text-yellow-800',
-            'Out of Service': 'bg-red-100 text-red-800',
-            'Retired': 'bg-gray-100 text-gray-800'
+            'Active': 'bg-green-500/10 text-green-400 border border-green-500/30',
+            'Maintenance': 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30',
+            'Out of Service': 'bg-red-500/10 text-red-400 border border-red-500/30',
+            'Retired': 'bg-slate-700 text-slate-400 border border-slate-600'
         };
-        return colors[status] || 'bg-gray-100 text-gray-800';
+        return colors[status] || 'bg-slate-700 text-slate-400 border border-slate-600';
     };
 
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-gold border-t-transparent" />
             </div>
         );
     }
 
     return (
-        <Card className="p-6">
-            <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                    <Car className="w-6 h-6 text-blue-600" />
-                    Vehicle Assets ({vehicles.length})
-                </h2>
-                <Button
-                    onClick={() => {
-                        resetForm();
-                        setEditingVehicle(null);
-                        setShowDialog(true);
-                    }}
-                    className="bg-blue-600 hover:bg-blue-700"
+        <div className="font-mono">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                    <div className="w-1 h-5 bg-gold rounded-sm" />
+                    <Car className="w-4 h-4 text-gold" />
+                    <span className="text-white font-bold text-sm tracking-widest">FLEET ASSETS</span>
+                    <span className="text-slate-500 text-[10px] ml-1">{vehicles.length} RECORDS</span>
+                </div>
+                <button
+                    onClick={() => { resetForm(); setEditingVehicle(null); setShowDialog(true); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gold/10 border border-gold/40 text-gold hover:bg-gold/20 text-[10px] font-bold rounded transition-all"
                 >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Vehicle
-                </Button>
+                    <Plus className="w-3 h-3" />
+                    ADD VEHICLE
+                </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {vehicles.map((vehicle) => (
-                    <Card key={vehicle.id} className="border-gray-200">
-                        <CardHeader className="pb-3">
-                            <div className="flex items-start justify-between">
-                                <div>
-                                    <CardTitle className="text-gray-900 text-lg">{vehicle.vehicle_id}</CardTitle>
-                                    <p className="text-gray-600 text-sm">{vehicle.year} {vehicle.make} {vehicle.model}</p>
+                    <div key={vehicle.id} className="bg-slate-900 border border-slate-800 rounded hover:border-slate-700 transition-all">
+                        <div className="flex items-start justify-between px-3 pt-3 pb-2 border-b border-slate-800">
+                            <div>
+                                <div className="text-white font-bold text-sm">{vehicle.vehicle_id}</div>
+                                <div className="text-slate-500 text-[10px] mt-0.5">{vehicle.year} {vehicle.make} {vehicle.model}</div>
+                            </div>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${getStatusColor(vehicle.status)}`}>{vehicle.status?.toUpperCase()}</span>
+                        </div>
+                        <div className="px-3 py-2 space-y-1 text-[10px]">
+                            {vehicle.license_plate && (
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">PLATE</span>
+                                    <span className="text-slate-300 font-bold">{vehicle.license_plate}</span>
                                 </div>
-                                <Badge className={getStatusColor(vehicle.status)}>{vehicle.status}</Badge>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2 text-sm text-gray-700">
-                                {vehicle.license_plate && (
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">Plate:</span>
-                                        <span>{vehicle.license_plate}</span>
-                                    </div>
-                                )}
-                                {vehicle.mileage > 0 && (
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">Mileage:</span>
-                                        <span>{vehicle.mileage.toLocaleString()} mi</span>
-                                    </div>
-                                )}
-                                {vehicle.vin && (
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">VIN:</span>
-                                        <span className="truncate ml-2 text-xs">{vehicle.vin}</span>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex gap-2 mt-4">
-                                <Button
-                                    onClick={() => handleEdit(vehicle)}
-                                    size="sm"
-                                    variant="outline"
-                                    className="flex-1"
-                                >
-                                    <Edit className="w-3 h-3 mr-1" />
-                                    Edit
-                                </Button>
-                                <Button
-                                    onClick={() => handleDelete(vehicle.id)}
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-red-300 text-red-600 hover:bg-red-50"
-                                >
-                                    <Trash2 className="w-3 h-3" />
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                            )}
+                            {vehicle.mileage > 0 && (
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">MILEAGE</span>
+                                    <span className="text-slate-300 font-bold">{vehicle.mileage.toLocaleString()} MI</span>
+                                </div>
+                            )}
+                            {vehicle.vin && (
+                                <div className="flex justify-between">
+                                    <span className="text-slate-500">VIN</span>
+                                    <span className="text-slate-400 text-[9px] truncate ml-2 max-w-[120px]">{vehicle.vin}</span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex gap-1 px-3 pb-3">
+                            <button onClick={() => handleEdit(vehicle)}
+                                className="flex-1 py-1 text-[9px] font-bold bg-slate-800 border border-slate-700 text-slate-400 hover:text-gold hover:border-gold/40 rounded transition-all flex items-center justify-center gap-1">
+                                <Edit className="w-2.5 h-2.5" /> EDIT
+                            </button>
+                            <button onClick={() => handleDelete(vehicle.id)}
+                                className="px-2 py-1 text-[9px] font-bold bg-slate-800 border border-slate-700 text-slate-500 hover:text-red-400 hover:border-red-500/40 rounded transition-all">
+                                <Trash2 className="w-2.5 h-2.5" />
+                            </button>
+                        </div>
+                    </div>
                 ))}
             </div>
 
             {vehicles.length === 0 && (
                 <div className="text-center py-12">
-                    <Car className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">No vehicles added yet</p>
-                    <Button
-                        onClick={() => {
-                            resetForm();
-                            setEditingVehicle(null);
-                            setShowDialog(true);
-                        }}
-                        className="mt-4 bg-blue-600 hover:bg-blue-700"
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Your First Vehicle
-                    </Button>
+                    <Car className="w-10 h-10 text-slate-700 mx-auto mb-3" />
+                    <p className="text-slate-600 text-xs font-mono">NO VEHICLES ON RECORD</p>
+                    <button onClick={() => { resetForm(); setEditingVehicle(null); setShowDialog(true); }}
+                        className="mt-4 px-4 py-2 bg-gold/10 border border-gold/40 text-gold text-[10px] font-bold rounded hover:bg-gold/20 transition-all">
+                        + ADD VEHICLE
+                    </button>
                 </div>
             )}
 
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl bg-slate-900 border-slate-800">
                     <DialogHeader>
-                        <DialogTitle>{editingVehicle ? 'Edit Vehicle' : 'Add Vehicle'}</DialogTitle>
+                        <DialogTitle className="text-white font-mono text-sm tracking-widest flex items-center gap-2">
+                            <Car className="w-4 h-4 text-gold" />
+                            {editingVehicle ? 'EDIT VEHICLE RECORD' : 'ADD VEHICLE RECORD'}
+                        </DialogTitle>
                     </DialogHeader>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                    <form onSubmit={handleSubmit} className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label>Vehicle ID *</Label>
-                                <Input
-                                    value={formData.vehicle_id}
-                                    onChange={(e) => setFormData({...formData, vehicle_id: e.target.value})}
-                                    placeholder="Unit 23"
-                                    required
-                                />
+                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">VEHICLE ID *</Label>
+                                <Input value={formData.vehicle_id} onChange={e => setFormData({...formData, vehicle_id: e.target.value})} placeholder="Unit 23" required className="bg-slate-800 border-slate-700 text-white font-mono mt-1" />
                             </div>
                             <div>
-                                <Label>Status</Label>
-                                <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Active">Active</SelectItem>
-                                        <SelectItem value="Maintenance">Maintenance</SelectItem>
-                                        <SelectItem value="Out of Service">Out of Service</SelectItem>
-                                        <SelectItem value="Retired">Retired</SelectItem>
+                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">STATUS</Label>
+                                <Select value={formData.status} onValueChange={v => setFormData({...formData, status: v})}>
+                                    <SelectTrigger className="bg-slate-800 border-slate-700 text-white font-mono mt-1"><SelectValue /></SelectTrigger>
+                                    <SelectContent className="bg-slate-800 border-slate-700">
+                                        {['Active','Maintenance','Out of Service','Retired'].map(s => <SelectItem key={s} value={s} className="text-white font-mono">{s}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-3 gap-3">
                             <div>
-                                <Label>Make *</Label>
-                                <Input
-                                    value={formData.make}
-                                    onChange={(e) => setFormData({...formData, make: e.target.value})}
-                                    placeholder="Ford"
-                                    required
-                                />
+                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">MAKE *</Label>
+                                <Input value={formData.make} onChange={e => setFormData({...formData, make: e.target.value})} placeholder="Ford" required className="bg-slate-800 border-slate-700 text-white font-mono mt-1" />
                             </div>
                             <div>
-                                <Label>Model *</Label>
-                                <Input
-                                    value={formData.model}
-                                    onChange={(e) => setFormData({...formData, model: e.target.value})}
-                                    placeholder="Explorer"
-                                    required
-                                />
+                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">MODEL *</Label>
+                                <Input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} placeholder="Explorer" required className="bg-slate-800 border-slate-700 text-white font-mono mt-1" />
                             </div>
                             <div>
-                                <Label>Year *</Label>
-                                <Input
-                                    type="number"
-                                    value={formData.year}
-                                    onChange={(e) => setFormData({...formData, year: parseInt(e.target.value)})}
-                                    required
-                                />
+                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">YEAR *</Label>
+                                <Input type="number" value={formData.year} onChange={e => setFormData({...formData, year: parseInt(e.target.value)})} required className="bg-slate-800 border-slate-700 text-white font-mono mt-1" />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <Label>License Plate</Label>
-                                <Input
-                                    value={formData.license_plate}
-                                    onChange={(e) => setFormData({...formData, license_plate: e.target.value})}
-                                    placeholder="ABC-1234"
-                                />
+                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">LICENSE PLATE</Label>
+                                <Input value={formData.license_plate} onChange={e => setFormData({...formData, license_plate: e.target.value})} placeholder="ABC-1234" className="bg-slate-800 border-slate-700 text-white font-mono mt-1" />
                             </div>
                             <div>
-                                <Label>Mileage</Label>
-                                <Input
-                                    type="number"
-                                    value={formData.mileage}
-                                    onChange={(e) => setFormData({...formData, mileage: parseInt(e.target.value)})}
-                                />
+                                <Label className="text-slate-500 font-mono text-[10px] tracking-widest">MILEAGE</Label>
+                                <Input type="number" value={formData.mileage} onChange={e => setFormData({...formData, mileage: parseInt(e.target.value)})} className="bg-slate-800 border-slate-700 text-white font-mono mt-1" />
                             </div>
                         </div>
                         <div>
-                            <Label>VIN</Label>
-                            <Input
-                                value={formData.vin}
-                                onChange={(e) => setFormData({...formData, vin: e.target.value})}
-                                placeholder="1HGBH41JXMN109186"
-                            />
+                            <Label className="text-slate-500 font-mono text-[10px] tracking-widest">VIN</Label>
+                            <Input value={formData.vin} onChange={e => setFormData({...formData, vin: e.target.value})} placeholder="1HGBH41JXMN109186" className="bg-slate-800 border-slate-700 text-white font-mono mt-1" />
                         </div>
                         <div>
-                            <Label>Notes</Label>
-                            <Textarea
-                                value={formData.notes}
-                                onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                                placeholder="Additional notes..."
-                            />
+                            <Label className="text-slate-500 font-mono text-[10px] tracking-widest">NOTES</Label>
+                            <Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} placeholder="Additional notes..." className="bg-slate-800 border-slate-700 text-white font-mono mt-1" />
                         </div>
-                        <div className="flex justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
-                                Cancel
-                            </Button>
-                            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                                {editingVehicle ? 'Update' : 'Add'} Vehicle
-                            </Button>
+                        <div className="flex gap-2 pt-1">
+                            <button type="button" onClick={() => setShowDialog(false)}
+                                className="flex-1 py-2 bg-slate-800 border border-slate-700 text-slate-400 hover:text-white font-mono text-xs rounded transition-all">
+                                CANCEL
+                            </button>
+                            <button type="submit"
+                                className="flex-1 py-2 bg-gold/10 border border-gold/50 text-gold hover:bg-gold/20 font-mono text-xs font-bold rounded transition-all">
+                                {editingVehicle ? 'UPDATE RECORD' : 'ADD VEHICLE'}
+                            </button>
                         </div>
                     </form>
                 </DialogContent>
             </Dialog>
-        </Card>
+        </div>
     );
 }
