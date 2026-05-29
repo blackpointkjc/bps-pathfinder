@@ -56,6 +56,7 @@ import CADHome from './pages/CADHome';
 import CallHistory from './pages/CallHistory';
 import CommandDashboard from './pages/CommandDashboard';
 import DispatchCenter from './pages/DispatchCenter';
+import DispatchLog from './pages/DispatchLog';
 
 import LinkedAppSearch from './pages/LinkedAppSearch';
 import Navigation from './pages/Navigation';
@@ -76,6 +77,7 @@ export const PAGES = {
     "CallHistory": CallHistory,
     "CommandDashboard": CommandDashboard,
     "DispatchCenter": DispatchCenter,
+    "DispatchLog": DispatchLog,
 
     "LinkedAppSearch": LinkedAppSearch,
     "Navigation": Navigation,
