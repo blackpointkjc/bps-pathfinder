@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
+import { classifyCall } from '@/lib/cadCallTypes';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
@@ -270,10 +271,8 @@ export default function Navigation() {
     const mapVisibleUnits = isSupervisorUser ? otherUnits : otherUnits.filter(u => u.status !== 'Out of Service');
 
     const criticalCalls = activeCalls.filter(c => {
-        const incident = c.incident?.toLowerCase() || '';
-        return incident.includes('shooting') || incident.includes('officer') || 
-               incident.includes('assault') || incident.includes('robbery') ||
-               c.priority === 'critical' || c.priority === 'high';
+        const classified = classifyCall(c.incident || '');
+        return classified.matched_type?.priority === 'critical' || c.priority === 'critical';
     });
     const unassignedCalls = activeCalls.filter(c => !c.assigned_units?.length && !c.source);
     const displayedCalls = showOnlyCriticalCalls ? criticalCalls : activeCalls;
