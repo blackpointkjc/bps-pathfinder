@@ -299,8 +299,12 @@ export default function AdminPortal() {
                             <div className="max-h-64 overflow-y-auto">
                                 {users.map((u, idx) => (
                                     <div key={u.id} className={`flex items-center px-3 py-2 border-b border-slate-800/60 text-[10px] hover:bg-slate-800/30 ${idx % 2 === 0 ? '' : 'bg-slate-900/30'}`}>
-                                        <div className="w-36 flex-shrink-0 text-white font-bold truncate pr-2">{u.full_name || '—'}</div>
-                                        <div className="w-24 flex-shrink-0 text-slate-400 truncate pr-2">{u.rank || '—'}</div>
+                                        <div className="w-36 flex-shrink-0 text-white font-bold truncate pr-2">{u.last_name?.toUpperCase() || u.full_name?.split(' ').pop().toUpperCase() || '—'}</div>
+                                        <div className="w-24 flex-shrink-0 truncate pr-2">
+                                            {u.rank ? (
+                                                <span className="text-[8px] px-1.5 py-0.5 bg-blue-900/30 border border-blue-500/30 text-blue-300 font-bold rounded">{u.rank.toUpperCase()}</span>
+                                            ) : <span className="text-slate-600">—</span>}
+                                        </div>
                                         <div className="w-16 flex-shrink-0 text-gold font-bold">{u.unit_number ? `#${u.unit_number}` : '—'}</div>
                                         <div className="w-20 flex-shrink-0">
                                             <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${
