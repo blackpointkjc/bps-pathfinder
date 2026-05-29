@@ -2,12 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import moment from 'moment-timezone';
 
 const severityConfig = {
   outage: { label: 'Outage', color: 'text-red-400', bg: 'bg-red-900/30 border-red-700' },
   degraded: { label: 'Degraded', color: 'text-yellow-400', bg: 'bg-yellow-900/30 border-yellow-700' },
   maintenance: { label: 'Maintenance', color: 'text-blue-400', bg: 'bg-blue-900/30 border-blue-700' },
+};
+
+const formatESTTime = (isoString) => {
+  const date = new Date(isoString);
+  return date.toLocaleString('en-US', { 
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
 };
 
 export default function SystemIssuesPanel({ currentUser }) {
@@ -93,11 +106,11 @@ export default function SystemIssuesPanel({ currentUser }) {
                     <div className="text-white font-mono font-bold text-sm">{issue.title}</div>
                     {issue.description && <div className="text-slate-400 text-xs mt-1">{issue.description}</div>}
                     <div className="text-slate-500 text-xs mt-2 font-mono">
-                      Reported by {userMap[issue.reported_by] || issue.reported_by} · {moment(issue.created_date).tz('America/New_York').format('MMM DD, YYYY HH:mm:ss z')}
+                      Reported by {userMap[issue.reported_by] || issue.reported_by} · {formatESTTime(issue.created_date)}
                     </div>
                     {issue.resolved_at && (
                       <div className="text-green-500 text-xs mt-1 font-mono">
-                        ✓ Resolved by {userMap[issue.resolved_by] || issue.resolved_by} · {moment(issue.resolved_at).tz('America/New_York').format('MMM DD, YYYY HH:mm:ss z')}
+                        ✓ Resolved by {userMap[issue.resolved_by] || issue.resolved_by} · {formatESTTime(issue.resolved_at)}
                       </div>
                     )}
                   </div>
