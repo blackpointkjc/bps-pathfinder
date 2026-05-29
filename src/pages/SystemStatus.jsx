@@ -53,6 +53,20 @@ export default function SystemStatus() {
       ...form,
       reported_by: user?.email,
     });
+    // Email all admins
+    try {
+      const allUsers = await base44.entities.User.list();
+      const admins = allUsers.filter(u => u.role === 'admin' && u.email);
+      await Promise.all(admins.map(admin =>
+        base44.integrations.Core.SendEmail({
+          to: admin.email,
+          subject: `[BPS CAD] System Issue Reported: ${form.component}`,
+          body: `A system issue has been reported.\n\nComponent: ${form.component}\nSeverity: ${form.severity.toUpperCase()}\nTitle: ${form.title}\n${form.description ? `Details: ${form.description}\n` : ''}\nReported by: ${user?.email}\n\nPlease review at System Status page.`,
+        })
+      ));
+    } catch (e) {
+      console.error('Email notification failed:', e);
+    }
     setShowForm(false);
     setForm({ component: COMPONENTS[0], severity: 'outage', title: '', description: '' });
     load();

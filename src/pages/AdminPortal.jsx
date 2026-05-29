@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car, MapPin, Activity, Database, Server, TrendingUp, Clock, AlertTriangle, BarChart3, Archive, Home, FileText } from 'lucide-react';
+import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car, MapPin, Activity, Database, Server, TrendingUp, Clock, AlertTriangle, BarChart3, Archive, Home, FileText, XCircle, CheckCircle } from 'lucide-react';
 import { createPageUrl } from '../utils';
 import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import VehicleManagement from '@/components/admin/VehicleManagement';
@@ -19,6 +19,7 @@ import CarolineGISLookup from '@/components/admin/CarolineGISLookup';
 import IngestionDebugPanel from '@/components/admin/IngestionDebugPanel';
 import PropertyMonitoring from '@/components/admin/PropertyMonitoring';
 import IncidentReportsViewer from '@/components/admin/IncidentReportsViewer';
+import SystemIssuesPanel from '@/components/admin/SystemIssuesPanel';
 
 export default function AdminPortal() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -275,6 +276,18 @@ export default function AdminPortal() {
                             INCIDENT REPORTS
                         </button>
 
+                        <button
+                            onClick={() => setActiveTab('sysissues')}
+                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
+                                activeTab === 'sysissues' 
+                                    ? 'bg-slate-800 text-red-400 border-b-2 border-red-500' 
+                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                            }`}
+                        >
+                            <XCircle className="w-4 h-4" />
+                            SYSTEM ISSUES
+                        </button>
+
                     </div>
                 </div>
             </div>
@@ -433,6 +446,11 @@ export default function AdminPortal() {
                 {/* Incident Reports Tab */}
                 {activeTab === 'reports' && (
                     <IncidentReportsViewer />
+                )}
+
+                {/* System Issues Tab */}
+                {activeTab === 'sysissues' && (
+                    <SystemIssuesPanel currentUser={currentUser} />
                 )}
 
             </div>
