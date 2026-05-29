@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import CollapsePanelButton from '@/components/CollapsePanelButton';
 import { base44 } from '@/api/base44Client';
 import MapView from '@/components/map/MapView';
 import VACountiesBoundaries from '@/components/map/VACountiesBoundaries';
@@ -568,10 +569,7 @@ export default function Navigation() {
 
                 {/* Panel toggle tab */}
                 <div className="flex flex-col justify-center pointer-events-auto">
-                    <button onClick={() => setLeftPanelOpen(o => !o)}
-                        className="w-5 h-16 bg-[#0d1220]/90 backdrop-blur border border-l-0 border-[#1e2d4a] rounded-r-lg flex items-center justify-center text-slate-500 hover:text-white hover:bg-[#1a2535] transition-all">
-                        {leftPanelOpen ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                    </button>
+                    <CollapsePanelButton isOpen={leftPanelOpen} onClick={() => setLeftPanelOpen(o => !o)} />
                 </div>
             </div>
 
