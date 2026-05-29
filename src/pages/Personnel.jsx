@@ -178,12 +178,7 @@ export default function Personnel() {
                                 </span>
                             </div>
                             <div className="w-28 flex-shrink-0 flex gap-1.5">
-                                {currentUser?.role === 'admin' && (
-                                    <button onClick={() => handleEdit(person)}
-                                        className="flex items-center gap-1 px-2 py-1 bg-blue-900/40 border border-blue-700/50 hover:bg-blue-800/60 text-blue-300 rounded text-[9px] transition-all">
-                                        <Edit2 className="w-2.5 h-2.5" />EDIT
-                                    </button>
-                                )}
+
                                 <button onClick={() => window.location.href = createPageUrl('Navigation')}
                                     className="flex items-center gap-1 px-2 py-1 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-400 rounded text-[9px] transition-all">
                                     <MapPin className="w-2.5 h-2.5" />MAP
