@@ -176,7 +176,7 @@ export default function CommandDashboard() {
 
     const criticalCalls = calls.filter(c => getCallPriority(c) === 'critical');
     const highCalls = calls.filter(c => getCallPriority(c) === 'high');
-    const unassigned = calls.filter(c => !c.assigned_units || c.assigned_units.length === 0);
+    const unassigned = calls.filter(c => (!c.assigned_units || c.assigned_units.length === 0) && !c.source);
 
     const sortedCalls = [...calls].sort((a, b) => new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date));
 
