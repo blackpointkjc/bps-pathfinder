@@ -271,6 +271,12 @@ export default function Navigation() {
     const criticalCalls = activeCalls.filter(c => c.priority === 'critical' || c.priority === 'high');
     const unassignedCalls = activeCalls.filter(c => !c.assigned_units?.length);
 
+    const getUnitNumberFromId = (userId) => {
+        if (currentUser?.id === userId) return currentUser.unit_number || currentUser.full_name?.split(' ')[0] || 'UNIT';
+        const unit = otherUnits.find(u => u.id === userId);
+        return unit?.unit_number || unit?.full_name?.split(' ')[0] || 'UNIT';
+    };
+
     return (
         <div className="h-screen w-screen relative overflow-hidden bg-[#0a0e1a]">
             <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={isDispatchOrAdmin} />
@@ -697,13 +703,14 @@ export default function Navigation() {
                             )}
 
                             {/* Assigned Units */}
-                            {selectedCall.assigned_units?.length > 0 && (
+                            {/* Assigned Units */}
+                             {selectedCall.assigned_units?.length > 0 && (
                                 <div className="bg-[#111827] border border-[#1e2d4a] rounded-lg p-3">
                                     <div className="text-[8px] text-slate-500 mb-1.5 tracking-widest">ASSIGNED UNITS</div>
                                     <div className="flex flex-wrap gap-1.5">
                                         {selectedCall.assigned_units.map((uid, i) => (
                                             <span key={i} className="text-[9px] px-2 py-1 bg-blue-900/30 border border-blue-500/30 rounded text-blue-300 font-bold">
-                                                {uid.slice(-6).toUpperCase()}
+                                                {getUnitNumberFromId(uid)}
                                             </span>
                                         ))}
                                     </div>
