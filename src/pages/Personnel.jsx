@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Users, Search, Edit2, MapPin, Save, X } from 'lucide-react';
+import { Search, Edit2, MapPin, Save, X, RefreshCw } from 'lucide-react';
 import { createPageUrl } from '../utils';
+
+const STATUS_CFG = {
+    Available:        { dot: 'bg-green-400',  badge: 'bg-green-900/40 text-green-300 border-green-600/50' },
+    Enroute:          { dot: 'bg-yellow-400', badge: 'bg-yellow-900/40 text-yellow-300 border-yellow-600/50' },
+    'On Scene':       { dot: 'bg-blue-400',   badge: 'bg-blue-900/40 text-blue-300 border-blue-600/50' },
+    Busy:             { dot: 'bg-orange-400', badge: 'bg-orange-900/40 text-orange-300 border-orange-600/50' },
+    'On Patrol':      { dot: 'bg-cyan-400',   badge: 'bg-cyan-900/40 text-cyan-300 border-cyan-600/50' },
+    Supervisor:       { dot: 'bg-purple-400', badge: 'bg-purple-900/40 text-purple-300 border-purple-600/50' },
+    'Out of Service': { dot: 'bg-gray-500',   badge: 'bg-gray-800 text-gray-500 border-gray-600/50' },
+};
 
 export default function Personnel() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -15,8 +21,10 @@ export default function Personnel() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterRole, setFilterRole] = useState('all');
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [editDialog, setEditDialog] = useState(false);
     const [editForm, setEditForm] = useState({});
+    const [lastRefresh, setLastRefresh] = useState(new Date());
 
     useEffect(() => {
         init();
@@ -29,257 +37,200 @@ export default function Personnel() {
             const user = await base44.auth.me();
             setCurrentUser(user);
             await loadPersonnel();
-        } catch (error) {
-            console.error('Error initializing:', error);
-        } finally {
-            setLoading(false);
-        }
+        } catch (error) { console.error(error); }
+        finally { setLoading(false); }
     };
 
     const loadPersonnel = async () => {
         try {
             const response = await base44.entities.User.list();
             setPersonnel(response || []);
-        } catch (error) {
-            console.error('Error loading personnel:', error);
-        }
+            setLastRefresh(new Date());
+        } catch (error) { console.error(error); }
+        finally { setRefreshing(false); }
     };
 
     const handleEdit = (person) => {
         const parts = (person.full_name || '').trim().split(' ');
         const lastName = parts.length > 1 ? parts[parts.length - 1] : parts[0];
         const firstName = parts.length > 1 ? parts.slice(0, parts.length - 1).join(' ') : '';
-        setEditForm({
-            id: person.id,
-            first_name: firstName,
-            last_name: lastName,
-            unit_number: person.unit_number || '',
-            rank: person.rank || '',
-            status: person.status || 'Available'
-        });
+        setEditForm({ id: person.id, first_name: firstName, last_name: lastName, unit_number: person.unit_number || '', rank: person.rank || '', status: person.status || 'Available' });
         setEditDialog(true);
     };
 
     const handleSave = async () => {
         try {
             const fullName = [editForm.first_name, editForm.last_name].filter(Boolean).join(' ').trim();
-            await base44.functions.invoke('updateUser', {
-                userId: editForm.id,
-                updates: {
-                    full_name: fullName,
-                    unit_number: editForm.unit_number,
-                    rank: editForm.rank,
-                    status: editForm.status
-                }
-            });
-            toast.success('Personnel updated');
+            await base44.functions.invoke('updateUser', { userId: editForm.id, updates: { full_name: fullName, unit_number: editForm.unit_number, rank: editForm.rank, status: editForm.status } });
+            toast.success('Personnel record updated');
             setEditDialog(false);
             await loadPersonnel();
         } catch (error) {
-            console.error('Save error:', error);
-            toast.error('Failed to update: ' + (error?.message || 'Unknown error'));
+            toast.error('Update failed: ' + (error?.message || 'Unknown error'));
         }
     };
 
     const filteredPersonnel = personnel.filter(person => {
-        const matchesRole = filterRole === 'all' ||
-            (filterRole === 'officer' && person.role !== 'admin') ||
-            (filterRole === 'admin' && person.role === 'admin') ||
-            (filterRole === 'dispatch' && person.dispatch_role);
-        const matchesSearch = !searchQuery ||
-            person.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            person.unit_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            person.email?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesRole = filterRole === 'all' || (filterRole === 'officer' && person.role !== 'admin') || (filterRole === 'admin' && person.role === 'admin') || (filterRole === 'dispatch' && person.dispatch_role);
+        const matchesSearch = !searchQuery || person.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || person.unit_number?.toLowerCase().includes(searchQuery.toLowerCase()) || person.email?.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesRole && matchesSearch;
     });
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-2 border-blue-500 border-t-transparent" />
-            </div>
-        );
-    }
+    const available = filteredPersonnel.filter(p => p.status === 'Available').length;
+    const onDuty = filteredPersonnel.filter(p => p.status && p.status !== 'Out of Service').length;
+
+    if (loading) return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+            <div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-gold border-t-transparent mx-auto mb-3" /><p className="text-gold font-mono text-xs tracking-widest">LOADING ROSTER...</p></div>
+        </div>
+    );
 
     return (
-        <div className="min-h-screen bg-slate-950">
+        <div className="bg-slate-950 min-h-full flex flex-col font-mono">
             {/* Header */}
-            <div className="bg-slate-900 border-b border-slate-800">
-                <div className="px-6 py-3 flex items-center gap-4">
-                    <Users className="w-5 h-5 text-gold" />
-                    <h1 className="text-lg font-bold text-white tracking-tight font-mono">PERSONNEL ROSTER</h1>
-                    <Badge className="bg-gold/20 text-gold border border-gold/30 font-mono">
-                        {filteredPersonnel.length} PERSONNEL
-                    </Badge>
+            <div className="flex-none bg-slate-900 border-b-2 border-gold/50 px-4 py-2 flex items-center gap-3">
+                <div className="w-1 h-6 bg-gold rounded-sm" />
+                <span className="text-white font-bold text-sm tracking-widest">PERSONNEL ROSTER</span>
+                <div className="flex-1" />
+                <span className="text-slate-600 text-[10px]">REFRESHED {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
+                <button onClick={() => { setRefreshing(true); loadPersonnel(); }} disabled={refreshing}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 hover:text-white hover:border-gold transition-all text-[10px]">
+                    <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />REFRESH
+                </button>
+            </div>
+
+            {/* Stats Bar */}
+            <div className="flex-none grid grid-cols-4 border-b border-slate-800">
+                {[
+                    { label: 'TOTAL PERSONNEL', val: filteredPersonnel.length, color: 'text-gold' },
+                    { label: 'ON DUTY', val: onDuty, color: 'text-green-400' },
+                    { label: 'AVAILABLE', val: available, color: 'text-green-400' },
+                    { label: 'OFF DUTY / OOS', val: filteredPersonnel.filter(p => !p.status || p.status === 'Out of Service').length, color: 'text-slate-500' },
+                ].map(({ label, val, color }) => (
+                    <div key={label} className="flex flex-col items-center py-2 border-r last:border-r-0 border-slate-800">
+                        <span className={`text-xl font-bold font-mono leading-none ${color}`}>{val}</span>
+                        <span className="text-[9px] text-slate-500 tracking-wider mt-0.5">{label}</span>
+                    </div>
+                ))}
+            </div>
+
+            {/* Filter Bar */}
+            <div className="flex-none flex items-center gap-3 px-4 py-2 bg-slate-900/50 border-b border-slate-800">
+                <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
+                    <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="SEARCH NAME / UNIT / EMAIL..."
+                        className="pl-8 pr-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-white placeholder-slate-600 focus:outline-none focus:border-gold w-56" />
+                </div>
+                <div className="w-px h-5 bg-slate-700" />
+                <span className="text-[9px] text-slate-500">FILTER:</span>
+                <div className="flex gap-1">
+                    {['all', 'officer', 'admin', 'dispatch'].map(role => (
+                        <button key={role} onClick={() => setFilterRole(role)}
+                            className={`px-2.5 py-1 rounded border text-[9px] font-bold transition-all ${filterRole === role ? 'bg-gold/20 border-gold/50 text-gold' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}>
+                            {role.toUpperCase()}
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            {/* Main Content */}
-            <div className="p-6">
-                <Card className="bg-slate-900 border-slate-800">
-                    {/* Search + Filters */}
-                    <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
-                        <div className="flex items-center gap-4">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <Input
-                                    placeholder="Search personnel..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-10 bg-slate-900 border-slate-700 text-white font-mono text-sm"
-                                />
+            {/* Table */}
+            <div className="flex-1 overflow-auto">
+                {/* Column Headers */}
+                <div className="sticky top-0 z-10 flex items-center bg-slate-800 border-b-2 border-slate-700 px-4 py-1.5 text-[9px] text-slate-500 tracking-widest">
+                    <div className="w-6 flex-shrink-0" />
+                    <div className="w-24 flex-shrink-0">UNIT</div>
+                    <div className="w-40 flex-shrink-0">RANK / NAME</div>
+                    <div className="flex-1">EMAIL</div>
+                    <div className="w-28 flex-shrink-0">STATUS</div>
+                    <div className="w-20 flex-shrink-0">ROLE</div>
+                    <div className="w-28 flex-shrink-0">ACTIONS</div>
+                </div>
+
+                {filteredPersonnel.length === 0 ? (
+                    <div className="flex items-center justify-center h-24 text-slate-600 text-xs tracking-widest">— NO PERSONNEL MATCH FILTERS —</div>
+                ) : filteredPersonnel.map((person, idx) => {
+                    const cfg = STATUS_CFG[person.status] || STATUS_CFG['Out of Service'];
+                    const nameParts = (person.full_name || '').trim().split(' ');
+                    const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0] || '—';
+                    return (
+                        <div key={person.id} className={`flex items-center px-4 py-2 border-b border-slate-800/60 hover:bg-slate-800/30 text-[10px] ${idx % 2 === 0 ? '' : 'bg-slate-900/30'}`}>
+                            <div className="w-6 flex-shrink-0">
+                                <span className={`w-2 h-2 rounded-full inline-block ${cfg.dot}`} />
                             </div>
-                            <div className="flex gap-2">
-                                {['all', 'officer', 'admin', 'dispatch'].map(role => (
-                                    <Button
-                                        key={role}
-                                        size="sm"
-                                        variant={filterRole === role ? 'default' : 'outline'}
-                                        onClick={() => setFilterRole(role)}
-                                        className={filterRole === role
-                                            ? 'bg-blue-600 hover:bg-blue-700 font-mono text-xs'
-                                            : 'border-slate-700 text-slate-400 hover:text-white font-mono text-xs'
-                                        }
-                                    >
-                                        {role.toUpperCase()}
-                                    </Button>
-                                ))}
+                            <div className="w-24 flex-shrink-0 text-gold font-bold">
+                                {person.unit_number ? `UNIT-${person.unit_number}` : '—'}
+                            </div>
+                            <div className="w-40 flex-shrink-0">
+                                <div className="text-white font-bold">{[person.rank, lastName].filter(Boolean).join(' ') || person.full_name || '—'}</div>
+                                {person.rank && <div className="text-slate-500 text-[9px]">{person.rank}</div>}
+                            </div>
+                            <div className="flex-1 text-slate-400 truncate pr-2">{person.email || '—'}</div>
+                            <div className="w-28 flex-shrink-0">
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${cfg.badge}`}>{person.status || 'UNKNOWN'}</span>
+                            </div>
+                            <div className="w-20 flex-shrink-0">
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${person.role === 'admin' ? 'bg-purple-900/40 text-purple-300 border-purple-600/40' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                                    {person.role === 'admin' ? 'ADMIN' : person.dispatch_role ? 'DISP' : 'USER'}
+                                </span>
+                            </div>
+                            <div className="w-28 flex-shrink-0 flex gap-1.5">
+                                {currentUser?.role === 'admin' && (
+                                    <button onClick={() => handleEdit(person)}
+                                        className="flex items-center gap-1 px-2 py-1 bg-blue-900/40 border border-blue-700/50 hover:bg-blue-800/60 text-blue-300 rounded text-[9px] transition-all">
+                                        <Edit2 className="w-2.5 h-2.5" />EDIT
+                                    </button>
+                                )}
+                                <button onClick={() => window.location.href = createPageUrl('Navigation')}
+                                    className="flex items-center gap-1 px-2 py-1 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-400 rounded text-[9px] transition-all">
+                                    <MapPin className="w-2.5 h-2.5" />MAP
+                                </button>
                             </div>
                         </div>
-                    </div>
+                    );
+                })}
+            </div>
 
-                    {/* Table */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-[#1e2d4a] bg-[#111827]">
-                                    <th className="text-left p-3 text-xs font-mono text-slate-400">NAME</th>
-                                    <th className="text-left p-3 text-xs font-mono text-slate-400">UNIT</th>
-
-                                    <th className="text-left p-3 text-xs font-mono text-slate-400">STATUS</th>
-                                    <th className="text-left p-3 text-xs font-mono text-slate-400">ROLE</th>
-                                    <th className="text-left p-3 text-xs font-mono text-slate-400">ACTIONS</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredPersonnel.map((person) => {
-                                    const nameParts = (person.full_name || '').trim().split(' ');
-                                    const displayName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0] || '-';
-                                    return (
-                                        <tr key={person.id} className="border-b border-[#1e2d4a] hover:bg-[#111827] transition-colors">
-                                            <td className="p-3 text-white font-mono text-xs">{[person.rank, person.last_name || (person.full_name || '').split(' ').slice(-1)[0]].filter(Boolean).join(' ') || '-'}</td>
-                                            <td className="p-3 text-[#f5a623] font-mono text-xs">
-                                                {person.unit_number ? `UNIT-${person.unit_number}` : '-'}
-                                            </td>
-
-                                            <td className="p-3">
-                                                <Badge className={`border font-mono text-xs ${
-                                                    person.status === 'Available' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                                                    person.status === 'Enroute' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                                                    person.status === 'On Scene' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                                                    person.status === 'Busy' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
-                                                    person.status === 'On Patrol' ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' :
-                                                    person.status === 'Supervisor' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' :
-                                                    person.status === 'Out of Service' ? 'bg-slate-600/40 text-slate-400 border-slate-500/30' :
-                                                    'bg-slate-700/40 text-slate-400 border-slate-600/30'
-                                                }`}>
-                                                    {person.status || 'UNKNOWN'}
-                                                </Badge>
-                                            </td>
-                                            <td className="p-3">
-                                                <Badge className={person.role === 'admin'
-                                                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30 font-mono text-xs'
-                                                    : 'bg-slate-700 text-slate-300 font-mono text-xs'
-                                                }>
-                                                    {person.role?.toUpperCase()}
-                                                </Badge>
-                                            </td>
-                                            <td className="p-3">
-                                                <div className="flex gap-2">
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => handleEdit(person)}
-                                                        className="bg-blue-600 hover:bg-blue-700 font-mono text-xs"
-                                                    >
-                                                        <Edit2 className="w-3 h-3 mr-1" />
-                                                        EDIT
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => window.location.href = createPageUrl('Navigation')}
-                                                        className="bg-purple-600 hover:bg-purple-700 font-mono text-xs"
-                                                    >
-                                                        <MapPin className="w-3 h-3 mr-1" />
-                                                        TRACK
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </Card>
+            {/* Status Bar */}
+            <div className="flex-none h-6 bg-slate-900 border-t border-slate-800 flex items-center px-4 gap-4 text-[9px] text-slate-500">
+                <span>SHOWING <span className="text-white">{filteredPersonnel.length}</span> OF <span className="text-white">{personnel.length}</span> PERSONNEL</span>
+                <div className="flex-1" />
+                <span className="text-green-500">● LIVE — 10s REFRESH</span>
             </div>
 
             {/* Edit Dialog */}
             <Dialog open={editDialog} onOpenChange={setEditDialog}>
-                <DialogContent className="bg-[#0d1220] border-[#1e2d4a] text-white font-mono">
+                <DialogContent className="bg-slate-900 border-slate-700 text-white font-mono max-w-md">
                     <DialogHeader>
-                        <DialogTitle className="font-mono">EDIT PERSONNEL</DialogTitle>
+                        <DialogTitle className="font-mono text-sm tracking-widest text-gold">EDIT PERSONNEL RECORD</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
+                        {[
+                            { label: 'LAST NAME', key: 'last_name', type: 'text' },
+                            { label: 'FIRST NAME', key: 'first_name', type: 'text' },
+                            { label: 'UNIT NUMBER', key: 'unit_number', type: 'text' },
+                            { label: 'RANK', key: 'rank', type: 'text' },
+                        ].map(({ label, key, type }) => (
+                            <div key={key}>
+                                <label className="text-[10px] text-slate-400 tracking-widest mb-1 block">{label}</label>
+                                <input type={type} value={editForm[key] || ''} onChange={e => setEditForm({ ...editForm, [key]: e.target.value })}
+                                    className="w-full bg-slate-800 border border-slate-700 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:border-gold" />
+                            </div>
+                        ))}
                         <div>
-                            <label className="text-xs text-slate-400 font-mono mb-2 block">LAST NAME</label>
-                            <Input
-                                value={editForm.last_name || ''}
-                                onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
-                                className="bg-slate-800 border-slate-700 text-white font-mono"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs text-slate-400 font-mono mb-2 block">UNIT NUMBER</label>
-                            <Input
-                                value={editForm.unit_number || ''}
-                                onChange={(e) => setEditForm({ ...editForm, unit_number: e.target.value })}
-                                className="bg-slate-800 border-slate-700 text-white font-mono"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs text-slate-400 font-mono mb-2 block">RANK</label>
-                            <Input
-                                value={editForm.rank || ''}
-                                onChange={(e) => setEditForm({ ...editForm, rank: e.target.value })}
-                                className="bg-slate-800 border-slate-700 text-white font-mono"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs text-slate-400 font-mono mb-2 block">STATUS</label>
-                            <select
-                                value={editForm.status || 'Available'}
-                                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                                className="w-full h-10 rounded-md bg-slate-800 border border-slate-700 text-white font-mono px-3 py-2 text-sm"
-                            >
-                                <option value="Available">Available</option>
-                                <option value="Enroute">Enroute</option>
-                                <option value="On Scene">On Scene</option>
-                                <option value="Busy">Busy</option>
-                                <option value="Out of Service">Out of Service</option>
-                                <option value="On Patrol">On Patrol</option>
-                                <option value="Supervisor">Supervisor</option>
+                            <label className="text-[10px] text-slate-400 tracking-widest mb-1 block">STATUS</label>
+                            <select value={editForm.status || 'Available'} onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                                className="w-full bg-slate-800 border border-slate-700 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:border-gold">
+                                {Object.keys(STATUS_CFG).map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
-                        <div className="flex gap-2">
-                            <Button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700 font-mono">
-                                <Save className="w-4 h-4 mr-2" />
-                                SAVE
-                            </Button>
-                            <Button onClick={() => setEditDialog(false)} variant="outline"
-                                className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800 font-mono">
-                                <X className="w-4 h-4 mr-2" />
-                                CANCEL
-                            </Button>
+                        <div className="flex gap-2 pt-2">
+                            <button onClick={handleSave} className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded font-bold text-sm transition-colors">
+                                <Save className="w-4 h-4" />SAVE
+                            </button>
+                            <button onClick={() => setEditDialog(false)} className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 rounded text-sm transition-colors">
+                                <X className="w-4 h-4" />CANCEL
+                            </button>
                         </div>
                     </div>
                 </DialogContent>

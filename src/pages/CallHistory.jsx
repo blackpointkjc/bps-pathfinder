@@ -1,374 +1,290 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Search, Clock, MapPin, History, Calendar, SortAsc, SortDesc, RefreshCw, Map } from 'lucide-react';
+import { Search, RefreshCw, MapPin, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 
-const getAgencyColor = (agency) => {
-    if (agency?.includes('RPD')) return 'bg-blue-600 text-white';
-    if (agency?.includes('CCPD')) return 'bg-blue-700 text-white';
-    if (agency?.includes('HPD') || agency?.includes('HCPD')) return 'bg-purple-600 text-white';
-    if (agency?.includes('CCFD') || agency?.includes('RFD')) return 'bg-red-600 text-white';
-    if (agency?.includes('EMS')) return 'bg-yellow-500 text-black';
-    return 'bg-gray-600 text-white';
+const AGENCY_COLORS = {
+    RPD: 'bg-blue-800 text-blue-200 border-blue-700',
+    CCPD: 'bg-blue-900 text-blue-300 border-blue-800',
+    HPD: 'bg-purple-900 text-purple-300 border-purple-800',
+    HCPD: 'bg-purple-900 text-purple-300 border-purple-800',
+    CCFD: 'bg-red-900 text-red-300 border-red-800',
+    RFD: 'bg-red-900 text-red-300 border-red-800',
+    EMS: 'bg-yellow-900 text-yellow-300 border-yellow-800',
+    BPS: 'bg-gold/20 text-gold border-gold/30',
 };
 
-const formatEST = (dateStr) => {
+const STATUS_COLORS = {
+    New: 'bg-red-900/60 text-red-300 border-red-700/50',
+    Pending: 'bg-orange-900/60 text-orange-300 border-orange-700/50',
+    Dispatched: 'bg-yellow-900/60 text-yellow-300 border-yellow-700/50',
+    Enroute: 'bg-yellow-900/60 text-yellow-300 border-yellow-700/50',
+    'On Scene': 'bg-blue-900/60 text-blue-300 border-blue-700/50',
+    Arrived: 'bg-blue-900/60 text-blue-300 border-blue-700/50',
+    Cleared: 'bg-green-900/60 text-green-300 border-green-700/50',
+    Closed: 'bg-slate-700 text-slate-400 border-slate-600',
+    Cancelled: 'bg-slate-700 text-slate-500 border-slate-600',
+};
+
+function fmtDT(dateStr) {
     if (!dateStr) return '—';
     return new Date(dateStr).toLocaleString('en-US', {
-        timeZone: 'America/New_York',
-        month: 'short', day: 'numeric', year: 'numeric',
-        hour: '2-digit', minute: '2-digit', hour12: true
-    }) + ' EST';
-};
+        timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    });
+}
+
+function agencyKey(agency) {
+    if (!agency) return '';
+    for (const k of Object.keys(AGENCY_COLORS)) {
+        if (agency.includes(k)) return k;
+    }
+    return '';
+}
 
 export default function CallHistory() {
     const navigate = useNavigate();
-    const [calls, setCalls] = useState([]);
-    const [filteredCalls, setFilteredCalls] = useState([]);
+    const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [sortBy, setSortBy] = useState('date'); // date, incident, area
-    const [sortOrder, setSortOrder] = useState('desc'); // asc, desc
-    const [selectedAgency, setSelectedAgency] = useState('all');
-    const [selectedStatus, setSelectedStatus] = useState('all');
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
+    const [refreshing, setRefreshing] = useState(false);
+    const [search, setSearch] = useState('');
+    const [agencyFilter, setAgencyFilter] = useState('ALL');
+    const [statusFilter, setStatusFilter] = useState('ALL');
+    const [sortField, setSortField] = useState('time');
+    const [sortDir, setSortDir] = useState('desc');
+    const [expandedId, setExpandedId] = useState(null);
+    const [lastRefresh, setLastRefresh] = useState(new Date());
+    const intervalRef = useRef(null);
 
     useEffect(() => {
-        checkAdminAccess();
+        init();
+        intervalRef.current = setInterval(loadAll, 30000);
+        return () => clearInterval(intervalRef.current);
     }, []);
 
-    const checkAdminAccess = async () => {
+    const init = async () => {
         try {
             const user = await base44.auth.me();
-            if (user.role !== 'admin') {
-                toast.error('Admin access required');
+            if (user.role !== 'admin' && !user.dispatch_role) {
+                toast.error('Access required');
                 navigate(createPageUrl('CommandDashboard'));
                 return;
             }
-            loadHistory();
-        } catch (error) {
-            navigate(createPageUrl('CommandDashboard'));
-        }
+        } catch { navigate(createPageUrl('CommandDashboard')); return; }
+        await loadAll();
     };
 
-    useEffect(() => {
-        filterAndSort();
-    }, [calls, searchQuery, sortBy, sortOrder, selectedAgency, selectedStatus, startDate, endDate]);
-
-    const loadHistory = async () => {
+    const loadAll = async () => {
         try {
-            const history = await base44.entities.CallHistory.list('-archived_date', 500);
-            console.log(`Loaded ${history?.length || 0} historical calls`);
-            setCalls(history || []);
-            
-            if (!history || history.length === 0) {
-                console.log('No call history found. This is normal if no calls have been archived yet.');
-            }
-        } catch (error) {
-            console.error('Error loading call history:', error);
-            
-            // Don't show error if the entity just doesn't have data yet
-            if (error.message?.includes('not found') || error.message?.includes('does not exist')) {
-                console.log('CallHistory entity exists but has no records yet');
-            } else {
-                toast.error('Failed to load call history');
-            }
+            const [active, archived] = await Promise.all([
+                base44.entities.DispatchCall.list('-created_date', 500),
+                base44.entities.CallHistory.list('-archived_date', 500),
+            ]);
+            const activeRows = (active || []).map(c => ({ ...c, _source: 'active' }));
+            const archivedRows = (archived || []).map(c => ({ ...c, _source: 'archived' }));
+            // Deduplicate by call_id if present
+            const seenIds = new Set(activeRows.map(c => c.call_id || c.id));
+            const dedupedArchived = archivedRows.filter(c => !seenIds.has(c.call_id));
+            setRows([...activeRows, ...dedupedArchived]);
+            setLastRefresh(new Date());
+        } catch (e) {
+            console.error(e);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
-    const filterAndSort = () => {
-        let filtered = [...calls];
-
-        // Filter by search query
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            filtered = filtered.filter(call => 
-                call.incident?.toLowerCase().includes(query) ||
-                call.location?.toLowerCase().includes(query) ||
-                call.agency?.toLowerCase().includes(query)
-            );
-        }
-
-        // Filter by agency
-        if (selectedAgency !== 'all') {
-            filtered = filtered.filter(call => 
-                call.agency?.includes(selectedAgency)
-            );
-        }
-
-        // Filter by status
-        if (selectedStatus !== 'all') {
-            filtered = filtered.filter(call => 
-                call.status?.toLowerCase() === selectedStatus.toLowerCase()
-            );
-        }
-
-        // Filter by date range
-        if (startDate) {
-            filtered = filtered.filter(call => {
-                const callDate = new Date(call.time_received || call.created_date);
-                return callDate >= new Date(startDate);
-            });
-        }
-        if (endDate) {
-            filtered = filtered.filter(call => {
-                const callDate = new Date(call.time_received || call.created_date);
-                return callDate <= new Date(endDate + 'T23:59:59');
-            });
-        }
-
-        // Sort
-        filtered.sort((a, b) => {
-            let comparison = 0;
-            
-            if (sortBy === 'date') {
-                const dateA = new Date(a.archived_date || a.created_date);
-                const dateB = new Date(b.archived_date || b.created_date);
-                comparison = dateA - dateB;
-            } else if (sortBy === 'incident') {
-                comparison = (a.incident || '').localeCompare(b.incident || '');
-            } else if (sortBy === 'area') {
-                comparison = (a.location || '').localeCompare(b.location || '');
-            }
-
-            return sortOrder === 'asc' ? comparison : -comparison;
-        });
-
-        setFilteredCalls(filtered);
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        await loadAll();
     };
 
-    const agencies = ['all', 'RPD', 'RFD', 'CCPD', 'CCFD', 'HPD', 'HCPD', 'BPS'];
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600" />
-            </div>
-        );
-    }
-
-    const handlePullRefresh = async () => {
-        setLoading(true);
-        await loadHistory();
+    const handleSort = (field) => {
+        if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        else { setSortField(field); setSortDir('desc'); }
     };
+
+    const agencies = ['ALL', 'RPD', 'CCPD', 'HPD', 'HCPD', 'RFD', 'CCFD', 'EMS', 'BPS'];
+    const statuses = ['ALL', 'New', 'Dispatched', 'Enroute', 'On Scene', 'Cleared', 'Closed', 'Cancelled'];
+
+    const filtered = rows.filter(r => {
+        const q = search.toLowerCase();
+        if (q && !r.incident?.toLowerCase().includes(q) && !r.location?.toLowerCase().includes(q) && !r.agency?.toLowerCase().includes(q)) return false;
+        if (agencyFilter !== 'ALL' && !r.agency?.includes(agencyFilter)) return false;
+        if (statusFilter !== 'ALL' && r.status !== statusFilter) return false;
+        return true;
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+        let va, vb;
+        if (sortField === 'time') { va = new Date(a.time_received || a.created_date); vb = new Date(b.time_received || b.created_date); }
+        else if (sortField === 'incident') { va = a.incident || ''; vb = b.incident || ''; }
+        else if (sortField === 'agency') { va = a.agency || ''; vb = b.agency || ''; }
+        else if (sortField === 'status') { va = a.status || ''; vb = b.status || ''; }
+        else { va = 0; vb = 0; }
+        if (va < vb) return sortDir === 'asc' ? -1 : 1;
+        if (va > vb) return sortDir === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const SortIcon = ({ field }) => {
+        if (sortField !== field) return <span className="text-slate-700 ml-1">↕</span>;
+        return <span className="text-gold ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>;
+    };
+
+    if (loading) return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+            <div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-gold border-t-transparent mx-auto mb-3" /><p className="text-gold font-mono text-xs tracking-widest">LOADING CALL HISTORY...</p></div>
+        </div>
+    );
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 md:p-6">
-            <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6 md:mb-8">
-                    <div className="flex items-center gap-3 md:gap-4">
-                        <div>
-                            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 flex items-center gap-2 md:gap-3">
-                                <History className="w-7 h-7 md:w-10 md:h-10 text-red-600" />
-                                Call History
-                            </h1>
-                            <p className="text-gray-600 mt-1 text-sm md:text-base">
-                                {filteredCalls.length} {filteredCalls.length === 1 ? 'call' : 'calls'} found
-                            </p>
-                        </div>
-                    </div>
-                    <Button variant="outline" size="icon" onClick={handlePullRefresh} title="Refresh">
-                        <RefreshCw className="w-4 h-4" />
-                    </Button>
+        <div className="bg-slate-950 min-h-full flex flex-col font-mono">
+            {/* Header */}
+            <div className="flex-none bg-slate-900 border-b-2 border-gold/50 px-4 py-2 flex items-center gap-3">
+                <div className="w-1 h-6 bg-gold rounded-sm" />
+                <span className="text-white font-bold text-sm tracking-widest">CALL HISTORY LOG</span>
+                <span className="text-[10px] text-slate-500 ml-2">ACTIVE + ARCHIVED — {sorted.length} RECORDS</span>
+                <div className="flex-1" />
+                <span className="text-slate-600 text-[10px]">REFRESHED {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
+                <button onClick={handleRefresh} disabled={refreshing}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 hover:text-white hover:border-gold transition-all text-[10px]">
+                    <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />REFRESH
+                </button>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="flex-none flex flex-wrap items-center gap-2 px-4 py-2 bg-slate-900/60 border-b border-slate-800">
+                {/* Search */}
+                <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
+                    <input value={search} onChange={e => setSearch(e.target.value)}
+                        placeholder="SEARCH INCIDENT / LOCATION / AGENCY..."
+                        className="pl-8 pr-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-white placeholder-slate-600 focus:outline-none focus:border-gold w-64" />
                 </div>
 
-                {/* Filters */}
-                <Card className="p-6 mb-6">
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            {/* Search */}
-                            <div className="md:col-span-2">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                    <Input
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        placeholder="Search by incident, location, or agency..."
-                                        className="pl-10"
-                                    />
+                <div className="w-px h-5 bg-slate-700" />
+
+                {/* Agency filter */}
+                <span className="text-[9px] text-slate-500 tracking-widest">AGENCY:</span>
+                <div className="flex gap-1">
+                    {agencies.map(a => (
+                        <button key={a} onClick={() => setAgencyFilter(a)}
+                            className={`px-2 py-1 rounded border text-[9px] font-bold transition-all ${agencyFilter === a ? 'bg-gold/20 border-gold/50 text-gold' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}>
+                            {a}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="w-px h-5 bg-slate-700" />
+
+                {/* Status filter */}
+                <span className="text-[9px] text-slate-500 tracking-widest">STATUS:</span>
+                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+                    className="bg-slate-800 border border-slate-700 text-[10px] text-white px-2 py-1.5 rounded focus:outline-none focus:border-gold">
+                    {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+            </div>
+
+            {/* Table */}
+            <div className="flex-1 overflow-auto">
+                {/* Column Headers */}
+                <div className="sticky top-0 z-10 flex items-center bg-slate-800 border-b-2 border-slate-700 px-3 py-1.5 text-[9px] text-slate-500 tracking-widest select-none">
+                    <div className="w-8 flex-shrink-0">#</div>
+                    <div className="w-36 flex-shrink-0 cursor-pointer hover:text-slate-300" onClick={() => handleSort('time')}>DATE/TIME <SortIcon field="time" /></div>
+                    <div className="flex-1 cursor-pointer hover:text-slate-300" onClick={() => handleSort('incident')}>INCIDENT TYPE <SortIcon field="incident" /></div>
+                    <div className="w-56 flex-shrink-0">LOCATION</div>
+                    <div className="w-20 flex-shrink-0 cursor-pointer hover:text-slate-300" onClick={() => handleSort('agency')}>AGENCY <SortIcon field="agency" /></div>
+                    <div className="w-24 flex-shrink-0 cursor-pointer hover:text-slate-300" onClick={() => handleSort('status')}>STATUS <SortIcon field="status" /></div>
+                    <div className="w-16 flex-shrink-0 text-center">UNITS</div>
+                    <div className="w-8 flex-shrink-0" />
+                </div>
+
+                {sorted.length === 0 ? (
+                    <div className="flex items-center justify-center h-32 text-slate-600 text-xs tracking-widest">— NO RECORDS MATCH FILTERS —</div>
+                ) : sorted.map((row, idx) => {
+                    const isActive = row._source === 'active' && !['Closed', 'Cleared', 'Cancelled'].includes(row.status);
+                    const agKey = agencyKey(row.agency);
+                    const agCls = AGENCY_COLORS[agKey] || 'bg-slate-700 text-slate-300 border-slate-600';
+                    const stCls = STATUS_COLORS[row.status] || 'bg-slate-700 text-slate-400 border-slate-600';
+                    const isExpanded = expandedId === (row.id);
+                    return (
+                        <div key={row.id}>
+                            <div
+                                onClick={() => setExpandedId(isExpanded ? null : row.id)}
+                                className={`flex items-center px-3 py-2 border-b border-slate-800/70 cursor-pointer transition-colors text-[10px]
+                                    ${isActive ? 'bg-blue-950/20 hover:bg-blue-950/40 border-l-2 border-l-blue-500' : 'bg-slate-900 hover:bg-slate-800/50 border-l-2 border-l-transparent'}
+                                    ${isExpanded ? 'bg-slate-800/60' : ''}`}>
+                                <div className="w-8 flex-shrink-0 text-slate-600">{sorted.length - idx}</div>
+                                <div className="w-36 flex-shrink-0 text-slate-400">{fmtDT(row.time_received || row.created_date)}</div>
+                                <div className="flex-1 min-w-0 pr-2">
+                                    <span className={`text-white font-bold ${isActive ? 'text-blue-200' : ''}`}>{row.incident || '—'}</span>
+                                    {isActive && <span className="ml-2 text-[8px] bg-blue-500/30 text-blue-300 border border-blue-500/40 px-1 py-0.5 rounded">ACTIVE</span>}
+                                </div>
+                                <div className="w-56 flex-shrink-0 text-slate-400 truncate pr-2">
+                                    <MapPin className="w-2.5 h-2.5 inline mr-1 text-slate-600" />{row.location || '—'}
+                                </div>
+                                <div className="w-20 flex-shrink-0">
+                                    <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${agCls}`}>{row.agency || '—'}</span>
+                                </div>
+                                <div className="w-24 flex-shrink-0">
+                                    <span className={`text-[9px] px-1.5 py-0.5 rounded border ${stCls}`}>{row.status || '—'}</span>
+                                </div>
+                                <div className="w-16 flex-shrink-0 text-center text-slate-500">
+                                    {row.assigned_units?.length > 0 ? <span className="text-green-400">{row.assigned_units.length}U</span> : '—'}
+                                </div>
+                                <div className="w-8 flex-shrink-0 text-slate-600 text-center">
+                                    {isExpanded ? <ChevronUp className="w-3 h-3 inline" /> : <ChevronDown className="w-3 h-3 inline" />}
                                 </div>
                             </div>
 
-                            {/* Agency Filter */}
-                            <div>
-                                <select
-                                    value={selectedAgency}
-                                    onChange={(e) => setSelectedAgency(e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    {agencies.map(agency => (
-                                        <option key={agency} value={agency}>
-                                            {agency === 'all' ? 'All Agencies' : agency}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Sort */}
-                            <div className="flex gap-2">
-                                <select
-                                    value={sortBy}
-                                    onChange={(e) => setSortBy(e.target.value)}
-                                    className="flex h-10 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="date">Date</option>
-                                    <option value="incident">Incident</option>
-                                    <option value="area">Area</option>
-                                </select>
-                                <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                                >
-                                    {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
-                                </Button>
-                            </div>
-                        </div>
-
-                        {/* Additional Filters Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* Status Filter */}
-                            <div>
-                                <select
-                                    value={selectedStatus}
-                                    onChange={(e) => setSelectedStatus(e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="all">All Statuses</option>
-                                    <option value="new">New</option>
-                                    <option value="dispatched">Dispatched</option>
-                                    <option value="enroute">Enroute</option>
-                                    <option value="on scene">On Scene</option>
-                                    <option value="cleared">Cleared</option>
-                                    <option value="closed">Closed</option>
-                                </select>
-                            </div>
-
-                            {/* Date Range */}
-                            <div>
-                                <Input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    placeholder="Start Date"
-                                    className="h-10"
-                                />
-                            </div>
-                            <div>
-                                <Input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    placeholder="End Date"
-                                    className="h-10"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Clear Filters */}
-                        {(searchQuery || selectedAgency !== 'all' || selectedStatus !== 'all' || startDate || endDate) && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                    setSearchQuery('');
-                                    setSelectedAgency('all');
-                                    setSelectedStatus('all');
-                                    setStartDate('');
-                                    setEndDate('');
-                                }}
-                                className="w-full md:w-auto"
-                            >
-                                Clear All Filters
-                            </Button>
-                        )}
-                    </div>
-                </Card>
-
-                {/* Call List */}
-                {filteredCalls.length === 0 ? (
-                    <Card className="p-12 text-center">
-                        <History className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">No Calls Found</h3>
-                        <p className="text-gray-600">
-                            {searchQuery || selectedAgency !== 'all' 
-                                ? 'Try adjusting your filters'
-                                : 'Call history will appear here once calls are archived'}
-                        </p>
-                    </Card>
-                ) : (
-                    <div className="grid gap-4">
-                        {filteredCalls.map((call, index) => (
-                            <motion.div
-                                key={call.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                            >
-                                <Card className="p-6 hover:shadow-lg transition-shadow">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <h3 className="text-xl font-bold text-gray-900">
-                                                    {call.incident}
-                                                </h3>
-                                                <Badge className={getAgencyColor(call.agency)}>
-                                                    {call.agency}
-                                                </Badge>
-                                                <Badge variant="outline" className="bg-gray-100">
-                                                    {call.status}
-                                                </Badge>
-                                            </div>
-
-                                            {call.ai_summary && (
-                                                <p className="text-sm text-gray-600 mb-3 bg-blue-50 p-3 rounded-lg">
-                                                    {call.ai_summary}
-                                                </p>
-                                            )}
-
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                                                <div className="flex items-center gap-2 text-gray-600">
-                                                    <MapPin className="w-4 h-4 text-gray-400" />
-                                                    <span>{call.location}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-gray-600">
-                                                    <Clock className="w-4 h-4 text-gray-400" />
-                                                    <span>{formatEST(call.time_received || call.created_date)}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-gray-600">
-                                                    <Calendar className="w-4 h-4 text-gray-400" />
-                                                    <span>{formatEST(call.archived_date || call.created_date)}</span>
-                                                </div>
-                                            </div>
+                            {/* Expanded detail row */}
+                            {isExpanded && (
+                                <div className="bg-slate-800/40 border-b border-slate-700 px-6 py-3 grid grid-cols-3 gap-x-6 gap-y-1.5 text-[10px]">
+                                    {row.description && (
+                                        <div className="col-span-3 mb-1">
+                                            <span className="text-slate-500 tracking-widest">NARRATIVE: </span>
+                                            <span className="text-slate-300">{row.description}</span>
                                         </div>
-                                        {(call.latitude && call.longitude) && (
-                                            <Button
-                                                size="sm"
-                                                onClick={() => navigate(createPageUrl('Navigation'))}
-                                                className="ml-4 bg-blue-600 hover:bg-blue-700 flex-shrink-0"
-                                            >
-                                                <Map className="w-4 h-4 mr-1" />
-                                                Live Map
-                                            </Button>
-                                        )}
-                                    </div>
-                                </Card>
-                            </motion.div>
-                        ))}
-                    </div>
-                )}
+                                    )}
+                                    {row.caller_name && <div><span className="text-slate-500">CALLER: </span><span className="text-white">{row.caller_name}</span></div>}
+                                    {row.caller_phone && <div><span className="text-slate-500">PHONE: </span><span className="text-white">{row.caller_phone}</span></div>}
+                                    {row.zone && <div><span className="text-slate-500">ZONE: </span><span className="text-white">{row.zone}</span></div>}
+                                    {row.cross_street && <div><span className="text-slate-500">CROSS ST: </span><span className="text-white">{row.cross_street}</span></div>}
+                                    {row.time_dispatched && <div><span className="text-slate-500">DISPATCHED: </span><span className="text-white">{fmtDT(row.time_dispatched)}</span></div>}
+                                    {row.time_on_scene && <div><span className="text-slate-500">ON SCENE: </span><span className="text-white">{fmtDT(row.time_on_scene)}</span></div>}
+                                    {row.time_cleared && <div><span className="text-slate-500">CLEARED: </span><span className="text-white">{fmtDT(row.time_cleared)}</span></div>}
+                                    {row.ai_summary && (
+                                        <div className="col-span-3 mt-1 bg-slate-900 border border-slate-700 rounded px-3 py-1.5">
+                                            <span className="text-gold text-[9px] tracking-widest">AI SUMMARY: </span>
+                                            <span className="text-slate-300">{row.ai_summary}</span>
+                                        </div>
+                                    )}
+                                    {isActive && (
+                                        <div className="col-span-3 mt-1">
+                                            <button onClick={() => navigate(`${createPageUrl('Navigation')}?callId=${row.id}${row.latitude ? `&lat=${row.latitude}&lng=${row.longitude}` : ''}`)}
+                                                className="px-3 py-1 bg-blue-700 hover:bg-blue-600 text-white text-[10px] rounded border border-blue-600 transition-colors">
+                                                VIEW ON MAP →
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Status Bar */}
+            <div className="flex-none h-6 bg-slate-900 border-t border-slate-800 flex items-center px-4 gap-4 text-[9px] text-slate-500">
+                <span>TOTAL: <span className="text-white">{sorted.length}</span></span>
+                <span>ACTIVE: <span className="text-blue-400">{sorted.filter(r => r._source === 'active' && !['Closed','Cleared','Cancelled'].includes(r.status)).length}</span></span>
+                <span>ARCHIVED: <span className="text-slate-400">{sorted.filter(r => r._source === 'archived').length}</span></span>
+                <div className="flex-1" />
+                <span className="text-green-500">● LIVE</span>
             </div>
         </div>
     );

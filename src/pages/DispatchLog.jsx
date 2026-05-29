@@ -2,22 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, Clock, User, Activity, Download, Search } from 'lucide-react';
+import { Search, RefreshCw, Download } from 'lucide-react';
 import { createPageUrl } from '../utils';
+
+function fmtDT(dateStr) {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleString('en-US', {
+        timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    });
+}
 
 export default function DispatchLog() {
     const navigate = useNavigate();
-    const [currentUser, setCurrentUser] = useState(null);
     const [statusLogs, setStatusLogs] = useState([]);
     const [callLogs, setCallLogs] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState('all');
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [lastRefresh, setLastRefresh] = useState(new Date());
 
     useEffect(() => {
         init();
@@ -28,193 +32,167 @@ export default function DispatchLog() {
     const init = async () => {
         try {
             const user = await base44.auth.me();
-            setCurrentUser(user);
-            
-            if (user.role !== 'admin') {
-                toast.error('Admin access required');
-                navigate(createPageUrl('CommandDashboard'));
-                return;
-            }
+            if (user.role !== 'admin') { toast.error('Admin access required'); navigate(createPageUrl('CommandDashboard')); return; }
             await loadLogs();
-        } catch (error) {
-            console.error('Error initializing:', error);
-            navigate(createPageUrl('CommandDashboard'));
-        } finally {
-            setLoading(false);
-        }
+        } catch { navigate(createPageUrl('CommandDashboard')); }
+        finally { setLoading(false); }
     };
 
     const loadLogs = async () => {
         try {
             const [unitLogs, callStatusLogs] = await Promise.all([
-                base44.entities.UnitStatusLog.list('-created_date', 100),
-                base44.entities.CallStatusLog.list('-created_date', 100)
+                base44.entities.UnitStatusLog.list('-created_date', 200),
+                base44.entities.CallStatusLog.list('-created_date', 200)
             ]);
             setStatusLogs(unitLogs || []);
             setCallLogs(callStatusLogs || []);
-        } catch (error) {
-            console.error('Error loading logs:', error);
-        }
-    };
-
-    const formatTimestamp = (dateStr) => {
-        if (!dateStr) return new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }) + ' EST';
-        return new Date(dateStr).toLocaleString('en-US', { timeZone: 'America/New_York' }) + ' EST';
+            setLastRefresh(new Date());
+        } catch (error) { console.error(error); }
+        finally { setRefreshing(false); }
     };
 
     const allLogs = [
-        ...statusLogs.map(log => ({ ...log, type: 'unit', timestamp: log.created_date })),
-        ...callLogs.map(log => ({ ...log, type: 'call', timestamp: log.created_date }))
+        ...statusLogs.map(log => ({ ...log, _type: 'unit', timestamp: log.created_date })),
+        ...callLogs.map(log => ({ ...log, _type: 'call', timestamp: log.created_date }))
     ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     const filteredLogs = allLogs.filter(log => {
-        const matchesType = filterType === 'all' || log.type === filterType;
-        const matchesSearch = !searchQuery || 
-            log.unit_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            log.incident_type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            log.new_status?.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesType && matchesSearch;
+        if (filterType !== 'all' && log._type !== filterType) return false;
+        const q = searchQuery.toLowerCase();
+        if (!q) return true;
+        return log.unit_name?.toLowerCase().includes(q) || log.incident_type?.toLowerCase().includes(q) || log.new_status?.toLowerCase().includes(q) || log.location?.toLowerCase().includes(q);
     });
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-2 border-blue-500 border-t-transparent" />
-            </div>
-        );
-    }
+    const exportCSV = () => {
+        const rows = [['TIMESTAMP', 'TYPE', 'UNIT/CALL', 'OLD STATUS', 'NEW STATUS', 'LOCATION', 'NOTES']];
+        filteredLogs.forEach(log => {
+            rows.push([
+                fmtDT(log.timestamp),
+                log._type.toUpperCase(),
+                log._type === 'unit' ? (log.unit_name || '') : (log.incident_type || ''),
+                log.old_status || '',
+                log.new_status || '',
+                log.location || '',
+                log.notes || ''
+            ]);
+        });
+        const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+        a.download = `dispatch_log_${Date.now()}.csv`; a.click();
+        toast.success('Log exported');
+    };
+
+    if (loading) return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+            <div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-gold border-t-transparent mx-auto mb-3" /><p className="text-gold font-mono text-xs tracking-widest">LOADING DISPATCH LOG...</p></div>
+        </div>
+    );
 
     return (
-        <div className="min-h-screen bg-slate-950">
+        <div className="bg-slate-950 min-h-full flex flex-col font-mono">
             {/* Header */}
-            <div className="bg-slate-900 border-b-2 border-blue-500/30 shadow-lg">
-                <div className="px-6 py-3">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <FileText className="w-6 h-6 text-purple-400" />
-                            <h1 className="text-xl font-bold text-white tracking-tight font-mono">DISPATCH LOG</h1>
-                            <Badge className="bg-purple-500/20 text-purple-400 border border-purple-500/30 font-mono">
-                                {filteredLogs.length} ENTRIES
-                            </Badge>
-                        </div>
-                        <Button
-                            size="sm"
-                            onClick={() => toast.info('Export feature coming soon')}
-                            className="bg-blue-600 hover:bg-blue-700 font-mono"
-                        >
-                            <Download className="w-4 h-4 mr-2" />
-                            EXPORT LOG
-                        </Button>
+            <div className="flex-none bg-slate-900 border-b-2 border-gold/50 px-4 py-2 flex items-center gap-3">
+                <div className="w-1 h-6 bg-gold rounded-sm" />
+                <span className="text-white font-bold text-sm tracking-widest">DISPATCH LOG</span>
+                <span className="text-[10px] text-slate-500 ml-2">{filteredLogs.length} ENTRIES</span>
+                <div className="flex-1" />
+                <span className="text-slate-600 text-[10px]">REFRESHED {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
+                <button onClick={exportCSV} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 hover:text-green-400 hover:border-green-600 transition-all text-[10px]">
+                    <Download className="w-3 h-3" />EXPORT CSV
+                </button>
+                <button onClick={() => { setRefreshing(true); loadLogs(); }} disabled={refreshing}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 hover:text-white hover:border-gold transition-all text-[10px]">
+                    <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />REFRESH
+                </button>
+            </div>
+
+            {/* Stats bar */}
+            <div className="flex-none grid grid-cols-4 border-b border-slate-800">
+                {[
+                    { label: 'TOTAL ENTRIES', val: allLogs.length, color: 'text-gold' },
+                    { label: 'UNIT STATUS CHANGES', val: statusLogs.length, color: 'text-green-400' },
+                    { label: 'CALL STATUS CHANGES', val: callLogs.length, color: 'text-blue-400' },
+                    { label: 'FILTERED', val: filteredLogs.length, color: 'text-slate-300' },
+                ].map(({ label, val, color }) => (
+                    <div key={label} className="flex flex-col items-center py-2 border-r last:border-r-0 border-slate-800">
+                        <span className={`text-xl font-bold leading-none ${color}`}>{val}</span>
+                        <span className="text-[9px] text-slate-500 tracking-wider mt-0.5">{label}</span>
                     </div>
+                ))}
+            </div>
+
+            {/* Filter Bar */}
+            <div className="flex-none flex items-center gap-3 px-4 py-2 bg-slate-900/50 border-b border-slate-800">
+                <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
+                    <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="SEARCH LOG ENTRIES..."
+                        className="pl-8 pr-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-white placeholder-slate-600 focus:outline-none focus:border-gold w-56" />
+                </div>
+                <div className="w-px h-5 bg-slate-700" />
+                <div className="flex gap-1">
+                    {[['all', 'ALL ENTRIES'], ['unit', 'UNIT LOGS'], ['call', 'CALL LOGS']].map(([val, label]) => (
+                        <button key={val} onClick={() => setFilterType(val)}
+                            className={`px-2.5 py-1 rounded border text-[9px] font-bold transition-all ${filterType === val ? 'bg-gold/20 border-gold/50 text-gold' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}>
+                            {label}
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            {/* Main Content */}
-            <div className="p-6">
-                <Card className="bg-slate-900 border-slate-800">
-                    <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-3">
-                        <div className="flex items-center gap-4">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <Input
-                                    placeholder="Search log entries..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-10 bg-slate-900 border-slate-700 text-white font-mono text-sm"
-                                />
-                            </div>
+            {/* Log Table */}
+            <div className="flex-1 overflow-auto">
+                {/* Headers */}
+                <div className="sticky top-0 z-10 flex items-center bg-slate-800 border-b-2 border-slate-700 px-4 py-1.5 text-[9px] text-slate-500 tracking-widest">
+                    <div className="w-36 flex-shrink-0">TIMESTAMP</div>
+                    <div className="w-20 flex-shrink-0">TYPE</div>
+                    <div className="w-32 flex-shrink-0">UNIT / CALL</div>
+                    <div className="w-28 flex-shrink-0">OLD STATUS</div>
+                    <div className="w-4 flex-shrink-0 text-center">→</div>
+                    <div className="w-28 flex-shrink-0">NEW STATUS</div>
+                    <div className="flex-1">DETAILS</div>
+                </div>
 
-                            <div className="flex gap-2 ml-auto">
-                                {['all', 'unit', 'call'].map(type => (
-                                    <Button
-                                        key={type}
-                                        size="sm"
-                                        variant={filterType === type ? 'default' : 'outline'}
-                                        onClick={() => setFilterType(type)}
-                                        className={filterType === type ? 
-                                            'bg-blue-600 hover:bg-blue-700 font-mono text-xs' : 
-                                            'border-slate-700 text-slate-400 hover:text-white font-mono text-xs'
-                                        }
-                                    >
-                                        {type === 'all' ? 'ALL' : type === 'unit' ? 'UNIT LOGS' : 'CALL LOGS'}
-                                    </Button>
-                                ))}
-                            </div>
+                {filteredLogs.length === 0 ? (
+                    <div className="flex items-center justify-center h-24 text-slate-600 text-xs tracking-widest">— NO LOG ENTRIES —</div>
+                ) : filteredLogs.map((log, idx) => (
+                    <div key={idx} className={`flex items-center px-4 py-2 border-b border-slate-800/60 text-[10px] hover:bg-slate-800/30 ${idx % 2 === 0 ? '' : 'bg-slate-900/30'}`}>
+                        <div className="w-36 flex-shrink-0 text-slate-400">{fmtDT(log.timestamp)}</div>
+                        <div className="w-20 flex-shrink-0">
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${log._type === 'unit' ? 'bg-green-900/40 text-green-300 border-green-700/40' : 'bg-blue-900/40 text-blue-300 border-blue-700/40'}`}>
+                                {log._type === 'unit' ? 'UNIT' : 'CALL'}
+                            </span>
+                        </div>
+                        <div className="w-32 flex-shrink-0 text-white font-bold truncate pr-2">
+                            {log._type === 'unit' ? (log.unit_name || '—') : (log.incident_type || '—')}
+                        </div>
+                        <div className="w-28 flex-shrink-0">
+                            <span className="text-[9px] px-1.5 py-0.5 bg-slate-800 border border-slate-700 text-slate-400 rounded">{log.old_status || 'N/A'}</span>
+                        </div>
+                        <div className="w-4 flex-shrink-0 text-center text-slate-600">→</div>
+                        <div className="w-28 flex-shrink-0">
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${
+                                log.new_status === 'Available' ? 'bg-green-900/40 text-green-300 border-green-700/40' :
+                                log.new_status === 'Enroute' ? 'bg-yellow-900/40 text-yellow-300 border-yellow-700/40' :
+                                log.new_status === 'On Scene' ? 'bg-blue-900/40 text-blue-300 border-blue-700/40' :
+                                log.new_status === 'Dispatched' ? 'bg-gold/20 text-gold border-gold/30' :
+                                'bg-slate-800 text-slate-400 border-slate-700'
+                            }`}>{log.new_status || '—'}</span>
+                        </div>
+                        <div className="flex-1 text-slate-500 truncate">
+                            {log._type === 'call' && log.location ? log.location : ''}
+                            {log.notes ? <span className="text-slate-600 ml-2">{log.notes}</span> : ''}
+                            {log._type === 'unit' && log.call_id ? <span className="text-slate-600 ml-2">CALL: {log.call_id.slice(-8).toUpperCase()}</span> : ''}
                         </div>
                     </div>
-                    <ScrollArea className="h-[calc(100vh-240px)]">
-                        <div className="p-4 space-y-2">
-                            {filteredLogs.length === 0 ? (
-                                <div className="text-center text-slate-500 font-mono py-8">
-                                    NO LOG ENTRIES FOUND
-                                </div>
-                            ) : (
-                                filteredLogs.map((log, idx) => (
-                                    <div key={idx} className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
-                                        <div className="flex items-start justify-between mb-2">
-                                            <div className="flex items-center gap-2">
-                                                {log.type === 'unit' ? (
-                                                    <User className="w-4 h-4 text-green-400" />
-                                                ) : (
-                                                    <Activity className="w-4 h-4 text-blue-400" />
-                                                )}
-                                                <Badge className={log.type === 'unit' ? 
-                                                    'bg-green-500/20 text-green-400 border border-green-500/30 font-mono text-xs' : 
-                                                    'bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono text-xs'
-                                                }>
-                                                    {log.type === 'unit' ? 'UNIT STATUS' : 'CALL STATUS'}
-                                                </Badge>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
-                                                <Clock className="w-3 h-3" />
-                                                {formatTimestamp(log.timestamp)}
-                                            </div>
-                                        </div>
-                                        {log.type === 'unit' ? (
-                                            <div>
-                                                <p className="text-white font-mono text-sm mb-1">
-                                                    <span className="text-blue-400">{log.unit_name}</span> changed status:
-                                                </p>
-                                                <div className="flex items-center gap-2">
-                                                    <Badge className="bg-slate-700 text-slate-300 font-mono text-xs">
-                                                        {log.old_status || 'N/A'}
-                                                    </Badge>
-                                                    <span className="text-slate-500">→</span>
-                                                    <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono text-xs">
-                                                        {log.new_status}
-                                                    </Badge>
-                                                </div>
-                                                {log.notes && (
-                                                    <p className="text-slate-400 text-xs font-mono mt-2">{log.notes}</p>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <div>
-                                                <p className="text-white font-mono text-sm mb-1">
-                                                    Call <span className="text-blue-400">{log.incident_type}</span> at {log.location}
-                                                </p>
-                                                <div className="flex items-center gap-2">
-                                                    <Badge className="bg-slate-700 text-slate-300 font-mono text-xs">
-                                                        {log.old_status || 'N/A'}
-                                                    </Badge>
-                                                    <span className="text-slate-500">→</span>
-                                                    <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono text-xs">
-                                                        {log.new_status}
-                                                    </Badge>
-                                                </div>
-                                                {log.unit_name && (
-                                                    <p className="text-slate-400 text-xs font-mono mt-2">
-                                                        Unit: {log.unit_name}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </ScrollArea>
-                </Card>
+                ))}
+            </div>
+
+            {/* Status Bar */}
+            <div className="flex-none h-6 bg-slate-900 border-t border-slate-800 flex items-center px-4 gap-4 text-[9px] text-slate-500">
+                <span>SHOWING <span className="text-white">{filteredLogs.length}</span> OF <span className="text-white">{allLogs.length}</span> ENTRIES</span>
+                <div className="flex-1" />
+                <span className="text-green-500">● LIVE — 10s REFRESH</span>
             </div>
         </div>
     );
