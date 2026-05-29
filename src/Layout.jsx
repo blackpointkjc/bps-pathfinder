@@ -22,7 +22,7 @@ const ALL_NAV = [
     { label: 'Personnel', icon: Users, page: 'Personnel', roles: ['admin'] },
     { label: 'Dispatch Log', icon: FileText, page: 'DispatchLog', roles: ['admin'] },
     { label: 'Reports', icon: BarChart2, page: 'Reports', roles: ['admin'] },
-    { label: 'System Status', icon: Activity, page: 'SystemStatus', roles: ['user', 'dispatch', 'admin'] },
+    { label: 'System Status', icon: Activity, page: 'SystemStatus', roles: ['admin'] },
     { label: 'SYSTEM', section: true, roles: ['admin'] },
     { label: 'Admin Portal', icon: Shield, page: 'AdminPortal', roles: ['admin'] },
 ];

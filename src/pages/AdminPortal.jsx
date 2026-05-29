@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car, MapPin, Activity, Database, Server, TrendingUp, Clock, AlertTriangle, BarChart3, Archive, Home, FileText, XCircle, CheckCircle } from 'lucide-react';
+import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car, MapPin, Activity, Database, Server, TrendingUp, Clock, AlertTriangle, BarChart3, XCircle, CheckCircle } from 'lucide-react';
 import { createPageUrl } from '../utils';
 import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import VehicleManagement from '@/components/admin/VehicleManagement';
@@ -18,7 +18,7 @@ import LocationTracking from '@/components/admin/LocationTracking';
 import CarolineGISLookup from '@/components/admin/CarolineGISLookup';
 import IngestionDebugPanel from '@/components/admin/IngestionDebugPanel';
 import PropertyMonitoring from '@/components/admin/PropertyMonitoring';
-import IncidentReportsViewer from '@/components/admin/IncidentReportsViewer';
+
 import SystemIssuesPanel from '@/components/admin/SystemIssuesPanel';
 
 export default function AdminPortal() {
@@ -66,9 +66,14 @@ export default function AdminPortal() {
 
     const loadDashboardData = async () => {
         try {
-            const calls = await base44.entities.DispatchCall.list('-created_date', 100);
-            
-            // Call volume over time (last 7 days)
+            // Fetch both active calls and archived history for accurate 7-day volume
+            const [calls, history, outages] = await Promise.all([
+                base44.entities.DispatchCall.list('-created_date', 500),
+                base44.entities.CallHistory.list('-created_date', 500),
+                base44.entities.SystemOutage.list('-created_date', 50)
+            ]);
+            const allCalls = [...calls, ...history];
+
             const last7Days = Array.from({ length: 7 }, (_, i) => {
                 const date = new Date();
                 date.setDate(date.getDate() - (6 - i));
@@ -77,11 +82,14 @@ export default function AdminPortal() {
 
             const volumeByDay = last7Days.map(day => ({
                 date: day,
-                count: calls.filter(c => c.created_date?.startsWith(day)).length
+                count: allCalls.filter(c => (c.created_date || c.time_received || '')?.startsWith(day)).length
             }));
 
-            // Critical incidents
-            const critical = calls.filter(c => 
+            // Compute uptime: % of last 30 days without active outages
+            const activeOutages = (outages || []).filter(o => !o.resolved_at && o.severity === 'outage');
+            const uptimePct = activeOutages.length === 0 ? '100.0%' : `${(100 - (activeOutages.length * 2.5)).toFixed(1)}%`;
+
+            const critical = calls.filter(c =>
                 c.priority === 'critical' || c.priority === 'high' ||
                 c.incident?.toLowerCase().includes('shooting') ||
                 c.incident?.toLowerCase().includes('officer')
@@ -90,7 +98,7 @@ export default function AdminPortal() {
             setDashboardData({
                 callVolume: volumeByDay,
                 criticalIncidents: critical,
-                systemHealth: { uptime: '99.9%', avgResponse: '3.2m' }
+                systemHealth: { uptime: uptimePct, avgResponse: '3.2m' }
             });
         } catch (error) {
             console.error('Error loading dashboard data:', error);
@@ -264,17 +272,7 @@ export default function AdminPortal() {
                             PROPERTIES
                         </button>
 
-                        <button
-                            onClick={() => setActiveTab('reports')}
-                            className={`flex items-center gap-2 px-6 py-3 text-sm font-mono border-r border-slate-800 transition-colors ${
-                                activeTab === 'reports' 
-                                    ? 'bg-slate-800 text-blue-400 border-b-2 border-blue-500' 
-                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                            }`}
-                        >
-                            <FileText className="w-4 h-4" />
-                            INCIDENT REPORTS
-                        </button>
+
 
                         <button
                             onClick={() => setActiveTab('sysissues')}
@@ -400,29 +398,6 @@ export default function AdminPortal() {
                             </Card>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <Button
-                                onClick={() => window.location.href = createPageUrl('Reports')}
-                                className="h-20 bg-slate-900 border-2 border-blue-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
-                            >
-                                <BarChart3 className="w-6 h-6 text-blue-400" />
-                                <span className="text-white font-mono font-bold text-sm">REPORTS</span>
-                            </Button>
-                            <Button
-                                onClick={() => window.location.href = createPageUrl('ArchiveManager')}
-                                className="h-20 bg-slate-900 border-2 border-purple-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
-                            >
-                                <Archive className="w-6 h-6 text-purple-400" />
-                                <span className="text-white font-mono font-bold text-sm">ARCHIVE</span>
-                            </Button>
-                            <Button
-                                onClick={() => window.location.href = createPageUrl('SystemStatus')}
-                                className="h-20 bg-slate-900 border-2 border-green-500 hover:bg-slate-800 flex flex-col items-center justify-center gap-2"
-                            >
-                                <Activity className="w-6 h-6 text-green-400" />
-                                <span className="text-white font-mono font-bold text-sm">SYSTEM STATUS</span>
-                            </Button>
-                        </div>
                     </div>
                 )}
 
@@ -443,10 +418,7 @@ export default function AdminPortal() {
                     <PropertyMonitoring />
                 )}
 
-                {/* Incident Reports Tab */}
-                {activeTab === 'reports' && (
-                    <IncidentReportsViewer />
-                )}
+
 
                 {/* System Issues Tab */}
                 {activeTab === 'sysissues' && (
