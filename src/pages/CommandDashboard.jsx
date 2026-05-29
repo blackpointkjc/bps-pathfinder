@@ -14,6 +14,7 @@ import {
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import { shouldAlertForGeofence } from '@/utils/alertUtils';
+import { classifyCall } from '@/lib/cadCallTypes';
 
 const UNIT_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
 
@@ -56,11 +57,13 @@ function KPICard({ label, value, sub, icon: Icon, color = 'text-gold' }) {
 }
 
 function getCallPriority(call) {
-    const t = `${call.incident || ''} ${call.description || ''}`.toLowerCase();
-    if (/shooting|stabbing|officer|shots|active shooter|code 3/.test(t)) return 'critical';
-    if (/assault|robbery|burglary|domestic|pursuit|accident with injury/.test(t)) return 'high';
-    if (/suspicious|disturbance|trespass|alarm/.test(t)) return 'medium';
-    return 'low';
+    // Use CAD classifier for accurate priority assignment
+    const classification = classifyCall(`${call.incident || ''} ${call.description || ''}`);
+    if (classification.matched_type) {
+        return classification.matched_type.priority;
+    }
+    // Fallback: check if call has explicit priority set
+    return call.priority || 'medium';
 }
 
 function timeAgo(dateStr) {
