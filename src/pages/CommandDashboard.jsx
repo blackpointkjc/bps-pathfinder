@@ -25,10 +25,19 @@ const UNIT_STATUS_COLORS = {
 
 const MY_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
 
-function cleanIncident(name) {
-    if (!name) return 'UNKNOWN';
+const STATUS_WORDS = new Set(['ENROUTE', 'ARRIVED', 'ASSIGNED', 'DISPATCHED', 'CLEARED', 'CLOSED', 'PENDING', 'NEW', 'ON SCENE', 'CANCELLED']);
+
+function cleanIncident(call) {
+    let name = call?.incident || '';
     // Strip trailing timestamps like "1:07 PM" or "13:45" that scrapers inject
-    return name.replace(/\s+\d{1,2}:\d{2}(\s*(AM|PM))?\s*$/i, '').trim() || name;
+    name = name.replace(/\s+\d{1,2}:\d{2}(\s*(AM|PM))?\s*$/i, '').trim();
+    // If what remains is just a status word, fall back to description or call_id
+    if (!name || STATUS_WORDS.has(name.toUpperCase())) {
+        const desc = call?.description?.split('\n')[0]?.trim();
+        if (desc && !STATUS_WORDS.has(desc.toUpperCase())) return desc;
+        return call?.call_id ? `CALL ${call.call_id}` : 'INCIDENT';
+    }
+    return name;
 }
 
 function getCallPriority(call) {
@@ -316,7 +325,7 @@ export default function CommandDashboard() {
                         ⚠ {criticalCalls.length} CRITICAL INCIDENT{criticalCalls.length > 1 ? 'S' : ''} ACTIVE
                     </span>
                     <span className="text-red-300/70 font-mono text-xs flex-1 truncate">
-                        {criticalCalls.slice(0, 2).map(c => `${c.incident} @ ${c.location}`).join('  |  ')}
+                        {criticalCalls.slice(0, 2).map(c => `${cleanIncident(c)} @ ${c.location}`).join('  |  ')}
                     </span>
                     <button onClick={() => navigate(createPageUrl('Navigation'))}
                         className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white font-mono font-bold text-[10px] rounded border border-red-400 transition-colors">
@@ -384,7 +393,7 @@ export default function CommandDashboard() {
 
                                     {/* Incident + Location */}
                                     <div className="flex-1 min-w-0 pr-2">
-                                        <div className="text-white font-mono font-bold text-xs truncate">{cleanIncident(call.incident)}</div>
+                                        <div className="text-white font-mono font-bold text-xs truncate">{cleanIncident(call)}</div>
                                         <div className="text-slate-400 font-mono text-[10px] truncate flex items-center gap-1 mt-0.5">
                                             <MapPin className="w-2.5 h-2.5 flex-shrink-0 text-slate-600" />
                                             {call.location}
@@ -510,7 +519,7 @@ export default function CommandDashboard() {
                                         className="flex items-start gap-1.5 cursor-pointer hover:bg-yellow-950/30 px-1 py-0.5 rounded">
                                         <span className="text-yellow-600 font-mono text-[9px] mt-0.5">►</span>
                                         <div className="min-w-0">
-                                            <div className="text-yellow-300 font-mono text-[10px] font-bold truncate">{call.incident}</div>
+                                            <div className="text-yellow-300 font-mono text-[10px] font-bold truncate">{cleanIncident(call)}</div>
                                             <div className="text-yellow-600 font-mono text-[9px] truncate">{call.location}</div>
                                         </div>
                                     </div>
