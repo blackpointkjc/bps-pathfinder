@@ -24,9 +24,10 @@ export default function SystemIssuesPanel({ currentUser }) {
   useEffect(() => { load(); }, []);
 
   const handleResolve = async (id) => {
+    const resolvedByName = [currentUser?.rank, currentUser?.last_name?.toUpperCase()].filter(Boolean).join(' ') || currentUser?.full_name || currentUser?.email;
     await base44.entities.SystemOutage.update(id, {
       resolved_at: new Date().toISOString(),
-      resolved_by: currentUser?.email,
+      resolved_by: resolvedByName,
     });
     toast.success('Issue marked as resolved');
     load();
@@ -80,11 +81,11 @@ export default function SystemIssuesPanel({ currentUser }) {
                     <div className="text-white font-mono font-bold text-sm">{issue.title}</div>
                     {issue.description && <div className="text-slate-400 text-xs mt-1">{issue.description}</div>}
                     <div className="text-slate-500 text-xs mt-2 font-mono">
-                      Reported by {issue.reported_by} · {new Date(issue.created_date).toLocaleString()}
+                      Reported by {issue.reported_by} · {new Date(issue.created_date).toLocaleString('en-US', { timeZone: 'America/New_York' })}
                     </div>
                     {issue.resolved_at && (
                       <div className="text-green-500 text-xs mt-1 font-mono">
-                        ✓ Resolved by {issue.resolved_by} · {new Date(issue.resolved_at).toLocaleString()}
+                        ✓ Resolved by {issue.resolved_by} · {new Date(issue.resolved_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}
                       </div>
                     )}
                   </div>
