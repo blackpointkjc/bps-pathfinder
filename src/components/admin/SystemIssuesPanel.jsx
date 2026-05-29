@@ -13,10 +13,21 @@ export default function SystemIssuesPanel({ currentUser }) {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showResolved, setShowResolved] = useState(false);
+  const [userMap, setUserMap] = useState({});
 
   const load = async () => {
     setLoading(true);
-    const all = await base44.entities.SystemOutage.list('-created_date', 100);
+    const [all, users] = await Promise.all([
+      base44.entities.SystemOutage.list('-created_date', 100),
+      base44.entities.User.list()
+    ]);
+    const map = {};
+    (users || []).forEach(u => {
+      const name = [u.rank, u.last_name?.toUpperCase()].filter(Boolean).join(' ') || u.full_name || u.email;
+      map[u.id] = name;
+      map[u.email] = name;
+    });
+    setUserMap(map);
     setIssues(all);
     setLoading(false);
   };
@@ -81,11 +92,11 @@ export default function SystemIssuesPanel({ currentUser }) {
                     <div className="text-white font-mono font-bold text-sm">{issue.title}</div>
                     {issue.description && <div className="text-slate-400 text-xs mt-1">{issue.description}</div>}
                     <div className="text-slate-500 text-xs mt-2 font-mono">
-                      Reported by {issue.reported_by} · {new Date(issue.created_date).toLocaleString('en-US', { timeZone: 'America/New_York' })}
+                      Reported by {userMap[issue.reported_by] || issue.reported_by} · {new Date(issue.created_date).toLocaleString('en-US', { timeZone: 'America/New_York' })}
                     </div>
                     {issue.resolved_at && (
                       <div className="text-green-500 text-xs mt-1 font-mono">
-                        ✓ Resolved by {issue.resolved_by} · {new Date(issue.resolved_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}
+                        ✓ Resolved by {userMap[issue.resolved_by] || issue.resolved_by} · {new Date(issue.resolved_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}
                       </div>
                     )}
                   </div>
