@@ -257,7 +257,11 @@ export default function Navigation() {
         setIsLoadingCalls(true);
         try {
             const all = await base44.entities.DispatchCall.list('-created_date', 200);
-            const active = all.filter(c => !['Closed', 'Cleared', 'Cancelled'].includes(c.status));
+            const ONE_HOUR_MS = 60 * 60 * 1000;
+            const active = all.filter(c =>
+                !['Closed', 'Cleared', 'Cancelled'].includes(c.status) &&
+                (Date.now() - new Date(c.time_received || c.created_date)) < ONE_HOUR_MS
+            );
             setActiveCalls(active);
             if (focusCallId) {
                 const target = active.find(c => c.id === focusCallId);
