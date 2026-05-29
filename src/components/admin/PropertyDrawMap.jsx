@@ -1,107 +1,134 @@
-import React, { useEffect } from 'react';
-import { MapContainer, TileLayer, Circle, Polygon, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet';
+import React, { useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, Circle, Polygon, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
-// Small dot icon for pins — avoids broken default image URLs
-const dotIcon = L.divIcon({
+const dotIcon = (color = '#d4a017') => L.divIcon({
   className: '',
-  html: '<div style="width:10px;height:10px;background:#d4a017;border:2px solid #fff;border-radius:50%;box-shadow:0 0 4px rgba(0,0,0,0.8);"></div>',
-  iconSize: [10, 10],
-  iconAnchor: [5, 5],
+  html: `<div style="width:12px;height:12px;background:${color};border:2px solid #fff;border-radius:50%;box-shadow:0 0 5px rgba(0,0,0,0.9);margin:-1px;"></div>`,
+  iconSize: [12, 12],
+  iconAnchor: [6, 6],
 });
 
-const centerIcon = L.divIcon({
-  className: '',
-  html: '<div style="width:14px;height:14px;background:#d4a017;border:2px solid #fff;border-radius:50%;box-shadow:0 0 6px rgba(212,160,23,0.8);"></div>',
-  iconSize: [14, 14],
-  iconAnchor: [7, 7],
-});
+// This component wires up native Leaflet click events using a ref so there are NO stale closures
+function MapEventBinder({ mode, onCenterChange, onPolygonChange, polygonRef }) {
+  const map = useMap();
 
-function ClickHandler({ mode, onCircleCenter, onPolygonPoint }) {
-  useMapEvents({
-    click(e) {
+  useEffect(() => {
+    if (!map) return;
+
+    // Disable double-click zoom so we can click rapidly to add points
+    map.doubleClickZoom.disable();
+
+    const handleClick = (e) => {
       const pt = [e.latlng.lat, e.latlng.lng];
-      if (mode === 'circle') onCircleCenter(pt);
-      else onPolygonPoint(pt);
-    },
-    dblclick(e) {
-      // Prevent zoom on double-click while drawing polygon
-      e.originalEvent.preventDefault();
-      e.originalEvent.stopPropagation();
-    },
-  });
+      if (mode === 'circle') {
+        onCenterChange(pt);
+      } else {
+        // Use the ref so we always have the latest points array
+        onPolygonChange([...polygonRef.current, pt]);
+      }
+    };
+
+    map.on('click', handleClick);
+    return () => {
+      map.off('click', handleClick);
+    };
+  }, [map, mode, onCenterChange, onPolygonChange]);
+
   return null;
 }
 
 function FlyTo({ center }) {
   const map = useMap();
+  const prevRef = useRef(null);
   useEffect(() => {
-    if (center) map.flyTo(center, 15, { duration: 1 });
-  }, [JSON.stringify(center)]);
+    const key = center ? center.join(',') : null;
+    if (center && key !== prevRef.current) {
+      prevRef.current = key;
+      map.flyTo(center, 15, { duration: 1.2 });
+    }
+  }, [center]);
   return null;
 }
 
 export default function PropertyDrawMap({ mode, center, radius, polygon, onCenterChange, onPolygonChange, flyTo }) {
+  // Keep a ref so event handlers always see the latest polygon array
+  const polygonRef = useRef(polygon);
+  useEffect(() => { polygonRef.current = polygon; }, [polygon]);
+
   const defaultCenter = [37.5407, -77.4360];
 
   return (
-    <MapContainer
-      center={defaultCenter}
-      zoom={13}
-      doubleClickZoom={false}
-      style={{ height: '300px', width: '100%', cursor: 'crosshair' }}
-    >
-      <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        attribution='&copy; CARTO'
-      />
+    <div style={{ cursor: 'crosshair', position: 'relative', zIndex: 0 }}>
+      <MapContainer
+        center={defaultCenter}
+        zoom={13}
+        style={{ height: '300px', width: '100%' }}
+        zoomControl={true}
+        scrollWheelZoom={true}
+      >
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution="&copy; CARTO"
+        />
 
-      <ClickHandler
-        mode={mode}
-        onCircleCenter={onCenterChange}
-        onPolygonPoint={(pt) => onPolygonChange([...polygon, pt])}
-      />
+        <MapEventBinder
+          mode={mode}
+          onCenterChange={onCenterChange}
+          onPolygonChange={onPolygonChange}
+          polygonRef={polygonRef}
+        />
 
-      {flyTo && <FlyTo center={flyTo} />}
+        {flyTo && <FlyTo center={flyTo} />}
 
-      {/* CIRCLE MODE */}
-      {mode === 'circle' && center && (
-        <>
-          <Marker position={center} icon={centerIcon} />
-          {radius > 0 && (
-            <Circle
-              center={center}
-              radius={radius}
-              pathOptions={{ color: '#d4a017', fillColor: '#d4a017', fillOpacity: 0.2, weight: 2, dashArray: '6,4' }}
-            />
-          )}
-        </>
-      )}
+        {/* ── CIRCLE MODE ── */}
+        {mode === 'circle' && center && (
+          <>
+            <Marker position={center} icon={dotIcon('#f59e0b')} />
+            {radius > 0 && (
+              <Circle
+                center={center}
+                radius={radius}
+                pathOptions={{ color: '#d4a017', fillColor: '#fbbf24', fillOpacity: 0.18, weight: 2 }}
+              />
+            )}
+          </>
+        )}
 
-      {/* POLYGON MODE */}
-      {mode === 'polygon' && polygon.length > 0 && (
-        <>
-          {polygon.map((pt, i) => (
-            <Marker key={i} position={pt} icon={dotIcon} />
-          ))}
+        {/* ── POLYGON MODE ── */}
+        {mode === 'polygon' && polygon.length > 0 && (
+          <>
+            {/* Vertex pins */}
+            {polygon.map((pt, i) => (
+              <Marker key={i} position={pt} icon={dotIcon(i === 0 ? '#f59e0b' : '#d4a017')} />
+            ))}
 
-          {/* Line connecting points (open path) */}
-          {polygon.length >= 2 && (
-            <Polyline
-              positions={polygon}
-              pathOptions={{ color: '#d4a017', weight: 2, dashArray: '6,4' }}
-            />
-          )}
+            {/* Connecting line (open) */}
+            {polygon.length >= 2 && (
+              <Polyline
+                positions={polygon}
+                pathOptions={{ color: '#d4a017', weight: 2, dashArray: '6 4' }}
+              />
+            )}
 
-          {/* Filled polygon when 3+ points */}
-          {polygon.length >= 3 && (
-            <Polygon
-              positions={polygon}
-              pathOptions={{ color: '#d4a017', fillColor: '#d4a017', fillOpacity: 0.2, weight: 2 }}
-            />
-          )}
-        </>
-      )}
-    </MapContainer>
+            {/* Closing line back to first point */}
+            {polygon.length >= 3 && (
+              <Polyline
+                positions={[polygon[polygon.length - 1], polygon[0]]}
+                pathOptions={{ color: '#fbbf24', weight: 1.5, dashArray: '4 4', opacity: 0.6 }}
+              />
+            )}
+
+            {/* Filled polygon */}
+            {polygon.length >= 3 && (
+              <Polygon
+                positions={polygon}
+                pathOptions={{ color: '#d4a017', fillColor: '#fbbf24', fillOpacity: 0.18, weight: 2 }}
+              />
+            )}
+          </>
+        )}
+      </MapContainer>
+    </div>
   );
 }
