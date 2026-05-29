@@ -85,9 +85,26 @@ export default function AdminPortal() {
                 count: allCalls.filter(c => (c.created_date || c.time_received || '')?.startsWith(day)).length
             }));
 
-            // Compute uptime: % of last 30 days without active outages
-            const activeOutages = (outages || []).filter(o => !o.resolved_at && o.severity === 'outage');
-            const uptimePct = activeOutages.length === 0 ? '100.0%' : `${(100 - (activeOutages.length * 2.5)).toFixed(1)}%`;
+            // Compute uptime: rolling year basis with actual outage durations
+            const oneYearAgo = new Date();
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+            const rollingYearOutages = (outages || []).filter(o => {
+                const createdDate = new Date(o.created_date || 0);
+                return createdDate >= oneYearAgo;
+            });
+            
+            let totalOutageMinutes = 0;
+            rollingYearOutages.forEach(o => {
+                const startTime = new Date(o.created_date || 0);
+                const endTime = o.resolved_at ? new Date(o.resolved_at) : new Date();
+                const durationMs = endTime - startTime;
+                const durationMinutes = durationMs / (1000 * 60);
+                totalOutageMinutes += Math.max(0, durationMinutes);
+            });
+            
+            const totalMinutesInYear = 365.25 * 24 * 60;
+            const uptimeFraction = Math.max(0, (totalMinutesInYear - totalOutageMinutes) / totalMinutesInYear);
+            const uptimePct = `${(uptimeFraction * 100).toFixed(2)}%`;
 
             const critical = calls.filter(c =>
                 c.priority === 'critical' || c.priority === 'high' ||
