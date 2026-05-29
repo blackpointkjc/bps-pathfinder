@@ -166,7 +166,7 @@ export default function Personnel() {
                                 {person.unit_number ? `UNIT-${person.unit_number}` : '—'}
                             </div>
                             <div className="w-40 flex-shrink-0">
-                                <div className="text-white font-bold">{lastName || person.full_name || '—'}</div>
+                                <div className="text-white font-bold">{person.full_name || '—'}</div>
                                 {person.rank && <div className="text-slate-500 text-[9px]">{person.rank}</div>}
                             </div>
                             <div className="flex-1 text-slate-400 truncate pr-2">{person.email || '—'}</div>
