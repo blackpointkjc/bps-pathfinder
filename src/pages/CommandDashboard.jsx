@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
-import { isCallNearMonitoredProperty } from '@/utils/alertUtils';
+import { shouldAlertForGeofence } from '@/utils/alertUtils';
 
 const UNIT_STATUSES = ['Available', 'Enroute', 'On Scene', 'Busy', 'Out of Service'];
 
@@ -82,6 +82,8 @@ export default function CommandDashboard() {
     const [currentUser, setCurrentUser] = useState(null);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const soundEnabledRef = React.useRef(true);
+    const currentUserRef = React.useRef(null);
+    const monitoredPropertiesRef = React.useRef([]);
     const knownCallIdsRef = React.useRef(null);
 
     useEffect(() => {
@@ -96,6 +98,7 @@ export default function CommandDashboard() {
 
         base44.auth.me().then(user => {
             setCurrentUser(user);
+            currentUserRef.current = user;
             const stored = localStorage.getItem(`bps_alerts_${user?.id}`);
             if (stored !== null) {
                 const val = stored === 'true';
@@ -116,7 +119,9 @@ export default function CommandDashboard() {
     const loadMonitoredProperties = async () => {
         try {
             const props = await base44.entities.MonitoredProperty.list();
-            setMonitoredProperties(props?.filter(p => p.enabled) || []);
+            const enabled = props?.filter(p => p.enabled) || [];
+            setMonitoredProperties(enabled);
+            monitoredPropertiesRef.current = enabled;
         } catch (error) {
             console.error('Error loading monitored properties:', error);
         }
@@ -140,8 +145,16 @@ export default function CommandDashboard() {
                 if (newCallIds.length > 0 && soundEnabledRef.current) {
                     const newCall = active.find(c => c.id === newCallIds[0]);
                     if (newCall) {
-                        playDispatchAlert();
-                        window.dispatchEvent(new CustomEvent('bps-new-call', { detail: newCall }));
+                        const isCritical = getCallPriority(newCall) === 'critical';
+                        const inGeofence = shouldAlertForGeofence(
+                            newCall,
+                            currentUserRef.current,
+                            monitoredPropertiesRef.current
+                        );
+                        if (!isCritical && inGeofence) {
+                            playDispatchAlert();
+                            window.dispatchEvent(new CustomEvent('bps-new-call', { detail: newCall }));
+                        }
                     }
                 }
                 knownCallIdsRef.current = currentIds;

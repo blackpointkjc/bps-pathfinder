@@ -21,6 +21,21 @@ export const isCallNearMonitoredProperty = (call, monitoredProperties) => {
   });
 };
 
+// Returns true if BOTH the call and the user are within the SAME monitored property geofence.
+// Used to gate alerts: only alert a user if they are physically within the same geofenced property as the call.
+export const shouldAlertForGeofence = (call, user, monitoredProperties) => {
+  if (!call?.latitude || !call?.longitude) return false;
+  if (!user?.current_latitude || !user?.current_longitude) return false;
+  if (!monitoredProperties?.length) return false;
+  return monitoredProperties.some(prop => {
+    if (!prop.enabled || !prop.latitude || !prop.longitude) return false;
+    const radius = prop.radiusMeters || 500;
+    const callDist = calculateDistance(call.latitude, call.longitude, prop.latitude, prop.longitude);
+    const userDist = calculateDistance(user.current_latitude, user.current_longitude, prop.latitude, prop.longitude);
+    return callDist <= radius && userDist <= radius;
+  });
+};
+
 // Single master AudioContext — we suspend/resume it to start/stop sound
 let masterCtx = null;
 let alertInterval = null;
