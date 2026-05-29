@@ -57,7 +57,7 @@ import CallHistory from './pages/CallHistory';
 import CommandDashboard from './pages/CommandDashboard';
 import DispatchCenter from './pages/DispatchCenter';
 import DispatchLog from './pages/DispatchLog';
-
+import Reports from './pages/Reports';
 import LinkedAppSearch from './pages/LinkedAppSearch';
 import Navigation from './pages/Navigation';
 import Personnel from './pages/Personnel';
@@ -78,7 +78,7 @@ export const PAGES = {
     "CommandDashboard": CommandDashboard,
     "DispatchCenter": DispatchCenter,
     "DispatchLog": DispatchLog,
-
+    "Reports": Reports,
     "LinkedAppSearch": LinkedAppSearch,
     "Navigation": Navigation,
     "Personnel": Personnel,
