@@ -10,11 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { X, Send, MapPin, AlertCircle } from 'lucide-react';
+import { CALL_TYPES, findCallType } from '@/lib/cadCallTypes';
 
 export default function CreateCallDialog({ units, currentUser, onClose, onCreated, initialCallType, initialPriority }) {
     const [creating, setCreating] = useState(false);
     const [selectedUnits, setSelectedUnits] = useState([]);
     const [activeUnions, setActiveUnions] = useState(new Set());
+    const [suggestedCallType, setSuggestedCallType] = useState(null);
     const [formData, setFormData] = useState({
         incident: initialCallType || '',
         location: '',
@@ -159,10 +161,44 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                                         <Label className="text-slate-300">Call Type *</Label>
                                         <Input
                                             value={formData.incident}
-                                            onChange={(e) => setFormData({...formData, incident: e.target.value})}
+                                            onChange={(e) => {
+                                                setFormData({...formData, incident: e.target.value});
+                                                const match = findCallType(e.target.value);
+                                                setSuggestedCallType(match);
+                                            }}
                                             placeholder="Traffic Accident, Burglary, Medical Emergency..."
                                             className="bg-slate-800 border-slate-700 text-white"
                                         />
+                                        {suggestedCallType && (
+                                            <div className="mt-2 p-2 bg-blue-900/40 border border-blue-600/50 rounded text-blue-300 text-xs">
+                                                <strong>Suggestion:</strong> {suggestedCallType.code} - {suggestedCallType.label}
+                                                <Button
+                                                    size="xs"
+                                                    variant="ghost"
+                                                    onClick={() => {
+                                                        setFormData({...formData, incident: suggestedCallType.label});
+                                                        setSuggestedCallType(null);
+                                                    }}
+                                                    className="ml-2 h-5 text-blue-300 hover:text-blue-100"
+                                                >
+                                                    Use
+                                                </Button>
+                                            </div>
+                                        )}
+                                        <div className="mt-3 grid grid-cols-2 gap-1 max-h-24 overflow-y-auto">
+                                            {CALL_TYPES.slice(0, 10).map(ct => (
+                                                <button
+                                                    key={ct.code}
+                                                    onClick={() => {
+                                                        setFormData({...formData, incident: ct.label});
+                                                        setSuggestedCallType(null);
+                                                    }}
+                                                    className="text-left text-xs px-2 py-1 bg-slate-700/50 hover:bg-slate-600/70 rounded text-slate-300 hover:text-white transition-colors"
+                                                >
+                                                    <strong>{ct.code}</strong> {ct.label.substring(0, 18)}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
 
                                     <div>
