@@ -263,6 +263,7 @@ export default function Navigation() {
                 (Date.now() - new Date(c.time_received || c.created_date)) < ONE_HOUR_MS
             );
             setActiveCalls(active);
+            // Store all calls for heatmap (last 30 days or 500 calls)
             if (focusCallId) {
                 const target = active.find(c => c.id === focusCallId);
                 if (target) { setSelectedCall(target); setShowCallSidebar(true); }
@@ -313,6 +314,7 @@ export default function Navigation() {
                     searchPin={null}
                     mapTheme={mapTheme}
                     showHeatmap={showHeatmap}
+                    allCalls={activeCalls}
                     onCallClick={(call) => {
                         setSelectedCall(call); setShowCallSidebar(true); setCallDistrict(null);
                         if (call.latitude && call.longitude) lookupDistrict(call.latitude, call.longitude).then(d => setCallDistrict(d));

@@ -171,7 +171,7 @@ function MapController({ center, routeBounds, mapCenter, isNavigating, heading }
     return null;
 }
 
-const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail, mapTheme = 'day', showHeatmap = false, children }) {
+const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail, mapTheme = 'day', showHeatmap = false, children, allCalls = [] }) {
     const defaultCenter = currentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
     
     // Calculate route bounds if route exists
@@ -350,7 +350,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             {searchPin && <SearchPinMarker position={searchPin.coords} address={searchPin.address} propertyInfo={searchPin.propertyInfo} />}
             
             {/* Call Volume Heatmap */}
-            <CallHeatmapLayer enabled={showHeatmap} />
+            <CallHeatmapLayer enabled={showHeatmap} calls={allCalls} />
 
             {/* Additional children (e.g., VA Counties) */}
             {children}
