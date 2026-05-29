@@ -17,7 +17,7 @@ const ALL_NAV = [
     { label: 'Live Map', icon: MapPin, page: 'Navigation', roles: ['user', 'dispatch', 'admin'] },
     { label: 'DISPATCH', section: true, roles: ['dispatch', 'admin'] },
     { label: 'Dispatch Center', icon: Zap, page: 'DispatchCenter', roles: ['dispatch', 'admin'] },
-    { label: 'Call History', icon: Clock, page: 'CallHistory', roles: ['dispatch', 'admin'] },
+    { label: 'Dispatch Log', icon: Clock, page: 'DispatchLog', roles: ['dispatch', 'admin'] },
     { label: 'OPERATIONS', section: true, roles: ['admin'] },
     { label: 'Personnel', icon: Users, page: 'Personnel', roles: ['admin'] },
     { label: 'Dispatch Log', icon: FileText, page: 'DispatchLog', roles: ['admin'] },
