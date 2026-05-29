@@ -104,14 +104,8 @@ export default function Layout({ children, currentPageName }) {
             {/* Logo */}
             <div className={`flex items-center gap-3 px-3 py-3 border-b border-slate-800 flex-shrink-0 ${collapsed ? 'justify-center' : ''}`}>
                 <div className="relative flex-shrink-0">
-                    <div className="w-10 h-10 rounded bg-slate-800 border border-slate-700 flex items-center justify-center">
-                        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V6L12 2z" fill="hsl(45,93%,47%)" />
-                            <path d="M12 4.5L5 7.8V12c0 4.05 2.9 7.85 7 8.9 4.1-1.05 7-4.85 7-8.9V7.8L12 4.5z" fill="#1e293b" />
-                            <path d="M12 7l1.5 3h3l-2.4 1.8.9 3L12 13l-2.9 1.8.9-3L7.5 10h3L12 7z" fill="hsl(45,93%,47%)" />
-                        </svg>
-                    </div>
-                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse" />
+                    <img src="https://media.base44.com/images/public/694de31c7e0f5645fb95de52/d49b7bb4a_UntitledProject2.png" alt="KIC Security Services" className="w-10 h-10 rounded" />
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse hidden" />
                 </div>
                 {!collapsed && (
                     <div className="min-w-0">
