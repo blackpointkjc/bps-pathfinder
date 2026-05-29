@@ -167,7 +167,7 @@ export default function Personnel() {
                                     const displayName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0] || '-';
                                     return (
                                         <tr key={person.id} className="border-b border-[#1e2d4a] hover:bg-[#111827] transition-colors">
-                                            <td className="p-3 text-white font-mono text-xs">{displayName}</td>
+                                            <td className="p-3 text-white font-mono text-xs">{person.full_name}</td>
                                             <td className="p-3 text-[#f5a623] font-mono text-xs">
                                                 {person.unit_number ? `UNIT-${person.unit_number}` : '-'}
                                             </td>
