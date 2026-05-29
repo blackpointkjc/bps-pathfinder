@@ -65,7 +65,6 @@ export default function Navigation() {
     const [showCallSidebar, setShowCallSidebar] = useState(false);
     const [selectedCall, setSelectedCall] = useState(null);
     const [callDistrict, setCallDistrict] = useState(null);
-    const [mapCenter, setMapCenter] = useState(focusCenter);
     const [showHeatmap, setShowHeatmap] = useState(false);
     const [assigning, setAssigning] = useState(false);
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
@@ -93,6 +92,7 @@ export default function Navigation() {
         const lng = parseFloat(p.get('lng'));
         return lat && lng ? [lat, lng] : null;
     });
+    const [mapCenter, setMapCenter] = useState(focusCenter);
     const focusCallId = new URLSearchParams(window.location.search).get('callId');
 
     useEffect(() => {
