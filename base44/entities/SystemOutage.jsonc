@@ -1,0 +1,46 @@
+{
+  "name": "SystemOutage",
+  "type": "object",
+  "properties": {
+    "component": {
+      "type": "string",
+      "description": "Component name affected"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "degraded",
+        "outage",
+        "maintenance"
+      ],
+      "default": "outage",
+      "description": "Severity level"
+    },
+    "title": {
+      "type": "string",
+      "description": "Short title of the outage"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the issue"
+    },
+    "reported_by": {
+      "type": "string",
+      "description": "Admin who reported the outage"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the outage was resolved (null if still active)"
+    },
+    "resolved_by": {
+      "type": "string",
+      "description": "Admin who marked it resolved"
+    }
+  },
+  "required": [
+    "component",
+    "severity",
+    "title"
+  ]
+}
