@@ -60,8 +60,7 @@ export default function Personnel() {
 
     const handleSave = async () => {
         try {
-            const fullName = [editForm.first_name, editForm.last_name].filter(Boolean).join(' ').trim();
-            await base44.functions.invoke('updateUser', { userId: editForm.id, updates: { full_name: fullName, unit_number: editForm.unit_number, rank: editForm.rank, status: editForm.status } });
+            await base44.functions.invoke('updateUser', { userId: editForm.id, updates: { last_name: editForm.last_name, unit_number: editForm.unit_number, rank: editForm.rank, status: editForm.status } });
             toast.success('Personnel record updated');
             setEditDialog(false);
             await loadPersonnel();
