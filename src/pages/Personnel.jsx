@@ -74,6 +74,10 @@ export default function Personnel() {
         const matchesRole = filterRole === 'all' || (filterRole === 'officer' && person.role !== 'admin') || (filterRole === 'admin' && person.role === 'admin') || (filterRole === 'dispatch' && person.dispatch_role);
         const matchesSearch = !searchQuery || person.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) || person.unit_number?.toLowerCase().includes(searchQuery.toLowerCase()) || person.email?.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesRole && matchesSearch;
+    }).sort((a, b) => {
+        const unitA = parseInt(a.unit_number) || Infinity;
+        const unitB = parseInt(b.unit_number) || Infinity;
+        return unitA - unitB;
     });
 
     const available = filteredPersonnel.filter(p => p.status === 'Available').length;
