@@ -269,7 +269,7 @@ export default function Navigation() {
     const mapVisibleUnits = isSupervisorUser ? otherUnits : otherUnits.filter(u => u.status !== 'Out of Service');
 
     const criticalCalls = activeCalls.filter(c => c.priority === 'critical' || c.priority === 'high');
-    const unassignedCalls = activeCalls.filter(c => !c.assigned_units?.length);
+    const unassignedCalls = activeCalls.filter(c => !c.assigned_units?.length && !c.source);
 
     const getUnitNumberFromId = (userId) => {
         if (currentUser?.id === userId) return currentUser.unit_number || currentUser.full_name?.split(' ')[0] || 'UNIT';
