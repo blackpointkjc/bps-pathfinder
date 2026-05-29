@@ -104,7 +104,22 @@ export default function Layout({ children, currentPageName }) {
             {/* Logo */}
             <div className={`flex items-center gap-3 px-3 py-3 border-b border-slate-800 flex-shrink-0 ${collapsed ? 'justify-center' : ''}`}>
                 <div className="relative flex-shrink-0">
-                    <img src="https://media.base44.com/images/public/694de31c7e0f5645fb95de52/d49b7bb4a_UntitledProject2.png" alt="KIC Security Services" className="w-10 h-10" />
+                    <svg viewBox="0 0 100 120" className="w-10 h-10" xmlns="http://www.w3.org/2000/svg">
+                        {/* Shield */}
+                        <path d="M 50 10 L 25 25 L 25 55 Q 25 85 50 110 Q 75 85 75 55 L 75 25 Z" fill="#D4AF37" stroke="#B8860B" strokeWidth="1"/>
+                        {/* Inner black area */}
+                        <path d="M 50 20 L 32 32 L 32 55 Q 32 80 50 102 Q 68 80 68 55 L 68 32 Z" fill="#1a1a1a"/>
+                        {/* Eagle head simplified */}
+                        <circle cx="50" cy="28" r="6" fill="#D4AF37"/>
+                        <polygon points="54,26 58,25 56,28" fill="#D4AF37"/>
+                        {/* Center text area */}
+                        <rect x="28" y="45" width="44" height="22" rx="2" fill="#1a1a1a" stroke="#D4AF37" strokeWidth="0.5"/>
+                        <text x="50" y="52" fontSize="6" fontWeight="bold" fill="#D4AF37" textAnchor="middle" fontFamily="monospace">BLACK POINT</text>
+                        <text x="50" y="60" fontSize="3.5" fill="#D4AF37" textAnchor="middle" fontFamily="monospace">PROTECTING</text>
+                        <text x="50" y="64" fontSize="3.5" fill="#D4AF37" textAnchor="middle" fontFamily="monospace">YOUR ASSETS</text>
+                        {/* Stars at bottom */}
+                        <circle cx="50" cy="95" r="2" fill="#D4AF37"/>
+                    </svg>
                     <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse hidden" />
                 </div>
                 {!collapsed && (
