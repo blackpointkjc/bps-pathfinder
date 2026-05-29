@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +14,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 export default function Reports() {
+    const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState(null);
     const [reportType, setReportType] = useState('call_volume');
     const [dateFrom, setDateFrom] = useState(new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0]);
@@ -29,13 +32,14 @@ export default function Reports() {
             const user = await base44.auth.me();
             setCurrentUser(user);
             
-            if (user.role !== 'admin' && !user.dispatch_role) {
-                toast.error('Admin or Dispatch access required');
-                window.location.href = createPageUrl('CADHome');
+            if (user.role !== 'admin') {
+                toast.error('Admin access required');
+                navigate(createPageUrl('CommandDashboard'));
                 return;
             }
         } catch (error) {
             console.error('Error initializing:', error);
+            navigate(createPageUrl('CommandDashboard'));
         } finally {
             setLoading(false);
         }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -43,8 +43,22 @@ export default function CallHistory() {
     const [endDate, setEndDate] = useState('');
 
     useEffect(() => {
-        loadHistory();
+        checkAdminAccess();
     }, []);
+
+    const checkAdminAccess = async () => {
+        try {
+            const user = await base44.auth.me();
+            if (user.role !== 'admin') {
+                toast.error('Admin access required');
+                navigate(createPageUrl('CommandDashboard'));
+                return;
+            }
+            loadHistory();
+        } catch (error) {
+            navigate(createPageUrl('CommandDashboard'));
+        }
+    };
 
     useEffect(() => {
         filterAndSort();
@@ -337,20 +351,20 @@ export default function CallHistory() {
                                                     <Calendar className="w-4 h-4 text-gray-400" />
                                                     <span>{formatEST(call.archived_date || call.created_date)}</span>
                                                 </div>
-                                                </div>
-                                                </div>
-                                                {(call.latitude && call.longitude) && (
-                                                <Button
+                                            </div>
+                                        </div>
+                                        {(call.latitude && call.longitude) && (
+                                            <Button
                                                 size="sm"
                                                 onClick={() => navigate(createPageUrl('Navigation'))}
                                                 className="ml-4 bg-blue-600 hover:bg-blue-700 flex-shrink-0"
-                                                >
+                                            >
                                                 <Map className="w-4 h-4 mr-1" />
                                                 Live Map
-                                                </Button>
-                                                )}
-                                                </div>
-                                                </Card>
+                                            </Button>
+                                        )}
+                                    </div>
+                                </Card>
                             </motion.div>
                         ))}
                     </div>

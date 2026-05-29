@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +12,7 @@ import { FileText, Clock, User, Activity, Download, Search } from 'lucide-react'
 import { createPageUrl } from '../utils';
 
 export default function DispatchLog() {
+    const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState(null);
     const [statusLogs, setStatusLogs] = useState([]);
     const [callLogs, setCallLogs] = useState([]);
@@ -27,9 +30,16 @@ export default function DispatchLog() {
         try {
             const user = await base44.auth.me();
             setCurrentUser(user);
+            
+            if (user.role !== 'admin') {
+                toast.error('Admin access required');
+                navigate(createPageUrl('CommandDashboard'));
+                return;
+            }
             await loadLogs();
         } catch (error) {
             console.error('Error initializing:', error);
+            navigate(createPageUrl('CommandDashboard'));
         } finally {
             setLoading(false);
         }
