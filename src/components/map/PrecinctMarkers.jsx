@@ -33,8 +33,8 @@ const precincts = [
     {
         name: 'First Precinct',
         precinctNumber: '1',
-        address: '2501 Q St, Richmond, VA 23223',
-        coords: [37.53885567352091, -77.4119119229298]
+        address: '1711 Fairfield Way, Richmond, VA 23223',
+        coords: [37.5480450, -77.4227313]
     },
     {
         name: 'Second Precinct',
