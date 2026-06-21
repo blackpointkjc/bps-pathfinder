@@ -288,14 +288,13 @@ export default function CommandDashboard() {
                 <div className="flex items-center gap-1.5">
                     {isDispatchOrAdmin && (
                         <button onClick={toggleSound} title={soundEnabled ? 'Mute' : 'Unmute'}
-                            className={`w-7 h-7 flex items-center justify-center rounded border font-mono text-xs transition-all ${soundEnabled ? 'bg-slate-800 border-green-600/40 text-green-400' : 'bg-slate-800 border-red-600/40 text-red-400'}`}>
-                            {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                            className={`h-7 w-7 flex items-center justify-center rounded border font-mono text-[10px] font-bold transition-all flex-shrink-0 ${soundEnabled ? 'bg-slate-800 border-green-600/40 text-green-400' : 'bg-slate-800 border-red-600/40 text-red-400'}`}>
+                            {soundEnabled ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
                         </button>
                     )}
-
                     <button onClick={handleSyncAndPrune} disabled={syncing}
                         title="Sync with live feed & remove stale calls"
-                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded border font-mono text-[10px] font-bold transition-all ${syncing ? 'bg-blue-900/40 border-blue-500/40 text-blue-300 animate-pulse' : 'bg-slate-800 border-blue-500/40 text-blue-400 hover:bg-blue-900/30'}`}>
+                        className={`h-7 flex items-center gap-1 px-2 rounded border font-mono text-[10px] font-bold transition-all flex-shrink-0 ${syncing ? 'bg-blue-900/40 border-blue-500/40 text-blue-300 animate-pulse' : 'bg-slate-800 border-blue-500/40 text-blue-400 hover:bg-blue-900/30'}`}>
                         <RotateCcw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
                         {syncing ? 'SYNCING...' : 'SYNC FEED'}
                     </button>
@@ -303,7 +302,7 @@ export default function CommandDashboard() {
                         <span className="text-green-400 font-mono text-[10px] animate-pulse">{syncResult}</span>
                     )}
                     <button onClick={() => navigate(createPageUrl('DispatchCenter'))}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gold text-black font-mono font-bold text-xs rounded hover:bg-yellow-400 transition-colors">
+                        className="h-7 flex items-center gap-1 px-2 bg-gold text-black font-mono font-bold text-[10px] rounded hover:bg-yellow-400 transition-colors flex-shrink-0">
                         <Zap className="w-3 h-3" />DISPATCH CTR
                     </button>
                     <OfficerDistressButton currentUser={currentUser} />
