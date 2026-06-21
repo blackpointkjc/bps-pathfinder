@@ -292,10 +292,7 @@ export default function CommandDashboard() {
                             {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
                         </button>
                     )}
-                    <button onClick={handleRefresh} disabled={refreshing}
-                        className="w-7 h-7 flex items-center justify-center rounded border border-slate-700 bg-slate-800 text-slate-400 hover:text-white hover:border-slate-500 transition-all">
-                        <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-                    </button>
+
                     <button onClick={handleSyncAndPrune} disabled={syncing}
                         title="Sync with live feed & remove stale calls"
                         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded border font-mono text-[10px] font-bold transition-all ${syncing ? 'bg-blue-900/40 border-blue-500/40 text-blue-300 animate-pulse' : 'bg-slate-800 border-blue-500/40 text-blue-400 hover:bg-blue-900/30'}`}>
