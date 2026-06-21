@@ -140,7 +140,6 @@ export default function CommandDashboard() {
 
     const loadData = async () => {
         try {
-            base44.functions.invoke('ingestGractivecalls', {}).catch(() => {});
             const [callsData, usersData] = await Promise.all([
                 base44.entities.DispatchCall.list('-created_date', 200),
                 base44.entities.User.list()
@@ -233,17 +232,10 @@ export default function CommandDashboard() {
     const handleSyncAndPrune = async () => {
         setSyncing(true);
         setSyncResult(null);
-        try {
-            // ingestGractivecalls fetches the live feed, upserts new calls, and deletes stale ones internally
-            const liveResult = await base44.functions.invoke('ingestGractivecalls', {});
-            const { inserted = 0, updated = 0, deleted = 0 } = liveResult || {};
-            setSyncResult(`Synced: +${inserted} new, ${updated} updated, ${deleted} removed.`);
-        } catch (err) {
-            setSyncResult('Sync failed — check connection.');
-        }
         await loadData();
+        setSyncResult('Feed refreshed.');
         setSyncing(false);
-        setTimeout(() => setSyncResult(null), 6000);
+        setTimeout(() => setSyncResult(null), 4000);
     };
 
     if (loading) return (
