@@ -1,0 +1,90 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "rank": {
+      "type": "string",
+      "description": "Officer rank (e.g., Officer, Sergeant, Lieutenant)"
+    },
+    "last_name": {
+      "type": "string",
+      "description": "Last name"
+    },
+    "unit_number": {
+      "type": "string",
+      "description": "Unit identifier (e.g., Unit 23)"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Current latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Current longitude"
+    },
+    "heading": {
+      "type": "number",
+      "description": "Current heading in degrees"
+    },
+    "speed": {
+      "type": "number",
+      "description": "Current speed in mph"
+    },
+    "status": {
+      "type": "string",
+      "description": "Current unit status"
+    },
+    "show_lights": {
+      "type": "boolean",
+      "description": "Whether emergency lights are on"
+    },
+    "current_call_info": {
+      "type": "string",
+      "description": "Info about current call"
+    },
+    "current_call_id": {
+      "type": "string",
+      "description": "ID of current call"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last location update timestamp"
+    },
+    "estimated_return": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Estimated return time if out of service"
+    },
+    "dispatch_role": {
+      "type": "boolean",
+      "description": "Whether user has dispatch privileges",
+      "default": false
+    },
+    "is_supervisor": {
+      "type": "boolean",
+      "description": "Whether user has supervisor role",
+      "default": false
+    },
+    "show_on_map": {
+      "type": "boolean",
+      "description": "Whether user's location is visible on map",
+      "default": true
+    }
+  },
+  "required": [
+    "rank",
+    "last_name",
+    "unit_number",
+    "latitude",
+    "longitude",
+    "heading",
+    "speed",
+    "status",
+    "show_lights",
+    "current_call_info",
+    "current_call_id",
+    "last_updated",
+    "estimated_return"
+  ]
+}

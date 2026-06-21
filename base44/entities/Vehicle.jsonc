@@ -1,0 +1,59 @@
+{
+  "name": "Vehicle",
+  "type": "object",
+  "properties": {
+    "vehicle_id": {
+      "type": "string",
+      "description": "Vehicle identifier (e.g., Unit 23, Car 45)"
+    },
+    "make": {
+      "type": "string",
+      "description": "Vehicle make"
+    },
+    "model": {
+      "type": "string",
+      "description": "Vehicle model"
+    },
+    "year": {
+      "type": "integer",
+      "description": "Vehicle year"
+    },
+    "vin": {
+      "type": "string",
+      "description": "Vehicle Identification Number"
+    },
+    "license_plate": {
+      "type": "string",
+      "description": "License plate number"
+    },
+    "mileage": {
+      "type": "number",
+      "description": "Current mileage"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Maintenance",
+        "Out of Service",
+        "Retired"
+      ],
+      "default": "Active",
+      "description": "Vehicle status"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "User ID of assigned officer"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "vehicle_id",
+    "make",
+    "model",
+    "year"
+  ]
+}

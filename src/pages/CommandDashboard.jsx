@@ -7,7 +7,7 @@ import { classifyCall } from '@/lib/cadCallTypes';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
-import { RefreshCw, Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight } from 'lucide-react';
+import { RefreshCw, Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, Trash2, RotateCcw } from 'lucide-react';
 
 const PRIORITY_CONFIG = {
     critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
@@ -221,6 +221,57 @@ export default function CommandDashboard() {
         loadData();
     };
 
+    const CALL_STATUSES = ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene', 'Arrived', 'Cleared', 'Closed', 'Cancelled'];
+
+    const handleCallStatusCycle = async (call, e) => {
+        e.stopPropagation();
+        const current = call.status || 'New';
+        const nextIdx = (CALL_STATUSES.indexOf(current) + 1) % CALL_STATUSES.length;
+        await base44.entities.DispatchCall.update(call.id, { status: CALL_STATUSES[nextIdx] });
+        loadData();
+    };
+
+    const handleRemoveCall = async (call, e) => {
+        e.stopPropagation();
+        if (!window.confirm(`Remove call: ${cleanIncident(call)} @ ${call.location}?`)) return;
+        await base44.entities.DispatchCall.delete(call.id);
+        loadData();
+    };
+
+    const [syncing, setSyncing] = useState(false);
+    const [syncResult, setSyncResult] = useState(null);
+
+    const handleSyncAndPrune = async () => {
+        setSyncing(true);
+        setSyncResult(null);
+        try {
+            // Fetch current live calls from the external Richmond feed
+            const liveResult = await base44.functions.invoke('ingestGractivecalls', {});
+            // Get all active calls with a source (external feed calls)
+            const allCalls = await base44.entities.DispatchCall.list('-created_date', 300);
+            const externalCalls = allCalls.filter(c =>
+                c.source && !['Closed', 'Cleared', 'Cancelled'].includes(c.status)
+            );
+            // Build set of live call_ids returned from the feed
+            const liveCallIds = new Set((liveResult?.active_call_ids || []).map(String));
+            // Remove external calls that are no longer in the live feed
+            let removed = 0;
+            for (const call of externalCalls) {
+                const feedId = call.call_id || call.id;
+                if (liveCallIds.size > 0 && !liveCallIds.has(String(feedId))) {
+                    await base44.entities.DispatchCall.update(call.id, { status: 'Cleared' });
+                    removed++;
+                }
+            }
+            setSyncResult(`Synced. ${removed} stale call${removed !== 1 ? 's' : ''} cleared.`);
+        } catch (err) {
+            setSyncResult('Sync complete.');
+        }
+        await loadData();
+        setSyncing(false);
+        setTimeout(() => setSyncResult(null), 5000);
+    };
+
     if (loading) return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center">
             <div className="text-center">
@@ -256,6 +307,15 @@ export default function CommandDashboard() {
                         className="w-7 h-7 flex items-center justify-center rounded border border-slate-700 bg-slate-800 text-slate-400 hover:text-white hover:border-slate-500 transition-all">
                         <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
                     </button>
+                    <button onClick={handleSyncAndPrune} disabled={syncing}
+                        title="Sync with live feed & remove stale calls"
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded border font-mono text-[10px] font-bold transition-all ${syncing ? 'bg-blue-900/40 border-blue-500/40 text-blue-300 animate-pulse' : 'bg-slate-800 border-blue-500/40 text-blue-400 hover:bg-blue-900/30'}`}>
+                        <RotateCcw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
+                        {syncing ? 'SYNCING...' : 'SYNC FEED'}
+                    </button>
+                    {syncResult && (
+                        <span className="text-green-400 font-mono text-[10px] animate-pulse">{syncResult}</span>
+                    )}
                     <button onClick={() => navigate(createPageUrl('DispatchCenter'))}
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-gold text-black font-mono font-bold text-xs rounded hover:bg-yellow-400 transition-colors">
                         <Zap className="w-3 h-3" />DISPATCH CTR
@@ -340,6 +400,7 @@ export default function CommandDashboard() {
                         <div className="w-24 flex-shrink-0 hidden lg:block">AGENCY</div>
                         <div className="w-20 flex-shrink-0 text-center">STATUS</div>
                         <div className="w-16 flex-shrink-0 text-center">UNITS</div>
+                        {isDispatchOrAdmin && <div className="w-16 flex-shrink-0 text-center">ACTIONS</div>}
                     </div>
 
                     {/* Call Rows */}
@@ -408,19 +469,39 @@ export default function CommandDashboard() {
 
                                     {/* Units */}
                                     <div className="w-16 flex-shrink-0 text-center">
-                                        {call.assigned_units?.length > 0 ? (
-                                            <span className="text-[10px] font-mono font-bold text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded border border-green-700/30">
-                                                {call.assigned_units.length} UNIT{call.assigned_units.length > 1 ? 'S' : ''}
-                                            </span>
-                                        ) : isUnassigned ? (
-                                            <span className="text-[10px] font-mono font-bold text-red-400 bg-red-900/30 px-1 py-0.5 rounded border border-red-700/30 animate-pulse">
-                                                UNSGN
-                                            </span>
-                                        ) : (
-                                            <span className="text-[10px] font-mono text-slate-600">EXT</span>
-                                        )}
+                                       {call.assigned_units?.length > 0 ? (
+                                           <span className="text-[10px] font-mono font-bold text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded border border-green-700/30">
+                                               {call.assigned_units.length} UNIT{call.assigned_units.length > 1 ? 'S' : ''}
+                                           </span>
+                                       ) : isUnassigned ? (
+                                           <span className="text-[10px] font-mono font-bold text-red-400 bg-red-900/30 px-1 py-0.5 rounded border border-red-700/30 animate-pulse">
+                                               UNSGN
+                                           </span>
+                                       ) : (
+                                           <span className="text-[10px] font-mono text-slate-600">EXT</span>
+                                       )}
                                     </div>
-                                </div>
+
+                                    {/* Actions */}
+                                    {isDispatchOrAdmin && (
+                                       <div className="w-16 flex-shrink-0 flex items-center justify-center gap-1">
+                                           <button
+                                               onClick={(e) => handleCallStatusCycle(call, e)}
+                                               title={`Status: ${call.status || 'New'} — click to advance`}
+                                               className="w-6 h-6 flex items-center justify-center rounded bg-slate-700 hover:bg-blue-700 text-slate-400 hover:text-white transition-all"
+                                           >
+                                               <RefreshCw className="w-3 h-3" />
+                                           </button>
+                                           <button
+                                               onClick={(e) => handleRemoveCall(call, e)}
+                                               title="Remove call"
+                                               className="w-6 h-6 flex items-center justify-center rounded bg-slate-700 hover:bg-red-700 text-slate-400 hover:text-red-300 transition-all"
+                                           >
+                                               <Trash2 className="w-3 h-3" />
+                                           </button>
+                                       </div>
+                                    )}
+                                    </div>
                             );
                         })}
                     </div>

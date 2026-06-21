@@ -1,0 +1,57 @@
+{
+  "name": "UnitMaintenance",
+  "type": "object",
+  "properties": {
+    "vehicle_id": {
+      "type": "string",
+      "description": "Vehicle identifier"
+    },
+    "unit_number": {
+      "type": "string",
+      "description": "Associated unit number"
+    },
+    "maintenance_type": {
+      "type": "string",
+      "enum": [
+        "oil_change",
+        "tire_rotation",
+        "inspection",
+        "repair",
+        "other"
+      ],
+      "description": "Type of maintenance"
+    },
+    "description": {
+      "type": "string",
+      "description": "Maintenance description"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "When maintenance is due"
+    },
+    "due_mileage": {
+      "type": "number",
+      "description": "Mileage when maintenance is due"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether completed"
+    },
+    "completed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When completed"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "vehicle_id",
+    "maintenance_type",
+    "due_date"
+  ]
+}

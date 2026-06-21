@@ -1,0 +1,42 @@
+{
+  "name": "UnitStatusLog",
+  "type": "object",
+  "properties": {
+    "unit_id": {
+      "type": "string",
+      "description": "User/Unit ID"
+    },
+    "unit_name": {
+      "type": "string",
+      "description": "Unit identifier"
+    },
+    "old_status": {
+      "type": "string",
+      "description": "Previous status"
+    },
+    "new_status": {
+      "type": "string",
+      "description": "New status"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional notes about status change"
+    },
+    "location_lat": {
+      "type": "number",
+      "description": "Latitude at time of change"
+    },
+    "location_lng": {
+      "type": "number",
+      "description": "Longitude at time of change"
+    },
+    "call_id": {
+      "type": "string",
+      "description": "Associated call ID if applicable"
+    }
+  },
+  "required": [
+    "unit_id",
+    "new_status"
+  ]
+}

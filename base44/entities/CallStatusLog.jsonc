@@ -1,0 +1,50 @@
+{
+  "name": "CallStatusLog",
+  "type": "object",
+  "properties": {
+    "call_id": {
+      "type": "string",
+      "description": "Dispatch call ID"
+    },
+    "incident_type": {
+      "type": "string",
+      "description": "Type of incident"
+    },
+    "location": {
+      "type": "string",
+      "description": "Call location"
+    },
+    "old_status": {
+      "type": "string",
+      "description": "Previous status"
+    },
+    "new_status": {
+      "type": "string",
+      "description": "New status"
+    },
+    "unit_id": {
+      "type": "string",
+      "description": "Unit that triggered change"
+    },
+    "unit_name": {
+      "type": "string",
+      "description": "Unit identifier"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Call latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Call longitude"
+    }
+  },
+  "required": [
+    "call_id",
+    "new_status"
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "name": "CallHistory",
+  "type": "object",
+  "properties": {
+    "time_received": {
+      "type": "string",
+      "description": "Time the call was received"
+    },
+    "incident": {
+      "type": "string",
+      "description": "Type of incident"
+    },
+    "location": {
+      "type": "string",
+      "description": "Call location"
+    },
+    "agency": {
+      "type": "string",
+      "description": "Responding agency"
+    },
+    "status": {
+      "type": "string",
+      "description": "Call status"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Latitude coordinate"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Longitude coordinate"
+    },
+    "ai_summary": {
+      "type": "string",
+      "description": "AI-generated summary"
+    },
+    "archived_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the call was archived"
+    }
+  },
+  "required": [
+    "time_received",
+    "incident",
+    "location",
+    "agency"
+  ]
+}

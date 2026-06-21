@@ -1,0 +1,44 @@
+{
+  "name": "UnitSchedule",
+  "type": "object",
+  "properties": {
+    "unit_id": {
+      "type": "string",
+      "description": "User/Unit ID"
+    },
+    "unit_name": {
+      "type": "string",
+      "description": "Unit identifier"
+    },
+    "shift_start": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Shift start time"
+    },
+    "shift_end": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Shift end time"
+    },
+    "shift_type": {
+      "type": "string",
+      "enum": [
+        "day",
+        "swing",
+        "night",
+        "overtime"
+      ],
+      "description": "Type of shift"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Shift notes"
+    }
+  },
+  "required": [
+    "unit_id",
+    "unit_name",
+    "shift_start",
+    "shift_end"
+  ]
+}
