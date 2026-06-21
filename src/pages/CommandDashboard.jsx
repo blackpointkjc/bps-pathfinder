@@ -180,10 +180,7 @@ export default function CommandDashboard() {
     };
 
     const handleStatusChange = async (newStatus) => {
-        try {
-            await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
-            setCurrentUser(prev => ({ ...prev, status: newStatus }));
-        } catch {}
+        setCurrentUser(prev => ({ ...prev, status: newStatus }));
     };
 
     const toggleSound = () => {
