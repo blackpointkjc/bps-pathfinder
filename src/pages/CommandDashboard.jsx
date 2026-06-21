@@ -245,31 +245,16 @@ export default function CommandDashboard() {
         setSyncing(true);
         setSyncResult(null);
         try {
-            // Fetch current live calls from the external Richmond feed
+            // ingestGractivecalls fetches the live feed, upserts new calls, and deletes stale ones internally
             const liveResult = await base44.functions.invoke('ingestGractivecalls', {});
-            // Get all active calls with a source (external feed calls)
-            const allCalls = await base44.entities.DispatchCall.list('-created_date', 300);
-            const externalCalls = allCalls.filter(c =>
-                c.source && !['Closed', 'Cleared', 'Cancelled'].includes(c.status)
-            );
-            // Build set of live call_ids returned from the feed
-            const liveCallIds = new Set((liveResult?.active_call_ids || []).map(String));
-            // Remove external calls that are no longer in the live feed
-            let removed = 0;
-            for (const call of externalCalls) {
-                const feedId = call.call_id || call.id;
-                if (liveCallIds.size > 0 && !liveCallIds.has(String(feedId))) {
-                    await base44.entities.DispatchCall.update(call.id, { status: 'Cleared' });
-                    removed++;
-                }
-            }
-            setSyncResult(`Synced. ${removed} stale call${removed !== 1 ? 's' : ''} cleared.`);
+            const { inserted = 0, updated = 0, deleted = 0 } = liveResult || {};
+            setSyncResult(`Synced: +${inserted} new, ${updated} updated, ${deleted} removed.`);
         } catch (err) {
-            setSyncResult('Sync complete.');
+            setSyncResult('Sync failed — check connection.');
         }
         await loadData();
         setSyncing(false);
-        setTimeout(() => setSyncResult(null), 5000);
+        setTimeout(() => setSyncResult(null), 6000);
     };
 
     if (loading) return (
