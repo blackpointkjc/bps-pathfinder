@@ -229,8 +229,13 @@ export default function CommandDashboard() {
     const handleSyncAndPrune = async () => {
         setSyncing(true);
         setSyncResult(null);
-        await loadData();
-        setSyncResult('Feed refreshed.');
+        try {
+            await loadData();
+            setSyncResult('Feed refreshed.');
+        } catch (err) {
+            console.error('[SYNC FEED] Failed to refresh:', err);
+            setSyncResult('Sync failed.');
+        }
         setSyncing(false);
         setTimeout(() => setSyncResult(null), 4000);
     };
