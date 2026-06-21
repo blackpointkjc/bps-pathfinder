@@ -139,28 +139,36 @@ export default function CommandDashboard() {
     };
 
     const loadData = async () => {
+        const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+        console.log(`[CAD ${ts}] loadData: starting fetch...`);
         try {
             const [callsData, usersData] = await Promise.all([
                 base44.entities.DispatchCall.list('-created_date', 200),
                 base44.entities.User.list()
             ]);
+            console.log(`[CAD ${ts}] loadData: fetched ${callsData?.length ?? 0} calls, ${usersData?.length ?? 0} users`);
             const ONE_HOUR_MS = 60 * 60 * 1000;
             const active = (callsData || []).filter(c =>
                 !['Closed', 'Cleared', 'Cancelled'].includes(c.status) &&
                 (Date.now() - new Date(c.time_received || c.created_date)) < ONE_HOUR_MS
             );
+            console.log(`[CAD ${ts}] loadData: ${active.length} active calls after filter`);
             const currentIds = new Set(active.map(c => c.id));
             if (knownCallIdsRef.current === null) {
                 knownCallIdsRef.current = currentIds;
             } else {
                 const newCallIds = [...currentIds].filter(id => !knownCallIdsRef.current.has(id));
-                if (newCallIds.length > 0 && soundEnabledRef.current) {
-                    const newCall = active.find(c => c.id === newCallIds[0]);
-                    if (newCall) {
-                        const inGeofence = shouldAlertForGeofence(newCall, currentUserRef.current, monitoredPropertiesRef.current);
-                        if (inGeofence) {
-                            playDispatchAlert();
-                            window.dispatchEvent(new CustomEvent('bps-new-call', { detail: newCall }));
+                if (newCallIds.length > 0) {
+                    console.log(`[CAD ${ts}] loadData: ${newCallIds.length} new call(s) detected:`, newCallIds);
+                    if (soundEnabledRef.current) {
+                        const newCall = active.find(c => c.id === newCallIds[0]);
+                        if (newCall) {
+                            const inGeofence = shouldAlertForGeofence(newCall, currentUserRef.current, monitoredPropertiesRef.current);
+                            if (inGeofence) {
+                                console.log(`[CAD ${ts}] loadData: alert triggered for call`, newCall.incident, '@', newCall.location);
+                                playDispatchAlert();
+                                window.dispatchEvent(new CustomEvent('bps-new-call', { detail: newCall }));
+                            }
                         }
                     }
                 }
@@ -169,7 +177,10 @@ export default function CommandDashboard() {
             setCalls(active);
             setUnits(usersData || []);
             setLastRefresh(new Date());
-        } catch (e) { console.error(e); }
+            console.log(`[CAD ${ts}] loadData: ✓ complete`);
+        } catch (e) {
+            console.error(`[CAD ${ts}] loadData: ✗ FAILED`, e);
+        }
         finally { setLoading(false); }
     };
 
@@ -219,7 +230,14 @@ export default function CommandDashboard() {
 
     const handleMarkCleared = async (call, e) => {
         e.stopPropagation();
-        await base44.entities.DispatchCall.update(call.id, { status: 'Cleared', time_cleared: new Date().toISOString() });
+        const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+        console.log(`[CAD ${ts}] MARK CLEARED: call ${call.id} — ${call.incident} @ ${call.location}`);
+        try {
+            await base44.entities.DispatchCall.update(call.id, { status: 'Cleared', time_cleared: new Date().toISOString() });
+            console.log(`[CAD ${ts}] MARK CLEARED: ✓ success`);
+        } catch (err) {
+            console.error(`[CAD ${ts}] MARK CLEARED: ✗ FAILED`, err);
+        }
         loadData();
     };
 
@@ -227,13 +245,16 @@ export default function CommandDashboard() {
     const [syncResult, setSyncResult] = useState(null);
 
     const handleSyncAndPrune = async () => {
+        const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+        console.log(`[CAD ${ts}] SYNC FEED: initiated by user`);
         setSyncing(true);
         setSyncResult(null);
         try {
             await loadData();
+            console.log(`[CAD ${ts}] SYNC FEED: ✓ success`);
             setSyncResult('Feed refreshed.');
         } catch (err) {
-            console.error('[SYNC FEED] Failed to refresh:', err);
+            console.error(`[CAD ${ts}] SYNC FEED: ✗ FAILED`, err);
             setSyncResult('Sync failed.');
         }
         setSyncing(false);
