@@ -58,18 +58,8 @@ export default function DispatchCenter() {
         }, 60000);
         
         // Auto-ingest every 5 minutes for real-time feed
-        const scrapeInterval = setInterval(async () => {
-            try {
-                await base44.functions.invoke('ingestGractivecalls', {});
-                loadActiveCalls();
-            } catch (error) {
-                console.error('Auto-ingest failed:', error);
-            }
-        }, 5 * 60 * 1000);
-        
         return () => {
             clearInterval(interval);
-            clearInterval(scrapeInterval);
         };
     }, []);
 
@@ -205,10 +195,6 @@ export default function DispatchCenter() {
     const handleRefresh = async () => {
         setRefreshing(true);
         try {
-            toast.loading('Scraping live feed...', { id: 'refresh' });
-            await base44.functions.invoke('ingestGractivecalls', {});
-            // Also geocode any calls still missing coordinates
-            base44.functions.invoke('geocodeMissingCalls', {}).catch(() => {});
             await Promise.all([loadActiveCalls(), loadUnits()]);
             toast.success('Feed refreshed', { id: 'refresh', duration: 3000 });
         } catch (error) {
