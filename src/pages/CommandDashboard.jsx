@@ -135,28 +135,28 @@ export default function CommandDashboard() {
         return () => { clearInterval(interval); clearInterval(syncInterval); };
     }, []);
 
-    // Geocode calls missing coordinates using Nominatim (free, no key needed)
+    // Geocode calls missing coordinates via allorigins proxy (avoids CORS)
     const geocodeMissingCoords = async (activeCalls) => {
         const missing = activeCalls.filter(c => !c.latitude || !c.longitude);
         if (missing.length === 0) return;
         console.log(`[CAD] geocodeMissingCoords: ${missing.length} calls need geocoding`);
-        for (const call of missing.slice(0, 10)) { // cap at 10 per cycle to avoid rate limits
+        for (const call of missing.slice(0, 5)) { // cap at 5 per cycle
             try {
                 const query = encodeURIComponent(`${call.location}, Virginia, USA`);
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`, {
-                    headers: { 'User-Agent': 'BPS-CAD/1.0' }
-                });
-                const data = await res.json();
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`)}`;
+                const res = await fetch(proxyUrl);
+                const json = await res.json();
+                const data = JSON.parse(json.contents);
                 if (data?.[0]) {
                     const lat = parseFloat(data[0].lat);
                     const lon = parseFloat(data[0].lon);
                     await base44.entities.DispatchCall.update(call.id, { latitude: lat, longitude: lon });
-                    console.log(`[CAD] geocoded: ${call.incident} @ ${call.location} → ${lat},${lon}`);
+                    console.log(`[CAD] geocoded: ${call.location} → ${lat},${lon}`);
                 }
-                await new Promise(r => setTimeout(r, 300)); // rate limit: 300ms between requests
+                await new Promise(r => setTimeout(r, 1000)); // 1s between requests
             } catch (e) {}
         }
-        loadData(); // refresh to pick up newly geocoded coords
+        // no recursive loadData call here
     };
 
     const loadMonitoredProperties = async () => {
