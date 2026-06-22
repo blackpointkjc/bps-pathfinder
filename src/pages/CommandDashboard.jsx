@@ -8,6 +8,7 @@ import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import { RefreshCw, Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck } from 'lucide-react';
+import { syncGractiveCalls } from '@/lib/gractiveScraper';
 
 const PRIORITY_CONFIG = {
     critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
@@ -125,8 +126,13 @@ export default function CommandDashboard() {
         }).catch(() => {});
         loadData();
         loadMonitoredProperties();
+        // Auto-sync from gractivecalls.com on load and every 2 minutes
+        syncGractiveCalls().then(r => console.log(`[CAD] auto-sync: +${r.added} new, ${r.updated} updated`)).catch(e => console.warn('[CAD] auto-sync failed:', e.message));
         const interval = setInterval(() => { loadData(); loadMonitoredProperties(); }, 20000);
-        return () => clearInterval(interval);
+        const syncInterval = setInterval(() => {
+            syncGractiveCalls().then(r => { if (r.added > 0 || r.updated > 0) loadData(); }).catch(() => {});
+        }, 120000);
+        return () => { clearInterval(interval); clearInterval(syncInterval); };
     }, []);
 
     // Geocode calls missing coordinates using Nominatim (free, no key needed)
@@ -274,15 +280,16 @@ export default function CommandDashboard() {
         setSyncing(true);
         setSyncResult(null);
         try {
+            const result = await syncGractiveCalls();
+            console.log(`[CAD ${ts}] SYNC FEED: ✓ +${result.added} new, ${result.updated} updated of ${result.total} scraped`);
+            setSyncResult(`+${result.added} new, ${result.updated} updated`);
             await loadData();
-            console.log(`[CAD ${ts}] SYNC FEED: ✓ success`);
-            setSyncResult('Feed refreshed.');
         } catch (err) {
             console.error(`[CAD ${ts}] SYNC FEED: ✗ FAILED`, err);
-            setSyncResult('Sync failed.');
+            setSyncResult('Sync failed: ' + err.message);
         }
         setSyncing(false);
-        setTimeout(() => setSyncResult(null), 4000);
+        setTimeout(() => setSyncResult(null), 6000);
     };
 
     if (loading) return (
