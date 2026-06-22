@@ -147,10 +147,8 @@ export default function CommandDashboard() {
                 base44.entities.User.list()
             ]);
             console.log(`[CAD ${ts}] loadData: fetched ${callsData?.length ?? 0} calls, ${usersData?.length ?? 0} users`);
-            const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
             const active = (callsData || []).filter(c =>
-                !['Closed', 'Cleared', 'Cancelled'].includes(c.status) &&
-                (Date.now() - new Date(c.time_received || c.created_date)) < TWENTY_FOUR_HOURS_MS
+                !['Closed', 'Cleared', 'Cancelled'].includes(c.status)
             );
             console.log(`[CAD ${ts}] loadData: ${active.length} active calls after filter`);
             const currentIds = new Set(active.map(c => c.id));
