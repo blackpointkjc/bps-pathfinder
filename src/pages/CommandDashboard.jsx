@@ -128,7 +128,7 @@ export default function CommandDashboard() {
         loadMonitoredProperties();
         // Auto-sync from gractivecalls.com on load and every 2 minutes
         syncGractiveCalls().then(r => console.log(`[CAD] auto-sync: +${r.added} new, ${r.updated} updated`)).catch(e => console.warn('[CAD] auto-sync failed:', e.message));
-        const interval = setInterval(() => { loadData(); loadMonitoredProperties(); }, 20000);
+        const interval = setInterval(() => { loadData(); loadMonitoredProperties(); }, 60000);
         const syncInterval = setInterval(() => {
             syncGractiveCalls().then(r => { if (r.added > 0 || r.updated > 0) loadData(); }).catch(() => {});
         }, 120000);
