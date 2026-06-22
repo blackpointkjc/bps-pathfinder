@@ -129,6 +129,30 @@ export default function CommandDashboard() {
         return () => clearInterval(interval);
     }, []);
 
+    // Geocode calls missing coordinates using Nominatim (free, no key needed)
+    const geocodeMissingCoords = async (activeCalls) => {
+        const missing = activeCalls.filter(c => !c.latitude || !c.longitude);
+        if (missing.length === 0) return;
+        console.log(`[CAD] geocodeMissingCoords: ${missing.length} calls need geocoding`);
+        for (const call of missing.slice(0, 10)) { // cap at 10 per cycle to avoid rate limits
+            try {
+                const query = encodeURIComponent(`${call.location}, Virginia, USA`);
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`, {
+                    headers: { 'User-Agent': 'BPS-CAD/1.0' }
+                });
+                const data = await res.json();
+                if (data?.[0]) {
+                    const lat = parseFloat(data[0].lat);
+                    const lon = parseFloat(data[0].lon);
+                    await base44.entities.DispatchCall.update(call.id, { latitude: lat, longitude: lon });
+                    console.log(`[CAD] geocoded: ${call.incident} @ ${call.location} → ${lat},${lon}`);
+                }
+                await new Promise(r => setTimeout(r, 300)); // rate limit: 300ms between requests
+            } catch (e) {}
+        }
+        loadData(); // refresh to pick up newly geocoded coords
+    };
+
     const loadMonitoredProperties = async () => {
         try {
             const props = await base44.entities.MonitoredProperty.list();
@@ -176,6 +200,8 @@ export default function CommandDashboard() {
             setUnits(usersData || []);
             setLastRefresh(new Date());
             console.log(`[CAD ${ts}] loadData: ✓ complete`);
+            // Fire-and-forget geocoding for any calls missing coordinates
+            geocodeMissingCoords(active);
         } catch (e) {
             console.error(`[CAD ${ts}] loadData: ✗ FAILED`, e);
         }
