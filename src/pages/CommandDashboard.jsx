@@ -7,7 +7,8 @@ import { classifyCall } from '@/lib/cadCallTypes';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
-import { RefreshCw, Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck } from 'lucide-react';
+import { syncGractiveCalls } from '@/lib/gractiveScraper';
+import { RefreshCw, Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff } from 'lucide-react';
 
 
 const PRIORITY_CONFIG = {
@@ -93,12 +94,14 @@ export default function CommandDashboard() {
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [currentUser, setCurrentUser] = useState(null);
     const [soundEnabled, setSoundEnabled] = useState(true);
+    const [syncStatus, setSyncStatus] = useState({ state: 'idle', lastSync: null, added: 0, updated: 0, total: 0, error: null, newestTime: null });
     const [, setTick] = useState(0);
     const soundEnabledRef = useRef(true);
     const currentUserRef = useRef(null);
     const monitoredPropertiesRef = useRef([]);
     const knownCallIdsRef = useRef(null);
     const loadDataRef = useRef(null);
+    const syncingRef = useRef(false);
 
     // Re-render every second for live elapsed timers
     useEffect(() => {
@@ -127,14 +130,46 @@ export default function CommandDashboard() {
         }).catch(() => {});
         loadDataRef.current();
         loadMonitoredProperties();
-        const interval = setInterval(() => { loadDataRef.current(); loadMonitoredProperties(); }, 30000);
+
+        // Run a live sync immediately, then every 60 seconds
+        const runSync = async () => {
+            if (syncingRef.current) return;
+            syncingRef.current = true;
+            setSyncStatus(s => ({ ...s, state: 'syncing' }));
+            try {
+                const result = await syncGractiveCalls();
+                setSyncStatus({
+                    state: result.errors?.length ? 'error' : 'ok',
+                    lastSync: new Date(),
+                    added: result.added,
+                    updated: result.updated,
+                    total: result.total,
+                    error: result.errors?.length ? result.errors[0] : null,
+                    newestTime: result.newestTime || null,
+                });
+                // Reload calls from DB after sync
+                if (result.added > 0 || result.updated > 0) {
+                    loadDataRef.current();
+                }
+            } catch (err) {
+                setSyncStatus(s => ({ ...s, state: 'error', error: err?.message || String(err), lastSync: new Date() }));
+                console.error('[SYNC] Unhandled error in runSync:', err);
+            } finally {
+                syncingRef.current = false;
+            }
+        };
+
+        runSync();
+        const syncInterval = setInterval(runSync, 60000);
+        // DB poll every 15s for updates that came in via other paths
+        const dbPollInterval = setInterval(() => loadDataRef.current(), 15000);
 
         // Real-time subscription for instant new call detection
         const unsubscribe = base44.entities.DispatchCall.subscribe(() => {
             loadDataRef.current();
         });
 
-        return () => { clearInterval(interval); unsubscribe(); };
+        return () => { clearInterval(syncInterval); clearInterval(dbPollInterval); unsubscribe(); };
     }, []);
 
     // Geocoding is handled server-side during data ingestion.
@@ -286,6 +321,23 @@ export default function CommandDashboard() {
                             {soundEnabled ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
                         </button>
                     )}
+                    {/* Sync status indicator */}
+                    <div className={`h-7 flex items-center gap-1.5 px-2 rounded border font-mono text-[10px] font-bold flex-shrink-0 ${
+                        syncStatus.state === 'syncing' ? 'bg-blue-900/30 border-blue-600/40 text-blue-300' :
+                        syncStatus.state === 'error'   ? 'bg-red-900/30 border-red-600/40 text-red-300' :
+                        syncStatus.state === 'ok'      ? 'bg-green-900/30 border-green-600/40 text-green-300' :
+                        'bg-slate-800 border-slate-600 text-slate-500'
+                    }`}>
+                        {syncStatus.state === 'syncing' ? (
+                            <><RotateCcw className="w-3 h-3 animate-spin" />SYNCING...</>
+                        ) : syncStatus.state === 'error' ? (
+                            <><WifiOff className="w-3 h-3" />SYNC ERR</>
+                        ) : syncStatus.lastSync ? (
+                            <><span className="w-1.5 h-1.5 rounded-full bg-green-400" />+{syncStatus.added} @ {syncStatus.lastSync.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</>
+                        ) : (
+                            <><span className="w-1.5 h-1.5 rounded-full bg-slate-500" />AWAITING SYNC</>
+                        )}
+                    </div>
                     <button onClick={handleRefresh} disabled={refreshing}
                         title="Refresh call data"
                         className="h-7 flex items-center gap-1 px-2 rounded border font-mono text-[10px] font-bold transition-all flex-shrink-0 bg-slate-800 border-slate-600 text-slate-400 hover:text-white">
@@ -300,6 +352,17 @@ export default function CommandDashboard() {
                 </div>
                 <LiveClock />
             </div>
+
+            {/* ── SYNC ERROR BANNER ── */}
+            {syncStatus.state === 'error' && syncStatus.error && (
+                <div className="flex-none flex items-center gap-3 bg-red-950/80 border-b border-red-800/60 px-4 py-1.5">
+                    <WifiOff className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                    <span className="text-red-300 font-mono text-[10px] font-bold tracking-wide flex-1 truncate">
+                        SYNC FAILED: {syncStatus.error}
+                    </span>
+                    <span className="text-red-500 font-mono text-[9px]">Will retry in 60s</span>
+                </div>
+            )}
 
             {/* ── MASTER STATUS TILES ── */}
             <div className="flex-none grid grid-cols-4 md:grid-cols-8 border-b border-slate-800">
