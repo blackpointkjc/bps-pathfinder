@@ -203,6 +203,11 @@ Return ALL calls. Do not filter or skip any. Include cleared/closed calls too if
         const status = normalizeStatus(raw.status);
         const time_received = parseTimeET(raw.time_received);
 
+        if (!time_received) {
+            console.warn('[GRACTIVE] Skipping call with unparseable time:', raw.time_received, raw.incident);
+            continue;
+        }
+
         if (time_received) {
             const t = new Date(time_received);
             if (!newestTime || t > newestTime) newestTime = t;

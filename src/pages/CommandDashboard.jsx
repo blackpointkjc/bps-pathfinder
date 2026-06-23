@@ -205,7 +205,8 @@ export default function CommandDashboard() {
             const eightHoursAgo = Date.now() - 8 * 60 * 60 * 1000;
             const active = (callsData || []).filter(c => {
                 if (['Closed', 'Cleared', 'Cancelled'].includes(c.status)) return false;
-                const t = new Date(c.time_received || c.created_date).getTime();
+                if (!c.time_received) return false; // skip records with no parsed timestamp
+                const t = new Date(c.time_received).getTime();
                 return t >= eightHoursAgo;
             });
             console.log(`[CAD ${ts}] loadData: ${active.length} active calls after filter`);
