@@ -119,13 +119,7 @@ export default function Navigation() {
         return () => clearInterval(i);
     }, []);
 
-    // Auto-geocode unmapped calls every 60s
-    useEffect(() => {
-        const i = setInterval(() => {
-            setUnmappedCalls(prev => { if (prev.length > 0) autoGeocodeUnmapped(prev); return prev; });
-        }, 60000);
-        return () => clearInterval(i);
-    }, [isGeocoding]);
+
 
     useEffect(() => { unitStatusRef.current = unitStatus; }, [unitStatus]);
 
@@ -293,6 +287,14 @@ export default function Navigation() {
             setIsGeocoding(false);
         }
     };
+
+    // Auto-geocode unmapped calls every 60s
+    useEffect(() => {
+        const i = setInterval(() => {
+            setUnmappedCalls(prev => { if (prev.length > 0) autoGeocodeUnmapped(prev); return prev; });
+        }, 60000);
+        return () => clearInterval(i);
+    }, []);
 
     const fetchCalls = async () => {
         setIsLoadingCalls(true);
