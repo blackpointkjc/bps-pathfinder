@@ -25,13 +25,12 @@ function normalizeStatus(s) {
     return v || 'New';
 }
 
-// Parse "06/22/2026 7:48 PM" → ISO string, treating input as America/New_York
+// Parse "06/22/2026 7:48 PM" or "7:48 PM" treating as America/New_York wall-clock time
 function parseTimeET(timeStr) {
     if (!timeStr) return null;
     try {
         const cleaned = timeStr.trim();
 
-        // Extract date and time parts from "MM/DD/YYYY H:MM AM/PM" or just "H:MM AM/PM"
         const fullMatch = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
         const timeOnly = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
 
@@ -40,9 +39,10 @@ function parseTimeET(timeStr) {
         if (fullMatch) {
             [, month, day, year, hours, minutes, ampm] = fullMatch;
         } else if (timeOnly) {
-            const now = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: 'numeric' });
-            const [m, d, y] = now.split('/');
-            month = m; day = d; year = y;
+            // Get today's date in ET
+            const nowET = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+            const parts = nowET.split('/');
+            month = parts[0]; day = parts[1]; year = parts[2];
             [, hours, minutes, ampm] = timeOnly;
         } else {
             return null;
@@ -53,13 +53,20 @@ function parseTimeET(timeStr) {
         if (ampm.toUpperCase() === 'PM' && h !== 12) h += 12;
         if (ampm.toUpperCase() === 'AM' && h === 12) h = 0;
 
-        // Build ISO string in ET by using Intl to find the UTC offset for this wall-clock time
-        const etDateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`;
-        // Determine ET offset at this moment (handles DST)
-        const probe = new Date(`${etDateStr}Z`);
-        const etOffset = new Date(probe.toLocaleString('en-US', { timeZone: 'America/New_York' })) - probe;
-        const utc = new Date(probe.getTime() - etOffset);
-        return utc.toISOString();
+        // Use Intl.DateTimeFormat to get the current ET UTC offset (handles DST automatically)
+        const MM = String(month).padStart(2, '0');
+        const DD = String(day).padStart(2, '0');
+        const HH = String(h).padStart(2, '0');
+        const mm = String(m).padStart(2, '0');
+
+        // Parse as if UTC first, then adjust by actual ET offset
+        const asUTC = new Date(`${year}-${MM}-${DD}T${HH}:${mm}:00Z`);
+        // Get what ET wall clock reads for this UTC moment
+        const etWall = new Date(asUTC.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        // Offset = difference between UTC and ET wall time
+        const offsetMs = asUTC.getTime() - etWall.getTime();
+        // True UTC = asUTC adjusted by offset
+        return new Date(asUTC.getTime() + offsetMs).toISOString();
     } catch {
         return null;
     }

@@ -38,7 +38,8 @@ function getCallPriority(call) {
 function fmtTime(dateStr) {
     if (!dateStr) return '----';
     const d = new Date(dateStr);
-    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'America/New_York' });
+    if (isNaN(d)) return '----';
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' });
 }
 
 function elapsed(dateStr) {
