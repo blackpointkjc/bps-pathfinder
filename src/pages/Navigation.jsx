@@ -250,6 +250,34 @@ export default function Navigation() {
         } catch (e) {}
     };
 
+    const geocodeWithGoogle = async (address) => {
+        const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        if (!key) return null;
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${key}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.status === 'OK' && data.results[0]) {
+            const { lat, lng } = data.results[0].geometry.location;
+            return { latitude: lat, longitude: lng };
+        }
+        return null;
+    };
+
+    const autoGeocodeUnmapped = async (unmapped) => {
+        if (!unmapped.length) return;
+        for (const call of unmapped) {
+            if (!call.location) continue;
+            // append VA region for better accuracy
+            const address = `${call.location}, Virginia, USA`;
+            const coords = await geocodeWithGoogle(address);
+            if (coords) {
+                await base44.entities.DispatchCall.update(call.id, coords);
+                setActiveCalls(prev => prev.map(c => c.id === call.id ? { ...c, ...coords } : c));
+                setUnmappedCalls(prev => prev.filter(c => c.id !== call.id));
+            }
+        }
+    };
+
     const fetchCalls = async () => {
         setIsLoadingCalls(true);
         try {
@@ -259,13 +287,15 @@ export default function Navigation() {
                 !['Closed', 'Cleared', 'Cancelled'].includes(c.status) &&
                 new Date(c.time_received || c.created_date) >= oneHourAgo
             );
-            const { mapped, unmapped } = splitCallsByCoords(active);
+            const { unmapped } = splitCallsByCoords(active);
             setActiveCalls(active);
             setUnmappedCalls(unmapped);
             if (focusCallId) {
                 const target = active.find(c => c.id === focusCallId);
                 if (target) { setSelectedCall(target); setShowCallSidebar(true); }
             }
+            // auto-geocode unmapped calls in background
+            autoGeocodeUnmapped(unmapped);
         } catch (e) {
             console.warn('[NAV] fetchCalls error:', e.message);
         } finally {
