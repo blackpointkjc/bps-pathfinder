@@ -250,13 +250,12 @@ export default function Navigation() {
         } catch (e) {}
     };
 
-    const geocodeWithGoogle = async (address) => {
-        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
-        const res = await fetch(url);
+    const geocodeWithNominatim = async (address) => {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
         const data = await res.json();
-        if (data.status === 'OK' && data.results[0]) {
-            const { lat, lng } = data.results[0].geometry.location;
-            return { latitude: lat, longitude: lng };
+        if (data && data[0]) {
+            return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };
         }
         return null;
     };
@@ -269,7 +268,9 @@ export default function Navigation() {
         for (const call of unmapped) {
             if (!call.location) continue;
             const address = normalizeAddress(call.location) || `${call.location}, Virginia, USA`;
-            const coords = await geocodeWithGoogle(address);
+            // Rate-limit: Nominatim requires 1 request/sec
+            await new Promise(r => setTimeout(r, 1100));
+            const coords = await geocodeWithNominatim(address);
             if (coords) {
                 await base44.entities.DispatchCall.update(call.id, coords);
                 setActiveCalls(prev => prev.map(c => c.id === call.id ? { ...c, ...coords } : c));
