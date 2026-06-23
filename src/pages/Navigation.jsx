@@ -251,13 +251,9 @@ export default function Navigation() {
     };
 
     const geocodeWithGoogle = async (address) => {
-        const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-        console.log('[GEOCODE] key present:', !!key, '| address:', address);
-        if (!key) { console.warn('[GEOCODE] No API key found in VITE_GOOGLE_MAPS_API_KEY'); return null; }
-        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${key}`;
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
         const res = await fetch(url);
         const data = await res.json();
-        console.log('[GEOCODE] result status:', data.status, '| address:', address);
         if (data.status === 'OK' && data.results[0]) {
             const { lat, lng } = data.results[0].geometry.location;
             return { latitude: lat, longitude: lng };
@@ -265,24 +261,22 @@ export default function Navigation() {
         return null;
     };
 
+    const [isGeocoding, setIsGeocoding] = useState(false);
+
     const autoGeocodeUnmapped = async (unmapped) => {
-        if (!unmapped.length) return;
-        console.log('[GEOCODE] Starting auto-geocode for', unmapped.length, 'unmapped calls');
+        if (!unmapped.length || isGeocoding) return;
+        setIsGeocoding(true);
         for (const call of unmapped) {
             if (!call.location) continue;
-            // Use normalizeAddress to clean the raw CAD location string
             const address = normalizeAddress(call.location) || `${call.location}, Virginia, USA`;
-            console.log('[GEOCODE] Geocoding call', call.id, '|', address);
             const coords = await geocodeWithGoogle(address);
             if (coords) {
-                console.log('[GEOCODE] ✅ Success:', call.id, coords);
                 await base44.entities.DispatchCall.update(call.id, coords);
                 setActiveCalls(prev => prev.map(c => c.id === call.id ? { ...c, ...coords } : c));
                 setUnmappedCalls(prev => prev.filter(c => c.id !== call.id));
-            } else {
-                console.warn('[GEOCODE] ❌ Failed:', call.id, '|', address);
             }
         }
+        setIsGeocoding(false);
     };
 
     const fetchCalls = async () => {
@@ -631,8 +625,16 @@ export default function Navigation() {
                                 exit={{ opacity: 0, y: -8 }}
                                 className="w-72 bg-[#0a0e1a]/97 border border-[#1e2d4a] rounded-b-lg shadow-xl overflow-hidden"
                             >
-                                <div className="px-3 py-2 border-b border-[#1e2d4a]">
+                                <div className="px-3 py-2 border-b border-[#1e2d4a] flex items-center justify-between">
                                     <span className="text-yellow-400 font-mono text-[10px] font-bold">UNMAPPED CALLS</span>
+                                    <button
+                                        onClick={() => autoGeocodeUnmapped(unmappedCalls)}
+                                        disabled={isGeocoding}
+                                        className="flex items-center gap-1 px-2 py-0.5 bg-yellow-500/20 border border-yellow-500/40 rounded text-yellow-300 text-[9px] font-mono font-bold hover:bg-yellow-500/30 transition-all disabled:opacity-50"
+                                    >
+                                        <MapPin className="w-2.5 h-2.5" />
+                                        {isGeocoding ? 'GEOCODING...' : 'GEOCODE ALL'}
+                                    </button>
                                 </div>
                                 <div className="max-h-64 overflow-y-auto">
                                     {unmappedCalls.map(call => (
