@@ -56,10 +56,10 @@ function LiveClock() {
     return (
         <div className="text-right">
             <div className="text-white font-mono font-bold text-lg leading-none">
-                {t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                {t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'America/New_York' })}
             </div>
             <div className="text-slate-500 font-mono text-[10px] tracking-widest">
-                {t.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
+                {t.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' }).toUpperCase()} ET
             </div>
         </div>
     );
