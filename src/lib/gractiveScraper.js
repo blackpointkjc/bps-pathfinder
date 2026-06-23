@@ -25,46 +25,62 @@ function normalizeStatus(s) {
     return v || 'New';
 }
 
-// Parse "06/22/2026 7:48 PM" or "7:48 PM" treating as America/New_York wall-clock time
+// Parse ET wall-clock time in multiple formats:
+// "06/22/2026 7:48 PM", "7:48 PM", "06/22/2026 20:56", "20:56"
 function parseTimeET(timeStr) {
     if (!timeStr) return null;
     try {
         const cleaned = timeStr.trim();
 
-        const fullMatch = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-        const timeOnly = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        // Full datetime with AM/PM: "06/22/2026 7:48 PM"
+        const fullAMPM = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        // Full datetime 24h: "06/22/2026 20:56"
+        const full24h = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})$/);
+        // Time only AM/PM: "7:48 PM"
+        const timeAMPM = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        // Time only 24h: "20:56"
+        const time24h = cleaned.match(/^(\d{1,2}):(\d{2})$/);
 
-        let month, day, year, hours, minutes, ampm;
+        let month, day, year, h, m;
 
-        if (fullMatch) {
-            [, month, day, year, hours, minutes, ampm] = fullMatch;
-        } else if (timeOnly) {
-            // Get today's date in ET
-            const nowET = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
-            const parts = nowET.split('/');
-            month = parts[0]; day = parts[1]; year = parts[2];
-            [, hours, minutes, ampm] = timeOnly;
+        const todayET = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+        const todayParts = todayET.split('/');
+
+        if (fullAMPM) {
+            [, month, day, year] = fullAMPM;
+            h = parseInt(fullAMPM[4], 10);
+            m = parseInt(fullAMPM[5], 10);
+            const ap = fullAMPM[6].toUpperCase();
+            if (ap === 'PM' && h !== 12) h += 12;
+            if (ap === 'AM' && h === 12) h = 0;
+        } else if (full24h) {
+            [, month, day, year] = full24h;
+            h = parseInt(full24h[4], 10);
+            m = parseInt(full24h[5], 10);
+        } else if (timeAMPM) {
+            [month, day, year] = todayParts;
+            h = parseInt(timeAMPM[1], 10);
+            m = parseInt(timeAMPM[2], 10);
+            const ap = timeAMPM[3].toUpperCase();
+            if (ap === 'PM' && h !== 12) h += 12;
+            if (ap === 'AM' && h === 12) h = 0;
+        } else if (time24h) {
+            [month, day, year] = todayParts;
+            h = parseInt(time24h[1], 10);
+            m = parseInt(time24h[2], 10);
         } else {
             return null;
         }
-
-        let h = parseInt(hours, 10);
-        const m = parseInt(minutes, 10);
-        if (ampm.toUpperCase() === 'PM' && h !== 12) h += 12;
-        if (ampm.toUpperCase() === 'AM' && h === 12) h = 0;
 
         const MM = String(month).padStart(2, '0');
         const DD = String(day).padStart(2, '0');
         const HH = String(h).padStart(2, '0');
         const mm = String(m).padStart(2, '0');
 
-        // Construct a fake UTC date representing the ET wall-clock time
+        // Treat as ET wall-clock: build fake UTC then apply ET offset
         const fakeUTC = new Date(`${year}-${MM}-${DD}T${HH}:${mm}:00Z`);
-        // Find what ET wall clock shows for this same fake UTC instant
         const etWall = new Date(fakeUTC.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-        // ET is behind UTC, so etWall < fakeUTC; offset = fakeUTC - etWall (positive hours like 4 or 5)
         const offsetMs = fakeUTC.getTime() - etWall.getTime();
-        // True UTC = wall-clock ET + offset
         return new Date(fakeUTC.getTime() + offsetMs).toISOString();
     } catch {
         return null;
@@ -134,7 +150,7 @@ For each call extract:
 - location: the full address or intersection
 - agency: the agency code (RPD, RFD, HPD, HFD, CCPD, CCFD)
 - status: the current status (Dispatched, Enroute, Arrived, On Scene, etc.)
-- time_received: the exact time received as shown on the page (e.g. "06/23/2026 8:45 PM")
+- time_received: the exact time received as shown on the page (e.g. "06/23/2026 20:45" or "06/23/2026 8:45 PM")
 - units: any unit numbers assigned
 - description: any additional notes
 
