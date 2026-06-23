@@ -115,9 +115,17 @@ export default function Navigation() {
     useEffect(() => {
         fetchCalls();
         loadMonitoredProperties();
-        const i = setInterval(() => { fetchCalls(); loadMonitoredProperties(); }, 30000);
+        const i = setInterval(() => { fetchCalls(); loadMonitoredProperties(); }, 60000);
         return () => clearInterval(i);
     }, []);
+
+    // Auto-geocode unmapped calls every 60s
+    useEffect(() => {
+        const i = setInterval(() => {
+            setUnmappedCalls(prev => { if (prev.length > 0) autoGeocodeUnmapped(prev); return prev; });
+        }, 60000);
+        return () => clearInterval(i);
+    }, [isGeocoding]);
 
     useEffect(() => { unitStatusRef.current = unitStatus; }, [unitStatus]);
 
@@ -250,34 +258,40 @@ export default function Navigation() {
         } catch (e) {}
     };
 
-    const geocodeWithNominatim = async (address) => {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
-        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        const data = await res.json();
-        if (data && data[0]) {
-            return { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };
-        }
-        return null;
-    };
-
     const [isGeocoding, setIsGeocoding] = useState(false);
+    const AGENCY_CITY = { RPD: 'Richmond, VA', RFD: 'Richmond, VA', HPD: 'Henrico County, VA', CCPD: 'Chesterfield County, VA', CCFD: 'Chesterfield County, VA' };
 
     const autoGeocodeUnmapped = async (unmapped) => {
         if (!unmapped.length || isGeocoding) return;
         setIsGeocoding(true);
-        for (const call of unmapped) {
-            if (!call.location) continue;
-            const address = normalizeAddress(call.location) || `${call.location}, Virginia, USA`;
-            // Rate-limit: Nominatim requires 1 request/sec
-            await new Promise(r => setTimeout(r, 1100));
-            const coords = await geocodeWithNominatim(address);
-            if (coords) {
-                await base44.entities.DispatchCall.update(call.id, coords);
-                setActiveCalls(prev => prev.map(c => c.id === call.id ? { ...c, ...coords } : c));
-                setUnmappedCalls(prev => prev.filter(c => c.id !== call.id));
+        try {
+            const toGeocode = unmapped.slice(0, 15).map(c => {
+                let addr = (c.location || '').replace(/\[[A-Z]+\]/g, '').replace(/\s*[\/&]\s*/g, ' and ').replace(/\bblock\b/gi, '').replace(/\s{2,}/g, ' ').trim();
+                const city = AGENCY_CITY[c.agency] || 'Richmond, VA';
+                return { id: c.id, address: `${addr}, ${city}` };
+            });
+            const result = await base44.integrations.Core.InvokeLLM({
+                prompt: `Geocode these Virginia addresses. Return JSON [{id, latitude, longitude}] for each:\n${toGeocode.map(t => `${t.id}: ${t.address}`).join('\n')}`,
+                model: 'gemini_3_flash',
+                response_json_schema: {
+                    type: 'object',
+                    properties: {
+                        results: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, latitude: { type: 'number' }, longitude: { type: 'number' } } } }
+                    }
+                }
+            });
+            for (const r of (result?.results || [])) {
+                if (r.latitude && r.longitude) {
+                    await base44.entities.DispatchCall.update(r.id, { latitude: r.latitude, longitude: r.longitude });
+                    setActiveCalls(prev => prev.map(c => c.id === r.id ? { ...c, latitude: r.latitude, longitude: r.longitude } : c));
+                    setUnmappedCalls(prev => prev.filter(c => c.id !== r.id));
+                }
             }
+        } catch (e) {
+            console.warn('[NAV] geocoding error:', e.message);
+        } finally {
+            setIsGeocoding(false);
         }
-        setIsGeocoding(false);
     };
 
     const fetchCalls = async () => {
