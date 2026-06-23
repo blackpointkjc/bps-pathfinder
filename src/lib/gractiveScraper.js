@@ -204,8 +204,8 @@ Return ALL calls. Do not filter or skip any. Include cleared/closed calls too if
         const time_received = parseTimeET(raw.time_received);
 
         if (!time_received) {
-            console.warn('[GRACTIVE] Skipping call with unparseable time:', raw.time_received, raw.incident);
-            continue;
+            // Use NOW if time can't be parsed — don't skip the call
+            console.warn('[SYNC] ⚠ Time parse failed for call, using NOW:', raw.time_received, raw.incident);
         }
 
         const t = new Date(time_received);
@@ -227,7 +227,7 @@ Return ALL calls. Do not filter or skip any. Include cleared/closed calls too if
             agency,
             source,
             status,
-            ...(time_received ? { time_received } : {}),
+            time_received: time_received || new Date().toISOString(),
             ...(raw.call_id ? { call_id: raw.call_id } : {}),
             ...(raw.units ? { assigned_units: raw.units.split(/[,\s]+/).filter(Boolean) } : {}),
             ...(raw.description ? { description: raw.description } : {}),
