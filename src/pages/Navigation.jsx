@@ -258,8 +258,10 @@ export default function Navigation() {
         setIsLoadingCalls(true);
         try {
             const all = await base44.entities.DispatchCall.list('-created_date', 200);
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
             const active = all.filter(c =>
-                !['Closed', 'Cleared', 'Cancelled'].includes(c.status)
+                !['Closed', 'Cleared', 'Cancelled'].includes(c.status) &&
+                new Date(c.time_received || c.created_date) >= oneHourAgo
             );
             setActiveCalls(active);
             // Store all calls for heatmap (last 30 days or 500 calls)
