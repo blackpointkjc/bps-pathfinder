@@ -59,9 +59,9 @@ export function DashboardDataProvider({ children }) {
 
             console.log(`[CAD ${nowET}] Requests made: 2 | Calls fetched: ${callsData?.length ?? 0}`);
 
+            // Show ALL calls from the last 8 hours — no status filter, no geo filter
             const active = (callsData || []).filter(c => {
-                if (['Closed', 'Cleared', 'Cancelled'].includes(c.status)) return false;
-                if (!c.time_received) return false;
+                if (!c.time_received) return true; // include calls without a time too
                 return new Date(c.time_received).getTime() >= eightHoursAgo;
             });
 

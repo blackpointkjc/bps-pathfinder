@@ -211,8 +211,7 @@ Return ALL calls. Do not filter or skip any. Include cleared/closed calls too if
         const t = new Date(time_received);
         if (!newestTime || t > newestTime) newestTime = t;
 
-        // Skip calls that are already closed unless status changed
-        if (['Cleared', 'Closed', 'Cancelled'].includes(status)) continue;
+        // Do NOT skip any calls — show everything from gractivecalls.com regardless of status
 
         const dedupKey = buildDedupKey(raw.incident, raw.location, agency, time_received);
         const callIdKey = raw.call_id?.trim();
