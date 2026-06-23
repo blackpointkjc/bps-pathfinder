@@ -8,8 +8,8 @@ import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import { syncGractiveCalls } from '@/lib/gractiveScraper';
+import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
 import { RefreshCw, Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff } from 'lucide-react';
-
 
 const PRIORITY_CONFIG = {
     critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
@@ -35,6 +35,7 @@ function getCallPriority(call) {
     return call.priority || 'medium';
 }
 
+// Display time in ET, 12-hour format
 function fmtTime(dateStr) {
     if (!dateStr) return '----';
     const d = new Date(dateStr);
@@ -42,12 +43,14 @@ function fmtTime(dateStr) {
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' });
 }
 
+// Elapsed since call was received — never negative
 function elapsed(dateStr) {
     if (!dateStr) return '';
-    const secs = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+    const secs = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+    if (secs < 0) return '0s';
     if (secs < 60) return `${secs}s`;
-    if (secs < 3600) return `${Math.floor(secs/60)}m ${secs%60}s`;
-    return `${Math.floor(secs/3600)}h ${Math.floor((secs%3600)/60)}m`;
+    if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+    return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
 }
 
 function LiveClock() {
@@ -66,12 +69,7 @@ function LiveClock() {
 }
 
 function PanelHeader({ children, count, accent = 'gold' }) {
-    const accents = {
-        gold: 'border-t-gold',
-        red: 'border-t-red-500',
-        blue: 'border-t-blue-500',
-        green: 'border-t-green-500',
-    };
+    const accents = { gold: 'border-t-gold', red: 'border-t-red-500', blue: 'border-t-blue-500', green: 'border-t-green-500' };
     return (
         <div className={`bg-slate-800 border-b border-slate-700 border-t-2 ${accents[accent]} px-3 py-2 flex items-center justify-between`}>
             <div className="flex items-center gap-2">
@@ -85,24 +83,22 @@ function PanelHeader({ children, count, accent = 'gold' }) {
     );
 }
 
-export default function CommandDashboard() {
+// Inner dashboard — consumes context
+function CommandDashboardInner() {
     const navigate = useNavigate();
-    const [calls, setCalls] = useState([]);
-    const [units, setUnits] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [lastRefresh, setLastRefresh] = useState(new Date());
+    const { calls, users, loading, lastRefresh, rateLimited, manualRefresh } = useDashboardData();
+
+    const [refreshing, setRefreshing]           = useState(false);
+    const [currentUser, setCurrentUser]         = useState(null);
+    const [soundEnabled, setSoundEnabled]       = useState(true);
+    const [syncStatus, setSyncStatus]           = useState({ state: 'idle', lastSync: null, added: 0, updated: 0, total: 0, error: null });
     const [monitoredProperties, setMonitoredProperties] = useState([]);
-    const [currentUser, setCurrentUser] = useState(null);
-    const [soundEnabled, setSoundEnabled] = useState(true);
-    const [syncStatus, setSyncStatus] = useState({ state: 'idle', lastSync: null, added: 0, updated: 0, total: 0, error: null, newestTime: null });
-    const [, setTick] = useState(0);
-    const soundEnabledRef = useRef(true);
-    const currentUserRef = useRef(null);
-    const monitoredPropertiesRef = useRef([]);
-    const knownCallIdsRef = useRef(null);
-    const loadDataRef = useRef(null);
-    const syncingRef = useRef(false);
+    const [, setTick]                           = useState(0);
+
+    const soundEnabledRef        = useRef(true);
+    const knownCallIdsRef        = useRef(null);
+    const syncingRef             = useRef(false);
+    const lastManualRefreshRef   = useRef(0);
 
     // Re-render every second for live elapsed timers
     useEffect(() => {
@@ -111,16 +107,8 @@ export default function CommandDashboard() {
     }, []);
 
     useEffect(() => {
-        const anyStoredMute = Object.keys(localStorage).find(k => k.startsWith('bps_alerts_'));
-        if (anyStoredMute) {
-            const val = localStorage.getItem(anyStoredMute) === 'true';
-            setSoundEnabled(val);
-            soundEnabledRef.current = val;
-            setDispatchAlertMuted(!val);
-        }
         base44.auth.me().then(user => {
             setCurrentUser(user);
-            currentUserRef.current = user;
             const stored = localStorage.getItem(`bps_alerts_${user?.id}`);
             if (stored !== null) {
                 const val = stored === 'true';
@@ -129,16 +117,38 @@ export default function CommandDashboard() {
                 setDispatchAlertMuted(!val);
             }
         }).catch(() => {});
-        loadDataRef.current();
-        loadMonitoredProperties();
 
-        // Run a live sync immediately, then every 2 minutes
+        base44.entities.MonitoredProperty.list().then(props => {
+            setMonitoredProperties((props || []).filter(p => p.enabled));
+        }).catch(() => {});
+    }, []);
+
+    // Detect new calls and play alert sound
+    useEffect(() => {
+        if (!calls.length) return;
+        const currentIds = new Set(calls.map(c => c.id));
+        if (knownCallIdsRef.current === null) {
+            knownCallIdsRef.current = currentIds;
+            return;
+        }
+        const newIds = [...currentIds].filter(id => !knownCallIdsRef.current.has(id));
+        if (newIds.length > 0 && soundEnabledRef.current) {
+            const newCall = calls.find(c => c.id === newIds[0]);
+            if (newCall && shouldAlertForGeofence(newCall, currentUser, monitoredProperties)) {
+                playDispatchAlert();
+                window.dispatchEvent(new CustomEvent('bps-new-call', { detail: newCall }));
+            }
+        }
+        knownCallIdsRef.current = currentIds;
+    }, [calls, currentUser, monitoredProperties]);
+
+    // Sync from gractivecalls.com — every 2 minutes, no loop on error
+    useEffect(() => {
         const runSync = async () => {
             if (syncingRef.current) return;
             syncingRef.current = true;
             setSyncStatus(s => ({ ...s, state: 'syncing' }));
 
-            // Safety timeout — if sync takes >90s, force-reset state
             const safetyTimer = setTimeout(() => {
                 if (syncingRef.current) {
                     syncingRef.current = false;
@@ -155,13 +165,11 @@ export default function CommandDashboard() {
                     updated: result.updated,
                     total: result.total,
                     error: result.errors?.length ? result.errors[0] : null,
-                    newestTime: result.newestTime || null,
                 });
-                // Always reload after sync so new calls appear
-                loadDataRef.current();
+                // Refresh data once after sync — will be throttled if too recent
+                manualRefresh();
             } catch (err) {
                 setSyncStatus(s => ({ ...s, state: 'error', error: err?.message || String(err), lastSync: new Date() }));
-                console.error('[SYNC] Unhandled error in runSync:', err);
             } finally {
                 clearTimeout(safetyTimer);
                 syncingRef.current = false;
@@ -169,86 +177,20 @@ export default function CommandDashboard() {
         };
 
         runSync();
-        const syncInterval = setInterval(runSync, 120000);
-        // DB poll every 3 minutes as fallback — realtime subscription handles instant updates
-        const dbPollInterval = setInterval(() => loadDataRef.current(), 180000);
-
-        // Real-time subscription for instant new call detection
-        const unsubscribe = base44.entities.DispatchCall.subscribe(() => {
-            loadDataRef.current();
-        });
-
-        return () => { clearInterval(syncInterval); clearInterval(dbPollInterval); unsubscribe(); };
-    }, []);
-
-    // Geocoding is handled server-side during data ingestion.
-    // The dashboard does not geocode calls client-side to avoid CORS/rate-limit issues.
-
-    const loadMonitoredProperties = async () => {
-        try {
-            const props = await base44.entities.MonitoredProperty.list();
-            const enabled = props?.filter(p => p.enabled) || [];
-            setMonitoredProperties(enabled);
-            monitoredPropertiesRef.current = enabled;
-        } catch {}
-    };
-
-    const loadData = async () => {
-        const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
-        console.log(`[CAD ${ts}] loadData: starting fetch...`);
-        try {
-            const [callsData, usersData] = await Promise.all([
-                base44.entities.DispatchCall.list('-time_received', 500),
-                base44.entities.User.list()
-            ]);
-            console.log(`[CAD ${ts}] loadData: fetched ${callsData?.length ?? 0} calls, ${usersData?.length ?? 0} users`);
-            const eightHoursAgo = Date.now() - 8 * 60 * 60 * 1000;
-            const active = (callsData || []).filter(c => {
-                if (['Closed', 'Cleared', 'Cancelled'].includes(c.status)) return false;
-                if (!c.time_received) return false; // skip records with no parsed timestamp
-                const t = new Date(c.time_received).getTime();
-                return t >= eightHoursAgo;
-            });
-            console.log(`[CAD ${ts}] loadData: ${active.length} active calls after filter`);
-            const currentIds = new Set(active.map(c => c.id));
-            if (knownCallIdsRef.current === null) {
-                knownCallIdsRef.current = currentIds;
-            } else {
-                const newCallIds = [...currentIds].filter(id => !knownCallIdsRef.current.has(id));
-                if (newCallIds.length > 0) {
-                    console.log(`[CAD ${ts}] loadData: ${newCallIds.length} new call(s) detected:`, newCallIds);
-                    if (soundEnabledRef.current) {
-                        const newCall = active.find(c => c.id === newCallIds[0]);
-                        if (newCall) {
-                            const inGeofence = shouldAlertForGeofence(newCall, currentUserRef.current, monitoredPropertiesRef.current);
-                            if (inGeofence) {
-                                console.log(`[CAD ${ts}] loadData: alert triggered for call`, newCall.incident, '@', newCall.location);
-                                playDispatchAlert();
-                                window.dispatchEvent(new CustomEvent('bps-new-call', { detail: newCall }));
-                            }
-                        }
-                    }
-                }
-                knownCallIdsRef.current = currentIds;
-            }
-            setCalls(active);
-            setUnits(usersData || []);
-            setLastRefresh(new Date());
-            console.log(`[CAD ${ts}] loadData: ✓ complete`);
-        } catch (e) {
-            console.error(`[CAD ${ts}] loadData: ✗ FAILED`, e);
-        }
-        finally { setLoading(false); }
-    };
-    loadDataRef.current = loadData;
+        const id = setInterval(runSync, 120_000);
+        return () => clearInterval(id);
+    }, [manualRefresh]);
 
     const handleRefresh = async () => {
+        const now = Date.now();
+        if (now - lastManualRefreshRef.current < 5000) return; // block spam
+        lastManualRefreshRef.current = now;
         setRefreshing(true);
-        await loadData();
+        await manualRefresh();
         setRefreshing(false);
     };
 
-    const handleStatusChange = async (newStatus) => {
+    const handleStatusChange = (newStatus) => {
         setCurrentUser(prev => ({ ...prev, status: newStatus }));
     };
 
@@ -260,48 +202,36 @@ export default function CommandDashboard() {
         setDispatchAlertMuted(!next);
     };
 
-    const activeUnits = units.filter(u => u.status && u.status !== 'Out of Service' && u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
-    const sortedCalls = [...calls].sort((a, b) => {
-        const ta = new Date(a.time_received || a.created_date).getTime();
-        const tb = new Date(b.time_received || b.created_date).getTime();
-        return tb - ta;
-    });
-
-    const criticalCalls = calls.filter(c => getCallPriority(c) === 'critical');
-    const highCalls = calls.filter(c => getCallPriority(c) === 'high');
-    const unassigned = calls.filter(c => (!c.assigned_units || c.assigned_units.length === 0) && !c.source);
-    const availUnits = activeUnits.filter(u => u.status === 'Available');
-    const enrouteUnits = activeUnits.filter(u => u.status === 'Enroute');
-    const onSceneUnits = activeUnits.filter(u => u.status === 'On Scene');
-    const busyUnits = activeUnits.filter(u => u.status === 'Busy');
-
-    const isAdmin = currentUser?.role === 'admin';
-    const isDispatchOrAdmin = isAdmin || currentUser?.is_supervisor || currentUser?.dispatch_role;
-
     const handlePriorityOverride = async (call, e) => {
         e.stopPropagation();
         const order = ['critical', 'high', 'medium', 'low'];
         const current = getCallPriority(call);
-        const nextIdx = (order.indexOf(current) + 1) % order.length;
-        const next = order[nextIdx];
+        const next = order[(order.indexOf(current) + 1) % order.length];
         await base44.entities.DispatchCall.update(call.id, { priority: next, priority_override: true });
-        loadData();
+        manualRefresh();
     };
 
     const handleMarkCleared = async (call, e) => {
         e.stopPropagation();
-        const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
-        console.log(`[CAD ${ts}] MARK CLEARED: call ${call.id} — ${call.incident} @ ${call.location}`);
-        try {
-            await base44.entities.DispatchCall.update(call.id, { status: 'Cleared', time_cleared: new Date().toISOString() });
-            console.log(`[CAD ${ts}] MARK CLEARED: ✓ success`);
-        } catch (err) {
-            console.error(`[CAD ${ts}] MARK CLEARED: ✗ FAILED`, err);
-        }
-        loadData();
+        await base44.entities.DispatchCall.update(call.id, { status: 'Cleared', time_cleared: new Date().toISOString() });
+        manualRefresh();
     };
 
+    const sortedCalls = [...calls].sort((a, b) =>
+        new Date(b.time_received).getTime() - new Date(a.time_received).getTime()
+    );
 
+    const activeUnits    = users.filter(u => u.status && u.status !== 'Out of Service' && u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
+    const criticalCalls  = calls.filter(c => getCallPriority(c) === 'critical');
+    const highCalls      = calls.filter(c => getCallPriority(c) === 'high');
+    const unassigned     = calls.filter(c => (!c.assigned_units || c.assigned_units.length === 0) && !c.source);
+    const availUnits     = activeUnits.filter(u => u.status === 'Available');
+    const enrouteUnits   = activeUnits.filter(u => u.status === 'Enroute');
+    const onSceneUnits   = activeUnits.filter(u => u.status === 'On Scene');
+    const busyUnits      = activeUnits.filter(u => u.status === 'Busy');
+
+    const isAdmin            = currentUser?.role === 'admin';
+    const isDispatchOrAdmin  = isAdmin || currentUser?.is_supervisor || currentUser?.dispatch_role;
 
     if (loading) return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -324,7 +254,9 @@ export default function CommandDashboard() {
                         <span className="text-green-400 font-mono text-[10px] font-bold tracking-widest">SYSTEM ONLINE</span>
                     </div>
                     <div className="w-px h-4 bg-slate-700" />
-                    <span className="text-slate-500 font-mono text-[10px]">REFRESHED {fmtTime(lastRefresh)}</span>
+                    <span className="text-slate-500 font-mono text-[10px]">
+                        REFRESHED {lastRefresh ? fmtTime(lastRefresh) : '—'}
+                    </span>
                 </div>
                 <div className="flex-1" />
                 <div className="flex items-center gap-1.5">
@@ -334,7 +266,7 @@ export default function CommandDashboard() {
                             {soundEnabled ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
                         </button>
                     )}
-                    {/* Sync status indicator */}
+                    {/* Sync status */}
                     <div className={`h-7 flex items-center gap-1.5 px-2 rounded border font-mono text-[10px] font-bold flex-shrink-0 ${
                         syncStatus.state === 'syncing' ? 'bg-blue-900/30 border-blue-600/40 text-blue-300' :
                         syncStatus.state === 'error'   ? 'bg-red-900/30 border-red-600/40 text-red-300' :
@@ -346,13 +278,12 @@ export default function CommandDashboard() {
                         ) : syncStatus.state === 'error' ? (
                             <><WifiOff className="w-3 h-3" />SYNC ERR</>
                         ) : syncStatus.lastSync ? (
-                            <><span className="w-1.5 h-1.5 rounded-full bg-green-400" />+{syncStatus.added} @ {syncStatus.lastSync.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</>
+                            <><span className="w-1.5 h-1.5 rounded-full bg-green-400" />+{syncStatus.added} @ {fmtTime(syncStatus.lastSync)}</>
                         ) : (
                             <><span className="w-1.5 h-1.5 rounded-full bg-slate-500" />AWAITING SYNC</>
                         )}
                     </div>
                     <button onClick={handleRefresh} disabled={refreshing}
-                        title="Refresh call data"
                         className="h-7 flex items-center gap-1 px-2 rounded border font-mono text-[10px] font-bold transition-all flex-shrink-0 bg-slate-800 border-slate-600 text-slate-400 hover:text-white">
                         <RotateCcw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
                         REFRESH
@@ -366,14 +297,23 @@ export default function CommandDashboard() {
                 <LiveClock />
             </div>
 
+            {/* ── RATE LIMIT BANNER ── */}
+            {rateLimited && (
+                <div className="flex-none flex items-center gap-3 bg-yellow-950/80 border-b border-yellow-800/60 px-4 py-1.5">
+                    <WifiOff className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />
+                    <span className="text-yellow-300 font-mono text-[10px] font-bold tracking-wide">
+                        RATE LIMIT REACHED — Waiting before refreshing
+                    </span>
+                </div>
+            )}
+
             {/* ── SYNC ERROR BANNER ── */}
-            {syncStatus.state === 'error' && syncStatus.error && (
+            {syncStatus.state === 'error' && syncStatus.error && !rateLimited && (
                 <div className="flex-none flex items-center gap-3 bg-red-950/80 border-b border-red-800/60 px-4 py-1.5">
                     <WifiOff className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
                     <span className="text-red-300 font-mono text-[10px] font-bold tracking-wide flex-1 truncate">
                         SYNC FAILED: {syncStatus.error}
                     </span>
-                    <span className="text-red-500 font-mono text-[9px]">Will retry in 60s</span>
                 </div>
             )}
 
@@ -396,7 +336,7 @@ export default function CommandDashboard() {
                 ))}
             </div>
 
-            {/* ── MY STATUS BAR (officers) ── */}
+            {/* ── MY STATUS BAR ── */}
             {currentUser && (
                 <div className="flex-none flex items-center gap-2 px-3 py-1.5 bg-slate-900/80 border-b border-slate-800">
                     <span className="text-slate-500 font-mono text-[10px] tracking-widest flex-shrink-0">
@@ -443,10 +383,9 @@ export default function CommandDashboard() {
                 <div className="lg:col-span-3 flex flex-col border-r border-slate-800 min-h-0">
                     <PanelHeader count={calls.length}>ACTIVE INCIDENT QUEUE</PanelHeader>
 
-                    {/* Column Headers */}
                     <div className="flex items-center bg-slate-900 border-b border-slate-700 px-3 py-1 text-[9px] font-mono text-slate-500 tracking-widest flex-none">
                         <div className="w-8 flex-shrink-0">PRI</div>
-                        <div className="w-16 flex-shrink-0">TIME</div>
+                        <div className="w-16 flex-shrink-0">TIME (ET)</div>
                         <div className="w-20 flex-shrink-0 hidden md:block">ELAPSED</div>
                         <div className="flex-1">INCIDENT / LOCATION</div>
                         <div className="w-24 flex-shrink-0 hidden lg:block">AGENCY</div>
@@ -455,13 +394,12 @@ export default function CommandDashboard() {
                         {isDispatchOrAdmin && <div className="w-14 flex-shrink-0 text-center">MARK</div>}
                     </div>
 
-                    {/* Call Rows */}
                     <div className="flex-1 overflow-y-auto">
                         {sortedCalls.length === 0 ? (
                             <div className="flex items-center justify-center h-32 text-slate-600 font-mono text-xs tracking-widest">
                                 — NO ACTIVE INCIDENTS —
                             </div>
-                        ) : sortedCalls.map((call, idx) => {
+                        ) : sortedCalls.map((call) => {
                             const priority = getCallPriority(call);
                             const cfg = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG.medium;
                             const isUnassigned = (!call.assigned_units || call.assigned_units.length === 0) && !call.source;
@@ -469,13 +407,10 @@ export default function CommandDashboard() {
                                 <div key={call.id}
                                     onClick={() => navigate(`${createPageUrl('Navigation')}?callId=${call.id}${call.latitude ? `&lat=${call.latitude}&lng=${call.longitude}` : ''}`)}
                                     className={`flex items-center px-3 py-2 border-b border-slate-800/60 cursor-pointer transition-colors ${cfg.row} ${priority === 'critical' ? 'border-l-2 border-l-red-500' : priority === 'high' ? 'border-l-2 border-l-orange-500' : 'border-l-2 border-l-transparent'}`}>
-                                    
-                                    {/* Priority */}
+
                                     <div className="w-8 flex-shrink-0">
                                         {isAdmin ? (
-                                            <button
-                                                onClick={(e) => handlePriorityOverride(call, e)}
-                                                title="Click to cycle priority"
+                                            <button onClick={(e) => handlePriorityOverride(call, e)}
                                                 className={`text-[10px] font-mono font-bold ${cfg.text} hover:ring-1 ring-current rounded px-0.5 transition-all`}>
                                                 {cfg.label}
                                             </button>
@@ -484,17 +419,14 @@ export default function CommandDashboard() {
                                         )}
                                     </div>
 
-                                    {/* Time */}
                                     <div className="w-16 flex-shrink-0 font-mono text-[10px] text-slate-400">
-                                        {fmtTime(call.time_received || call.created_date)}
+                                        {fmtTime(call.time_received)}
                                     </div>
 
-                                    {/* Elapsed */}
                                     <div className="w-20 flex-shrink-0 font-mono text-[10px] text-slate-500 hidden md:block">
-                                        {elapsed(call.time_received || call.created_date)}
+                                        {elapsed(call.time_received)}
                                     </div>
 
-                                    {/* Incident + Location */}
                                     <div className="flex-1 min-w-0 pr-2">
                                         <div className="text-white font-mono font-bold text-xs truncate">{cleanIncident(call)}</div>
                                         <div className="text-slate-400 font-mono text-[10px] truncate flex items-center gap-1 mt-0.5">
@@ -504,12 +436,10 @@ export default function CommandDashboard() {
                                         </div>
                                     </div>
 
-                                    {/* Agency */}
                                     <div className="w-24 flex-shrink-0 hidden lg:block">
                                         <span className="text-slate-500 font-mono text-[10px] truncate">{call.agency || '—'}</span>
                                     </div>
 
-                                    {/* Status */}
                                     <div className="w-20 flex-shrink-0 text-center">
                                         <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${
                                             call.status === 'New' ? 'bg-red-900/40 text-red-300 border-red-700/40' :
@@ -519,34 +449,29 @@ export default function CommandDashboard() {
                                         }`}>{(call.status || 'NEW').toUpperCase()}</span>
                                     </div>
 
-                                    {/* Units */}
                                     <div className="w-16 flex-shrink-0 text-center">
-                                       {call.assigned_units?.length > 0 ? (
-                                           <span className="text-[10px] font-mono font-bold text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded border border-green-700/30">
-                                               {call.assigned_units.length} UNIT{call.assigned_units.length > 1 ? 'S' : ''}
-                                           </span>
-                                       ) : isUnassigned ? (
-                                           <span className="text-[10px] font-mono font-bold text-red-400 bg-red-900/30 px-1 py-0.5 rounded border border-red-700/30 animate-pulse">
-                                               UNSGN
-                                           </span>
-                                       ) : (
-                                           <span className="text-[10px] font-mono text-slate-600">EXT</span>
-                                       )}
+                                        {call.assigned_units?.length > 0 ? (
+                                            <span className="text-[10px] font-mono font-bold text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded border border-green-700/30">
+                                                {call.assigned_units.length} UNIT{call.assigned_units.length > 1 ? 'S' : ''}
+                                            </span>
+                                        ) : isUnassigned ? (
+                                            <span className="text-[10px] font-mono font-bold text-red-400 bg-red-900/30 px-1 py-0.5 rounded border border-red-700/30 animate-pulse">
+                                                UNSGN
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] font-mono text-slate-600">EXT</span>
+                                        )}
                                     </div>
 
-                                    {/* Mark Cleared */}
                                     {isDispatchOrAdmin && (
-                                       <div className="w-14 flex-shrink-0 flex items-center justify-center">
-                                           <button
-                                               onClick={(e) => handleMarkCleared(call, e)}
-                                               title="Mark as Cleared"
-                                               className="flex items-center gap-1 px-1.5 py-1 rounded bg-slate-700 hover:bg-green-700/60 text-slate-400 hover:text-green-300 font-mono text-[9px] font-bold transition-all border border-slate-600 hover:border-green-600/50"
-                                           >
-                                               <CheckCheck className="w-3 h-3" />CLR
-                                           </button>
-                                       </div>
+                                        <div className="w-14 flex-shrink-0 flex items-center justify-center">
+                                            <button onClick={(e) => handleMarkCleared(call, e)}
+                                                className="flex items-center gap-1 px-1.5 py-1 rounded bg-slate-700 hover:bg-green-700/60 text-slate-400 hover:text-green-300 font-mono text-[9px] font-bold transition-all border border-slate-600 hover:border-green-600/50">
+                                                <CheckCheck className="w-3 h-3" />CLR
+                                            </button>
+                                        </div>
                                     )}
-                                    </div>
+                                </div>
                             );
                         })}
                     </div>
@@ -555,11 +480,8 @@ export default function CommandDashboard() {
                 {/* ── RIGHT COLUMN ── */}
                 <div className="flex flex-col border-t border-slate-800 lg:border-t-0 min-h-0">
 
-                    {/* UNIT STATUS BOARD */}
                     <div className="flex flex-col" style={{ maxHeight: '50%' }}>
                         <PanelHeader count={activeUnits.length} accent="blue">UNIT STATUS BOARD</PanelHeader>
-                        
-                        {/* Mini status summary */}
                         <div className="grid grid-cols-4 border-b border-slate-800 flex-none">
                             {[
                                 { label: 'AVAIL', val: availUnits.length, color: 'text-green-400' },
@@ -573,7 +495,6 @@ export default function CommandDashboard() {
                                 </div>
                             ))}
                         </div>
-
                         <div className="overflow-y-auto flex-1">
                             {activeUnits.length === 0 ? (
                                 <div className="py-6 text-center text-slate-600 font-mono text-[10px] tracking-widest">NO UNITS ONLINE</div>
@@ -589,7 +510,7 @@ export default function CommandDashboard() {
                                             {unit.current_call_info && <div className="text-slate-500 text-[9px] font-mono truncate">{unit.current_call_info}</div>}
                                         </div>
                                         <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${cfg.badge}`}>
-                                            {(unit.status || 'UNK').substring(0,6).toUpperCase()}
+                                            {(unit.status || 'UNK').substring(0, 6).toUpperCase()}
                                         </span>
                                     </div>
                                 );
@@ -597,7 +518,6 @@ export default function CommandDashboard() {
                         </div>
                     </div>
 
-                    {/* QUICK NAV */}
                     <div className="border-t border-slate-800">
                         <PanelHeader accent="gold">QUICK ACCESS</PanelHeader>
                         <div className="p-2 grid grid-cols-2 gap-1.5">
@@ -605,14 +525,14 @@ export default function CommandDashboard() {
                                 { label: 'DISPATCH CTR', icon: Zap, page: 'DispatchCenter', color: 'border-gold/40 text-gold hover:bg-gold/10' },
                                 { label: 'LIVE MAP', icon: MapPin, page: 'Navigation', color: 'border-blue-500/40 text-blue-400 hover:bg-blue-500/10' },
                                 ...(isAdmin ? [
-                                       { label: 'PERSONNEL', icon: Users, page: 'Personnel', color: 'border-green-500/40 text-green-400 hover:bg-green-500/10' },
-                                       { label: 'REPORTS', icon: TrendingUp, page: 'Reports', color: 'border-purple-500/40 text-purple-400 hover:bg-purple-500/10' },
-                                       { label: 'CALL HISTORY', icon: Radio, page: 'CallHistory', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
-                                       { label: 'ADMIN', icon: Shield, page: 'AdminPortal', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
-                                   ] : [
-                                       { label: 'CALL HISTORY', icon: Radio, page: 'CallHistory', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
-                                   ]),
-                                ].map(({ label, icon: Icon, page, color }) => (
+                                    { label: 'PERSONNEL', icon: Users, page: 'Personnel', color: 'border-green-500/40 text-green-400 hover:bg-green-500/10' },
+                                    { label: 'REPORTS', icon: TrendingUp, page: 'Reports', color: 'border-purple-500/40 text-purple-400 hover:bg-purple-500/10' },
+                                    { label: 'CALL HISTORY', icon: Radio, page: 'CallHistory', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
+                                    { label: 'ADMIN', icon: Shield, page: 'AdminPortal', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
+                                ] : [
+                                    { label: 'CALL HISTORY', icon: Radio, page: 'CallHistory', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
+                                ]),
+                            ].map(({ label, icon: Icon, page, color }) => (
                                 <button key={page} onClick={() => navigate(createPageUrl(page))}
                                     className={`flex items-center gap-1.5 px-2 py-2 rounded border bg-transparent font-mono text-[10px] font-bold transition-all ${color}`}>
                                     <Icon className="w-3 h-3 flex-shrink-0" />{label}
@@ -621,7 +541,6 @@ export default function CommandDashboard() {
                         </div>
                     </div>
 
-                    {/* UNASSIGNED CALLS ALERT */}
                     {unassigned.length > 0 && (
                         <div className="border-t-2 border-yellow-600/60 bg-yellow-950/20">
                             <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-yellow-800/30">
@@ -630,8 +549,7 @@ export default function CommandDashboard() {
                             </div>
                             <div className="px-3 py-1.5 space-y-1">
                                 {unassigned.slice(0, 4).map(call => (
-                                    <div key={call.id}
-                                        onClick={() => navigate(createPageUrl('DispatchCenter'))}
+                                    <div key={call.id} onClick={() => navigate(createPageUrl('DispatchCenter'))}
                                         className="flex items-start gap-1.5 cursor-pointer hover:bg-yellow-950/30 px-1 py-0.5 rounded">
                                         <span className="text-yellow-600 font-mono text-[9px] mt-0.5">►</span>
                                         <div className="min-w-0">
@@ -646,5 +564,14 @@ export default function CommandDashboard() {
                 </div>
             </div>
         </div>
+    );
+}
+
+// Wrap with provider so context is available
+export default function CommandDashboard() {
+    return (
+        <DashboardDataProvider>
+            <CommandDashboardInner />
+        </DashboardDataProvider>
     );
 }

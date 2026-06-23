@@ -208,10 +208,8 @@ Return ALL calls. Do not filter or skip any. Include cleared/closed calls too if
             continue;
         }
 
-        if (time_received) {
-            const t = new Date(time_received);
-            if (!newestTime || t > newestTime) newestTime = t;
-        }
+        const t = new Date(time_received);
+        if (!newestTime || t > newestTime) newestTime = t;
 
         // Skip calls that are already closed unless status changed
         if (['Cleared', 'Closed', 'Cancelled'].includes(status)) continue;

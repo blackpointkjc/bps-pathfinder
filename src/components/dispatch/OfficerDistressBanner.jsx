@@ -122,7 +122,7 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
 
     useEffect(() => {
         fetchAlerts();
-        const interval = setInterval(fetchAlerts, 8000);
+        const interval = setInterval(fetchAlerts, 30000);
         // Also listen for immediate local events
         const handler = () => fetchAlerts();
         window.addEventListener('officer-distress-activated', handler);
