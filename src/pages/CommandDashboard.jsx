@@ -132,11 +132,20 @@ export default function CommandDashboard() {
         loadDataRef.current();
         loadMonitoredProperties();
 
-        // Run a live sync immediately, then every 60 seconds
+        // Run a live sync immediately, then every 2 minutes
         const runSync = async () => {
             if (syncingRef.current) return;
             syncingRef.current = true;
             setSyncStatus(s => ({ ...s, state: 'syncing' }));
+
+            // Safety timeout — if sync takes >90s, force-reset state
+            const safetyTimer = setTimeout(() => {
+                if (syncingRef.current) {
+                    syncingRef.current = false;
+                    setSyncStatus(s => ({ ...s, state: 'error', error: 'Sync timed out', lastSync: new Date() }));
+                }
+            }, 90000);
+
             try {
                 const result = await syncGractiveCalls();
                 setSyncStatus({
@@ -148,14 +157,13 @@ export default function CommandDashboard() {
                     error: result.errors?.length ? result.errors[0] : null,
                     newestTime: result.newestTime || null,
                 });
-                // Reload calls from DB after sync
-                if (result.added > 0 || result.updated > 0) {
-                    loadDataRef.current();
-                }
+                // Always reload after sync so new calls appear
+                loadDataRef.current();
             } catch (err) {
                 setSyncStatus(s => ({ ...s, state: 'error', error: err?.message || String(err), lastSync: new Date() }));
                 console.error('[SYNC] Unhandled error in runSync:', err);
             } finally {
+                clearTimeout(safetyTimer);
                 syncingRef.current = false;
             }
         };
@@ -194,11 +202,11 @@ export default function CommandDashboard() {
                 base44.entities.User.list()
             ]);
             console.log(`[CAD ${ts}] loadData: fetched ${callsData?.length ?? 0} calls, ${usersData?.length ?? 0} users`);
-            const oneHourAgo = Date.now() - 60 * 60 * 1000;
+            const eightHoursAgo = Date.now() - 8 * 60 * 60 * 1000;
             const active = (callsData || []).filter(c => {
                 if (['Closed', 'Cleared', 'Cancelled'].includes(c.status)) return false;
                 const t = new Date(c.time_received || c.created_date).getTime();
-                return t >= oneHourAgo;
+                return t >= eightHoursAgo;
             });
             console.log(`[CAD ${ts}] loadData: ${active.length} active calls after filter`);
             const currentIds = new Set(active.map(c => c.id));
