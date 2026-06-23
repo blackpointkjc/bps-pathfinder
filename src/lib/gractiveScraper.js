@@ -140,21 +140,23 @@ export async function syncGractiveCalls() {
     let rawCalls = [];
     try {
         const result = await base44.integrations.Core.InvokeLLM({
-            prompt: `Visit https://gractivecalls.com/ right now and extract ALL currently active dispatch calls shown on the page.
-            
-Return EVERY call you see — do not skip any. The table typically has columns like: Time Received, Call Type/Incident, Location, Agency (RPD/RFD/HPD/HFD/CCPD/CCFD), Status, Unit(s).
+            prompt: `CRITICAL: Visit https://gractivecalls.com/ RIGHT NOW and scroll the page to see ALL dispatch calls currently visible. Extract EVERY SINGLE CALL without exception.
 
-For each call extract:
-- call_id: any call ID or incident number shown (empty string if none)
-- incident: the call type / incident description
-- location: the full address or intersection
-- agency: the agency code (RPD, RFD, HPD, HFD, CCPD, CCFD)
-- status: the current status (Dispatched, Enroute, Arrived, On Scene, etc.)
-- time_received: the exact time received as shown on the page (e.g. "06/23/2026 20:45" or "06/23/2026 8:45 PM")
-- units: any unit numbers assigned
-- description: any additional notes
+Do NOT skip any calls. Do NOT filter. Do NOT abbreviate. Return the COMPLETE list.
 
-Return ALL calls. Do not filter or skip any. Include cleared/closed calls too if shown.`,
+The table has columns like: Time Received, Call Type/Incident, Location, Agency, Status, Unit(s).
+
+For EACH call (no exceptions):
+- call_id: call/incident ID or empty string
+- incident: EXACT call type / incident description as shown
+- location: COMPLETE address or intersection as shown
+- agency: agency code (RPD, RFD, HPD, HFD, CCPD, CCFD, etc.)
+- status: current status (New, Dispatched, Enroute, Arrived, On Scene, Cleared, etc.)
+- time_received: exact time as shown on page (format: "06/22/2026 8:59 PM" or "8:59 PM")
+- units: all unit numbers/codes assigned
+- description: any additional notes or info
+
+RETURN EVERY SINGLE CALL. Include active, pending, assigned, cleared—ALL calls. Do not omit any.`,
             add_context_from_internet: true,
             model: 'gemini_3_flash',
             response_json_schema: SYNC_SCHEMA

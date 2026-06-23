@@ -177,7 +177,7 @@ function CommandDashboardInner() {
         };
 
         runSync();
-        const id = setInterval(runSync, 120_000);
+        const id = setInterval(runSync, 30_000);
         return () => clearInterval(id);
     }, [manualRefresh]);
 
