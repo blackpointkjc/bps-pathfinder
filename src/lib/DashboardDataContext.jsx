@@ -46,24 +46,20 @@ export function DashboardDataProvider({ children }) {
         refreshingRef.current = true;
 
         const nowET = new Date().toLocaleTimeString('en-US', { hour12: false, timeZone: 'America/New_York' });
-        const eightHoursAgo = now - 8 * 60 * 60 * 1000;
 
         console.log(`[CAD ${nowET}] Dashboard load started`);
 
         try {
             setRequestCount(c => c + 2);
             const [callsData, usersData] = await Promise.all([
-                base44.entities.DispatchCall.list('-time_received', 100),
+                base44.entities.DispatchCall.list('-time_received', 500),
                 base44.entities.User.list()
             ]);
 
             console.log(`[CAD ${nowET}] Requests made: 2 | Calls fetched: ${callsData?.length ?? 0}`);
 
-            // Show ALL calls from the last 8 hours — no status filter, no geo filter
-            const active = (callsData || []).filter(c => {
-                if (!c.time_received) return true; // include calls without a time too
-                return new Date(c.time_received).getTime() >= eightHoursAgo;
-            });
+            // Show ALL calls — no time window, no status filter, no geo requirement
+            const active = (callsData || []);
 
             // Debug: newest call time
             if (active.length > 0) {
