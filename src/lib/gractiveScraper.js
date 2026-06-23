@@ -53,20 +53,19 @@ function parseTimeET(timeStr) {
         if (ampm.toUpperCase() === 'PM' && h !== 12) h += 12;
         if (ampm.toUpperCase() === 'AM' && h === 12) h = 0;
 
-        // Use Intl.DateTimeFormat to get the current ET UTC offset (handles DST automatically)
         const MM = String(month).padStart(2, '0');
         const DD = String(day).padStart(2, '0');
         const HH = String(h).padStart(2, '0');
         const mm = String(m).padStart(2, '0');
 
-        // Parse as if UTC first, then adjust by actual ET offset
-        const asUTC = new Date(`${year}-${MM}-${DD}T${HH}:${mm}:00Z`);
-        // Get what ET wall clock reads for this UTC moment
-        const etWall = new Date(asUTC.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-        // Offset = difference between UTC and ET wall time
-        const offsetMs = asUTC.getTime() - etWall.getTime();
-        // True UTC = asUTC adjusted by offset
-        return new Date(asUTC.getTime() + offsetMs).toISOString();
+        // Construct a fake UTC date representing the ET wall-clock time
+        const fakeUTC = new Date(`${year}-${MM}-${DD}T${HH}:${mm}:00Z`);
+        // Find what ET wall clock shows for this same fake UTC instant
+        const etWall = new Date(fakeUTC.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        // ET is behind UTC, so etWall < fakeUTC; offset = fakeUTC - etWall (positive hours like 4 or 5)
+        const offsetMs = fakeUTC.getTime() - etWall.getTime();
+        // True UTC = wall-clock ET + offset
+        return new Date(fakeUTC.getTime() + offsetMs).toISOString();
     } catch {
         return null;
     }
