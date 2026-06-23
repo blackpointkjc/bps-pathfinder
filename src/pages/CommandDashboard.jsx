@@ -98,6 +98,7 @@ export default function CommandDashboard() {
     const currentUserRef = useRef(null);
     const monitoredPropertiesRef = useRef([]);
     const knownCallIdsRef = useRef(null);
+    const loadDataRef = useRef(null);
 
     // Re-render every second for live elapsed timers
     useEffect(() => {
@@ -124,15 +125,13 @@ export default function CommandDashboard() {
                 setDispatchAlertMuted(!val);
             }
         }).catch(() => {});
-        loadData();
+        loadDataRef.current();
         loadMonitoredProperties();
-        const interval = setInterval(() => { loadData(); loadMonitoredProperties(); }, 30000);
+        const interval = setInterval(() => { loadDataRef.current(); loadMonitoredProperties(); }, 30000);
 
         // Real-time subscription for instant new call detection
-        const unsubscribe = base44.entities.DispatchCall.subscribe((event) => {
-            if (event.type === 'create' || event.type === 'update' || event.type === 'delete') {
-                loadData();
-            }
+        const unsubscribe = base44.entities.DispatchCall.subscribe(() => {
+            loadDataRef.current();
         });
 
         return () => { clearInterval(interval); unsubscribe(); };
@@ -195,6 +194,7 @@ export default function CommandDashboard() {
         }
         finally { setLoading(false); }
     };
+    loadDataRef.current = loadData;
 
     const handleRefresh = async () => {
         setRefreshing(true);
