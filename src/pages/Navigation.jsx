@@ -14,7 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { isCriticalCall } from '@/lib/cadCallUtils';
-import { normalizeAddress, splitCallsByCoords } from '@/lib/geocodingPipeline';
+import { splitCallsByCoords } from '@/lib/geocodingPipeline';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
@@ -71,8 +71,6 @@ export default function Navigation() {
     const [assigning, setAssigning] = useState(false);
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
     const [unmappedCalls, setUnmappedCalls] = useState([]);
-    const [geocodingBatch, setGeocodingBatch] = useState(false);
-    const [geocodeStatus, setGeocodeStatus] = useState(null); // null | 'unavailable' | string
     const [showUnmapped, setShowUnmapped] = useState(false);
     const [leftPanelOpen, setLeftPanelOpen] = useState(true);
     const [leftTab, setLeftTab] = useState('units'); // 'units' | 'calls'
@@ -275,31 +273,7 @@ export default function Navigation() {
         }
     };
 
-    // Manual geocode: process up to 5 unmapped calls via backend function
-    const handleGeocodeUnmapped = async () => {
-        const batch = unmappedCalls.filter(c => !c.geocode_failed).slice(0, 5);
-        if (batch.length === 0) return;
-        setGeocodingBatch(true);
-        setGeocodeStatus(null);
-        let successCount = 0;
-        for (const call of batch) {
-            const address = normalizeAddress(call.location);
-            if (!address) continue;
-            try {
-                await base44.functions.invoke('geocodeCallAddress', { address, callId: call.id });
-                successCount++;
-            } catch (e) {
-                if (e?.status === 402 || e?.message?.includes('402') || e?.message?.includes('Payment')) {
-                    setGeocodeStatus('unavailable');
-                    setGeocodingBatch(false);
-                    return;
-                }
-            }
-        }
-        setGeocodeStatus(`Geocoded ${successCount} of ${batch.length} calls`);
-        setGeocodingBatch(false);
-        await fetchCalls();
-    };
+
 
     const selfEntry = currentUser ? { ...currentUser, status: unitStatus } : null;
     const otherOnline = otherUnits.filter(u => u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
@@ -620,23 +594,9 @@ export default function Navigation() {
                                 exit={{ opacity: 0, y: -8 }}
                                 className="w-72 bg-[#0a0e1a]/97 border border-[#1e2d4a] rounded-b-lg shadow-xl overflow-hidden"
                             >
-                                <div className="px-3 py-2 border-b border-[#1e2d4a] flex items-center justify-between">
+                                <div className="px-3 py-2 border-b border-[#1e2d4a]">
                                     <span className="text-yellow-400 font-mono text-[10px] font-bold">UNMAPPED CALLS</span>
-                                    <button
-                                        onClick={handleGeocodeUnmapped}
-                                        disabled={geocodingBatch}
-                                        className="px-2 py-1 bg-yellow-600/20 border border-yellow-500/40 rounded text-yellow-400 text-[9px] font-mono font-bold hover:bg-yellow-600/30 disabled:opacity-50 transition-all"
-                                    >
-                                        {geocodingBatch ? 'GEOCODING...' : '⚡ GEOCODE NEXT 5'}
-                                    </button>
                                 </div>
-                                {geocodeStatus && (
-                                    <div className={`px-3 py-1.5 text-[9px] font-mono border-b border-[#1e2d4a] ${geocodeStatus === 'unavailable' ? 'text-red-400 bg-red-900/20' : 'text-green-400 bg-green-900/20'}`}>
-                                        {geocodeStatus === 'unavailable'
-                                            ? 'Geocoding unavailable — backend functions not enabled on this plan.'
-                                            : geocodeStatus}
-                                    </div>
-                                )}
                                 <div className="max-h-64 overflow-y-auto">
                                     {unmappedCalls.map(call => (
                                         <div key={call.id} className="px-3 py-2 border-b border-[#0f1520] text-[10px] font-mono">
