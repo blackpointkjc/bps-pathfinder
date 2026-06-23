@@ -14,6 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { isCriticalCall } from '@/lib/cadCallUtils';
+import { processMissingCoordinates } from '@/lib/geocodingPipeline';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
@@ -69,6 +70,7 @@ export default function Navigation() {
     const [showHeatmap, setShowHeatmap] = useState(false);
     const [assigning, setAssigning] = useState(false);
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
+    const [geocodingReady, setGeocodingReady] = useState(false);
     const [leftPanelOpen, setLeftPanelOpen] = useState(true);
     const [leftTab, setLeftTab] = useState('units'); // 'units' | 'calls'
     const [monitoredProperties, setMonitoredProperties] = useState([]);
@@ -109,9 +111,11 @@ export default function Navigation() {
     }, [currentUser]);
 
     useEffect(() => {
-        fetchCalls();
+        // First load: run geocoding pipeline BEFORE rendering map
+        fetchCalls(true);
         loadMonitoredProperties();
-        const i = setInterval(() => { fetchCalls(); loadMonitoredProperties(); }, 30000);
+        // Subsequent refreshes: no geocoding (already done or failed-flagged)
+        const i = setInterval(() => { fetchCalls(false); loadMonitoredProperties(); }, 30000);
         return () => clearInterval(i);
     }, []);
 
@@ -183,7 +187,9 @@ export default function Navigation() {
                 heading: hdg || 0, speed: spd || 0, accuracy: acc || 0,
                 status: unitStatusRef.current
             });
-        } catch (e) {}
+        } catch (e) {
+            // 402 Payment Required or other errors — silently ignore
+        }
     }, []);
 
     const startTracking = () => {
@@ -244,7 +250,9 @@ export default function Navigation() {
         try {
             const res = await base44.functions.invoke('fetchAllUsers', {});
             setOtherUnits(res.data?.users || []);
-        } catch (e) {}
+        } catch (e) {
+            // 402 Payment Required or other errors — silently ignore, units panel stays empty
+        }
     };
 
     const loadMonitoredProperties = async () => {
@@ -254,22 +262,34 @@ export default function Navigation() {
         } catch (e) {}
     };
 
-    const fetchCalls = async () => {
+    const fetchCalls = async (runGeocoding = false) => {
         setIsLoadingCalls(true);
         try {
             const all = await base44.entities.DispatchCall.list('-created_date', 200);
             const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-            const active = all.filter(c =>
+            let active = all.filter(c =>
                 !['Closed', 'Cleared', 'Cancelled'].includes(c.status) &&
                 new Date(c.time_received || c.created_date) >= oneHourAgo
             );
+
+            if (runGeocoding) {
+                // STEP 5: Block map render until geocoding finishes
+                active = await processMissingCoordinates(active);
+                setGeocodingReady(true);
+            }
+
             setActiveCalls(active);
-            // Store all calls for heatmap (last 30 days or 500 calls)
+
             if (focusCallId) {
                 const target = active.find(c => c.id === focusCallId);
                 if (target) { setSelectedCall(target); setShowCallSidebar(true); }
             }
-        } catch (e) {} finally { setIsLoadingCalls(false); }
+        } catch (e) {
+            console.warn('[NAV] fetchCalls error:', e.message);
+            setGeocodingReady(true); // unblock map even on error
+        } finally {
+            setIsLoadingCalls(false);
+        }
     };
 
     const selfEntry = currentUser ? { ...currentUser, status: unitStatus } : null;
@@ -293,6 +313,14 @@ export default function Navigation() {
 
             {/* ══ MAP BASE LAYER ══ */}
             <div className="absolute inset-0">
+                {/* Loading overlay — shown until geocoding pipeline completes */}
+                {!geocodingReady && (
+                    <div className="absolute inset-0 z-[500] bg-[#0a0e1a] flex flex-col items-center justify-center gap-4">
+                        <div className="w-10 h-10 border-4 border-[#f5a623]/30 border-t-[#f5a623] rounded-full animate-spin" />
+                        <div className="text-[#f5a623] font-mono text-xs tracking-widest">GEOCODING CALLS...</div>
+                        <div className="text-slate-500 font-mono text-[10px]">Resolving coordinates before rendering map</div>
+                    </div>
+                )}
                 <MapView
                     currentLocation={currentLocation}
                     destination={null} route={null} trafficSegments={null}
