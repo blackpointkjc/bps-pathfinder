@@ -46,6 +46,7 @@ export function DashboardDataProvider({ children }) {
         refreshingRef.current = true;
 
         const nowET = new Date().toLocaleTimeString('en-US', { hour12: false, timeZone: 'America/New_York' });
+        const oneHourAgo = now - 60 * 60 * 1000;
 
         console.log(`[CAD ${nowET}] Dashboard load started`);
 
@@ -58,8 +59,11 @@ export function DashboardDataProvider({ children }) {
 
             console.log(`[CAD ${nowET}] Requests made: 2 | Calls fetched: ${callsData?.length ?? 0}`);
 
-            // Show ALL calls — no time window, no status filter, no geo requirement
-            const active = (callsData || []);
+            // Show calls from last 1 hour — no status filter, no geo requirement
+            const active = (callsData || []).filter(c => {
+                if (!c.time_received) return false;
+                return new Date(c.time_received).getTime() >= oneHourAgo;
+            });
 
             // Debug: newest call time
             if (active.length > 0) {
