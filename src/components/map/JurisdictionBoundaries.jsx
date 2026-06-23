@@ -150,18 +150,8 @@ export default function JurisdictionBoundaries({ filters = {} }) {
         staleTime: Infinity,
     });
 
-    // Fetch Manassas city boundary
-    const { data: manassasBoundary } = useQuery({
-        queryKey: ['manassasBoundary'],
-        queryFn: async () => {
-            const response = await fetch(
-                'https://manassasgis.manassasva.gov/arcgis21/rest/services/Components/City_Boundary/MapServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson'
-            );
-            const data = await response.json();
-            return isValidGeoJSON(data) ? data : null;
-        },
-        staleTime: Infinity,
-    });
+    // Manassas GIS endpoint blocks CORS from browser — disabled until backend proxy is available
+    const manassasBoundary = null;
 
     // Fetch DC Police Service Areas (PSAs)
     const { data: dcPSAs } = useQuery({
@@ -435,9 +425,6 @@ export default function JurisdictionBoundaries({ filters = {} }) {
 
     const onEachChesterfieldDistrictFeature = (feature, layer) => {
         if (feature.properties) {
-            // Log all properties to find the correct key
-            console.log('Chesterfield District Properties:', feature.properties);
-            
             // Check all possible property names for district name
             const districtName = feature.properties.MAG_DIST || 
                                 feature.properties.NAME || 

@@ -49,77 +49,11 @@ function buildCallId(incident, location, agency) {
 }
 
 /**
- * Fetches gractivecalls.com via allorigins CORS proxy, parses the table,
- * and upserts calls into DispatchCall entity.
- * Returns { added, updated, total }
+ * Live scraping of gractivecalls.com requires a backend function to avoid CORS.
+ * Client-side sync is disabled. Returns empty result so the dashboard still loads.
+ * To re-enable, upgrade to a plan with backend functions and use the ingestGractivecalls function.
  */
 export async function syncGractiveCalls() {
-    const PROXY = 'https://api.allorigins.win/get?url=';
-    const TARGET = encodeURIComponent('https://gractivecalls.com/');
-    const res = await fetch(`${PROXY}${TARGET}`);
-    if (!res.ok) throw new Error(`Proxy fetch failed: ${res.status}`);
-    const json = await res.json();
-    const html = json.contents;
-    if (!html) throw new Error('Empty response from proxy');
-
-    // Parse HTML table rows
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const rows = Array.from(doc.querySelectorAll('table tr')).slice(1); // skip header
-
-    if (rows.length === 0) throw new Error('No rows found in table');
-
-    const scraped = [];
-    for (const row of rows) {
-        const cells = Array.from(row.querySelectorAll('td'));
-        if (cells.length < 5) continue;
-        const timeStr  = cells[0]?.textContent?.trim();
-        const incident = cells[1]?.textContent?.trim().replace(/^#+\s*/, '');
-        const location = cells[2]?.textContent?.trim();
-        const agencyRaw= cells[3]?.textContent?.trim();
-        const statusRaw= cells[4]?.textContent?.trim();
-
-        if (!incident || !location) continue;
-
-        const { agency, source } = detectAgency(agencyRaw);
-        const call_id = buildCallId(incident, location, agency);
-
-        scraped.push({
-            call_id,
-            incident,
-            location,
-            agency,
-            source,
-            status: normalizeStatus(statusRaw),
-            time_received: parseTimeET(timeStr),
-            priority: 'medium',
-        });
-    }
-
-    if (scraped.length === 0) throw new Error('Parsed 0 calls from page');
-
-    // Load existing calls to check for duplicates
-    const existing = await base44.entities.DispatchCall.list('-created_date', 500);
-    const existingByCallId = {};
-    for (const c of existing) {
-        if (c.call_id) existingByCallId[c.call_id] = c;
-    }
-
-    let added = 0, updated = 0;
-    for (const call of scraped) {
-        const existing = existingByCallId[call.call_id];
-        if (existing) {
-            // Update status if changed
-            if (existing.status !== call.status) {
-                await base44.entities.DispatchCall.update(existing.id, { status: call.status });
-                updated++;
-            }
-        } else {
-            // New call — create it
-            await base44.entities.DispatchCall.create(call);
-            added++;
-        }
-    }
-
-    return { added, updated, total: scraped.length };
+    console.log('[gractiveScraper] Client-side sync disabled — requires backend function. Data loads from database only.');
+    return { added: 0, updated: 0, total: 0 };
 }

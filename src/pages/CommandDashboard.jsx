@@ -8,7 +8,7 @@ import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import { RefreshCw, Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck } from 'lucide-react';
-import { syncGractiveCalls } from '@/lib/gractiveScraper';
+
 
 const PRIORITY_CONFIG = {
     critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
@@ -126,13 +126,8 @@ export default function CommandDashboard() {
         }).catch(() => {});
         loadData();
         loadMonitoredProperties();
-        // Auto-sync from gractivecalls.com on load and every 2 minutes
-        syncGractiveCalls().then(r => console.log(`[CAD] auto-sync: +${r.added} new, ${r.updated} updated`)).catch(e => console.warn('[CAD] auto-sync failed:', e.message));
         const interval = setInterval(() => { loadData(); loadMonitoredProperties(); }, 60000);
-        const syncInterval = setInterval(() => {
-            syncGractiveCalls().then(r => { if (r.added > 0 || r.updated > 0) loadData(); }).catch(() => {});
-        }, 120000);
-        return () => { clearInterval(interval); clearInterval(syncInterval); };
+        return () => { clearInterval(interval); };
     }, []);
 
     // Geocoding is handled server-side during data ingestion.
@@ -250,26 +245,7 @@ export default function CommandDashboard() {
         loadData();
     };
 
-    const [syncing, setSyncing] = useState(false);
-    const [syncResult, setSyncResult] = useState(null);
 
-    const handleSyncAndPrune = async () => {
-        const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
-        console.log(`[CAD ${ts}] SYNC FEED: initiated by user`);
-        setSyncing(true);
-        setSyncResult(null);
-        try {
-            const result = await syncGractiveCalls();
-            console.log(`[CAD ${ts}] SYNC FEED: ✓ +${result.added} new, ${result.updated} updated of ${result.total} scraped`);
-            setSyncResult(`+${result.added} new, ${result.updated} updated`);
-            await loadData();
-        } catch (err) {
-            console.error(`[CAD ${ts}] SYNC FEED: ✗ FAILED`, err);
-            setSyncResult('Sync failed: ' + err.message);
-        }
-        setSyncing(false);
-        setTimeout(() => setSyncResult(null), 6000);
-    };
 
     if (loading) return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -302,15 +278,12 @@ export default function CommandDashboard() {
                             {soundEnabled ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
                         </button>
                     )}
-                    <button onClick={handleSyncAndPrune} disabled={syncing}
-                        title="Sync with live feed & remove stale calls"
-                        className={`h-7 flex items-center gap-1 px-2 rounded border font-mono text-[10px] font-bold transition-all flex-shrink-0 ${syncing ? 'bg-blue-900/40 border-blue-500/40 text-blue-300 animate-pulse' : 'bg-slate-800 border-blue-500/40 text-blue-400 hover:bg-blue-900/30'}`}>
-                        <RotateCcw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
-                        {syncing ? 'SYNCING...' : 'SYNC FEED'}
+                    <button onClick={handleRefresh} disabled={refreshing}
+                        title="Refresh call data"
+                        className="h-7 flex items-center gap-1 px-2 rounded border font-mono text-[10px] font-bold transition-all flex-shrink-0 bg-slate-800 border-slate-600 text-slate-400 hover:text-white">
+                        <RotateCcw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+                        REFRESH
                     </button>
-                    {syncResult && (
-                        <span className="text-green-400 font-mono text-[10px] animate-pulse">{syncResult}</span>
-                    )}
                     <button onClick={() => navigate(createPageUrl('DispatchCenter'))}
                         className="h-7 flex items-center gap-1 px-2 bg-gold text-black font-mono font-bold text-[10px] rounded hover:bg-yellow-400 transition-colors flex-shrink-0">
                         <Zap className="w-3 h-3" />DISPATCH CTR
