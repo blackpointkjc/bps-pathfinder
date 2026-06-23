@@ -76,6 +76,7 @@ export default function Navigation() {
     const [leftTab, setLeftTab] = useState('units'); // 'units' | 'calls'
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [showOnlyCriticalCalls, setShowOnlyCriticalCalls] = useState(false);
+    const [isGeocoding, setIsGeocoding] = useState(false);
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
@@ -252,7 +253,6 @@ export default function Navigation() {
         } catch (e) {}
     };
 
-    const [isGeocoding, setIsGeocoding] = useState(false);
     const AGENCY_CITY = { RPD: 'Richmond, VA', RFD: 'Richmond, VA', HPD: 'Henrico County, VA', CCPD: 'Chesterfield County, VA', CCFD: 'Chesterfield County, VA' };
 
     const autoGeocodeUnmapped = async (unmapped) => {
