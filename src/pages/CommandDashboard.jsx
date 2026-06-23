@@ -154,7 +154,7 @@ export default function CommandDashboard() {
         console.log(`[CAD ${ts}] loadData: starting fetch...`);
         try {
             const [callsData, usersData] = await Promise.all([
-                base44.entities.DispatchCall.list('-created_date', 200),
+                base44.entities.DispatchCall.list('-time_received', 500),
                 base44.entities.User.list()
             ]);
             console.log(`[CAD ${ts}] loadData: fetched ${callsData?.length ?? 0} calls, ${usersData?.length ?? 0} users`);
@@ -213,9 +213,11 @@ export default function CommandDashboard() {
     };
 
     const activeUnits = units.filter(u => u.status && u.status !== 'Out of Service' && u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
-    const sortedCalls = [...calls].sort((a, b) =>
-        new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date)
-    );
+    const sortedCalls = [...calls].sort((a, b) => {
+        const ta = new Date(a.time_received || a.created_date).getTime();
+        const tb = new Date(b.time_received || b.created_date).getTime();
+        return tb - ta;
+    });
 
     const criticalCalls = calls.filter(c => getCallPriority(c) === 'critical');
     const highCalls = calls.filter(c => getCallPriority(c) === 'high');
