@@ -14,7 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { isCriticalCall } from '@/lib/cadCallUtils';
-import { splitCallsByCoords } from '@/lib/geocodingPipeline';
+import { splitCallsByCoords, normalizeAddress } from '@/lib/geocodingPipeline';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
@@ -252,10 +252,12 @@ export default function Navigation() {
 
     const geocodeWithGoogle = async (address) => {
         const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-        if (!key) return null;
+        console.log('[GEOCODE] key present:', !!key, '| address:', address);
+        if (!key) { console.warn('[GEOCODE] No API key found in VITE_GOOGLE_MAPS_API_KEY'); return null; }
         const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${key}`;
         const res = await fetch(url);
         const data = await res.json();
+        console.log('[GEOCODE] result status:', data.status, '| address:', address);
         if (data.status === 'OK' && data.results[0]) {
             const { lat, lng } = data.results[0].geometry.location;
             return { latitude: lat, longitude: lng };
@@ -265,15 +267,20 @@ export default function Navigation() {
 
     const autoGeocodeUnmapped = async (unmapped) => {
         if (!unmapped.length) return;
+        console.log('[GEOCODE] Starting auto-geocode for', unmapped.length, 'unmapped calls');
         for (const call of unmapped) {
             if (!call.location) continue;
-            // append VA region for better accuracy
-            const address = `${call.location}, Virginia, USA`;
+            // Use normalizeAddress to clean the raw CAD location string
+            const address = normalizeAddress(call.location) || `${call.location}, Virginia, USA`;
+            console.log('[GEOCODE] Geocoding call', call.id, '|', address);
             const coords = await geocodeWithGoogle(address);
             if (coords) {
+                console.log('[GEOCODE] ✅ Success:', call.id, coords);
                 await base44.entities.DispatchCall.update(call.id, coords);
                 setActiveCalls(prev => prev.map(c => c.id === call.id ? { ...c, ...coords } : c));
                 setUnmappedCalls(prev => prev.filter(c => c.id !== call.id));
+            } else {
+                console.warn('[GEOCODE] ❌ Failed:', call.id, '|', address);
             }
         }
     };
