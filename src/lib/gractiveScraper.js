@@ -25,25 +25,41 @@ function normalizeStatus(s) {
     return v || 'New';
 }
 
-// Parse "06/22/2026 7:48 PM" → ISO string
-// Handles both "MM/DD/YYYY H:MM PM" and time-only strings
+// Parse "06/22/2026 7:48 PM" → ISO string, treating input as America/New_York
 function parseTimeET(timeStr) {
     if (!timeStr) return null;
     try {
         const cleaned = timeStr.trim();
-        // Full date+time format: "06/22/2026 7:48 PM"
-        if (/\d{2}\/\d{2}\/\d{4}/.test(cleaned)) {
-            // Force parse as America/New_York
-            const d = new Date(cleaned);
-            if (!isNaN(d)) return d.toISOString();
+
+        // Extract date and time parts from "MM/DD/YYYY H:MM AM/PM" or just "H:MM AM/PM"
+        const fullMatch = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        const timeOnly = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+
+        let month, day, year, hours, minutes, ampm;
+
+        if (fullMatch) {
+            [, month, day, year, hours, minutes, ampm] = fullMatch;
+        } else if (timeOnly) {
+            const now = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: 'numeric' });
+            const [m, d, y] = now.split('/');
+            month = m; day = d; year = y;
+            [, hours, minutes, ampm] = timeOnly;
+        } else {
+            return null;
         }
-        // Time-only format: "7:48 PM" — use today's date in ET
-        if (/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(cleaned)) {
-            const today = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: 'numeric' });
-            const d = new Date(`${today} ${cleaned}`);
-            if (!isNaN(d)) return d.toISOString();
-        }
-        return new Date(cleaned).toISOString();
+
+        let h = parseInt(hours, 10);
+        const m = parseInt(minutes, 10);
+        if (ampm.toUpperCase() === 'PM' && h !== 12) h += 12;
+        if (ampm.toUpperCase() === 'AM' && h === 12) h = 0;
+
+        // Build ISO string in ET by using Intl to find the UTC offset for this wall-clock time
+        const etDateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`;
+        // Determine ET offset at this moment (handles DST)
+        const probe = new Date(`${etDateStr}Z`);
+        const etOffset = new Date(probe.toLocaleString('en-US', { timeZone: 'America/New_York' })) - probe;
+        const utc = new Date(probe.getTime() - etOffset);
+        return utc.toISOString();
     } catch {
         return null;
     }

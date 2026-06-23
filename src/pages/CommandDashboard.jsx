@@ -193,9 +193,12 @@ export default function CommandDashboard() {
                 base44.entities.User.list()
             ]);
             console.log(`[CAD ${ts}] loadData: fetched ${callsData?.length ?? 0} calls, ${usersData?.length ?? 0} users`);
-            const active = (callsData || []).filter(c =>
-                !['Closed', 'Cleared', 'Cancelled'].includes(c.status)
-            );
+            const oneHourAgo = Date.now() - 60 * 60 * 1000;
+            const active = (callsData || []).filter(c => {
+                if (['Closed', 'Cleared', 'Cancelled'].includes(c.status)) return false;
+                const t = new Date(c.time_received || c.created_date).getTime();
+                return t >= oneHourAgo;
+            });
             console.log(`[CAD ${ts}] loadData: ${active.length} active calls after filter`);
             const currentIds = new Set(active.map(c => c.id));
             if (knownCallIdsRef.current === null) {
