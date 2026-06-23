@@ -126,8 +126,16 @@ export default function CommandDashboard() {
         }).catch(() => {});
         loadData();
         loadMonitoredProperties();
-        const interval = setInterval(() => { loadData(); loadMonitoredProperties(); }, 60000);
-        return () => { clearInterval(interval); };
+        const interval = setInterval(() => { loadData(); loadMonitoredProperties(); }, 30000);
+
+        // Real-time subscription for instant new call detection
+        const unsubscribe = base44.entities.DispatchCall.subscribe((event) => {
+            if (event.type === 'create' || event.type === 'update' || event.type === 'delete') {
+                loadData();
+            }
+        });
+
+        return () => { clearInterval(interval); unsubscribe(); };
     }, []);
 
     // Geocoding is handled server-side during data ingestion.
