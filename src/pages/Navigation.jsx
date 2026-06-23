@@ -14,7 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { isCriticalCall } from '@/lib/cadCallUtils';
-import { processMissingCoordinates } from '@/lib/geocodingPipeline';
+import { normalizeAddress, splitCallsByCoords } from '@/lib/geocodingPipeline';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
@@ -70,7 +70,10 @@ export default function Navigation() {
     const [showHeatmap, setShowHeatmap] = useState(false);
     const [assigning, setAssigning] = useState(false);
     const [isLoadingCalls, setIsLoadingCalls] = useState(false);
-    const [geocodingReady, setGeocodingReady] = useState(false);
+    const [unmappedCalls, setUnmappedCalls] = useState([]);
+    const [geocodingBatch, setGeocodingBatch] = useState(false);
+    const [geocodeStatus, setGeocodeStatus] = useState(null); // null | 'unavailable' | string
+    const [showUnmapped, setShowUnmapped] = useState(false);
     const [leftPanelOpen, setLeftPanelOpen] = useState(true);
     const [leftTab, setLeftTab] = useState('units'); // 'units' | 'calls'
     const [monitoredProperties, setMonitoredProperties] = useState([]);
@@ -103,19 +106,18 @@ export default function Navigation() {
         return () => stopTracking();
     }, []);
 
-    useEffect(() => {
-        if (!currentUser) return;
-        fetchOtherUnits();
-        const i = setInterval(fetchOtherUnits, 8000);
-        return () => clearInterval(i);
-    }, [currentUser]);
+    // fetchOtherUnits disabled — backend function returns 402 Payment Required
+    // useEffect(() => {
+    //     if (!currentUser) return;
+    //     fetchOtherUnits();
+    //     const i = setInterval(fetchOtherUnits, 8000);
+    //     return () => clearInterval(i);
+    // }, [currentUser]);
 
     useEffect(() => {
-        // First load: run geocoding pipeline BEFORE rendering map
-        fetchCalls(true);
+        fetchCalls();
         loadMonitoredProperties();
-        // Subsequent refreshes: no geocoding (already done or failed-flagged)
-        const i = setInterval(() => { fetchCalls(false); loadMonitoredProperties(); }, 30000);
+        const i = setInterval(() => { fetchCalls(); loadMonitoredProperties(); }, 30000);
         return () => clearInterval(i);
     }, []);
 
@@ -177,20 +179,8 @@ export default function Navigation() {
         try { await base44.functions.invoke('updateOfficerStatus', { status: newStatus }); } catch (e) {}
     };
 
-    const pushLocationUpdate = useCallback(async (coords, hdg, spd, acc) => {
-        const now = Date.now();
-        if (now - lastUpdateRef.current < 12000) return; // 12s throttle — prevent rate limiting
-        lastUpdateRef.current = now;
-        try {
-            await base44.functions.invoke('logLocation', {
-                latitude: coords[0], longitude: coords[1],
-                heading: hdg || 0, speed: spd || 0, accuracy: acc || 0,
-                status: unitStatusRef.current
-            });
-        } catch (e) {
-            // 402 Payment Required or other errors — silently ignore
-        }
-    }, []);
+    // logLocation disabled — backend function returns 402 Payment Required
+    const pushLocationUpdate = useCallback(async () => {}, []);
 
     const startTracking = () => {
         if (!navigator.geolocation) { toast.error('Geolocation not supported'); return; }
@@ -262,34 +252,53 @@ export default function Navigation() {
         } catch (e) {}
     };
 
-    const fetchCalls = async (runGeocoding = false) => {
+    const fetchCalls = async () => {
         setIsLoadingCalls(true);
         try {
             const all = await base44.entities.DispatchCall.list('-created_date', 200);
             const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-            let active = all.filter(c =>
+            const active = all.filter(c =>
                 !['Closed', 'Cleared', 'Cancelled'].includes(c.status) &&
                 new Date(c.time_received || c.created_date) >= oneHourAgo
             );
-
-            if (runGeocoding) {
-                // STEP 5: Block map render until geocoding finishes
-                active = await processMissingCoordinates(active);
-                setGeocodingReady(true);
-            }
-
+            const { mapped, unmapped } = splitCallsByCoords(active);
             setActiveCalls(active);
-
+            setUnmappedCalls(unmapped);
             if (focusCallId) {
                 const target = active.find(c => c.id === focusCallId);
                 if (target) { setSelectedCall(target); setShowCallSidebar(true); }
             }
         } catch (e) {
             console.warn('[NAV] fetchCalls error:', e.message);
-            setGeocodingReady(true); // unblock map even on error
         } finally {
             setIsLoadingCalls(false);
         }
+    };
+
+    // Manual geocode: process up to 5 unmapped calls via backend function
+    const handleGeocodeUnmapped = async () => {
+        const batch = unmappedCalls.filter(c => !c.geocode_failed).slice(0, 5);
+        if (batch.length === 0) return;
+        setGeocodingBatch(true);
+        setGeocodeStatus(null);
+        let successCount = 0;
+        for (const call of batch) {
+            const address = normalizeAddress(call.location);
+            if (!address) continue;
+            try {
+                await base44.functions.invoke('geocodeCallAddress', { address, callId: call.id });
+                successCount++;
+            } catch (e) {
+                if (e?.status === 402 || e?.message?.includes('402') || e?.message?.includes('Payment')) {
+                    setGeocodeStatus('unavailable');
+                    setGeocodingBatch(false);
+                    return;
+                }
+            }
+        }
+        setGeocodeStatus(`Geocoded ${successCount} of ${batch.length} calls`);
+        setGeocodingBatch(false);
+        await fetchCalls();
     };
 
     const selfEntry = currentUser ? { ...currentUser, status: unitStatus } : null;
@@ -313,14 +322,6 @@ export default function Navigation() {
 
             {/* ══ MAP BASE LAYER ══ */}
             <div className="absolute inset-0">
-                {/* Loading overlay — shown until geocoding pipeline completes */}
-                {!geocodingReady && (
-                    <div className="absolute inset-0 z-[500] bg-[#0a0e1a] flex flex-col items-center justify-center gap-4">
-                        <div className="w-10 h-10 border-4 border-[#f5a623]/30 border-t-[#f5a623] rounded-full animate-spin" />
-                        <div className="text-[#f5a623] font-mono text-xs tracking-widest">GEOCODING CALLS...</div>
-                        <div className="text-slate-500 font-mono text-[10px]">Resolving coordinates before rendering map</div>
-                    </div>
-                )}
                 <MapView
                     currentLocation={currentLocation}
                     destination={null} route={null} trafficSegments={null}
@@ -600,6 +601,55 @@ export default function Navigation() {
                     <CollapsePanelButton isOpen={leftPanelOpen} onClick={() => setLeftPanelOpen(o => !o)} />
                 </div>
             </div>
+
+            {/* ══ UNMAPPED CALLS PANEL ══ */}
+            {unmappedCalls.length > 0 && (
+                <div className="absolute top-[34px] right-14 z-[1005] pointer-events-auto">
+                    <button
+                        onClick={() => setShowUnmapped(v => !v)}
+                        className="flex items-center gap-1.5 px-2.5 py-1 bg-yellow-900/80 border border-yellow-500/50 rounded-b-lg text-yellow-400 font-mono text-[10px] font-bold backdrop-blur-sm"
+                    >
+                        <AlertTriangle className="w-3 h-3" />
+                        {unmappedCalls.length} UNMAPPED
+                    </button>
+                    <AnimatePresence>
+                        {showUnmapped && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                className="w-72 bg-[#0a0e1a]/97 border border-[#1e2d4a] rounded-b-lg shadow-xl overflow-hidden"
+                            >
+                                <div className="px-3 py-2 border-b border-[#1e2d4a] flex items-center justify-between">
+                                    <span className="text-yellow-400 font-mono text-[10px] font-bold">UNMAPPED CALLS</span>
+                                    <button
+                                        onClick={handleGeocodeUnmapped}
+                                        disabled={geocodingBatch}
+                                        className="px-2 py-1 bg-yellow-600/20 border border-yellow-500/40 rounded text-yellow-400 text-[9px] font-mono font-bold hover:bg-yellow-600/30 disabled:opacity-50 transition-all"
+                                    >
+                                        {geocodingBatch ? 'GEOCODING...' : '⚡ GEOCODE NEXT 5'}
+                                    </button>
+                                </div>
+                                {geocodeStatus && (
+                                    <div className={`px-3 py-1.5 text-[9px] font-mono border-b border-[#1e2d4a] ${geocodeStatus === 'unavailable' ? 'text-red-400 bg-red-900/20' : 'text-green-400 bg-green-900/20'}`}>
+                                        {geocodeStatus === 'unavailable'
+                                            ? 'Geocoding unavailable — backend functions not enabled on this plan.'
+                                            : geocodeStatus}
+                                    </div>
+                                )}
+                                <div className="max-h-64 overflow-y-auto">
+                                    {unmappedCalls.map(call => (
+                                        <div key={call.id} className="px-3 py-2 border-b border-[#0f1520] text-[10px] font-mono">
+                                            <div className="text-white font-bold truncate">{call.incident}</div>
+                                            <div className="text-slate-500 truncate">{call.location}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            )}
 
             {/* ══ RIGHT CONTROL STRIP ══ */}
             <motion.div
