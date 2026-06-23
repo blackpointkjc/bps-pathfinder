@@ -161,9 +161,9 @@ export default function CommandDashboard() {
         };
 
         runSync();
-        const syncInterval = setInterval(runSync, 60000);
-        // DB poll every 15s for updates that came in via other paths
-        const dbPollInterval = setInterval(() => loadDataRef.current(), 15000);
+        const syncInterval = setInterval(runSync, 120000);
+        // DB poll every 3 minutes as fallback — realtime subscription handles instant updates
+        const dbPollInterval = setInterval(() => loadDataRef.current(), 180000);
 
         // Real-time subscription for instant new call detection
         const unsubscribe = base44.entities.DispatchCall.subscribe(() => {
