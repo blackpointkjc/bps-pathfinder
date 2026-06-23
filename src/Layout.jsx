@@ -55,6 +55,19 @@ export default function Layout({ children, currentPageName }) {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [userRole, setUserRole] = useState('user');
     const [activeAlert, setActiveAlert] = useState(null);
+    const [systemOutages, setSystemOutages] = useState([]);
+
+    useEffect(() => {
+        const loadOutages = async () => {
+            try {
+                const outages = await base44.entities.SystemOutage.filter({ resolved_at: null });
+                setSystemOutages(outages || []);
+            } catch {}
+        };
+        loadOutages();
+        const interval = setInterval(loadOutages, 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         const handler = (e) => setActiveAlert(e.detail);
@@ -224,10 +237,22 @@ export default function Layout({ children, currentPageName }) {
                     </button>
 
                     <div className="flex-1" />
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 border border-green-500/30 rounded text-green-400 font-mono text-[10px] font-bold">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                        LIVE
-                    </div>
+                    {systemOutages.length === 0 ? (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 border border-green-500/30 rounded text-green-400 font-mono text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                            ALL SYSTEMS OPERATIONAL
+                        </div>
+                    ) : systemOutages.some(o => o.severity === 'outage') ? (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500/10 border border-red-500/30 rounded text-red-400 font-mono text-[10px] font-bold animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                            {systemOutages.length} SYSTEM OUTAGE{systemOutages.length > 1 ? 'S' : ''}
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded text-yellow-400 font-mono text-[10px] font-bold">
+                            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                            {systemOutages.length} SYSTEM ISSUE{systemOutages.length > 1 ? 'S' : ''}
+                        </div>
+                    )}
                     <Link to={createPageUrl('AdminPortal')} className="text-slate-400 hover:text-gold transition-colors">
                         <Settings className="w-5 h-5" />
                     </Link>
