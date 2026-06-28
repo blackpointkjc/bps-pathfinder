@@ -60,11 +60,15 @@ export function DashboardDataProvider({ children }) {
 
             console.log(`[CAD ${nowET}] Requests made: 2 | Calls fetched: ${callsData?.length ?? 0}`);
 
-            // Show all calls within the last hour only
+            // Show calls created in the DB within the last 4 hours
+            // (time_received is unreliable due to timezone offset issues in the scraper)
+            const fourHoursAgo = now - 4 * 60 * 60 * 1000;
+            const CLOSED = new Set(['Cleared', 'Cancelled', 'Closed', 'Unfounded']);
             const oneHourAgo = now - 60 * 60 * 1000;
             const active = (callsData || []).filter(c => {
-                if (!c.time_received) return false;
-                return new Date(c.time_received).getTime() >= oneHourAgo;
+                const dbTime = new Date(c.created_date).getTime();
+                if (CLOSED.has(c.status)) return dbTime >= oneHourAgo;
+                return dbTime >= fourHoursAgo;
             });
 
             // Debug: newest call time
