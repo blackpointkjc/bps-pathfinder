@@ -59,10 +59,14 @@ export function DashboardDataProvider({ children }) {
 
             console.log(`[CAD ${nowET}] Requests made: 2 | Calls fetched: ${callsData?.length ?? 0}`);
 
-            // Show calls from last 1 hour — no status filter, no geo requirement
+            // Show active (non-cleared) calls up to 8 hours old, cleared/closed only within 1 hour
+            const eightHoursAgo = now - 8 * 60 * 60 * 1000;
+            const CLOSED = new Set(['Cleared', 'Cancelled', 'Closed', 'Unfounded', 'Cancelled']);
             const active = (callsData || []).filter(c => {
                 if (!c.time_received) return false;
-                return new Date(c.time_received).getTime() >= oneHourAgo;
+                const t = new Date(c.time_received).getTime();
+                if (CLOSED.has(c.status)) return t >= oneHourAgo;   // cleared: 1h window
+                return t >= eightHoursAgo;                           // active: 8h window
             });
 
             // Debug: newest call time

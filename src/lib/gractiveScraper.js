@@ -235,6 +235,24 @@ RETURN EVERY SINGLE CALL. Include active, pending, assigned, cleared—ALL calls
             ...(raw.description ? { description: raw.description } : {}),
         };
 
+        // Client-side geocode via Nominatim if no existing coords
+        if (!existing && raw.location) {
+            try {
+                const geoQuery = encodeURIComponent(`${raw.location}, Richmond, VA`);
+                const geoResp = await fetch(
+                    `https://nominatim.openstreetmap.org/search?q=${geoQuery}&format=json&limit=1&addressdetails=0`,
+                    { headers: { 'User-Agent': 'CommandCAD/1.0' } }
+                );
+                const geoData = await geoResp.json();
+                if (geoData?.[0]) {
+                    payload.latitude = parseFloat(geoData[0].lat);
+                    payload.longitude = parseFloat(geoData[0].lon);
+                    payload.geo_confidence = 'medium';
+                    payload.geo_method = 'street';
+                }
+            } catch {/* silently skip geocode failures */}
+        }
+
         try {
             if (existing) {
                 // Only update if status changed
@@ -246,7 +264,7 @@ RETURN EVERY SINGLE CALL. Include active, pending, assigned, cleared—ALL calls
             } else {
                 await base44.entities.DispatchCall.create(payload);
                 added++;
-                log.push(`[SYNC] + ADDED: ${raw.incident} @ ${raw.location} (${agency}, ${raw.time_received || 'no time'})`);
+                log.push(`[SYNC] + ADDED: ${raw.incident} @ ${raw.location} (${agency}, ${raw.time_received || 'no time'}) ${payload.latitude ? '📍 geocoded' : '⚠ no coords'}`);
             }
         } catch (err) {
             log.push(`[SYNC] ✗ Error saving call ${raw.incident} @ ${raw.location}: ${err?.message}`);
