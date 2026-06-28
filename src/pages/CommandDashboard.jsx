@@ -228,9 +228,15 @@ function CommandDashboardInner() {
         manualRefresh();
     };
 
-    const sortedCalls = [...calls].sort((a, b) =>
-        new Date(b.time_received).getTime() - new Date(a.time_received).getTime()
-    );
+    const sortedCalls = [...calls].sort((a, b) => {
+        const getRef = (c) => {
+            const created = c.created_date ? new Date(c.created_date).getTime() : 0;
+            const received = c.time_received ? new Date(c.time_received).getTime() : 0;
+            if (received && created && Math.abs(received - created) < 24 * 3600 * 1000) return received;
+            return created;
+        };
+        return getRef(b) - getRef(a);
+    });
 
     const activeUnits    = users.filter(u => u.status && u.status !== 'Out of Service' && u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
     const criticalCalls  = calls.filter(c => getCallPriority(c) === 'critical');
