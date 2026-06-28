@@ -9,8 +9,9 @@ import { base44 } from '@/api/base44Client';
 
 const DashboardDataContext = createContext(null);
 
-const POLL_INTERVAL_MS = 60_000;        // 60s between auto-refreshes
-const RATE_LIMIT_BACKOFF_MS = 90_000;   // 90s wait after 429
+const POLL_INTERVAL_MS = 120_000;       // 2 minutes between auto-refreshes
+const RATE_LIMIT_BACKOFF_MS = 60_000;   // 60s wait after 429
+const MIN_REFRESH_MS = 30_000;          // Never refresh more than once per 30s
 
 function isRateLimitError(err) {
     return err?.status === 429 || String(err?.message || err).includes('429') || String(err?.message || err).toLowerCase().includes('rate limit');
@@ -38,8 +39,8 @@ export function DashboardDataProvider({ children }) {
             return;
         }
 
-        // Throttle: skip if last refresh was < 60s ago (unless forced)
-        if (!force && now - lastRefreshTime.current < POLL_INTERVAL_MS) {
+        // Throttle: skip if last refresh was < 30s ago (even if forced)
+        if (now - lastRefreshTime.current < MIN_REFRESH_MS) {
             return;
         }
 
@@ -53,7 +54,7 @@ export function DashboardDataProvider({ children }) {
         try {
             setRequestCount(c => c + 2);
             const [callsData, usersData] = await Promise.all([
-                base44.entities.DispatchCall.list('-time_received', 500),
+                base44.entities.DispatchCall.list('-time_received', 200),
                 base44.entities.User.list()
             ]);
 
@@ -110,16 +111,25 @@ export function DashboardDataProvider({ children }) {
         loadData(true);
     }, [loadData]);
 
-    // Auto-poll every 60s
+    // Auto-poll every 2 minutes
     useEffect(() => {
         const id = setInterval(() => loadData(false), POLL_INTERVAL_MS);
         return () => clearInterval(id);
     }, [loadData]);
 
-    // Real-time subscription — reload on any DispatchCall change, throttled
+    // Clear stale rate limit state on mount (in-memory ref resets anyway, but clear UI state)
+    useEffect(() => {
+        rateLimitedUntil.current = 0;
+        setRateLimited(false);
+    }, []);
+
+    // Real-time subscription — reload on DispatchCall changes, but throttled to MIN_REFRESH_MS
     useEffect(() => {
         const unsubscribe = base44.entities.DispatchCall.subscribe(() => {
-            loadData(false);
+            const now = Date.now();
+            if (now - lastRefreshTime.current >= MIN_REFRESH_MS && now >= rateLimitedUntil.current) {
+                loadData(false);
+            }
         });
         return unsubscribe;
     }, [loadData]);
