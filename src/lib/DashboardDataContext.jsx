@@ -80,7 +80,7 @@ export function DashboardDataProvider({ children }) {
             return;
         }
 
-        if (refreshingRef.current) return;
+        if (refreshingRef.current && !force) return;
         refreshingRef.current = true;
 
         const nowET = new Date().toLocaleTimeString('en-US', { hour12: false, timeZone: 'America/New_York' });
@@ -162,7 +162,7 @@ export function DashboardDataProvider({ children }) {
         return unsubscribe;
     }, [loadData]);
 
-    const manualRefresh = useCallback(() => loadData(true), [loadData]);
+    const manualRefresh = useCallback(async () => { await loadData(true); }, [loadData]);
 
     return (
         <DashboardDataContext.Provider value={{ calls, users, loading, lastRefresh, rateLimited, requestCount, manualRefresh }}>

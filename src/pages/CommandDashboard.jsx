@@ -186,8 +186,11 @@ function CommandDashboardInner() {
         if (now - lastManualRefreshRef.current < 5000) return; // block spam
         lastManualRefreshRef.current = now;
         setRefreshing(true);
-        await manualRefresh();
-        setRefreshing(false);
+        try {
+            await manualRefresh();
+        } finally {
+            setRefreshing(false);
+        }
     };
 
     const handleStatusChange = (newStatus) => {
