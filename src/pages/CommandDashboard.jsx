@@ -43,10 +43,18 @@ function fmtTime(dateStr) {
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' });
 }
 
-// Elapsed since call was received — never negative
-function elapsed(dateStr) {
-    if (!dateStr) return '';
-    const secs = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+// Elapsed since call was received — uses created_date as reliable fallback
+function elapsed(call) {
+    // Prefer time_received if it's within 24h of created_date (scraper stored it correctly)
+    // Otherwise fall back to created_date (scraper had timezone bug)
+    const created = call?.created_date ? new Date(call.created_date).getTime() : null;
+    const received = call?.time_received ? new Date(call.time_received).getTime() : null;
+    let ref = created;
+    if (received && created && Math.abs(received - created) < 24 * 3600 * 1000) {
+        ref = received; // time_received is trustworthy
+    }
+    if (!ref) return '';
+    const secs = Math.floor((Date.now() - ref) / 1000);
     if (secs < 0) return '0s';
     if (secs < 60) return `${secs}s`;
     if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
@@ -427,7 +435,7 @@ function CommandDashboardInner() {
                                     </div>
 
                                     <div className="w-20 flex-shrink-0 font-mono text-[10px] text-slate-500 hidden md:block">
-                                        {elapsed(call.time_received)}
+                                        {elapsed(call)}
                                     </div>
 
                                     <div className="flex-1 min-w-0 pr-2">
