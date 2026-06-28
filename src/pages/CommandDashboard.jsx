@@ -427,7 +427,7 @@ function CommandDashboardInner() {
                                     </div>
 
                                     <div className="w-20 flex-shrink-0 font-mono text-[10px] text-slate-500 hidden md:block">
-                                        {elapsed(call.time_received)}
+                                        {elapsed(call.created_date)}
                                     </div>
 
                                     <div className="flex-1 min-w-0 pr-2">
