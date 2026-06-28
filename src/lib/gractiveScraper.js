@@ -205,17 +205,14 @@ RETURN EVERY SINGLE CALL. Include active, pending, assigned, cleared—ALL calls
         const status = normalizeStatus(raw.status);
         const time_received = parseTimeET(raw.time_received);
 
-        if (!time_received) {
-            // Use NOW if time can't be parsed — don't skip the call
-            console.warn('[SYNC] ⚠ Time parse failed for call, using NOW:', raw.time_received, raw.incident);
-        }
+        const resolvedTime = time_received || new Date().toISOString();
 
-        const t = new Date(time_received);
+        const t = new Date(resolvedTime);
         if (!newestTime || t > newestTime) newestTime = t;
 
         // Do NOT skip any calls — show everything from gractivecalls.com regardless of status
 
-        const dedupKey = buildDedupKey(raw.incident, raw.location, agency, time_received);
+        const dedupKey = buildDedupKey(raw.incident, raw.location, agency, resolvedTime);
         const callIdKey = raw.call_id?.trim();
 
         // Check for existing record
@@ -229,29 +226,11 @@ RETURN EVERY SINGLE CALL. Include active, pending, assigned, cleared—ALL calls
             agency,
             source,
             status,
-            time_received: time_received || new Date().toISOString(),
+            time_received: resolvedTime,
             ...(raw.call_id ? { call_id: raw.call_id } : {}),
             ...(raw.units ? { assigned_units: raw.units.split(/[,\s]+/).filter(Boolean) } : {}),
             ...(raw.description ? { description: raw.description } : {}),
         };
-
-        // Client-side geocode via Nominatim if no existing coords
-        if (!existing && raw.location) {
-            try {
-                const geoQuery = encodeURIComponent(`${raw.location}, Richmond, VA`);
-                const geoResp = await fetch(
-                    `https://nominatim.openstreetmap.org/search?q=${geoQuery}&format=json&limit=1&addressdetails=0`,
-                    { headers: { 'User-Agent': 'CommandCAD/1.0' } }
-                );
-                const geoData = await geoResp.json();
-                if (geoData?.[0]) {
-                    payload.latitude = parseFloat(geoData[0].lat);
-                    payload.longitude = parseFloat(geoData[0].lon);
-                    payload.geo_confidence = 'medium';
-                    payload.geo_method = 'street';
-                }
-            } catch {/* silently skip geocode failures */}
-        }
 
         try {
             if (existing) {
