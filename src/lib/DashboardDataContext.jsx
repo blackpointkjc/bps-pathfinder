@@ -6,6 +6,44 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 
+// Geocode calls missing lat/lng via Nominatim (1 req/sec limit)
+async function geocodeUnmappedCalls(calls, setCalls) {
+    const unmapped = calls.filter(c => !c.latitude || !c.longitude || c.latitude === 0);
+    if (!unmapped.length) return;
+    console.log(`[GEO] Starting geocode for ${unmapped.length} unmapped calls`);
+
+    for (const call of unmapped.slice(0, 15)) {
+        if (!call.location) continue;
+        try {
+            const q = encodeURIComponent(`${call.location}, Richmond VA`);
+            const resp = await fetch(
+                `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`,
+                { headers: { 'User-Agent': 'CommandCAD/1.0' } }
+            );
+            const data = await resp.json();
+            if (data?.[0]) {
+                const lat = parseFloat(data[0].lat);
+                const lon = parseFloat(data[0].lon);
+                await base44.entities.DispatchCall.update(call.id, {
+                    latitude: lat,
+                    longitude: lon,
+                    geo_confidence: 'medium',
+                    geo_method: 'street'
+                });
+                // Update local state immediately so map pin appears without waiting for next poll
+                setCalls(prev => prev.map(c => c.id === call.id ? { ...c, latitude: lat, longitude: lon } : c));
+                console.log(`[GEO] ✓ ${call.incident} @ ${call.location} → ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+            } else {
+                console.log(`[GEO] ✗ No result for: ${call.location}`);
+            }
+        } catch (e) {
+            console.warn(`[GEO] Error geocoding ${call.location}:`, e?.message);
+        }
+        // Nominatim rate limit: max 1 req/sec
+        await new Promise(r => setTimeout(r, 1200));
+    }
+}
+
 const DashboardDataContext = createContext(null);
 
 const POLL_INTERVAL_MS = 60_000;        // 60s between auto-refreshes
@@ -88,6 +126,9 @@ export function DashboardDataProvider({ children }) {
             setLastRefresh(new Date());
             setRateLimited(false);
             lastRefreshTime.current = Date.now();
+
+            // Background geocode unmapped calls (non-blocking)
+            geocodeUnmappedCalls(active, setCalls).catch(() => {});
         } catch (err) {
             if (isRateLimitError(err)) {
                 rateLimitedUntil.current = Date.now() + RATE_LIMIT_BACKOFF_MS;
