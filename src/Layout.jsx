@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
     Radio, Activity, MapPin, Clock, Shield, Users, BarChart2,
     ChevronLeft, ChevronRight, Settings,
-    Home, Zap, FileText, Menu, X, LogOut
+    Home, Zap, FileText, Menu, X, LogOut, ClipboardList
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from './utils';
@@ -18,11 +18,14 @@ const ALL_NAV = [
     { label: 'Live Map', icon: MapPin, page: 'Navigation', roles: ['user', 'dispatch', 'admin'] },
     { label: 'DISPATCH', section: true, roles: ['dispatch', 'admin'] },
     { label: 'Dispatch Center', icon: Zap, page: 'DispatchCenter', roles: ['dispatch', 'admin'] },
+    { label: 'BOLO / Alerts', icon: Radio, page: 'BOLOAlerts', roles: ['dispatch', 'admin'] },
     { label: 'Call History', icon: Clock, page: 'CallHistory', roles: ['dispatch', 'admin'] },
+    { label: 'Field Unit View', icon: Shield, page: 'FieldUnitView', roles: ['user', 'dispatch', 'admin'] },
     { label: 'OPERATIONS', section: true, roles: ['admin'] },
     { label: 'Personnel', icon: Users, page: 'Personnel', roles: ['admin'] },
     { label: 'Dispatch Log', icon: FileText, page: 'DispatchLog', roles: ['admin'] },
     { label: 'Reports', icon: BarChart2, page: 'Reports', roles: ['admin'] },
+    { label: 'Supervisor Review', icon: ClipboardList, page: 'SupervisorReview', roles: ['admin'] },
     { label: 'System Status', icon: Activity, page: 'SystemStatus', roles: ['admin'] },
     { label: 'SYSTEM', section: true, roles: ['admin'] },
     { label: 'Admin Portal', icon: Shield, page: 'AdminPortal', roles: ['admin'] },

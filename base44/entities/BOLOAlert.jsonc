@@ -1,0 +1,118 @@
+{
+  "name": "BOLOAlert",
+  "type": "object",
+  "properties": {
+    "bolo_number": {
+      "type": "string",
+      "description": "Auto-generated BOLO number"
+    },
+    "alert_type": {
+      "type": "string",
+      "enum": [
+        "wanted_person",
+        "missing_person",
+        "stolen_vehicle",
+        "officer_safety",
+        "special_instruction",
+        "property_alert",
+        "watch_notice"
+      ],
+      "description": "Type of BOLO alert"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "cancelled",
+        "expired",
+        "located"
+      ],
+      "default": "active"
+    },
+    "title": {
+      "type": "string",
+      "description": "Short headline"
+    },
+    "description": {
+      "type": "string",
+      "description": "Full narrative"
+    },
+    "subject_name": {
+      "type": "string"
+    },
+    "subject_dob": {
+      "type": "string"
+    },
+    "subject_race": {
+      "type": "string"
+    },
+    "subject_sex": {
+      "type": "string"
+    },
+    "subject_height": {
+      "type": "string"
+    },
+    "subject_weight": {
+      "type": "string"
+    },
+    "subject_description": {
+      "type": "string"
+    },
+    "vehicle_make": {
+      "type": "string"
+    },
+    "vehicle_model": {
+      "type": "string"
+    },
+    "vehicle_year": {
+      "type": "string"
+    },
+    "vehicle_color": {
+      "type": "string"
+    },
+    "vehicle_plate": {
+      "type": "string"
+    },
+    "last_known_location": {
+      "type": "string"
+    },
+    "jurisdiction": {
+      "type": "string"
+    },
+    "issued_by": {
+      "type": "string"
+    },
+    "issued_by_id": {
+      "type": "string"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "contact_info": {
+      "type": "string"
+    },
+    "case_number": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "alert_type",
+    "title",
+    "priority",
+    "status"
+  ]
+}

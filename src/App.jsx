@@ -10,6 +10,9 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import CallCodeInsights from './pages/CallCodeInsights';
+import BOLOAlerts from './pages/BOLOAlerts';
+import FieldUnitView from './pages/FieldUnitView';
+import SupervisorReview from './pages/SupervisorReview';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -66,6 +69,21 @@ const AuthenticatedApp = () => {
       <Route path="/CallCodeInsights" element={
         <LayoutWrapper currentPageName="CallCodeInsights">
           <CallCodeInsights />
+        </LayoutWrapper>
+      } />
+      <Route path="/BOLOAlerts" element={
+        <LayoutWrapper currentPageName="BOLOAlerts">
+          <BOLOAlerts />
+        </LayoutWrapper>
+      } />
+      <Route path="/FieldUnitView" element={
+        <LayoutWrapper currentPageName="FieldUnitView">
+          <FieldUnitView />
+        </LayoutWrapper>
+      } />
+      <Route path="/SupervisorReview" element={
+        <LayoutWrapper currentPageName="SupervisorReview">
+          <SupervisorReview />
         </LayoutWrapper>
       } />
       <Route path="*" element={<PageNotFound />} />
