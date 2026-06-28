@@ -25,66 +25,80 @@ function normalizeStatus(s) {
     return v || 'New';
 }
 
-// Parse ET wall-clock time in multiple formats:
-// "06/22/2026 7:48 PM", "7:48 PM", "06/22/2026 20:56", "20:56"
+// Parse ET wall-clock time → UTC ISO string
+// Formats: "06/28/2026 7:48 PM", "7:48 PM", "06/28/2026 20:56", "20:56"
 function parseTimeET(timeStr) {
     if (!timeStr) return null;
     try {
         const cleaned = timeStr.trim();
-
-        // Full datetime with AM/PM: "06/22/2026 7:48 PM"
-        const fullAMPM = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-        // Full datetime 24h: "06/22/2026 20:56"
-        const full24h = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})$/);
-        // Time only AM/PM: "7:48 PM"
-        const timeAMPM = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-        // Time only 24h: "20:56"
-        const time24h = cleaned.match(/^(\d{1,2}):(\d{2})$/);
-
         let month, day, year, h, m;
 
-        const todayET = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
-        const todayParts = todayET.split('/');
+        const fullAMPM = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        const full24h  = cleaned.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})$/);
+        const timeAMPM = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        const time24h  = cleaned.match(/^(\d{1,2}):(\d{2})$/);
+
+        // Today's date in ET
+        const nowET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); // "2026-06-28"
+        const [todayYear, todayMonth, todayDay] = nowET.split('-');
 
         if (fullAMPM) {
             [, month, day, year] = fullAMPM;
-            h = parseInt(fullAMPM[4], 10);
-            m = parseInt(fullAMPM[5], 10);
+            h = parseInt(fullAMPM[4], 10); m = parseInt(fullAMPM[5], 10);
             const ap = fullAMPM[6].toUpperCase();
             if (ap === 'PM' && h !== 12) h += 12;
             if (ap === 'AM' && h === 12) h = 0;
         } else if (full24h) {
             [, month, day, year] = full24h;
-            h = parseInt(full24h[4], 10);
-            m = parseInt(full24h[5], 10);
+            h = parseInt(full24h[4], 10); m = parseInt(full24h[5], 10);
         } else if (timeAMPM) {
-            [month, day, year] = todayParts;
-            h = parseInt(timeAMPM[1], 10);
-            m = parseInt(timeAMPM[2], 10);
+            month = todayMonth; day = todayDay; year = todayYear;
+            h = parseInt(timeAMPM[1], 10); m = parseInt(timeAMPM[2], 10);
             const ap = timeAMPM[3].toUpperCase();
             if (ap === 'PM' && h !== 12) h += 12;
             if (ap === 'AM' && h === 12) h = 0;
         } else if (time24h) {
-            [month, day, year] = todayParts;
-            h = parseInt(time24h[1], 10);
-            m = parseInt(time24h[2], 10);
+            month = todayMonth; day = todayDay; year = todayYear;
+            h = parseInt(time24h[1], 10); m = parseInt(time24h[2], 10);
         } else {
             return null;
         }
 
-        const MM = String(month).padStart(2, '0');
-        const DD = String(day).padStart(2, '0');
-        const HH = String(h).padStart(2, '0');
-        const mm = String(m).padStart(2, '0');
+        // ET is UTC-5 (EST) or UTC-4 (EDT). Determine current offset by checking Jan 1 vs Jul 1.
+        const jan = new Date(Date.UTC(parseInt(year), 0, 1));
+        const jul = new Date(Date.UTC(parseInt(year), 6, 1));
+        const testDate = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)));
+        // EDT (summer) = UTC-4, EST (winter) = UTC-5
+        const isDST = testDate >= jul || testDate < jan ? false : true;
+        // More accurate: check standard ET DST rules (2nd Sun Mar → 1st Sun Nov)
+        const etOffsetHours = isEDT(parseInt(year), parseInt(month), parseInt(day)) ? 4 : 5;
 
-        // Treat as ET wall-clock: build fake UTC then apply ET offset
-        const fakeUTC = new Date(`${year}-${MM}-${DD}T${HH}:${mm}:00Z`);
-        const etWall = new Date(fakeUTC.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-        const offsetMs = fakeUTC.getTime() - etWall.getTime();
-        return new Date(fakeUTC.getTime() + offsetMs).toISOString();
+        const utcHours = h + etOffsetHours;
+        const d = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), utcHours, m, 0));
+        return d.toISOString();
     } catch {
         return null;
     }
+}
+
+// Returns true if the given date falls in Eastern Daylight Time (UTC-4)
+// DST starts 2nd Sunday of March, ends 1st Sunday of November
+function isEDT(year, month, day) {
+    if (month < 3 || month > 11) return false;
+    if (month > 3 && month < 11) return true;
+    if (month === 3) {
+        // 2nd Sunday of March
+        const firstDay = new Date(year, 2, 1).getDay(); // 0=Sun
+        const secondSunday = 8 + (7 - firstDay) % 7;
+        return day >= secondSunday;
+    }
+    if (month === 11) {
+        // 1st Sunday of November
+        const firstDay = new Date(year, 10, 1).getDay();
+        const firstSunday = 1 + (7 - firstDay) % 7;
+        return day < firstSunday;
+    }
+    return false;
 }
 
 // Build a stable dedup key: agency + incident + location + time_received (rounded to minute)
