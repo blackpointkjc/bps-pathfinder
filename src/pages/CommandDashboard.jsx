@@ -7,7 +7,6 @@ import { classifyCall } from '@/lib/cadCallTypes';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
-import { syncGractiveCalls } from '@/lib/gractiveScraper';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
 import { RefreshCw, Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff } from 'lucide-react';
 
@@ -150,44 +149,12 @@ function CommandDashboardInner() {
         knownCallIdsRef.current = currentIds;
     }, [calls, currentUser, monitoredProperties]);
 
-    // Sync from gractivecalls.com — every 2 minutes, no loop on error
+    // Backend automation "Ingest gractivecalls.com" syncs calls every 5 min with geocoding.
+    // Frontend just displays data — no redundant LLM polling (was causing rate-limit lockouts).
     useEffect(() => {
-        const runSync = async () => {
-            if (syncingRef.current) return;
-            syncingRef.current = true;
-            setSyncStatus(s => ({ ...s, state: 'syncing' }));
-
-            const safetyTimer = setTimeout(() => {
-                if (syncingRef.current) {
-                    syncingRef.current = false;
-                    setSyncStatus(s => ({ ...s, state: 'error', error: 'Sync timed out', lastSync: new Date() }));
-                }
-            }, 90000);
-
-            try {
-                const result = await syncGractiveCalls();
-                setSyncStatus({
-                    state: result.errors?.length ? 'error' : 'ok',
-                    lastSync: new Date(),
-                    added: result.added,
-                    updated: result.updated,
-                    total: result.total,
-                    error: result.errors?.length ? result.errors[0] : null,
-                });
-                // Refresh data once after sync — will be throttled if too recent
-                manualRefresh();
-            } catch (err) {
-                setSyncStatus(s => ({ ...s, state: 'error', error: err?.message || String(err), lastSync: new Date() }));
-            } finally {
-                clearTimeout(safetyTimer);
-                syncingRef.current = false;
-            }
-        };
-
-        runSync();
-        const id = setInterval(runSync, 30_000);
-        return () => clearInterval(id);
-    }, [manualRefresh]);
+        // Show a static "MANAGED" sync indicator since backend handles ingestion
+        setSyncStatus({ state: 'ok', lastSync: lastRefresh, added: 0, updated: 0, total: 0, error: null });
+    }, [lastRefresh]);
 
     const handleRefresh = async () => {
         const now = Date.now();
