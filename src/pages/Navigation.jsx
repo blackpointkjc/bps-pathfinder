@@ -288,13 +288,8 @@ export default function Navigation() {
         }
     };
 
-    // Auto-geocode unmapped calls every 60s
-    useEffect(() => {
-        const i = setInterval(() => {
-            setUnmappedCalls(prev => { if (prev.length > 0) autoGeocodeUnmapped(prev); return prev; });
-        }, 60000);
-        return () => clearInterval(i);
-    }, []);
+    // Geocoding handled by backend "geocodeMissingCalls" automation (every 10 min).
+    // Frontend must not call geocoding providers directly (causes 502s / rate limits).
 
     const fetchCalls = async () => {
         setIsLoadingCalls(true);
@@ -312,8 +307,7 @@ export default function Navigation() {
                 const target = active.find(c => c.id === focusCallId);
                 if (target) { setSelectedCall(target); setShowCallSidebar(true); }
             }
-            // auto-geocode unmapped calls in background
-            autoGeocodeUnmapped(unmapped);
+            // geocoding handled by backend automation
         } catch (e) {
             console.warn('[NAV] fetchCalls error:', e.message);
         } finally {
