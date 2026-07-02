@@ -53,12 +53,25 @@ export function DashboardDataProvider({ children }) {
 
         try {
             setRequestCount(c => c + 2);
-            const [callsData, usersData] = await Promise.all([
-                base44.entities.DispatchCall.list('-time_received', 200),
-                base44.entities.User.list()
-            ]);
 
-            console.log(`[CAD ${nowET}] Requests made: 2 | Calls fetched: ${callsData?.length ?? 0}`);
+            // Fetch calls and users independently — User.list() can 403 for non-admins,
+            // but that must NOT block calls from loading.
+            let callsData = [];
+            let usersData = [];
+            try {
+                callsData = await base44.entities.DispatchCall.list('-time_received', 200);
+            } catch (callsErr) {
+                console.error(`[CAD ${nowET}] Calls fetch failed:`, callsErr);
+                throw callsErr; // re-throw — calls are the critical payload
+            }
+            try {
+                usersData = await base44.entities.User.list();
+            } catch (usersErr) {
+                console.warn(`[CAD ${nowET}] User list unavailable (non-admin) — continuing without users`);
+                usersData = [];
+            }
+
+            console.log(`[CAD ${nowET}] Calls fetched: ${callsData?.length ?? 0} | Users: ${usersData?.length ?? 0}`);
 
             // Show calls created in the DB within the last 4 hours
             // (time_received is unreliable due to timezone offset issues in the scraper)
