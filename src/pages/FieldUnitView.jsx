@@ -57,11 +57,28 @@ export default function FieldUnitView() {
   }, []);
 
   const updateUnitStatus = async (status) => {
-    if (!myUnit) return;
     setSaving(true);
-    await base44.entities.Unit.update(myUnit.id, { status, last_update_at: new Date().toISOString() });
-    setMyUnit(u => ({ ...u, status }));
-    setSaving(false);
+    try {
+      let unit = myUnit;
+      // Auto-create a Unit record for this user if none exists yet
+      if (!unit) {
+        const unitId = `U-${user?.id?.slice(-6) || 'XXXXXX'}`;
+        unit = await base44.entities.Unit.create({
+          unit_id: unitId,
+          label: `Unit ${user?.unit_number || user?.full_name?.split(' ')[0] || 'Field'}`,
+          status,
+          user_id: user?.id,
+          last_update_at: new Date().toISOString(),
+        });
+      } else {
+        await base44.entities.Unit.update(unit.id, { status, last_update_at: new Date().toISOString() });
+      }
+      setMyUnit({ ...unit, status });
+    } catch (e) {
+      console.error('[FieldUnit] status update failed:', e?.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addNote = async () => {
