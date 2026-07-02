@@ -9,9 +9,9 @@ import { base44 } from '@/api/base44Client';
 
 const DashboardDataContext = createContext(null);
 
-const POLL_INTERVAL_MS = 120_000;       // 2 minutes between auto-refreshes
+const POLL_INTERVAL_MS = 30_000;        // 30 seconds between auto-refreshes
 const RATE_LIMIT_BACKOFF_MS = 60_000;   // 60s wait after 429
-const MIN_REFRESH_MS = 30_000;          // Never refresh more than once per 30s
+const MIN_REFRESH_MS = 10_000;          // Never refresh more than once per 10s
 
 function isRateLimitError(err) {
     return err?.status === 429 || String(err?.message || err).includes('429') || String(err?.message || err).toLowerCase().includes('rate limit');
