@@ -60,9 +60,9 @@ function clampFuture(iso) {
     return iso;
 }
 
-function cleanAddress(address) {
+function cleanAddress(address, city = 'Chesterfield County, Virginia') {
     let clean = address.replace(/\b(\d+)\s*-?\s*BLK\b/i, '$1 Block').trim();
-    return `${clean}, Chesterfield County, Virginia`;
+    return `${clean}, ${city}`;
 }
 
 function normalizeStatus(rawStatus) {
@@ -106,8 +106,23 @@ async function geocodeAddress(address) {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const MAX_GEOCODE_PER_RUN = 30;
-// Only ingest Chesterfield County agencies from gractivecalls.com
-const ALLOWED_AGENCIES = new Set(['CCPD', 'CCFD']);
+// gractivecalls.com aggregates all local agencies — ingest every one
+const ALLOWED_AGENCIES = new Set(['CCPD', 'CCFD', 'RPD', 'RFD', 'HPD', 'HFD']);
+const AGENCY_SOURCE = {
+    CCPD: 'chesterfield', CCFD: 'chesterfield',
+    RPD: 'richmond', RFD: 'richmond',
+    HPD: 'henrico', HFD: 'henrico',
+};
+const SOURCE_CITY = {
+    chesterfield: 'Chesterfield County, Virginia',
+    richmond: 'Richmond, Virginia',
+    henrico: 'Henrico County, Virginia',
+};
+const SOURCE_PREFIX = {
+    chesterfield: 'chesterfield',
+    richmond: 'richmond',
+    henrico: 'henrico',
+};
 
 // Parse the gractivecalls.com server-rendered Mantine table. Only keeps CCPD & CCFD rows.
 function parseGractive(html) {
