@@ -184,9 +184,16 @@ Deno.serve(async (req) => {
             }, { status: 502 });
         }
 
+        // Phase out: only keep calls received within the last 2 hours (ET). Anything
+        // older is closed and ages out, even if gractive still lists it.
+        const twoHourCutoff = Date.now() - 2 * 60 * 60 * 1000;
+        const activeCalls = allCalls.filter(c => new Date(c.time_received).getTime() >= twoHourCutoff);
+        const phasedOut = allCalls.length - activeCalls.length;
+        if (phasedOut > 0) console.log(`Phased out ${phasedOut} calls older than 2h`);
+
         // One row per call (keyed by the gractive call hash): update status on existing
         // records instead of creating duplicates each sync.
-        const incomingIds = new Set(allCalls.map(c => c.call_id));
+        const incomingIds = new Set(activeCalls.map(c => c.call_id));
         const existingByCallId = new Map();
         const duplicateIdsToDelete = [];
         let created = 0, updated = 0, closed = 0, geocoded = 0, geocodeSkipped = 0;
@@ -213,7 +220,7 @@ Deno.serve(async (req) => {
 
         const OPEN_STATUSES = ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene', 'Arrived'];
 
-        for (const callData of allCalls) {
+        for (const callData of activeCalls) {
             const existingRec = existingByCallId.get(callData.call_id);
             const needsGeocode = !existingRec || (existingRec.latitude == null);
 
@@ -275,7 +282,7 @@ Deno.serve(async (req) => {
         try {
             const properties = await base44.asServiceRole.entities.MonitoredProperty.filter({ enabled: true });
             if (properties.length > 0) {
-                const callsWithCoords = allCalls.filter(c => c.latitude && c.longitude);
+                const callsWithCoords = activeCalls.filter(c => c.latitude && c.longitude);
                 for (const call of callsWithCoords) {
                     for (const property of properties) {
                         const distance = calculateDistance(call.latitude, call.longitude, property.latitude, property.longitude);
@@ -309,6 +316,8 @@ Deno.serve(async (req) => {
             timestamp: now.toISOString(),
             source: 'https://gractivecalls.com/ (CCPD & CCFD only)',
             total_parsed: allCalls.length,
+            active_within_2h: activeCalls.length,
+            phased_out: phasedOut,
             created,
             updated,
             closed,

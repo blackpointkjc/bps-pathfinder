@@ -74,16 +74,17 @@ export function DashboardDataProvider({ children }) {
 
             console.log(`[CAD ${nowET}] Calls fetched: ${callsData?.length ?? 0} | Users: ${usersData?.length ?? 0}`);
 
-            // Show calls created in the DB within the last 4 hours
-            // (time_received is unreliable due to timezone offset issues in the scraper)
-            const fourHoursAgo = now - 4 * 60 * 60 * 1000;
-            const CLOSED = new Set(['Cleared', 'Cancelled', 'Closed', 'Unfounded']);
-            const oneHourAgo = now - 60 * 60 * 1000;
-            const active = (callsData || []).filter(c => {
-                const dbTime = new Date(c.created_date).getTime();
-                if (CLOSED.has(c.status)) return dbTime >= oneHourAgo;
-                return dbTime >= fourHoursAgo;
-            });
+            // Phase out calls older than 2 hours (ET). Use the call's actual received
+            // time (now reliable from the ingest) when available and not in the future,
+            // falling back to created_date. Non-geocoded calls are NOT filtered out here
+            // — they still show in the queue while geocoding keeps retrying.
+            const twoHoursAgo = now - 2 * 60 * 60 * 1000;
+            const callRefTime = (c) => {
+                const received = c.time_received ? new Date(c.time_received).getTime() : null;
+                if (received && !Number.isNaN(received) && received <= now) return received;
+                return c.created_date ? new Date(c.created_date).getTime() : 0;
+            };
+            const active = (callsData || []).filter(c => callRefTime(c) >= twoHoursAgo);
 
             // Debug: newest call time
             if (active.length > 0) {
