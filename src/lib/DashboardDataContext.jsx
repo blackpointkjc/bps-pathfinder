@@ -65,9 +65,10 @@ export function DashboardDataProvider({ children }) {
                 throw callsErr; // re-throw — calls are the critical payload
             }
             try {
-                usersData = await base44.entities.User.list();
+                const resp = await base44.functions.invoke('fetchAllUsers', {});
+                usersData = resp?.data?.users || resp?.data || resp?.users || [];
             } catch (usersErr) {
-                console.warn(`[CAD ${nowET}] User list unavailable (non-admin) — continuing without users`);
+                console.warn(`[CAD ${nowET}] fetchAllUsers failed — continuing without users`);
                 usersData = [];
             }
 
