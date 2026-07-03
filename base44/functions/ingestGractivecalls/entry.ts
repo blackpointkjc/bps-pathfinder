@@ -76,8 +76,8 @@ function normalizeStatus(rawStatus) {
     return map[s] || (s || 'New');
 }
 
-async function geocodeAddress(address) {
-    const fullAddress = cleanAddress(address);
+async function geocodeAddress(address, city = 'Chesterfield County, Virginia') {
+    const fullAddress = cleanAddress(address, city);
     try {
         const encoded = encodeURIComponent(fullAddress);
         const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encoded}&benchmark=2020&format=json`;
@@ -139,17 +139,20 @@ function parseGractive(html) {
         if (!incident || !location || !agency) return;
         if (!ALLOWED_AGENCIES.has(agency)) return;
 
+        const source = AGENCY_SOURCE[agency] || 'chesterfield';
+        const prefix = SOURCE_PREFIX[source];
+
         // Extract the gractive call hash from the actions link for a stable call_id
         let callId = '';
         const link = $(row).find('a[href*="/call/"]').first();
         const href = link.attr('href') || '';
         const hashMatch = href.match(/\/call\/([a-f0-9]+)/i);
         if (hashMatch) {
-            callId = `chesterfield-${hashMatch[1]}`;
+            callId = `${prefix}-${hashMatch[1]}`;
         } else {
             const timeSlug = timeStr.replace(/[^0-9]/g, '');
             const locSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
-            callId = `chesterfield-${agency.toLowerCase()}-${timeSlug}-${locSlug}`;
+            callId = `${prefix}-${agency.toLowerCase()}-${timeSlug}-${locSlug}`;
         }
 
         calls.push({
@@ -161,7 +164,7 @@ function parseGractive(html) {
             status: normalizeStatus(statusText),
             priority: 'medium',
             time_received: clampFuture(parseTimeToISO(timeStr)),
-            source: 'chesterfield',
+            source,
             description: `${incident} at ${location}`
         });
     });
@@ -173,7 +176,7 @@ Deno.serve(async (req) => {
         const base44 = createClientFromRequest(req);
         const now = new Date();
 
-        console.log('Starting active calls ingestion from gractivecalls.com (CCPD & CCFD only)...');
+        console.log('Starting active calls ingestion from gractivecalls.com (RPD/RFD/HPD/HFD/CCPD/CCFD)...');
 
         const res = await fetch('https://gractivecalls.com/', {
             headers: { 'User-Agent': 'BPS-CAD-Dispatch/1.0' },
@@ -189,7 +192,7 @@ Deno.serve(async (req) => {
         const html = await res.text();
 
         const allCalls = parseGractive(html);
-        console.log(`gractivecalls.com: parsed ${allCalls.length} CCPD/CCFD calls`);
+        console.log(`gractivecalls.com: parsed ${allCalls.length} calls (RPD/RFD/HPD/HFD/CCPD/CCFD)`);
 
         if (allCalls.length === 0) {
             return Response.json({
@@ -213,7 +216,12 @@ Deno.serve(async (req) => {
         const duplicateIdsToDelete = [];
         let created = 0, updated = 0, closed = 0, geocoded = 0, geocodeSkipped = 0;
 
-        const existing = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'chesterfield' });
+        const [cc, rc, hc] = await Promise.all([
+            base44.asServiceRole.entities.DispatchCall.filter({ source: 'chesterfield' }),
+            base44.asServiceRole.entities.DispatchCall.filter({ source: 'richmond' }),
+            base44.asServiceRole.entities.DispatchCall.filter({ source: 'henrico' }),
+        ]);
+        const existing = [...cc, ...rc, ...hc];
         for (const rec of existing) {
             const cid = rec.call_id;
             if (!cid) continue;
@@ -240,7 +248,7 @@ Deno.serve(async (req) => {
             const needsGeocode = !existingRec || (existingRec.latitude == null);
 
             if (needsGeocode && geocoded < MAX_GEOCODE_PER_RUN) {
-                const coords = await geocodeAddress(callData.location);
+                const coords = await geocodeAddress(callData.location, SOURCE_CITY[callData.source]);
                 if (coords) {
                     callData.latitude = coords.latitude;
                     callData.longitude = coords.longitude;
