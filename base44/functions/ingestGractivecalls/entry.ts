@@ -52,6 +52,14 @@ function parseTimeToISO(timeStr, referenceDate = new Date()) {
     return new Date().toISOString();
 }
 
+// Clamp any wall-clock time that parses to the future (gractive occasionally shows
+// a future "Time Received") down to now so elapsed-time never goes negative.
+function clampFuture(iso) {
+    const t = new Date(iso).getTime();
+    if (t > Date.now() + 60000) return new Date().toISOString();
+    return iso;
+}
+
 function cleanAddress(address) {
     let clean = address.replace(/\b(\d+)\s*-?\s*BLK\b/i, '$1 Block').trim();
     return `${clean}, Chesterfield County, Virginia`;
@@ -137,7 +145,7 @@ function parseGractive(html) {
             zone: '',
             status: normalizeStatus(statusText),
             priority: 'medium',
-            time_received: parseTimeToISO(timeStr),
+            time_received: clampFuture(parseTimeToISO(timeStr)),
             source: 'chesterfield',
             description: `${incident} at ${location}`
         });
@@ -176,11 +184,40 @@ Deno.serve(async (req) => {
             }, { status: 502 });
         }
 
-        // NOTE: Per user instruction, do NOT mark/skip duplicate calls — always insert fresh records.
-        let inserted = 0, geocoded = 0, geocodeSkipped = 0;
+        // One row per call (keyed by the gractive call hash): update status on existing
+        // records instead of creating duplicates each sync.
+        const incomingIds = new Set(allCalls.map(c => c.call_id));
+        const existingByCallId = new Map();
+        const duplicateIdsToDelete = [];
+        let created = 0, updated = 0, closed = 0, geocoded = 0, geocodeSkipped = 0;
+
+        const existing = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'chesterfield' });
+        for (const rec of existing) {
+            const cid = rec.call_id;
+            if (!cid) continue;
+            const kept = existingByCallId.get(cid);
+            if (!kept) {
+                existingByCallId.set(cid, rec);
+            } else if (new Date(rec.created_date) < new Date(kept.created_date)) {
+                duplicateIdsToDelete.push(kept.id);
+                existingByCallId.set(cid, rec);
+            } else {
+                duplicateIdsToDelete.push(rec.id);
+            }
+        }
+        // Clean up duplicate rows left over from prior no-dedup runs.
+        for (const id of duplicateIdsToDelete) {
+            try { await base44.asServiceRole.entities.DispatchCall.delete(id); } catch (_e) { /* silent */ }
+        }
+        if (duplicateIdsToDelete.length) console.log(`DB: removed ${duplicateIdsToDelete.length} duplicate rows`);
+
+        const OPEN_STATUSES = ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene', 'Arrived'];
 
         for (const callData of allCalls) {
-            if (geocoded < MAX_GEOCODE_PER_RUN) {
+            const existingRec = existingByCallId.get(callData.call_id);
+            const needsGeocode = !existingRec || (existingRec.latitude == null);
+
+            if (needsGeocode && geocoded < MAX_GEOCODE_PER_RUN) {
                 const coords = await geocodeAddress(callData.location);
                 if (coords) {
                     callData.latitude = coords.latitude;
@@ -190,20 +227,48 @@ Deno.serve(async (req) => {
                 } else {
                     console.log(`Could not geocode: ${callData.location}`);
                 }
-            } else {
+            } else if (needsGeocode) {
                 geocodeSkipped++;
             }
 
             try {
-                await base44.asServiceRole.entities.DispatchCall.create(callData);
-                inserted++;
-                await sleep(150);
-            } catch (createErr) {
-                console.error(`Failed to create call ${callData.call_id}:`, createErr?.message);
+                if (existingRec) {
+                    const statusChanged = existingRec.status !== callData.status;
+                    const gotCoords = callData.latitude != null && existingRec.latitude == null;
+                    if (statusChanged || gotCoords) {
+                        const updates = { status: callData.status };
+                        if (gotCoords) {
+                            updates.latitude = callData.latitude;
+                            updates.longitude = callData.longitude;
+                        }
+                        if (['Cleared', 'Closed', 'Cancelled'].includes(callData.status)) {
+                            updates.time_cleared = new Date().toISOString();
+                        }
+                        await base44.asServiceRole.entities.DispatchCall.update(existingRec.id, updates);
+                        updated++;
+                    }
+                } else {
+                    await base44.asServiceRole.entities.DispatchCall.create(callData);
+                    created++;
+                    await sleep(150);
+                }
+            } catch (e) {
+                console.error(`Failed to upsert call ${callData.call_id}:`, e?.message);
             }
         }
 
-        console.log(`DB: ${inserted} created (${geocoded} geocoded, ${geocodeSkipped} skipped)`);
+        // Calls that dropped off gractive have cleared — close them so they age out.
+        for (const [cid, rec] of existingByCallId) {
+            if (incomingIds.has(cid)) continue;
+            if (OPEN_STATUSES.includes(rec.status)) {
+                try {
+                    await base44.asServiceRole.entities.DispatchCall.update(rec.id, { status: 'Closed', time_closed: new Date().toISOString() });
+                    closed++;
+                } catch (_e) { /* silent */ }
+            }
+        }
+
+        console.log(`DB: ${created} created, ${updated} updated, ${closed} closed, ${duplicateIdsToDelete.length} dupes removed (${geocoded} geocoded, ${geocodeSkipped} skipped)`);
 
         // Property alert checking
         let alertsCreated = 0;
@@ -244,11 +309,14 @@ Deno.serve(async (req) => {
             timestamp: now.toISOString(),
             source: 'https://gractivecalls.com/ (CCPD & CCFD only)',
             total_parsed: allCalls.length,
-            inserted,
+            created,
+            updated,
+            closed,
+            duplicates_removed: duplicateIdsToDelete.length,
             geocoded,
             geocode_skipped: geocodeSkipped,
             alerts_created: alertsCreated,
-            dedup_enabled: false
+            dedup_enabled: true
         });
 
     } catch (error) {
