@@ -168,8 +168,9 @@ function CommandDashboardInner() {
         }
     };
 
-    const handleStatusChange = (newStatus) => {
+    const handleStatusChange = async (newStatus) => {
         setCurrentUser(prev => ({ ...prev, status: newStatus }));
+        try { await base44.functions.invoke('updateOfficerStatus', { status: newStatus }); } catch (e) { console.warn('[CAD] status persist failed:', e?.message); }
     };
 
     const toggleSound = () => {
