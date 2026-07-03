@@ -774,7 +774,7 @@ export default function Navigation() {
                             <span className="ml-auto text-[9px] font-mono text-slate-500">{selectedCall.status}</span>
                         </div>
 
-                        <div className="flex-1 p-4 space-y-3 font-mono overflow-y-auto">
+                        <div className="flex-1 p-4 space-y-3 font-mono overflow-y-auto bg-[#0a0e1a]">
                             {/* Incident */}
                             <div>
                                 <div className="text-[#f5a623] font-bold text-base leading-tight">{selectedCall.incident}</div>
