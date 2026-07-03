@@ -1,7 +1,7 @@
 /**
  * Centralized data provider for the dashboard.
  * All components pull from here instead of making their own API calls.
- * Polls DispatchCall + User once per 60 seconds max. Manual refresh allowed anytime.
+ * Polls DispatchCall every 30s; User fetched independently (non-admin safe).
  */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
