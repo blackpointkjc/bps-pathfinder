@@ -142,7 +142,7 @@ export default function Layout({ children, currentPageName }) {
                         {!collapsed && (
                             <div className="flex items-center gap-2 px-2 pt-3 pb-1">
                                 <div className="h-px flex-1 bg-slate-800" />
-                                <span className="text-[9px] font-black text-slate-500 tracking-[0.25em] font-mono uppercase">{section.label}</span>
+                                <span className="text-[9px] font-black text-gold/70 tracking-[0.3em] font-mono uppercase">{section.label}</span>
                                 <div className="h-px flex-1 bg-slate-800" />
                             </div>
                         )}
@@ -158,8 +158,8 @@ export default function Layout({ children, currentPageName }) {
                                         title={collapsed ? label : undefined}
                                         className={`group flex items-center gap-3 px-3 py-2 rounded transition-all select-none relative ${
                                             isActive
-                                                ? 'bg-gold/15 text-gold border border-gold/30'
-                                                : 'text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent'
+                                                ? 'bg-gold/20 text-gold border border-gold/50 shadow-[inset_3px_0_0_0_hsl(var(--gold))]'
+                                                : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
                                         } ${collapsed ? 'justify-center' : ''}`}
                                     >
                                         {isActive && !collapsed && (

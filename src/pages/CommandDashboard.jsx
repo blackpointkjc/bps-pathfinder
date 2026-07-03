@@ -78,9 +78,9 @@ function LiveClock() {
 function PanelHeader({ children, count, accent = 'gold' }) {
     const accents = { gold: 'border-t-gold', red: 'border-t-red-500', blue: 'border-t-blue-500', green: 'border-t-green-500' };
     return (
-        <div className={`bg-slate-800 border-b border-slate-700 border-t-2 ${accents[accent]} px-3 py-2 flex items-center justify-between`}>
+        <div className={`bg-slate-800/80 border-b border-slate-700 border-t-2 ${accents[accent]} px-3 py-2.5 flex items-center justify-between`}>
             <div className="flex items-center gap-2">
-                <div className="w-1.5 h-4 bg-gold rounded-sm flex-shrink-0" />
+                <div className="w-1.5 h-5 bg-gold rounded-sm flex-shrink-0 shadow-[0_0_8px_hsl(var(--gold))]" />
                 <span className="text-white font-mono font-bold text-xs tracking-widest">{children}</span>
             </div>
             {count !== undefined && (
@@ -313,9 +313,9 @@ function CommandDashboardInner() {
                     { label: 'ON SCENE', val: onSceneUnits.length, color: 'text-blue-400', bg: '', border: 'border-r border-slate-800' },
                     { label: 'BUSY', val: busyUnits.length, color: 'text-orange-400', bg: '', border: '' },
                 ].map(({ label, val, color, bg, border, flash }) => (
-                    <div key={label} className={`${bg} ${border} px-3 py-2.5 flex flex-col items-center justify-center ${flash ? 'animate-pulse' : ''}`}>
-                        <span className={`text-2xl font-mono font-bold leading-none ${color}`}>{val}</span>
-                        <span className="text-[9px] text-slate-500 font-mono tracking-widest mt-0.5 text-center">{label}</span>
+                    <div key={label} className={`${bg} ${border} border-t-2 border-t-slate-700/60 px-3 py-3 flex flex-col items-center justify-center ${flash ? 'animate-pulse' : ''}`}>
+                        <span className={`text-3xl font-mono font-black leading-none ${color} drop-shadow-[0_0_10px_currentColor]`}>{val}</span>
+                        <span className="text-[9px] text-slate-500 font-mono font-bold tracking-widest mt-1 text-center">{label}</span>
                     </div>
                 ))}
             </div>
