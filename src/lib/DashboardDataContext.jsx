@@ -149,6 +149,17 @@ export function DashboardDataProvider({ children }) {
         return unsubscribe;
     }, [loadData]);
 
+    // Real-time subscription — reload on User changes (unit status/location updates)
+    useEffect(() => {
+        const unsubscribe = base44.entities.User.subscribe(() => {
+            const now = Date.now();
+            if (now - lastRefreshTime.current >= MIN_REFRESH_MS && now >= rateLimitedUntil.current) {
+                loadData(false);
+            }
+        });
+        return unsubscribe;
+    }, [loadData]);
+
     const manualRefresh = useCallback(async () => { await loadData(true); }, [loadData]);
 
     return (
