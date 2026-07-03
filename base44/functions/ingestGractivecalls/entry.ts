@@ -11,52 +11,101 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function parseTimeToISO(timeStr) {
+// Returns the ET→UTC offset hours (4 during DST, 5 otherwise) for a given date.
+function etOffsetHours(date = new Date()) {
+    const tzName = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'shortOffset' })
+        .formatToParts(date).find(p => p.type === 'timeZoneName')?.value || 'GMT-5';
+    const m = tzName.match(/GMT([+-])(\d+)/);
+    if (m) return parseInt(m[2]); // 'GMT-4' → 4, 'GMT-5' → 5
+    return 5;
+}
+
+function parseTimeToISO(timeStr, referenceDate = new Date()) {
     if (!timeStr) return new Date().toISOString();
+    const pad = (n) => String(n).padStart(2, '0');
+    const offset = etOffsetHours(referenceDate);
+
+    // Richmond format: "07/03/2026 13:37" (MM/DD/YYYY HH:MM, 24h)
+    const full24 = timeStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/);
+    if (full24 && !/AM|PM/i.test(timeStr)) {
+        const [, month, day, year, hour, minutes] = full24;
+        return new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour) + offset, parseInt(minutes), 0)).toISOString();
+    }
+
+    // Full format with AM/PM: "07/03/2026 1:37 PM"
     const fullMatch = timeStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i);
     if (fullMatch) {
         const [, month, day, year, rawHour, minutes, ampm] = fullMatch;
         let hour = parseInt(rawHour);
         if (ampm.toUpperCase() === 'PM' && hour !== 12) hour += 12;
         if (ampm.toUpperCase() === 'AM' && hour === 12) hour = 0;
-        const pad = (n) => String(n).padStart(2, '0');
-        const testDate = new Date(`${year}-${pad(month)}-${pad(day)}T12:00:00Z`);
-        const tzName = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'shortOffset' })
-            .formatToParts(testDate).find(p => p.type === 'timeZoneName')?.value || 'GMT-5';
-        const offsetHours = tzName.includes('-4') ? 4 : 5;
-        return new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), hour + offsetHours, parseInt(minutes), 0)).toISOString();
+        return new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), hour + offset, parseInt(minutes), 0)).toISOString();
     }
+
+    // Time only with AM/PM (Henrico): "1:38 PM" — use today's date in ET
+    const timeAmPm = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (timeAmPm) {
+        const [, rawHour, minutes, ampm] = timeAmPm;
+        let hour = parseInt(rawHour);
+        if (ampm.toUpperCase() === 'PM' && hour !== 12) hour += 12;
+        if (ampm.toUpperCase() === 'AM' && hour === 12) hour = 0;
+        // Build the date in Eastern local components, then convert to UTC
+        const etParts = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(referenceDate);
+        const y = etParts.find(p => p.type === 'year')?.value;
+        const mo = etParts.find(p => p.type === 'month')?.value;
+        const d = etParts.find(p => p.type === 'day')?.value;
+        return new Date(Date.UTC(parseInt(y), parseInt(mo) - 1, parseInt(d), hour + offset, parseInt(minutes), 0)).toISOString();
+    }
+
+    // Bare 24h time only (fallback): "13:37"
     const timeOnly = timeStr.match(/(\d{1,2}):(\d{2})/);
     if (timeOnly) {
-        const nowEastern = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
-        const d = new Date(nowEastern);
-        d.setHours(parseInt(timeOnly[1]), parseInt(timeOnly[2]), 0, 0);
-        return d.toISOString();
+        const etParts = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(referenceDate);
+        const y = etParts.find(p => p.type === 'year')?.value;
+        const mo = etParts.find(p => p.type === 'month')?.value;
+        const d = etParts.find(p => p.type === 'day')?.value;
+        return new Date(Date.UTC(parseInt(y), parseInt(mo) - 1, parseInt(d), parseInt(timeOnly[1]) + offset, parseInt(timeOnly[2]), 0)).toISOString();
     }
+
     return new Date().toISOString();
 }
 
-function getSource(agency) {
-    if (!agency) return 'richmond';
-    const ag = agency.toUpperCase();
-    if (ag.includes('HENRICO') || ag.includes('HPD') || ag.includes('HCPD') || ag.includes('HFD') || ag.includes('HCFD')) return 'henrico';
-    if (ag.includes('CHESTERFIELD') || ag.includes('CCPD') || ag.includes('CFD') || ag.includes('CCFD')) return 'chesterfield';
-    return 'richmond';
-}
-
-function cleanAddress(address, agency) {
-    let clean = address.replace(/\b(\d+)\s+Block\b/i, '$1');
+function cleanAddress(address, source) {
+    let clean = address.replace(/\b(\d+)\s*-?\s*BLK\b/i, '$1 Block');
+    clean = clean.replace(/\b(\d+)\s+Block\b/i, '$1 Block');
     clean = clean.replace(/\bRICH\b$/, 'Richmond').trim();
-    const src = getSource(agency);
     let city = 'Richmond, Virginia';
-    if (src === 'henrico') city = 'Henrico County, Virginia';
-    else if (src === 'chesterfield') city = 'Chesterfield County, Virginia';
+    if (source === 'henrico') city = 'Henrico County, Virginia';
+    else if (source === 'chesterfield') city = 'Chesterfield County, Virginia';
     return `${clean}, ${city}`;
 }
 
-async function geocodeAddress(address, agency) {
-    const fullAddress = cleanAddress(address, agency);
-    // Try Census Geocoder first (free, US-only)
+// Map a raw status string from the source feed to the DispatchCall status enum.
+function normalizeStatus(rawStatus, source) {
+    const s = (rawStatus || '').toUpperCase().trim();
+    // Henrico: "ASSIGNED 1:39 PM", "ENROUTE 1:35 PM", "ARRIVED 1:31 PM", "TRNSPRT 11:02 AM"
+    if (source === 'henrico') {
+        if (s.startsWith('ASSIGNED')) return 'Dispatched';
+        if (s.startsWith('ENROUTE')) return 'Enroute';
+        if (s.startsWith('ARRIVED')) return 'Arrived';
+        if (s.startsWith('TRNSPRT')) return 'On Scene';
+        return 'New';
+    }
+    // Richmond: "Enroute", "Arrived", "Dispatched", "Pending", etc.
+    const map = {
+        'ENROUTE': 'Enroute', 'ARRIVED': 'Arrived', 'DISPATCHED': 'Dispatched',
+        'PENDING': 'Pending', 'NEW': 'New', 'CLEARED': 'Cleared',
+        'CLOSED': 'Closed', 'CANCELLED': 'Cancelled'
+    };
+    return map[s] || 'New';
+}
+
+async function geocodeAddress(address, source) {
+    const fullAddress = cleanAddress(address, source);
     try {
         const encoded = encodeURIComponent(fullAddress);
         const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encoded}&benchmark=2020&format=json`;
@@ -66,9 +115,8 @@ async function geocodeAddress(address, agency) {
         if (match) {
             return { latitude: parseFloat(match.coordinates.y), longitude: parseFloat(match.coordinates.x) };
         }
-    } catch (e) { /* silent */ }
+    } catch (_e) { /* silent */ }
 
-    // Fallback: Photon
     try {
         const query = encodeURIComponent(fullAddress);
         const url = `https://photon.komoot.io/api/?q=${query}&limit=1&lang=en`;
@@ -79,81 +127,151 @@ async function geocodeAddress(address, agency) {
             const [lon, lat] = feat.geometry.coordinates;
             return { latitude: lat, longitude: lon };
         }
-    } catch (e) { /* silent */ }
+    } catch (_e) { /* silent */ }
 
     return null;
 }
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
 const MAX_GEOCODE_PER_RUN = 30;
+
+// Parse the City of Richmond Active Calls HTML table.
+function parseRichmond(html) {
+    const $ = cheerio.load(html);
+    const calls = [];
+    const seen = new Set();
+    // The page uses a DataTable: table#tblActiveCallsListing tbody tr
+    $('#tblActiveCallsListing tbody tr').each((_, row) => {
+        const cells = $(row).find('td');
+        if (cells.length < 7) return;
+        const timeStr = $(cells[0]).text().trim();
+        const agency = $(cells[1]).text().trim();
+        const dispatchArea = $(cells[2]).text().trim();
+        const unit = $(cells[3]).text().trim();
+        const callType = $(cells[4]).text().trim();
+        const location = $(cells[5]).text().trim();
+        const status = $(cells[6]).text().trim();
+        if (!callType || !location || !agency) return;
+
+        const timeSlug = timeStr.replace(/[^0-9]/g, '');
+        const locSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
+        const unitSlug = unit.replace(/[^a-zA-Z0-9]/g, '').toLowerCase().slice(0, 12);
+        const callId = `richmond-${agency.toLowerCase()}-${timeSlug}-${unitSlug}-${locSlug}`;
+        if (seen.has(callId)) return;
+        seen.add(callId);
+
+        calls.push({
+            call_id: callId,
+            incident: callType,
+            location,
+            agency,
+            zone: dispatchArea,
+            assigned_units: unit ? [unit] : [],
+            status: normalizeStatus(status, 'richmond'),
+            priority: 'medium',
+            time_received: parseTimeToISO(timeStr),
+            source: 'richmond',
+            description: `${callType} at ${location}`
+        });
+    });
+    return calls;
+}
+
+// Parse the Henrico County Active Calls HTML table.
+function parseHenrico(html) {
+    const $ = cheerio.load(html);
+    const calls = [];
+    const seen = new Set();
+    $('#activeCallsTable tbody tr').each((_, row) => {
+        const cells = $(row).find('td');
+        if (cells.length < 6) return;
+        const cadNumber = $(cells[0]).text().trim();
+        const timeStr = $(cells[1]).text().trim();
+        const location = $(cells[2]).text().trim();
+        const incident = $(cells[3]).text().trim();
+        const statusRaw = $(cells[4]).text().trim();
+        const district = $(cells[5]).text().trim();
+        if (!cadNumber || !location || !incident) return;
+
+        const callId = `henrico-${cadNumber}`;
+        if (seen.has(callId)) return;
+        seen.add(callId);
+
+        calls.push({
+            call_id: callId,
+            incident,
+            location,
+            agency: 'HPD',
+            zone: district,
+            status: normalizeStatus(statusRaw, 'henrico'),
+            priority: 'medium',
+            time_received: parseTimeToISO(timeStr),
+            source: 'henrico',
+            description: `${incident} at ${location}`
+        });
+    });
+    return calls;
+}
 
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
+        const now = new Date();
 
-        console.log('Starting active calls ingestion from gractivecalls.com...');
+        console.log('Starting active calls ingestion from official sources...');
 
-        const htmlResponse = await fetch('https://gractivecalls.com', {
-            headers: { 'User-Agent': 'BPS-CAD-Dispatch/1.0' },
-            signal: AbortSignal.timeout(15000)
-        });
+        // Fetch both official endpoints in parallel
+        const [richmondRes, henricoRes] = await Promise.allSettled([
+            fetch('https://apps.richmondgov.com/applications/activecalls/Home/ActiveCalls', {
+                headers: { 'User-Agent': 'BPS-CAD-Dispatch/1.0' },
+                signal: AbortSignal.timeout(15000)
+            }),
+            fetch('https://activecalls.henrico.gov/', {
+                headers: { 'User-Agent': 'BPS-CAD-Dispatch/1.0' },
+                signal: AbortSignal.timeout(15000)
+            })
+        ]);
 
-        if (!htmlResponse.ok) {
-            throw new Error(`Failed to fetch gractivecalls.com: ${htmlResponse.status}`);
+        let richmondCalls = [];
+        let henricoCalls = [];
+
+        if (richmondRes.status === 'fulfilled' && richmondRes.value.ok) {
+            const html = await richmondRes.value.text();
+            richmondCalls = parseRichmond(html);
+            console.log(`Richmond (apps.richmondgov.com): parsed ${richmondCalls.length} calls`);
+        } else {
+            console.error('Richmond fetch failed:', richmondRes.status === 'rejected' ? richmondRes.reason?.message : richmondRes.value?.status);
         }
 
-        const html = await htmlResponse.text();
-        const $ = cheerio.load(html);
+        if (henricoRes.status === 'fulfilled' && henricoRes.value.ok) {
+            const html = await henricoRes.value.text();
+            henricoCalls = parseHenrico(html);
+            console.log(`Henrico (activecalls.henrico.gov): parsed ${henricoCalls.length} calls`);
+        } else {
+            console.error('Henrico fetch failed:', henricoRes.status === 'rejected' ? henricoRes.reason?.message : henricoRes.value?.status);
+        }
 
-        const allCalls = [];
-        const seenIds = new Set();
+        const allCalls = [...richmondCalls, ...henricoCalls];
+        console.log(`Total parsed: ${allCalls.length} calls`);
 
-        $('table tbody tr').each((_, row) => {
-            const cells = $(row).find('td');
-            if (cells.length >= 5) {
-                const timeStr = $(cells[0]).text().trim();
-                const incident = $(cells[1]).text().trim();
-                const location = $(cells[2]).text().trim();
-                const agency = $(cells[3]).text().trim();
-                const status = $(cells[4]).text().trim();
+        if (allCalls.length === 0) {
+            return Response.json({
+                success: false,
+                error: 'No calls parsed from either source',
+                timestamp: now.toISOString()
+            }, { status: 502 });
+        }
 
-                if (!incident || !location || !agency) return;
-
-                const incidentSlug = incident.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 30);
-                const locationSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
-                const stableId = `${agency.toLowerCase()}-${incidentSlug}-${locationSlug}`;
-
-                if (!seenIds.has(stableId)) {
-                    seenIds.add(stableId);
-                    allCalls.push({
-                        call_id: stableId,
-                        incident,
-                        location,
-                        agency,
-                        status,
-                        priority: 'medium',
-                        time_received: parseTimeToISO(timeStr),
-                        source: getSource(agency),
-                        description: `${incident} at ${location}`
-                    });
-                }
-            }
-        });
-
-        console.log(`HTML parsed ${allCalls.length} calls`);
-
-        // Fetch all auto-ingested calls (all valid source values)
-        const [richmondCalls, henricoCalls, chesterfieldCalls] = await Promise.all([
+        // Fetch existing auto-ingested calls (richmond + henrico only)
+        const [existingRichmond, existingHenrico] = await Promise.all([
             base44.asServiceRole.entities.DispatchCall.filter({ source: 'richmond' }),
-            base44.asServiceRole.entities.DispatchCall.filter({ source: 'henrico' }),
-            base44.asServiceRole.entities.DispatchCall.filter({ source: 'chesterfield' }),
+            base44.asServiceRole.entities.DispatchCall.filter({ source: 'henrico' })
         ]);
-        const existingCalls = [...richmondCalls, ...henricoCalls, ...chesterfieldCalls];
+        const existingCalls = [...existingRichmond, ...existingHenrico];
         const existingMap = new Map(existingCalls.map(c => [c.call_id, c]));
-        console.log(`Found ${existingCalls.length} existing calls in database`);
+        console.log(`Found ${existingCalls.length} existing RPD/HPD calls in database`);
 
-        // Classify all new calls (not already in DB) using AI priority system
+        // Classify new calls using AI priority system
         const newCallsToInsert = allCalls.filter(c => !existingMap.has(c.call_id));
         const classificationMap = new Map();
         if (newCallsToInsert.length > 0) {
@@ -190,33 +308,38 @@ Deno.serve(async (req) => {
                 const locationChanged = existing.location !== callData.location;
                 const missingCoords = !existing.latitude || !existing.longitude;
                 if ((locationChanged || missingCoords) && geocoded < MAX_GEOCODE_PER_RUN) {
-                    const coords = await geocodeAddress(callData.location, callData.agency);
+                    const coords = await geocodeAddress(callData.location, callData.source);
                     if (coords) {
                         callData.latitude = coords.latitude;
                         callData.longitude = coords.longitude;
                         geocoded++;
+                    } else {
+                        callData.latitude = existing.latitude;
+                        callData.longitude = existing.longitude;
                     }
                 } else {
                     callData.latitude = existing.latitude;
                     callData.longitude = existing.longitude;
                 }
 
-                try {
-                    await base44.asServiceRole.entities.DispatchCall.update(existing.id, {
-                        status: callData.status,
-                        time_received: callData.time_received,
-                        location: callData.location,
-                        latitude: callData.latitude,
-                        longitude: callData.longitude,
-                    });
-                    updated++;
-                    await sleep(150);
-                } catch (_e) {
-                    // Record may have been deleted — skip update
+                const statusChanged = existing.status !== callData.status;
+                if (statusChanged || locationChanged) {
+                    try {
+                        await base44.asServiceRole.entities.DispatchCall.update(existing.id, {
+                            status: callData.status,
+                            time_received: callData.time_received,
+                            location: callData.location,
+                            zone: callData.zone,
+                            latitude: callData.latitude,
+                            longitude: callData.longitude
+                        });
+                        updated++;
+                        await sleep(150);
+                    } catch (_e) { /* record deleted concurrently */ }
                 }
             } else {
                 if (geocoded < MAX_GEOCODE_PER_RUN) {
-                    const coords = await geocodeAddress(callData.location, callData.agency);
+                    const coords = await geocodeAddress(callData.location, callData.source);
                     if (coords) {
                         callData.latitude = coords.latitude;
                         callData.longitude = coords.longitude;
@@ -229,14 +352,8 @@ Deno.serve(async (req) => {
                     geocodeSkipped++;
                 }
 
-                // Attach AI classification if available
                 const classification = classificationMap.get(callData.call_id);
                 if (classification) {
-                    callData.priority_level = classification.priority_level;
-                    callData.priority_label = classification.priority_label;
-                    callData.ai_call_category = classification.ai_call_category;
-                    callData.priority_reason = classification.priority_reason;
-                    // Map to existing priority field for backwards compat
                     const levelMap = { 1: 'critical', 2: 'high', 3: 'medium', 4: 'low' };
                     callData.priority = levelMap[classification.priority_level] || 'medium';
                 }
@@ -245,13 +362,11 @@ Deno.serve(async (req) => {
                     await base44.asServiceRole.entities.DispatchCall.create(callData);
                     inserted++;
                     await sleep(200);
-                } catch (_e) {
-                    // Duplicate — skip
-                }
+                } catch (_e) { /* duplicate — skip */ }
             }
         }
 
-        // Delete calls no longer on the live site
+        // Delete RPD/HPD calls no longer on the live sites
         let deleted = 0;
         for (const existing of existingCalls) {
             if (!newCallIds.has(existing.call_id)) {
@@ -259,9 +374,7 @@ Deno.serve(async (req) => {
                     await base44.asServiceRole.entities.DispatchCall.delete(existing.id);
                     deleted++;
                     console.log(`Removed: ${existing.incident} @ ${existing.location}`);
-                } catch (_e) {
-                    // Already deleted by a concurrent run - ignore
-                }
+                } catch (_e) { /* already deleted */ }
             }
         }
 
@@ -303,8 +416,13 @@ Deno.serve(async (req) => {
 
         return Response.json({
             success: true,
-            timestamp: new Date().toISOString(),
-            source: 'gractivecalls.com',
+            timestamp: now.toISOString(),
+            sources: {
+                richmond: 'https://apps.richmondgov.com/applications/ActiveCalls (AJAX: /Home/ActiveCalls)',
+                henrico: 'https://activecalls.henrico.gov/'
+            },
+            richmond_calls: richmondCalls.length,
+            henrico_calls: henricoCalls.length,
             total_parsed: allCalls.length,
             inserted,
             updated,
