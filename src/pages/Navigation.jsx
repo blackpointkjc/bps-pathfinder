@@ -634,9 +634,9 @@ export default function Navigation() {
                                 initial={{ opacity: 0, y: -8 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -8 }}
-                                className="w-72 bg-[#0a0e1a]/97 border border-[#1e2d4a] rounded-b-lg shadow-xl overflow-hidden"
+                                className="w-72 bg-[#0a0e1a] border border-[#1e2d4a] rounded-b-lg shadow-xl overflow-hidden"
                             >
-                                <div className="px-3 py-2 border-b border-[#1e2d4a] flex items-center justify-between">
+                                <div className="px-3 py-2 border-b border-[#1e2d4a] flex items-center justify-between bg-[#0d1220]">
                                     <span className="text-yellow-400 font-mono text-[10px] font-bold">UNMAPPED CALLS</span>
                                     <button
                                         onClick={() => autoGeocodeUnmapped(unmappedCalls)}
