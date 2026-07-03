@@ -163,6 +163,8 @@ function CommandDashboardInner() {
         setRefreshing(true);
         try {
             await manualRefresh();
+            // Also trigger backend geocoding for any calls still missing coordinates
+            base44.functions.invoke('geocodeMissingCalls', {}).catch(e => console.warn('[CAD] geocode trigger failed:', e?.message));
         } finally {
             setRefreshing(false);
         }

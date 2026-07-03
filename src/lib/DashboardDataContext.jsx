@@ -39,8 +39,8 @@ export function DashboardDataProvider({ children }) {
             return;
         }
 
-        // Throttle: skip if last refresh was < 30s ago (even if forced)
-        if (now - lastRefreshTime.current < MIN_REFRESH_MS) {
+        // Throttle: skip if last refresh was < 10s ago — but always honor a forced/manual refresh
+        if (!force && now - lastRefreshTime.current < MIN_REFRESH_MS) {
             return;
         }
 
