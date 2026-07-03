@@ -8,7 +8,7 @@ import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
-import { RefreshCw, Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff } from 'lucide-react';
+import { RefreshCw, Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX } from 'lucide-react';
 
 const PRIORITY_CONFIG = {
     critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
@@ -415,7 +415,12 @@ function CommandDashboardInner() {
                                     </div>
 
                                     <div className="flex-1 min-w-0 pr-2">
-                                        <div className="text-white font-mono font-bold text-xs truncate">{cleanIncident(call)}</div>
+                                        <div className="text-white font-mono font-bold text-xs truncate flex items-center gap-1">
+                                            {(!call.latitude || !call.longitude) && (
+                                                <CircleX className="w-3 h-3 flex-shrink-0 text-red-500" title="Not geocoded" />
+                                            )}
+                                            {cleanIncident(call)}
+                                        </div>
                                         <div className="text-slate-400 font-mono text-[10px] truncate flex items-center gap-1 mt-0.5">
                                             <MapPin className="w-2.5 h-2.5 flex-shrink-0 text-slate-600" />
                                             {call.location}
