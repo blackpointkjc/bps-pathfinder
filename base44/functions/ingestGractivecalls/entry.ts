@@ -107,12 +107,11 @@ async function geocodeAddress(address, city = 'Chesterfield County, Virginia') {
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const MAX_GEOCODE_PER_RUN = 30;
 // gractivecalls.com aggregates all local agencies — ingest every one
-// RPD/RFD are ingested from apps.richmondgov.com by ingestRichmondCalls.
-// gractivecalls.com handles CCPD/CCFD/HPD/HFD only.
-const ALLOWED_AGENCIES = new Set(['CCPD', 'CCFD', 'HPD', 'HFD']);
+const ALLOWED_AGENCIES = new Set(['CCPD', 'CCFD', 'HPD', 'HFD', 'RPD', 'RFD']);
 const AGENCY_SOURCE = {
     CCPD: 'chesterfield', CCFD: 'chesterfield',
     HPD: 'henrico', HFD: 'henrico',
+    RPD: 'richmond', RFD: 'richmond',
 };
 const SOURCE_CITY = {
     chesterfield: 'Chesterfield County, Virginia',
@@ -125,7 +124,7 @@ const SOURCE_PREFIX = {
     henrico: 'henrico',
 };
 
-// Parse the gractivecalls.com server-rendered Mantine table. Only keeps CCPD & CCFD rows.
+// Parse the gractivecalls.com server-rendered Mantine table.
 function parseGractive(html) {
     const $ = cheerio.load(html);
     const calls = [];
@@ -181,7 +180,7 @@ Deno.serve(async (req) => {
         const base44 = createClientFromRequest(req);
         const now = new Date();
 
-        console.log('Starting active calls ingestion from gractivecalls.com (HPD/HFD/CCPD/CCFD)...');
+        console.log('Starting active calls ingestion from gractivecalls.com (RPD/RFD/HPD/HFD/CCPD/CCFD)...');
 
         const res = await fetch('https://gractivecalls.com/', {
             headers: { 'User-Agent': 'BPS-CAD-Dispatch/1.0' },
@@ -197,7 +196,7 @@ Deno.serve(async (req) => {
         const html = await res.text();
 
         const allCalls = parseGractive(html);
-        console.log(`gractivecalls.com: parsed ${allCalls.length} calls (HPD/HFD/CCPD/CCFD)`);
+        console.log(`gractivecalls.com: parsed ${allCalls.length} calls (RPD/RFD/HPD/HFD/CCPD/CCFD)`);
 
         if (allCalls.length === 0) {
             return Response.json({
@@ -353,7 +352,7 @@ Deno.serve(async (req) => {
         return Response.json({
             success: true,
             timestamp: now.toISOString(),
-            source: 'https://gractivecalls.com/ (HPD/HFD/CCPD/CCFD)',
+            source: 'https://gractivecalls.com/ (RPD/RFD/HPD/HFD/CCPD/CCFD)',
             total_parsed: allCalls.length,
             active_within_2h: activeCalls.length,
             phased_out: phasedOut,

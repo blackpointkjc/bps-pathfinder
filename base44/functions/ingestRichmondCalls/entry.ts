@@ -18,7 +18,6 @@ function etOffsetHours(date = new Date()) {
     return 4;
 }
 
-// Parse "07/03/2026 19:51" (ET wall-clock) → UTC ISO
 function parseTimeToISO(timeStr) {
     if (!timeStr) return new Date().toISOString();
     const offset = etOffsetHours();
@@ -47,70 +46,14 @@ function normalizeStatus(rawStatus) {
     return map[s] || (s || 'New');
 }
 
-function cleanAddress(address) {
-    let clean = address.replace(/\b(\d+)\s*-?\s*BLK\b/i, '$1 Block').trim();
-    clean = clean.replace(/^RICH:\s*@?\s*/i, '').replace(/\s+RICH$/i, '').trim();
-    return `${clean}, Richmond, Virginia`;
-}
-
-async function geocodeAddress(address) {
-    const fullAddress = cleanAddress(address);
-    try {
-        const encoded = encodeURIComponent(fullAddress);
-        const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encoded}&benchmark=2020&format=json`;
-        const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-        const data = await res.json();
-        const match = data?.result?.addressMatches?.[0];
-        if (match) {
-            return { latitude: parseFloat(match.coordinates.y), longitude: parseFloat(match.coordinates.x) };
-        }
-    } catch (_e) { /* silent */ }
-
-    try {
-        const query = encodeURIComponent(fullAddress);
-        const url = `https://photon.komoot.io/api/?q=${query}&limit=1&lang=en`;
-        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-        const data = await res.json();
-        const feat = data?.features?.[0];
-        if (feat) {
-            const [lon, lat] = feat.geometry.coordinates;
-            return { latitude: lat, longitude: lon };
-        }
-    } catch (_e) { /* silent */ }
-
-    return null;
-}
-
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-const MAX_GEOCODE_PER_RUN = 30;
 
-Deno.serve(async (req) => {
-    try {
-        const base44 = createClientFromRequest(req);
-        const now = new Date();
-
-        console.log('Starting RPD/RFD calls ingestion from apps.richmondgov.com...');
-
-        const res = await fetch('https://apps.richmondgov.com/applications/activecalls', {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
-                'Connection': 'keep-alive',
-            },
-            signal: AbortSignal.timeout(15000)
-        });
-        if (!res.ok) {
-            return Response.json({
-                success: false,
-                error: `richmondgov.com fetch failed: HTTP ${res.status}`,
-                timestamp: now.toISOString()
-            }, { status: 502 });
-        }
-        // The Richmond page loads table data via JavaScript/AJAX, so the raw HTML
-        // is just a shell. Use Gemini with web search to render and extract the data.
-        const extractedData = await base44.asServiceRole.integrations.Core.InvokeLLM({
-            prompt: `Visit https://apps.richmondgov.com/applications/activecalls and extract ALL active calls from the table on that page.
+// ─── Extract calls via LLM with web search ────────────────────────────────────
+// The Richmond page renders its table via JavaScript, so a plain fetch only gets
+// a loading shell. Gemini with web search can render and extract the table.
+async function extractCallsViaLLM(base44) {
+    const extractedData = await base44.asServiceRole.integrations.Core.InvokeLLM({
+        prompt: `Visit https://apps.richmondgov.com/applications/activecalls and extract ALL active calls from the table on that page.
 
 The table has columns: Time Received, Agency, Dispatch Area, Unit, Call Type, Location, Status.
 
@@ -124,31 +67,40 @@ Return a JSON object with a "calls" array. Each element:
 - status: "Status"
 
 Extract every single row. If the table is empty, return {"calls": []}.`,
-            model: 'gemini_3_flash',
-            add_context_from_internet: true,
-            response_json_schema: {
-                type: "object",
-                properties: {
-                    calls: {
-                        type: "array",
-                        items: {
-                            type: "object",
-                            properties: {
-                                time: { type: "string" },
-                                agency: { type: "string" },
-                                dispatch_area: { type: "string" },
-                                unit: { type: "string" },
-                                call_type: { type: "string" },
-                                location: { type: "string" },
-                                status: { type: "string" }
-                            }
+        model: 'gemini_3_flash',
+        add_context_from_internet: true,
+        response_json_schema: {
+            type: "object",
+            properties: {
+                calls: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: {
+                            time: { type: "string" },
+                            agency: { type: "string" },
+                            dispatch_area: { type: "string" },
+                            unit: { type: "string" },
+                            call_type: { type: "string" },
+                            location: { type: "string" },
+                            status: { type: "string" }
                         }
                     }
                 }
             }
-        });
+        }
+    });
+    return extractedData?.calls || [];
+}
 
-        const rawCalls = extractedData?.calls || [];
+Deno.serve(async (req) => {
+    try {
+        const base44 = createClientFromRequest(req);
+        const now = new Date();
+
+        console.log('Starting RPD/RFD calls ingestion from apps.richmondgov.com...');
+
+        const rawCalls = await extractCallsViaLLM(base44);
         console.log(`LLM extracted ${rawCalls.length} calls from richmondgov.com`);
 
         const allCalls = rawCalls
@@ -193,15 +145,17 @@ Extract every single row. If the table is empty, return {"calls": []}.`,
             }, { status: 502 });
         }
 
-        const twoHourCutoff = Date.now() - 2 * 60 * 60 * 1000;
-        const activeCalls = allCalls.filter(c => new Date(c.time_received).getTime() >= twoHourCutoff);
+        // Richmond's page shows all active calls for the day — use a 12-hour window
+        // so genuinely active incidents aren't phased out prematurely.
+        const cutoff = Date.now() - 12 * 60 * 60 * 1000;
+        const activeCalls = allCalls.filter(c => new Date(c.time_received).getTime() >= cutoff);
         const phasedOut = allCalls.length - activeCalls.length;
 
         const hashOf = (cid) => cid && cid.includes('-') ? cid.split('-').slice(1).join('-') : cid;
         const incomingIds = new Set(activeCalls.map(c => hashOf(c.call_id)));
         const existingByCallId = new Map();
         const duplicateIdsToDelete = [];
-        let created = 0, updated = 0, closed = 0, geocoded = 0, geocodeSkipped = 0;
+        let created = 0, updated = 0, closed = 0;
 
         const existing = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'richmond' });
         for (const rec of existing) {
@@ -224,31 +178,17 @@ Extract every single row. If the table is empty, return {"calls": []}.`,
 
         const OPEN_STATUSES = ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene', 'Arrived'];
 
+        // Geocoding is handled by the geocodeMissingCalls background process —
+        // keeping this function fast and reliable.
         for (const callData of activeCalls) {
             const existingRec = existingByCallId.get(hashOf(callData.call_id));
-            const locationChanged = !!existingRec && existingRec.location !== callData.location;
-            const needsGeocode = !existingRec || (existingRec.latitude == null) || locationChanged;
-
-            if (needsGeocode && geocoded < MAX_GEOCODE_PER_RUN) {
-                const coords = await geocodeAddress(callData.location);
-                if (coords) {
-                    callData.latitude = coords.latitude;
-                    callData.longitude = coords.longitude;
-                    geocoded++;
-                    console.log(`Geocoded: ${callData.location} -> (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
-                } else {
-                    console.log(`Could not geocode: ${callData.location}`);
-                }
-            } else if (needsGeocode) {
-                geocodeSkipped++;
-            }
 
             try {
                 if (existingRec) {
                     const statusChanged = existingRec.status !== callData.status;
                     const incidentChanged = existingRec.incident !== callData.incident;
-                    const gotCoords = callData.latitude != null && existingRec.latitude == null;
-                    if (statusChanged || incidentChanged || locationChanged || gotCoords) {
+                    const locationChanged = existingRec.location !== callData.location;
+                    if (statusChanged || incidentChanged || locationChanged) {
                         const updates = {
                             status: callData.status,
                             incident: callData.incident,
@@ -256,10 +196,6 @@ Extract every single row. If the table is empty, return {"calls": []}.`,
                             zone: callData.zone,
                             assigned_units: callData.assigned_units,
                         };
-                        if (gotCoords) {
-                            updates.latitude = callData.latitude;
-                            updates.longitude = callData.longitude;
-                        }
                         if (['Cleared', 'Closed', 'Cancelled'].includes(callData.status)) {
                             updates.time_cleared = new Date().toISOString();
                         }
@@ -286,7 +222,7 @@ Extract every single row. If the table is empty, return {"calls": []}.`,
             }
         }
 
-        console.log(`DB: ${created} created, ${updated} updated, ${closed} closed, ${duplicateIdsToDelete.length} dupes removed (${geocoded} geocoded, ${geocodeSkipped} skipped)`);
+        console.log(`DB: ${created} created, ${updated} updated, ${closed} closed, ${duplicateIdsToDelete.length} dupes removed`);
 
         // Property alert checking
         let alertsCreated = 0;
@@ -327,14 +263,12 @@ Extract every single row. If the table is empty, return {"calls": []}.`,
             timestamp: now.toISOString(),
             source: 'https://apps.richmondgov.com/applications/activecalls',
             total_parsed: allCalls.length,
-            active_within_2h: activeCalls.length,
+            active_within_12h: activeCalls.length,
             phased_out: phasedOut,
             created,
             updated,
             closed,
             duplicates_removed: duplicateIdsToDelete.length,
-            geocoded,
-            geocode_skipped: geocodeSkipped,
             alerts_created: alertsCreated,
             dedup_enabled: true
         });
