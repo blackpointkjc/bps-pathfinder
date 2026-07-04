@@ -1,5 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
-import * as cheerio from 'npm:cheerio@1.0.0';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371e3;
@@ -11,58 +10,30 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Returns the ET→UTC offset hours (4 during DST, 5 otherwise) for a given date.
 function etOffsetHours(date = new Date()) {
     const tzName = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', timeZoneName: 'shortOffset' })
         .formatToParts(date).find(p => p.type === 'timeZoneName')?.value || 'GMT-5';
     const m = tzName.match(/GMT([+-])(\d+)/);
     if (m) return parseInt(m[2]);
-    return 5;
+    return 4;
 }
 
-// Parse ET wall-clock time → UTC ISO. Handles "07/03/2026 1:34 PM" and "1:34 PM".
-function parseTimeToISO(timeStr, referenceDate = new Date()) {
+// Parse "07/03/2026 19:51" (ET wall-clock) → UTC ISO
+function parseTimeToISO(timeStr) {
     if (!timeStr) return new Date().toISOString();
-    const offset = etOffsetHours(referenceDate);
-
-    const fullMatch = timeStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-    if (fullMatch) {
-        const [, month, day, year, rawHour, minutes, ampm] = fullMatch;
-        let hour = parseInt(rawHour);
-        if (ampm.toUpperCase() === 'PM' && hour !== 12) hour += 12;
-        if (ampm.toUpperCase() === 'AM' && hour === 12) hour = 0;
-        return new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), hour + offset, parseInt(minutes), 0)).toISOString();
+    const offset = etOffsetHours();
+    const m = timeStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/);
+    if (m) {
+        const [, month, day, year, hour, minutes] = m;
+        return new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour) + offset, parseInt(minutes), 0)).toISOString();
     }
-
-    const timeAmPm = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-    if (timeAmPm) {
-        const [, rawHour, minutes, ampm] = timeAmPm;
-        let hour = parseInt(rawHour);
-        if (ampm.toUpperCase() === 'PM' && hour !== 12) hour += 12;
-        if (ampm.toUpperCase() === 'AM' && hour === 12) hour = 0;
-        const etParts = new Intl.DateTimeFormat('en-US', {
-            timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'
-        }).formatToParts(referenceDate);
-        const y = etParts.find(p => p.type === 'year')?.value;
-        const mo = etParts.find(p => p.type === 'month')?.value;
-        const d = etParts.find(p => p.type === 'day')?.value;
-        return new Date(Date.UTC(parseInt(y), parseInt(mo) - 1, parseInt(d), hour + offset, parseInt(minutes), 0)).toISOString();
-    }
-
     return new Date().toISOString();
 }
 
-// Clamp any wall-clock time that parses to the future (gractive occasionally shows
-// a future "Time Received") down to now so elapsed-time never goes negative.
 function clampFuture(iso) {
     const t = new Date(iso).getTime();
     if (t > Date.now() + 60000) return new Date().toISOString();
     return iso;
-}
-
-function cleanAddress(address, city = 'Chesterfield County, Virginia') {
-    let clean = address.replace(/\b(\d+)\s*-?\s*BLK\b/i, '$1 Block').trim();
-    return `${clean}, ${city}`;
 }
 
 function normalizeStatus(rawStatus) {
@@ -76,8 +47,14 @@ function normalizeStatus(rawStatus) {
     return map[s] || (s || 'New');
 }
 
-async function geocodeAddress(address, city = 'Chesterfield County, Virginia') {
-    const fullAddress = cleanAddress(address, city);
+function cleanAddress(address) {
+    let clean = address.replace(/\b(\d+)\s*-?\s*BLK\b/i, '$1 Block').trim();
+    clean = clean.replace(/^RICH:\s*@?\s*/i, '').replace(/\s+RICH$/i, '').trim();
+    return `${clean}, Richmond, Virginia`;
+}
+
+async function geocodeAddress(address) {
+    const fullAddress = cleanAddress(address);
     try {
         const encoded = encodeURIComponent(fullAddress);
         const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encoded}&benchmark=2020&format=json`;
@@ -106,130 +83,127 @@ async function geocodeAddress(address, city = 'Chesterfield County, Virginia') {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const MAX_GEOCODE_PER_RUN = 30;
-// gractivecalls.com aggregates all local agencies — ingest every one
-// RPD/RFD are ingested from apps.richmondgov.com by ingestRichmondCalls.
-// gractivecalls.com handles CCPD/CCFD/HPD/HFD only.
-const ALLOWED_AGENCIES = new Set(['CCPD', 'CCFD', 'HPD', 'HFD']);
-const AGENCY_SOURCE = {
-    CCPD: 'chesterfield', CCFD: 'chesterfield',
-    HPD: 'henrico', HFD: 'henrico',
-};
-const SOURCE_CITY = {
-    chesterfield: 'Chesterfield County, Virginia',
-    richmond: 'Richmond, Virginia',
-    henrico: 'Henrico County, Virginia',
-};
-const SOURCE_PREFIX = {
-    chesterfield: 'chesterfield',
-    richmond: 'richmond',
-    henrico: 'henrico',
-};
-
-// Parse the gractivecalls.com server-rendered Mantine table. Only keeps CCPD & CCFD rows.
-function parseGractive(html) {
-    const $ = cheerio.load(html);
-    const calls = [];
-    $('table tbody tr').each((_, row) => {
-        const cells = $(row).find('td');
-        if (cells.length < 6) return;
-        const timeStr = $(cells[0]).text().trim();
-        // HPD rows have Location/Incident columns swapped: cells[2] is a time,
-        // cells[1] is the address, and cells[4] is the incident type (badge).
-        const col2 = $(cells[2]).text().trim();
-        const isSwapped = /\d{1,2}:\d{2}\s*(AM|PM)/i.test(col2);
-        const location = isSwapped ? $(cells[1]).text().trim() : col2;
-        const agency = $(cells[3]).text().trim().toUpperCase();
-        const incident = isSwapped ? $(cells[4]).text().trim() : $(cells[1]).text().trim();
-        const statusText = isSwapped ? '' : $(cells[4]).text().trim();
-        if (!incident || !location || !agency) return;
-        if (!ALLOWED_AGENCIES.has(agency)) return;
-
-        const source = AGENCY_SOURCE[agency] || 'chesterfield';
-        const prefix = SOURCE_PREFIX[source];
-
-        // Extract the gractive call hash from the actions link for a stable call_id
-        let callId = '';
-        const link = $(row).find('a[href*="/call/"]').first();
-        const href = link.attr('href') || '';
-        const hashMatch = href.match(/\/call\/([a-f0-9]+)/i);
-        if (hashMatch) {
-            callId = `${prefix}-${hashMatch[1]}`;
-        } else {
-            const timeSlug = timeStr.replace(/[^0-9]/g, '');
-            const locSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
-            callId = `${prefix}-${agency.toLowerCase()}-${timeSlug}-${locSlug}`;
-        }
-
-        calls.push({
-            call_id: callId,
-            incident,
-            location,
-            agency,
-            zone: '',
-            status: normalizeStatus(statusText),
-            priority: 'medium',
-            time_received: clampFuture(parseTimeToISO(timeStr)),
-            source,
-            description: `${incident} at ${location}`
-        });
-    });
-    return calls;
-}
 
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
         const now = new Date();
 
-        console.log('Starting active calls ingestion from gractivecalls.com (HPD/HFD/CCPD/CCFD)...');
+        console.log('Starting RPD/RFD calls ingestion from apps.richmondgov.com...');
 
-        const res = await fetch('https://gractivecalls.com/', {
-            headers: { 'User-Agent': 'BPS-CAD-Dispatch/1.0' },
+        const res = await fetch('https://apps.richmondgov.com/applications/activecalls', {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Connection': 'keep-alive',
+            },
             signal: AbortSignal.timeout(15000)
         });
         if (!res.ok) {
             return Response.json({
                 success: false,
-                error: `gractivecalls.com fetch failed: HTTP ${res.status}`,
+                error: `richmondgov.com fetch failed: HTTP ${res.status}`,
                 timestamp: now.toISOString()
             }, { status: 502 });
         }
-        const html = await res.text();
+        // The Richmond page loads table data via JavaScript/AJAX, so the raw HTML
+        // is just a shell. Use Gemini with web search to render and extract the data.
+        const extractedData = await base44.asServiceRole.integrations.Core.InvokeLLM({
+            prompt: `Visit https://apps.richmondgov.com/applications/activecalls and extract ALL active calls from the table on that page.
 
-        const allCalls = parseGractive(html);
-        console.log(`gractivecalls.com: parsed ${allCalls.length} calls (HPD/HFD/CCPD/CCFD)`);
+The table has columns: Time Received, Agency, Dispatch Area, Unit, Call Type, Location, Status.
+
+Return a JSON object with a "calls" array. Each element:
+- time: "Time Received" (e.g. "07/03/2026 19:51")
+- agency: "Agency" (e.g. "RPD" or "RFD")
+- dispatch_area: "Dispatch Area"
+- unit: "Unit"
+- call_type: "Call Type"
+- location: "Location"
+- status: "Status"
+
+Extract every single row. If the table is empty, return {"calls": []}.`,
+            model: 'gemini_3_flash',
+            add_context_from_internet: true,
+            response_json_schema: {
+                type: "object",
+                properties: {
+                    calls: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                time: { type: "string" },
+                                agency: { type: "string" },
+                                dispatch_area: { type: "string" },
+                                unit: { type: "string" },
+                                call_type: { type: "string" },
+                                location: { type: "string" },
+                                status: { type: "string" }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const rawCalls = extractedData?.calls || [];
+        console.log(`LLM extracted ${rawCalls.length} calls from richmondgov.com`);
+
+        const allCalls = rawCalls
+            .filter(c => {
+                const ag = (c.agency || '').toUpperCase().trim();
+                return ag === 'RPD' || ag === 'RFD';
+            })
+            .map(c => {
+                const agency = (c.agency || '').toUpperCase().trim();
+                const timeStr = c.time || '';
+                const callType = c.call_type || '';
+                const location = c.location || '';
+                const statusText = c.status || '';
+                const dispatchArea = c.dispatch_area || '';
+                const unit = c.unit || '';
+
+                const timeSlug = timeStr.replace(/[^0-9]/g, '');
+                const locSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
+                const callId = `richmond-${agency.toLowerCase()}-${timeSlug}-${locSlug}`;
+
+                return {
+                    call_id: callId,
+                    incident: callType,
+                    location,
+                    agency,
+                    zone: dispatchArea,
+                    assigned_units: unit ? [unit] : [],
+                    status: normalizeStatus(statusText),
+                    priority: 'medium',
+                    time_received: clampFuture(parseTimeToISO(timeStr)),
+                    source: 'richmond',
+                    description: `${callType} at ${location}${unit ? ` (Unit: ${unit})` : ''}`
+                };
+            });
+        console.log(`Parsed ${allCalls.length} RPD/RFD calls`);
 
         if (allCalls.length === 0) {
             return Response.json({
                 success: false,
-                error: 'No calls parsed from gractivecalls.com',
+                error: 'No RPD/RFD calls extracted from richmondgov.com',
                 timestamp: now.toISOString()
             }, { status: 502 });
         }
 
-        // Phase out: only keep calls received within the last 2 hours (ET). Anything
-        // older is closed and ages out, even if gractive still lists it.
         const twoHourCutoff = Date.now() - 2 * 60 * 60 * 1000;
         const activeCalls = allCalls.filter(c => new Date(c.time_received).getTime() >= twoHourCutoff);
         const phasedOut = allCalls.length - activeCalls.length;
-        if (phasedOut > 0) console.log(`Phased out ${phasedOut} calls older than 2h`);
 
-        // One row per call (keyed by the gractive call hash): update status on existing
-        // records instead of creating duplicates each sync.
         const hashOf = (cid) => cid && cid.includes('-') ? cid.split('-').slice(1).join('-') : cid;
         const incomingIds = new Set(activeCalls.map(c => hashOf(c.call_id)));
         const existingByCallId = new Map();
         const duplicateIdsToDelete = [];
         let created = 0, updated = 0, closed = 0, geocoded = 0, geocodeSkipped = 0;
 
-        const [cc, rc, hc] = await Promise.all([
-            base44.asServiceRole.entities.DispatchCall.filter({ source: 'chesterfield' }),
-            base44.asServiceRole.entities.DispatchCall.filter({ source: 'richmond' }),
-            base44.asServiceRole.entities.DispatchCall.filter({ source: 'henrico' }),
-        ]);
-        const existing = [...cc, ...rc, ...hc];
-        // Index by hash (portion after source prefix) so calls migrate cleanly
-        // when their source label changes (e.g. old 'chesterfield-' → new 'richmond-').
+        const existing = await base44.asServiceRole.entities.DispatchCall.filter({ source: 'richmond' });
         for (const rec of existing) {
             const hash = hashOf(rec.call_id);
             if (!hash) continue;
@@ -243,7 +217,6 @@ Deno.serve(async (req) => {
                 duplicateIdsToDelete.push(rec.id);
             }
         }
-        // Clean up duplicate rows left over from prior no-dedup runs.
         for (const id of duplicateIdsToDelete) {
             try { await base44.asServiceRole.entities.DispatchCall.delete(id); } catch (_e) { /* silent */ }
         }
@@ -257,7 +230,7 @@ Deno.serve(async (req) => {
             const needsGeocode = !existingRec || (existingRec.latitude == null) || locationChanged;
 
             if (needsGeocode && geocoded < MAX_GEOCODE_PER_RUN) {
-                const coords = await geocodeAddress(callData.location, SOURCE_CITY[callData.source]);
+                const coords = await geocodeAddress(callData.location);
                 if (coords) {
                     callData.latitude = coords.latitude;
                     callData.longitude = coords.longitude;
@@ -274,14 +247,14 @@ Deno.serve(async (req) => {
                 if (existingRec) {
                     const statusChanged = existingRec.status !== callData.status;
                     const incidentChanged = existingRec.incident !== callData.incident;
-                    const sourceChanged = existingRec.source !== callData.source;
                     const gotCoords = callData.latitude != null && existingRec.latitude == null;
-                    if (statusChanged || incidentChanged || locationChanged || sourceChanged || gotCoords) {
+                    if (statusChanged || incidentChanged || locationChanged || gotCoords) {
                         const updates = {
                             status: callData.status,
                             incident: callData.incident,
                             location: callData.location,
-                            source: callData.source,
+                            zone: callData.zone,
+                            assigned_units: callData.assigned_units,
                         };
                         if (gotCoords) {
                             updates.latitude = callData.latitude;
@@ -303,7 +276,6 @@ Deno.serve(async (req) => {
             }
         }
 
-        // Calls that dropped off gractive have cleared — close them so they age out.
         for (const [cid, rec] of existingByCallId) {
             if (incomingIds.has(cid)) continue;
             if (OPEN_STATUSES.includes(rec.status)) {
@@ -353,7 +325,7 @@ Deno.serve(async (req) => {
         return Response.json({
             success: true,
             timestamp: now.toISOString(),
-            source: 'https://gractivecalls.com/ (HPD/HFD/CCPD/CCFD)',
+            source: 'https://apps.richmondgov.com/applications/activecalls',
             total_parsed: allCalls.length,
             active_within_2h: activeCalls.length,
             phased_out: phasedOut,
@@ -368,7 +340,7 @@ Deno.serve(async (req) => {
         });
 
     } catch (error) {
-        console.error('Ingestion failed:', error);
+        console.error('Richmond ingestion failed:', error);
         return Response.json({ success: false, error: error.message }, { status: 500 });
     }
 });
