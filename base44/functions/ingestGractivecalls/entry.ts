@@ -130,12 +130,16 @@ function parseGractive(html) {
     const calls = [];
     $('table tbody tr').each((_, row) => {
         const cells = $(row).find('td');
-        if (cells.length < 5) return;
+        if (cells.length < 6) return;
         const timeStr = $(cells[0]).text().trim();
-        const incident = $(cells[1]).text().trim();
-        const location = $(cells[2]).text().trim();
+        // HPD rows have Location/Incident columns swapped: cells[2] is a time,
+        // cells[1] is the address, and cells[4] is the incident type (badge).
+        const col2 = $(cells[2]).text().trim();
+        const isSwapped = /\d{1,2}:\d{2}\s*(AM|PM)/i.test(col2);
+        const location = isSwapped ? $(cells[1]).text().trim() : col2;
         const agency = $(cells[3]).text().trim().toUpperCase();
-        const statusText = $(cells[4]).text().trim();
+        const incident = isSwapped ? $(cells[4]).text().trim() : $(cells[1]).text().trim();
+        const statusText = isSwapped ? '' : $(cells[4]).text().trim();
         if (!incident || !location || !agency) return;
         if (!ALLOWED_AGENCIES.has(agency)) return;
 
@@ -211,7 +215,8 @@ Deno.serve(async (req) => {
 
         // One row per call (keyed by the gractive call hash): update status on existing
         // records instead of creating duplicates each sync.
-        const incomingIds = new Set(activeCalls.map(c => c.call_id));
+        const hashOf = (cid) => cid && cid.includes('-') ? cid.split('-').slice(1).join('-') : cid;
+        const incomingIds = new Set(activeCalls.map(c => hashOf(c.call_id)));
         const existingByCallId = new Map();
         const duplicateIdsToDelete = [];
         let created = 0, updated = 0, closed = 0, geocoded = 0, geocodeSkipped = 0;
@@ -222,15 +227,17 @@ Deno.serve(async (req) => {
             base44.asServiceRole.entities.DispatchCall.filter({ source: 'henrico' }),
         ]);
         const existing = [...cc, ...rc, ...hc];
+        // Index by hash (portion after source prefix) so calls migrate cleanly
+        // when their source label changes (e.g. old 'chesterfield-' → new 'richmond-').
         for (const rec of existing) {
-            const cid = rec.call_id;
-            if (!cid) continue;
-            const kept = existingByCallId.get(cid);
+            const hash = hashOf(rec.call_id);
+            if (!hash) continue;
+            const kept = existingByCallId.get(hash);
             if (!kept) {
-                existingByCallId.set(cid, rec);
+                existingByCallId.set(hash, rec);
             } else if (new Date(rec.created_date) < new Date(kept.created_date)) {
                 duplicateIdsToDelete.push(kept.id);
-                existingByCallId.set(cid, rec);
+                existingByCallId.set(hash, rec);
             } else {
                 duplicateIdsToDelete.push(rec.id);
             }
@@ -244,8 +251,9 @@ Deno.serve(async (req) => {
         const OPEN_STATUSES = ['New', 'Pending', 'Dispatched', 'Enroute', 'On Scene', 'Arrived'];
 
         for (const callData of activeCalls) {
-            const existingRec = existingByCallId.get(callData.call_id);
-            const needsGeocode = !existingRec || (existingRec.latitude == null);
+            const existingRec = existingByCallId.get(hashOf(callData.call_id));
+            const locationChanged = !!existingRec && existingRec.location !== callData.location;
+            const needsGeocode = !existingRec || (existingRec.latitude == null) || locationChanged;
 
             if (needsGeocode && geocoded < MAX_GEOCODE_PER_RUN) {
                 const coords = await geocodeAddress(callData.location, SOURCE_CITY[callData.source]);
@@ -264,9 +272,16 @@ Deno.serve(async (req) => {
             try {
                 if (existingRec) {
                     const statusChanged = existingRec.status !== callData.status;
+                    const incidentChanged = existingRec.incident !== callData.incident;
+                    const sourceChanged = existingRec.source !== callData.source;
                     const gotCoords = callData.latitude != null && existingRec.latitude == null;
-                    if (statusChanged || gotCoords) {
-                        const updates = { status: callData.status };
+                    if (statusChanged || incidentChanged || locationChanged || sourceChanged || gotCoords) {
+                        const updates = {
+                            status: callData.status,
+                            incident: callData.incident,
+                            location: callData.location,
+                            source: callData.source,
+                        };
                         if (gotCoords) {
                             updates.latitude = callData.latitude;
                             updates.longitude = callData.longitude;
