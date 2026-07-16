@@ -259,31 +259,15 @@ export default function Navigation() {
         if (!unmapped.length || isGeocoding) return;
         setIsGeocoding(true);
         try {
-            const toGeocode = unmapped.slice(0, 15).map(c => {
-                let addr = (c.location || '').replace(/\[[A-Z]+\]/g, '').replace(/\s*[\/&]\s*/g, ' and ').replace(/\bblock\b/gi, '').replace(/\s{2,}/g, ' ').trim();
-                const city = AGENCY_CITY[c.agency] || 'Richmond, VA';
-                return { id: c.id, address: `${addr}, ${city}` };
-            });
-            const result = await base44.integrations.Core.InvokeLLM({
-                prompt: `Geocode these Virginia addresses. Return JSON [{id, latitude, longitude}] for each:\n${toGeocode.map(t => `${t.id}: ${t.address}`).join('\n')}`,
-                model: 'gemini_3_flash',
-                response_json_schema: {
-                    type: 'object',
-                    properties: {
-                        results: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, latitude: { type: 'number' }, longitude: { type: 'number' } } } }
-                    }
-                }
-            });
-            for (const r of (result?.results || [])) {
-                if (r.latitude && r.longitude) {
-                    await base44.entities.DispatchCall.update(r.id, { latitude: r.latitude, longitude: r.longitude });
-                    setActiveCalls(prev => prev.map(c => c.id === r.id ? { ...c, latitude: r.latitude, longitude: r.longitude } : c));
-                    setUnmappedCalls(prev => prev.filter(c => c.id !== r.id));
-                }
-            }
+            // Credit-free: delegate to backend geocodeMissingCalls (uses direct fetch, no InvokeLLM)
+            const count = unmapped.length;
+            await base44.functions.invoke('geocodeMissingCalls', { limit: Math.min(count, 50) });
+            toast.success(`Geocoding ${Math.min(count, 50)} calls in background`);
+            // Give the backend a moment to persist, then re-fetch
+            setTimeout(() => { fetchCalls(); setIsGeocoding(false); }, 4000);
         } catch (e) {
-            console.warn('[NAV] geocoding error:', e.message);
-        } finally {
+            console.warn('[NAV] geocode trigger failed:', e?.message);
+            toast.error('Geocoding failed');
             setIsGeocoding(false);
         }
     };

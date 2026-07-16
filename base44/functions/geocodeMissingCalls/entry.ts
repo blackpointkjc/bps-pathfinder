@@ -65,11 +65,19 @@ function parseLocation(location) {
 // ─── Census Geocoder ──────────────────────────────────────────────────────────
 async function censuGeocode(addressStr) {
     const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(addressStr)}&benchmark=2020&format=json`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    const data = await res.json();
-    const match = data?.result?.addressMatches?.[0];
-    if (match) {
-        return { lat: parseFloat(match.coordinates.y), lon: parseFloat(match.coordinates.x) };
+    for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+            const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+            if (!res.ok) { await sleep(2000); continue; }
+            const data = await res.json();
+            const match = data?.result?.addressMatches?.[0];
+            if (match) {
+                return { lat: parseFloat(match.coordinates.y), lon: parseFloat(match.coordinates.x) };
+            }
+            return null;
+        } catch (e) {
+            if (attempt === 0) await sleep(2000);
+        }
     }
     return null;
 }
@@ -77,19 +85,24 @@ async function censuGeocode(addressStr) {
 // ─── Photon fallback geocoder ─────────────────────────────────────────────────
 async function photonGeocode(addressStr) {
     const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(addressStr)}&limit=3&lang=en`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    const data = await res.json();
-    // Filter to Virginia features
-    const vaFeature = data?.features?.find(f => {
-        const props = f.properties;
-        return props.country === 'United States of America' &&
-               (props.state === 'Virginia' || props.state === 'VA');
-    });
-    const feat = vaFeature || data?.features?.[0];
-    if (feat) {
-        return { lat: feat.geometry.coordinates[1], lon: feat.geometry.coordinates[0] };
+    try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) return null;
+        const data = await res.json();
+        // Filter to Virginia features
+        const vaFeature = data?.features?.find(f => {
+            const props = f.properties;
+            return props.country === 'United States of America' &&
+                   (props.state === 'Virginia' || props.state === 'VA');
+        });
+        const feat = vaFeature || data?.features?.[0];
+        if (feat) {
+            return { lat: feat.geometry.coordinates[1], lon: feat.geometry.coordinates[0] };
+        }
+        return null;
+    } catch (e) {
+        return null;
     }
-    return null;
 }
 
 // ─── City suffix by jurisdiction ───────────────────────────────────────────────
@@ -161,6 +174,9 @@ async function smartGeocode(location, agency) {
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
+        let body = {};
+        try { body = await req.json(); } catch (e) {}
+        const limit = Math.min(parseInt(body?.limit) || 5, 50);
 
         const allCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 500);
 
@@ -182,7 +198,7 @@ Deno.serve(async (req) => {
             unprocessed: missingCoords.length,
         };
 
-        const MAX = 5; // Small batch per run — automation handles remainder
+        const MAX = limit; // Automation passes 5; manual button can pass up to 50
         let geocoded = 0;
         let failed = 0;
 
