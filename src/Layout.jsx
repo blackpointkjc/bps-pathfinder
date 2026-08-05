@@ -23,8 +23,8 @@ const NAV_GROUPS = [
   {
     label: 'INTELLIGENCE',
     items: [
-      { label: 'Call History', page: 'CallHistory', icon: Clock3, roles: ['dispatch', 'admin'] },
-      { label: 'BOLO / Alerts', page: 'BOLOAlerts', icon: FileWarning, roles: ['dispatch', 'admin'] },
+      { label: 'Call History', page: 'CallHistory', icon: Clock3, roles: ['admin'] },
+      { label: 'BOLO / Alerts', page: 'BOLOAlerts', icon: FileWarning, roles: ['admin'] },
       { label: 'Records AI', page: 'RecordsAssistant', icon: Bot, roles: ['admin'] },
     ],
   },

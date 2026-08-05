@@ -20,8 +20,8 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout
 
 const PAGE_ROLES = {
   DispatchCenter: ['dispatch', 'admin'],
-  BOLOAlerts: ['dispatch', 'admin'],
-  CallHistory: ['dispatch', 'admin'],
+  BOLOAlerts: ['admin'],
+  CallHistory: ['admin'],
   Personnel: ['admin'],
   Reports: ['admin'],
   AdminPortal: ['admin'],

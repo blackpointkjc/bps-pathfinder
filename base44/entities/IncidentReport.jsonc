@@ -1,0 +1,171 @@
+{
+  "name": "IncidentReport",
+  "type": "object",
+  "properties": {
+    "report_number": {
+      "type": "string",
+      "description": "System-generated report number"
+    },
+    "linked_call_id": {
+      "type": "string",
+      "description": "Pathfinder DispatchCall record ID"
+    },
+    "linked_call_number": {
+      "type": "string",
+      "description": "CAD call number"
+    },
+    "primary_officer_id": {
+      "type": "string",
+      "description": "Primary officer user ID"
+    },
+    "primary_officer_name": {
+      "type": "string",
+      "description": "Primary officer display name"
+    },
+    "backup_officer_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Backup officer IDs"
+    },
+    "incident_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "incident_time": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "specific_location": {
+      "type": "string"
+    },
+    "incident_type": {
+      "type": "string",
+      "description": "Incident classification"
+    },
+    "description": {
+      "type": "string"
+    },
+    "persons_involved": {
+      "type": "string"
+    },
+    "victims": {
+      "type": "string"
+    },
+    "witnesses": {
+      "type": "string"
+    },
+    "suspect_description": {
+      "type": "string"
+    },
+    "suspect_vehicle": {
+      "type": "string"
+    },
+    "injuries_reported": {
+      "type": "boolean",
+      "default": false
+    },
+    "injury_details": {
+      "type": "string"
+    },
+    "property_damage": {
+      "type": "boolean",
+      "default": false
+    },
+    "damage_details": {
+      "type": "string"
+    },
+    "action_taken": {
+      "type": "string"
+    },
+    "police_notified": {
+      "type": "boolean",
+      "default": false
+    },
+    "police_report_number": {
+      "type": "string"
+    },
+    "ems_notified": {
+      "type": "boolean",
+      "default": false
+    },
+    "fire_notified": {
+      "type": "boolean",
+      "default": false
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium"
+    },
+    "photo_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "submitted",
+        "approved",
+        "rejected"
+      ],
+      "default": "submitted"
+    },
+    "admin_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "incident_date",
+    "incident_time",
+    "location",
+    "incident_type",
+    "description"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": true,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.primary_officer_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
