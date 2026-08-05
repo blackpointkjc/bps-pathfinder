@@ -7,11 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { GraduationCap, Users, Edit, ShieldAlert, CheckCircle, Clock, Mail, Save, X, UserCheck } from "lucide-react";
+import { GraduationCap, Users, Edit, ShieldAlert, CheckCircle, Clock, Mail, Save, X, UserCheck, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ManageStudents() {
   const [editingStudent, setEditingStudent] = useState(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createForm, setCreateForm] = useState({ first_name: '', last_name: '', email: '', mobile_phone: '' });
   const [editForm, setEditForm] = useState({});
   const queryClient = useQueryClient();
 
@@ -38,6 +40,49 @@ export default function ManageStudents() {
     queryKey: ['trainingModules'],
     queryFn: () => base44.entities.TrainingModule.list(),
     enabled: hasAccess,
+  });
+
+
+  const waitForInvitedUser = async (email) => {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const users = await base44.entities.User.list();
+      const invited = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      if (invited) return invited;
+      await new Promise(resolve => setTimeout(resolve, 750));
+    }
+    return null;
+  };
+
+  const createStudentMutation = useMutation({
+    mutationFn: async (data) => {
+      const existingUsers = await base44.entities.User.list();
+      let studentUser = existingUsers.find(u => u.email?.toLowerCase() === data.email.toLowerCase());
+      if (!studentUser) {
+        const invitation = await base44.users.inviteUser(data.email, 'user');
+        studentUser = invitation?.user || (invitation?.id ? invitation : null) || await waitForInvitedUser(data.email);
+      }
+      if (!studentUser?.id) {
+        throw new Error('The invitation was sent, but the student record is not ready yet. Try again after the student accepts the invitation.');
+      }
+      return base44.entities.User.update(studentUser.id, {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        mobile_phone: data.mobile_phone,
+        rank: 'Student',
+        role: 'user',
+        additional_roles: ['student'],
+        assigned_location: null,
+        assigned_locations: [],
+        assigned_sites: [],
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setShowCreateDialog(false);
+      setCreateForm({ first_name: '', last_name: '', email: '', mobile_phone: '' });
+      toast.success('Student invitation sent. Student Portal-only access assigned.');
+    },
+    onError: (err) => toast.error('Unable to create student: ' + err.message),
   });
 
   const updateStudentMutation = useMutation({
@@ -104,14 +149,19 @@ export default function ManageStudents() {
 
   return (
     <div className="p-4 md:p-8">
-      <div className="mb-6 flex items-center gap-3">
-        <div className="w-12 h-12 bg-gradient-to-br from-violet-600 to-purple-700 rounded-xl flex items-center justify-center">
-          <Users className="w-6 h-6 text-white" />
+      <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-gradient-to-br from-violet-600 to-purple-700 rounded-xl flex items-center justify-center">
+            <Users className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">Manage Students</h1>
+            <p className="text-slate-500 text-sm">{students.length} student{students.length !== 1 ? 's' : ''} registered</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Manage Students</h1>
-          <p className="text-slate-500 text-sm">{students.length} student{students.length !== 1 ? 's' : ''} registered</p>
-        </div>
+        <Button onClick={() => setShowCreateDialog(true)} className="bg-violet-700 hover:bg-violet-800">
+          <Plus className="w-4 h-4 mr-2" />Create Student
+        </Button>
       </div>
 
       {isLoading && (
@@ -125,7 +175,7 @@ export default function ManageStudents() {
         <Card>
           <CardContent className="p-12 text-center">
             <GraduationCap className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-            <p className="text-slate-500">No students found. Assign the Student role to users in Manage Officers.</p>
+            <p className="text-slate-500">No students found. Use Create Student to send an invitation with Student Portal-only access.</p>
           </CardContent>
         </Card>
       )}
@@ -205,6 +255,25 @@ export default function ManageStudents() {
           );
         })}
       </div>
+
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Create Student Account</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); createStudentMutation.mutate(createForm); }} className="space-y-4 mt-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>First Name *</Label><Input required value={createForm.first_name} onChange={(e) => setCreateForm(p => ({...p, first_name: e.target.value}))} /></div>
+              <div><Label>Last Name *</Label><Input required value={createForm.last_name} onChange={(e) => setCreateForm(p => ({...p, last_name: e.target.value}))} /></div>
+            </div>
+            <div><Label>Email *</Label><Input type="email" required value={createForm.email} onChange={(e) => setCreateForm(p => ({...p, email: e.target.value}))} /></div>
+            <div><Label>Mobile Phone</Label><Input type="tel" value={createForm.mobile_phone} onChange={(e) => setCreateForm(p => ({...p, mobile_phone: e.target.value}))} /></div>
+            <div className="rounded border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900">This account will receive only the Student Portal. It will not receive CAD, Officer, HR, Trainer, Accounting, or Admin access.</div>
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
+              <Button type="submit" disabled={createStudentMutation.isPending} className="bg-violet-700 hover:bg-violet-800">{createStudentMutation.isPending ? 'Creating...' : 'Invite Student'}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!editingStudent} onOpenChange={() => setEditingStudent(null)}>
         <DialogContent className="max-w-md">
