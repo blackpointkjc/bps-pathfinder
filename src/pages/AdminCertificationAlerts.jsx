@@ -341,12 +341,12 @@ export default function AdminCertificationAlerts() {
     }, 250);
   };
 
-  if (user?.role !== 'admin') {
+  if (!hasTrainingAccess) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Admin Access Required</h2>
-        <p className="text-slate-600">You don't have permission to access this page.</p>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">Trainer Access Required</h2>
+        <p className="text-slate-600">You need Trainer access to manage certification alerts.</p>
       </div>
     );
   }
