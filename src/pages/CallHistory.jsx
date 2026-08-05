@@ -205,7 +205,7 @@ export default function CallHistory() {
                 {sorted.length === 0 ? (
                     <div className="flex items-center justify-center h-32 text-slate-600 text-xs tracking-widest">— NO RECORDS MATCH FILTERS —</div>
                 ) : sorted.map((row, idx) => {
-                    const isActive = row._source === 'active' && !['Closed', 'Cleared', 'Cancelled'].includes(row.status);
+                    const isActive = row._source === 'active' && !['Cleared', 'Cancelled'].includes(row.status);
                     const agKey = agencyKey(row.agency);
                     const agCls = AGENCY_COLORS[agKey] || 'bg-slate-700 text-slate-300 border-slate-600';
                     const stCls = STATUS_COLORS[row.status] || 'bg-slate-700 text-slate-400 border-slate-600';

@@ -351,7 +351,7 @@ export default function Navigation() {
         try {
             const all = await base44.entities.DispatchCall.list('-created_date', 500);
             const active = all.filter(c =>
-                !['Closed', 'Cleared', 'Cancelled'].includes(c.status)
+                !['Cleared', 'Cancelled'].includes(c.status)
             );
             const { unmapped } = splitCallsByCoords(active);
             setActiveCalls(active);

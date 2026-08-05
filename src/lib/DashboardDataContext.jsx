@@ -84,7 +84,7 @@ export function DashboardDataProvider({ children }) {
             // Do not hide calls based on age; a call remains visible until ingestion
             // marks it Closed/Cleared/Cancelled after it disappears from GRAC.
             const active = (callsData || []).filter(c =>
-                !['Closed', 'Cleared', 'Cancelled'].includes(c.status)
+                !['Cleared', 'Cancelled'].includes(c.status)
             );
 
             // Debug: newest call time

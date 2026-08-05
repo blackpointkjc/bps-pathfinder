@@ -129,7 +129,7 @@ export default function DispatchCenter() {
 
             const recentCalls = calls.filter(call =>
                 String(call.call_id || '').startsWith('grac-') &&
-                !['Closed', 'Cleared', 'Cancelled'].includes(call.status)
+                !['Cleared', 'Cancelled'].includes(call.status)
             );
 
             recentCalls.sort((a, b) => {

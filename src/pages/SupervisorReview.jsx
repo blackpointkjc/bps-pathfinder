@@ -84,7 +84,7 @@ export default function SupervisorReview() {
   });
 
   // Stats
-  const active      = calls.filter(c => !['Cleared', 'Cancelled', 'Closed'].includes(c.status)).length;
+  const active      = calls.filter(c => !['Cleared', 'Cancelled'].includes(c.status)).length;
   const critical    = calls.filter(c => c.priority === 'critical').length;
   const backup      = calls.filter(c => c.status === 'Backup Requested').length;
   const avail       = units.filter(u => u.status === 'Available').length;

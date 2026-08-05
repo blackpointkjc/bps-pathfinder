@@ -8,7 +8,7 @@ import {
   MapPin, Radio, RefreshCw, Search, Shield, Signal, Siren,
 } from 'lucide-react';
 
-const CLOSED = new Set(['Closed', 'Cleared', 'Cancelled']);
+const CLOSED = new Set(['Cleared', 'Cancelled']);
 const AGENCIES = ['ALL', 'RPD', 'RFD', 'HPD', 'HFD', 'CCPD', 'CCFD'];
 const STATUSES = ['ALL', 'New', 'Pending', 'Dispatched', 'Enroute', 'On Scene'];
 
