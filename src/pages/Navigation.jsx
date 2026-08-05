@@ -515,7 +515,16 @@ export default function Navigation() {
         setIsLoadingCalls(true);
         try {
             const all = await base44.entities.DispatchCall.list('-created_date', 500);
-            const active = all.filter(c =>
+            const uniqueCalls = new Map();
+            for (const call of all || []) {
+                const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
+                const key = call.external_call_id || descriptionKey || call.id;
+                const current = uniqueCalls.get(key);
+                const currentHasCad = /^B\d+$/i.test(String(current?.call_id || ''));
+                const candidateHasCad = /^B\d+$/i.test(String(call.call_id || ''));
+                if (!current || (!currentHasCad && candidateHasCad)) uniqueCalls.set(key, call);
+            }
+            const active = [...uniqueCalls.values()].filter(c =>
                 !['Cleared', 'Cancelled'].includes(c.status)
             );
             const { unmapped } = splitCallsByCoords(active);
