@@ -668,7 +668,7 @@ export default function AdminUsers() {
                         onClick={async () => {
                           if (window.confirm(`Assign ${userData.first_name || userData.email} as a Student?`)) {
                             const newRoles = ['student'];
-                            await base44.entities.User.update(userData.id, { additional_roles: newRoles });
+                            await base44.entities.User.update(userData.id, { additional_roles: newRoles, rank: 'Student' });
                             queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -684,7 +684,7 @@ export default function AdminUsers() {
                         onClick={async () => {
                           if (window.confirm(`Assign ${userData.first_name || userData.email} as an Officer?`)) {
                             const newRoles = ['officer', 'cad_access'];
-                            await base44.entities.User.update(userData.id, { additional_roles: newRoles });
+                            await base44.entities.User.update(userData.id, { additional_roles: newRoles, rank: 'Officer' });
                             queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
