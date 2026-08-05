@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -12,7 +12,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
-import { stopAllAlerts } from '@/utils/alertUtils';
+import { findPropertyMatch, playPropertyAlert, stopAllAlerts } from '@/utils/alertUtils';
 
 const CENTER_CONFIG = {
   cad: {
@@ -417,6 +417,8 @@ export default function Layout({ children, currentPageName }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeAlert, setActiveAlert] = useState(null);
+  const [propertyAlert, setPropertyAlert] = useState(null);
+  const alertedPropertyKeys = useRef(new Set());
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
   const [search, setSearch] = useState('');
@@ -474,6 +476,85 @@ export default function Layout({ children, currentPageName }) {
     const available = allowedCenters(user);
     if (!available.includes(activeCenter)) setActiveCenter(available[0] || 'cad');
   }, [user?.role, JSON.stringify(user?.additional_roles || [])]);
+
+  useEffect(() => {
+    const roles = normalizedRoles(user);
+    const canMonitor = user?.role === 'admin' || user?.role === 'dispatch' || roles.has('cad_access') || roles.has('full_access');
+    if (!canMonitor) return undefined;
+    let cancelled = false;
+
+    const monitor = async () => {
+      try {
+        await base44.functions.invoke('ensureCadNumbers', {}).catch(() => null);
+        const [calls, properties, existingAlerts] = await Promise.all([
+          base44.entities.DispatchCall.list('-created_date', 300),
+          base44.entities.MonitoredProperty.filter({ enabled: true }),
+          base44.entities.PropertyAlert.filter({ acknowledged: false }, '-created_date', 300).catch(() => []),
+        ]);
+        if (cancelled) return;
+        const existingKeys = new Set((existingAlerts || []).map(item => `${item.callId}:${item.propertyId}`));
+        const activeCalls = (calls || []).filter(call => !['Cleared', 'Cancelled'].includes(call.status));
+        const matches = [];
+        for (const call of activeCalls) {
+          const match = findPropertyMatch(call, properties || [], 100);
+          if (!match) continue;
+          const key = `${call.id}:${match.property.id}`;
+          matches.push(key);
+          if (alertedPropertyKeys.current.has(key) || existingKeys.has(key)) continue;
+          alertedPropertyKeys.current.add(key);
+          const alert = {
+            call,
+            property: match.property,
+            relation: match.relation,
+            distanceFeet: Math.round(match.distanceFeet || 0),
+            key,
+          };
+          base44.entities.PropertyAlert.create({
+            callId: call.id,
+            cadNumber: /^B\d+$/i.test(String(call.call_id || '')) ? call.call_id : '',
+            propertyId: match.property.id,
+            propertyName: match.property.name,
+            callIncident: call.incident,
+            callLocation: call.location,
+            distanceMeters: Number(match.distanceMeters || 0),
+            relation: match.relation,
+            acknowledged: false,
+            description: match.relation === 'inside' ? 'Call is inside the monitored property boundary.' : `Call is within ${Math.round(match.distanceFeet || 0)} feet of the property boundary.`,
+          }).catch(() => null);
+          if (!propertyAlert) {
+            setPropertyAlert(alert);
+            playPropertyAlert();
+          }
+          break;
+        }
+        alertedPropertyKeys.current = new Set([...alertedPropertyKeys.current].filter(key => matches.includes(key)));
+      } catch (error) {
+        console.warn('Property monitor check failed:', error?.message);
+      }
+    };
+
+    monitor();
+    const id = setInterval(monitor, 5000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [user?.role, JSON.stringify(user?.additional_roles || []), propertyAlert?.key]);
+
+  const acknowledgePropertyAlert = async () => {
+    if (!propertyAlert) return;
+    stopAllAlerts();
+    try {
+      const records = await base44.entities.PropertyAlert.filter({ callId: propertyAlert.call.id, propertyId: propertyAlert.property.id, acknowledged: false });
+      for (const record of records || []) {
+        await base44.entities.PropertyAlert.update(record.id, {
+          acknowledged: true,
+          acknowledgedBy: user?.email || '',
+          acknowledgedAt: new Date().toISOString(),
+        });
+      }
+    } catch (error) {
+      console.warn('Unable to record property alert acknowledgment:', error?.message);
+    }
+    setPropertyAlert(null);
+  };
 
   if (!canAccessPage(user, currentPageName)) {
     return <Navigate to={createPageUrl(defaultPageForUser(user))} replace />;
