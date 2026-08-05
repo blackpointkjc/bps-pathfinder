@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 
 const FIREARM_COURSE_PREFIXES = ["07", "08", "09", "10"];
 
@@ -39,6 +40,7 @@ export default function ManageCompanyEmployees() {
   const [editingUser, setEditingUser] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoToCrop, setPhotoToCrop] = useState(null);
   const [showDialog, setShowDialog] = useState(false);
   const [editFormData, setEditFormData] = useState({});
   const [selectedUser, setSelectedUser] = useState(null);
@@ -211,18 +213,36 @@ export default function ManageCompanyEmployees() {
     setShowDialog(true);
   };
 
-  const handlePhotoUpload = async (file) => {
+  const handlePhotoSelection = (file) => {
     if (!file || !editingUser) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image must be less than 10MB.');
+      return;
+    }
+    setPhotoToCrop(file);
+  };
+
+  const saveCroppedEmployeePhoto = async ({ file, dataUrl }) => {
+    if (!editingUser) return;
     setUploadingPhoto(true);
-    const reader = new FileReader();
-    reader.onload = (e) => setPhotoPreview(e.target.result);
-    reader.readAsDataURL(file);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    await base44.entities.User.update(editingUser, { profile_photo_url: file_url });
-    setEditFormData(prev => ({ ...prev, profile_photo_url: file_url }));
-    setPhotoPreview(null);
-    queryClient.invalidateQueries({ queryKey: ['users'] });
-    setUploadingPhoto(false);
+    setPhotoPreview(dataUrl);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      await base44.entities.User.update(editingUser, { profile_photo_url: file_url });
+      setEditFormData(prev => ({ ...prev, profile_photo_url: file_url }));
+      setPhotoToCrop(null);
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    } catch (error) {
+      console.error('Profile photo upload failed:', error);
+      alert('Unable to save the cropped profile photo.');
+    } finally {
+      setPhotoPreview(null);
+      setUploadingPhoto(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -331,6 +351,13 @@ export default function ManageCompanyEmployees() {
 
   return (
     <div className="p-4 md:p-8">
+      <ProfilePhotoCropper
+        open={!!photoToCrop}
+        imageFile={photoToCrop}
+        saving={uploadingPhoto}
+        onClose={() => setPhotoToCrop(null)}
+        onSave={saveCroppedEmployeePhoto}
+      />
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-4">
           <Briefcase className="w-8 h-8 text-blue-600" />
@@ -396,7 +423,7 @@ export default function ManageCompanyEmployees() {
               </div>
               {canManageEmployees ? (
                 <label className="cursor-pointer">
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handlePhotoUpload(e.target.files[0])} disabled={uploadingPhoto} />
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) handlePhotoSelection(file); }} disabled={uploadingPhoto} />
                   <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50">
                     <Camera className="w-4 h-4" />{uploadingPhoto ? 'Uploading...' : 'Change Photo'}
                   </span>
