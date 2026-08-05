@@ -390,9 +390,9 @@ function CommandDashboardInner() {
                             return (
                                 <div key={call.id}
                                     onClick={() => setSelectedCall(call)}
-                                    className={`flex items-center px-3 py-2 border-b border-slate-800/60 cursor-pointer transition-colors ${cfg.row} ${priority === 'critical' ? 'border-l-2 border-l-red-500' : priority === 'high' ? 'border-l-2 border-l-orange-500' : 'border-l-2 border-l-transparent'}`}>
+                                    className={`flex items-start px-3 py-2 border-b border-slate-800/60 cursor-pointer transition-colors ${cfg.row} ${priority === 'critical' ? 'border-l-2 border-l-red-500' : priority === 'high' ? 'border-l-2 border-l-orange-500' : 'border-l-2 border-l-transparent'}`}>
 
-                                    <div className="w-8 flex-shrink-0">
+                                    <div className="w-8 flex-shrink-0 pt-0.5">
                                         {isAdmin ? (
                                             <button onClick={(e) => handlePriorityOverride(call, e)}
                                                 className={`text-[10px] font-mono font-bold ${cfg.text} hover:ring-1 ring-current rounded px-0.5 transition-all`}>
@@ -403,34 +403,33 @@ function CommandDashboardInner() {
                                         )}
                                     </div>
 
-                                    <div className="w-24 flex-shrink-0 font-mono text-[10px] text-slate-400">
+                                    <div className="w-24 flex-shrink-0 font-mono text-[10px] text-slate-400 pt-0.5">
                                         <div className="truncate font-bold text-[#7ec1ff]">{/^B\d+$/i.test(String(call.call_id || '')) ? call.call_id : 'ASSIGNING…'}</div>
                                         <div>{fmtTime(call.time_received)}</div>
                                     </div>
 
-                                    <div className="w-20 flex-shrink-0 font-mono text-[10px] text-slate-500 hidden md:block">
+                                    <div className="w-20 flex-shrink-0 font-mono text-[10px] text-slate-500 hidden md:block pt-0.5">
                                         {elapsed(call)}
                                     </div>
 
                                     <div className="flex-1 min-w-0 pr-2">
-                                        <div className="text-white font-mono font-bold text-xs truncate flex items-center gap-1">
+                                        <div className="text-white font-mono font-bold text-xs leading-snug flex items-start gap-1">
                                             {(!call.latitude || !call.longitude) && (
-                                                <CircleX className="w-3 h-3 flex-shrink-0 text-red-500" title="Not geocoded" />
+                                                <CircleX className="w-3 h-3 flex-shrink-0 text-red-500 mt-0.5" title="Not geocoded" />
                                             )}
-                                            {cleanIncident(call)}
+                                            <span className="break-words">{cleanIncident(call)}</span>
                                         </div>
-                                        <div className="text-slate-400 font-mono text-[10px] truncate flex items-center gap-1 mt-0.5">
-                                            <MapPin className="w-2.5 h-2.5 flex-shrink-0 text-slate-600" />
-                                            {call.location}
-                                            {call.cross_street ? <span className="text-slate-600 ml-1">@ {call.cross_street}</span> : ''}
+                                        <div className="text-slate-400 font-mono text-[10px] leading-snug flex items-start gap-1 mt-0.5">
+                                            <MapPin className="w-2.5 h-2.5 flex-shrink-0 text-slate-600 mt-0.5" />
+                                            <span className="break-words">{call.location}{call.cross_street ? <span className="text-slate-600 ml-1">@ {call.cross_street}</span> : ''}</span>
                                         </div>
                                     </div>
 
-                                    <div className="w-24 flex-shrink-0 hidden lg:block">
-                                        <span className="text-slate-500 font-mono text-[10px] truncate">{call.agency || '—'}</span>
+                                    <div className="w-24 flex-shrink-0 hidden lg:block pt-0.5">
+                                        <span className="text-slate-500 font-mono text-[10px] break-words">{call.agency || '—'}</span>
                                     </div>
 
-                                    <div className="w-20 flex-shrink-0 text-center">
+                                    <div className="w-20 flex-shrink-0 text-center pt-0.5">
                                         <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${
                                             call.status === 'New' ? 'bg-red-900/40 text-red-300 border-red-700/40' :
                                             call.status === 'Dispatched' || call.status === 'Enroute' ? 'bg-yellow-900/40 text-yellow-300 border-yellow-700/40' :
