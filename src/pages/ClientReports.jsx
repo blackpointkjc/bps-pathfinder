@@ -652,10 +652,8 @@ export default function ClientReports() {
         
         <div class="report-container">
           <div class="header">
-            <img src="${LOGO_URL}" alt="Black Point Protection" class="logo" />
             <div class="title">${reportTitle}</div>
             <div class="subtitle">Security Documentation</div>
-            <div class="dcjs">${DCJS_ID}</div>
           </div>
           
           <div class="meta-bar">
@@ -693,9 +691,6 @@ export default function ClientReports() {
           </div>
           
           <div class="footer">
-            <strong>BLACK POINT PROTECTION</strong>
-            <div style="margin-top: 5px;">${DCJS_ID}</div>
-            <div style="margin-top: 3px;">Confidential Document - For Official Use Only</div>
           </div>
         </div>
         

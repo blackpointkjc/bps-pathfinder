@@ -81,10 +81,8 @@ export const generateTimeClockPrint = (entries, officerName, startDate, endDate)
       
       <div class="report-container">
         <div class="header">
-          <img src="${LOGO_URL}" alt="Black Point Protection" class="logo" />
           <div class="title">TIME CLOCK REPORT</div>
           <div class="subtitle">${officerName}</div>
-          <div class="dcjs">VA DCJS #11-6066 | Maryland #106-4738</div>
         </div>
         
         <div class="meta-bar">
@@ -137,8 +135,6 @@ export const generateTimeClockPrint = (entries, officerName, startDate, endDate)
         </div>
         
         <div class="footer">
-          <strong>BLACK POINT PROTECTION</strong>
-          <div style="margin-top: 5px;">VA DCJS #11-6066 | Maryland #106-4738</div>
           <div style="margin-top: 3px;">Richmond, VA | Employee Time Record</div>
         </div>
       </div>

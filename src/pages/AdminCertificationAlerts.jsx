@@ -280,7 +280,6 @@ export default function AdminCertificationAlerts() {
       </head>
       <body>
         <div class="header">
-          <img src="${PRINT_LOGO_URL}" alt="Black Point Protection" style="width: 200px; height: auto; margin: 0 auto 15px; display: block;" />
           <h1>🛡️ CERTIFICATION ALERTS REPORT</h1>
           <p>Generated: ${format(new Date(), 'MMMM d, yyyy h:mm a')}</p>
           <p>Total Active Alerts: ${activeAlerts.length}</p>
@@ -326,7 +325,6 @@ export default function AdminCertificationAlerts() {
         `}
 
         <div class="footer">
-          <p><strong>BLACK POINT PROTECTION</strong></p>
           <p>Confidential Document - Internal Use Only</p>
           <p>This report contains sensitive officer certification information</p>
         </div>

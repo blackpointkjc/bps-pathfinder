@@ -419,7 +419,6 @@ export default function AdminSupervisorReports() {
       </head>
       <body>
         <div class="header">
-          <img src="${LOGO_URL}" alt="Black Point Protection" class="logo" />
           <div class="title">PERFORMANCE REVIEW</div>
           <div class="subtitle">${officer.first_name} ${officer.last_name} - ${dateRange}</div>
           <div class="officer-info">
@@ -533,8 +532,6 @@ export default function AdminSupervisorReports() {
         </div>
 
         <div class="footer">
-          <strong>BLACK POINT PROTECTION</strong>
-          <div style="margin-top: 4px;">VA DCJS #11-6066 | Maryland #106-4738 | Richmond, VA</div>
           <div style="margin-top: 3px;">Report Generated: ${format(new Date(), 'MMMM d, yyyy h:mm a')} | Confidential Document</div>
         </div>
       </body>

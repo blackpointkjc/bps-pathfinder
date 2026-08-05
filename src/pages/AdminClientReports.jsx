@@ -130,7 +130,6 @@ export default function AdminClientReports() {
         </head>
         <body>
           <div class="header">
-            <h1>BLACK POINT PROTECTION</h1>
             <p>Richmond, VA</p>
             <h2 style="margin-top: 20px;">HOURS REPORT</h2>
             <p class="site">${selectedLocation}</p>
@@ -193,7 +192,6 @@ export default function AdminClientReports() {
           </div>
 
           <div class="footer">
-            <p><strong>Black Point Protection</strong></p>
             <p>Richmond, VA | This report is for billing purposes</p>
             ${selectedLocationData?.site_email ? `<p>Site Contact: ${selectedLocationData.site_email}</p>` : ''}
           </div>
@@ -541,7 +539,6 @@ export default function AdminClientReports() {
             <div className="bg-white p-8 rounded-lg shadow-lg">
               <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-slate-200">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">BLACK POINT PROTECTION</h2>
                   <p className="text-slate-600">Richmond, VA</p>
                 </div>
                 <div className="text-right">
@@ -648,7 +645,6 @@ export default function AdminClientReports() {
               </div>
 
               <div className="mt-8 pt-4 border-t border-slate-200 text-center text-sm text-slate-500">
-                <p>Black Point Protection</p>
                 <p>Richmond, VA | This report is for billing purposes</p>
                 {selectedLocationData?.site_email && (
                   <p>Site Contact: {selectedLocationData.site_email}</p>

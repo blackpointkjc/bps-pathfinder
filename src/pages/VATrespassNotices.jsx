@@ -555,7 +555,6 @@ export default function VATrespassNotices() {
                 }
                 <div style="font-size: 8pt; text-align: center;">
                   ${officerFullName}<br/>
-                  Black Point Protection Services<br/>
                   ${notice.officer_ip_address ? `IP: ${notice.officer_ip_address}<br/>` : ''}
                   ${notice.created_date ? `Signed (Zulu): ${signedDateZulu}` : ''}
                 </div>
@@ -564,8 +563,6 @@ export default function VATrespassNotices() {
           </div>
           
           <div class="footer">
-            <p><strong>BLACK POINT PROTECTION</strong></p>
-            <p style="margin-top: 3px;">${DCJS_ID}</p>
             <p style="margin-top: 3px;">THIS IS AN OFFICIAL TRESPASS NOTICE - RETAIN FOR YOUR RECORDS</p>
           </div>
         </div>

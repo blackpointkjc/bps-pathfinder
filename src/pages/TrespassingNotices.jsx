@@ -533,7 +533,6 @@ export default function TrespassingNotices() {
                 <div class="sig-line">${getOfficerSignature(notice.created_by)}</div>
                 <div style="font-size: 8pt; text-align: center;">
                   ${officerFullName}<br/>
-                  Black Point Protection Services<br/>
                   ${notice.officer_ip_address ? `IP: ${notice.officer_ip_address}<br/>` : ''}
                   ${notice.created_date ? `Signed: ${format(new Date(notice.created_date), 'MMM d, yyyy h:mm a')}` : ''}
                 </div>
@@ -542,8 +541,6 @@ export default function TrespassingNotices() {
           </div>
           
           <div class="footer">
-            <p><strong>BLACK POINT PROTECTION SERVICES</strong></p>
-            <p style="margin-top: 3px;">VA DCJS 11-6066 & Maryland 106-4738</p>
             <p style="margin-top: 3px;">THIS IS AN OFFICIAL TRESPASS NOTICE - RETAIN FOR YOUR RECORDS</p>
           </div>
         </div>
@@ -929,7 +926,6 @@ export default function TrespassingNotices() {
                             <div className="mt-3 pt-3 border-t border-slate-200 flex items-center gap-2 text-xs text-slate-500">
                               <span className="font-medium">Issued by: {getOfficerIdentifier(notice.created_by)}</span>
                               <span>•</span>
-                              <span>Black Point Protection</span>
                             </div>
                           </CardContent>
                         </Card>
@@ -1065,7 +1061,6 @@ export default function TrespassingNotices() {
                       </p>
                     </div>
                     <p><strong>Officer:</strong> {getOfficerSignature(selectedNotice.created_by)}</p>
-                    <p><strong>Agency:</strong> Black Point Protection Services</p>
                     <p><strong>Location:</strong> {selectedNotice.location}</p>
                     <p><strong>Date:</strong> {format(new Date(selectedNotice.notice_date), 'MMMM d, yyyy h:mm a')}</p>
                     {selectedNotice.officer_ip_address && selectedNotice.created_date && (
@@ -1081,7 +1076,6 @@ export default function TrespassingNotices() {
                   </div>
 
                   <div className="mt-10 pt-4 border-t-2 border-gray-300 text-center text-xs text-gray-500">
-                    <p className="font-bold mb-1">BLACK POINT PROTECTION SERVICES</p>
                     <p>Richmond, VA | Printed on {format(new Date(), 'MMM d, yyyy h:mm a')}</p>
                     <p className="mt-2 font-bold">THIS IS AN OFFICIAL LEGAL NOTICE - RETAIN FOR YOUR RECORDS</p>
                   </div>

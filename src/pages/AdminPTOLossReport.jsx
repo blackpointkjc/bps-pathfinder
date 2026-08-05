@@ -290,7 +290,6 @@ export default function AdminPTOLossReport() {
       </head>
       <body>
         <div class="header">
-          <img src="${LOGO_URL}" alt="Black Point Protection" style="width: 150px; height: auto; margin: 0 auto 15px; display: block;" />
           <h1>PTO ACCRUAL REPORT</h1>
           <p>${officer.name}</p>
           <p>Report Period: ${format(new Date(start), 'MMM d, yyyy')} - ${format(new Date(end), 'MMM d, yyyy')}</p>
@@ -354,8 +353,6 @@ export default function AdminPTOLossReport() {
         </table>
 
         <div class="footer">
-          <p><strong>BLACK POINT PROTECTION</strong></p>
-          <p>VA DCJS #11-30423</p>
           <p>Confidential Document - Internal Use Only</p>
         </div>
       </body>
@@ -436,7 +433,6 @@ export default function AdminPTOLossReport() {
       </head>
       <body>
         <div class="header">
-          <img src="${LOGO_URL}" alt="Black Point Protection" style="width: 200px; height: auto; margin: 0 auto 15px; display: block;" />
           <h1>⚠️ PTO LOSS REPORT</h1>
           <p>Officers Exceeding 40-Hour Carryover Cap</p>
           <p>Generated: ${new Date().toLocaleDateString()}</p>
@@ -475,8 +471,6 @@ export default function AdminPTOLossReport() {
         </table>
 
         <div class="footer">
-          <p><strong>BLACK POINT PROTECTION</strong></p>
-          <p>VA DCJS #11-30423</p>
           <p>Confidential Document - Internal Use Only</p>
         </div>
       </body>
@@ -505,7 +499,6 @@ export default function AdminPTOLossReport() {
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex justify-between items-center flex-wrap gap-4">
             <div className="flex items-center gap-3">
-              <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
               <div>
                 <h1 className="text-3xl font-bold text-slate-900">PTO Accrual & Loss Report</h1>
                 <p className="text-slate-600">

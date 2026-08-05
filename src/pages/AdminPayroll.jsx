@@ -397,10 +397,8 @@ export default function AdminPayroll() {
       <body>
         <div class="report-container">
           <div class="header">
-            <img src="${LOGO_URL}" alt="Black Point Protection" class="logo" />
             <div class="title">${reportMode === 'client' ? 'CLIENT HOURS REPORT' : 'PAYROLL REPORT'}</div>
             <div class="subtitle">${reportMode === 'client' && selectedLocation ? selectedLocation : 'All Officers'}</div>
-            <div class="dcjs">VA DCJS #11-30423</div>
           </div>
           
           <div class="meta-bar">
@@ -532,8 +530,6 @@ export default function AdminPayroll() {
           `}).join('')}
           
           <div class="footer">
-            <strong>BLACK POINT PROTECTION</strong>
-            <div style="margin-top: 5px;">VA DCJS #11-30423</div>
             <div style="margin-top: 3px;">Richmond, VA | Overtime: Hours exceeding 40 per week (Sunday-Saturday)</div>
           </div>
         </div>
@@ -767,7 +763,6 @@ export default function AdminPayroll() {
           <div className="bg-white p-8 rounded-lg shadow-lg">
             <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-slate-200">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">BLACK POINT PROTECTION</h2>
                 <p className="text-slate-600">Richmond, VA</p>
               </div>
               <div className="text-right">
@@ -950,7 +945,6 @@ export default function AdminPayroll() {
 
 
             <div className="mt-8 pt-4 border-t-2 border-slate-200 text-center text-sm text-slate-500">
-              <p>Black Point Protection - Richmond, VA</p>
               <p>Regular Hours: Up to 40 hours per week (Sunday-Saturday) | Overtime: Hours exceeding 40 per week</p>
               <p>Overtime calculated weekly (Sunday-Saturday) within the {periodDays}-day period</p>
               <p>This is a confidential document. For authorized personnel only.</p>

@@ -112,7 +112,6 @@ export default function SupervisorPerformanceReview() {
       </head>
       <body>
         <div class="header">
-          <img src="${LOGO_URL}" alt="Black Point Protection" class="logo" />
           <div class="title">PERFORMANCE REVIEW</div>
           <div class="subtitle">Review Period: ${format(parseISO(review.review_period_start), 'MMM d, yyyy')} - ${format(parseISO(review.review_period_end), 'MMM d, yyyy')}</div>
         </div>
@@ -243,9 +242,6 @@ export default function SupervisorPerformanceReview() {
         </div>
 
         <div class="footer">
-          <strong>BLACK POINT PROTECTION</strong>
-          <div style="margin-top: 5px;">VA DCJS #11-30423 | Richmond, VA</div>
-          <div style="margin-top: 3px;">Confidential Document - For Official Use Only</div>
         </div>
 
         <script>window.onload = function() { setTimeout(() => window.print(), 500); }</script>

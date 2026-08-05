@@ -122,7 +122,6 @@ export default function MDCriminalComplaints() {
   useEffect(() => {
     if (user) {
       const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
-      const agencyId = `Black Point Protection - ${user.unit_number || user.badge_number || ''}`;
       setFormData(prev => ({
         ...prev,
         complainant_printed_name: fullName,
@@ -173,7 +172,6 @@ export default function MDCriminalComplaints() {
   const resetForm = () => {
     setShowForm(false);
     const fullName = user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : "";
-    const agencyId = user ? `Black Point Protection - ${user.unit_number || user.badge_number || ''}` : "";
     
     setFormData({
       district_court_city_county: "",
@@ -462,8 +460,6 @@ export default function MDCriminalComplaints() {
           </div>
           
           <div class="footer">
-            <p><strong>BLACK POINT PROTECTION SERVICES</strong></p>
-            <p style="margin-top: 2px;">VA DCJS 11-6066 & Maryland 106-4738</p>
             <p style="margin-top: 3px; color: #666;">DC-CR-001 (Rev. 10/2024) | Complaint #: ${complaint.complaint_number || ''}</p>
             ${complaint.officer_ip_address ? `<p style="color: #666;">Officer IP: ${complaint.officer_ip_address}</p>` : ''}
           </div>

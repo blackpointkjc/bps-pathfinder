@@ -139,7 +139,6 @@ export default function ClientPayrollReport() {
       <body>
         <div class="invoice-header">
           <div class="title">SECURITY SERVICES INVOICE</div>
-          <div class="subtitle">Black Point Protection Services</div>
         </div>
 
         <div class="info-section">
@@ -198,8 +197,6 @@ export default function ClientPayrollReport() {
         </table>
 
         <div class="footer">
-          <p><strong>Black Point Protection Services</strong></p>
-          <p>VA DCJS #11-6066</p>
           <p style="margin-top: 10px;">Thank you for your business</p>
         </div>
 

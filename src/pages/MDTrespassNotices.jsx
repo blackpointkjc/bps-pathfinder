@@ -457,7 +457,6 @@ export default function MDTrespassNotices() {
                 <div class="sig-line">${getOfficerSignature(notice.created_by)}</div>
                 <div style="font-size: 8pt; text-align: center;">
                   ${officerFullName}<br/>
-                  Black Point Protection Services<br/>
                   ${notice.officer_ip_address ? `IP: ${notice.officer_ip_address}<br/>` : ''}
                   ${notice.created_date ? `Signed: ${format(new Date(notice.created_date), 'MMM d, yyyy h:mm a')}` : ''}
                 </div>
@@ -466,8 +465,6 @@ export default function MDTrespassNotices() {
           </div>
           
           <div class="footer">
-            <p><strong>BLACK POINT PROTECTION SERVICES</strong></p>
-            <p style="margin-top: 3px;">VA DCJS 11-6066 & Maryland 106-4738</p>
             <p style="margin-top: 3px;">THIS IS AN OFFICIAL TRESPASS NOTICE - RETAIN FOR YOUR RECORDS</p>
           </div>
         </div>

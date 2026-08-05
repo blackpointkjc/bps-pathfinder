@@ -310,9 +310,7 @@ export default function AdminConfidentialReports() {
       <body>
         <div class="container">
           <div class="header">
-            <img src="${LOGO_URL}" alt="Black Point Protection">
             <h1>CONFIDENTIAL REPORT</h1>
-            <div class="subtitle">BLACK POINT PROTECTION</div>
             <div class="subtitle">Richmond, VA</div>
           </div>
 
@@ -379,7 +377,6 @@ export default function AdminConfidentialReports() {
           ` : ''}
 
           <div class="footer">
-            <p><strong>BLACK POINT PROTECTION</strong></p>
             <p>This document contains confidential information intended only for authorized management personnel.</p>
             <p>Unauthorized disclosure or distribution is prohibited.</p>
             <p>Printed on ${format(new Date(), 'MMMM d, yyyy')} at ${format(new Date(), 'h:mm a')}</p>
