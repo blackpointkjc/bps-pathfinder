@@ -312,7 +312,14 @@ export default function DispatchCenter() {
         return 'bg-slate-500';
     };
 
-    const allCalls = activeCalls;
+    const allCalls = activeCalls.filter(call => {
+        const matchesFilter = queueFilter === 'all' ||
+            (queueFilter === 'unassigned' && !call.assigned_units?.length) ||
+            (queueFilter === 'priority' && ['critical', 'high'].includes(call.priority)) ||
+            call.status === queueFilter;
+        const haystack = `${call.call_id || ''} ${call.incident || ''} ${call.location || ''} ${call.caller_name || ''}`.toLowerCase();
+        return matchesFilter && haystack.includes(queueSearch.toLowerCase());
+    });
 
     const handleAcknowledge = () => {
         stopAllAlerts();
@@ -338,6 +345,10 @@ export default function DispatchCenter() {
                 </div>
                 <div className="flex-1" />
                 <div className="flex items-center gap-1.5">
+                    <button onClick={() => setShowCreateDialog(true)}
+                        className="flex items-center gap-1 px-3 py-1 bg-red-700 hover:bg-red-600 border border-red-500 rounded text-[10px] text-white font-bold">
+                        <Plus className="w-3 h-3" /> NEW CALL
+                    </button>
                     <button onClick={handleRefresh} disabled={refreshing}
                         className="flex items-center gap-1 px-2 py-1 bg-[#1a2a40] hover:bg-[#243550] border border-[#2a3f60] rounded text-[10px] text-green-400">
                         <RefreshCw className={`w-2.5 h-2.5 ${refreshing ? 'animate-spin' : ''}`} />
@@ -356,8 +367,12 @@ export default function DispatchCenter() {
                         }`}>
                         {showPriorCalls ? 'ACTIVE' : 'PRIOR'}
                     </button>
+                    <button onClick={() => navigate(createPageUrl('BOLOAlerts'))}
+                        className="flex items-center gap-1 px-2 py-1 border border-amber-600/60 text-amber-400 hover:text-white rounded text-[10px]"><Megaphone className="w-2.5 h-2.5" /> BOLO</button>
+                    <button onClick={() => navigate(createPageUrl('Reports'))}
+                        className="flex items-center gap-1 px-2 py-1 border border-slate-600 text-slate-400 hover:text-white rounded text-[10px]"><FileText className="w-2.5 h-2.5" /> REPORTS</button>
                     <button onClick={() => setShowMessaging(!showMessaging)}
-                        className="px-2 py-1 border border-slate-600 text-slate-400 hover:text-white rounded text-[10px]">MSG</button>
+                        className="flex items-center gap-1 px-2 py-1 border border-slate-600 text-slate-400 hover:text-white rounded text-[10px]"><MessageSquarePlus className="w-2.5 h-2.5" /> MSG</button>
                     {currentUser?.role === 'admin' && (
                         <button onClick={() => navigate(createPageUrl('AdminPortal'))}
                             className="flex items-center gap-1 px-2 py-1 border border-slate-600 text-slate-400 hover:text-white rounded text-[10px]">
@@ -371,8 +386,21 @@ export default function DispatchCenter() {
                 </div>
             </div>
 
-            {/* ══ SORT CONTROLS ══ */}
-            <div className="flex-none flex items-center gap-2 px-3 py-1 bg-[#0a0e1a] border-b border-[#1e2d4a]">
+            <PropertyAlertsBanner />
+
+            {/* ══ QUEUE CONTROLS ══ */}
+            <div className="flex-none flex items-center gap-2 px-3 py-1.5 bg-[#0a0e1a] border-b border-[#1e2d4a]">
+                <div className="relative w-56">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
+                    <input value={queueSearch} onChange={e => setQueueSearch(e.target.value)} placeholder="Search CAD, incident, address..."
+                        className="w-full h-7 pl-7 pr-2 bg-[#111827] border border-[#263653] rounded text-[10px] text-white outline-none focus:border-blue-500" />
+                </div>
+                {[
+                    ['all','ALL'], ['unassigned','UNASSIGNED'], ['priority','HIGH PRIORITY'], ['New','NEW'], ['Dispatched','DISPATCHED'], ['Enroute','ENROUTE'], ['On Scene','ON SCENE']
+                ].map(([value,label]) => (
+                    <button key={value} onClick={() => setQueueFilter(value)} className={`px-2 py-1 rounded text-[9px] border ${queueFilter === value ? 'border-blue-400 text-blue-300 bg-blue-500/10' : 'border-slate-700 text-slate-500 hover:text-white'}`}>{label}</button>
+                ))}
+                <div className="flex-1" />
                 <span className="text-[10px] text-slate-500">SORT:</span>
                 <button onClick={() => setSortOrder('desc')} className={`px-2 py-0.5 rounded text-[10px] border ${
                     sortOrder === 'desc' ? 'border-[#f5a623] text-[#f5a623] bg-[#f5a623]/10' : 'border-slate-700 text-slate-500'
@@ -380,7 +408,7 @@ export default function DispatchCenter() {
                 <button onClick={() => setSortOrder('asc')} className={`px-2 py-0.5 rounded text-[10px] border ${
                     sortOrder === 'asc' ? 'border-[#f5a623] text-[#f5a623] bg-[#f5a623]/10' : 'border-slate-700 text-slate-500'
                 }`}>OLDEST</button>
-                <span className="ml-3 text-[10px] text-slate-500">TOTAL ACTIVE: <span className="text-white font-bold">{allCalls.length}</span></span>
+                <span className="ml-3 text-[10px] text-slate-500">SHOWING: <span className="text-white font-bold">{allCalls.length}</span> / {activeCalls.length}</span>
             </div>
 
             {/* ══ MAIN GRID ══ */}
