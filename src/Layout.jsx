@@ -147,7 +147,7 @@ export default function Layout({ children, currentPageName }) {
         {(!collapsed || mobile) && (
           <div className="mb-2 rounded border border-[#1c3049] bg-[#0c1828] px-3 py-2">
             <div className="text-[9px] tracking-widest text-[#597491]">{roleName(user)}</div>
-            <div className="truncate text-[11px] font-bold text-white">{user?.full_name || user?.email || 'AUTHORIZED USER'}</div>
+            <div className="truncate text-[11px] font-bold text-white">{[user?.rank, user?.last_name].filter(Boolean).join(' ') || user?.full_name || user?.email || 'AUTHORIZED USER'}</div>
             <div className="mt-1 text-[9px] text-emerald-400">● SECURE SESSION</div>
           </div>
         )}
