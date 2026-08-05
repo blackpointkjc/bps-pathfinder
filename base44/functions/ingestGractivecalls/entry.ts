@@ -124,40 +124,47 @@ const SOURCE_PREFIX = {
     henrico: 'henrico',
 };
 
-// Parse the gractivecalls.com server-rendered Mantine table.
+// Parse the gractivecalls.com card-based layout. Each call is an <a href="/call/<hash>">
+// with 4 child divs: [time elapsed+clock], [incident + location], [status badge], [agency].
+// Two anchors exist per call (list-row + card variants) — dedupe by the gractive hash.
 function parseGractive(html) {
     const $ = cheerio.load(html);
+    const seen = new Set();
     const calls = [];
-    $('table tbody tr').each((_, row) => {
-        const cells = $(row).find('td');
-        if (cells.length < 6) return;
-        const timeStr = $(cells[0]).text().trim();
-        // HPD rows have Location/Incident columns swapped: cells[2] is a time,
-        // cells[1] is the address, and cells[4] is the incident type (badge).
-        const col2 = $(cells[2]).text().trim();
-        const isSwapped = /\d{1,2}:\d{2}\s*(AM|PM)/i.test(col2);
-        const location = isSwapped ? $(cells[1]).text().trim() : col2;
-        const agency = $(cells[3]).text().trim().toUpperCase();
-        const incident = isSwapped ? $(cells[4]).text().trim() : $(cells[1]).text().trim();
-        const statusText = isSwapped ? '' : $(cells[4]).text().trim();
+    $('a[href*="/call/"]').each((_, a) => {
+        const href = $(a).attr('href') || '';
+        const hashMatch = href.match(/\/call\/([a-f0-9]+)/i);
+        if (!hashMatch) return;
+        const hash = hashMatch[1];
+        if (seen.has(hash)) return;
+        const divs = $(a).children('div');
+        if (divs.length < 4) return; // try the next anchor for this same hash
+        seen.add(hash);
+
+        const elapsed = $(divs[0]).find('span').first().text().trim(); // e.g. "6m ago" / "1h ago"
+        const locTexts = $(divs[1]).find('span').toArray()
+            .map(s => $(s).text().trim()).filter(t => t.length > 1);
+        const incident = locTexts[0] || '';
+        const location = locTexts[locTexts.length - 1] || '';
+        let status = '';
+        $(divs[2]).find('span').each((_, s) => {
+            const t = $(s).text().trim();
+            if (t) status = t;
+        });
+        const agency = $(divs[3]).find('span').first().text().trim().toUpperCase();
+
         if (!incident || !location || !agency) return;
         if (!ALLOWED_AGENCIES.has(agency)) return;
 
         const source = AGENCY_SOURCE[agency] || 'chesterfield';
         const prefix = SOURCE_PREFIX[source];
+        const callId = `${prefix}-${hash}`;
 
-        // Extract the gractive call hash from the actions link for a stable call_id
-        let callId = '';
-        const link = $(row).find('a[href*="/call/"]').first();
-        const href = link.attr('href') || '';
-        const hashMatch = href.match(/\/call\/([a-f0-9]+)/i);
-        if (hashMatch) {
-            callId = `${prefix}-${hashMatch[1]}`;
-        } else {
-            const timeSlug = timeStr.replace(/[^0-9]/g, '');
-            const locSlug = location.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().slice(0, 40);
-            callId = `${prefix}-${agency.toLowerCase()}-${timeSlug}-${locSlug}`;
-        }
+        // Compute time_received from the relative elapsed text (robust across date boundaries)
+        let minutesAgo = 0;
+        const em = elapsed.match(/(\d+)\s*(m|h)/i);
+        if (em) minutesAgo = parseInt(em[1]) * (em[2].toLowerCase() === 'h' ? 60 : 1);
+        const time_received = clampFuture(new Date(Date.now() - minutesAgo * 60000).toISOString());
 
         calls.push({
             call_id: callId,
@@ -165,9 +172,9 @@ function parseGractive(html) {
             location,
             agency,
             zone: '',
-            status: normalizeStatus(statusText),
+            status: normalizeStatus(status),
             priority: 'medium',
-            time_received: clampFuture(parseTimeToISO(timeStr)),
+            time_received,
             source,
             description: `${incident} at ${location}`
         });
