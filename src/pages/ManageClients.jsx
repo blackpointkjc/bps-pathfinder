@@ -79,9 +79,12 @@ export default function ManageClients() {
       queryClient.invalidateQueries({ queryKey: ['activeLocations'] });
       setShowDialog(false);
       resetForm();
-      alert(result?.assignment_pending
+      const accountMessage = result?.assignment_pending
         ? 'Invitation sent. The client will be assigned after accepting the invitation.'
-        : 'Client invitation sent and Client Portal access assigned.');
+        : 'Client invitation sent and Client Portal access assigned.';
+      alert(result?.email_sent === false
+        ? `${accountMessage} The welcome email could not be delivered: ${result?.email_error || 'verify the email address.'}`
+        : `${accountMessage} The Black Point account-created email was sent.`);
     },
     onError: (error) => alert('Unable to create client account: ' + error.message),
   });
