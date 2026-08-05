@@ -272,11 +272,6 @@ function CommandDashboardInner() {
                             <><span className="w-1.5 h-1.5 rounded-full bg-slate-500" />AWAITING SYNC</>
                         )}
                     </div>
-                    <button onClick={handleRefresh} disabled={refreshing}
-                        className="h-7 flex items-center gap-1 px-2 rounded border font-mono text-[10px] font-bold transition-all flex-shrink-0 bg-slate-800 border-slate-600 text-slate-400 hover:text-white">
-                        <RotateCcw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-                        REFRESH
-                    </button>
                     <button onClick={() => navigate(createPageUrl('DispatchCenter'))}
                         className="h-7 flex items-center gap-1 px-2 bg-gold text-black font-mono font-bold text-[10px] rounded hover:bg-yellow-400 transition-colors flex-shrink-0">
                         <Zap className="w-3 h-3" />DISPATCH CTR

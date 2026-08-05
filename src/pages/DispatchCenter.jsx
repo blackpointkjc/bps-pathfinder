@@ -349,11 +349,6 @@ export default function DispatchCenter() {
                         className="flex items-center gap-1 px-3 py-1 bg-red-700 hover:bg-red-600 border border-red-500 rounded text-[10px] text-white font-bold">
                         <Plus className="w-3 h-3" /> NEW CALL
                     </button>
-                    <button onClick={handleRefresh} disabled={refreshing}
-                        className="flex items-center gap-1 px-2 py-1 bg-[#1a2a40] hover:bg-[#243550] border border-[#2a3f60] rounded text-[10px] text-green-400">
-                        <RefreshCw className={`w-2.5 h-2.5 ${refreshing ? 'animate-spin' : ''}`} />
-                        {refreshing ? 'REFRESHING' : 'REFRESH FEED'}
-                    </button>
 
                     <button onClick={() => setShowMap(!showMap)}
                         className={`px-2 py-1 border rounded text-[10px] ${

@@ -46,7 +46,7 @@ export default function ClientAlerts() {
   };
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-slate-50">
+    <div className="client-alerts-page p-4 md:p-8 min-h-screen">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
           <AlertTriangle className="w-8 h-8 text-red-600" />

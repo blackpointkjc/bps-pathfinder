@@ -16,8 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/f3af01307_c3ff2618-4412-4498-8923-8f484a9469b8-2533645741.jpeg";
-
 export default function AdminClientReports() {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedOfficer, setSelectedOfficer] = useState("all");

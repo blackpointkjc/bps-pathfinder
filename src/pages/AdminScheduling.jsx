@@ -2311,7 +2311,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
+    <div className="scheduling-page p-4 md:p-8 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex justify-between items-center print:hidden">
           <div className="flex items-center gap-3">

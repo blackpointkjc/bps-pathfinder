@@ -571,14 +571,6 @@ export default function Navigation() {
                                         >
                                             🚨 CRITICAL ONLY
                                         </button>
-                                        <button
-                                            onClick={handleRefreshCalls}
-                                            disabled={isLoadingCalls}
-                                            className="ml-auto flex items-center gap-1 px-2 py-1 bg-[#111827] border border-[#1e2d4a] rounded text-[9px] text-slate-400 hover:text-white transition-colors"
-                                        >
-                                            <RefreshCw className={`w-2.5 h-2.5 ${isLoadingCalls ? 'animate-spin' : ''}`} />
-                                            REFRESH
-                                        </button>
                                     </div>
                                     {displayedCalls.length === 0 ? (
                                         <div className="text-center py-8 text-slate-600 text-[10px] font-mono">{showOnlyCriticalCalls ? 'NO CRITICAL CALLS' : 'NO ACTIVE CALLS'}</div>
@@ -726,7 +718,6 @@ export default function Navigation() {
                     { onClick: () => setShowActiveCalls(v => !v), title: 'Toggle calls on map', icon: showActiveCalls ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />, active: showActiveCalls },
                     { onClick: () => setMapTheme(t => t === 'day' ? 'night' : 'day'), title: 'Toggle map theme', icon: <Layers className="w-4 h-4" />, active: mapTheme === 'night' },
                     { onClick: () => setShowHeatmap(v => !v), title: 'Call heatmap', icon: <Flame className="w-4 h-4" />, active: showHeatmap },
-                    { onClick: handleRefreshCalls, title: 'Refresh calls', icon: <RefreshCw className={`w-4 h-4 ${isLoadingCalls ? 'animate-spin' : ''}`} />, active: false, disabled: isLoadingCalls },
                 ].map((btn, i) => (
                     <button key={i} onClick={btn.onClick} title={btn.title} disabled={btn.disabled}
                         className={`w-10 h-10 rounded-xl backdrop-blur-sm border flex items-center justify-center transition-all shadow-lg ${
@@ -798,6 +789,18 @@ export default function Navigation() {
                                 className="px-3 py-1 rounded border border-blue-500/40 text-blue-400 text-[9px] font-mono font-bold hover:bg-blue-500/10 transition-all"
                             >
                                 📍 SHOW ON MAP
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const destination = selectedCall.latitude && selectedCall.longitude
+                                        ? `${selectedCall.latitude},${selectedCall.longitude}`
+                                        : encodeURIComponent(selectedCall.location || '');
+                                    const origin = currentLocation ? `&origin=${currentLocation[0]},${currentLocation[1]}` : '';
+                                    window.open(`https://www.google.com/maps/dir/?api=1${origin}&destination=${destination}&travelmode=driving&dir_action=navigate`, '_blank', 'noopener,noreferrer');
+                                }}
+                                className="px-3 py-1 rounded border border-green-500/40 text-green-400 text-[9px] font-mono font-bold hover:bg-green-500/10 transition-all"
+                            >
+                                🧭 START GPS
                             </button>
                             {selectedCall.assigned_units?.includes(currentUser?.id) ? (
                                 <>
