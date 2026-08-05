@@ -62,6 +62,7 @@ export default function ManageStudents() {
       return response;
     },
     onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowCreateDialog(false);
       setCreateForm({ first_name: '', last_name: '', email: '', mobile_phone: '' });
@@ -93,6 +94,7 @@ export default function ManageStudents() {
       return base44.entities.User.update(id, profileData);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setEditingStudent(null);
       toast.success("Student profile updated");
@@ -106,6 +108,7 @@ export default function ManageStudents() {
       return base44.entities.User.update(student.id, { additional_roles: roles });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success("Student converted to Officer. They no longer have the Student role.");
     },
