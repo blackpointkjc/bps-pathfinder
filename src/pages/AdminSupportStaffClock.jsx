@@ -16,17 +16,24 @@ export default function AdminSupportStaffClock() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: supportStaff } = useQuery({
-    queryKey: ['supportStaff'],
+  const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const isSupportRank = ['support staff', 'human resources'].includes(String(user?.rank || '').toLowerCase());
+  const canManageAll = user?.role === 'admin' || roles.has('hr') || roles.has('full_access');
+  const hasAccess = canManageAll || isSupportRank || roles.has('support_staff');
+
+  const { data: supportStaff = [] } = useQuery({
+    queryKey: ['supportStaffDirectory'],
     queryFn: async () => {
-      const users = await base44.entities.User.list();
-      return users.filter(u => 
-        u.additional_roles?.includes('support_staff') || 
-        u.additional_roles?.includes('hr') ||
-        u.additional_roles?.includes('accounting')
+      const result = await base44.functions.invoke('getHRUsers', {});
+      const users = result?.users || [];
+      const eligible = users.filter(u =>
+        ['support staff', 'human resources'].includes(String(u.rank || '').toLowerCase()) ||
+        u.additional_roles?.some(role => ['support_staff', 'hr', 'accounting'].includes(String(role).toLowerCase()))
       );
+      return canManageAll ? eligible : eligible.filter(u => u.email === user?.email);
     },
-    enabled: user?.role === 'admin',
+    enabled: hasAccess,
+    initialData: [],
   });
 
   const { data: activeEntries } = useQuery({
@@ -71,11 +78,11 @@ export default function AdminSupportStaffClock() {
     },
   });
 
-  if (user?.role !== 'admin') {
+  if (!hasAccess) {
     return (
       <div className="p-8 text-center">
-        <h2 className="text-2xl font-bold">Access Denied</h2>
-        <p className="text-slate-600">Only admins can manage support staff time clock.</p>
+        <h2 className="text-2xl font-bold">Support Clock Access Required</h2>
+        <p className="text-slate-600">This page is available to Human Resources and Support Staff personnel.</p>
       </div>
     );
   }
@@ -94,7 +101,7 @@ export default function AdminSupportStaffClock() {
             </div>
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">Support Staff Time Clock</h1>
-              <p className="text-slate-600 mt-1">Clock in/out for office administrative staff</p>
+              <p className="text-slate-600 mt-1">Clock in or out for Human Resources and Support Staff personnel</p>
             </div>
           </div>
         </div>
