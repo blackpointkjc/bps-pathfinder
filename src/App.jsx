@@ -37,7 +37,7 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   : <>{children}</>;
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin, checkAppState } = useAuth();
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
@@ -57,6 +57,22 @@ const AuthenticatedApp = () => {
       navigateToLogin();
       return null;
     }
+
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-slate-950 p-6 text-slate-100">
+        <div className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 text-center shadow-2xl">
+          <h1 className="text-xl font-bold">Pathfinder could not finish loading</h1>
+          <p className="mt-2 text-sm text-slate-300">{authError.message || 'The connection to the application service was interrupted.'}</p>
+          <button
+            type="button"
+            onClick={checkAppState}
+            className="mt-5 rounded-md bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-600"
+          >
+            Retry Connection
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // Render the main app
