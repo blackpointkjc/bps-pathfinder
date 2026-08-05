@@ -1,144 +1,111 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Calendar, Clock } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { CalendarClock, DollarSign, Pencil, Plus, Trash2 } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { toast } from "sonner";
 
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
+const emptyForm = { period_name: "", start_date: "", end_date: "", deposit_date: "", period_number: "", status: "upcoming" };
 
 export default function PayrollDates() {
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
-  });
-
-  const { data: payrollPeriods } = useQuery({
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(emptyForm);
+  const queryClient = useQueryClient();
+  const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
+  const canManage = user?.role === 'admin';
+  const { data: periods = [], isLoading } = useQuery({
     queryKey: ['payrollPeriods'],
-    queryFn: async () => {
-      const periods = await base44.entities.PayrollPeriod.list('-start_date');
-      return periods;
-    },
+    queryFn: () => base44.entities.PayrollPeriod.list('-start_date'),
   });
 
-  const getCurrentPeriod = () => {
-    if (!payrollPeriods) return null;
-    const today = format(new Date(), 'yyyy-MM-dd');
-    return payrollPeriods.find(p => p.start_date <= today && p.end_date >= today);
+  const sorted = useMemo(() => [...periods].sort((a,b) => a.start_date.localeCompare(b.start_date)), [periods]);
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const current = sorted.find(p => p.start_date <= today && p.end_date >= today);
+  const upcoming = sorted.filter(p => p.end_date >= today);
+
+  const saveMutation = useMutation({
+    mutationFn: data => editing ? base44.entities.PayrollPeriod.update(editing.id, data) : base44.entities.PayrollPeriod.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payrollPeriods'] });
+      setDialogOpen(false); setEditing(null); setForm(emptyForm); toast.success('Payroll dates saved');
+    },
+    onError: e => toast.error(e.message || 'Unable to save payroll dates'),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: id => base44.entities.PayrollPeriod.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payrollPeriods'] }),
+  });
+
+  const openForm = period => {
+    setEditing(period || null);
+    setForm(period ? { ...period, period_number: String(period.period_number || '') } : emptyForm);
+    setDialogOpen(true);
+  };
+  const submit = e => {
+    e.preventDefault();
+    saveMutation.mutate({
+      ...form,
+      year: Number(form.start_date?.slice(0,4) || new Date().getFullYear()),
+      period_number: Number(form.period_number),
+    });
   };
 
-  const getUpcomingPeriods = () => {
-    if (!payrollPeriods) return [];
-    const today = format(new Date(), 'yyyy-MM-dd');
-    return payrollPeriods
-      .filter(p => p.start_date > today)
-      .sort((a, b) => a.start_date.localeCompare(b.start_date))
-      .slice(0, 10);
-  };
-
-  const currentPeriod = getCurrentPeriod();
-  const upcomingPeriods = getUpcomingPeriods();
-
-  return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <img src={LOGO_URL} alt="Virtus Security" className="w-16 h-16 object-contain" />
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Payroll Direct Deposit Dates</h1>
-            <p className="text-slate-600">View payroll schedule and deposit dates</p>
-          </div>
+  return <div className="min-h-screen p-4 md:p-8">
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg border border-blue-500/40 bg-blue-950/30 p-3"><CalendarClock className="h-7 w-7 text-blue-400" /></div>
+          <div><h1 className="text-3xl font-bold">Payroll Dates</h1><p className="text-slate-400">Pay periods and direct-deposit dates</p></div>
         </div>
-
-        {currentPeriod && (
-          <Card className="border-none shadow-lg bg-gradient-to-r from-emerald-100 to-green-100 border-2 border-emerald-400">
-            <CardHeader>
-              <CardTitle className="text-black flex items-center gap-2">
-                <DollarSign className="w-6 h-6 text-emerald-700" />
-                Current Payroll Period
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div>
-                  <p className="text-slate-700 text-sm">Period</p>
-                  <p className="text-2xl font-bold text-black">{currentPeriod.period_name}</p>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <p className="text-slate-700 text-sm">Pay Period</p>
-                    <p className="text-lg font-semibold text-black">
-                      {format(parseISO(currentPeriod.start_date), 'MMM d')} - {format(parseISO(currentPeriod.end_date), 'MMM d, yyyy')}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-700 text-sm">💰 Direct Deposit Date</p>
-                    <p className="text-lg font-semibold text-black">
-                      {format(parseISO(currentPeriod.deposit_date), 'EEEE, MMM d, yyyy')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card className="border-none shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-blue-600" />
-              Upcoming Payroll Periods
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {upcomingPeriods.map((period) => (
-                <div
-                  key={period.id}
-                  className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                        {period.period_name}
-                      </Badge>
-                      <p className="text-sm text-slate-600">
-                        {format(parseISO(period.start_date), 'MMM d')} - {format(parseISO(period.end_date), 'MMM d, yyyy')}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-emerald-600" />
-                      <p className="text-sm font-semibold text-emerald-700">
-                        Deposit: {format(parseISO(period.deposit_date), 'EEEE, MMM d, yyyy')}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-none shadow-lg bg-blue-50">
-          <CardContent className="p-6">
-            <div className="flex items-start gap-3">
-              <Clock className="w-5 h-5 text-blue-600 mt-1" />
-              <div>
-                <h3 className="font-semibold text-blue-900 mb-2">Important Payroll Information</h3>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Each pay period is 14 days (2 weeks)</li>
-                  <li>• <strong>Overtime:</strong> Calculated per week (Sunday-Saturday) - any hours over 40 in a 7-day week</li>
-                  <li>• <strong>Holiday Pay:</strong> Federal holidays (New Year's, MLK Jr. Day, Juneteenth, July 4th, Thanksgiving, Christmas) paid at 1.25x rate</li>
-                  <li>• Direct deposits are processed on the deposit date shown</li>
-                  <li>• Make sure to submit your time entries by the end of each pay period</li>
-                  <li>• Contact the office if you have any questions about your payroll</li>
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {canManage && <Button onClick={() => openForm(null)}><Plus className="mr-2 h-4 w-4" />Add Payroll Period</Button>}
       </div>
+
+      {current && <Card className="border-emerald-700/60 bg-emerald-950/20">
+        <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign className="h-5 w-5 text-emerald-400" />Current Payroll Period</CardTitle></CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-3">
+          <div><p className="text-xs uppercase text-slate-400">Period</p><p className="text-lg font-bold">{current.period_name}</p></div>
+          <div><p className="text-xs uppercase text-slate-400">Dates</p><p className="font-semibold">{format(parseISO(current.start_date),'MMM d')} – {format(parseISO(current.end_date),'MMM d, yyyy')}</p></div>
+          <div><p className="text-xs uppercase text-slate-400">Deposit</p><p className="font-semibold text-emerald-400">{format(parseISO(current.deposit_date),'EEEE, MMM d, yyyy')}</p></div>
+        </CardContent>
+      </Card>}
+
+      <Card>
+        <CardHeader><CardTitle>Published Payroll Schedule</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {isLoading ? <p className="text-slate-400">Loading payroll dates…</p> : upcoming.length === 0 ? <p className="text-slate-400">No payroll periods have been published.</p> : upcoming.map(period =>
+            <div key={period.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-900/30 p-4">
+              <div>
+                <div className="flex items-center gap-2"><p className="font-bold">{period.period_name}</p><Badge variant="outline">{period.status || 'upcoming'}</Badge></div>
+                <p className="mt-1 text-sm text-slate-400">{format(parseISO(period.start_date),'MMM d')} – {format(parseISO(period.end_date),'MMM d, yyyy')}</p>
+                <p className="text-sm font-semibold text-emerald-400">Deposit: {format(parseISO(period.deposit_date),'EEEE, MMM d, yyyy')}</p>
+              </div>
+              {canManage && <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => openForm(period)}><Pencil className="h-4 w-4" /></Button>
+                <Button size="sm" variant="outline" className="text-red-400" onClick={() => window.confirm('Delete this payroll period?') && deleteMutation.mutate(period.id)}><Trash2 className="h-4 w-4" /></Button>
+              </div>}
+            </div>)}
+        </CardContent>
+      </Card>
     </div>
-  );
+
+    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{editing ? 'Edit Payroll Period' : 'Add Payroll Period'}</DialogTitle></DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <div><Label>Period Name</Label><Input required value={form.period_name} onChange={e => setForm({...form, period_name:e.target.value})} placeholder="PP 01-2026" /></div>
+          <div className="grid grid-cols-2 gap-3"><div><Label>Start Date</Label><Input required type="date" value={form.start_date} onChange={e => setForm({...form,start_date:e.target.value})} /></div><div><Label>End Date</Label><Input required type="date" value={form.end_date} onChange={e => setForm({...form,end_date:e.target.value})} /></div></div>
+          <div className="grid grid-cols-2 gap-3"><div><Label>Deposit Date</Label><Input required type="date" value={form.deposit_date} onChange={e => setForm({...form,deposit_date:e.target.value})} /></div><div><Label>Period Number</Label><Input required type="number" min="1" value={form.period_number} onChange={e => setForm({...form,period_number:e.target.value})} /></div></div>
+          <div><Label>Status</Label><select className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3" value={form.status} onChange={e => setForm({...form,status:e.target.value})}><option value="upcoming">Upcoming</option><option value="current">Current</option><option value="closed">Closed</option></select></div>
+          <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button type="submit" disabled={saveMutation.isPending}>Save</Button></div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  </div>;
 }
