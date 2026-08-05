@@ -22,7 +22,7 @@ export default function ManageStudents() {
     queryFn: () => base44.auth.me(),
   });
 
-  const hasAccess = currentUser?.role === 'admin' || currentUser?.additional_roles?.includes('trainer') || currentUser?.additional_roles?.includes('hr');
+  const hasAccess = currentUser?.role === 'admin' || currentUser?.additional_roles?.includes('full_access') || currentUser?.additional_roles?.includes('trainer');
 
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ['users'],

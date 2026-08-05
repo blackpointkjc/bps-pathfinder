@@ -39,7 +39,7 @@ export default function ManageClients() {
     queryFn: () => base44.auth.me(),
   });
 
-  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr');
+  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('full_access') || user?.additional_roles?.includes('hr');
 
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],

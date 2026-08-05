@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity, AlertTriangle, Award, BarChart3, Bell, BookOpen, Bot, Briefcase,
@@ -175,8 +175,8 @@ const CENTER_CONFIG = {
     groups: [
       { label: 'People Operations', items: [
         ['Manage Employees', 'ManageCompanyEmployees', Briefcase],
-        ['Pending Users', 'AdminUsers', Users],
-        ['Officer Roster & Management', 'AdminOfficerRoster', Users],
+        ['Client Accounts & Assignments', 'ManageClients', Building2],
+        ['Invitations & Pending Accounts', 'AdminUsers', Users],
         ['Manage Time Entries', 'ManageTimeEntries', Clock3],
         ['Support Staff Clock', 'AdminSupportStaffClock', Clock3],
       ]},
@@ -292,6 +292,22 @@ function allowedCenters(user) {
   if (fullAccess || roles.has('student')) centers.push('student');
 
   return [...new Set(centers)];
+}
+
+function defaultPageForUser(user) {
+  const centers = allowedCenters(user);
+  const first = centers[0];
+  return {
+    client: 'ClientDashboard',
+    student: 'StudentPortal',
+    officer: 'Dashboard',
+    supervisor: 'SupervisorTasks',
+    hr: 'ManageCompanyEmployees',
+    training: 'AdminTraining',
+    accounting: 'AccountingPayroll',
+    admin: 'AdminDashboard',
+    cad: 'CommandDashboard',
+  }[first] || 'CommandDashboard';
 }
 
 function canAccessPage(user, pageName) {
@@ -429,14 +445,7 @@ export default function Layout({ children, currentPageName }) {
   }, [user?.role, JSON.stringify(user?.additional_roles || [])]);
 
   if (!canAccessPage(user, currentPageName)) {
-    return <div className="fixed inset-0 flex items-center justify-center bg-[#050a12] px-6 text-white">
-      <div className="w-full max-w-md rounded-lg border border-[#294867] bg-[#0b1726] p-8 text-center shadow-2xl">
-        <Shield className="mx-auto mb-4 h-10 w-10 text-[#72b7f2]" />
-        <h1 className="text-lg font-black uppercase tracking-[0.12em]">Access Restricted</h1>
-        <p className="mt-3 text-sm leading-6 text-[#b9c9d8]">Your assigned role does not permit access to this center. Contact an administrator if your duties require this tool.</p>
-        <Link to={createPageUrl(allowedCenters(user)[0] === 'cad' ? 'CommandDashboard' : 'Dashboard')} className="mt-6 inline-flex rounded border border-[#4385c6] bg-[#153b65] px-4 py-2 text-xs font-bold text-white hover:bg-[#1d4b7d]">RETURN TO AUTHORIZED CENTER</Link>
-      </div>
-    </div>;
+    return <Navigate to={createPageUrl(defaultPageForUser(user))} replace />;
   }
 
   if (FULLSCREEN_PAGES.has(currentPageName)) return <div className="h-full w-full bg-[#050a12]">{children}</div>;
