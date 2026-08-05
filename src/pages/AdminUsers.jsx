@@ -90,21 +90,18 @@ export default function AdminUsers() {
     queryFn: () => base44.auth.me(),
   });
 
-  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('trainer') || user?.additional_roles?.includes('full_access');
+  const hasTrainerRole = user?.additional_roles?.includes('trainer');
+  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || hasTrainerRole || user?.additional_roles?.includes('full_access');
 
   const { data: users, isLoading, error } = useQuery({
-    queryKey: ['users'],
+    queryKey: ['portalUsers', user?.role, ...(user?.additional_roles || [])],
     queryFn: async () => {
-      console.log('🔍 Querying users...');
-      try {
-        const allUsers = await base44.entities.User.list();
-        console.log('✅ Fetched users:', allUsers);
-        console.log('✅ Number of users:', allUsers?.length);
-        return allUsers || [];
-      } catch (err) {
-        console.error('❌ Error fetching users:', err);
-        throw err;
+      if (hasTrainerRole && user?.role !== 'admin' && !user?.additional_roles?.includes('full_access') && !user?.additional_roles?.includes('hr')) {
+        const response = await base44.functions.invoke('getTrainingUsers', {});
+        if (response?.error) throw new Error(response.error);
+        return response?.users || [];
       }
+      return await base44.entities.User.list() || [];
     },
     enabled: hasAccess,
     retry: 3,
