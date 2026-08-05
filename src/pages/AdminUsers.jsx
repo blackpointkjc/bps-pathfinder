@@ -691,7 +691,28 @@ export default function AdminUsers() {
                           }
                         }}
                       >
-                        Hire
+                        Assign Officer
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100"
+                        onClick={async () => {
+                          if (window.confirm(`Assign ${userData.first_name || userData.email} as a Client? The property can be selected from Manage Clients.`)) {
+                            await base44.entities.User.update(userData.id, {
+                              additional_roles: ['client'],
+                              rank: 'Client',
+                              assigned_location: '',
+                              assigned_locations: [],
+                              assigned_sites: [],
+                            });
+                            queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
+                            queryClient.invalidateQueries({ queryKey: ['clientUsers'] });
+                            queryClient.invalidateQueries({ queryKey: ['users'] });
+                          }
+                        }}
+                      >
+                        Assign Client
                       </Button>
                       <Button
                         variant="outline"
