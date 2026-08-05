@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
       dcjs_number, dcjs_expiration, firearm_expiration
     } = body;
 
-    if (!['client', 'student', 'employee'].includes(accountType)) {
+    if (!['pending', 'client', 'student', 'employee'].includes(accountType)) {
       return Response.json({ error: 'Invalid account type' }, { status: 400 });
     }
     if (!first_name || !last_name || !email) {
@@ -98,8 +98,10 @@ Deno.serve(async (req) => {
     const fullAccess = currentUser.role === 'admin' || roles.has('full_access');
     const canCreateClient = fullAccess || roles.has('hr');
     const canCreateStudent = fullAccess || roles.has('trainer');
-    const canCreateEmployee = fullAccess || roles.has('hr') || roles.has('trainer');
+    const canCreateEmployee = fullAccess || roles.has('hr');
+    const canCreatePending = fullAccess;
     if (
+      (accountType === 'pending' && !canCreatePending) ||
       (accountType === 'client' && !canCreateClient) ||
       (accountType === 'student' && !canCreateStudent) ||
       (accountType === 'employee' && !canCreateEmployee)
@@ -122,7 +124,11 @@ Deno.serve(async (req) => {
     let assignmentError = '';
     let assignmentPending = false;
 
-    const employeeRoles = accountType === 'employee' ? ['officer', 'cad_access'] : [accountType];
+    const employeeRoles = accountType === 'pending'
+      ? []
+      : accountType === 'employee'
+        ? ['officer', 'cad_access']
+        : [accountType];
     const updates: Record<string, unknown> = {
       email: normalizedEmail,
       first_name,
@@ -133,7 +139,13 @@ Deno.serve(async (req) => {
       assigned_location: accountType === 'client' ? assigned_location || '' : '',
       assigned_locations: accountType === 'client' && assigned_location ? [assigned_location] : [],
       assigned_sites: accountType === 'client' && assigned_location ? [assigned_location] : [],
-      rank: accountType === 'student' ? 'Student' : accountType === 'client' ? 'Client' : rank || 'Officer',
+      rank: accountType === 'pending'
+        ? 'Pending Assignment'
+        : accountType === 'student'
+          ? 'Student'
+          : accountType === 'client'
+            ? 'Client'
+            : rank || 'Officer',
     };
 
     // Provision the actual portal User record with service-role access first. This
