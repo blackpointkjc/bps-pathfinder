@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Plus, AlertTriangle, Edit, Archive, Pencil, Printer } from "lucide-react";
+import { toast } from "sonner";
 import PullToRefresh from "../components/PullToRefresh";
 import { format, subDays, isAfter } from "date-fns";
 import StatusBadge from "../components/dashboard/StatusBadge";
@@ -295,13 +296,20 @@ export default function ShiftReports() {
           persons_of_interest: "",
           equipment_check: "",
           photo_url: "",
-        });
-      }
-      setSaving(false);
-    },
-  });
+          });
+          } else {
+          toast.success('Draft saved successfully.');
+          }
+          setSaving(false);
+          },
+          onError: (error) => {
+          console.error('Error saving shift report:', error);
+          setSaving(false);
+          toast.error(error?.message || 'Failed to save report. Please try again.');
+          },
+          });
 
-  const handleFileUpload = async (e) => {
+          const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 

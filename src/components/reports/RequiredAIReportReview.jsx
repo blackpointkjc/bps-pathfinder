@@ -49,9 +49,13 @@ export default function RequiredAIReportReview({ label = 'Review & Professionali
     const form = buttonRef.current?.closest('form');
     if (!form) return;
     const controls = [...form.querySelectorAll('textarea, input[type="text"]')].filter(el => {
-      const key = `${el.name || ''} ${el.id || ''} ${el.placeholder || ''} ${el.getAttribute('aria-label') || ''}`;
-      const isNarrativeTextarea = el.tagName === 'TEXTAREA' && !skipHints.test(key);
-      return el.value?.trim().length >= 3 && (isNarrativeTextarea || narrativeHints.test(key)) && !skipHints.test(key);
+      // Identify narrative fields by id/name/aria-label only (not placeholder text),
+      // so fields whose placeholder mentions "name"/"location" are still reviewed.
+      const idKey = `${el.name || ''} ${el.id || ''} ${el.getAttribute('aria-label') || ''}`;
+      if (el.tagName === 'TEXTAREA') {
+        return el.value?.trim().length >= 3 && !skipHints.test(idKey);
+      }
+      return el.value?.trim().length >= 3 && narrativeHints.test(idKey) && !skipHints.test(idKey);
     });
     if (!controls.length) {
       toast.error('Add report narrative details before requesting AI review.');

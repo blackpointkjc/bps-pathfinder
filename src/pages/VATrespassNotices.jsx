@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserX, Plus, AlertTriangle, Printer, Eye, Search, Clock, Pencil, Camera } from "lucide-react";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -300,11 +301,15 @@ export default function VATrespassNotices() {
       queryClient.invalidateQueries({ queryKey: ['allTrespassingNotices'] });
       if (!variables.isDraft) {
         resetForm();
+      } else {
+        toast.success('Draft saved successfully.');
       }
       setSaving(false);
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Error saving report:', error);
       setSaving(false);
+      toast.error(error?.message || 'Failed to save report. Please try again.');
     }
   });
 

@@ -14,9 +14,21 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
+import { toast } from 'sonner';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/c29aab328_c3ff2618-4412-4498-8923-8f484a9469b8-2533645741.jpeg";
 const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
+
+// Build an incident description that references the CAD number instead of the
+// upstream GRAC feed tag (e.g. "VANDALISM at ... [GRAC:abc]" -> "VANDALISM at ... [CAD:B1123]").
+function buildCallDescription(raw, cadNumber) {
+  const base = String(raw || '').replace(/\s*\[GRAC:[^\]]*\]\s*/g, ' ').replace(/\s+/g, ' ').trim();
+  const cad = String(cadNumber || '').trim();
+  if (cad && /^B\d+$/i.test(cad)) {
+    return base ? `${base} [CAD:${cad}]` : `[CAD:${cad}]`;
+  }
+  return base;
+}
 
 export default function IncidentReports() {
   const [showForm, setShowForm] = useState(false);
@@ -67,7 +79,7 @@ export default function IncidentReports() {
         location: urlParams.get('location') || formData.location,
         incident_type: urlParams.get('incident_type') || formData.incident_type,
         incident_time: urlParams.get('incident_time') || formData.incident_time,
-        description: urlParams.get('description') || formData.description,
+        description: buildCallDescription(urlParams.get('description') || formData.description, urlParams.get('call_number') || urlParams.get('call_id') || ''),
       });
       setShowForm(true);
     }
@@ -170,7 +182,7 @@ export default function IncidentReports() {
       primary_officer_name: primary ? `${primary.rank || ''} ${primary.first_name || ''} ${primary.last_name || ''}`.replace(/\s+/g, ' ').trim() : '',
       backup_officer_ids: call.assigned_units?.slice(1) || [],
       location: call.location || prev.location,
-      description: prev.description || call.description || '',
+      description: buildCallDescription(prev.description || call.description || '', call.call_id || ''),
     }));
   };
 
@@ -246,7 +258,10 @@ Provide:
       // Get officer's IP address
       let ipAddress = 'Unknown';
       try {
-        const ipResponse = await fetch('https://api.ipify.org?format=json');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const ipResponse = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+        clearTimeout(timeoutId);
         const ipData = await ipResponse.json();
         ipAddress = ipData.ip;
       } catch (error) {
@@ -301,17 +316,21 @@ Provide:
         });
 
         if (data.linked_call_id) {
-          await base44.entities.ReportCallLink.create({
-            call_id: data.linked_call_id,
-            call_number: data.linked_call_number || '',
-            report_type: 'IncidentReport',
-            report_id: report.id,
-            report_number: newReportNumber,
-            primary_officer_id: data.primary_officer_id || '',
-            primary_officer_name: data.primary_officer_name || '',
-            linked_at: new Date().toISOString(),
-            status: 'active',
-          });
+          try {
+            await base44.entities.ReportCallLink.create({
+              call_id: data.linked_call_id,
+              call_number: data.linked_call_number || '',
+              report_type: 'IncidentReport',
+              report_id: report.id,
+              report_number: newReportNumber,
+              primary_officer_id: data.primary_officer_id || '',
+              primary_officer_name: data.primary_officer_name || '',
+              linked_at: new Date().toISOString(),
+              status: 'active',
+            });
+          } catch (linkError) {
+            console.error('Failed to link report to call:', linkError);
+          }
         }
 
         // Alert supervisors if critical
@@ -340,11 +359,15 @@ Provide:
 
       if (!variables.isDraft) {
         resetForm();
+      } else {
+        toast.success('Draft saved successfully.');
       }
       setSaving(false);
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Error saving incident report:', error);
       setSaving(false);
+      toast.error(error?.message || 'Failed to save report. Please try again.');
     }
   });
 
@@ -445,7 +468,7 @@ Provide:
       location: report.location,
       specific_location: report.specific_location || "",
       incident_type: report.incident_type,
-      description: report.description,
+      description: buildCallDescription(report.description, report.linked_call_number || ''),
       suspect_description: report.suspect_description || "",
       suspect_vehicle: report.suspect_vehicle || "",
       persons_involved: report.persons_involved || "",
