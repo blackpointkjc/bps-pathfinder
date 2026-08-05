@@ -311,8 +311,125 @@ html.bps-night-mode {
 
 html.bps-night-mode [role="dialog"],
 html.bps-night-mode [role="listbox"],
-html.bps-night-mode [data-radix-popper-content-wrapper] > div {
+html.bps-night-mode [data-radix-popper-content-wrapper] > div,
+html.bps-night-mode [data-radix-dialog-content],
+html.bps-night-mode [data-radix-popper-content-wrapper] > * {
   color: hsl(var(--popover-foreground));
+}
+
+/* Theme all dialog/popover portals so popups match the workspace (no white cards). */
+html.bps-night-mode [role="dialog"],
+html.bps-night-mode [data-radix-dialog-content],
+html.bps-night-mode [data-radix-popper-content-wrapper] > div {
+  background-color: #111d2b !important;
+  border-color: #2b4158 !important;
+  color: #e5edf5 !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 28px rgba(0,0,0,.32) !important;
+}
+
+html.bps-night-mode [role="dialog"] .bg-white,
+html.bps-night-mode [role="dialog"] .bg-slate-50,
+html.bps-night-mode [role="dialog"] .bg-slate-100,
+html.bps-night-mode [data-radix-dialog-content] .bg-white,
+html.bps-night-mode [data-radix-dialog-content] .bg-slate-50,
+html.bps-night-mode [data-radix-dialog-content] .bg-slate-100,
+html.bps-night-mode [role="dialog"] [class*="bg-blue-50"],
+html.bps-night-mode [role="dialog"] [class*="bg-purple-50"],
+html.bps-night-mode [role="dialog"] [class*="bg-indigo-50"],
+html.bps-night-mode [role="dialog"] [class*="bg-green-50"],
+html.bps-night-mode [role="dialog"] [class*="bg-emerald-50"],
+html.bps-night-mode [role="dialog"] [class*="bg-amber-50"],
+html.bps-night-mode [role="dialog"] [class*="bg-orange-50"],
+html.bps-night-mode [role="dialog"] [class*="bg-red-50"],
+html.bps-night-mode [role="dialog"] [class*="bg-rose-50"],
+html.bps-night-mode [role="dialog"] [class*="bg-cyan-50"],
+html.bps-night-mode [data-radix-dialog-content] [class*="bg-blue-50"],
+html.bps-night-mode [data-radix-dialog-content] [class*="bg-purple-50"],
+html.bps-night-mode [data-radix-dialog-content] [class*="bg-indigo-50"],
+html.bps-night-mode [data-radix-dialog-content] [class*="bg-green-50"],
+html.bps-night-mode [data-radix-dialog-content] [class*="bg-emerald-50"],
+html.bps-night-mode [data-radix-dialog-content] [class*="bg-amber-50"],
+html.bps-night-mode [data-radix-dialog-content] [class*="bg-orange-50"],
+html.bps-night-mode [data-radix-dialog-content] [class*="bg-red-50"],
+html.bps-night-mode [data-radix-dialog-content] [class*="bg-rose-50"],
+html.bps-night-mode [data-radix-dialog-content] [class*="bg-cyan-50"] {
+  background-color: #0d1825 !important;
+  color: #e5edf5 !important;
+  border-color: #2b4158 !important;
+}
+
+html.bps-night-mode [role="dialog"] [class*="border-slate-200"],
+html.bps-night-mode [role="dialog"] [class*="border-slate-300"],
+html.bps-night-mode [role="dialog"] [class*="border-slate-400"],
+html.bps-night-mode [data-radix-dialog-content] [class*="border-slate-200"],
+html.bps-night-mode [data-radix-dialog-content] [class*="border-slate-300"],
+html.bps-night-mode [data-radix-dialog-content] [class*="border-slate-400"] {
+  border-color: #2b4158 !important;
+}
+
+html.bps-night-mode [role="dialog"] .text-slate-900,
+html.bps-night-mode [role="dialog"] .text-slate-800,
+html.bps-night-mode [role="dialog"] .text-slate-700,
+html.bps-night-mode [data-radix-dialog-content] .text-slate-900,
+html.bps-night-mode [data-radix-dialog-content] .text-slate-800,
+html.bps-night-mode [data-radix-dialog-content] .text-slate-700 {
+  color: #f8fafc !important;
+}
+
+html.bps-night-mode [role="dialog"] .text-slate-600,
+html.bps-night-mode [role="dialog"] .text-slate-500,
+html.bps-night-mode [role="dialog"] .text-slate-400,
+html.bps-night-mode [data-radix-dialog-content] .text-slate-600,
+html.bps-night-mode [data-radix-dialog-content] .text-slate-500,
+html.bps-night-mode [data-radix-dialog-content] .text-slate-400 {
+  color: #b4c3d2 !important;
+}
+
+html.bps-night-mode [role="dialog"] input,
+html.bps-night-mode [role="dialog"] textarea,
+html.bps-night-mode [role="dialog"] select,
+html.bps-night-mode [role="dialog"] [role="combobox"],
+html.bps-night-mode [data-radix-dialog-content] input,
+html.bps-night-mode [data-radix-dialog-content] textarea,
+html.bps-night-mode [data-radix-dialog-content] select,
+html.bps-night-mode [data-radix-dialog-content] [role="combobox"] {
+  background-color: #0d1825 !important;
+  border-color: #3a526b !important;
+  color: #f8fafc !important;
+}
+
+html.bps-night-mode [role="dialog"] input::placeholder,
+html.bps-night-mode [role="dialog"] textarea::placeholder,
+html.bps-night-mode [data-radix-dialog-content] input::placeholder,
+html.bps-night-mode [data-radix-dialog-content] textarea::placeholder {
+  color: #8399ae !important;
+}
+
+html.bps-night-mode [role="dialog"] table,
+html.bps-night-mode [data-radix-dialog-content] table {
+  background-color: #111d2b !important;
+  color: #e5edf5 !important;
+}
+
+html.bps-night-mode [role="dialog"] thead,
+html.bps-night-mode [data-radix-dialog-content] thead {
+  background-color: #172638 !important;
+  background-image: none !important;
+}
+
+html.bps-night-mode [role="dialog"] button[class*="bg-blue-"],
+html.bps-night-mode [role="dialog"] button[class*="bg-purple-"],
+html.bps-night-mode [role="dialog"] button[class*="bg-indigo-"],
+html.bps-night-mode [role="dialog"] button[class*="bg-green-"],
+html.bps-night-mode [role="dialog"] button[class*="bg-emerald-"],
+html.bps-night-mode [data-radix-dialog-content] button[class*="bg-blue-"],
+html.bps-night-mode [data-radix-dialog-content] button[class*="bg-purple-"],
+html.bps-night-mode [data-radix-dialog-content] button[class*="bg-indigo-"],
+html.bps-night-mode [data-radix-dialog-content] button[class*="bg-green-"],
+html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
+  background-color: #1e4e78 !important;
+  border-color: #3b6f9d !important;
+  color: #ffffff !important;
 }
 
 .cad-app main.night-workspace {
