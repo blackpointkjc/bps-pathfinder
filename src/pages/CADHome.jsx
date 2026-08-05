@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
@@ -40,14 +40,37 @@ export default function CADHome() {
     const [sortOrder, setSortOrder] = useState('desc');
     const [refreshing, setRefreshing] = useState(false);
     const [updatingStatus, setUpdatingStatus] = useState(false);
+    const syncingGracRef = useRef(false);
 
     useEffect(() => {
         init();
         
-        // Real-time polling every 30 seconds
-        const interval = setInterval(loadData, 30000);
-        
-        return () => clearInterval(interval);
+        const syncLiveFeed = async () => {
+            if (syncingGracRef.current || document.hidden) return;
+            syncingGracRef.current = true;
+            try {
+                await base44.functions.invoke('ingestGractivecalls', {});
+                await loadData();
+            } catch (error) {
+                console.warn('GRAC live sync failed:', error?.message);
+            } finally {
+                syncingGracRef.current = false;
+            }
+        };
+
+        syncLiveFeed();
+        const syncInterval = setInterval(syncLiveFeed, 10000);
+        const localInterval = setInterval(loadData, 5000);
+        const onVisibility = () => {
+            if (!document.hidden) syncLiveFeed();
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+
+        return () => {
+            clearInterval(syncInterval);
+            clearInterval(localInterval);
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
     }, [sortOrder]);
 
     const init = async () => {
