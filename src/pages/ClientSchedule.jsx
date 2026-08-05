@@ -93,7 +93,10 @@ export default function ClientSchedule() {
 
   const getOfficerFullDisplay = (email) => {
     if (email === 'OPEN') return 'OPEN SHIFT';
-    return 'Redacted';
+    if (!email || !allUsers?.length) return 'Officer';
+    const officer = allUsers.find(u => u.email === email);
+    if (!officer) return 'Officer';
+    return [officer.rank, officer.last_name].filter(Boolean).join(' ') || 'Officer';
   };
 
   const getOfficerRank = (email) => {

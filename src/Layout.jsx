@@ -165,7 +165,6 @@ const CENTER_CONFIG = {
         ['Compliance Tracker', 'TrainingComplianceTracker', BarChart3],
         ['Certification Alerts', 'AdminCertificationAlerts', Bell],
         ['Manage Students', 'ManageStudents', Users],
-        ['Student Portal', 'StudentPortal', GraduationCap],
         ['Training Records', 'TrainingRecords', BookOpen],
       ]},
     ],
@@ -204,6 +203,15 @@ const CENTER_CONFIG = {
         ['Tax Liability', 'AccountingTaxLiability', ClipboardList],
         ['W-2 Generator', 'AccountingW2Generator', FileText],
         ['Expense Approval', 'AdminExpenseApproval', ClipboardCheck],
+      ]},
+    ],
+  },
+  student: {
+    label: 'Student Portal',
+    icon: GraduationCap,
+    groups: [
+      { label: 'Training Portal', items: [
+        ['My Training', 'StudentPortal', GraduationCap],
       ]},
     ],
   },
@@ -259,6 +267,7 @@ function roleName(user) {
   if (hasRole(user, 'hr')) return 'HUMAN RESOURCES';
   if (hasRole(user, 'accounting')) return 'ACCOUNTING';
   if (hasRole(user, 'trainer')) return 'TRAINER';
+  if (hasRole(user, 'student')) return 'STUDENT';
   if (hasRole(user, 'officer')) return 'OFFICER';
   return 'AUTHORIZED EMPLOYEE';
 }
@@ -268,6 +277,10 @@ function allowedCenters(user) {
   const fullAccess = hasFullAccess(user);
   const centers = [];
 
+  // Portal-only identities are isolated unless they also have Full Access.
+  if (!fullAccess && (roles.has('client') || user?.user_type === 'client')) return ['client'];
+  if (!fullAccess && roles.has('student')) return ['student'];
+
   if (fullAccess || user?.role === 'dispatch' || roles.has('cad_access') || roles.has('officer') || roles.has('supervisor')) centers.push('cad');
   if (fullAccess || roles.has('officer')) centers.push('officer');
   if (fullAccess || roles.has('supervisor')) centers.push('supervisor');
@@ -276,6 +289,7 @@ function allowedCenters(user) {
   if (fullAccess || roles.has('trainer')) centers.push('training');
   if (fullAccess || roles.has('accounting')) centers.push('accounting');
   if (fullAccess || roles.has('client') || user?.user_type === 'client') centers.push('client');
+  if (fullAccess || roles.has('student')) centers.push('student');
 
   return [...new Set(centers)];
 }
