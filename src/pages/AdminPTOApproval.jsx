@@ -45,8 +45,9 @@ export default function AdminPTOApproval() {
     queryKey: ['allPTORequestsForHR'],
     queryFn: async () => {
       const result = await base44.functions.invoke('getPTORequests', {});
-      if (result?.error) throw new Error(result.error);
-      return result?.requests || [];
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.requests || [];
     },
     enabled: hasHRAccess,
     initialData: [],
