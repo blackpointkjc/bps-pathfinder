@@ -52,7 +52,10 @@ export default function ManageCompanyEmployees() {
     queryFn: () => base44.auth.me(),
   });
 
-  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('trainer');
+  const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const canManageEmployees = user?.role === 'admin' || userRoles.has('full_access') || userRoles.has('trainer');
+  const isHrReadOnly = userRoles.has('hr') && !canManageEmployees;
+  const hasAccess = canManageEmployees || isHrReadOnly;
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
@@ -224,7 +227,7 @@ export default function ManageCompanyEmployees() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!editingUser) return;
+    if (!editingUser || !canManageEmployees) return;
     const filteredData = Object.fromEntries(
       Object.entries(editFormData).filter(([key, value]) => {
         // Always include additional_roles even if empty array
@@ -296,9 +299,9 @@ export default function ManageCompanyEmployees() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => handleEditUser(userData)}>
-              <Edit className="w-4 h-4 mr-2" />Edit
+              <Edit className="w-4 h-4 mr-2" />{canManageEmployees ? 'Edit' : 'View'}
             </Button>
-            {userData.additional_roles?.includes('officer') && !isTerminated && (
+            {canManageEmployees && userData.additional_roles?.includes('officer') && !isTerminated && (
               <Button
                 variant="outline"
                 size="sm"
@@ -369,7 +372,15 @@ export default function ManageCompanyEmployees() {
       {/* Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Edit Employee Information</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{canManageEmployees ? 'Edit Employee Information' : 'Employee Information'}</DialogTitle>
+          </DialogHeader>
+          {isHrReadOnly && (
+            <Alert>
+              <Shield className="h-4 w-4" />
+              <AlertDescription>HR access is view-only. A Trainer, Full Access user, or system administrator must update employee and certification records.</AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Photo */}
             <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-lg border">
