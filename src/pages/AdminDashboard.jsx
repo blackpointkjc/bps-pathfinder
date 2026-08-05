@@ -85,7 +85,7 @@ export default function AdminDashboard() {
     { id: "supervisor_reports", title: "Supervisor Reports", icon: UserCheck, url: createPageUrl("AdminSupervisorReports"), category: "reports" },
     { id: "confidential", title: "Confidential Reports", icon: ShieldCheck, url: createPageUrl("AdminConfidentialReports"), category: "reports" },
     // Scheduling
-    { id: "time_entries", title: "Time Entries", icon: Clock, url: createPageUrl("AdminTimeEntries"), category: "scheduling" },
+    { id: "time_entries", title: "Manage Time Entries", icon: Clock, url: createPageUrl("ManageTimeEntries"), category: "scheduling" },
     { id: "scheduling", title: "Scheduling", icon: Calendar, url: createPageUrl("AdminScheduling"), category: "scheduling" },
     { id: "shift_bids", title: "Shift Bids", icon: Briefcase, url: createPageUrl("AdminShiftBids"), category: "scheduling" },
     { id: "officer_mgmt", title: "Officer Management", icon: CalendarClock, url: createPageUrl("AdminOfficerManagement"), category: "scheduling" },
