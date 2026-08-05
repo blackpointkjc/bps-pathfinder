@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,9 @@ export default function AdminPayrollConfig() {
     queryKey: ['currentUser'],
     queryFn: () => base44.auth.me(),
   });
+
+  const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const hasAccountingAccess = user?.role === 'admin' || roles.has('accounting') || roles.has('full_access');
 
   const { data: config } = useQuery({
     queryKey: ['payrollConfig'],
@@ -41,6 +44,10 @@ export default function AdminPayrollConfig() {
     state_tax_id_md: '',
     pay_schedule: 'biweekly',
   });
+
+  useEffect(() => {
+    if (config) setFormData(config);
+  }, [config]);
 
   const updateConfigMutation = useMutation({
     mutationFn: (data) => {
@@ -74,14 +81,14 @@ export default function AdminPayrollConfig() {
     updateConfigMutation.mutate(formData);
   };
 
-  if (!user || user.role !== 'admin') {
+  if (!user || !hasAccountingAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
         <Card className="max-w-md">
           <CardContent className="p-8 text-center">
             <AlertCircle className="w-16 h-16 mx-auto mb-4 text-amber-600" />
             <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-            <p className="text-slate-600">Admin access required.</p>
+            <p className="text-slate-600">Accounting access required.</p>
           </CardContent>
         </Card>
       </div>
@@ -122,10 +129,9 @@ export default function AdminPayrollConfig() {
               <Input
                 id="company_legal_name"
                 value={formData.company_legal_name || ''}
-                disabled
-                className="bg-slate-100 cursor-not-allowed"
+                onChange={(e) => handleChange('company_legal_name', e.target.value)}
               />
-              <p className="text-xs text-slate-500 mt-1">Locked - Contact support to change</p>
+
             </div>
 
             <div>
@@ -133,10 +139,9 @@ export default function AdminPayrollConfig() {
               <Input
                 id="company_address"
                 value={formData.company_address || ''}
-                disabled
-                className="bg-slate-100 cursor-not-allowed"
+                onChange={(e) => handleChange('company_address', e.target.value)}
               />
-              <p className="text-xs text-slate-500 mt-1">Locked - Contact support to change</p>
+
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -156,10 +161,9 @@ export default function AdminPayrollConfig() {
                   id="payroll_email"
                   type="email"
                   value={formData.payroll_email || ''}
-                  disabled
-                  className="bg-slate-100 cursor-not-allowed"
+                  onChange={(e) => handleChange('payroll_email', e.target.value)}
                 />
-                <p className="text-xs text-slate-500 mt-1">Locked - Contact support to change</p>
+  
               </div>
             </div>
           </CardContent>
@@ -176,10 +180,9 @@ export default function AdminPayrollConfig() {
               <Input
                 id="employer_ein"
                 value={formData.employer_ein || ''}
-                disabled
-                className="bg-slate-100 cursor-not-allowed"
+                onChange={(e) => handleChange('employer_ein', e.target.value)}
               />
-              <p className="text-xs text-slate-500 mt-1">Locked - Contact support to change</p>
+
             </div>
 
             <div>
