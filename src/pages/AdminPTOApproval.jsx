@@ -59,7 +59,7 @@ export default function AdminPTOApproval() {
 
   const pendingRequests = allPTORequests.filter(request => String(request.status || '').toLowerCase() === 'pending');
   const reviewedRequests = allPTORequests
-    .filter(request => ['approved', 'denied', 'cancelled'].includes(String(request.status || '').toLowerCase()))
+    .filter(request => ['approved', 'denied'].includes(String(request.status || '').toLowerCase()))
     .sort((a, b) => new Date(b.reviewed_date || b.updated_date || b.created_date || 0) - new Date(a.reviewed_date || a.updated_date || a.created_date || 0));
 
   const getAdminName = (email) => {
@@ -207,7 +207,7 @@ export default function AdminPTOApproval() {
       const response = await base44.functions.invoke('getPTORequests', {
         action: 'cancel_approved',
         request_id: request.id,
-        admin_notes: 'Approved PTO removed from HR history view.',
+        admin_notes: 'Approved PTO removed by HR and hours restored.',
       });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
@@ -216,7 +216,7 @@ export default function AdminPTOApproval() {
     onSuccess: payload => {
       queryClient.invalidateQueries({ queryKey: ['allPTORequestsForHR'] });
       queryClient.invalidateQueries({ queryKey: ['hrUsers'] });
-      toast.success(`${Number(payload.restored_hours || 0).toFixed(1)} PTO hours restored`);
+      toast.success(`Request removed and ${Number(payload.restored_hours || 0).toFixed(1)} PTO hours restored`);
     },
     onError: error => toast.error(error?.message || 'Unable to remove approved PTO'),
   });
@@ -400,12 +400,10 @@ export default function AdminPTOApproval() {
                           }}
                           className="border-amber-500 text-amber-700 hover:bg-amber-50"
                         >
-                          <RotateCcw className="mr-1 h-3.5 w-3.5" /> Restore Hours
+                          <RotateCcw className="mr-1 h-3.5 w-3.5" /> Remove & Restore
                         </Button>
                       )}
-                      {request.status === 'cancelled' && Number(request.hours_restored || 0) > 0 && (
-                        <p className="text-xs font-medium text-emerald-600">{Number(request.hours_restored).toFixed(1)}h restored</p>
-                      )}
+
                     </div>
                   </div>
                 </div>
