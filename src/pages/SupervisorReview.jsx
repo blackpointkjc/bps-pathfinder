@@ -6,9 +6,7 @@ const STATUS_COLOR = {
   'New':               'text-slate-400',
   'Pending Dispatch':  'text-yellow-400',
   'Dispatched':        'text-blue-400',
-  'Enroute':          'text-blue-300',
   'Enroute':           'text-blue-300',
-  'On Scene':          'text-yellow-300',
   'On Scene':           'text-yellow-300',
   'Backup Requested':  'text-red-400 font-bold',
   'Report Taken':      'text-purple-400',
@@ -29,11 +27,7 @@ const UNIT_STATUS_DOT = {
   'Enroute':       'bg-blue-400',
   'Dispatched':     'bg-blue-500',
   'Busy':           'bg-orange-400',
-  'Transporting':   'bg-purple-400',
-  'At Station':     'bg-slate-400',
-  'Meal Break':     'bg-purple-400',
   'Out of Service': 'bg-red-400',
-  'Off Duty':       'bg-slate-600',
 };
 
 export default function SupervisorReview() {
