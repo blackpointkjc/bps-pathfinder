@@ -225,20 +225,10 @@ export default function ManageClients() {
             <Briefcase className="w-8 h-8 text-purple-600" />
             <div>
               <h1 className="text-3xl font-bold text-slate-900">Manage Clients</h1>
-              <p className="text-slate-600">Create and manage client portal accounts</p>
+              <p className="text-slate-600">Manage clients assigned from Admin → Pending Users</p>
             </div>
           </div>
-          <Button
-            onClick={() => {
-              setEditingClient(null);
-              resetForm();
-              setShowDialog(true);
-            }}
-            className="bg-purple-600 hover:bg-purple-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Client
-          </Button>
+          <Badge className="border border-purple-500/40 bg-purple-950/40 text-purple-200">Assigned through Admin → Pending Users</Badge>
         </div>
 
         <Card className="border-none shadow-lg">
@@ -300,7 +290,7 @@ export default function ManageClients() {
               {!clientUsers?.length && (
                 <div className="text-center py-12 text-slate-500">
                   <Briefcase className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                  <p>No client accounts yet. Add your first client to get started.</p>
+                  <p>No clients are assigned. Assign a pending user as Client from Admin → Pending Users.</p>
                 </div>
               )}
             </div>
@@ -311,7 +301,7 @@ export default function ManageClients() {
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingClient ? 'Edit Client' : 'Add New Client'}</DialogTitle>
+            <DialogTitle>Edit Client</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
