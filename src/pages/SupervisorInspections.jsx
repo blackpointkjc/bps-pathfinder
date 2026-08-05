@@ -80,10 +80,14 @@ export default function SupervisorInspections() {
     return officerRankOrder > userRankOrder || (u.unit_number && officerUnitNumber < userUnitNumber);
   });
 
-  const { data: inspections } = useQuery({
+  const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const hasSupervisorAccess = user?.role === 'admin' || userRoles.has('full_access') || userRoles.has('supervisor');
+
+  const { data: inspections = [], isLoading: inspectionsLoading, error: inspectionsError } = useQuery({
     queryKey: ['inspectionReports'],
     queryFn: () => base44.entities.InspectionReport.list('-created_date'),
-    enabled: user?.additional_roles?.includes('supervisor'),
+    enabled: hasSupervisorAccess,
+    initialData: [],
   });
 
   const createInspectionMutation = useMutation({
@@ -114,17 +118,20 @@ export default function SupervisorInspections() {
     createInspectionMutation.mutate(formData);
   };
 
+  const normalizeRating = (rating) => String(rating || 'not_rated');
+  const formatRating = (rating) => normalizeRating(rating).replaceAll('_', ' ');
+
   const getRatingColor = (rating) => {
-    switch (rating) {
+    switch (normalizeRating(rating)) {
       case 'excellent': return 'bg-green-100 text-green-800 border-green-200';
       case 'satisfactory': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'needs_improvement': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'unsatisfactory': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-slate-100 text-slate-800 border-slate-200';
+      default: return 'bg-slate-800 text-slate-200 border-slate-600';
     }
   };
 
-  if (!user?.additional_roles?.includes('supervisor')) {
+  if (!hasSupervisorAccess) {
     return (
       <div className="p-8 text-center">
         <UserCheck className="w-16 h-16 mx-auto mb-4 text-slate-400" />
@@ -135,12 +142,12 @@ export default function SupervisorInspections() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
+    <div className="p-4 md:p-8 min-h-screen bg-[#0b1420] text-slate-100">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Officer Inspections</h1>
-            <p className="text-slate-600">Conduct and track security officer inspections</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Officer Inspections</h1>
+            <p className="text-slate-400">Conduct, complete, and track officer inspections</p>
           </div>
           <Button
             onClick={() => setShowForm(!showForm)}
@@ -399,27 +406,31 @@ export default function SupervisorInspections() {
           </Card>
         )}
 
-        <Card className="border-none shadow-lg">
-          <CardHeader>
-            <CardTitle>Inspection History</CardTitle>
+        <Card className="border border-slate-700 bg-[#111d2b] shadow-lg">
+          <CardHeader className="border-b border-slate-700">
+            <CardTitle className="text-white">Inspection History</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {inspections?.map((inspection) => (
-                <div key={inspection.id} className="p-5 bg-slate-50 rounded-lg border border-slate-200">
+              {inspectionsLoading && <p className="py-8 text-center text-slate-400">Loading inspections...</p>}
+              {inspectionsError && <div className="rounded-lg border border-red-800 bg-red-950/30 p-4 text-red-200">Unable to load inspections: {inspectionsError.message}</div>}
+              {!inspectionsLoading && !inspectionsError && inspections.map((inspection) => (
+                <div key={inspection.id} className="rounded-lg border border-slate-700 bg-[#0d1825] p-5">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <p className="font-bold text-slate-900 text-lg">{inspection.officer_inspected}</p>
-                      <p className="text-sm text-slate-600">
-                        {format(new Date(inspection.inspection_date), 'MMM d, yyyy h:mm a')} - {inspection.location}
+                      <p className="font-bold text-white text-lg">{inspection.officer_inspected || 'Officer not selected'}</p>
+                      <p className="text-sm text-slate-300">
+                        {inspection.inspection_date && !Number.isNaN(new Date(inspection.inspection_date).getTime()) ? format(new Date(inspection.inspection_date), 'MMM d, yyyy h:mm a') : 'Date pending'} - {inspection.location || 'Location pending'}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1">Inspected by: {inspection.created_by}</p>
+                      <p className="text-xs text-slate-500 mt-1">Inspected by: {inspection.created_by || 'Draft from site check'}</p>
                     </div>
                     <div className="flex gap-2">
-                      {inspection.inspection_result && (
-                        <Badge className={inspection.inspection_result === 'pass' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}>
+                      {inspection.inspection_result ? (
+                        <Badge className={inspection.inspection_result === 'pass' ? 'bg-green-700 text-white' : 'bg-red-700 text-white'}>
                           {inspection.inspection_result === 'pass' ? <><CheckCircle className="w-3 h-3 mr-1" />PASS</> : <><XCircle className="w-3 h-3 mr-1" />FAIL</>}
                         </Badge>
+                      ) : (
+                        <Badge className="border border-amber-600 bg-amber-950/40 text-amber-300">DRAFT — NEEDS COMPLETION</Badge>
                       )}
                       {inspection.follow_up_required && (
                         <Badge className="bg-amber-100 text-amber-800 border-amber-200">
@@ -432,25 +443,25 @@ export default function SupervisorInspections() {
                     <div>
                       <p className="text-xs text-slate-500 mb-1">Uniform</p>
                       <Badge variant="outline" className={getRatingColor(inspection.uniform_appearance)}>
-                        {inspection.uniform_appearance.replace('_', ' ')}
+                        {formatRating(inspection.uniform_appearance)}
                       </Badge>
                     </div>
                     <div>
                       <p className="text-xs text-slate-500 mb-1">Equipment</p>
                       <Badge variant="outline" className={getRatingColor(inspection.equipment_condition)}>
-                        {inspection.equipment_condition.replace('_', ' ')}
+                        {formatRating(inspection.equipment_condition)}
                       </Badge>
                     </div>
                     <div>
                       <p className="text-xs text-slate-500 mb-1">Post Knowledge</p>
                       <Badge variant="outline" className={getRatingColor(inspection.post_knowledge)}>
-                        {inspection.post_knowledge.replace('_', ' ')}
+                        {formatRating(inspection.post_knowledge)}
                       </Badge>
                     </div>
                     <div>
                       <p className="text-xs text-slate-500 mb-1">Professionalism</p>
                       <Badge variant="outline" className={getRatingColor(inspection.professionalism)}>
-                        {inspection.professionalism.replace('_', ' ')}
+                        {formatRating(inspection.professionalism)}
                       </Badge>
                     </div>
                   </div>
@@ -474,8 +485,8 @@ export default function SupervisorInspections() {
                   )}
                 </div>
               ))}
-              {!inspections?.length && (
-                <p className="text-center text-slate-500 py-8">No inspections yet</p>
+              {!inspectionsLoading && !inspectionsError && inspections.length === 0 && (
+                <p className="text-center text-slate-400 py-8">No inspections have been created yet.</p>
               )}
             </div>
           </CardContent>
