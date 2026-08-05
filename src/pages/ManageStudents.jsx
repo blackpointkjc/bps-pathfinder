@@ -29,9 +29,8 @@ export default function ManageStudents() {
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ['trainingUsers'],
     queryFn: async () => {
-      const response = await base44.functions.invoke('getTrainingUsers', {});
-      if (response?.error) throw new Error(response.error);
-      return response?.users || [];
+      const allUsers = await base44.entities.User.list(undefined, 1000) || [];
+      return allUsers.filter(u => !u.termination_date);
     },
     enabled: hasAccess,
   });

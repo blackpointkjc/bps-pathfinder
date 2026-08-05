@@ -55,9 +55,13 @@ export default function ManageClients() {
   const { data: clientUsers = [] } = useQuery({
     queryKey: ['clientUsers'],
     queryFn: async () => {
-      const response = await base44.functions.invoke('getClientUsers', {});
-      if (response?.error) throw new Error(response.error);
-      return response?.clients || [];
+      const allUsers = await base44.entities.User.list(undefined, 1000) || [];
+      return allUsers
+        .filter(u => {
+          const roles = (u.additional_roles || []).map(r => String(r).toLowerCase());
+          return !u.termination_date && (roles.includes('client') || String(u.rank || '').toLowerCase() === 'client');
+        })
+        .sort((a, b) => `${a.last_name || ''} ${a.first_name || ''}`.localeCompare(`${b.last_name || ''} ${b.first_name || ''}`));
     },
     enabled: hasAccess,
     initialData: [],
