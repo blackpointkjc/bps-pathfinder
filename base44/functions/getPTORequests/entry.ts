@@ -75,6 +75,37 @@ Deno.serve(async (req) => {
       return Response.json({ success: true });
     }
 
+    if (action === 'cancel_approved') {
+      const { request_id, admin_notes = '' } = body;
+      if (!request_id) return Response.json({ error: 'PTO request is required' }, { status: 400 });
+      const all = await base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000);
+      const request = (all || []).find((entry: any) => entry.id === request_id);
+      if (!request) return Response.json({ error: 'PTO request not found' }, { status: 404 });
+      if (request.status !== 'approved') return Response.json({ error: 'Only approved PTO requests can be removed' }, { status: 400 });
+      if (String(request.admin_notes || '').startsWith('Manual ')) return Response.json({ error: 'Manual balance entries must be corrected from Manual PTO' }, { status: 400 });
+
+      const hours = Number(request.hours_requested || 0);
+      const officerEmail = request.requested_by_email || request.created_by;
+      if (request.request_type === 'paid' && officerEmail && hours > 0) {
+        const users = await base44.asServiceRole.entities.User.list();
+        const officer = (users || []).find((entry: any) => String(entry.email || '').toLowerCase() === String(officerEmail).toLowerCase());
+        if (!officer?.id) return Response.json({ error: 'Officer account not found; hours were not changed' }, { status: 404 });
+        await base44.asServiceRole.entities.User.update(officer.id, {
+          pto_balance_hours: Number(officer.pto_balance_hours || 0) + hours,
+          pto_year_to_date_used: Math.max(0, Number(officer.pto_year_to_date_used || 0) - hours),
+        });
+      }
+
+      await base44.asServiceRole.entities.TimeOffRequest.update(request_id, {
+        status: 'cancelled',
+        cancelled_by: user.email,
+        cancelled_date: new Date().toISOString(),
+        hours_restored: request.request_type === 'paid' ? hours : 0,
+        admin_notes: [request.admin_notes, admin_notes || 'Approved PTO removed by HR; hours restored.'].filter(Boolean).join(' | '),
+      });
+      return Response.json({ success: true, restored_hours: request.request_type === 'paid' ? hours : 0 });
+    }
+
     if (action === 'manual') {
       const { officer_email, start_date, end_date, pto_type = 'pto', hours, reason = '', remove_shifts = true } = body;
       if (!officer_email || !start_date || !end_date || !hours) {
