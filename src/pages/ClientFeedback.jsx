@@ -33,11 +33,11 @@ export default function ClientFeedback() {
 
   const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
 
-  const { data: officers } = useQuery({
-    queryKey: ['officers'],
+  const { data: officers = [] } = useQuery({
+    queryKey: ['clientFeedbackOfficerDirectory'],
     queryFn: async () => {
-      const users = await base44.entities.User.list();
-      return users.filter(u => !u.termination_date && u.role === 'user');
+      const response = await base44.functions.invoke('getClientOfficerDirectory', { officerEmails: [] });
+      return response?.data?.officers || response?.officers || [];
     },
     enabled: !!user,
   });
@@ -104,19 +104,7 @@ export default function ClientFeedback() {
     const officer = officers?.find(o => o.email === email);
     if (!officer) return email;
     
-    const lastName = officer.last_name || '';
-    const rank = officer.rank || '';
-    
-    if (rank && lastName) {
-      return `${rank} ${lastName}`;
-    }
-    if (lastName) {
-      return lastName;
-    }
-    if (rank) {
-      return rank;
-    }
-    return email;
+    return `${officer.rank || 'Officer'} ${officer.last_name || ''}`.trim();
   };
 
   return (
@@ -147,6 +135,21 @@ export default function ClientFeedback() {
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="officer_email">Officer *</Label>
+                    <select
+                      id="officer_email"
+                      value={formData.officer_email}
+                      onChange={(e) => setFormData({...formData, officer_email: e.target.value})}
+                      required
+                      className="w-full p-2 border rounded-lg"
+                    >
+                      <option value="">Select officer...</option>
+                      {officers.map((officer) => (
+                        <option key={officer.email} value={officer.email}>{getOfficerName(officer.email)}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="space-y-2">
                      <Label htmlFor="location">Location *</Label>
                     <select
