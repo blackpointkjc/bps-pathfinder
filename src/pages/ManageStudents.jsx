@@ -43,44 +43,25 @@ export default function ManageStudents() {
   });
 
 
-  const waitForInvitedUser = async (email) => {
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      const users = await base44.entities.User.list();
-      const invited = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-      if (invited) return invited;
-      await new Promise(resolve => setTimeout(resolve, 750));
-    }
-    return null;
-  };
-
   const createStudentMutation = useMutation({
     mutationFn: async (data) => {
-      const existingUsers = await base44.entities.User.list();
-      let studentUser = existingUsers.find(u => u.email?.toLowerCase() === data.email.toLowerCase());
-      if (!studentUser) {
-        const invitation = await base44.users.inviteUser(data.email, 'user');
-        studentUser = invitation?.user || (invitation?.id ? invitation : null) || await waitForInvitedUser(data.email);
-      }
-      if (!studentUser?.id) {
-        throw new Error('The invitation was sent, but the student record is not ready yet. Try again after the student accepts the invitation.');
-      }
-      return base44.entities.User.update(studentUser.id, {
+      const response = await base44.functions.invoke('createPortalAccount', {
+        accountType: 'student',
         first_name: data.first_name,
         last_name: data.last_name,
+        email: data.email,
         mobile_phone: data.mobile_phone,
-        rank: 'Student',
-        role: 'user',
-        additional_roles: ['student'],
-        assigned_location: null,
-        assigned_locations: [],
-        assigned_sites: [],
       });
+      if (response?.error) throw new Error(response.error);
+      return response;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowCreateDialog(false);
       setCreateForm({ first_name: '', last_name: '', email: '', mobile_phone: '' });
-      toast.success('Student invitation sent. Student Portal-only access assigned.');
+      toast.success(result?.assignment_pending
+        ? 'Invitation sent. Student Portal access will be assigned after acceptance.'
+        : 'Student invitation sent. Student Portal-only access assigned.');
     },
     onError: (err) => toast.error('Unable to create student: ' + err.message),
   });

@@ -61,54 +61,27 @@ export default function ManageClients() {
     enabled: hasAccess,
   });
 
-  const waitForInvitedUser = async (email) => {
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      const allUsers = await base44.entities.User.list();
-      const invitedUser = allUsers.find(u => u.email?.toLowerCase() === email.toLowerCase());
-      if (invitedUser) return invitedUser;
-      await new Promise(resolve => setTimeout(resolve, 750));
-    }
-    return null;
-  };
-
   const createClientMutation = useMutation({
     mutationFn: async (data) => {
-      const existingUsers = await base44.entities.User.list();
-      let clientUser = existingUsers.find(u => u.email?.toLowerCase() === data.email.toLowerCase());
-
-      if (!clientUser) {
-        const invitation = await base44.users.inviteUser(data.email, 'user');
-        clientUser = invitation?.user || (invitation?.id ? invitation : null) || await waitForInvitedUser(data.email);
-      }
-
-      if (!clientUser?.id) {
-        throw new Error('The invitation was sent, but the user record is not ready yet. Open Manage Clients again after the client accepts the invitation to finish assignment.');
-      }
-
-      const updated = await base44.entities.User.update(clientUser.id, {
+      const response = await base44.functions.invoke('createPortalAccount', {
+        accountType: 'client',
         first_name: data.first_name,
         last_name: data.last_name,
+        email: data.email,
         mobile_phone: data.mobile_phone,
-        role: 'user',
-        additional_roles: ['client'],
         assigned_location: data.property_name,
-        assigned_locations: [data.property_name],
-        assigned_sites: [data.property_name],
       });
-
-      const location = locations?.find(loc => loc.site_name === data.property_name);
-      if (location) {
-        await base44.entities.Location.update(location.id, { assigned_client_email: data.email });
-      }
-
-      return updated;
+      if (response?.error) throw new Error(response.error);
+      return response;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['clientUsers'] });
       queryClient.invalidateQueries({ queryKey: ['activeLocations'] });
       setShowDialog(false);
       resetForm();
-      alert('Client invitation sent and Client Portal access assigned.');
+      alert(result?.assignment_pending
+        ? 'Invitation sent. The client will be assigned after accepting the invitation.'
+        : 'Client invitation sent and Client Portal access assigned.');
     },
     onError: (error) => alert('Unable to create client account: ' + error.message),
   });

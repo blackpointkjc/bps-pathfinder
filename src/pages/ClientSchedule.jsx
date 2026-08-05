@@ -20,11 +20,6 @@ export default function ClientSchedule() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
-    staleTime: Infinity,
-  });
 
   const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
 
@@ -51,6 +46,19 @@ export default function ClientSchedule() {
     },
     enabled: !!effectiveLocation,
     staleTime: 30000,
+  });
+
+  const officerEmails = useMemo(() => [...new Set((schedules || []).map(s => s.officer_email).filter(email => email && email !== 'OPEN'))], [schedules]);
+
+  const { data: officerDirectory = [] } = useQuery({
+    queryKey: ['clientOfficerDirectory', officerEmails.join('|')],
+    queryFn: async () => {
+      if (!officerEmails.length) return [];
+      const result = await base44.functions.invoke('getClientOfficerDirectory', { officerEmails });
+      return result?.officers || [];
+    },
+    enabled: officerEmails.length > 0,
+    staleTime: 300000,
   });
 
   const weekStart = addWeeks(startOfWeek(new Date(), { weekStartsOn: 0 }), currentWeekOffset);
@@ -93,21 +101,21 @@ export default function ClientSchedule() {
 
   const getOfficerFullDisplay = (email) => {
     if (email === 'OPEN') return 'OPEN SHIFT';
-    if (!email || !allUsers?.length) return 'Officer';
-    const officer = allUsers.find(u => u.email === email);
+    if (!email || !officerDirectory?.length) return 'Officer';
+    const officer = officerDirectory.find(u => u.email === email);
     if (!officer) return 'Officer';
     return [officer.rank, officer.last_name].filter(Boolean).join(' ') || 'Officer';
   };
 
   const getOfficerRank = (email) => {
-    if (!email || !allUsers || allUsers.length === 0) return '';
-    const officer = allUsers.find(u => u.email === email);
+    if (!email || !officerDirectory?.length) return '';
+    const officer = officerDirectory.find(u => u.email === email);
     return officer?.rank || '';
   };
 
   const getOfficerUnitNumber = (email) => {
-    if (!email || !allUsers || allUsers.length === 0) return '';
-    const officer = allUsers.find(u => u.email === email);
+    if (!email || !officerDirectory?.length) return '';
+    const officer = officerDirectory.find(u => u.email === email);
     return officer?.unit_number || '';
   };
 
