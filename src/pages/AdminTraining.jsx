@@ -112,15 +112,18 @@ export default function AdminTraining() {
     initialData: [],
   });
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
+  const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const hasTrainingAccess = user?.role === 'admin' || userRoles.has('trainer') || userRoles.has('full_access');
+
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['trainingUsers'],
     queryFn: async () => {
-      const users = await base44.entities.User.list();
-      console.log('AdminTraining - Fetched users:', users);
-      return users;
+      const response = await base44.functions.invoke('getTrainingUsers', {});
+      if (response?.error) throw new Error(response.error);
+      return response?.users || [];
     },
-    enabled: user?.role === 'admin',
-    staleTime: 0,
+    enabled: hasTrainingAccess,
+    staleTime: 30000,
   });
 
   const { data: divisions } = useQuery({
