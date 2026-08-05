@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { GraduationCap, Users, Edit, ShieldAlert, CheckCircle, Clock, Mail, Save, X, UserCheck, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -22,7 +23,8 @@ export default function ManageStudents() {
     queryFn: () => base44.auth.me(),
   });
 
-  const hasAccess = currentUser?.role === 'admin' || currentUser?.additional_roles?.includes('full_access') || currentUser?.additional_roles?.includes('trainer');
+  const isSystemAdmin = currentUser?.role === 'admin';
+  const hasAccess = isSystemAdmin || currentUser?.additional_roles?.includes('full_access') || currentUser?.additional_roles?.includes('trainer');
 
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -72,7 +74,20 @@ export default function ManageStudents() {
   });
 
   const updateStudentMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.User.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      const requestedRole = data.role || 'user';
+      if (editingStudent?.role !== requestedRole) {
+        if (!isSystemAdmin) throw new Error('Only a current system administrator can grant or remove administrator status.');
+        const roleResult = await base44.functions.invoke('updateUser', {
+          userId: id,
+          updates: { role: requestedRole },
+        });
+        if (roleResult?.error) throw new Error(roleResult.error);
+      }
+      const profileData = { ...data };
+      delete profileData.role;
+      return base44.entities.User.update(id, profileData);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setEditingStudent(null);
@@ -120,6 +135,7 @@ export default function ManageStudents() {
       date_of_birth: student.date_of_birth || "",
       ssn: student.ssn || "",
       dcjs_number: student.dcjs_number || "",
+      role: student.role || "user",
     });
   };
 
@@ -295,6 +311,21 @@ export default function ManageStudents() {
               <Label className="text-xs text-slate-500">DCJS Number *</Label>
               <Input required value={editForm.dcjs_number || ""} onChange={(e) => setEditForm(p => ({ ...p, dcjs_number: e.target.value }))} />
             </div>
+            {isSystemAdmin && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-950/20 p-4">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="student_system_admin"
+                    checked={editForm.role === 'admin'}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, role: checked ? 'admin' : 'user' })}
+                  />
+                  <Label htmlFor="student_system_admin" className="cursor-pointer">
+                    <div className="font-bold text-amber-300">System Administrator</div>
+                    <div className="text-xs text-slate-400">Adds full administrative authority while retaining the Student Portal assignment.</div>
+                  </Label>
+                </div>
+              </div>
+            )}
             <div className="flex gap-3 pt-2">
               <Button type="button" variant="outline" className="flex-1" onClick={() => setEditingStudent(null)}>
                 <X className="w-4 h-4 mr-2" />Cancel
