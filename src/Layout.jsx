@@ -169,8 +169,7 @@ const CENTER_CONFIG = {
         ['Manage Time Entries', 'ManageTimeEntries', Clock3],
       ]},
       { label: 'Leave & Performance', items: [
-        ['PTO Approval', 'AdminPTOApproval', ClipboardCheck],
-        ['PTO Review', 'AdminPTOReview', ClipboardList],
+        ['PTO Approval & History', 'AdminPTOApproval', ClipboardCheck],
         ['Manual PTO', 'AdminManualPTO', CalendarClock],
         ['PTO Loss Report', 'AdminPTOLossReport', AlertTriangle],
         ['Performance Reviews', 'AdminPerformanceReviews', ClipboardCheck],
