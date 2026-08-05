@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Shield, Radio, Map as MapIcon, RefreshCw, Plus, Search, Clock3, MessageSquarePlus, AlertTriangle, History, FileText, Megaphone, Activity } from 'lucide-react';
+import { Shield, Radio, Map as MapIcon, RefreshCw, Plus, Search, Clock3, MessageSquarePlus, AlertTriangle, History, Megaphone, Activity } from 'lucide-react';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { createPageUrl } from '../utils';
 import { stopAllAlerts } from '@/utils/alertUtils';
@@ -369,8 +369,6 @@ export default function DispatchCenter() {
                     </button>
                     <button onClick={() => navigate(createPageUrl('BOLOAlerts'))}
                         className="flex items-center gap-1 px-2 py-1 border border-amber-600/60 text-amber-400 hover:text-white rounded text-[10px]"><Megaphone className="w-2.5 h-2.5" /> BOLO</button>
-                    <button onClick={() => navigate(createPageUrl('Reports'))}
-                        className="flex items-center gap-1 px-2 py-1 border border-slate-600 text-slate-400 hover:text-white rounded text-[10px]"><FileText className="w-2.5 h-2.5" /> REPORTS</button>
                     <button onClick={() => setShowMessaging(!showMessaging)}
                         className="flex items-center gap-1 px-2 py-1 border border-slate-600 text-slate-400 hover:text-white rounded text-[10px]"><MessageSquarePlus className="w-2.5 h-2.5" /> MSG</button>
                     {currentUser?.role === 'admin' && (
