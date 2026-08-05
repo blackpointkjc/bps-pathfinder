@@ -219,7 +219,7 @@ export default function OfficerProfile() {
               </div>
               <div>
                 <Label className="text-slate-600 text-sm">Phone</Label>
-                <p className="text-slate-900 font-medium">{user?.phone || 'N/A'}</p>
+                <p className="text-slate-900 font-medium">{user?.mobile_phone || user?.phone || 'N/A'}</p>
               </div>
               <div>
                 <Label className="text-slate-600 text-sm">Unit Number</Label>
