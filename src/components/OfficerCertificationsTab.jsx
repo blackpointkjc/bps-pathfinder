@@ -133,7 +133,7 @@ function CertFileUploader({ certFileUrl, onChange }) {
   );
 }
 
-export default function OfficerCertificationsTab({ editFormData, setEditFormData }) {
+export default function OfficerCertificationsTab({ editFormData, setEditFormData, readOnly = false }) {
   const [addMode, setAddMode] = useState(null); // 'dcjs' | 'company'
   const [newCert, setNewCert] = useState(BLANK_CERT);
   const [editingIdx, setEditingIdx] = useState(null);
@@ -143,6 +143,48 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
   const [dialogUploading, setDialogUploading] = useState(false);
 
   const certs = editFormData.officer_certifications || [];
+  const dcjsCerts = certs.filter(cert => cert.category === 'dcjs');
+  const companyCerts = certs.filter(cert => cert.category !== 'dcjs');
+
+  if (readOnly) {
+    const renderReadOnlyCert = (cert, index) => (
+      <div key={`${cert.course_id || cert.training_name}-${index}`} className="rounded-lg border border-slate-300 bg-slate-50 p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="font-semibold text-slate-900">{[cert.course_id, cert.training_name].filter(Boolean).join(' — ') || 'Certification'}</p>
+            <p className="mt-1 text-xs text-slate-500">
+              {cert.issue_date ? `Issued ${format(new Date(cert.issue_date), 'MM/dd/yyyy')}` : 'Issue date not recorded'}
+              {cert.expiration_date ? ` • Expires ${format(new Date(cert.expiration_date), 'MM/dd/yyyy')}` : ''}
+            </p>
+            {cert.certificate_number && <p className="mt-1 text-xs text-slate-600">Card/Certificate #: {cert.certificate_number}</p>}
+            {cert.notes && <p className="mt-1 text-xs text-slate-600">{cert.notes}</p>}
+          </div>
+          <StatusBadge cert={cert} />
+        </div>
+        {cert.cert_file_url && (
+          <a href={cert.cert_file_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline">
+            <FileText className="h-3.5 w-3.5" /> View certificate file
+          </a>
+        )}
+      </div>
+    );
+
+    return (
+      <div className="space-y-6">
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+          Certification records are view-only for HR. Training staff manage additions, renewals, files, and verification.
+        </div>
+        <section className="space-y-3">
+          <h4 className="font-bold text-slate-900">DCJS Certifications ({dcjsCerts.length})</h4>
+          {dcjsCerts.length ? dcjsCerts.map(renderReadOnlyCert) : <p className="text-sm italic text-slate-500">No DCJS certifications on file.</p>}
+        </section>
+        <section className="space-y-3">
+          <h4 className="font-bold text-slate-900">Company Certifications ({companyCerts.length})</h4>
+          {companyCerts.length ? companyCerts.map(renderReadOnlyCert) : <p className="text-sm italic text-slate-500">No company certifications on file.</p>}
+        </section>
+      </div>
+    );
+  }
 
   const saveCert = () => {
     const certToSave = { ...newCert };
@@ -222,8 +264,6 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
     setViewingCert({ ...viewingCert, cert_file_url: "" });
   };
 
-  const dcjsCerts = certs.filter(c => c.category === "dcjs");
-  const companyCerts = certs.filter(c => c.category === "company");
 
   const renderCertCard = (cert, i, borderColor, textColor) => {
     const realIdx = certs.indexOf(cert);
