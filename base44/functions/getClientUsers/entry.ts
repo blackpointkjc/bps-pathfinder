@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
     const authorized = currentUser.role === 'admin' || roles.has('accounting') || roles.has('hr') || roles.has('full_access');
     if (!authorized) return Response.json({ error: 'Client directory access required', clients: [] }, { status: 403 });
 
-    const allUsers = await base44.asServiceRole.entities.User.list();
+    const allUsers = await base44.asServiceRole.entities.User.list(undefined, 1000);
     const clients = (allUsers || [])
       .filter((entry: any) => {
         const entryRoles = (entry.additional_roles || []).map((role: string) => String(role).toLowerCase());
