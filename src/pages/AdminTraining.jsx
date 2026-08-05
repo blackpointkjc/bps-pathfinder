@@ -382,11 +382,11 @@ export default function AdminTraining() {
     a.remove();
   };
 
-  if (user?.role !== 'admin') {
+  if (!hasTrainingAccess) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Admin Access Required</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">Trainer Access Required</h2>
       </div>
     );
   }
