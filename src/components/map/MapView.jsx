@@ -181,9 +181,11 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
 
     // Determine tile layer URL based on base map type and theme
     const getTileLayerUrl = () => {
-        // During navigation, always use satellite
+        // Navigation uses a detailed, labeled street map with buildings and road hierarchy.
         if (isNavigating) {
-            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+            return mapTheme === 'night'
+                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
         }
 
         if (useOfflineTiles) {
@@ -194,7 +196,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             if (baseMapType === 'satellite') {
                 return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
             }
-            return 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png';
+            return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
         }
 
         switch (baseMapType) {
@@ -204,7 +206,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 return 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
             case 'street':
             default:
-                return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+                return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
         }
     };
 
@@ -231,14 +233,14 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             className="h-full w-full"
             zoomControl={false}
             minZoom={3}
-            maxZoom={baseMapType === 'satellite' ? 19 : 18}
+            maxZoom={20}
         >
             <TileLayer
                 key={`${baseMapType}-${mapTheme}-${isNavigating ? 'nav' : 'normal'}`}
                 attribution={getTileAttribution()}
                 url={getTileLayerUrl()}
                 maxZoom={20}
-                maxNativeZoom={baseMapType === 'satellite' ? 19 : mapTheme === 'night' && baseMapType !== 'satellite' ? 19 : 18}
+                maxNativeZoom={20}
                 className={mapTheme === 'night' ? 'map-night-mode' : ''}
             />
 
@@ -343,7 +345,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
 
             {/* Other Units */}
             {otherUnits && otherUnits.length > 0 && (
-                <OtherUnitsLayer units={otherUnits} currentUserId={currentUserId} />
+                <OtherUnitsLayer units={otherUnits} currentUserId={currentUserId} onUnitClick={(unit) => onNavigateToJail({ coords: [Number(unit.latitude), Number(unit.longitude)], name: unit.unit_number ? `Unit ${unit.unit_number}` : unit.full_name || 'Officer unit' })} />
             )}
             
             {/* Search Pin */}
