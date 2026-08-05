@@ -515,7 +515,6 @@ function CommandDashboardInner() {
                                 { label: 'LIVE MAP', icon: MapPin, page: 'Navigation', color: 'border-blue-500/40 text-blue-400 hover:bg-blue-500/10' },
                                 ...(isAdmin ? [
                                     { label: 'PERSONNEL', icon: Users, page: 'Personnel', color: 'border-green-500/40 text-green-400 hover:bg-green-500/10' },
-                                    { label: 'REPORTS', icon: TrendingUp, page: 'Reports', color: 'border-purple-500/40 text-purple-400 hover:bg-purple-500/10' },
                                     { label: 'CALL HISTORY', icon: Radio, page: 'CallHistory', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
                                     { label: 'ADMIN', icon: Shield, page: 'AdminPortal', color: 'border-slate-500/40 text-slate-400 hover:bg-slate-500/10' },
                                 ] : [
