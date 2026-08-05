@@ -84,6 +84,9 @@ export default function Navigation() {
     const [navDurationMinutes, setNavDurationMinutes] = useState(0);
     const [isNavigating, setIsNavigating] = useState(false);
     const [routing, setRouting] = useState(false);
+    const [addressQuery, setAddressQuery] = useState('');
+    const [addressResults, setAddressResults] = useState([]);
+    const [addressSearching, setAddressSearching] = useState(false);
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
@@ -325,9 +328,10 @@ export default function Navigation() {
         return `${type.charAt(0).toUpperCase() + type.slice(1)}${modifier}${road}`;
     };
 
-    const startInAppNavigation = async () => {
-        if (!selectedCall?.latitude || !selectedCall?.longitude) {
-            toast.error('This call does not have mapped coordinates yet');
+    const startNavigationToPoint = async (destination, options = {}) => {
+        const coords = destination?.coords || (destination?.latitude && destination?.longitude ? [Number(destination.latitude), Number(destination.longitude)] : null);
+        if (!coords || !Number.isFinite(Number(coords[0])) || !Number.isFinite(Number(coords[1]))) {
+            toast.error('This destination does not have mapped coordinates');
             return;
         }
         if (!currentLocation) {
@@ -337,13 +341,14 @@ export default function Navigation() {
         setRouting(true);
         try {
             const [lat, lng] = currentLocation;
-            const url = `https://router.project-osrm.org/route/v1/driving/${lng},${lat};${selectedCall.longitude},${selectedCall.latitude}?overview=full&geometries=geojson&steps=true`;
+            const [destLat, destLng] = coords.map(Number);
+            const url = `https://router.project-osrm.org/route/v1/driving/${lng},${lat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true&annotations=true`;
             const response = await fetch(url);
             if (!response.ok) throw new Error('Route service unavailable');
             const data = await response.json();
             const route = data.routes?.[0];
             if (!route) throw new Error('No driving route found');
-            setNavDestination({ coords: [Number(selectedCall.latitude), Number(selectedCall.longitude)], name: selectedCall.location || selectedCall.incident || 'Call location' });
+            setNavDestination({ coords: [destLat, destLng], name: destination.name || destination.address || 'Destination' });
             setNavRoute((route.geometry?.coordinates || []).map(([x, y]) => [y, x]));
             setNavSteps(route.legs?.flatMap(leg => leg.steps || []) || []);
             setNavStepIndex(0);
@@ -351,12 +356,42 @@ export default function Navigation() {
             setNavDurationMinutes(Math.max(1, Math.round(route.duration / 60)));
             setIsNavigating(true);
             setShowCallSidebar(false);
-            await handleStatusChange('Enroute');
-            toast.success('In-app navigation started');
+            setAddressResults([]);
+            setMapCenter([destLat, destLng]);
+            if (options.setEnroute !== false) await handleStatusChange('Enroute');
+            toast.success(`Navigation started to ${destination.name || destination.address || 'destination'}`);
         } catch (error) {
             toast.error(error?.message || 'Unable to build route');
         } finally {
             setRouting(false);
+        }
+    };
+
+    const startInAppNavigation = () => startNavigationToPoint({
+        coords: selectedCall?.latitude && selectedCall?.longitude ? [Number(selectedCall.latitude), Number(selectedCall.longitude)] : null,
+        name: selectedCall?.location || selectedCall?.incident || 'Call location',
+    });
+
+    const searchAddress = async (event) => {
+        event?.preventDefault();
+        const query = addressQuery.trim();
+        if (query.length < 3) return;
+        setAddressSearching(true);
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=us&addressdetails=1&q=${encodeURIComponent(query)}`, { headers: { 'Accept-Language': 'en-US' } });
+            if (!response.ok) throw new Error('Address search unavailable');
+            const results = await response.json();
+            setAddressResults((results || []).map(item => ({
+                coords: [Number(item.lat), Number(item.lon)],
+                name: item.display_name,
+                address: item.display_name,
+                type: item.type,
+            })));
+            if (!results?.length) toast.error('No matching address found');
+        } catch (error) {
+            toast.error(error?.message || 'Unable to search addresses');
+        } finally {
+            setAddressSearching(false);
         }
     };
 
@@ -500,6 +535,7 @@ export default function Navigation() {
                     showPoliceStations={jurisdictionFilters.showPoliceStations}
                     showFireStations={jurisdictionFilters.showFireStations}
                     showJails={jurisdictionFilters.showJails}
+                    onNavigateToJail={(destination) => startNavigationToPoint(destination)}
                     searchPin={null}
                     mapTheme={mapTheme}
                     showHeatmap={showHeatmap}
@@ -592,6 +628,34 @@ export default function Navigation() {
                     </div>
                 </div>
             )}
+
+            {/* Street address search and destination routing */}
+            <div className="absolute top-12 left-1/2 z-[1012] w-[min(92vw,560px)] -translate-x-1/2 pointer-events-auto">
+                <form onSubmit={searchAddress} className="flex items-center gap-2 rounded-xl border border-[#31475e] bg-[#0a0e1a]/95 p-2 shadow-2xl backdrop-blur-md">
+                    <Search className="ml-2 h-4 w-4 text-slate-400" />
+                    <input
+                        value={addressQuery}
+                        onChange={(event) => setAddressQuery(event.target.value)}
+                        placeholder="Search an address, building, or place"
+                        className="h-9 flex-1 bg-transparent px-1 text-sm text-white outline-none placeholder:text-slate-500"
+                    />
+                    <button type="submit" disabled={addressSearching || addressQuery.trim().length < 3}
+                        className="flex h-9 items-center gap-1 rounded-lg bg-blue-700 px-3 text-xs font-bold text-white hover:bg-blue-600 disabled:opacity-50">
+                        <Navigation2 className="h-4 w-4" /> {addressSearching ? 'SEARCHING' : 'GO'}
+                    </button>
+                </form>
+                {addressResults.length > 0 && (
+                    <div className="mt-1 max-h-72 overflow-y-auto rounded-xl border border-[#31475e] bg-[#0a0e1a]/98 shadow-2xl">
+                        {addressResults.map((result, index) => (
+                            <button key={`${result.name}-${index}`} onClick={() => startNavigationToPoint(result)}
+                                className="flex w-full items-start gap-3 border-b border-[#1e2d4a] px-4 py-3 text-left hover:bg-[#142336] last:border-b-0">
+                                <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400" />
+                                <span className="text-xs leading-relaxed text-slate-200">{result.name}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             {/* ══ LEFT PANEL ══ */}
             <div className="absolute top-[34px] left-0 bottom-0 z-[1005] flex pointer-events-none">
