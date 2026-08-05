@@ -32,12 +32,13 @@ export default function AdminManualPTO() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: activeUsers } = useQuery({
-    queryKey: ['activeUsers'],
+  const { data: activeUsers = [] } = useQuery({
+    queryKey: ['hrUsers'],
     queryFn: async () => {
-      const allUsers = await base44.entities.User.list();
-      return allUsers.filter(u => !u.termination_date);
+      const result = await base44.functions.invoke('getHRUsers', {});
+      return result?.users || [];
     },
+    enabled: user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access'),
     initialData: [],
   });
 
@@ -96,7 +97,7 @@ export default function AdminManualPTO() {
 
       // Send notification email
       await base44.integrations.Core.SendEmail({
-        from_name: "Virtus Security HR",
+        Black Point Protection
         to: data.officer_email,
         subject: `${data.pto_type === 'pto' ? 'PTO' : 'Sick Time'} Added to Your Account`,
         body: `<!DOCTYPE html>
