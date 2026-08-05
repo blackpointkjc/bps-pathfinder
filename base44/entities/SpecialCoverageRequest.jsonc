@@ -33,6 +33,14 @@
       "type": "number",
       "description": "Number of officers required"
     },
+    "preferred_officer_email": {
+      "type": "string",
+      "description": "Optional requested officer email"
+    },
+    "preferred_officer_display": {
+      "type": "string",
+      "description": "Privacy-safe requested officer label using rank and last name"
+    },
     "special_requirements": {
       "type": "string",
       "description": "Special requirements (armed, specific skills, etc.)"
