@@ -622,6 +622,40 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   border-color: #31475e !important;
 }
 
+/* Operational page normalization: eliminate bright white/pastel cards in night workspaces. */
+.cad-app main .confidential-reports-page,
+.cad-app main .scheduling-page,
+.cad-app main .client-feedback-page,
+.cad-app main .client-alerts-page {
+  background: #0b1420 !important;
+  color: #e7eef6 !important;
+}
+.cad-app main .confidential-reports-page :is(.bg-white,.bg-slate-50,.bg-blue-50,.bg-green-50,.bg-red-50,.bg-orange-50),
+.cad-app main .scheduling-page :is(.bg-white,.bg-slate-50,.bg-blue-50,.bg-indigo-100,.bg-green-200,.bg-blue-100),
+.cad-app main .client-feedback-page :is(.bg-white,.bg-slate-50,.bg-purple-50,.bg-blue-50),
+.cad-app main .client-alerts-page :is(.bg-white,.bg-slate-50,.bg-red-50,.bg-green-50,.bg-blue-50,.bg-orange-50) {
+  background: #111d2b !important;
+  color: #e7eef6 !important;
+}
+.cad-app main :is(.confidential-reports-page,.scheduling-page,.client-feedback-page,.client-alerts-page)
+:is(.text-slate-900,.text-slate-800,.text-slate-700,.text-blue-900,.text-green-900,.text-purple-900) {
+  color: #f8fafc !important;
+}
+.cad-app main :is(.confidential-reports-page,.scheduling-page,.client-feedback-page,.client-alerts-page)
+:is(.text-slate-600,.text-slate-500) {
+  color: #b6c5d4 !important;
+}
+.cad-app main :is(.confidential-reports-page,.scheduling-page,.client-feedback-page,.client-alerts-page)
+:is(input,textarea,select) {
+  background: #0d1825 !important;
+  border-color: #39516a !important;
+  color: #f8fafc !important;
+}
+.cad-app main :is(.confidential-reports-page,.scheduling-page,.client-feedback-page,.client-alerts-page)
+:is(table,thead,tbody,tr,th,td) {
+  border-color: #2d4258 !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
