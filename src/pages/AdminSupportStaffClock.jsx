@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Coffee, LogIn, LogOut } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 const elapsedHours = (entry) => {
   const start = new Date(entry.clock_in).getTime();
@@ -77,23 +78,37 @@ export default function AdminSupportStaffClock() {
   });
 
   const startBreak = useMutation({
-    mutationFn: () => base44.entities.TimeEntry.update(activeEntry.id, {
-      on_break: true,
-      break_started_at: new Date().toISOString(),
-    }),
-    onSuccess: refresh,
+    mutationFn: async () => {
+      if (!activeEntry?.id) throw new Error('No active time entry was found');
+      if (activeEntry.on_break) throw new Error('Break is already active');
+      return base44.entities.TimeEntry.update(activeEntry.id, {
+        on_break: true,
+        break_started_at: new Date().toISOString(),
+      });
+    },
+    onSuccess: async () => {
+      await refresh();
+      toast.success('Break started');
+    },
+    onError: error => toast.error(error?.message || 'Unable to start break'),
   });
 
   const endBreak = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
+      if (!activeEntry?.id) throw new Error('No active time entry was found');
+      if (!activeEntry.on_break || !activeEntry.break_started_at) throw new Error('No active break was found');
       const ended = new Date().toISOString();
       return base44.entities.TimeEntry.update(activeEntry.id, {
         on_break: false,
         break_started_at: null,
-        break_periods: [...(activeEntry.break_periods || []), { start: activeEntry.break_started_at, end: ended }],
+        break_periods: [...(Array.isArray(activeEntry.break_periods) ? activeEntry.break_periods : []), { start: activeEntry.break_started_at, end: ended }],
       });
     },
-    onSuccess: refresh,
+    onSuccess: async () => {
+      await refresh();
+      toast.success('Break ended');
+    },
+    onError: error => toast.error(error?.message || 'Unable to end break'),
   });
 
   if (!hasAccess) {
