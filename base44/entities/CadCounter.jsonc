@@ -10,6 +10,15 @@
       "type": "number",
       "default": 0,
       "description": "Last issued CAD sequence number"
+    },
+    "ingestion_lock_token": {
+      "type": "string",
+      "description": "Short-lived ownership token preventing concurrent GRAC ingestion"
+    },
+    "ingestion_locked_until": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Expiration time for the GRAC ingestion lease"
     }
   },
   "required": [
