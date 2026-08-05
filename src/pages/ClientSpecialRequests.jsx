@@ -18,6 +18,8 @@ export default function ClientSpecialRequests() {
     end_date: "",
     shift_times: "",
     officers_needed: 1,
+    preferred_officer_email: "",
+    preferred_officer_display: "",
     special_requirements: "",
     reason: "",
   });
@@ -26,6 +28,15 @@ export default function ClientSpecialRequests() {
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => base44.auth.me(),
+  });
+
+  const { data: officerDirectory = [] } = useQuery({
+    queryKey: ['clientRequestOfficerDirectory'],
+    queryFn: async () => {
+      const response = await base44.functions.invoke('getClientOfficerDirectory', { officerEmails: [] });
+      return response?.data?.officers || response?.officers || [];
+    },
+    enabled: !!user,
   });
 
   const { data: locations } = useQuery({
@@ -63,6 +74,8 @@ export default function ClientSpecialRequests() {
         end_date: "",
         shift_times: "",
         officers_needed: 1,
+        preferred_officer_email: "",
+        preferred_officer_display: "",
         special_requirements: "",
         reason: "",
       });
@@ -165,6 +178,28 @@ export default function ClientSpecialRequests() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="preferred_officer_email">Preferred Officer (Optional)</Label>
+                  <select
+                    id="preferred_officer_email"
+                    value={formData.preferred_officer_email}
+                    onChange={(e) => {
+                      const officer = officerDirectory.find(item => item.email === e.target.value);
+                      const display = officer ? `${officer.rank || 'Officer'} ${officer.last_name || ''}`.trim() : '';
+                      setFormData({...formData, preferred_officer_email: e.target.value, preferred_officer_display: display});
+                    }}
+                    className="w-full p-2 border rounded-lg"
+                  >
+                    <option value="">No preference</option>
+                    {officerDirectory.map((officer) => (
+                      <option key={officer.email} value={officer.email}>
+                        {`${officer.rank || 'Officer'} ${officer.last_name || ''}`.trim()}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500">Requests are not guaranteed and remain subject to availability.</p>
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="shift_times">Shift Times *</Label>
                   <Input
                     id="shift_times"
@@ -241,6 +276,12 @@ export default function ClientSpecialRequests() {
                       <Users className="w-4 h-4" />
                       <span>{req.officers_needed} officer{req.officers_needed > 1 ? 's' : ''}</span>
                     </div>
+                    {req.preferred_officer_display && (
+                      <div className="flex items-center gap-2 text-slate-600">
+                        <Shield className="w-4 h-4" />
+                        <span>{req.preferred_officer_display}</span>
+                      </div>
+                    )}
                     {req.special_requirements && (
                       <div className="flex items-center gap-2 text-slate-600">
                         <AlertTriangle className="w-4 h-4" />
