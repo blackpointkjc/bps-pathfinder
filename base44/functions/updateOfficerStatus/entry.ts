@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
             updateData.estimated_return = estimated_return;
         }
 
-        if (status === 'Available' || status === 'Out of Service' || status === 'Off Duty') {
+        if (status === 'Available' || status === 'Out of Service') {
             updateData.current_call_id = null;
             updateData.current_call_info = null;
         }
