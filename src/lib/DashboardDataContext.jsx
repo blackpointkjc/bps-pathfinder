@@ -78,17 +78,12 @@ export function DashboardDataProvider({ children }) {
 
             console.log(`[CAD ${nowET}] Calls fetched: ${callsData?.length ?? 0} | Users: ${usersData?.length ?? 0}`);
 
-            // Phase out calls older than 2 hours (ET). Use the call's actual received
-            // time (now reliable from the ingest) when available and not in the future,
-            // falling back to created_date. Non-geocoded calls are NOT filtered out here
-            // — they still show in the queue while geocoding keeps retrying.
-            const twoHoursAgo = now - 2 * 60 * 60 * 1000;
-            const callRefTime = (c) => {
-                const received = c.time_received ? new Date(c.time_received).getTime() : null;
-                if (received && !Number.isNaN(received) && received <= now) return received;
-                return c.created_date ? new Date(c.created_date).getTime() : 0;
-            };
-            const active = (callsData || []).filter(c => callRefTime(c) >= twoHoursAgo);
+            // DispatchCall is synchronized to GRAC's current active-call list.
+            // Do not hide calls based on age; a call remains visible until ingestion
+            // marks it Closed/Cleared/Cancelled after it disappears from GRAC.
+            const active = (callsData || []).filter(c =>
+                !['Closed', 'Cleared', 'Cancelled'].includes(c.status)
+            );
 
             // Debug: newest call time
             if (active.length > 0) {
