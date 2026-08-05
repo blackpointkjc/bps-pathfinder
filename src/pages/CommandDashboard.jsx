@@ -404,7 +404,7 @@ function CommandDashboardInner() {
                                     </div>
 
                                     <div className="w-24 flex-shrink-0 font-mono text-[10px] text-slate-400">
-                                        <div className="font-bold text-[#7ec1ff]">{call.call_id || 'UNASSIGNED'}</div>
+                                        <div className="truncate font-bold text-[#7ec1ff]">{/^B\d+$/i.test(String(call.call_id || '')) ? call.call_id : 'ASSIGNING…'}</div>
                                         <div>{fmtTime(call.time_received)}</div>
                                     </div>
 
