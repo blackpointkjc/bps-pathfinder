@@ -175,6 +175,7 @@ export default function ClientReports() {
 
   const printClientReport = (report, type, allUsersList) => {
     const officerName = getOfficerName(getReportOfficerEmail(report));
+    const officerSig = getOfficerSignature(report);
     if (type === 'summons') {
       openVirginiaSummonsPrint(report, {
         officerName: report.officer_name || officerName,
@@ -193,7 +194,6 @@ export default function ClientReports() {
     }
 
     const printWindow = window.open('', '', 'width=850,height=1100');
-    const officerSig = getOfficerSignature(report);
     
     let reportTitle = '';
     let reportContent = '';
