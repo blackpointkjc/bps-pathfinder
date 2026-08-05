@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import SignaturePad from "../components/SignaturePad";
+import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/142cfda7e_VirtusSecurity.jpeg";
 const DCJS_ID = "VA DCJS #11-6066 | Maryland #106-4738";
@@ -1088,6 +1089,7 @@ export default function DailyActivityReports() {
                       {saving ? 'Saving...' : 'Save as Draft'}
                     </Button>
                   )}
+                  <RequiredAIReportReview />
                   <Button
                     type="submit"
                     disabled={saveReportMutation.isPending || uploading || saving}

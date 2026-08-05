@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ShieldCheck, Lock, AlertCircle, CheckCircle, FileText, Loader2 } from "lucide-react"; // Added FileText, Loader2
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 
 export default function ConfidentialReport() {
   const queryClient = useQueryClient();
@@ -267,6 +268,7 @@ export default function ConfidentialReport() {
                 >
                   Clear Form
                 </Button>
+                <RequiredAIReportReview />
                 <Button
                   type="submit"
                   disabled={submitReportMutation.isPending}

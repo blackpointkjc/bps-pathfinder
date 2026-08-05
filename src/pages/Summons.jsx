@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FileText, Plus, Clock, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 
 export default function Summons() {
   const [showForm, setShowForm] = useState(false);
@@ -1589,6 +1590,7 @@ export default function Summons() {
                   >
                     Cancel
                   </Button>
+                  <RequiredAIReportReview />
                   <Button
                     type="submit"
                     disabled={createSummonsMutation.isPending}

@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import IDScanner from "../components/IDScanner";
+import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/c29aab328_c3ff2618-4412-4498-8923-8f484a9469b8-2533645741.jpeg";
 
@@ -1005,6 +1006,7 @@ export default function VACriminalComplaints() {
                   >
                     Cancel
                   </Button>
+                  <RequiredAIReportReview />
                   <Button
                     type="submit"
                     disabled={createComplaintMutation.isPending}

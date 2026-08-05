@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DoorOpen, Plus, Clock, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 
 
 export default function OpenDoorReports() {
@@ -403,6 +404,7 @@ export default function OpenDoorReports() {
                   >
                     Cancel
                   </Button>
+                  <RequiredAIReportReview />
                   <Button
                     type="submit"
                     disabled={createReportMutation.isPending || updateReportMutation.isPending || uploading}

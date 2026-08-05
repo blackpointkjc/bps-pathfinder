@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ReportAIEnhancer from "../components/ReportAIEnhancer";
+import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/c29aab328_c3ff2618-4412-4498-8923-8f484a9469b8-2533645741.jpeg";
 const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
@@ -1222,6 +1223,7 @@ Provide:
                   >
                     {saving ? 'Saving...' : 'Save as Draft'}
                   </Button>
+                  <RequiredAIReportReview />
                   <Button
                     type="submit"
                     disabled={saveReportMutation.isPending || uploading || saving}

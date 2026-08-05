@@ -11,6 +11,7 @@ import { Wrench, Plus, Upload, Clock, Pencil, Printer } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
@@ -703,6 +704,7 @@ export default function MaintenanceReports() {
                   >
                     Cancel
                   </Button>
+                  <RequiredAIReportReview />
                   <Button
                     type="submit"
                     disabled={createReportMutation.isPending || updateReportMutation.isPending}
