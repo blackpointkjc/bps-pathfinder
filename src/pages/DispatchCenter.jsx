@@ -107,15 +107,10 @@ export default function DispatchCenter() {
        try {
             const calls = await base44.entities.DispatchCall.list('-created_date', 200);
 
-            const twelveHoursAgo = new Date();
-            twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12);
-
-            const recentCalls = calls.filter(call => {
-                const callTime = new Date(call.time_received || call.created_date);
-                const isRecent = callTime >= twelveHoursAgo;
-                const isActive = !call.status || !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
-                return isRecent && isActive;
-            });
+            const recentCalls = calls.filter(call =>
+                String(call.call_id || '').startsWith('grac-') &&
+                !['Closed', 'Cleared', 'Cancelled'].includes(call.status)
+            );
 
             recentCalls.sort((a, b) => {
                 const timeA = new Date(a.time_received || a.created_date);
@@ -188,8 +183,9 @@ export default function DispatchCenter() {
     const handleRefresh = async () => {
         setRefreshing(true);
         try {
+            const result = await base44.functions.invoke('ingestGractivecalls', {});
             await Promise.all([loadActiveCalls(), loadUnits()]);
-            toast.success('Feed refreshed', { id: 'refresh', duration: 3000 });
+            toast.success(`GRAC feed synchronized: ${result?.data?.active ?? activeCalls.length} active`, { id: 'refresh', duration: 3000 });
         } catch (error) {
             toast.error('Refresh failed', { id: 'refresh' });
         } finally {
@@ -273,16 +269,10 @@ export default function DispatchCenter() {
                         </button>
                     )}
                     <OfficerDistressButton currentUser={currentUser} className="text-[10px]" />
-                    <button onClick={() => setShowCreateDialog(true)}
-                        className="flex items-center gap-1 px-3 py-1 bg-red-700 hover:bg-red-600 rounded text-[10px] text-white font-bold">
-                        <Plus className="w-2.5 h-2.5" /> NEW CALL
-                    </button>
+                    <div className="flex items-center gap-1 px-3 py-1 border border-blue-500/40 bg-blue-500/10 rounded text-[10px] text-blue-300 font-bold">
+                        <Radio className="w-2.5 h-2.5" /> GRAC LIVE SOURCE
+                    </div>
                 </div>
-            </div>
-
-            {/* ══ QUICK ACTIONS ══ */}
-            <div className="flex-none border-b border-[#1e2d4a] bg-[#0d1220] px-3 py-1">
-                <QuickActions onCreateCall={handleQuickDispatch} />
             </div>
 
             {/* ══ SORT CONTROLS ══ */}
@@ -310,8 +300,8 @@ export default function DispatchCenter() {
                         {/* Police Calls */}
                         <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />
-                            <span className="text-[10px] font-bold text-[#f5a623] tracking-widest">ACTIVE POLICE CALLS</span>
-                            <span className="ml-auto text-[10px] bg-[#f5a623]/20 text-[#f5a623] px-2 rounded-full border border-[#f5a623]/30">{allCalls.filter(c => c.source).length}</span>
+                            <span className="text-[10px] font-bold text-[#f5a623] tracking-widest">GRAC ACTIVE CALLS</span>
+                            <span className="ml-auto text-[10px] bg-[#f5a623]/20 text-[#f5a623] px-2 rounded-full border border-[#f5a623]/30">{allCalls.length}</span>
                         </div>
                         {/* Table header */}
                         <div className="flex-none grid grid-cols-12 px-2 py-1 bg-[#111827] border-b border-[#1e2d4a] text-[9px] text-slate-500 uppercase">
@@ -320,9 +310,9 @@ export default function DispatchCenter() {
                             <div className="col-span-5">TIME</div>
                         </div>
                         <div className="flex-1 overflow-y-auto" style={{maxHeight: '45%'}}>
-                            {allCalls.filter(c => c.source).length === 0 ? (
+                            {allCalls.length === 0 ? (
                                 <div className="text-[10px] text-slate-600 text-center py-4">NO ACTIVE CALLS</div>
-                            ) : allCalls.filter(c => c.source).map(call => (
+                            ) : allCalls.map(call => (
                                 <div key={call.id} onClick={() => handleSelectCall(call)}
                                     className={`grid grid-cols-12 px-2 py-1.5 border-b border-[#1a2535] cursor-pointer transition-colors ${
                                         selectedCall?.id === call.id
@@ -345,42 +335,6 @@ export default function DispatchCenter() {
                             ))}
                         </div>
 
-                        {/* Dispatch Calls */}
-                        <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-t border-[#1e2d4a] flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                            <span className="text-[10px] font-bold text-red-400 tracking-widest">DISPATCH CALLS</span>
-                            <span className="ml-auto text-[10px] bg-red-500/20 text-red-400 px-2 rounded-full border border-red-500/30">{allCalls.filter(c => !c.source).length}</span>
-                        </div>
-                        <div className="flex-none grid grid-cols-12 px-2 py-1 bg-[#111827] border-b border-[#1e2d4a] text-[9px] text-slate-500 uppercase">
-                            <div className="col-span-2">PRI</div>
-                            <div className="col-span-5">INCIDENT</div>
-                            <div className="col-span-5">TIME</div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto">
-                            {allCalls.filter(c => !c.source).length === 0 ? (
-                                <div className="text-[10px] text-slate-600 text-center py-4">NO DISPATCH CALLS</div>
-                            ) : allCalls.filter(c => !c.source).map(call => (
-                                <div key={call.id} onClick={() => handleSelectCall(call)}
-                                    className={`grid grid-cols-12 px-2 py-1.5 border-b border-[#1a2535] cursor-pointer transition-colors ${
-                                        selectedCall?.id === call.id
-                                            ? 'bg-[#1a3a5c] border-l-2 border-l-[#3b82f6]'
-                                            : 'hover:bg-[#111827]'
-                                    }`}>
-                                    <div className="col-span-2">
-                                        <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${priorityBg(call.priority)}`}>
-                                            {call.priority ? call.priority[0].toUpperCase() : 'L'}
-                                        </span>
-                                    </div>
-                                    <div className="col-span-5">
-                                        <div className="text-[10px] text-white font-bold truncate leading-tight">{call.incident}</div>
-                                        <div className="text-[9px] text-slate-400 truncate">{call.location}</div>
-                                    </div>
-                                    <div className="col-span-5 text-[9px] text-slate-400 text-right pr-1">
-                                        {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
                     </div>
 
                     {/* ═══ CENTER: MAP + CALL DETAIL ═══ */}
