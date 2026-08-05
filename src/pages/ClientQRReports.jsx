@@ -23,20 +23,18 @@ export default function ClientQRReports() {
   });
 
   const { data: officers = [] } = useQuery({
-    queryKey: ["allOfficersForClientQR"],
-    queryFn: () => base44.entities.User.list(),
+    queryKey: ["clientQROfficerDirectory"],
+    queryFn: async () => {
+      const response = await base44.functions.invoke('getClientOfficerDirectory', { officerEmails: [] });
+      return response?.data?.officers || response?.officers || [];
+    },
     staleTime: 300000,
   });
 
   const getOfficerDisplay = (email, fallbackName) => {
     const officer = officers.find((o) => o.email === email);
     if (officer) {
-      const firstName = officer.first_name || '';
-      const lastName = officer.last_name || '';
-      if (firstName && lastName) return `${firstName} ${lastName}`;
-      if (lastName) return lastName;
-      if (firstName) return firstName;
-      return officer.full_name || fallbackName;
+      return `${officer.rank || 'Officer'} ${officer.last_name || ''}`.trim();
     }
     return fallbackName || email;
   };
