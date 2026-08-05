@@ -110,6 +110,9 @@
           "created_by_id": "{{user.id}}"
         },
         {
+          "data.incoming_officer_email": "{{user.email}}"
+        },
+        {
           "user_condition": {
             "role": "admin"
           }
