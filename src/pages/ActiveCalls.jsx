@@ -35,7 +35,6 @@ const statusStyles = {
   Pending: 'border-slate-400/40 bg-slate-400/10 text-slate-300',
   Dispatched: 'border-amber-400/40 bg-amber-400/10 text-amber-300',
   Enroute: 'border-orange-400/40 bg-orange-400/10 text-orange-300',
-  Arrived: 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300',
   'On Scene': 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300',
 };
 
