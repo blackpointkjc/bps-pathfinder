@@ -387,7 +387,6 @@ Deno.serve(async (req) => {
             source: 'https://gractivecalls.com/ (RPD/RFD/HPD/HFD/CCPD/CCFD)',
             total_parsed: allCalls.length,
             active_within_2h: activeCalls.length,
-            phased_out: phasedOut,
             created,
             updated,
             closed,
