@@ -1,0 +1,41 @@
+{
+  "name": "CadCounter",
+  "type": "object",
+  "properties": {
+    "counter_key": {
+      "type": "string",
+      "description": "Unique sequence key"
+    },
+    "last_number": {
+      "type": "number",
+      "default": 0,
+      "description": "Last issued CAD sequence number"
+    }
+  },
+  "required": [
+    "counter_key",
+    "last_number"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
