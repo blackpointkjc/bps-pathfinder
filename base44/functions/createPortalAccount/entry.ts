@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
           invitation = await base44.asServiceRole.users.inviteUser(normalizedEmail, 'user');
         } catch (serviceRoleError) {
           console.warn('Service-role invitation path failed; trying authenticated invitation path', serviceRoleError);
-          invitation = await base44.users.inviteUser(normalizedEmail, 'user');
+          invitation = await (base44 as any).users.inviteUser(normalizedEmail, 'user');
         }
         invitationSent = true;
         portalUser = invitation?.user || invitation;
@@ -214,6 +214,7 @@ Deno.serve(async (req) => {
       success: true,
       invitation_sent: invitationSent,
       invitation_error: invitationError || undefined,
+      invitation_pending: !portalUser && !invitationSent,
       assignment_pending: assignmentPending,
       user_id: portalUser?.id || null,
       email_sent: emailSent,
