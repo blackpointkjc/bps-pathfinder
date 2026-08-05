@@ -15,7 +15,6 @@ import { CALL_TYPES, findCallType } from '@/lib/cadCallTypes';
 export default function CreateCallDialog({ units, currentUser, onClose, onCreated, initialCallType, initialPriority }) {
     const [creating, setCreating] = useState(false);
     const [selectedUnits, setSelectedUnits] = useState([]);
-    const [activeUnions, setActiveUnions] = useState(new Set());
     const [suggestedCallType, setSuggestedCallType] = useState(null);
     const [formData, setFormData] = useState({
         incident: initialCallType || '',
@@ -30,18 +29,6 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
         caller_phone: '',
         hazards: ''
     });
-
-    React.useEffect(() => {
-        const fetchUnions = async () => {
-            try {
-                const unions = await base44.entities.UnitUnion.filter({ status: 'active' });
-                setActiveUnions(new Set(unions.map(u => u.union_name)));
-            } catch (error) {
-                console.error('Error fetching unions:', error);
-            }
-        };
-        fetchUnions();
-    }, []);
 
     const handleCreate = async () => {
         if (!formData.incident || !formData.location) {
@@ -77,7 +64,7 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                 latitude,
                 longitude,
                 assigned_units: selectedUnits,
-                status: selectedUnits.length > 0 ? 'Dispatched' : 'Pending',
+                status: selectedUnits.length > 0 ? 'Dispatched' : 'New',
                 time_received: new Date().toISOString(),
                 time_dispatched: selectedUnits.length > 0 ? new Date().toISOString() : null
             };
@@ -325,105 +312,28 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                                         <p className="text-sm text-slate-500 text-center py-8">No units available</p>
                                     ) : (
                                         <div className="space-y-2">
-                                            {(() => {
-                                                // Group units by union and hide OOS solo units
-                                                const grouped = [];
-                                                const processedUnitIds = new Set();
-                                                const processedUnionIds = new Set();
-                                                
-                                                units.forEach(unit => {
-                                                    if (unit.union_id && activeUnions.has(unit.union_id) && !processedUnionIds.has(unit.union_id)) {
-                                                        processedUnionIds.add(unit.union_id);
-                                                        const unionMembers = units
-                                                            .filter(u => u.union_id === unit.union_id && u.status !== 'Out of Service')
-                                                            .sort((a, b) => {
-                                                                const aNum = parseInt(a.unit_number) || 999;
-                                                                const bNum = parseInt(b.unit_number) || 999;
-                                                                return aNum - bNum;
-                                                            });
-                                                        
-                                                        // Only add union if it has available members
-                                                        if (unionMembers.length > 0) {
-                                                            unionMembers.forEach(m => processedUnitIds.add(m.id));
-                                                            grouped.push({
-                                                                isUnion: true,
-                                                                id: unit.union_id,
-                                                                name: unit.union_id,
-                                                                members: unionMembers,
-                                                                status: unionMembers[0]?.status || 'Available'
-                                                            });
-                                                        }
-                                                    } else if ((!unit.union_id || !activeUnions.has(unit.union_id)) && !processedUnitIds.has(unit.id) && unit.status !== 'Out of Service') {
-                                                        processedUnitIds.add(unit.id);
-                                                        grouped.push(unit);
-                                                    }
-                                                });
-                                                
-                                                return grouped.map(item => {
-                                                    if (item.isUnion) {
-                                                        const leadUnit = item.members[0];
-                                                        const isSelected = selectedUnits.includes(leadUnit.id);
-                                                        return (
-                                                            <div
-                                                                key={item.id}
-                                                                onClick={() => toggleUnit(leadUnit.id)}
-                                                                className={`p-3 rounded-lg cursor-pointer transition-all ${
-                                                                    isSelected ? 'bg-red-600 text-white' : 'bg-indigo-900/50 hover:bg-indigo-800/50 text-slate-300 border-2 border-indigo-600'
-                                                                }`}
-                                                            >
-                                                                <div className="flex items-center justify-between mb-1">
-                                                                    <span className="font-semibold">{item.name}</span>
-                                                                    <Badge variant="outline" className={isSelected ? 'border-white text-white' : 'border-indigo-400 text-indigo-300'}>
-                                                                        {item.status}
-                                                                    </Badge>
-                                                                </div>
-                                                                <div className="text-sm space-y-1 ml-2 mt-2">
-                                                                    {item.members.map((member, idx) => (
-                                                                        <div key={member.id} className="flex items-start gap-2">
-                                                                            <span className={isSelected ? 'text-white/70' : 'text-slate-500'}>•</span>
-                                                                            <div>
-                                                                                <span className={idx === 0 ? 'font-semibold' : ''}>
-                                                                                    {member.unit_number || 'N/A'}
-                                                                                </span>
-                                                                                <span className={isSelected ? 'text-white/80 ml-2' : 'text-slate-400 ml-2'}>
-                                                                                    {member.rank && member.last_name ? `${member.rank} ${member.last_name}` : member.full_name}
-                                                                                </span>
-                                                                                {idx === 0 && <span className="text-yellow-400 ml-2">(Lead)</span>}
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                                {selectedUnits.indexOf(leadUnit.id) === 0 && (
-                                                                    <Badge className="mt-2 bg-yellow-600 text-white text-xs">Primary</Badge>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    }
-                                                    
-                                                    return (
-                                                        <div
-                                                            key={item.id}
-                                                            onClick={() => toggleUnit(item.id)}
-                                                            className={`p-3 rounded-lg cursor-pointer transition-all ${
-                                                                selectedUnits.includes(item.id) ? 'bg-red-600 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                                                            }`}
-                                                        >
-                                                            <div className="flex items-center justify-between mb-1">
-                                                                <span className="font-semibold">{item.unit_number || 'Unit N/A'}</span>
-                                                                <Badge variant="outline" className={selectedUnits.includes(item.id) ? 'border-white text-white' : 'border-slate-600 text-slate-400'}>
-                                                                    {item.status || 'Available'}
-                                                                </Badge>
-                                                            </div>
-                                                            <p className="text-xs opacity-80">
-                                                                {item.rank && item.last_name ? `${item.rank} ${item.last_name}` : item.full_name}
-                                                            </p>
-                                                            {selectedUnits.indexOf(item.id) === 0 && (
-                                                                <Badge className="mt-2 bg-yellow-600 text-white text-xs">Primary</Badge>
-                                                            )}
+                                            {units
+                                                .filter(unit => unit.status !== 'Out of Service')
+                                                .map(unit => (
+                                                    <div
+                                                        key={unit.id}
+                                                        onClick={() => toggleUnit(unit.id)}
+                                                        className={`p-3 rounded-lg cursor-pointer transition-all ${selectedUnits.includes(unit.id) ? 'bg-red-600 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'}`}
+                                                    >
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="font-semibold">{unit.unit_number || unit.label || 'Unit N/A'}</span>
+                                                            <Badge variant="outline" className={selectedUnits.includes(unit.id) ? 'border-white text-white' : 'border-slate-600 text-slate-400'}>
+                                                                {unit.status || 'Available'}
+                                                            </Badge>
                                                         </div>
-                                                    );
-                                                });
-                                            })()}
+                                                        <p className="text-xs opacity-80">
+                                                            {unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name}
+                                                        </p>
+                                                        {selectedUnits.indexOf(unit.id) === 0 && (
+                                                            <Badge className="mt-2 bg-yellow-600 text-white text-xs">Primary</Badge>
+                                                        )}
+                                                    </div>
+                                                ))}
                                         </div>
                                     )}
                                 </ScrollArea>
