@@ -14,7 +14,7 @@
       "type": "string",
       "enum": [
         "Available",
-        "Assigned",
+        "Dispatched",
         "Enroute",
         "On Scene",
         "Busy",
@@ -45,7 +45,11 @@
     },
     "user_id": {
       "type": "string",
-      "description": "Linked user ID"
+      "description": "Linked authentication user ID"
+    },
+    "current_asset_id": {
+      "type": "string",
+      "description": "Currently assigned vehicle or asset ID"
     },
     "description": {
       "type": "string",
