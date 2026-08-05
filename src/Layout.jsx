@@ -493,7 +493,6 @@ export default function Layout({ children, currentPageName }) {
         ]);
         if (cancelled) return;
         const existingAlertMap = new Map((existingAlerts || []).map(item => [`${item.callId}:${item.propertyId}`, item]));
-        const existingKeys = new Set(existingAlertMap.keys());
         const activeCalls = (calls || []).filter(call => !['Cleared', 'Cancelled'].includes(call.status));
         const matches = [];
         for (const call of activeCalls) {
