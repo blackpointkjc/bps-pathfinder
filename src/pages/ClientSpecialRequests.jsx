@@ -53,7 +53,7 @@ export default function ClientSpecialRequests() {
     queryKey: ['specialRequests', user?.email],
     queryFn: async () => {
       const all = await base44.entities.SpecialCoverageRequest.list('-created_date');
-      return all.filter(r => r.created_by === user?.email);
+      return all.filter(r => r.created_by_id === user?.id || r.client_email === user?.email);
     },
     enabled: !!user,
   });
