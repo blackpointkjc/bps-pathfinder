@@ -290,7 +290,7 @@ function allowedCenters(user) {
   if (fullAccess || roles.has('supervisor')) centers.push('supervisor');
   const rank = String(user?.rank || '').toLowerCase();
   if (fullAccess || roles.has('hr') || rank === 'human resources') centers.push('hr');
-  if (fullAccess || roles.has('support_staff') || rank === 'support staff' || rank === 'human resources') centers.push('support');
+  if (fullAccess || roles.has('support_staff') || roles.has('trainer') || rank === 'support staff' || rank === 'human resources') centers.push('support');
   if (fullAccess) centers.push('admin');
   if (fullAccess || roles.has('trainer')) centers.push('training');
   if (fullAccess || roles.has('accounting')) centers.push('accounting');
