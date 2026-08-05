@@ -326,11 +326,9 @@ export default function Navigation() {
     const fetchCalls = async () => {
         setIsLoadingCalls(true);
         try {
-            const all = await base44.entities.DispatchCall.list('-created_date', 200);
-            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            const all = await base44.entities.DispatchCall.list('-created_date', 500);
             const active = all.filter(c =>
-                !['Closed', 'Cleared', 'Cancelled'].includes(c.status) &&
-                new Date(c.time_received || c.created_date) >= oneHourAgo
+                !['Closed', 'Cleared', 'Cancelled'].includes(c.status)
             );
             const { unmapped } = splitCallsByCoords(active);
             setActiveCalls(active);
