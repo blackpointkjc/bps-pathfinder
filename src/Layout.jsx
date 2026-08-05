@@ -167,7 +167,6 @@ const CENTER_CONFIG = {
         ['Manage Company Employees', 'HRManageCompanyEmployees', Briefcase],
         ['Client Accounts & Assignments', 'ManageClients', Building2],
         ['Manage Time Entries', 'ManageTimeEntries', Clock3],
-        ['Support Staff Clock', 'AdminSupportStaffClock', Clock3],
       ]},
       { label: 'Leave & Performance', items: [
         ['PTO Approval', 'AdminPTOApproval', ClipboardCheck],
