@@ -179,6 +179,15 @@ const CENTER_CONFIG = {
       ]},
     ],
   },
+  support: {
+    label: 'Support Center',
+    icon: Clock3,
+    groups: [
+      { label: 'Support Operations', items: [
+        ['Support Staff Clock', 'AdminSupportStaffClock', Clock3],
+      ]},
+    ],
+  },
   accounting: {
     label: 'Accounting Center',
     icon: DollarSign,
@@ -258,7 +267,8 @@ function roleName(user) {
   if (user?.role === 'admin') return 'SYSTEM ADMIN';
   if (user?.role === 'dispatch') return 'DISPATCH';
   if (hasRole(user, 'supervisor')) return 'SUPERVISOR';
-  if (hasRole(user, 'hr')) return 'HUMAN RESOURCES';
+  if (hasRole(user, 'hr') || String(user?.rank || '').toLowerCase() === 'human resources') return 'HUMAN RESOURCES';
+  if (hasRole(user, 'support_staff') || String(user?.rank || '').toLowerCase() === 'support staff') return 'SUPPORT STAFF';
   if (hasRole(user, 'accounting')) return 'ACCOUNTING';
   if (hasRole(user, 'trainer')) return 'TRAINER';
   if (hasRole(user, 'student')) return 'STUDENT';
@@ -278,7 +288,9 @@ function allowedCenters(user) {
   if (fullAccess || user?.role === 'dispatch' || roles.has('cad_access') || roles.has('officer') || roles.has('supervisor')) centers.push('cad');
   if (fullAccess || roles.has('officer')) centers.push('officer');
   if (fullAccess || roles.has('supervisor')) centers.push('supervisor');
-  if (fullAccess || roles.has('hr')) centers.push('hr');
+  const rank = String(user?.rank || '').toLowerCase();
+  if (fullAccess || roles.has('hr') || rank === 'human resources') centers.push('hr');
+  if (fullAccess || roles.has('support_staff') || rank === 'support staff' || rank === 'human resources') centers.push('support');
   if (fullAccess) centers.push('admin');
   if (fullAccess || roles.has('trainer')) centers.push('training');
   if (fullAccess || roles.has('accounting')) centers.push('accounting');
@@ -297,6 +309,7 @@ function defaultPageForUser(user) {
     officer: 'Dashboard',
     supervisor: 'SupervisorTasks',
     hr: 'HRManageCompanyEmployees',
+    support: 'AdminSupportStaffClock',
     training: 'AdminTraining',
     accounting: 'AccountingPayroll',
     admin: 'AdminDashboard',
