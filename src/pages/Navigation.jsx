@@ -299,7 +299,11 @@ export default function Navigation() {
         try {
             // Credit-free: delegate to backend geocodeMissingCalls (uses direct fetch, no InvokeLLM)
             const count = unmapped.length;
-            await base44.functions.invoke('geocodeMissingCalls', { limit: Math.min(count, 50) });
+            await base44.functions.invoke('geocodeMissingCalls', {
+                limit: Math.min(count, 50),
+                force_retry: true,
+                retry_rounds: 3,
+            });
             toast.success(`Geocoding ${Math.min(count, 50)} calls in background`);
             // Give the backend a moment to persist, then re-fetch
             setTimeout(() => { fetchCalls(); setIsGeocoding(false); }, 4000);
