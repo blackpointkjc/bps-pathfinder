@@ -38,21 +38,42 @@ export default function DispatchCenter() {
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const knownCallIdsRef = React.useRef(null);
+    const syncingGracRef = React.useRef(false);
 
     useEffect(() => {
         init();
         loadMonitoredProperties();
         
-        // Real-time updates every 60 seconds
-        const interval = setInterval(() => {
+        const syncLiveFeed = async () => {
+            if (syncingGracRef.current || document.hidden) return;
+            syncingGracRef.current = true;
+            try {
+                await base44.functions.invoke('ingestGractivecalls', {});
+                await loadActiveCalls();
+            } catch (error) {
+                console.warn('GRAC live sync failed:', error?.message);
+            } finally {
+                syncingGracRef.current = false;
+            }
+        };
+
+        syncLiveFeed();
+        const syncInterval = setInterval(syncLiveFeed, 10000);
+        const localInterval = setInterval(() => {
             loadActiveCalls();
             loadUnits();
-            loadMonitoredProperties();
-        }, 60000);
-        
-        // Auto-ingest every 5 minutes for real-time feed
+        }, 5000);
+        const secondaryInterval = setInterval(loadMonitoredProperties, 60000);
+        const onVisibility = () => {
+            if (!document.hidden) syncLiveFeed();
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+
         return () => {
-            clearInterval(interval);
+            clearInterval(syncInterval);
+            clearInterval(localInterval);
+            clearInterval(secondaryInterval);
+            document.removeEventListener('visibilitychange', onVisibility);
         };
     }, []);
 
