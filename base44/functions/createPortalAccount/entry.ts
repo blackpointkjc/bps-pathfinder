@@ -130,11 +130,9 @@ Deno.serve(async (req) => {
         ? ['officer', 'cad_access']
         : [accountType];
     const updates: Record<string, unknown> = {
-      email: normalizedEmail,
       first_name,
       last_name,
       mobile_phone: mobile_phone || '',
-      role: 'user',
       additional_roles: employeeRoles,
       assigned_location: accountType === 'client' ? assigned_location || '' : '',
       assigned_locations: accountType === 'client' && assigned_location ? [assigned_location] : [],
@@ -148,35 +146,52 @@ Deno.serve(async (req) => {
             : rank || 'Officer',
     };
 
-    // Provision the actual portal User record with service-role access first. This
-    // works for Trainer-created students and HR-created clients without granting
-    // either role system-administrator privileges.
-    if (!portalUser) {
+    // Pending Users must be created through Base44's supported invitation endpoint.
+    // Direct User.create calls are rejected with HTTP 400 because User is a protected
+    // system entity. After inviting, wait for the real pending User record and then
+    // attach the editable profile fields.
+    if (accountType === 'pending' && !portalUser) {
       try {
-        portalUser = await base44.asServiceRole.entities.User.create(updates);
-      } catch (createError) {
-        assignmentError = createError?.message || 'Unable to provision the portal user record';
-        console.error('Portal user provisioning failed', createError);
-        try {
-          const refreshed = await base44.asServiceRole.entities.User.list();
-          portalUser = (refreshed || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
-        } catch (refreshError) {
-          directoryError = refreshError?.message || directoryError;
+        await base44.auth.inviteUser(normalizedEmail, 'user');
+        invitationSent = true;
+      } catch (inviteError) {
+        invitationError = inviteError?.message || 'Native invitation could not be sent';
+        const normalizedError = invitationError.toLowerCase();
+        const alreadyExists = normalizedError.includes('already') || normalizedError.includes('exist') || normalizedError.includes('pending') || normalizedError.includes('invited');
+        invitationSent = alreadyExists;
+        if (!alreadyExists) {
+          return Response.json({ success: false, error: invitationError, error_stage: 'invitation' });
         }
+      }
+
+      for (let attempt = 0; attempt < 10 && !portalUser?.id; attempt += 1) {
+        if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 600));
+        const refreshed = await base44.asServiceRole.entities.User.list();
+        portalUser = (refreshed || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
       }
     }
 
-    // Send the native Base44 invitation as a separate best-effort step. The installed
-    // SDK exposes invitation through auth/users on the authenticated client; there is
-    // no asServiceRole.users module.
-    try {
-      await base44.auth.inviteUser(normalizedEmail, 'user');
-      invitationSent = true;
-    } catch (inviteError) {
-      invitationError = inviteError?.message || 'Native invitation could not be sent';
-      const normalizedError = invitationError.toLowerCase();
-      invitationSent = normalizedError.includes('already') || normalizedError.includes('exist') || normalizedError.includes('pending') || normalizedError.includes('invited');
-      console.warn('Native portal invitation was not completed', inviteError);
+    // Legacy category-specific creation remains supported for existing internal calls,
+    // but uses only editable User fields and never writes protected role/email fields.
+    if (accountType !== 'pending' && !portalUser) {
+      try {
+        portalUser = await base44.asServiceRole.entities.User.create({ email: normalizedEmail, ...updates });
+      } catch (createError) {
+        assignmentError = createError?.message || 'Unable to provision the portal user record';
+        console.error('Portal user provisioning failed', createError);
+      }
+    }
+
+    if (accountType !== 'pending') {
+      try {
+        await base44.auth.inviteUser(normalizedEmail, 'user');
+        invitationSent = true;
+      } catch (inviteError) {
+        invitationError = inviteError?.message || 'Native invitation could not be sent';
+        const normalizedError = invitationError.toLowerCase();
+        invitationSent = normalizedError.includes('already') || normalizedError.includes('exist') || normalizedError.includes('pending') || normalizedError.includes('invited');
+        console.warn('Native portal invitation was not completed', inviteError);
+      }
     }
 
     if (portalUser?.id) {
