@@ -177,6 +177,8 @@ Deno.serve(async (req) => {
         let body = {};
         try { body = await req.json(); } catch (e) {}
         const limit = Math.min(parseInt(body?.limit) || 5, 50);
+        const forceRetry = body?.force_retry === true;
+        const retryRounds = Math.min(Math.max(parseInt(body?.retry_rounds) || 3, 1), 5);
 
         const allCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 500);
 
@@ -184,7 +186,7 @@ Deno.serve(async (req) => {
         const missingCoords = allCalls.filter(c =>
             (!c.latitude || !c.longitude ||
              parseFloat(c.latitude) === 0 || parseFloat(c.longitude) === 0) &&
-            c.geo_confidence !== 'unmappable' // don't re-attempt confirmed unmappable
+            (forceRetry || c.geo_confidence !== 'unmappable')
         );
 
         console.log(`Found ${missingCoords.length} calls to geocode out of ${allCalls.length} total`);
@@ -203,7 +205,15 @@ Deno.serve(async (req) => {
         let failed = 0;
 
         for (const call of missingCoords.slice(0, MAX)) {
-            const result = await smartGeocode(call.location, call.agency);
+            let result = null;
+            for (let round = 1; round <= retryRounds; round++) {
+                result = await smartGeocode(call.location, call.agency);
+                if (result) break;
+                if (round < retryRounds) {
+                    console.log(`↻ Retry ${round + 1}/${retryRounds}: ${call.location} [${call.agency || 'unknown'}]`);
+                    await sleep(1500 * round);
+                }
+            }
 
             const updateData = result
                 ? {
@@ -244,7 +254,7 @@ Deno.serve(async (req) => {
             success: true,
             analytics,
             batch: { geocoded, failed, skipped: Math.max(0, missingCoords.length - MAX) },
-            message: `Geocoded ${geocoded}, marked ${failed} unmappable. ${Math.max(0, missingCoords.length - MAX)} skipped for next run.`
+            message: `Geocoded ${geocoded}, marked ${failed} unmappable after ${retryRounds} retry rounds. ${Math.max(0, missingCoords.length - MAX)} skipped for next run.`
         });
 
     } catch (error) {
