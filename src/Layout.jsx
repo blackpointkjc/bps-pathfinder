@@ -1,295 +1,229 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { stopAllAlerts } from '@/utils/alertUtils';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-    Radio, Activity, MapPin, Clock, Shield, Users, BarChart2, Settings,
-    Home, Zap, FileText, Menu, X, LogOut, ClipboardList, Bot
+  Activity, BarChart3, Bot, ChevronLeft, ChevronRight, Clock3, FileWarning,
+  Gauge, LogOut, Map, Menu, Radio, Shield, Siren, Users, X
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
-import CollapsePanelButton from '@/components/CollapsePanelButton';
+import { stopAllAlerts } from '@/utils/alertUtils';
 
-// Nav item definitions with role requirements
-const ALL_NAV = [
-    { label: 'COMMAND', section: true },
-    { label: 'Command Center', icon: Home, page: 'CommandDashboard', roles: ['user', 'dispatch', 'admin'] },
-    { label: 'Active Calls', icon: Radio, page: 'ActiveCalls', roles: ['user', 'dispatch', 'admin'] },
-    { label: 'Live Map', icon: MapPin, page: 'Navigation', roles: ['user', 'dispatch', 'admin'] },
-    { label: 'DISPATCH', section: true, roles: ['dispatch', 'admin'] },
-    { label: 'Dispatch Center', icon: Zap, page: 'DispatchCenter', roles: ['dispatch', 'admin'] },
-    { label: 'BOLO / Alerts', icon: Radio, page: 'BOLOAlerts', roles: ['dispatch', 'admin'] },
-    { label: 'Call History', icon: Clock, page: 'CallHistory', roles: ['dispatch', 'admin'] },
-    { label: 'Field Unit View', icon: Shield, page: 'FieldUnitView', roles: ['user', 'dispatch', 'admin'] },
-    { label: 'OPERATIONS', section: true, roles: ['admin'] },
-    { label: 'Personnel', icon: Users, page: 'Personnel', roles: ['admin'] },
-    { label: 'Dispatch Log', icon: FileText, page: 'DispatchLog', roles: ['admin'] },
-    { label: 'Reports', icon: BarChart2, page: 'Reports', roles: ['admin'] },
-    { label: 'Supervisor Review', icon: ClipboardList, page: 'SupervisorReview', roles: ['admin'] },
-    { label: 'Records Assistant', icon: Bot, page: 'RecordsAssistant', roles: ['admin'] },
-    { label: 'System Status', icon: Activity, page: 'SystemStatus', roles: ['admin'] },
-    { label: 'SYSTEM', section: true, roles: ['admin'] },
-    { label: 'Admin Portal', icon: Shield, page: 'AdminPortal', roles: ['admin'] },
+const NAV_GROUPS = [
+  {
+    label: 'OPERATIONS',
+    items: [
+      { label: 'Command', page: 'CommandDashboard', icon: Gauge, roles: ['user', 'dispatch', 'admin'] },
+      { label: 'Dispatch', page: 'DispatchCenter', icon: Radio, roles: ['dispatch', 'admin'] },
+      { label: 'Live Map', page: 'Navigation', icon: Map, roles: ['user', 'dispatch', 'admin'] },
+      { label: 'Field Unit', page: 'FieldUnitView', icon: Shield, roles: ['user', 'dispatch', 'admin'] },
+    ],
+  },
+  {
+    label: 'INTELLIGENCE',
+    items: [
+      { label: 'Call History', page: 'CallHistory', icon: Clock3, roles: ['dispatch', 'admin'] },
+      { label: 'BOLO / Alerts', page: 'BOLOAlerts', icon: FileWarning, roles: ['dispatch', 'admin'] },
+      { label: 'Records AI', page: 'RecordsAssistant', icon: Bot, roles: ['admin'] },
+    ],
+  },
+  {
+    label: 'ADMINISTRATION',
+    items: [
+      { label: 'Personnel', page: 'Personnel', icon: Users, roles: ['admin'] },
+      { label: 'Reports', page: 'Reports', icon: BarChart3, roles: ['admin'] },
+      { label: 'Admin Control', page: 'AdminPortal', icon: Activity, roles: ['admin'] },
+    ],
+  },
 ];
 
 const FULLSCREEN_PAGES = new Set(['Navigation']);
 
-function getNavItems(role) {
-    const effectiveRole = role === 'admin' ? 'admin' : role === 'dispatch' ? 'dispatch' : 'user';
-    return ALL_NAV.filter(item => !item.roles || item.roles.includes(effectiveRole));
-}
-
-function buildSections(items) {
-    const sections = [];
-    let current = null;
-    for (const item of items) {
-        if (item.section) {
-            current = { label: item.label, items: [] };
-            sections.push(current);
-        } else if (current) {
-            current.items.push(item);
-        }
-    }
-    return sections.filter(s => s.items.length > 0);
+function roleName(user) {
+  if (user?.role === 'admin') return 'SYSTEM ADMIN';
+  if (user?.role === 'dispatch') return 'DISPATCH';
+  return 'FIELD UNIT';
 }
 
 export default function Layout({ children, currentPageName }) {
-    const location = useLocation();
-    const [collapsed, setCollapsed] = useState(false);
-    const [mobileOpen, setMobileOpen] = useState(false);
-    const [userRole, setUserRole] = useState('user');
-    const [activeAlert, setActiveAlert] = useState(null);
-    const [systemOutages, setSystemOutages] = useState([]);
+  const location = useLocation();
+  const { user } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeAlert, setActiveAlert] = useState(null);
+  const [outages, setOutages] = useState([]);
+  const [clock, setClock] = useState(new Date());
 
-    useEffect(() => {
-        const loadOutages = async () => {
-            try {
-                const outages = await base44.entities.SystemOutage.filter({ resolved_at: null });
-                setSystemOutages(outages || []);
-            } catch {}
-        };
-        loadOutages();
-        const interval = setInterval(loadOutages, 60000);
-        return () => clearInterval(interval);
-    }, []);
+  useEffect(() => {
+    const tick = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(tick);
+  }, []);
 
-    useEffect(() => {
-        const handler = (e) => setActiveAlert(e.detail);
-        const clearHandler = () => setActiveAlert(null);
-        window.addEventListener('bps-new-call', handler);
-        window.addEventListener('bps-alert-cleared', clearHandler);
-        return () => {
-            window.removeEventListener('bps-new-call', handler);
-            window.removeEventListener('bps-alert-cleared', clearHandler);
-        };
-    }, []);
+  useEffect(() => {
+    const load = () => base44.entities.SystemOutage.filter({ resolved_at: null })
+      .then(data => setOutages(data || []))
+      .catch(() => setOutages([]));
+    load();
+    const id = setInterval(load, 60000);
+    return () => clearInterval(id);
+  }, []);
 
-    const handleAcknowledge = () => {
-        stopAllAlerts();
-        setActiveAlert(null);
+  useEffect(() => {
+    const onAlert = event => setActiveAlert(event.detail);
+    const onClear = () => setActiveAlert(null);
+    window.addEventListener('bps-new-call', onAlert);
+    window.addEventListener('bps-alert-cleared', onClear);
+    return () => {
+      window.removeEventListener('bps-new-call', onAlert);
+      window.removeEventListener('bps-alert-cleared', onClear);
     };
+  }, []);
 
-    useEffect(() => {
-        base44.auth.me().then(user => {
-            if (user?.role) setUserRole(user.role);
-        }).catch(() => {});
-    }, []);
+  const groups = useMemo(() => {
+    const role = user?.role === 'admin' ? 'admin' : user?.role === 'dispatch' ? 'dispatch' : 'user';
+    return NAV_GROUPS
+      .map(group => ({ ...group, items: group.items.filter(item => item.roles.includes(role)) }))
+      .filter(group => group.items.length);
+  }, [user?.role]);
 
-    const isFullscreen = FULLSCREEN_PAGES.has(currentPageName);
-    if (isFullscreen) return (
-        <div className="w-full h-full relative">
-            {activeAlert && (
-                <div className="fixed top-0 left-0 right-0 z-[9999] flex items-center gap-3 px-4 py-2 bg-red-900/95 border-b-2 border-red-500 animate-pulse">
-                    <span className="text-red-300 text-xs font-mono font-bold flex-shrink-0">🚨 NEW CALL:</span>
-                    <span className="text-white text-xs font-mono truncate flex-1">{activeAlert.incident} @ {activeAlert.location}</span>
-                    <button onClick={handleAcknowledge}
-                        className="flex-shrink-0 px-3 py-1 bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-bold rounded border border-red-400">
-                        ACKNOWLEDGE
-                    </button>
-                </div>
+  const acknowledge = () => {
+    stopAllAlerts();
+    setActiveAlert(null);
+  };
+
+  if (FULLSCREEN_PAGES.has(currentPageName)) {
+    return <div className="h-full w-full bg-[#050a12]">{children}</div>;
+  }
+
+  const Sidebar = ({ mobile = false }) => (
+    <div className="flex h-full flex-col bg-[#08111f]">
+      <div className="h-16 border-b border-[#1c3049] px-3 flex items-center gap-3">
+        <div className="relative flex h-10 w-10 items-center justify-center rounded bg-[#12315a] border border-[#2c5d91]">
+          <Shield className="h-5 w-5 text-[#8cc7ff]" />
+          <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#08111f] bg-emerald-400" />
+        </div>
+        {(!collapsed || mobile) && (
+          <div className="min-w-0">
+            <div className="text-[12px] font-black tracking-[0.18em] text-white">BPS PATHFINDER</div>
+            <div className="text-[9px] tracking-[0.2em] text-[#6f8aa8]">PUBLIC SAFETY CAD</div>
+          </div>
+        )}
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-2 py-3">
+        {groups.map(group => (
+          <div key={group.label} className="mb-4">
+            {(!collapsed || mobile) && (
+              <div className="px-2 pb-1.5 text-[9px] font-bold tracking-[0.22em] text-[#54708f]">{group.label}</div>
             )}
-            {children}
-        </div>
-    );
-
-    const navSections = buildSections(getNavItems(userRole));
-
-    const handleLogout = () => base44.auth.logout('/');
-
-    const NavContent = ({ onNav }) => (
-        <div className="flex flex-col h-full">
-            {/* Logo */}
-            <div className={`flex items-center gap-3 px-3 py-3 border-b border-slate-800 flex-shrink-0 ${collapsed ? 'justify-center' : ''}`}>
-                <div className="relative flex-shrink-0">
-                    <img src="https://media.base44.com/images/public/694de31c7e0f5645fb95de52/e9bbe2fdb_image.png" alt="KIC Security Services" className="w-10 h-10" style={{ mixBlendMode: 'multiply' }} />
-                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-slate-900 animate-pulse hidden" />
-                </div>
-                {!collapsed && (
-                    <div className="min-w-0">
-                        <div className="text-blue-300 font-black text-sm tracking-[0.16em] font-mono leading-none">BPS PATHFINDER</div>
-                        <div className="text-slate-500 text-[9px] font-mono tracking-[0.15em] mt-0.5">REGIONAL COMMAND SYSTEM</div>
-                        <div className="flex items-center gap-1 mt-1">
-                            <span className="w-1 h-1 rounded-full bg-green-500" />
-                            <span className="text-green-400 text-[8px] font-mono tracking-widest">SYSTEM ONLINE</span>
-                        </div>
-                    </div>
-                )}
+            <div className="space-y-1">
+              {group.items.map(({ label, page, icon: Icon }) => {
+                const active = currentPageName === page;
+                return (
+                  <Link
+                    key={page}
+                    to={createPageUrl(page)}
+                    title={collapsed && !mobile ? label : undefined}
+                    onClick={() => mobile && setMobileOpen(false)}
+                    className={`relative flex h-10 items-center gap-3 rounded px-3 transition-colors ${
+                      active
+                        ? 'bg-[#14345c] text-white border border-[#2d6095]'
+                        : 'text-[#8ea4bc] border border-transparent hover:bg-[#101f32] hover:text-white'
+                    } ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
+                  >
+                    {active && <span className="absolute left-0 top-2 bottom-2 w-0.5 bg-[#55aaff]" />}
+                    <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-[#76bcff]' : 'text-[#6683a0]'}`} />
+                    {(!collapsed || mobile) && <span className="text-[11px] font-bold tracking-wide">{label}</span>}
+                  </Link>
+                );
+              })}
             </div>
+          </div>
+        ))}
+      </nav>
 
-            {/* Nav Items */}
-            <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
-                {navSections.map(section => (
-                    <div key={section.label}>
-                        {!collapsed && (
-                            <div className="flex items-center gap-2 px-2 pt-3 pb-1">
-                                <div className="h-px flex-1 bg-slate-800" />
-                                <span className="text-[9px] font-black text-blue-300/70 tracking-[0.3em] font-mono uppercase">{section.label}</span>
-                                <div className="h-px flex-1 bg-slate-800" />
-                            </div>
-                        )}
-                        {collapsed && <div className="h-px bg-slate-800 mx-2 my-2" />}
-                        <div className="space-y-0.5">
-                            {section.items.map(({ label, icon: Icon, page }) => {
-                                const isActive = currentPageName === page;
-                                return (
-                                    <Link
-                                        key={page}
-                                        to={createPageUrl(page)}
-                                        onClick={() => onNav?.()}
-                                        title={collapsed ? label : undefined}
-                                        className={`group flex items-center gap-3 px-3 py-2 rounded transition-all select-none relative ${
-                                            isActive
-                                                ? 'bg-blue-500/15 text-blue-200 border border-blue-400/40 shadow-[inset_3px_0_0_0_rgb(96_165_250)]'
-                                                : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
-                                        } ${collapsed ? 'justify-center' : ''}`}
-                                    >
-                                        {isActive && !collapsed && (
-                                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-gold rounded-r" />
-                                        )}
-                                        <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-300' : 'text-slate-500 group-hover:text-slate-300'}`} />
-                                        {!collapsed && <span className={`text-xs font-mono tracking-wide ${isActive ? 'font-bold text-blue-200' : ''}`}>{label}</span>}
-                                        {isActive && !collapsed && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />}
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    </div>
-                ))}
-            </nav>
+      <div className="border-t border-[#1c3049] p-2">
+        {(!collapsed || mobile) && (
+          <div className="mb-2 rounded border border-[#1c3049] bg-[#0c1828] px-3 py-2">
+            <div className="text-[9px] tracking-widest text-[#597491]">{roleName(user)}</div>
+            <div className="truncate text-[11px] font-bold text-white">{user?.full_name || user?.email || 'AUTHORIZED USER'}</div>
+            <div className="mt-1 text-[9px] text-emerald-400">● SECURE SESSION</div>
+          </div>
+        )}
+        <button onClick={() => base44.auth.logout('/')} className={`flex h-10 w-full items-center gap-3 rounded px-3 text-[#8399b0] hover:bg-red-950/30 hover:text-red-300 ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
+          <LogOut className="h-4 w-4" />
+          {(!collapsed || mobile) && <span className="text-[11px] font-bold">SIGN OUT</span>}
+        </button>
+      </div>
+    </div>
+  );
 
-            {/* Footer */}
-            <div className={`border-t border-slate-800 p-3 flex-shrink-0 ${collapsed ? 'flex flex-col items-center' : ''}`}>
-                {!collapsed && (
-                    <div className="flex gap-3 px-3 py-1.5 mb-1">
-                        <Link to="/About" className="text-slate-500 hover:text-slate-300 text-[10px] font-mono transition-colors">About</Link>
-                        <Link to="/Contact" className="text-slate-500 hover:text-slate-300 text-[10px] font-mono transition-colors">Contact</Link>
-                    </div>
-                )}
-                <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-900/10 transition-all w-full"
-                >
-                    <LogOut className="w-4 h-4 flex-shrink-0" />
-                {!collapsed && <span className="text-sm font-mono">Sign Out</span>}
-                </button>
-            </div>
-        </div>
-    );
+  const criticalOutage = outages.some(item => item.severity === 'outage');
 
-    return (
-        <div className="fixed inset-0 flex bg-slate-950 overflow-hidden">
-            {/* Desktop Sidebar */}
-            <div
-                style={{ width: collapsed ? 64 : 220, transition: 'width 0.2s' }}
-                className="hidden md:flex flex-col bg-slate-900 border-r border-slate-800 flex-shrink-0 relative z-30 h-full"
-            >
-                <NavContent />
-                <div className="absolute top-1/2 -translate-y-1/2 -right-3 z-40">
-                    <CollapsePanelButton isOpen={!collapsed} onClick={() => setCollapsed(c => !c)} className="w-5 h-16 bg-[#0d1220]/90 backdrop-blur border border-l-0 border-[#1e2d4a] rounded-r-lg flex items-center justify-center text-slate-500 hover:text-white hover:bg-[#1a2535] transition-all" />
-                </div>
-            </div>
+  return (
+    <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app">
+      <aside className="hidden md:flex relative flex-col border-r border-[#1c3049]" style={{ width: collapsed ? 64 : 224, transition: 'width .18s ease' }}>
+        <Sidebar />
+        <button
+          onClick={() => setCollapsed(value => !value)}
+          className="absolute -right-3 top-20 z-40 flex h-8 w-6 items-center justify-center rounded border border-[#294867] bg-[#0b1726] text-[#7892ac] hover:text-white"
+          aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+        >
+          {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
+        </button>
+      </aside>
 
-            {/* Mobile Sidebar Overlay */}
-            <AnimatePresence>
-                {mobileOpen && (
-                    <>
-                        <motion.div
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="md:hidden fixed inset-0 bg-black/60 z-40"
-                            onClick={() => setMobileOpen(false)}
-                        />
-                        <motion.div
-                            initial={{ x: -240 }} animate={{ x: 0 }} exit={{ x: -240 }}
-                            transition={{ duration: 0.2 }}
-                            className="md:hidden fixed left-0 top-0 bottom-0 w-60 bg-slate-900 border-r border-slate-800 z-50 flex flex-col"
-                        >
-                            <button onClick={() => setMobileOpen(false)} className="absolute top-3 right-3 text-slate-400 hover:text-white">
-                                <X className="w-5 h-5" />
-                            </button>
-                            <NavContent onNav={() => setMobileOpen(false)} />
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/70 md:hidden" onClick={() => setMobileOpen(false)} />
+            <motion.aside initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }} className="fixed inset-y-0 left-0 z-50 w-64 border-r border-[#1c3049] md:hidden">
+              <button onClick={() => setMobileOpen(false)} className="absolute right-3 top-3 z-10 text-[#8199b2]"><X className="h-4 w-4" /></button>
+              <Sidebar mobile />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
-            {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden h-full">
-                {/* Top Command Bar */}
-                <header className="flex-none h-12 bg-slate-900 border-b border-slate-800 flex items-center px-4 gap-3 z-20">
-                    <button onClick={() => setMobileOpen(true)} className="md:hidden text-slate-400 hover:text-white">
-                        <Menu className="w-5 h-5" />
-                    </button>
+      <section className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-12 shrink-0 items-center gap-3 border-b border-[#1c3049] bg-[#091321] px-3">
+          <button onClick={() => setMobileOpen(true)} className="md:hidden text-[#8fa8c2]"><Menu className="h-4 w-4" /></button>
+          <div className="flex items-center gap-2">
+            <Siren className="h-4 w-4 text-[#5aabff]" />
+            <span className="text-[11px] font-black tracking-[0.16em]">{(currentPageName || 'COMMAND').replace(/([a-z])([A-Z])/g, '$1 $2').toUpperCase()}</span>
+          </div>
+          <div className="h-4 w-px bg-[#223852]" />
+          <span className="hidden text-[9px] tracking-widest text-[#607c98] sm:block">REGIONAL OPERATIONS NETWORK</span>
+          <div className="flex-1" />
+          <Link to={createPageUrl('AdminPortal')} className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[9px] font-bold ${
+            criticalOutage ? 'border-red-600/60 bg-red-950/40 text-red-300' : outages.length ? 'border-amber-600/50 bg-amber-950/30 text-amber-300' : 'border-emerald-700/50 bg-emerald-950/20 text-emerald-300'
+          }`}>
+            <Activity className="h-3 w-3" />
+            {criticalOutage ? 'SYSTEM OUTAGE' : outages.length ? 'SYSTEM DEGRADED' : 'SYSTEM NORMAL'}
+          </Link>
+          <div className="hidden text-right font-mono sm:block">
+            <div className="text-[11px] font-bold text-white">{clock.toLocaleTimeString('en-US', { hour12: false, timeZone: 'America/New_York' })}</div>
+            <div className="text-[8px] tracking-widest text-[#607c98]">EASTERN TIME</div>
+          </div>
+        </header>
 
-                    <div className="flex-1" />
-                    {systemOutages.length === 0 ? (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 border border-green-500/30 rounded text-green-400 font-mono text-[10px] font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                            ALL SYSTEMS OPERATIONAL
-                        </div>
-                    ) : systemOutages.some(o => o.severity === 'outage') ? (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-500/10 border border-red-500/30 rounded text-red-400 font-mono text-[10px] font-bold animate-pulse">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                            {systemOutages.length} SYSTEM OUTAGE{systemOutages.length > 1 ? 'S' : ''}
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded text-yellow-400 font-mono text-[10px] font-bold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
-                            {systemOutages.length} SYSTEM ISSUE{systemOutages.length > 1 ? 'S' : ''}
-                        </div>
-                    )}
-                    <Link to={createPageUrl('AdminPortal')} className="text-slate-400 hover:text-blue-300 transition-colors">
-                        <Settings className="w-5 h-5" />
-                    </Link>
-                </header>
+        {activeAlert && (
+          <div className="flex h-10 shrink-0 items-center gap-3 border-b border-red-600 bg-red-950/80 px-3">
+            <span className="flex items-center gap-1.5 text-[10px] font-black tracking-wider text-red-300"><Siren className="h-3.5 w-3.5" /> PRIORITY ALERT</span>
+            <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-white">{activeAlert.incident} — {activeAlert.location}</span>
+            <button onClick={acknowledge} className="rounded border border-red-500 bg-red-700 px-3 py-1 text-[9px] font-black">ACKNOWLEDGE</button>
+          </div>
+        )}
 
-                {/* Global Alert Banner */}
-                {activeAlert && (
-                    <div className="flex-none flex items-center gap-3 px-4 py-2 bg-red-900/90 border-b-2 border-red-500 animate-pulse z-50">
-                        <span className="text-red-300 text-xs font-mono font-bold flex-shrink-0">🚨 NEW CALL:</span>
-                        <span className="text-white text-xs font-mono truncate flex-1">{activeAlert.incident} @ {activeAlert.location}</span>
-                        <button onClick={handleAcknowledge}
-                            className="flex-shrink-0 px-3 py-1 bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-bold rounded border border-red-400">
-                            ACKNOWLEDGE
-                        </button>
-                    </div>
-                )}
-
-                {/* Page Content */}
-                <main className="flex-1 overflow-auto min-h-0">
-                    <AnimatePresence mode="wait" initial={false}>
-                        <motion.div
-                            key={location.pathname}
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.15 }}
-                            className="h-full"
-                        >
-                            {children}
-                        </motion.div>
-                    </AnimatePresence>
-                </main>
-            </div>
-        </div>
-    );
+        <main className="min-h-0 flex-1 overflow-auto bg-[#060c15]">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={location.pathname} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: .12 }} className="h-full">
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </section>
+    </div>
+  );
 }
