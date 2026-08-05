@@ -88,7 +88,7 @@ export default function RecordsAssistant() {
 
         <div className="grid gap-3">
           {visible.map(item => {
-            const target = `${createPageUrl(item.page)}?recordId=${encodeURIComponent(item.id)}&source=${encodeURIComponent(item.entity)}`;
+            const target = `${createPageUrl('RecordViewer')}?id=${encodeURIComponent(item.id)}&entity=${encodeURIComponent(item.entity)}`;
             return (
               <Card key={`${item.entity}-${item.id}`} className="border-slate-700 bg-[#101b29] hover:border-blue-500/50">
                 <CardContent className="p-4">
