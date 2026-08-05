@@ -29,17 +29,22 @@ export default function AdminPTOApproval() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(), // Fetches all users
-    enabled: user?.role === 'admin', // Only fetch if user is admin
-    initialData: [], // Add initialData to prevent undefined during first render
+  const hasHRAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access');
+
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['hrUsers'],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getHRUsers', {});
+      return result?.users || [];
+    },
+    enabled: hasHRAccess,
+    initialData: [],
   });
 
   const { data: pendingRequests } = useQuery({
     queryKey: ['pendingPTORequests'],
     queryFn: () => base44.entities.TimeOffRequest.filter({ status: 'pending' }, '-created_date'),
-    enabled: user?.role === 'admin',
+    enabled: hasHRAccess,
   });
 
   const { data: reviewedRequests } = useQuery({
@@ -49,7 +54,7 @@ export default function AdminPTOApproval() {
       const denied = await base44.entities.TimeOffRequest.filter({ status: 'denied' }, '-reviewed_date', 50);
       return [...approved, ...denied];
     },
-    enabled: user?.role === 'admin',
+    enabled: hasHRAccess,
   });
 
   const getAdminName = (email) => {
@@ -102,7 +107,7 @@ export default function AdminPTOApproval() {
         
         // Send email notification
         await base44.integrations.Core.SendEmail({
-          from_name: "Virtus Security HR",
+          from_name: "Black Point Protection HR",
           to: request.created_by,
           subject: `Time Off Request ${status === 'approved' ? 'Approved ✅' : 'Denied ❌'}`,
           body: `<!DOCTYPE html>
@@ -124,7 +129,7 @@ export default function AdminPTOApproval() {
   <div class="container">
     <div class="header">
       <h1>${status === 'approved' ? '✅ Request Approved!' : '❌ Request Denied'}</h1>
-      <p style="margin: 10px 0 0 0;">Virtus Security Services</p>
+      <p style="margin: 10px 0 0 0;">Black Point Protection Services</p>
     </div>
     
     <div class="content">
@@ -148,7 +153,7 @@ export default function AdminPTOApproval() {
       </center>
       
       <div class="footer">
-        <p><strong>Virtus Security Services</strong><br/>
+        <p><strong>Black Point Protection Services</strong><br/>
         Richmond, Virginia</p>
       </div>
     </div>
@@ -171,10 +176,10 @@ export default function AdminPTOApproval() {
           for (const carrier of smsCarriers) {
             try {
               await base44.integrations.Core.SendEmail({
-                from_name: "Virtus Security",
+                from_name: "Black Point Protection",
                 to: officer.mobile_phone + carrier,
                 subject: "",
-                body: `Virtus Security: Your PTO request for ${format(new Date(request.start_date), 'MMM d')}-${format(new Date(request.end_date), 'MMM d')} has been APPROVED. Check VirtusConnect for details.`
+                body: `Black Point Protection: Your PTO request for ${format(new Date(request.start_date), 'MMM d')}-${format(new Date(request.end_date), 'MMM d')} has been APPROVED. Check VirtusConnect for details.`
               });
             } catch (error) {
               console.log(`SMS attempt failed for carrier ${carrier}`);
@@ -220,11 +225,11 @@ export default function AdminPTOApproval() {
     }
   };
 
-  if (user?.role !== 'admin') {
+  if (!hasHRAccess) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Admin Access Required</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">HR Access Required</h2>
         <p className="text-slate-600">You don't have permission to access this page.</p>
       </div>
     );
@@ -234,7 +239,7 @@ export default function AdminPTOApproval() {
     <div className="p-4 md:p-8 min-h-screen">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex items-center gap-4">
-          <img src={LOGO_URL} alt="Virtus Security" className="w-16 h-16 object-contain" />
+          <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
           <div>
             <h1 className="text-3xl font-bold text-slate-900">PTO Approval</h1>
             <p className="text-slate-600">Review and approve time-off requests</p>
