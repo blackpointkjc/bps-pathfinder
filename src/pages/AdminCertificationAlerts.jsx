@@ -25,16 +25,23 @@ export default function AdminCertificationAlerts() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
-    enabled: user?.role === 'admin',
+  const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const hasTrainingAccess = user?.role === 'admin' || userRoles.has('trainer') || userRoles.has('full_access');
+
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['trainingUsers'],
+    queryFn: async () => {
+      const response = await base44.functions.invoke('getTrainingUsers', {});
+      if (response?.error) throw new Error(response.error);
+      return response?.users || [];
+    },
+    enabled: hasTrainingAccess,
   });
 
-  const { data: certificationAlerts } = useQuery({
+  const { data: certificationAlerts = [] } = useQuery({
     queryKey: ['certificationAlerts'],
     queryFn: () => base44.entities.CertificationTodo.list('-days_until_expiration'),
-    enabled: user?.role === 'admin',
+    enabled: hasTrainingAccess,
   });
 
   const acknowledgeAlertMutation = useMutation({
