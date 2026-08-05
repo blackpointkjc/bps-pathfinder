@@ -326,16 +326,28 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             {trafficSegments && trafficSegments.length > 0 ? (
                 <TrafficLayer trafficSegments={trafficSegments} />
             ) : route && route.length > 0 ? (
-                <Polyline
-                    positions={route}
-                    pathOptions={{
-                        color: '#007AFF',
-                        weight: 5,
-                        opacity: 0.8,
-                        lineCap: 'round',
-                        lineJoin: 'round'
-                    }}
-                />
+                <>
+                    <Polyline
+                        positions={route}
+                        pathOptions={{
+                            color: '#ffffff',
+                            weight: 10,
+                            opacity: 0.95,
+                            lineCap: 'round',
+                            lineJoin: 'round'
+                        }}
+                    />
+                    <Polyline
+                        positions={route}
+                        pathOptions={{
+                            color: '#1a73e8',
+                            weight: 6,
+                            opacity: 1,
+                            lineCap: 'round',
+                            lineJoin: 'round'
+                        }}
+                    />
+                </>
             ) : null}
 
             {/* Active Emergency Calls */}
