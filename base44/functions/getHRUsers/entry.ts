@@ -5,15 +5,18 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     const roles = new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
-    const authorized = !!user && (user.role === 'admin' || roles.has('hr') || roles.has('full_access'));
+    const supportRank = ['support staff', 'human resources'].includes(String(user?.rank || '').toLowerCase());
+    const privileged = !!user && (user.role === 'admin' || roles.has('hr') || roles.has('full_access'));
+    const authorized = privileged || (!!user && (supportRank || roles.has('support_staff')));
     if (!authorized) return Response.json({ error: 'Unauthorized', users: [] }, { status: 403 });
 
     const allUsers = await base44.asServiceRole.entities.User.list();
     const internalRoles = new Set(['cad_access', 'officer', 'supervisor', 'hr', 'accounting', 'trainer', 'full_access']);
     const users = (allUsers || [])
       .filter((entry: any) => {
+        if (!privileged && entry.email !== user.email) return false;
         const entryRoles = entry.additional_roles || [];
-        return !entry.termination_date && (entry.role === 'admin' || entryRoles.some((role: string) => internalRoles.has(String(role).toLowerCase())));
+        return !entry.termination_date && (entry.role === 'admin' || entryRoles.some((role: string) => internalRoles.has(String(role).toLowerCase())) || ['support staff', 'human resources'].includes(String(entry.rank || '').toLowerCase()));
       })
       .map((entry: any) => ({
         id: entry.id,
