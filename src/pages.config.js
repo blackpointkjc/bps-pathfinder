@@ -28,7 +28,17 @@
  *
  *   import Home from './pages/Home';
  *   import Settings from './pages/Settings';
- *   import __Layout from './Layout.jsx';
+ *   import BOLOAlerts from './pages/BOLOAlerts';
+import PathfinderReports from './pages/Reports';
+import CallHistory from './pages/CallHistory';
+import Navigation from './pages/Navigation';
+import RecordsAssistant from './pages/RecordsAssistant';
+import DispatchCenter from './pages/DispatchCenter';
+import CommandDashboard from './pages/CommandDashboard';
+import FieldUnitView from './pages/FieldUnitView';
+import Personnel from './pages/Personnel';
+import AdminPortal from './pages/AdminPortal';
+import __Layout from './Layout.jsx';
  *
  *   export const PAGES = {
  *       "Home": Home,
@@ -168,6 +178,16 @@ import AdminQRCheckpoints from './pages/AdminQRCheckpoints';
 import AdminQRPrintManager from './pages/AdminQRPrintManager';
 import AdminQRReports from './pages/AdminQRReports';
 import ClientQRReports from './pages/ClientQRReports';
+import BOLOAlerts from './pages/BOLOAlerts';
+import PathfinderReports from './pages/Reports';
+import CallHistory from './pages/CallHistory';
+import Navigation from './pages/Navigation';
+import RecordsAssistant from './pages/RecordsAssistant';
+import DispatchCenter from './pages/DispatchCenter';
+import CommandDashboard from './pages/CommandDashboard';
+import FieldUnitView from './pages/FieldUnitView';
+import Personnel from './pages/Personnel';
+import AdminPortal from './pages/AdminPortal';
 import __Layout from './Layout.jsx';
 
 
@@ -293,6 +313,16 @@ export const PAGES = {
     "AdminQRPrintManager": AdminQRPrintManager,
     "AdminQRReports": AdminQRReports,
     "ClientQRReports": ClientQRReports,
+    "BOLOAlerts": BOLOAlerts,
+    "PathfinderReports": PathfinderReports,
+    "CallHistory": CallHistory,
+    "Navigation": Navigation,
+    "RecordsAssistant": RecordsAssistant,
+    "DispatchCenter": DispatchCenter,
+    "CommandDashboard": CommandDashboard,
+    "FieldUnitView": FieldUnitView,
+    "Personnel": Personnel,
+    "AdminPortal": AdminPortal,
 }
 
 export const pagesConfig = {
