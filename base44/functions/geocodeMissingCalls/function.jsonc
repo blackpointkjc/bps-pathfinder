@@ -1,0 +1,21 @@
+{
+  "name": "geocodeMissingCalls",
+  "entrypoint": "entry.ts",
+  "automations": [
+    {
+      "name": "Retry unmapped active calls",
+      "description": "Credit-free background geocoding with Census and Photon fallback retries.",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "simple",
+      "repeat_unit": "minutes",
+      "repeat_interval": 10,
+      "is_active": true,
+      "function_args": {
+        "limit": 10,
+        "force_retry": true,
+        "retry_rounds": 3
+      }
+    }
+  ]
+}
