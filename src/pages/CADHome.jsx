@@ -109,10 +109,11 @@ export default function CADHome() {
             const calls = callsData || [];
             const allUsers = usersData || [];
 
-            // Filter: all active calls (both dispatch and scraper)
+            // DispatchCall is a live mirror of GRAC. Exclude any legacy/local rows defensively.
             const recentCalls = calls.filter(call => {
+                const isGrac = String(call.call_id || '').startsWith('grac-');
                 const isActive = !call.status || !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
-                return isActive;
+                return isGrac && isActive;
             }).sort((a, b) => {
                 const timeA = new Date(a.time_received || a.created_date);
                 const timeB = new Date(b.time_received || b.created_date);
@@ -125,19 +126,9 @@ export default function CADHome() {
             setActiveCalls(recentCalls);
             setUnits(allUsers);
 
-            // Filter critical calls - keep them for 12 hours
-            const twelveHoursAgo = new Date();
-            twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12);
-            
-            const critical = calls.filter(call => {
-                const incident = call.incident?.toLowerCase() || '';
-                const callTime = new Date(call.created_date);
-                const isActive = !['Closed', 'Cleared', 'Cancelled'].includes(call.status);
-                const isCritical = incident.includes('shooting') || incident.includes('officer') || 
-                                   incident.includes('assault') || incident.includes('robbery') ||
-                                   call.priority === 'critical' || call.priority === 'high';
-                return isCritical && isActive && callTime >= twelveHoursAgo;
-            }).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+            const critical = recentCalls.filter(call =>
+                call.priority === 'critical' || call.priority === 'high'
+            ).sort((a, b) => new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date));
             setCriticalCalls(critical);
 
             // Calculate metrics
@@ -159,15 +150,14 @@ export default function CADHome() {
     const handleRefresh = async () => {
         if (refreshing) return;
         setRefreshing(true);
-        toast.info('Scraping live feed — this takes ~60 seconds...');
+        toast.info('Synchronizing the GRAC live feed...');
         try {
             await base44.functions.invoke('ingestGractivecalls', {});
             await loadData();
-            toast.success('Live feed refreshed!');
+            toast.success('GRAC live feed synchronized');
         } catch (err) {
-            // Even on timeout/error the scrape may have partially completed — reload anyway
             await loadData();
-            toast.info('Feed reloaded (scrape may still be running)');
+            toast.error('GRAC synchronization failed; showing the last successful feed')
         } finally {
             setRefreshing(false);
         }
