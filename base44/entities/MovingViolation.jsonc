@@ -4,7 +4,7 @@
   "properties": {
     "summons_number": {
       "type": "string",
-      "description": "Virtus summons number (e.g., VMS-20250101-0001)"
+      "description": "Black Point summons number (e.g., VMS-20250101-0001)"
     },
     "call_number": {
       "type": "string",
