@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     const roles = new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
     const supportRank = ['support staff', 'human resources'].includes(String(user?.rank || '').toLowerCase());
-    const privileged = !!user && (user.role === 'admin' || roles.has('hr') || roles.has('full_access'));
+    const privileged = !!user && (user.role === 'admin' || roles.has('hr') || roles.has('trainer') || roles.has('full_access'));
     const authorized = privileged || (!!user && (supportRank || roles.has('support_staff')));
     if (!authorized) return Response.json({ error: 'Unauthorized', users: [] }, { status: 403 });
 
