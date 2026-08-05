@@ -157,7 +157,7 @@ export default function AdminDivisions() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
+    <div className="divisions-page p-4 md:p-8 min-h-screen">
       <div className="max-w-4xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
