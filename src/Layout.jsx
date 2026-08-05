@@ -492,7 +492,8 @@ export default function Layout({ children, currentPageName }) {
           base44.entities.PropertyAlert.filter({ acknowledged: false }, '-created_date', 300).catch(() => []),
         ]);
         if (cancelled) return;
-        const existingKeys = new Set((existingAlerts || []).map(item => `${item.callId}:${item.propertyId}`));
+        const existingAlertMap = new Map((existingAlerts || []).map(item => [`${item.callId}:${item.propertyId}`, item]));
+        const existingKeys = new Set(existingAlertMap.keys());
         const activeCalls = (calls || []).filter(call => !['Cleared', 'Cancelled'].includes(call.status));
         const matches = [];
         for (const call of activeCalls) {
@@ -500,16 +501,17 @@ export default function Layout({ children, currentPageName }) {
           if (!match) continue;
           const key = `${call.id}:${match.property.id}`;
           matches.push(key);
-          if (alertedPropertyKeys.current.has(key) || existingKeys.has(key)) continue;
+          if (alertedPropertyKeys.current.has(key)) continue;
           alertedPropertyKeys.current.add(key);
+          const existingRecord = existingAlertMap.get(key);
           const alert = {
             call,
             property: match.property,
-            relation: match.relation,
-            distanceFeet: Math.round(match.distanceFeet || 0),
+            relation: existingRecord?.relation || match.relation,
+            distanceFeet: Math.round(existingRecord ? Number(existingRecord.distanceMeters || 0) / 0.3048 : (match.distanceFeet || 0)),
             key,
           };
-          base44.entities.PropertyAlert.create({
+          if (!existingRecord) base44.entities.PropertyAlert.create({
             callId: call.id,
             cadNumber: /^B\d+$/i.test(String(call.call_id || '')) ? call.call_id : '',
             propertyId: match.property.id,
