@@ -414,13 +414,13 @@ export default function SupervisorPerformanceReview() {
                   />
                 </div>
 
-                <div className="flex items-center space-x-2 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="flex items-center space-x-2 p-4 bg-amber-950/30 rounded-lg border border-amber-700 text-slate-100">
                   <Checkbox
                     id="signature"
                     checked={signatureObtained}
                     onCheckedChange={setSignatureObtained}
                   />
-                  <Label htmlFor="signature" className="cursor-pointer font-medium">
+                  <Label htmlFor="signature" className="cursor-pointer font-medium text-slate-100">
                     I have reviewed this performance evaluation with the officer and obtained their signature on the printed document
                   </Label>
                 </div>
