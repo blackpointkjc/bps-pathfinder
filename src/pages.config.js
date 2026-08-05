@@ -136,7 +136,6 @@ import TrainingManageCompanyEmployees from './pages/TrainingManageCompanyEmploye
 import ManageStudents from './pages/ManageStudents';
 import ManageTimeEntries from './pages/ManageTimeEntries';
 import MyPerformanceAnalytics from './pages/MyPerformanceAnalytics';
-import OfficerAnalytics from './pages/OfficerAnalytics';
 import OfficerAvailability from './pages/OfficerAvailability';
 import OfficerInbox from './pages/OfficerInbox';
 import OfficerPerformance from './pages/OfficerPerformance';
@@ -151,7 +150,6 @@ import RankDuties from './pages/RankDuties';
 import RankStructure from './pages/RankStructure';
 import Schedule from './pages/Schedule';
 import ShiftHandover from './pages/ShiftHandover';
-import ShiftReports from './pages/ShiftReports';
 import Summons from './pages/Summons';
 import SupervisorCallOuts from './pages/SupervisorCallOuts';
 import SupervisorChat from './pages/SupervisorChat';
@@ -267,7 +265,6 @@ export const PAGES = {
     "ManageStudents": ManageStudents,
     "ManageTimeEntries": ManageTimeEntries,
     "MyPerformanceAnalytics": MyPerformanceAnalytics,
-    "OfficerAnalytics": OfficerAnalytics,
     "OfficerAvailability": OfficerAvailability,
     "OfficerInbox": OfficerInbox,
     "OfficerPerformance": OfficerPerformance,
@@ -282,7 +279,6 @@ export const PAGES = {
     "RankStructure": RankStructure,
     "Schedule": Schedule,
     "ShiftHandover": ShiftHandover,
-    "ShiftReports": ShiftReports,
     "Summons": Summons,
     "SupervisorCallOuts": SupervisorCallOuts,
     "SupervisorChat": SupervisorChat,
