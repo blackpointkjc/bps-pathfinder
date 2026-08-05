@@ -3,11 +3,12 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, CalendarClock, Check, X } from "lucide-react";
+import { Shield, CalendarClock, Check, X, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -58,7 +59,7 @@ export default function AdminPTOApproval() {
 
   const pendingRequests = allPTORequests.filter(request => String(request.status || '').toLowerCase() === 'pending');
   const reviewedRequests = allPTORequests
-    .filter(request => ['approved', 'denied'].includes(String(request.status || '').toLowerCase()))
+    .filter(request => ['approved', 'denied', 'cancelled'].includes(String(request.status || '').toLowerCase()))
     .sort((a, b) => new Date(b.reviewed_date || b.updated_date || b.created_date || 0) - new Date(a.reviewed_date || a.updated_date || a.created_date || 0));
 
   const getAdminName = (email) => {
@@ -199,6 +200,25 @@ export default function AdminPTOApproval() {
       setSelectedRequest(null);
       setAdminNotes("");
     },
+  });
+
+  const removeApprovedMutation = useMutation({
+    mutationFn: async (request) => {
+      const response = await base44.functions.invoke('getPTORequests', {
+        action: 'cancel_approved',
+        request_id: request.id,
+        admin_notes: 'Approved PTO removed from HR history view.',
+      });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
+    onSuccess: payload => {
+      queryClient.invalidateQueries({ queryKey: ['allPTORequestsForHR'] });
+      queryClient.invalidateQueries({ queryKey: ['hrUsers'] });
+      toast.success(`${Number(payload.restored_hours || 0).toFixed(1)} PTO hours restored`);
+    },
+    onError: error => toast.error(error?.message || 'Unable to remove approved PTO'),
   });
 
   const getPendingForDate = (date) => {
@@ -353,17 +373,39 @@ export default function AdminPTOApproval() {
                         <p className="text-xs text-slate-600 mt-2">Notes: {request.admin_notes}</p>
                       )}
                     </div>
-                    <div className="text-right">
+                    <div className="text-right space-y-2">
                       <Badge variant="outline" className={
-                        request.status === 'approved' 
+                        request.status === 'approved'
                           ? 'bg-green-100 text-green-800 border-green-200'
-                          : 'bg-red-100 text-red-800 border-red-200'
+                          : request.status === 'cancelled'
+                            ? 'bg-slate-200 text-slate-700 border-slate-300'
+                            : 'bg-red-100 text-red-800 border-red-200'
                       }>
                         {request.status}
                       </Badge>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="text-xs text-slate-500">
                         by {getAdminName(request.reviewed_by)}
                       </p>
+                      {request.status === 'approved' && request.request_type === 'paid' && !String(request.admin_notes || '').startsWith('Manual ') && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={removeApprovedMutation.isPending}
+                          onClick={() => {
+                            const hours = Number(request.hours_requested || 0);
+                            if (window.confirm(`Remove this approved PTO request and return ${hours.toFixed(1)} hours to ${resolveOfficer(request).name}?`)) {
+                              removeApprovedMutation.mutate(request);
+                            }
+                          }}
+                          className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                        >
+                          <RotateCcw className="mr-1 h-3.5 w-3.5" /> Restore Hours
+                        </Button>
+                      )}
+                      {request.status === 'cancelled' && Number(request.hours_restored || 0) > 0 && (
+                        <p className="text-xs font-medium text-emerald-600">{Number(request.hours_restored).toFixed(1)}h restored</p>
+                      )}
                     </div>
                   </div>
                 </div>
