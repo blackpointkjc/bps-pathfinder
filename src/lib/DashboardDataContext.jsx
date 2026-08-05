@@ -1,7 +1,7 @@
 /**
  * Centralized data provider for the dashboard.
  * All components pull from here instead of making their own API calls.
- * Polls DispatchCall every 30s; User fetched independently (non-admin safe).
+ * Keeps DispatchCall synchronized with GRAC every 10s while the dashboard is open.
  */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -9,9 +9,10 @@ import { base44 } from '@/api/base44Client';
 
 const DashboardDataContext = createContext(null);
 
-const POLL_INTERVAL_MS = 30_000;        // 30 seconds between auto-refreshes
+const POLL_INTERVAL_MS = 5_000;         // Read local entity changes every 5 seconds
+const GRAC_SYNC_INTERVAL_MS = 10_000;   // Pull the upstream GRAC feed every 10 seconds
 const RATE_LIMIT_BACKOFF_MS = 60_000;   // 60s wait after 429
-const MIN_REFRESH_MS = 10_000;          // Never refresh more than once per 10s
+const MIN_REFRESH_MS = 4_000;           // Prevent overlapping local refreshes
 
 function isRateLimitError(err) {
     return err?.status === 429 || String(err?.message || err).includes('429') || String(err?.message || err).toLowerCase().includes('rate limit');
@@ -26,6 +27,7 @@ export function DashboardDataProvider({ children }) {
     const [requestCount, setRequestCount] = useState(0);
 
     const refreshingRef   = useRef(false);
+    const syncingGracRef  = useRef(false);
     const rateLimitedUntil = useRef(0);
     const lastRefreshTime  = useRef(0);
 
@@ -123,12 +125,16 @@ export function DashboardDataProvider({ children }) {
     // Pull GRAC into DispatchCall with the local backend function, then refresh the CAD.
     // This uses direct HTTP/server code and does not consume integration credits.
     const syncGrac = useCallback(async () => {
+        if (syncingGracRef.current || document.hidden) return;
+        syncingGracRef.current = true;
         try {
             await base44.functions.invoke('ingestGractivecalls', {});
+            await loadData(true);
         } catch (error) {
             console.warn('[CAD] GRAC sync failed:', error?.message);
+        } finally {
+            syncingGracRef.current = false;
         }
-        await loadData(true);
     }, [loadData]);
 
     // Initial sync/load
@@ -142,10 +148,17 @@ export function DashboardDataProvider({ children }) {
         return () => clearInterval(id);
     }, [loadData]);
 
-    // Re-ingest GRAC every 2 minutes while the CAD is open.
+    // Near-real-time foreground synchronization. Pauses when the tab is hidden.
     useEffect(() => {
-        const id = setInterval(syncGrac, 120_000);
-        return () => clearInterval(id);
+        const id = setInterval(syncGrac, GRAC_SYNC_INTERVAL_MS);
+        const onVisibility = () => {
+            if (!document.hidden) syncGrac();
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+        return () => {
+            clearInterval(id);
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
     }, [syncGrac]);
 
     // Clear stale rate limit state on mount (in-memory ref resets anyway, but clear UI state)
