@@ -2,6 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Pathfinder CAD/RMS design system */
+:root {
+  --bps-command-950: #050b12;
+  --bps-command-900: #07111f;
+  --bps-command-850: #0b1725;
+  --bps-command-800: #101f30;
+  --bps-command-750: #16283b;
+  --bps-command-border: #294159;
+  --bps-command-text: #edf4fb;
+  --bps-command-muted: #9bb0c4;
+  --bps-command-blue: #2f78b7;
+  --bps-command-blue-hover: #3d8aca;
+  --bps-command-danger: #b83a3a;
+  --bps-command-warning: #c68a2d;
+  --bps-command-success: #2d7d58;
+}
+
+.cad-app {
+  font-feature-settings: "tnum" 1, "ss01" 1;
+}
+
+.cad-app main {
+  background-image:
+    linear-gradient(rgba(87, 130, 169, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(87, 130, 169, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.cad-app main h1 {
+  letter-spacing: -0.025em;
+}
+
+.cad-app main table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.cad-app main th {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.cad-app main td,
+.cad-app main th {
+  vertical-align: middle;
+}
+
+.cad-app main [data-radix-collection-item],
+.cad-app main button,
+.cad-app main a {
+  -webkit-tap-highlight-color: transparent;
+}
+
 
 /* :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
