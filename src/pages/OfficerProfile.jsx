@@ -9,7 +9,7 @@ import { User, Upload, Camera, Award, AlertTriangle, ClipboardCheck, Star, Trend
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
-import { fileToDataURL } from "../components/PhotoUploader";
+import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 
 const FIREARM_PREFIXES = ["07", "08", "09", "10"];
 
@@ -33,6 +33,7 @@ function computeFirearmExpiration(certs) {
 
 export default function OfficerProfile() {
   const [uploading, setUploading] = useState(false);
+  const [photoToCrop, setPhotoToCrop] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const queryClient = useQueryClient();
@@ -88,27 +89,27 @@ export default function OfficerProfile() {
     await base44.auth.logout();
   };
 
-  const handlePhotoUpload = async (e) => {
-    const file = e.target.files[0];
+  const handlePhotoSelection = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       alert('Please upload an image file');
       return;
     }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image must be less than 5MB');
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image must be less than 10MB');
       return;
     }
+    setPhotoToCrop(file);
+  };
 
+  const saveCroppedPhoto = async ({ dataUrl }) => {
     setUploading(true);
     try {
-      const dataURL = await fileToDataURL(file);
-      await updateProfileMutation.mutateAsync({ profile_photo_url: dataURL });
-      alert('Profile photo updated successfully!');
+      await updateProfileMutation.mutateAsync({ profile_photo_url: dataUrl });
+      setPhotoToCrop(null);
+      alert('Profile photo cropped and updated successfully!');
     } catch (error) {
       console.error("Error uploading photo:", error);
       alert("Failed to upload photo: " + (error.message || 'Please try again.'));
@@ -119,6 +120,13 @@ export default function OfficerProfile() {
 
   return (
     <div className="p-4 md:p-8 min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <ProfilePhotoCropper
+        open={!!photoToCrop}
+        imageFile={photoToCrop}
+        saving={uploading}
+        onClose={() => setPhotoToCrop(null)}
+        onSave={saveCroppedPhoto}
+      />
       <div className="max-w-3xl mx-auto space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">My Profile</h1>
@@ -156,7 +164,7 @@ export default function OfficerProfile() {
                   id="photo-upload"
                   type="file"
                   accept="image/*"
-                  onChange={handlePhotoUpload}
+                  onChange={handlePhotoSelection}
                   disabled={uploading}
                   className="hidden"
                 />
