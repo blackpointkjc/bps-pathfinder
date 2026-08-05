@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle2, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
-const narrativeHints = /description|narrative|summary|details|action|reason|statement|observations|notes|circumstances|incident|activity|resolution|property|subject|offense|probable|complaint|maintenance|condition|disposition|finding|damage|door|contact/i;
-const skipHints = /email|phone|date|time|number|license|plate|address|location|name|signature|id|status|rank|unit|dob/i;
+const skipInputTypes = new Set(['date', 'time', 'datetime-local', 'number', 'email', 'tel', 'checkbox', 'radio', 'file', 'hidden', 'submit', 'button']);
+const technicalFieldHints = /(^|_)(id|status|email|phone|date|time|dob|license|plate|signature|report_number|call_number|unit_number)($|_)/i;
 
 function setNativeValue(element, value) {
   const prototype = element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
@@ -48,14 +48,11 @@ export default function RequiredAIReportReview({ label = 'Review & Professionali
   const review = async () => {
     const form = buttonRef.current?.closest('form');
     if (!form) return;
-    const controls = [...form.querySelectorAll('textarea, input[type="text"]')].filter(el => {
-      // Identify narrative fields by id/name/aria-label only (not placeholder text),
-      // so fields whose placeholder mentions "name"/"location" are still reviewed.
-      const idKey = `${el.name || ''} ${el.id || ''} ${el.getAttribute('aria-label') || ''}`;
-      if (el.tagName === 'TEXTAREA') {
-        return el.value?.trim().length >= 3 && !skipHints.test(idKey);
-      }
-      return el.value?.trim().length >= 3 && narrativeHints.test(idKey) && !skipHints.test(idKey);
+    const controls = [...form.querySelectorAll('textarea, input')].filter(el => {
+      const type = String(el.type || '').toLowerCase();
+      const fieldKey = `${el.name || ''} ${el.id || ''} ${el.getAttribute('aria-label') || ''}`;
+      if (skipInputTypes.has(type) || technicalFieldHints.test(fieldKey)) return false;
+      return typeof el.value === 'string' && el.value.trim().length >= 2;
     });
     if (!controls.length) {
       toast.error('Add report narrative details before requesting AI review.');
@@ -84,7 +81,7 @@ export default function RequiredAIReportReview({ label = 'Review & Professionali
       });
       form.dataset.aiReviewed = 'true';
       setReviewed(true);
-      toast.success('AI review complete. Read the revisions before submitting.');
+      toast.success(`AI review complete. ${rewritten.length} report field${rewritten.length === 1 ? '' : 's'} reviewed. Read the revisions before submitting.`);
     } catch (error) {
       toast.error(error?.message || 'Unable to review the report right now.');
     } finally {
