@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
 import { openVirginiaCriminalComplaintPrint } from "@/utils/virginiaCriminalComplaintPrint";
+import { openTrespassNoticePrint, resolvePoliceDepartment } from "@/utils/trespassNoticePrint";
 import {
   MobileResponsiveDialog,
   MobileResponsiveDialogContent,
@@ -391,6 +392,23 @@ export default function AdminReports() {
       openVirginiaSummonsPrint(report, {
         officerName: report.officer_name || officerName,
         badge: report.officer_code_badge || '',
+      });
+      return;
+    }
+    if (type === 'trespass') {
+      const officer = allUsers?.find(u => u.email === report.created_by);
+      const site = locations?.find(loc => loc.site_name === report.location);
+      const officerFullName = officer ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() : officerName;
+      openTrespassNoticePrint(report, {
+        jurisdiction: 'VA',
+        locationRecord: site || { site_name: report.location, division: 'Virginia' },
+        propertyName: site?.site_name || report.location,
+        propertyAddress: site?.address || report.location,
+        senderName: 'Black Point Protection',
+        senderAddress: site?.address || report.location,
+        officerName: officerFullName,
+        signatureName: getOfficerSignature(report.created_by),
+        policeDepartment: resolvePoliceDepartment(site || { site_name: report.location, division: 'Virginia' }),
       });
       return;
     }
