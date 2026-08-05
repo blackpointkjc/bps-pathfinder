@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
@@ -84,6 +84,7 @@ export default function ActiveCalls() {
   const [calls, setCalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const syncingRef = useRef(false);
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState('');
   const [agency, setAgency] = useState('ALL');
@@ -112,7 +113,8 @@ export default function ActiveCalls() {
   };
 
   const sync = async (showToast = false) => {
-    if (syncing) return;
+    if (syncingRef.current || document.hidden) return;
+    syncingRef.current = true;
     setSyncing(true);
     try {
       const response = await base44.functions.invoke('ingestGractivecalls', {});
@@ -128,6 +130,7 @@ export default function ActiveCalls() {
       setError(syncError?.message || 'GRAC FEED UNAVAILABLE');
       if (showToast) toast.error(syncError?.message || 'GRAC synchronization failed');
     } finally {
+      syncingRef.current = false;
       setSyncing(false);
       setLoading(false);
     }
@@ -135,13 +138,18 @@ export default function ActiveCalls() {
 
   useEffect(() => {
     sync(false);
-    const syncInterval = setInterval(() => sync(false), 120_000);
-    const localInterval = setInterval(loadCalls, 30_000);
-    const clockInterval = setInterval(() => setClockTick((value) => value + 1), 30_000);
+    const syncInterval = setInterval(() => sync(false), 10_000);
+    const localInterval = setInterval(loadCalls, 5_000);
+    const clockInterval = setInterval(() => setClockTick((value) => value + 1), 10_000);
+    const onVisibility = () => {
+      if (!document.hidden) sync(false);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       clearInterval(syncInterval);
       clearInterval(localInterval);
       clearInterval(clockInterval);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
 
