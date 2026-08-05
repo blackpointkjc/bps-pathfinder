@@ -63,7 +63,7 @@ export default function DispatchCenter() {
         };
 
         syncLiveFeed();
-        const syncInterval = setInterval(syncLiveFeed, 10000);
+        const syncInterval = setInterval(syncLiveFeed, 30000);
         const localInterval = setInterval(() => {
             loadActiveCalls();
             loadUnits();
@@ -133,8 +133,17 @@ export default function DispatchCenter() {
        try {
             const calls = await base44.entities.DispatchCall.list('-created_date', 200);
 
-            // Show every active CAD call, including dispatcher-created calls and GRAC imports.
-            const recentCalls = calls.filter(call =>
+            // Show one stable row per upstream call. Prefer the record that already has a B-series CAD number.
+            const uniqueCalls = new Map();
+            for (const call of calls || []) {
+                const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
+                const key = call.external_call_id || descriptionKey || call.id;
+                const current = uniqueCalls.get(key);
+                const currentHasCad = /^B\d+$/i.test(String(current?.call_id || ''));
+                const candidateHasCad = /^B\d+$/i.test(String(call.call_id || ''));
+                if (!current || (!currentHasCad && candidateHasCad)) uniqueCalls.set(key, call);
+            }
+            const recentCalls = [...uniqueCalls.values()].filter(call =>
                 !['Cleared', 'Cancelled'].includes(call.status)
             );
 
