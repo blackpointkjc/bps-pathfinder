@@ -46,6 +46,71 @@ function roleName(user) {
   return 'FIELD UNIT';
 }
 
+function Sidebar({ collapsed, mobile = false, user, groups, currentPageName, onCloseMobile }) {
+  return (
+    <div className="flex h-full flex-col bg-[#08111f]">
+      <div className="h-16 border-b border-[#1c3049] px-3 flex items-center gap-3">
+        <div className="relative flex h-10 w-10 items-center justify-center rounded bg-[#12315a] border border-[#2c5d91]">
+          <Shield className="h-5 w-5 text-[#8cc7ff]" />
+          <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#08111f] bg-emerald-400" />
+        </div>
+        {(!collapsed || mobile) && (
+          <div className="min-w-0">
+            <div className="text-[12px] font-black tracking-[0.18em] text-white">BPS PATHFINDER</div>
+            <div className="text-[9px] tracking-[0.2em] text-[#6f8aa8]">PUBLIC SAFETY CAD</div>
+          </div>
+        )}
+      </div>
+
+      <nav className="flex-1 overflow-y-auto px-2 py-3">
+        {groups.map(group => (
+          <div key={group.label} className="mb-4">
+            {(!collapsed || mobile) && (
+              <div className="px-2 pb-1.5 text-[9px] font-bold tracking-[0.22em] text-[#54708f]">{group.label}</div>
+            )}
+            <div className="space-y-1">
+              {group.items.map(({ label, page, icon: Icon }) => {
+                const active = currentPageName === page;
+                return (
+                  <Link
+                    key={page}
+                    to={createPageUrl(page)}
+                    title={collapsed && !mobile ? label : undefined}
+                    onClick={() => onCloseMobile && onCloseMobile()}
+                    className={`relative flex h-10 items-center gap-3 rounded px-3 transition-colors ${
+                      active
+                        ? 'bg-[#14345c] text-white border border-[#2d6095]'
+                        : 'text-[#8ea4bc] border border-transparent hover:bg-[#101f32] hover:text-white'
+                    } ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
+                  >
+                    {active && <span className="absolute left-0 top-2 bottom-2 w-0.5 bg-[#55aaff]" />}
+                    <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-[#76bcff]' : 'text-[#6683a0]'}`} />
+                    {(!collapsed || mobile) && <span className="text-[11px] font-bold tracking-wide">{label}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      <div className="border-t border-[#1c3049] p-2">
+        {(!collapsed || mobile) && (
+          <div className="mb-2 rounded border border-[#1c3049] bg-[#0c1828] px-3 py-2">
+            <div className="text-[9px] tracking-widest text-[#597491]">{roleName(user)}</div>
+            <div className="truncate text-[11px] font-bold text-white">{[user?.rank, user?.last_name].filter(Boolean).join(' ') || user?.full_name || user?.email || 'AUTHORIZED USER'}</div>
+            <div className="mt-1 text-[9px] text-emerald-400">● SECURE SESSION</div>
+          </div>
+        )}
+        <button onClick={() => base44.auth.logout('/')} className={`flex h-10 w-full items-center gap-3 rounded px-3 text-[#8399b0] hover:bg-red-950/30 hover:text-red-300 ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
+          <LogOut className="h-4 w-4" />
+          {(!collapsed || mobile) && <span className="text-[11px] font-bold">SIGN OUT</span>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const { user } = useAuth();
@@ -96,75 +161,12 @@ export default function Layout({ children, currentPageName }) {
     return <div className="h-full w-full bg-[#050a12]">{children}</div>;
   }
 
-  const Sidebar = ({ mobile = false }) => (
-    <div className="flex h-full flex-col bg-[#08111f]">
-      <div className="h-16 border-b border-[#1c3049] px-3 flex items-center gap-3">
-        <div className="relative flex h-10 w-10 items-center justify-center rounded bg-[#12315a] border border-[#2c5d91]">
-          <Shield className="h-5 w-5 text-[#8cc7ff]" />
-          <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#08111f] bg-emerald-400" />
-        </div>
-        {(!collapsed || mobile) && (
-          <div className="min-w-0">
-            <div className="text-[12px] font-black tracking-[0.18em] text-white">BPS PATHFINDER</div>
-            <div className="text-[9px] tracking-[0.2em] text-[#6f8aa8]">PUBLIC SAFETY CAD</div>
-          </div>
-        )}
-      </div>
-
-      <nav className="flex-1 overflow-y-auto px-2 py-3">
-        {groups.map(group => (
-          <div key={group.label} className="mb-4">
-            {(!collapsed || mobile) && (
-              <div className="px-2 pb-1.5 text-[9px] font-bold tracking-[0.22em] text-[#54708f]">{group.label}</div>
-            )}
-            <div className="space-y-1">
-              {group.items.map(({ label, page, icon: Icon }) => {
-                const active = currentPageName === page;
-                return (
-                  <Link
-                    key={page}
-                    to={createPageUrl(page)}
-                    title={collapsed && !mobile ? label : undefined}
-                    onClick={() => mobile && setMobileOpen(false)}
-                    className={`relative flex h-10 items-center gap-3 rounded px-3 transition-colors ${
-                      active
-                        ? 'bg-[#14345c] text-white border border-[#2d6095]'
-                        : 'text-[#8ea4bc] border border-transparent hover:bg-[#101f32] hover:text-white'
-                    } ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
-                  >
-                    {active && <span className="absolute left-0 top-2 bottom-2 w-0.5 bg-[#55aaff]" />}
-                    <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-[#76bcff]' : 'text-[#6683a0]'}`} />
-                    {(!collapsed || mobile) && <span className="text-[11px] font-bold tracking-wide">{label}</span>}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
-
-      <div className="border-t border-[#1c3049] p-2">
-        {(!collapsed || mobile) && (
-          <div className="mb-2 rounded border border-[#1c3049] bg-[#0c1828] px-3 py-2">
-            <div className="text-[9px] tracking-widest text-[#597491]">{roleName(user)}</div>
-            <div className="truncate text-[11px] font-bold text-white">{[user?.rank, user?.last_name].filter(Boolean).join(' ') || user?.full_name || user?.email || 'AUTHORIZED USER'}</div>
-            <div className="mt-1 text-[9px] text-emerald-400">● SECURE SESSION</div>
-          </div>
-        )}
-        <button onClick={() => base44.auth.logout('/')} className={`flex h-10 w-full items-center gap-3 rounded px-3 text-[#8399b0] hover:bg-red-950/30 hover:text-red-300 ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
-          <LogOut className="h-4 w-4" />
-          {(!collapsed || mobile) && <span className="text-[11px] font-bold">SIGN OUT</span>}
-        </button>
-      </div>
-    </div>
-  );
-
   const criticalOutage = outages.some(item => item.severity === 'outage');
 
   return (
     <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app">
       <aside className="hidden md:flex relative flex-col border-r border-[#1c3049]" style={{ width: collapsed ? 64 : 224, transition: 'width .18s ease' }}>
-        <Sidebar />
+        <Sidebar collapsed={collapsed} user={user} groups={groups} currentPageName={currentPageName} />
         <button
           onClick={() => setCollapsed(value => !value)}
           className="absolute -right-3 top-20 z-40 flex h-8 w-6 items-center justify-center rounded border border-[#294867] bg-[#0b1726] text-[#7892ac] hover:text-white"
@@ -180,7 +182,7 @@ export default function Layout({ children, currentPageName }) {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/70 md:hidden" onClick={() => setMobileOpen(false)} />
             <motion.aside initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }} className="fixed inset-y-0 left-0 z-50 w-64 border-r border-[#1c3049] md:hidden">
               <button onClick={() => setMobileOpen(false)} className="absolute right-3 top-3 z-10 text-[#8199b2]"><X className="h-4 w-4" /></button>
-              <Sidebar mobile />
+              <Sidebar mobile collapsed={collapsed} user={user} groups={groups} currentPageName={currentPageName} onCloseMobile={() => setMobileOpen(false)} />
             </motion.aside>
           </>
         )}
