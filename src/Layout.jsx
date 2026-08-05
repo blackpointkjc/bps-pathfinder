@@ -14,6 +14,7 @@ import CollapsePanelButton from '@/components/CollapsePanelButton';
 const ALL_NAV = [
     { label: 'COMMAND', section: true },
     { label: 'Command Center', icon: Home, page: 'CommandDashboard', roles: ['user', 'dispatch', 'admin'] },
+    { label: 'Active Calls', icon: Radio, page: 'ActiveCalls', roles: ['user', 'dispatch', 'admin'] },
     { label: 'Live Map', icon: MapPin, page: 'Navigation', roles: ['user', 'dispatch', 'admin'] },
     { label: 'DISPATCH', section: true, roles: ['dispatch', 'admin'] },
     { label: 'Dispatch Center', icon: Zap, page: 'DispatchCenter', roles: ['dispatch', 'admin'] },
@@ -124,8 +125,8 @@ export default function Layout({ children, currentPageName }) {
                 </div>
                 {!collapsed && (
                     <div className="min-w-0">
-                        <div className="text-gold font-black text-sm tracking-[0.2em] font-mono leading-none">BPS CAD</div>
-                        <div className="text-slate-500 text-[9px] font-mono tracking-[0.15em] mt-0.5">COMMAND &amp; DISPATCH</div>
+                        <div className="text-blue-300 font-black text-sm tracking-[0.16em] font-mono leading-none">BPS PATHFINDER</div>
+                        <div className="text-slate-500 text-[9px] font-mono tracking-[0.15em] mt-0.5">REGIONAL COMMAND SYSTEM</div>
                         <div className="flex items-center gap-1 mt-1">
                             <span className="w-1 h-1 rounded-full bg-green-500" />
                             <span className="text-green-400 text-[8px] font-mono tracking-widest">SYSTEM ONLINE</span>
@@ -141,7 +142,7 @@ export default function Layout({ children, currentPageName }) {
                         {!collapsed && (
                             <div className="flex items-center gap-2 px-2 pt-3 pb-1">
                                 <div className="h-px flex-1 bg-slate-800" />
-                                <span className="text-[9px] font-black text-gold/70 tracking-[0.3em] font-mono uppercase">{section.label}</span>
+                                <span className="text-[9px] font-black text-blue-300/70 tracking-[0.3em] font-mono uppercase">{section.label}</span>
                                 <div className="h-px flex-1 bg-slate-800" />
                             </div>
                         )}
@@ -157,16 +158,16 @@ export default function Layout({ children, currentPageName }) {
                                         title={collapsed ? label : undefined}
                                         className={`group flex items-center gap-3 px-3 py-2 rounded transition-all select-none relative ${
                                             isActive
-                                                ? 'bg-gold/20 text-gold border border-gold/50 shadow-[inset_3px_0_0_0_hsl(var(--gold))]'
+                                                ? 'bg-blue-500/15 text-blue-200 border border-blue-400/40 shadow-[inset_3px_0_0_0_rgb(96_165_250)]'
                                                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
                                         } ${collapsed ? 'justify-center' : ''}`}
                                     >
                                         {isActive && !collapsed && (
                                             <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-gold rounded-r" />
                                         )}
-                                        <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-gold' : 'text-slate-500 group-hover:text-slate-300'}`} />
-                                        {!collapsed && <span className={`text-xs font-mono tracking-wide ${isActive ? 'font-bold text-gold' : ''}`}>{label}</span>}
-                                        {isActive && !collapsed && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />}
+                                        <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-300' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                                        {!collapsed && <span className={`text-xs font-mono tracking-wide ${isActive ? 'font-bold text-blue-200' : ''}`}>{label}</span>}
+                                        {isActive && !collapsed && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />}
                                     </Link>
                                 );
                             })}
@@ -255,7 +256,7 @@ export default function Layout({ children, currentPageName }) {
                             {systemOutages.length} SYSTEM ISSUE{systemOutages.length > 1 ? 'S' : ''}
                         </div>
                     )}
-                    <Link to={createPageUrl('AdminPortal')} className="text-slate-400 hover:text-gold transition-colors">
+                    <Link to={createPageUrl('AdminPortal')} className="text-slate-400 hover:text-blue-300 transition-colors">
                         <Settings className="w-5 h-5" />
                     </Link>
                 </header>
