@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
 import { openVirginiaCriminalComplaintPrint } from "@/utils/virginiaCriminalComplaintPrint";
+import { openTrespassNoticePrint, resolvePoliceDepartment } from "@/utils/trespassNoticePrint";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,11 @@ export default function ClientReports() {
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
     queryFn: () => base44.entities.User.list(),
+  });
+
+  const { data: locations = [] } = useQuery({
+    queryKey: ['clientReportLocations'],
+    queryFn: () => base44.entities.Location.list('site_name'),
   });
 
   const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
@@ -180,6 +186,21 @@ export default function ClientReports() {
       openVirginiaSummonsPrint(report, {
         officerName: report.officer_name || officerName,
         badge: report.officer_code_badge || '',
+      });
+      return;
+    }
+    if (type === 'trespass') {
+      const site = locations.find(loc => loc.site_name === report.location);
+      openTrespassNoticePrint(report, {
+        jurisdiction: 'VA',
+        locationRecord: site || { site_name: report.location, division: 'Virginia' },
+        propertyName: site?.site_name || report.location,
+        propertyAddress: site?.address || report.location,
+        senderName: 'Black Point Protection',
+        senderAddress: site?.address || report.location,
+        officerName,
+        signatureName: officerSig,
+        policeDepartment: resolvePoliceDepartment(site || { site_name: report.location, division: 'Virginia' }),
       });
       return;
     }
