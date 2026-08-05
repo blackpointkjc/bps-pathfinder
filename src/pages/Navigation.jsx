@@ -437,12 +437,15 @@ export default function Navigation() {
         setNavDurationMinutes(0);
     };
 
-    const recenter = () => {
-        navigator.geolocation?.getCurrentPosition(
-            pos => { setCurrentLocation([pos.coords.latitude, pos.coords.longitude]); toast.success('Location updated'); },
-            () => toast.error('Unable to get location'),
-            { enableHighAccuracy: true, timeout: 10000 }
-        );
+    const recenter = async () => {
+        const fresh = await getFreshDeviceLocation();
+        if (!fresh) {
+            toast.error('Unable to get your current location');
+            return;
+        }
+        setMapCenter([...fresh]);
+        window.setTimeout(() => setMapCenter(null), 800);
+        toast.success('Map centered on your current location');
     };
 
     const fetchOtherUnits = async () => {
@@ -662,28 +665,9 @@ export default function Navigation() {
                 </div>
             )}
 
-            {/* Map search toggle */}
-            {!isNavigating && (
-                <button
-                    type="button"
-                    onClick={() => {
-                        setShowAddressSearch(open => !open);
-                        if (showAddressSearch) {
-                            setAddressResults([]);
-                            setAddressQuery('');
-                        }
-                    }}
-                    className="absolute right-4 top-12 z-[1210] flex h-11 w-11 items-center justify-center rounded-xl border border-[#31475e] bg-[#0a0e1a]/95 text-slate-100 shadow-2xl backdrop-blur-md hover:bg-[#142336] pointer-events-auto"
-                    aria-label={showAddressSearch ? 'Close address search' : 'Open address search'}
-                    title={showAddressSearch ? 'Close address search' : 'Search address'}
-                >
-                    {showAddressSearch ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
-                </button>
-            )}
-
             {/* Street address search and destination routing */}
-            {!isNavigating && showAddressSearch && (
-                <div className="absolute top-12 left-1/2 z-[1200] w-[min(92vw,560px)] -translate-x-1/2 pointer-events-auto">
+            {showAddressSearch && (
+                <div className={`absolute left-1/2 z-[1200] w-[min(92vw,560px)] -translate-x-1/2 pointer-events-auto ${isNavigating ? 'top-32' : 'top-12'}`}>
                     <form onSubmit={searchAddress} className="flex items-center gap-2 rounded-xl border border-[#45637f] bg-[#07111f] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
                         <Search className="ml-2 h-4 w-4 text-slate-400" />
                         <input
