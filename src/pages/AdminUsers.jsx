@@ -20,11 +20,13 @@ import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 
 export default function AdminUsers() {
   const [editingUser, setEditingUser] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoToCrop, setPhotoToCrop] = useState(null);
   const [showDialog, setShowDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [checkingAnniversaries, setCheckingAnniversaries] = useState(false); // New state variable
@@ -388,18 +390,36 @@ export default function AdminUsers() {
     setShowDialog(true);
   };
 
-  const handlePhotoUpload = async (file) => {
+  const handlePhotoSelection = (file) => {
     if (!file || !editingUser) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image must be less than 10MB.');
+      return;
+    }
+    setPhotoToCrop(file);
+  };
+
+  const saveCroppedAdminPhoto = async ({ file, dataUrl }) => {
+    if (!editingUser) return;
     setUploadingPhoto(true);
-    const reader = new FileReader();
-    reader.onload = (e) => setPhotoPreview(e.target.result);
-    reader.readAsDataURL(file);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    await base44.entities.User.update(editingUser, { profile_photo_url: file_url });
-    setEditFormData(prev => ({ ...prev, profile_photo_url: file_url }));
-    setPhotoPreview(null);
-    queryClient.invalidateQueries({ queryKey: ['users'] });
-    setUploadingPhoto(false);
+    setPhotoPreview(dataUrl);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      await base44.entities.User.update(editingUser, { profile_photo_url: file_url });
+      setEditFormData(prev => ({ ...prev, profile_photo_url: file_url }));
+      setPhotoToCrop(null);
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    } catch (error) {
+      console.error('Profile photo upload failed:', error);
+      alert('Unable to save the cropped profile photo.');
+    } finally {
+      setPhotoPreview(null);
+      setUploadingPhoto(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -517,6 +537,13 @@ export default function AdminUsers() {
 
   return (
     <div className="p-4 md:p-8">
+      <ProfilePhotoCropper
+        open={!!photoToCrop}
+        imageFile={photoToCrop}
+        saving={uploadingPhoto}
+        onClose={() => setPhotoToCrop(null)}
+        onSave={saveCroppedAdminPhoto}
+      />
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -834,7 +861,7 @@ export default function AdminUsers() {
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => e.target.files?.[0] && handlePhotoUpload(e.target.files[0])}
+                    onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) handlePhotoSelection(file); }}
                     disabled={uploadingPhoto}
                   />
                   <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition-colors">
