@@ -35,7 +35,9 @@ export default function AdminPTOApproval() {
     queryKey: ['hrUsers'],
     queryFn: async () => {
       const result = await base44.functions.invoke('getHRUsers', {});
-      return result?.users || [];
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.users || [];
     },
     enabled: hasHRAccess,
     initialData: [],
