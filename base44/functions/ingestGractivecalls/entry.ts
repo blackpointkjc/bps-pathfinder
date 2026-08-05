@@ -30,6 +30,18 @@ function externalKey(record: any) {
   return legacy.startsWith('grac-') ? legacy.slice(5) : '';
 }
 
+function legacyKey(record: any) {
+  const agency = String(record?.agency || '').trim().toUpperCase();
+  const incident = String(record?.incident || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  const received = record?.time_received ? new Date(record.time_received).toISOString() : '';
+  if (!ALLOWED_AGENCIES.has(agency) || !incident || !received) return '';
+  return `${agency}|${received}|${incident}`;
+}
+
+function recordKey(record: any) {
+  return externalKey(record) || legacyKey(record);
+}
+
 function normalizeCall(row: any) {
   const agency = String(row?.agency || '').trim().toUpperCase();
   if (!row?._id || !row?.incident || !row?.location || !ALLOWED_AGENCIES.has(agency)) return null;
@@ -155,9 +167,10 @@ Deno.serve(async (req) => {
     if (!incoming.length) return Response.json({ success: false, error: 'No usable active calls; existing data preserved' }, { status: 502 });
 
     let existingCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
+    const incomingByLegacy = new Map(incoming.map(call => [legacyKey(call), call]));
     const groups = new Map<string, any[]>();
     for (const record of existingCalls || []) {
-      const key = externalKey(record);
+      const key = legacyKey(record) || externalKey(record);
       if (!key) continue;
       groups.set(key, [...(groups.get(key) || []), record]);
     }
@@ -165,7 +178,11 @@ Deno.serve(async (req) => {
     let duplicatesRemoved = 0;
     for (const [key, records] of groups) {
       const canonical = chooseCanonical(records);
-      if (canonical.external_call_id !== key) await base44.asServiceRole.entities.DispatchCall.update(canonical.id, { external_call_id: key });
+      const matchingIncoming = incomingByLegacy.get(legacyKey(canonical));
+      const upstreamId = matchingIncoming?.external_call_id || externalKey(canonical);
+      if (upstreamId && canonical.external_call_id !== upstreamId) {
+        await base44.asServiceRole.entities.DispatchCall.update(canonical.id, { external_call_id: upstreamId });
+      }
       for (const duplicate of records) {
         if (duplicate.id === canonical.id) continue;
         await base44.asServiceRole.entities.DispatchCall.delete(duplicate.id).catch(() => null);
@@ -175,13 +192,21 @@ Deno.serve(async (req) => {
 
     existingCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
     const byExternal = new Map<string, any>();
+    const byLegacy = new Map<string, any>();
     for (const record of existingCalls || []) {
-      const key = externalKey(record);
-      if (key && !byExternal.has(key)) byExternal.set(key, record);
+      const external = externalKey(record);
+      const legacy = legacyKey(record);
+      if (external && !byExternal.has(external)) byExternal.set(external, record);
+      if (legacy && !byLegacy.has(legacy)) byLegacy.set(legacy, record);
     }
 
-    const needingCad = [...byExternal.values()].filter(record => !/^B\d+$/i.test(String(record.call_id || '')));
-    const newCalls = incoming.filter(call => !byExternal.has(call.external_call_id));
+    const uniqueExisting = [...new Map(existingCalls.map(record => [record.id, record])).values()];
+    const needingCad = uniqueExisting.filter(record =>
+      recordKey(record) && !/^B\d+$/i.test(String(record.call_id || ''))
+    );
+    const newCalls = incoming.filter(call =>
+      !byExternal.has(call.external_call_id) && !byLegacy.has(legacyKey(call))
+    );
     const cadNumbers = await reserveCadNumbers(base44, needingCad.length + newCalls.length);
     let cadIndex = 0;
     for (const record of needingCad) {
@@ -200,7 +225,7 @@ Deno.serve(async (req) => {
 
     let created = 0, updated = 0, removed = 0;
     for (const callData of incoming) {
-      const existing = byExternal.get(callData.external_call_id);
+      const existing = byExternal.get(callData.external_call_id) || byLegacy.get(legacyKey(callData));
       if (!existing) {
         const cadNumber = cadNumbers[cadIndex++];
         await base44.asServiceRole.entities.DispatchCall.create({
@@ -222,10 +247,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    const currentKeys = new Set(incoming.map(call => call.external_call_id));
+    const currentExternalKeys = new Set(incoming.map(call => call.external_call_id));
+    const currentLegacyKeys = new Set(incoming.map(call => legacyKey(call)));
     for (const record of existingCalls || []) {
-      const key = externalKey(record);
-      if (key && !currentKeys.has(key)) {
+      const external = externalKey(record);
+      const legacy = legacyKey(record);
+      if (recordKey(record) && !currentExternalKeys.has(external) && !currentLegacyKeys.has(legacy)) {
         await base44.asServiceRole.entities.DispatchCall.delete(record.id).catch(() => null);
         removed += 1;
       }
@@ -235,7 +262,7 @@ Deno.serve(async (req) => {
     const finalCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
     const finalGroups = new Map<string, any[]>();
     for (const record of finalCalls || []) {
-      const key = externalKey(record);
+      const key = legacyKey(record) || externalKey(record);
       if (key) finalGroups.set(key, [...(finalGroups.get(key) || []), record]);
     }
     for (const records of finalGroups.values()) {
