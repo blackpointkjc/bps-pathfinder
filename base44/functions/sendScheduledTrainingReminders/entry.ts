@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import { blackPointEmail } from '../_shared/blackPointEmail.ts';
 
 // Runs daily — finds training_renewal_reminder notifications whose scheduled_send_date is today or past
 // and marks them as unread/visible (they're already created; this just ensures they surface on the right day)
@@ -30,7 +31,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.integrations.Core.SendEmail({
       to: n.recipient_email,
       subject: n.title,
-      body: `<p>${n.message}</p><p style="color:#666;font-size:12px;">This is an automated in-service renewal reminder from Black Point Portal.</p>`,
+      body: blackPointEmail(n.title, `<p>${n.message}</p><p>This is an automated in-service renewal reminder from Black Point Protection.</p>`, 'Open Training Portal'),
     }).catch(() => {});
     sent++;
   }
