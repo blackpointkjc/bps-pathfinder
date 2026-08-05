@@ -48,7 +48,6 @@ const CENTER_CONFIG = {
         ['Officer Analytics', 'OfficerAnalytics', BarChart3],
         ['Dispatch Messages', 'OfficerInbox', MessageCircle],
         ['Availability', 'OfficerAvailability', CalendarClock],
-        ['Officer Payroll', 'OfficerPayroll', DollarSign],
       ]},
       { label: 'Schedule', items: [
         ['Time Clock', 'TimeClock', Clock3],
@@ -101,7 +100,6 @@ const CENTER_CONFIG = {
         ['File Complaints', 'SupervisorComplaints', AlertTriangle],
         ['Call-Out Management', 'SupervisorCallOuts', UserCheck],
         ['Supervisor Chat', 'SupervisorChat', MessageCircle],
-        ['Supervisor Directory', 'SupervisorDirectory', Users],
       ]},
     ],
   },
@@ -192,6 +190,7 @@ const CENTER_CONFIG = {
         ['Payroll Management', 'AccountingPayroll', DollarSign],
         ['Payroll Processing', 'AdminPayroll', DollarSign],
         ['Payroll Configuration', 'AdminPayrollConfig', Settings],
+        ['Payroll Dates', 'PayrollDates', CalendarClock],
         ['Client Invoices', 'AccountingInvoices', FileText],
         ['Company Profit', 'AccountingProfit', BarChart3],
         ['Tax Liability', 'AccountingTaxLiability', ClipboardList],
