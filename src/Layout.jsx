@@ -125,6 +125,7 @@ const CENTER_CONFIG = {
         ['Shift Bids', 'AdminShiftBids', Briefcase],
       ]},
       { label: 'Operations Management', items: [
+        ['Pending Users & Account Assignment', 'AdminUsers', Users],
         ['Locations', 'AdminLocations', Building2],
         ['Equipment', 'AdminEquipment', Package],
         ['Documents', 'AdminDocuments', FileText],
@@ -165,7 +166,6 @@ const CENTER_CONFIG = {
       { label: 'People Operations', items: [
         ['Manage Company Employees', 'HRManageCompanyEmployees', Briefcase],
         ['Client Accounts & Assignments', 'ManageClients', Building2],
-        ['Invitations & Pending Accounts', 'AdminUsers', Users],
         ['Manage Time Entries', 'ManageTimeEntries', Clock3],
         ['Support Staff Clock', 'AdminSupportStaffClock', Clock3],
       ]},
