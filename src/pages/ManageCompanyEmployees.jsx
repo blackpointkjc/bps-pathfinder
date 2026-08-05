@@ -55,7 +55,8 @@ export default function ManageCompanyEmployees() {
   });
 
   const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
-  const canManageEmployees = user?.role === 'admin' || userRoles.has('full_access') || userRoles.has('trainer');
+  const isSystemAdmin = user?.role === 'admin';
+  const canManageEmployees = isSystemAdmin || userRoles.has('full_access') || userRoles.has('trainer');
   const isHrReadOnly = userRoles.has('hr') && !canManageEmployees;
   const hasAccess = canManageEmployees || isHrReadOnly;
 
@@ -90,7 +91,22 @@ export default function ManageCompanyEmployees() {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: ({ id, userData }) => base44.entities.User.update(id, userData),
+    mutationFn: async ({ id, userData }) => {
+      const requestedSystemRole = userData.role || 'user';
+      const profileUpdates = { ...userData };
+      delete profileUpdates.role;
+
+      if (selectedUser?.role !== requestedSystemRole) {
+        if (!isSystemAdmin) throw new Error('Only a current system administrator can grant or remove administrator status.');
+        const roleResult = await base44.functions.invoke('updateUser', {
+          userId: id,
+          updates: { role: requestedSystemRole },
+        });
+        if (roleResult?.error) throw new Error(roleResult.error);
+      }
+
+      return base44.entities.User.update(id, profileUpdates);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
@@ -526,6 +542,21 @@ export default function ManageCompanyEmployees() {
             {/* Roles */}
             <fieldset disabled={isHrReadOnly} className="border-t pt-4">
               <Label className="text-base font-semibold mb-3 block">System Roles & Permissions</Label>
+              {isSystemAdmin && (
+                <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-950/20 p-4">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="system_admin_role"
+                      checked={editFormData.role === 'admin'}
+                      onCheckedChange={(checked) => setEditFormData({ ...editFormData, role: checked ? 'admin' : 'user' })}
+                    />
+                    <Label htmlFor="system_admin_role" className="cursor-pointer">
+                      <div className="font-bold text-amber-300">System Administrator</div>
+                      <div className="text-xs text-slate-400">Grants access to every center, security setting, user role, and administrative function. Only an existing system administrator can change this setting.</div>
+                    </Label>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {[
                   { id: 'cad_access', label: 'CAD Access', desc: 'Command, dispatch, live map, field unit and CAD records', color: 'text-sky-800' },
