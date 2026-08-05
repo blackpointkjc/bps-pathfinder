@@ -92,7 +92,7 @@ const CENTER_CONFIG = {
         ['My Action Items', 'SupervisorTasks', ClipboardList],
         ['My Daily Code', 'SupervisorDailyCode', ShieldCheck],
         ['Rank Structure', 'RankStructure', Shield],
-        ['Division Directory', 'DivisionDirectory', Users],
+        ['Company Directory', 'DivisionDirectory', Users],
         ['Performance Review Tasks', 'SupervisorPerformanceReview', ClipboardCheck],
         ['Officer Inspections', 'SupervisorInspections', ClipboardCheck],
         ['Write-Up Reports', 'SupervisorWriteUps', FileWarning],
