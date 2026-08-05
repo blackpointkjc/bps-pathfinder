@@ -39,10 +39,14 @@ export default function ManageTimeEntries() {
   const isHR = user?.additional_roles?.includes('hr');
   const isAdmin = user?.role === 'admin';
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['hrUsers'],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getHRUsers', {});
+      return result?.users || [];
+    },
     enabled: isAdmin || isHR,
+    initialData: [],
   });
 
   const { data: locations } = useQuery({
@@ -226,7 +230,7 @@ export default function ManageTimeEntries() {
   }
 
   const groupedEntries = groupByOfficer(timeEntries);
-  const activeOfficers = allUsers?.filter(u => !u.termination_date) || [];
+  const activeOfficers = allUsers.filter(u => u.email);
 
   return (
     <div className="p-4 md:p-8 min-h-screen">
