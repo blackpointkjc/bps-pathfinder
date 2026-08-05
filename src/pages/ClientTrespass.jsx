@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { openTrespassNoticePrint, resolvePoliceDepartment } from "@/utils/trespassNoticePrint";
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
@@ -40,6 +41,12 @@ export default function ClientTrespass() {
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
     queryFn: () => base44.entities.User.list(),
+    initialData: [],
+  });
+
+  const { data: locations = [] } = useQuery({
+    queryKey: ['clientTrespassLocations'],
+    queryFn: () => base44.entities.Location.list('site_name'),
     initialData: [],
   });
 
@@ -204,6 +211,19 @@ export default function ClientTrespass() {
 
   const printNotice = (notice) => {
     const issuerSignature = getOfficerSignature(notice.created_by);
+    const site = locations.find(loc => loc.site_name === notice.location);
+    openTrespassNoticePrint(notice, {
+      jurisdiction: 'VA',
+      locationRecord: site || { site_name: notice.location, division: 'Virginia' },
+      propertyName: site?.site_name || notice.location,
+      propertyAddress: site?.address || notice.location,
+      senderName: 'Black Point Protection',
+      senderAddress: site?.address || notice.location,
+      officerName: getOfficerFullDisplay(notice.created_by),
+      signatureName: issuerSignature,
+      policeDepartment: resolvePoliceDepartment(site || { site_name: notice.location, division: 'Virginia' }),
+    });
+    return;
 
     const printWindow = window.open('', '', 'width=800,height=600');
     const htmlContent = `
