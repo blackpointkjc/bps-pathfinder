@@ -11,30 +11,80 @@ export const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-// Check if a call is near any monitored property
-export const isCallNearMonitoredProperty = (call, monitoredProperties) => {
-  if (!call?.latitude || !call?.longitude || !monitoredProperties?.length) return false;
-  return monitoredProperties.some(prop => {
-    if (!prop.enabled || !prop.latitude || !prop.longitude) return false;
-    const distance = calculateDistance(call.latitude, call.longitude, prop.latitude, prop.longitude);
-    return distance <= (prop.radiusMeters || 500);
-  });
+const pointInPolygon = (lat, lng, polygon = []) => {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [latI, lngI] = polygon[i];
+    const [latJ, lngJ] = polygon[j];
+    const intersects = ((lngI > lng) !== (lngJ > lng)) &&
+      (lat < ((latJ - latI) * (lng - lngI)) / ((lngJ - lngI) || Number.EPSILON) + latI);
+    if (intersects) inside = !inside;
+  }
+  return inside;
 };
 
-// Returns true if BOTH the call and the user are within the SAME monitored property geofence.
-// Used to gate alerts: only alert a user if they are physically within the same geofenced property as the call.
-export const shouldAlertForGeofence = (call, user, monitoredProperties) => {
-  if (!call?.latitude || !call?.longitude) return false;
-  if (!user?.current_latitude || !user?.current_longitude) return false;
-  if (!monitoredProperties?.length) return false;
-  return monitoredProperties.some(prop => {
-    if (!prop.enabled || !prop.latitude || !prop.longitude) return false;
-    const radius = prop.radiusMeters || 500;
-    const callDist = calculateDistance(call.latitude, call.longitude, prop.latitude, prop.longitude);
-    const userDist = calculateDistance(user.current_latitude, user.current_longitude, prop.latitude, prop.longitude);
-    return callDist <= radius && userDist <= radius;
-  });
+const pointToSegmentMeters = (lat, lng, a, b) => {
+  const originLat = lat * Math.PI / 180;
+  const metersPerLat = 111320;
+  const metersPerLng = 111320 * Math.cos(originLat);
+  const px = 0;
+  const py = 0;
+  const ax = (a[1] - lng) * metersPerLng;
+  const ay = (a[0] - lat) * metersPerLat;
+  const bx = (b[1] - lng) * metersPerLng;
+  const by = (b[0] - lat) * metersPerLat;
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lengthSq = dx * dx + dy * dy;
+  const t = lengthSq ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lengthSq)) : 0;
+  const x = ax + t * dx;
+  const y = ay + t * dy;
+  return Math.sqrt(x * x + y * y);
 };
+
+export const evaluatePropertyMatch = (call, property, nearbyFeet = 100) => {
+  const lat = Number(call?.latitude);
+  const lng = Number(call?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !property?.enabled) return null;
+  const nearbyMeters = nearbyFeet * 0.3048;
+
+  if (property.boundary_type === 'polygon' && Array.isArray(property.polygon) && property.polygon.length >= 3) {
+    if (pointInPolygon(lat, lng, property.polygon)) {
+      return { property, relation: 'inside', distanceMeters: 0, distanceFeet: 0 };
+    }
+    let distanceMeters = Infinity;
+    for (let i = 0; i < property.polygon.length; i += 1) {
+      const next = (i + 1) % property.polygon.length;
+      distanceMeters = Math.min(distanceMeters, pointToSegmentMeters(lat, lng, property.polygon[i], property.polygon[next]));
+    }
+    if (distanceMeters <= nearbyMeters) {
+      return { property, relation: 'nearby', distanceMeters, distanceFeet: distanceMeters / 0.3048 };
+    }
+    return null;
+  }
+
+  if (!Number.isFinite(Number(property.latitude)) || !Number.isFinite(Number(property.longitude))) return null;
+  const distanceMeters = calculateDistance(lat, lng, Number(property.latitude), Number(property.longitude));
+  const radius = Number(property.radiusMeters || 0);
+  if (distanceMeters <= radius) return { property, relation: 'inside', distanceMeters: 0, distanceFeet: 0 };
+  const edgeDistance = distanceMeters - radius;
+  return edgeDistance <= nearbyMeters
+    ? { property, relation: 'nearby', distanceMeters: edgeDistance, distanceFeet: edgeDistance / 0.3048 }
+    : null;
+};
+
+export const findPropertyMatch = (call, monitoredProperties, nearbyFeet = 100) => {
+  const matches = (monitoredProperties || [])
+    .map(property => evaluatePropertyMatch(call, property, nearbyFeet))
+    .filter(Boolean)
+    .sort((a, b) => a.distanceMeters - b.distanceMeters);
+  return matches[0] || null;
+};
+
+export const isCallNearMonitoredProperty = (call, monitoredProperties) => Boolean(findPropertyMatch(call, monitoredProperties));
+
+// Alerts are based on the call's relationship to a monitored property. User location is not required.
+export const shouldAlertForGeofence = (call, user, monitoredProperties) => Boolean(findPropertyMatch(call, monitoredProperties));
 
 // Single master AudioContext — we suspend/resume it to start/stop sound
 let masterCtx = null;
