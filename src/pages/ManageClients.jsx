@@ -52,15 +52,15 @@ export default function ManageClients() {
     enabled: hasAccess,
   });
 
-  const { data: clientUsers } = useQuery({
+  const { data: clientUsers = [] } = useQuery({
     queryKey: ['clientUsers'],
     queryFn: async () => {
-      const users = await base44.entities.User.list();
-      return users.filter(u => u.additional_roles?.includes('client')).sort((a, b) => 
-        (a.first_name || '').localeCompare(b.first_name || '')
-      );
+      const response = await base44.functions.invoke('getClientUsers', {});
+      if (response?.error) throw new Error(response.error);
+      return response?.clients || [];
     },
     enabled: hasAccess,
+    initialData: [],
   });
 
   const createClientMutation = useMutation({
@@ -81,11 +81,13 @@ export default function ManageClients() {
       queryClient.invalidateQueries({ queryKey: ['activeLocations'] });
       setShowDialog(false);
       resetForm();
-      const accountMessage = result?.assignment_pending
-        ? 'Invitation sent. The client will be assigned after accepting the invitation.'
-        : 'Client invitation sent and Client Portal access assigned.';
+      const accountMessage = result?.invitation_pending
+        ? 'The client account setup was saved, but the platform invitation provider is still processing. The Black Point setup email was sent so the client can use Forgot Password once the account appears.'
+        : result?.assignment_pending
+          ? 'Client invitation sent. Client Portal access will attach when the pending account becomes available.'
+          : 'Client invitation sent and Client Portal access assigned.';
       alert(result?.email_sent === false
-        ? `${accountMessage} The welcome email could not be delivered: ${result?.email_error || 'verify the email address.'}`
+        ? `${accountMessage} The Black Point welcome email could not be delivered: ${result?.email_error || 'verify the email address.'}`
         : `${accountMessage} The Black Point account-created email was sent.`);
     },
     onError: (error) => alert('Unable to create client account: ' + error.message),
