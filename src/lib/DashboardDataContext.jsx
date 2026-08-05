@@ -10,7 +10,7 @@ import { base44 } from '@/api/base44Client';
 const DashboardDataContext = createContext(null);
 
 const POLL_INTERVAL_MS = 5_000;         // Read local entity changes every 5 seconds
-const GRAC_SYNC_INTERVAL_MS = 10_000;   // Pull the upstream GRAC feed every 10 seconds
+const GRAC_SYNC_INTERVAL_MS = 30_000;   // One controlled upstream sync every 30 seconds
 const RATE_LIMIT_BACKOFF_MS = 60_000;   // 60s wait after 429
 const MIN_REFRESH_MS = 4_000;           // Prevent overlapping local refreshes
 
@@ -83,7 +83,16 @@ export function DashboardDataProvider({ children }) {
             // DispatchCall is synchronized to GRAC's current active-call list.
             // Do not hide calls based on age; a call remains visible until ingestion
             // marks it Closed/Cleared/Cancelled after it disappears from GRAC.
-            const active = (callsData || []).filter(c =>
+            const uniqueCalls = new Map();
+            for (const call of callsData || []) {
+                const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
+                const key = call.external_call_id || descriptionKey || call.id;
+                const current = uniqueCalls.get(key);
+                const currentHasCad = /^B\d+$/i.test(String(current?.call_id || ''));
+                const candidateHasCad = /^B\d+$/i.test(String(call.call_id || ''));
+                if (!current || (!currentHasCad && candidateHasCad)) uniqueCalls.set(key, call);
+            }
+            const active = [...uniqueCalls.values()].filter(c =>
                 !['Cleared', 'Cancelled'].includes(c.status)
             );
 
