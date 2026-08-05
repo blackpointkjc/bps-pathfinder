@@ -1032,18 +1032,46 @@ export default function Navigation() {
                         transition={{ duration: 0.2 }}
                         className={`absolute top-[34px] right-0 bottom-[32px] bg-[#0a0e1a]/97 backdrop-blur-md border-l border-[#1e2d4a] z-[1006] pointer-events-auto flex flex-col transition-[width] duration-200 ${callSidebarCollapsed ? 'w-12 overflow-hidden' : 'w-80 overflow-y-auto'}`}
                     >
-                        {/* Header */}
-                        <div className="flex-none flex items-center justify-between px-4 py-3 border-b border-[#1e2d4a] bg-[#0d1220]">
-                            <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-[#f5a623]" />
-                                <span className="text-white font-mono font-bold text-xs tracking-widest">CALL DETAIL</span>
-                            </div>
-                            <button onClick={() => setShowCallSidebar(false)}
-                                className="w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-white hover:bg-[#1e2d4a] transition-colors">
-                                <X className="w-4 h-4" />
-                            </button>
+                        {/* Header / collapsed edge tab */}
+                        <div className={`flex-none flex items-center border-b border-[#1e2d4a] bg-[#0d1220] ${callSidebarCollapsed ? 'flex-col gap-2 px-1 py-3' : 'justify-between px-3 py-3'}`}>
+                            {callSidebarCollapsed ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setCallSidebarCollapsed(false)}
+                                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#31506d] bg-[#13263a] text-[#8cc7ff] hover:bg-[#19334e]"
+                                    title="Open call details"
+                                    aria-label="Open call details"
+                                >
+                                    <ChevronLeft className="h-5 w-5" />
+                                </button>
+                            ) : (
+                                <>
+                                    <div className="flex min-w-0 items-center gap-2">
+                                        <div className="h-2 w-2 flex-shrink-0 rounded-full bg-[#f5a623]" />
+                                        <span className="truncate text-xs font-bold tracking-widest text-white font-mono">CALL DETAIL</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setCallSidebarCollapsed(true)}
+                                            className="flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-[#1e2d4a] hover:text-white"
+                                            title="Collapse call details"
+                                            aria-label="Collapse call details"
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </button>
+                                        <button onClick={() => setShowCallSidebar(false)}
+                                            className="flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-[#1e2d4a] hover:text-white transition-colors"
+                                            title="Close call details"
+                                            aria-label="Close call details">
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
+                        {!callSidebarCollapsed && <>
                         {/* Action Bar - Show on Map + Assign */}
                         <div className="flex-none flex items-center gap-2 px-4 py-2.5 border-b border-[#1e2d4a] bg-[#0a0e1a]">
                             <button
@@ -1163,6 +1191,7 @@ export default function Navigation() {
                             <div className="text-[9px] font-mono text-[#f5a623] font-bold tracking-widest mb-2">FIELD UNIT CONSOLE</div>
                             <FieldCallActions call={selectedCall} />
                         </div>
+                        </>}
                     </motion.div>
                 )}
             </AnimatePresence>
