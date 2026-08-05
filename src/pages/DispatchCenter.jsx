@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Shield, Radio, Map as MapIcon, RefreshCw } from 'lucide-react';
+import { Shield, Radio, Map as MapIcon, RefreshCw, Plus, Search, Clock3, MessageSquarePlus, AlertTriangle, History, FileText, Megaphone, Activity } from 'lucide-react';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { createPageUrl } from '../utils';
 import { stopAllAlerts } from '@/utils/alertUtils';
@@ -16,6 +16,7 @@ import CreateCallDialog from '@/components/dispatch/CreateCallDialog';
 import PriorCallsView from '@/components/dispatch/PriorCallsView';
 import MessagingPanel from '@/components/dispatch/MessagingPanel';
 import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
+import PropertyAlertsBanner from '@/components/dispatch/PropertyAlertsBanner';
 import 'leaflet/dist/leaflet.css';
 
 
@@ -36,6 +37,11 @@ export default function DispatchCenter() {
     const [refreshing, setRefreshing] = useState(false);
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
+    const [queueFilter, setQueueFilter] = useState('all');
+    const [queueSearch, setQueueSearch] = useState('');
+    const [callNotes, setCallNotes] = useState([]);
+    const [noteText, setNoteText] = useState('');
+    const [savingNote, setSavingNote] = useState(false);
     const knownCallIdsRef = React.useRef(null);
     const syncingGracRef = React.useRef(false);
 
@@ -127,8 +133,8 @@ export default function DispatchCenter() {
        try {
             const calls = await base44.entities.DispatchCall.list('-created_date', 200);
 
+            // Show every active CAD call, including dispatcher-created calls and GRAC imports.
             const recentCalls = calls.filter(call =>
-                String(call.call_id || '').startsWith('grac-') &&
                 !['Cleared', 'Cancelled'].includes(call.status)
             );
 
@@ -159,11 +165,81 @@ export default function DispatchCenter() {
          }
     };
 
+    const loadCallNotes = async (callId) => {
+        if (!callId) return setCallNotes([]);
+        try {
+            const notes = await base44.entities.CallNote.filter({ call_id: callId }, '-created_date', 100);
+            setCallNotes(notes || []);
+        } catch (error) {
+            console.warn('Unable to load call notes:', error);
+            setCallNotes([]);
+        }
+    };
+
     const handleSelectCall = (call) => {
         setSelectedCall(call);
         setCallDistrict(null);
+        loadCallNotes(call?.id);
         if (call?.latitude && call?.longitude) {
             lookupDistrict(call.latitude, call.longitude).then(d => setCallDistrict(d));
+        }
+    };
+
+    const updateCallStatus = async (newStatus) => {
+        if (!selectedCall || selectedCall.status === newStatus) return;
+        const now = new Date().toISOString();
+        const timeField = {
+            Dispatched: 'time_dispatched',
+            Enroute: 'time_enroute',
+            'On Scene': 'time_on_scene',
+            Cleared: 'time_cleared',
+            Cancelled: 'time_closed'
+        }[newStatus];
+        try {
+            await base44.entities.DispatchCall.update(selectedCall.id, {
+                status: newStatus,
+                ...(timeField ? { [timeField]: now } : {})
+            });
+            await base44.entities.CallStatusLog.create({
+                call_id: selectedCall.id,
+                incident_type: selectedCall.incident,
+                location: selectedCall.location,
+                old_status: selectedCall.status,
+                new_status: newStatus,
+                unit_name: currentUser?.unit_number || currentUser?.full_name || 'Dispatch',
+                notes: `Status changed by dispatcher`,
+                latitude: selectedCall.latitude,
+                longitude: selectedCall.longitude
+            });
+            toast.success(`Call marked ${newStatus}`);
+            if (['Cleared', 'Cancelled'].includes(newStatus)) setSelectedCall(null);
+            await loadActiveCalls();
+        } catch (error) {
+            console.error('Status update failed:', error);
+            toast.error('Unable to update call status');
+        }
+    };
+
+    const addCallNote = async () => {
+        const text = noteText.trim();
+        if (!selectedCall || !text) return;
+        setSavingNote(true);
+        try {
+            await base44.entities.CallNote.create({
+                call_id: selectedCall.id,
+                author_id: currentUser?.id || 'dispatch',
+                author_name: currentUser?.full_name || 'Dispatch',
+                note: text,
+                note_type: 'update'
+            });
+            setNoteText('');
+            await loadCallNotes(selectedCall.id);
+            toast.success('CAD note added');
+        } catch (error) {
+            console.error('Note creation failed:', error);
+            toast.error('Unable to add note');
+        } finally {
+            setSavingNote(false);
         }
     };
 
