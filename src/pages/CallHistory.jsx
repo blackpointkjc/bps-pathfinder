@@ -22,7 +22,6 @@ const STATUS_COLORS = {
     Dispatched: 'bg-yellow-900/60 text-yellow-300 border-yellow-700/50',
     Enroute: 'bg-yellow-900/60 text-yellow-300 border-yellow-700/50',
     'On Scene': 'bg-blue-900/60 text-blue-300 border-blue-700/50',
-    Arrived: 'bg-blue-900/60 text-blue-300 border-blue-700/50',
     Cleared: 'bg-green-900/60 text-green-300 border-green-700/50',
     Closed: 'bg-slate-700 text-slate-400 border-slate-600',
     Cancelled: 'bg-slate-700 text-slate-500 border-slate-600',
