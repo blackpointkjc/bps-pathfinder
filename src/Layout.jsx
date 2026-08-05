@@ -155,7 +155,7 @@ const CENTER_CONFIG = {
         ['Compliance Tracker', 'TrainingComplianceTracker', BarChart3],
         ['Certification Alerts', 'AdminCertificationAlerts', Bell],
         ['Manage Students', 'ManageStudents', Users],
-        ['Officer Certification Management', 'ManageCompanyEmployees', Users],
+        ['Officer Certification Management', 'TrainingManageCompanyEmployees', Users],
         ['Training Records', 'TrainingRecords', BookOpen],
       ]},
     ],
@@ -165,7 +165,7 @@ const CENTER_CONFIG = {
     icon: Users,
     groups: [
       { label: 'People Operations', items: [
-        ['Employee Directory (View Only)', 'ManageCompanyEmployees', Briefcase],
+        ['Manage Company Employees', 'HRManageCompanyEmployees', Briefcase],
         ['Client Accounts & Assignments', 'ManageClients', Building2],
         ['Invitations & Pending Accounts', 'AdminUsers', Users],
         ['Manage Time Entries', 'ManageTimeEntries', Clock3],
@@ -298,7 +298,7 @@ function defaultPageForUser(user) {
     student: 'StudentPortal',
     officer: 'Dashboard',
     supervisor: 'SupervisorTasks',
-    hr: 'ManageCompanyEmployees',
+    hr: 'HRManageCompanyEmployees',
     training: 'AdminTraining',
     accounting: 'AccountingPayroll',
     admin: 'AdminDashboard',
