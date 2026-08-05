@@ -361,7 +361,7 @@ export default function DailyActivityReports() {
     }
     setSaving(true);
     const entriesFormatted = formData.hourly_entries_array.length > 0 
-      ? formData.hourly_entries_array.map(e => `${e.time}Z\n${e.text}`).join('\n\n')
+      ? formData.hourly_entries_array.map(e => `${e.time}\n${e.text}`).join('\n\n')
       : (formData.hourly_entries || 'Draft - entries pending');
     saveReportMutation.mutate({ data: { ...formData, hourly_entries: entriesFormatted }, isDraft: true });
   };
@@ -830,8 +830,8 @@ export default function DailyActivityReports() {
 
                 <div className="space-y-2">
                    <Label>Hourly Activity Entries *</Label>
-                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-3">
-                     <p className="text-xs text-blue-900 font-semibold mb-2">Add timestamped entries</p>
+                   <div className="p-3 bg-[#111d2b] border border-slate-700 rounded-lg mb-3">
+                     <p className="text-xs text-slate-200 font-semibold mb-2">Add timestamped entries</p>
                      <div className="space-y-3">
                        <div className="space-y-1">
                          <Label htmlFor="entryText" className="text-xs">Activity Description *</Label>
@@ -867,7 +867,7 @@ export default function DailyActivityReports() {
                          type="button"
                          onClick={() => setShowSiteCheckModal(true)}
                          variant="outline"
-                         className="w-full border-green-400 text-green-700 hover:bg-green-50"
+                         className="w-full border-emerald-500/50 text-emerald-300 hover:bg-emerald-950/30"
                          >
                          <ShieldCheck className="w-4 h-4 mr-2" />
                          Supervisor Site Check
@@ -876,16 +876,16 @@ export default function DailyActivityReports() {
 
                          {formData.hourly_entries_array.length > 0 && (
                      <div className="space-y-2">
-                       <p className="text-sm font-semibold text-slate-700">Added Entries ({formData.hourly_entries_array.length})</p>
+                       <p className="text-sm font-semibold text-slate-200">Added Entries ({formData.hourly_entries_array.length})</p>
                        <div className="space-y-2">
                          {formData.hourly_entries_array.map((entry, idx) => {
                            const isSiteCheck = entry.text?.includes('arrived on site to conduct a site check') || entry.text?.includes('departed the site after conducting a site check');
                            return (
-                           <div key={idx} className={`flex items-start justify-between gap-2 p-3 rounded border ${isSiteCheck ? 'bg-green-50 border-green-300' : 'bg-slate-50 border-slate-200'}`}>
+                           <div key={idx} className={`flex items-start justify-between gap-2 p-3 rounded border ${isSiteCheck ? 'bg-emerald-950/25 border-emerald-600/50' : 'bg-[#0d1825] border-slate-700'}`}>
                              <div className="flex-1">
-                               {isSiteCheck && <p className="text-xs text-green-700 font-semibold mb-1">🔒 Supervisor Site Check</p>}
-                               <p className="font-mono font-semibold text-slate-900">{entry.time}Z</p>
-                               <p className="text-sm text-slate-700">{entry.text}</p>
+                               {isSiteCheck && <p className="text-xs text-emerald-300 font-semibold mb-1">🔒 Supervisor Site Check</p>}
+                               <p className="font-mono font-semibold text-slate-100">{entry.time}</p>
+                               <p className="text-sm text-slate-300">{entry.text}</p>
                              </div>
                              {!isSiteCheck && (
                              <Button
@@ -909,7 +909,7 @@ export default function DailyActivityReports() {
                    )}
 
                    {formData.hourly_entries_array.length === 0 && (
-                     <div className="p-4 bg-amber-50 border border-amber-200 rounded text-sm text-amber-800">
+                     <div className="p-4 bg-amber-950/20 border border-amber-600/40 rounded text-sm text-amber-200">
                        No entries added yet. Add at least one entry above.
                      </div>
                    )}
