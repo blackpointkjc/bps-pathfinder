@@ -171,7 +171,7 @@ const CENTER_CONFIG = {
     ],
   },
   training: {
-    label: 'Training Center',
+    label: 'Trainer Center',
     icon: GraduationCap,
     groups: [
       { label: 'Training', items: [
@@ -182,6 +182,29 @@ const CENTER_CONFIG = {
         ['Manage Students', 'ManageStudents', Users],
         ['Student Portal', 'StudentPortal', GraduationCap],
         ['Training Records', 'TrainingRecords', BookOpen],
+      ]},
+    ],
+  },
+  hr: {
+    label: 'HR Center',
+    icon: Users,
+    groups: [
+      { label: 'People Operations', items: [
+        ['Manage Employees', 'ManageCompanyEmployees', Briefcase],
+        ['Pending Users', 'AdminUsers', Users],
+        ['Officer Management', 'AdminOfficerManagement', UserCheck],
+        ['Officer Roster', 'AdminOfficerRoster', Users],
+        ['Time Entries', 'AdminTimeEntries', Clock3],
+        ['Manage Time Entries', 'ManageTimeEntries', Clock3],
+        ['Support Staff Clock', 'AdminSupportStaffClock', Clock3],
+      ]},
+      { label: 'Leave & Performance', items: [
+        ['PTO Approval', 'AdminPTOApproval', ClipboardCheck],
+        ['PTO Review', 'AdminPTOReview', ClipboardList],
+        ['Manual PTO', 'AdminManualPTO', CalendarClock],
+        ['PTO Loss Report', 'AdminPTOLossReport', AlertTriangle],
+        ['Performance Reviews', 'AdminPerformanceReviews', ClipboardCheck],
+        ['Divisions', 'AdminDivisions', Layers],
       ]},
     ],
   },
@@ -229,18 +252,48 @@ const PAGE_TO_CENTER = Object.entries(CENTER_CONFIG).reduce((map, [center, confi
 
 const FULLSCREEN_PAGES = new Set(['Navigation']);
 
+function normalizedRoles(user) {
+  return new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+}
+
+function hasRole(user, role) {
+  return normalizedRoles(user).has(role);
+}
+
 function roleName(user) {
   if (user?.role === 'admin') return 'SYSTEM ADMIN';
   if (user?.role === 'dispatch') return 'DISPATCH';
-  return 'FIELD UNIT';
+  if (hasRole(user, 'supervisor')) return 'SUPERVISOR';
+  if (hasRole(user, 'hr')) return 'HUMAN RESOURCES';
+  if (hasRole(user, 'accounting')) return 'ACCOUNTING';
+  if (hasRole(user, 'trainer')) return 'TRAINER';
+  if (hasRole(user, 'officer')) return 'OFFICER';
+  return 'AUTHORIZED EMPLOYEE';
 }
 
 function allowedCenters(user) {
-  if (user?.role === 'admin') return Object.keys(CENTER_CONFIG);
-  if (user?.role === 'dispatch') return ['cad', 'officer', 'supervisor'];
-  if (user?.additional_roles?.includes('supervisor')) return ['cad', 'officer', 'supervisor'];
-  if (user?.additional_roles?.includes('client') || user?.user_type === 'client') return ['client'];
-  return ['cad', 'officer'];
+  const roles = normalizedRoles(user);
+  const isAdmin = user?.role === 'admin';
+  const isDispatch = user?.role === 'dispatch';
+  const fullAccess = roles.has('full_access');
+  const centers = [];
+
+  if (isAdmin || isDispatch || fullAccess || roles.has('cad_access') || roles.has('officer') || roles.has('supervisor')) centers.push('cad');
+  if (isAdmin || fullAccess || roles.has('officer')) centers.push('officer');
+  if (isAdmin || fullAccess || roles.has('supervisor')) centers.push('supervisor');
+  if (isAdmin || fullAccess || roles.has('hr')) centers.push('hr');
+  if (isAdmin || fullAccess) centers.push('admin');
+  if (isAdmin || fullAccess || roles.has('trainer')) centers.push('training');
+  if (isAdmin || fullAccess || roles.has('accounting')) centers.push('accounting');
+  if (isAdmin || roles.has('client') || user?.user_type === 'client') centers.push('client');
+
+  return [...new Set(centers)];
+}
+
+function canAccessPage(user, pageName) {
+  const center = PAGE_TO_CENTER[pageName];
+  if (!center) return true;
+  return allowedCenters(user).includes(center);
 }
 
 function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, onCloseMobile }) {
@@ -338,7 +391,7 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     const pageCenter = PAGE_TO_CENTER[currentPageName];
     if (pageCenter && allowedCenters(user).includes(pageCenter)) setActiveCenter(pageCenter);
-  }, [currentPageName, user?.role]);
+  }, [currentPageName, user?.role, JSON.stringify(user?.additional_roles || [])]);
 
   useEffect(() => {
     const id = setInterval(() => setClock(new Date()), 1000);
@@ -366,7 +419,18 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     const available = allowedCenters(user);
     if (!available.includes(activeCenter)) setActiveCenter(available[0] || 'cad');
-  }, [user?.role]);
+  }, [user?.role, JSON.stringify(user?.additional_roles || [])]);
+
+  if (!canAccessPage(user, currentPageName)) {
+    return <div className="fixed inset-0 flex items-center justify-center bg-[#050a12] px-6 text-white">
+      <div className="w-full max-w-md rounded-lg border border-[#294867] bg-[#0b1726] p-8 text-center shadow-2xl">
+        <Shield className="mx-auto mb-4 h-10 w-10 text-[#72b7f2]" />
+        <h1 className="text-lg font-black uppercase tracking-[0.12em]">Access Restricted</h1>
+        <p className="mt-3 text-sm leading-6 text-[#b9c9d8]">Your assigned role does not permit access to this center. Contact an administrator if your duties require this tool.</p>
+        <Link to={createPageUrl(allowedCenters(user)[0] === 'cad' ? 'CommandDashboard' : 'Dashboard')} className="mt-6 inline-flex rounded border border-[#4385c6] bg-[#153b65] px-4 py-2 text-xs font-bold text-white hover:bg-[#1d4b7d]">RETURN TO AUTHORIZED CENTER</Link>
+      </div>
+    </div>;
+  }
 
   if (FULLSCREEN_PAGES.has(currentPageName)) return <div className="h-full w-full bg-[#050a12]">{children}</div>;
 
