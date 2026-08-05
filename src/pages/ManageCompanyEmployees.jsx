@@ -36,7 +36,7 @@ function computeFirearmExpiration(certs) {
   return firearmCerts.sort((a, b) => new Date(b.expiration_date) - new Date(a.expiration_date))[0].expiration_date;
 }
 
-export default function ManageCompanyEmployees() {
+export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const [editingUser, setEditingUser] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -92,19 +92,27 @@ export default function ManageCompanyEmployees() {
 
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, userData }) => {
-      const requestedSystemRole = userData.role || 'user';
-      const profileUpdates = { ...userData };
-      delete profileUpdates.role;
+      const requestedSystemRole = userData.role === 'admin' ? 'admin' : 'user';
+      const requestedAdditionalRoles = [...new Set(userData.additional_roles || [])].sort();
+      const existingAdditionalRoles = [...new Set(selectedUser?.additional_roles || [])].sort();
+      const systemAccessChanged = selectedUser?.role !== requestedSystemRole
+        || JSON.stringify(existingAdditionalRoles) !== JSON.stringify(requestedAdditionalRoles);
 
-      if (selectedUser?.role !== requestedSystemRole) {
-        if (!isSystemAdmin) throw new Error('Only a current system administrator can grant or remove administrator status.');
+      if (systemAccessChanged) {
+        if (!isSystemAdmin) throw new Error('Only a current system administrator can change system roles and permissions.');
         const roleResult = await base44.functions.invoke('updateUser', {
           userId: id,
-          updates: { role: requestedSystemRole },
+          updates: {
+            role: requestedSystemRole,
+            additional_roles: requestedAdditionalRoles,
+          },
         });
         if (roleResult?.error) throw new Error(roleResult.error);
       }
 
+      const profileUpdates = { ...userData };
+      delete profileUpdates.role;
+      delete profileUpdates.additional_roles;
       return base44.entities.User.update(id, profileUpdates);
     },
     onSuccess: () => {
@@ -143,11 +151,15 @@ export default function ManageCompanyEmployees() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['equipment'] }); }
   });
 
-  // Company employees = admin role OR officer additional role (not client, not student)
-  const isCompanyEmployee = (u) =>
-    (u.role === 'admin' || u.additional_roles?.includes('officer')) &&
-    !u.additional_roles?.includes('client') &&
-    !u.additional_roles?.includes('student');
+  // Company employees are standard app users with at least one internal company role.
+  // Client-only and student-only accounts stay in their dedicated management pages.
+  const internalCompanyRoles = new Set(['cad_access', 'officer', 'supervisor', 'hr', 'accounting', 'trainer', 'full_access']);
+  const isCompanyEmployee = (u) => {
+    const roles = u.additional_roles || [];
+    return (u.role === 'admin' || roles.some(role => internalCompanyRoles.has(String(role).toLowerCase())))
+      && !roles.includes('client')
+      && !roles.includes('student');
+  };
 
   const allEmployees = (users || []).filter(isCompanyEmployee);
   const activeEmployees = allEmployees.filter(u => !u.termination_date);
@@ -379,7 +391,7 @@ export default function ManageCompanyEmployees() {
           <Briefcase className="w-8 h-8 text-blue-600" />
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Manage Company Employees</h1>
-            <p className="text-slate-600">Active officers and admin staff with company roles assigned</p>
+            <p className="text-slate-600">{portalContext === 'hr' ? 'HR employee directory and account access management' : portalContext === 'training' ? 'Training-managed employee certifications and records' : 'Active company users and assigned operational roles'}</p>
           </div>
         </div>
         <Input
@@ -540,22 +552,27 @@ export default function ManageCompanyEmployees() {
             </Tabs>
 
             {/* Roles */}
-            <fieldset disabled={isHrReadOnly} className="border-t pt-4">
+            <fieldset disabled={!isSystemAdmin} className="border-t pt-4 disabled:opacity-70">
               <Label className="text-base font-semibold mb-3 block">System Roles & Permissions</Label>
-              {isSystemAdmin && (
-                <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-950/20 p-4">
-                  <div className="flex items-start gap-3">
-                    <Checkbox
-                      id="system_admin_role"
-                      checked={editFormData.role === 'admin'}
-                      onCheckedChange={(checked) => setEditFormData({ ...editFormData, role: checked ? 'admin' : 'user' })}
-                    />
-                    <Label htmlFor="system_admin_role" className="cursor-pointer">
-                      <div className="font-bold text-amber-300">System Administrator</div>
-                      <div className="text-xs text-slate-400">Grants access to every center, security setting, user role, and administrative function. Only an existing system administrator can change this setting.</div>
-                    </Label>
-                  </div>
-                </div>
+              <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-950/20 p-4">
+                <Label className="text-xs font-bold uppercase tracking-wider text-amber-300">Account Type</Label>
+                <Select
+                  value={editFormData.role === 'admin' ? 'admin' : 'user'}
+                  onValueChange={(value) => setEditFormData({ ...editFormData, role: value })}
+                >
+                  <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User — standard application account</SelectItem>
+                    <SelectItem value="admin">Admin — system administrator</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="mt-2 text-xs text-slate-400">Every account is a User unless an existing system administrator explicitly changes it to Admin.</div>
+              </div>
+              {!isSystemAdmin && (
+                <Alert className="mb-4">
+                  <Shield className="h-4 w-4" />
+                  <AlertDescription>Only a system administrator can change account type or toolbar permissions.</AlertDescription>
+                </Alert>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {[
