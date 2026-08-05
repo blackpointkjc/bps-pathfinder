@@ -576,6 +576,52 @@ export default function Layout({ children, currentPageName }) {
       </motion.aside>
     </motion.div>}</AnimatePresence>
 
+    <AnimatePresence>{propertyAlert && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+      >
+        <motion.div
+          initial={{ scale: 0.94, y: 24, opacity: 0 }}
+          animate={{ scale: 1, y: 0, opacity: 1 }}
+          exit={{ scale: 0.96, y: 12, opacity: 0 }}
+          className="w-full max-w-xl overflow-hidden rounded-xl border-2 border-red-500 bg-[#0b1523] shadow-[0_0_60px_rgba(239,68,68,.35)]"
+        >
+          <div className="flex items-center gap-3 border-b border-red-700/60 bg-red-950/70 px-5 py-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-red-400 bg-red-600/20">
+              <Siren className="h-7 w-7 animate-pulse text-red-300" />
+            </div>
+            <div>
+              <div className="text-xs font-black uppercase tracking-[0.25em] text-red-300">Property Monitoring Alert</div>
+              <div className="text-xl font-black text-white">{propertyAlert.property.name}</div>
+            </div>
+            <div className="ml-auto rounded border border-red-500/60 bg-red-950 px-3 py-1 font-mono text-sm font-black text-red-200">
+              {/^B\d+$/i.test(String(propertyAlert.call.call_id || '')) ? propertyAlert.call.call_id : 'CAD ASSIGNING'}
+            </div>
+          </div>
+          <div className="space-y-4 p-5">
+            <div className={`rounded-lg border p-4 ${propertyAlert.relation === 'inside' ? 'border-red-500/50 bg-red-950/30' : 'border-amber-500/50 bg-amber-950/25'}`}>
+              <div className={`text-sm font-black uppercase tracking-wider ${propertyAlert.relation === 'inside' ? 'text-red-300' : 'text-amber-300'}`}>
+                {propertyAlert.relation === 'inside' ? 'Call inside property boundary' : `Call ${propertyAlert.distanceFeet} feet from property boundary`}
+              </div>
+              <div className="mt-2 text-2xl font-black text-white">{propertyAlert.call.incident || 'Unknown incident'}</div>
+              <div className="mt-1 flex items-start gap-2 text-sm text-slate-300"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" />{propertyAlert.call.location}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="rounded border border-slate-700 bg-slate-900/70 p-3"><div className="text-slate-500">PROPERTY ADDRESS</div><div className="mt-1 font-bold text-slate-100">{propertyAlert.property.address}</div></div>
+              <div className="rounded border border-slate-700 bg-slate-900/70 p-3"><div className="text-slate-500">CALL STATUS</div><div className="mt-1 font-bold text-slate-100">{propertyAlert.call.status || 'New'} · {(propertyAlert.call.priority || 'medium').toUpperCase()}</div></div>
+            </div>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button onClick={acknowledgePropertyAlert} className="rounded-lg border border-slate-600 bg-slate-800 px-5 py-3 text-sm font-black text-slate-100 hover:bg-slate-700">ACKNOWLEDGE</button>
+              <Link to={createPageUrl('DispatchCenter')} onClick={acknowledgePropertyAlert} className="rounded-lg border border-blue-400 bg-blue-600 px-5 py-3 text-center text-sm font-black text-white hover:bg-blue-500">OPEN CAD CALL</Link>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    )}</AnimatePresence>
+
     <section className="flex min-w-0 flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-3 md:px-5">
         <div className="flex items-center gap-3">
