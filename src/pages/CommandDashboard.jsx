@@ -7,6 +7,7 @@ import { classifyCall } from '@/lib/cadCallTypes';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
+import FieldCallModal from '@/components/dispatch/FieldCallModal';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
 import { Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX } from 'lucide-react';
 
@@ -100,6 +101,7 @@ function CommandDashboardInner() {
     const [soundEnabled, setSoundEnabled]       = useState(true);
     const [syncStatus, setSyncStatus]           = useState({ state: 'idle', lastSync: null, added: 0, updated: 0, total: 0, error: null });
     const [monitoredProperties, setMonitoredProperties] = useState([]);
+    const [selectedCall, setSelectedCall] = useState(null);
     const [, setTick]                           = useState(0);
 
     const soundEnabledRef        = useRef(true);
@@ -392,7 +394,7 @@ function CommandDashboardInner() {
                             const isUnassigned = (!call.assigned_units || call.assigned_units.length === 0) && !call.source;
                             return (
                                 <div key={call.id}
-                                    onClick={() => navigate(`${createPageUrl('Navigation')}?callId=${call.id}${call.latitude ? `&lat=${call.latitude}&lng=${call.longitude}` : ''}`)}
+                                    onClick={() => setSelectedCall(call)}
                                     className={`flex items-center px-3 py-2 border-b border-slate-800/60 cursor-pointer transition-colors ${cfg.row} ${priority === 'critical' ? 'border-l-2 border-l-red-500' : priority === 'high' ? 'border-l-2 border-l-orange-500' : 'border-l-2 border-l-transparent'}`}>
 
                                     <div className="w-8 flex-shrink-0">
@@ -555,6 +557,7 @@ function CommandDashboardInner() {
                     )}
                 </div>
             </div>
+            <FieldCallModal call={selectedCall} onClose={() => setSelectedCall(null)} />
         </div>
     );
 }

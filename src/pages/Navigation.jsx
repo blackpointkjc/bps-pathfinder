@@ -16,6 +16,7 @@ import { splitCallsByCoords } from '@/lib/geocodingPipeline';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
+import FieldCallActions from '@/components/dispatch/FieldCallActions';
 
 const PRIORITY_COLORS = {
     critical: 'bg-red-600 text-white',
@@ -890,6 +891,12 @@ export default function Navigation() {
                                     <div className="text-red-200 text-[10px]">{selectedCall.hazards}</div>
                                 </div>
                             )}
+                        </div>
+
+                        {/* Field Unit Console */}
+                        <div className="flex-none border-t border-[#1e2d4a] p-3 bg-[#0a0e1a]">
+                            <div className="text-[9px] font-mono text-[#f5a623] font-bold tracking-widest mb-2">FIELD UNIT CONSOLE</div>
+                            <FieldCallActions call={selectedCall} />
                         </div>
                     </motion.div>
                 )}
