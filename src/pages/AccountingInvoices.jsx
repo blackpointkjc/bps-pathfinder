@@ -30,15 +30,18 @@ export default function AccountingInvoices() {
     queryFn: () => base44.auth.me(),
   });
 
-  const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.role === 'admin';
+  const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const isAccountingRole = user?.role === 'admin' || roles.has('accounting') || roles.has('full_access');
 
-  const { data: clients } = useQuery({
-    queryKey: ['clients'],
+  const { data: clients = [], isLoading: clientsLoading, error: clientsError } = useQuery({
+    queryKey: ['accountingClientDirectory'],
     queryFn: async () => {
-      const users = await base44.entities.User.list();
-      return users.filter(u => u.additional_roles?.includes('client'));
+      const response = await base44.functions.invoke('getClientUsers', {});
+      if (response?.error) throw new Error(response.error);
+      return response?.clients || [];
     },
     enabled: isAccountingRole,
+    staleTime: 30000,
     initialData: [],
   });
 
@@ -203,8 +206,14 @@ export default function AccountingInvoices() {
     );
   }
 
-  const clientLocations = selectedClient 
-    ? locations.filter(l => l.assigned_client_email === selectedClient)
+  const selectedClientRecord = clients.find(client => client.email === selectedClient);
+  const assignedSiteNames = new Set([
+    selectedClientRecord?.assigned_location,
+    ...(selectedClientRecord?.assigned_locations || []),
+    ...(selectedClientRecord?.assigned_sites || []),
+  ].filter(Boolean));
+  const clientLocations = selectedClient
+    ? locations.filter(location => location.assigned_client_email === selectedClient || assignedSiteNames.has(location.site_name))
     : [];
 
   const generateAllSitesInvoices = async () => {
