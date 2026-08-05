@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { openTrespassNoticePrint, resolvePoliceDepartment } from "@/utils/trespassNoticePrint";
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/c29aab328_c3ff2618-4412-4498-8923-8f484a9469b8-2533645741.jpeg";
 
@@ -360,12 +361,24 @@ export default function TrespassingNotices() {
   };
 
   const printNotice = (notice) => {
-    const printWindow = window.open('', '', 'width=850,height=1100');
-    
     const siteLocation = locations?.find(loc => loc.site_name === notice.location);
-    const displayLocation = siteLocation ? `${siteLocation.site_name}: ${siteLocation.address}` : notice.location;
     const officer = allUsers?.find(u => u.email === notice.created_by);
     const officerFullName = officer ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() : 'Officer';
+    openTrespassNoticePrint(notice, {
+      jurisdiction: 'VA',
+      locationRecord: siteLocation || { site_name: notice.location, division: 'Virginia' },
+      propertyName: siteLocation?.site_name || notice.location,
+      propertyAddress: siteLocation?.address || notice.location,
+      senderName: 'Black Point Protection',
+      senderAddress: siteLocation?.address || notice.location,
+      officerName: officerFullName,
+      signatureName: getOfficerSignature(notice.created_by),
+      policeDepartment: resolvePoliceDepartment(siteLocation || { site_name: notice.location, division: 'Virginia' }),
+    });
+    return;
+
+    const printWindow = window.open('', '', 'width=850,height=1100');
+    const displayLocation = siteLocation ? `${siteLocation.site_name}: ${siteLocation.address}` : notice.location;
     const officerRank = officer?.rank || '';
     
     printWindow.document.write(`
