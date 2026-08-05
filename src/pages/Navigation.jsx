@@ -7,7 +7,7 @@ import MapView from '@/components/map/MapView';
 import VACountiesBoundaries from '@/components/map/VACountiesBoundaries';
 import {
     Layers, RefreshCw, Radio, MapPin, Users,
-    Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Shield, Zap
+    Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Shield, Zap, Navigation2, Square
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
@@ -76,6 +76,14 @@ export default function Navigation() {
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [showOnlyCriticalCalls, setShowOnlyCriticalCalls] = useState(false);
     const [isGeocoding, setIsGeocoding] = useState(false);
+    const [navDestination, setNavDestination] = useState(null);
+    const [navRoute, setNavRoute] = useState([]);
+    const [navSteps, setNavSteps] = useState([]);
+    const [navStepIndex, setNavStepIndex] = useState(0);
+    const [navDistanceMiles, setNavDistanceMiles] = useState(0);
+    const [navDurationMinutes, setNavDurationMinutes] = useState(0);
+    const [isNavigating, setIsNavigating] = useState(false);
+    const [routing, setRouting] = useState(false);
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
@@ -281,6 +289,62 @@ export default function Navigation() {
         setIsLiveTracking(false);
     };
 
+    const formatInstruction = (step) => {
+        if (!step) return 'Continue to destination';
+        const type = step.maneuver?.type || 'continue';
+        const modifier = step.maneuver?.modifier ? ` ${step.maneuver.modifier}` : '';
+        const road = step.name ? ` onto ${step.name}` : '';
+        if (type === 'arrive') return 'Arrive at the call location';
+        if (type === 'depart') return `Head${modifier}${road}`;
+        if (type === 'roundabout') return `Enter the roundabout${road}`;
+        return `${type.charAt(0).toUpperCase() + type.slice(1)}${modifier}${road}`;
+    };
+
+    const startInAppNavigation = async () => {
+        if (!selectedCall?.latitude || !selectedCall?.longitude) {
+            toast.error('This call does not have mapped coordinates yet');
+            return;
+        }
+        if (!currentLocation) {
+            toast.error('Waiting for your GPS location');
+            return;
+        }
+        setRouting(true);
+        try {
+            const [lat, lng] = currentLocation;
+            const url = `https://router.project-osrm.org/route/v1/driving/${lng},${lat};${selectedCall.longitude},${selectedCall.latitude}?overview=full&geometries=geojson&steps=true`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Route service unavailable');
+            const data = await response.json();
+            const route = data.routes?.[0];
+            if (!route) throw new Error('No driving route found');
+            setNavDestination({ coords: [Number(selectedCall.latitude), Number(selectedCall.longitude)], name: selectedCall.location || selectedCall.incident || 'Call location' });
+            setNavRoute((route.geometry?.coordinates || []).map(([x, y]) => [y, x]));
+            setNavSteps(route.legs?.flatMap(leg => leg.steps || []) || []);
+            setNavStepIndex(0);
+            setNavDistanceMiles(route.distance / 1609.344);
+            setNavDurationMinutes(Math.max(1, Math.round(route.duration / 60)));
+            setIsNavigating(true);
+            setShowCallSidebar(false);
+            await handleStatusChange('Enroute');
+            toast.success('In-app navigation started');
+        } catch (error) {
+            toast.error(error?.message || 'Unable to build route');
+        } finally {
+            setRouting(false);
+        }
+    };
+
+    const stopInAppNavigation = () => {
+        setIsNavigating(false);
+        setNavDestination(null);
+        setNavRoute([]);
+        setNavSteps([]);
+        setNavStepIndex(0);
+        setNavDistanceMiles(0);
+        setNavDurationMinutes(0);
+    };
+
     const recenter = () => {
         navigator.geolocation?.getCurrentPosition(
             pos => { setCurrentLocation([pos.coords.latitude, pos.coords.longitude]); toast.success('Location updated'); },
@@ -394,7 +458,7 @@ export default function Navigation() {
             <div className="absolute inset-0">
                 <MapView
                     currentLocation={currentLocation}
-                    destination={null} route={null} trafficSegments={null}
+                    destination={navDestination} route={navRoute} trafficSegments={null}
                     useOfflineTiles={!isOnline}
                     activeCalls={showActiveCalls ? activeCalls : []}
                     heading={heading}
@@ -405,7 +469,7 @@ export default function Navigation() {
                     currentUserId={currentUser?.id}
                     speed={speed}
                     mapCenter={mapCenter}
-                    isNavigating={false}
+                    isNavigating={isNavigating}
                     baseMapType={jurisdictionFilters.baseMapType}
                     jurisdictionFilters={jurisdictionFilters}
                     showPoliceStations={jurisdictionFilters.showPoliceStations}
@@ -486,6 +550,23 @@ export default function Navigation() {
                     </div>
                 </div>
             </div>
+
+
+            {isNavigating && navDestination && (
+                <div className="absolute left-1/2 top-12 z-[1012] w-[min(92vw,620px)] -translate-x-1/2 rounded-xl border border-blue-500/40 bg-[#07111f]/95 p-3 shadow-2xl backdrop-blur-md pointer-events-auto">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-600"><Navigation2 className="h-6 w-6 text-white" /></div>
+                        <div className="min-w-0 flex-1">
+                            <div className="text-[10px] font-mono font-bold tracking-widest text-blue-300">IN-APP NAVIGATION</div>
+                            <div className="truncate text-sm font-bold text-white">{formatInstruction(navSteps[navStepIndex])}</div>
+                            <div className="mt-1 flex flex-wrap gap-3 text-[10px] font-mono text-slate-400">
+                                <span>{navDistanceMiles.toFixed(1)} MI</span><span>{navDurationMinutes} MIN</span><span className="truncate">TO {navDestination.name}</span>
+                            </div>
+                        </div>
+                        <button onClick={stopInAppNavigation} className="flex h-9 items-center gap-1 rounded border border-red-500/40 px-3 text-[10px] font-mono font-bold text-red-300 hover:bg-red-500/10"><Square className="h-3 w-3" />STOP</button>
+                    </div>
+                </div>
+            )}
 
             {/* ══ LEFT PANEL ══ */}
             <div className="absolute top-[34px] left-0 bottom-0 z-[1005] flex pointer-events-none">
@@ -791,16 +872,11 @@ export default function Navigation() {
                                 📍 SHOW ON MAP
                             </button>
                             <button
-                                onClick={() => {
-                                    const destination = selectedCall.latitude && selectedCall.longitude
-                                        ? `${selectedCall.latitude},${selectedCall.longitude}`
-                                        : encodeURIComponent(selectedCall.location || '');
-                                    const origin = currentLocation ? `&origin=${currentLocation[0]},${currentLocation[1]}` : '';
-                                    window.open(`https://www.google.com/maps/dir/?api=1${origin}&destination=${destination}&travelmode=driving&dir_action=navigate`, '_blank', 'noopener,noreferrer');
-                                }}
-                                className="px-3 py-1 rounded border border-green-500/40 text-green-400 text-[9px] font-mono font-bold hover:bg-green-500/10 transition-all"
+                                onClick={startInAppNavigation}
+                                disabled={routing || !selectedCall.latitude || !selectedCall.longitude}
+                                className="px-3 py-1 rounded border border-green-500/40 text-green-400 text-[9px] font-mono font-bold hover:bg-green-500/10 transition-all disabled:opacity-40"
                             >
-                                🧭 START GPS
+                                {routing ? 'ROUTING...' : '🧭 START GPS'}
                             </button>
                             {selectedCall.assigned_units?.includes(currentUser?.id) ? (
                                 <>
