@@ -5,8 +5,9 @@ Deno.serve(async (req) => {
         const base44 = createClientFromRequest(req);
         
         const user = await base44.auth.me();
-        if (!user || user.role !== 'admin') {
-            return Response.json({ error: 'Unauthorized - Admin only' }, { status: 401 });
+        const roles = new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+        if (!user || (user.role !== 'admin' && !roles.has('full_access') && !roles.has('hr') && !roles.has('trainer'))) {
+            return Response.json({ error: 'Unauthorized - account management access required' }, { status: 401 });
         }
 
         const { userId, updates } = await req.json();
@@ -19,8 +20,17 @@ Deno.serve(async (req) => {
         console.log('📝 Updates:', JSON.stringify(updates, null, 2));
 
         // Update the user's profile using asServiceRole
+        const targetUsers = await base44.asServiceRole.entities.User.list();
+        const target = (targetUsers || []).find((entry: any) => entry.id === userId);
+        if (!target) return Response.json({ error: 'User not found' }, { status: 404 });
+        const targetRoles = new Set((target.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+        const isSystemManager = user.role === 'admin' || roles.has('full_access');
+        if (!isSystemManager && roles.has('hr') && !targetRoles.has('officer')) return Response.json({ error: 'HR can manage officer/employee accounts only' }, { status: 403 });
+        if (!isSystemManager && roles.has('trainer') && !targetRoles.has('student')) return Response.json({ error: 'Trainer can manage student accounts only' }, { status: 403 });
+        if (!isSystemManager && (updates.role !== undefined || updates.additional_roles !== undefined)) return Response.json({ error: 'Only Admin or Full Access can change account roles' }, { status: 403 });
+
         const updatePayload: Record<string, unknown> = {};
-        const fields = ['full_name','rank','last_name','unit_number','dispatch_role','is_supervisor','show_on_map','role','status','additional_roles'];
+        const fields = ['first_name','last_name','full_name','email','mobile_phone','rank','unit_number','badge_number','division','assigned_location','assigned_locations','assigned_sites','dispatch_role','is_supervisor','show_on_map','role','status','additional_roles'];
         for (const f of fields) {
             if (updates[f] !== undefined) updatePayload[f] = updates[f];
         }
