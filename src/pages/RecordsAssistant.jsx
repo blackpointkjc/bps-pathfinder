@@ -34,7 +34,7 @@ export default function RecordsAssistant() {
     const loadConversations = async () => {
         setLoading(true);
         try {
-            const convs = await base44.agents.listConversations({ agent_name: 'records_assistant' });
+            const convs = await base44.agents.listConversations({ q: { agent_name: 'records_assistant' }, sort: '-updated_date', limit: 50 });
             setConversations(convs || []);
         } finally {
             setLoading(false);

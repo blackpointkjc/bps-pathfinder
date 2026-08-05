@@ -436,7 +436,7 @@ function CommandDashboardInner() {
                                         <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${
                                             call.status === 'New' ? 'bg-red-900/40 text-red-300 border-red-700/40' :
                                             call.status === 'Dispatched' || call.status === 'Enroute' ? 'bg-yellow-900/40 text-yellow-300 border-yellow-700/40' :
-                                            call.status === 'On Scene' || call.status === 'Arrived' ? 'bg-blue-900/40 text-blue-300 border-blue-700/40' :
+                                            call.status === 'On Scene' || call.status === 'On Scene' ? 'bg-blue-900/40 text-blue-300 border-blue-700/40' :
                                             'bg-slate-800 text-slate-400 border-slate-700'
                                         }`}>{(call.status || 'NEW').toUpperCase()}</span>
                                     </div>

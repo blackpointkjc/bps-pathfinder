@@ -5,11 +5,10 @@ import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
 import About from './pages/About';
 import Contact from './pages/Contact';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import CallCodeInsights from './pages/CallCodeInsights';
 import BOLOAlerts from './pages/BOLOAlerts';
 import FieldUnitView from './pages/FieldUnitView';
 import SupervisorReview from './pages/SupervisorReview';
@@ -22,8 +21,27 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
   : <>{children}</>;
 
+const PAGE_ROLES = {
+  DispatchCenter: ['dispatch', 'admin'],
+  BOLOAlerts: ['dispatch', 'admin'],
+  CallHistory: ['dispatch', 'admin'],
+  Personnel: ['admin'],
+  DispatchLog: ['admin'],
+  Reports: ['admin'],
+  SupervisorReview: ['admin'],
+  SystemStatus: ['admin'],
+  AdminPortal: ['admin'],
+  RecordsAssistant: ['admin'],
+};
+
+const RoleGuard = ({ page, user, children }) => {
+  const allowed = PAGE_ROLES[page];
+  if (!allowed || allowed.includes(user?.role || 'user')) return children;
+  return <Navigate to="/CommandDashboard" replace />;
+};
+
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { user, isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
@@ -59,31 +77,26 @@ const AuthenticatedApp = () => {
           path={`/${path}`}
           element={
             <LayoutWrapper currentPageName={path}>
-              <Page />
+              <RoleGuard page={path} user={user}><Page /></RoleGuard>
             </LayoutWrapper>
           }
         />
       ))}
       <Route path="/About" element={<About />} />
       <Route path="/Contact" element={<Contact />} />
-      <Route path="/CallCodeInsights" element={
-        <LayoutWrapper currentPageName="CallCodeInsights">
-          <CallCodeInsights />
-        </LayoutWrapper>
-      } />
       <Route path="/BOLOAlerts" element={
         <LayoutWrapper currentPageName="BOLOAlerts">
-          <BOLOAlerts />
+          <RoleGuard page="BOLOAlerts" user={user}><BOLOAlerts /></RoleGuard>
         </LayoutWrapper>
       } />
       <Route path="/FieldUnitView" element={
         <LayoutWrapper currentPageName="FieldUnitView">
-          <FieldUnitView />
+          <RoleGuard page="FieldUnitView" user={user}><FieldUnitView /></RoleGuard>
         </LayoutWrapper>
       } />
       <Route path="/SupervisorReview" element={
         <LayoutWrapper currentPageName="SupervisorReview">
-          <SupervisorReview />
+          <RoleGuard page="SupervisorReview" user={user}><SupervisorReview /></RoleGuard>
         </LayoutWrapper>
       } />
       <Route path="*" element={<PageNotFound />} />

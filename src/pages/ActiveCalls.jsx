@@ -10,7 +10,7 @@ import {
 
 const CLOSED = new Set(['Closed', 'Cleared', 'Cancelled']);
 const AGENCIES = ['ALL', 'RPD', 'RFD', 'HPD', 'HFD', 'CCPD', 'CCFD'];
-const STATUSES = ['ALL', 'New', 'Pending', 'Dispatched', 'Enroute', 'Arrived'];
+const STATUSES = ['ALL', 'New', 'Pending', 'Dispatched', 'Enroute', 'On Scene'];
 
 const agencyNames = {
   RPD: 'Richmond Police',
@@ -168,7 +168,7 @@ export default function ActiveCalls() {
   const critical = calls.filter((call) => call.priority === 'critical').length;
   const police = calls.filter((call) => ['RPD', 'HPD', 'CCPD'].includes(call.agency)).length;
   const fireEms = calls.length - police;
-  const arrived = calls.filter((call) => ['Arrived', 'On Scene'].includes(call.status)).length;
+  const arrived = calls.filter((call) => ['On Scene', 'On Scene'].includes(call.status)).length;
 
   return (
     <div className="min-h-full bg-[#060b14] text-slate-100">

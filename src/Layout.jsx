@@ -4,7 +4,7 @@ import { stopAllAlerts } from '@/utils/alertUtils';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     Radio, Activity, MapPin, Clock, Shield, Users, BarChart2, Settings,
-    Home, Zap, FileText, Menu, X, LogOut, ClipboardList
+    Home, Zap, FileText, Menu, X, LogOut, ClipboardList, Bot
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from './utils';
@@ -26,6 +26,7 @@ const ALL_NAV = [
     { label: 'Dispatch Log', icon: FileText, page: 'DispatchLog', roles: ['admin'] },
     { label: 'Reports', icon: BarChart2, page: 'Reports', roles: ['admin'] },
     { label: 'Supervisor Review', icon: ClipboardList, page: 'SupervisorReview', roles: ['admin'] },
+    { label: 'Records Assistant', icon: Bot, page: 'RecordsAssistant', roles: ['admin'] },
     { label: 'System Status', icon: Activity, page: 'SystemStatus', roles: ['admin'] },
     { label: 'SYSTEM', section: true, roles: ['admin'] },
     { label: 'Admin Portal', icon: Shield, page: 'AdminPortal', roles: ['admin'] },

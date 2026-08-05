@@ -87,13 +87,10 @@
       "type": "string",
       "enum": [
         "New",
-        "Pending",
         "Dispatched",
         "Enroute",
         "On Scene",
-        "Arrived",
         "Cleared",
-        "Closed",
         "Cancelled"
       ],
       "default": "New"

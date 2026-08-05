@@ -18,7 +18,7 @@ function normalizeStatus(rawStatus: unknown) {
   if (!value) return 'New';
   if (value.includes('DISPATCH') || value.includes('ASSIGN')) return 'Dispatched';
   if (value.includes('ENROUTE') || value.includes('EN ROUTE')) return 'Enroute';
-  if (value.includes('ARRIV') || value.startsWith('ARV') || value.includes('ON SCENE')) return 'Arrived';
+  if (value.includes('ARRIV') || value.startsWith('ARV') || value.includes('ON SCENE')) return 'On Scene';
   if (value.includes('PEND')) return 'Pending';
   return 'New';
 }

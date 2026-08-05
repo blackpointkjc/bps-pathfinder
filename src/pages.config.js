@@ -47,18 +47,13 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import AccountSettings from './pages/AccountSettings';
 import ActiveCalls from './pages/ActiveCalls';
 import AdminPortal from './pages/AdminPortal';
-import ArchiveManager from './pages/ArchiveManager';
-import AssetManagement from './pages/AssetManagement';
-import CADHome from './pages/CADHome';
 import CallHistory from './pages/CallHistory';
 import CommandDashboard from './pages/CommandDashboard';
 import DispatchCenter from './pages/DispatchCenter';
 import DispatchLog from './pages/DispatchLog';
 import Reports from './pages/Reports';
-import LinkedAppSearch from './pages/LinkedAppSearch';
 import Navigation from './pages/Navigation';
 import Personnel from './pages/Personnel';
 import RecordsAssistant from './pages/RecordsAssistant';
@@ -68,18 +63,13 @@ import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "AccountSettings": AccountSettings,
     "ActiveCalls": ActiveCalls,
     "AdminPortal": AdminPortal,
-    "ArchiveManager": ArchiveManager,
-    "AssetManagement": AssetManagement,
-    "CADHome": CADHome,
     "CallHistory": CallHistory,
     "CommandDashboard": CommandDashboard,
     "DispatchCenter": DispatchCenter,
     "DispatchLog": DispatchLog,
     "Reports": Reports,
-    "LinkedAppSearch": LinkedAppSearch,
     "Navigation": Navigation,
     "Personnel": Personnel,
     "RecordsAssistant": RecordsAssistant,

@@ -5,12 +5,10 @@ import { Radio, MapPin, AlertTriangle, CheckCircle, MessageSquare } from 'lucide
 const STATUS_BTNS = [
   { value: 'Available',      label: 'AVAILABLE',       cls: 'bg-green-800 border-green-500 text-green-200 hover:bg-green-700' },
   { value: 'Dispatched',     label: 'DISPATCHED',      cls: 'bg-blue-800 border-blue-500 text-blue-200 hover:bg-blue-700' },
-  { value: 'En Route',       label: 'EN ROUTE',        cls: 'bg-blue-900 border-blue-400 text-blue-200 hover:bg-blue-800' },
+  { value: 'Enroute',       label: 'EN ROUTE',        cls: 'bg-blue-900 border-blue-400 text-blue-200 hover:bg-blue-800' },
   { value: 'On Scene',       label: 'ON SCENE',        cls: 'bg-yellow-800 border-yellow-500 text-yellow-200 hover:bg-yellow-700' },
   { value: 'Busy',           label: 'BUSY',            cls: 'bg-orange-900 border-orange-500 text-orange-200 hover:bg-orange-800' },
-  { value: 'Meal Break',     label: 'MEAL BREAK',      cls: 'bg-purple-900 border-purple-500 text-purple-200 hover:bg-purple-800' },
   { value: 'Out of Service', label: 'OUT OF SERVICE',  cls: 'bg-red-900 border-red-500 text-red-200 hover:bg-red-800' },
-  { value: 'At Station',     label: 'AT STATION',      cls: 'bg-slate-700 border-slate-500 text-slate-200 hover:bg-slate-600' },
 ];
 
 const PRIORITY_BADGE = {
@@ -48,7 +46,7 @@ export default function FieldUnitView() {
       const mine = all.filter(c =>
         c.assigned_units?.includes(units?.[0]?.unit_id) ||
         c.assigned_units?.includes(me.id) ||
-        c.status === 'Dispatched' || c.status === 'En Route' || c.status === 'On Scene'
+        c.status === 'Dispatched' || c.status === 'Enroute' || c.status === 'On Scene'
       );
       setCalls(mine);
       if (mine.length) setSelected(mine[0]);
@@ -197,7 +195,7 @@ export default function FieldUnitView() {
 
           {/* Call Status Actions */}
           <div className="grid grid-cols-3 gap-1.5">
-            {[['En Route','Enroute','blue'], ['Arrived','On Scene','yellow'], ['Cleared','Cleared','green']].map(([label, status, color]) => (
+            {[['Enroute','Enroute','blue'], ['On Scene','On Scene','yellow'], ['Cleared','Cleared','green']].map(([label, status, color]) => (
               <button key={status} onClick={() => updateCallStatus(status)}
                 className={`py-2 text-[10px] font-mono font-bold rounded border transition-colors
                   ${color === 'blue' ? 'bg-blue-900/50 border-blue-600 text-blue-300 hover:bg-blue-900' :
