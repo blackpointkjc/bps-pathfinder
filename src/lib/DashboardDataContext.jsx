@@ -65,10 +65,14 @@ export function DashboardDataProvider({ children }) {
                 throw callsErr; // re-throw — calls are the critical payload
             }
             try {
-                const resp = await base44.functions.invoke('fetchAllUsers', {});
-                usersData = resp?.data?.users || resp?.data || resp?.users || [];
+                const allUsers = await base44.entities.User.list('-last_updated', 200);
+                const cutoff = Date.now() - 12 * 60 * 60 * 1000;
+                usersData = (allUsers || []).filter(u => {
+                    const updated = u.last_updated ? new Date(u.last_updated).getTime() : 0;
+                    return updated >= cutoff && u.status;
+                });
             } catch (usersErr) {
-                console.warn(`[CAD ${nowET}] fetchAllUsers failed — continuing without users`);
+                console.warn(`[CAD ${nowET}] direct User fetch failed — continuing without users`, usersErr);
                 usersData = [];
             }
 

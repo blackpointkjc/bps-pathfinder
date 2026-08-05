@@ -105,13 +105,13 @@ export default function Navigation() {
         return () => stopTracking();
     }, []);
 
-    // fetchOtherUnits disabled — backend function returns 402 Payment Required
-    // useEffect(() => {
-    //     if (!currentUser) return;
-    //     fetchOtherUnits();
-    //     const i = setInterval(fetchOtherUnits, 8000);
-    //     return () => clearInterval(i);
-    // }, [currentUser]);
+    // Credit-free unit refresh: read officer profiles directly from Base44 entities.
+    useEffect(() => {
+        if (!currentUser) return;
+        fetchOtherUnits();
+        const i = setInterval(fetchOtherUnits, 15000);
+        return () => clearInterval(i);
+    }, [currentUser]);
 
     useEffect(() => {
         fetchCalls();
@@ -177,11 +177,39 @@ export default function Navigation() {
     const handleStatusChange = async (newStatus) => {
         setUnitStatus(newStatus);
         unitStatusRef.current = newStatus;
-        try { await base44.functions.invoke('updateOfficerStatus', { status: newStatus }); } catch (e) {}
+        try {
+            await base44.auth.updateMe({ status: newStatus, last_updated: new Date().toISOString() });
+            setCurrentUser(prev => prev ? { ...prev, status: newStatus, last_updated: new Date().toISOString() } : prev);
+            fetchOtherUnits();
+        } catch (e) {
+            console.warn('[NAV] direct status update failed:', e?.message);
+            toast.error('Unable to update status');
+        }
     };
 
-    // logLocation disabled — backend function returns 402 Payment Required
-    const pushLocationUpdate = useCallback(async () => {}, []);
+    // Credit-free GPS update: write the signed-in officer's profile directly.
+    const pushLocationUpdate = useCallback(async (coords, hdg, spd, accuracy) => {
+        const now = Date.now();
+        if (now - lastUpdateRef.current < 12000) return;
+        lastUpdateRef.current = now;
+        const [latitude, longitude] = coords;
+        try {
+            const update = {
+                latitude,
+                longitude,
+                heading: Number.isFinite(hdg) ? hdg : 0,
+                speed: Number.isFinite(spd) ? spd : 0,
+                accuracy: Number.isFinite(accuracy) ? accuracy : 0,
+                status: unitStatusRef.current,
+                last_updated: new Date().toISOString(),
+                show_on_map: true,
+            };
+            await base44.auth.updateMe(update);
+            setCurrentUser(prev => prev ? { ...prev, ...update } : prev);
+        } catch (e) {
+            console.warn('[NAV] direct location update failed:', e?.message);
+        }
+    }, []);
 
     const startTracking = () => {
         if (!navigator.geolocation) { toast.error('Geolocation not supported'); return; }
@@ -239,10 +267,20 @@ export default function Navigation() {
 
     const fetchOtherUnits = async () => {
         try {
-            const res = await base44.functions.invoke('fetchAllUsers', {});
-            setOtherUnits(res.data?.users || []);
+            const users = await base44.entities.User.list('-last_updated', 200);
+            const cutoff = Date.now() - 12 * 60 * 60 * 1000;
+            const visible = (users || []).filter(u => {
+                if (u.id === currentUser?.id) return false;
+                if (u.show_on_map === false) return false;
+                const lat = Number(u.latitude), lng = Number(u.longitude);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+                const updated = u.last_updated ? new Date(u.last_updated).getTime() : 0;
+                return updated >= cutoff;
+            });
+            setOtherUnits(visible);
         } catch (e) {
-            // 402 Payment Required or other errors — silently ignore, units panel stays empty
+            console.warn('[NAV] direct officer fetch failed:', e?.message);
+            setOtherUnits([]);
         }
     };
 
