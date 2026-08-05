@@ -125,7 +125,8 @@ Deno.serve(async (req) => {
     const currentKeys = new Set(incoming.map(call => call.external_key));
     for (const record of existingCalls || []) {
       const key = externalKey(record);
-      if (key && !currentKeys.has(key)) {
+      const legacyExternalId = String(record.call_id || '').startsWith('grac-');
+      if (legacyExternalId || (key && !currentKeys.has(key))) {
         try {
           await base44.asServiceRole.entities.DispatchCall.delete(record.id);
           removed += 1;
