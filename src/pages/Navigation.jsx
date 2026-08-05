@@ -162,6 +162,10 @@ export default function Navigation() {
     useEffect(() => { unitStatusRef.current = unitStatus; }, [unitStatus]);
 
     useEffect(() => {
+        localStorage.setItem('mapTheme', mapTheme);
+    }, [mapTheme]);
+
+    useEffect(() => {
         if (!isNavigating || !currentLocation || navSteps.length === 0) return;
         const step = navSteps[navStepIndex];
         const location = step?.maneuver?.location;
@@ -919,27 +923,77 @@ export default function Navigation() {
                 </div>
             )}
 
-            {/* ══ RIGHT CONTROL STRIP ══ */}
+            {/* ══ RIGHT MAP TOOLBAR ══ */}
             <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="absolute right-3 top-16 z-[1005] flex flex-col gap-2 pointer-events-auto"
+                className="absolute right-3 top-16 z-[1210] pointer-events-auto"
             >
-                {[
-                    { onClick: recenter, title: 'Recenter', icon: <Crosshair className="w-4 h-4" />, active: false },
-                    { onClick: () => setShowActiveCalls(v => !v), title: 'Toggle calls on map', icon: showActiveCalls ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />, active: showActiveCalls },
-                    { onClick: () => setMapTheme(t => t === 'day' ? 'night' : 'day'), title: 'Toggle map theme', icon: <Layers className="w-4 h-4" />, active: mapTheme === 'night' },
-                    { onClick: () => setShowHeatmap(v => !v), title: 'Call heatmap', icon: <Flame className="w-4 h-4" />, active: showHeatmap },
-                ].map((btn, i) => (
-                    <button key={i} onClick={btn.onClick} title={btn.title} disabled={btn.disabled}
-                        className={`w-10 h-10 rounded-xl backdrop-blur-sm border flex items-center justify-center transition-all shadow-lg ${
-                            btn.active
-                                ? 'bg-[#f5a623]/20 border-[#f5a623]/50 text-[#f5a623]'
-                                : 'bg-[#0d1220]/90 border-[#1e2d4a] text-slate-400 hover:text-white hover:border-slate-500 hover:bg-[#1a2535]'
-                        } disabled:opacity-50`}>
-                        {btn.icon}
-                    </button>
-                ))}
+                <div className="flex flex-col overflow-hidden rounded-xl border border-[#31475e] bg-[#07111f]/95 shadow-2xl backdrop-blur-md">
+                    {[
+                        {
+                            key: 'recenter',
+                            onClick: recenter,
+                            title: 'Center on my current location',
+                            icon: <Crosshair className="h-4 w-4" />,
+                            active: isLiveTracking,
+                        },
+                        {
+                            key: 'search',
+                            onClick: () => {
+                                setShowAddressSearch(open => !open);
+                                if (showAddressSearch) {
+                                    setAddressResults([]);
+                                    setAddressQuery('');
+                                }
+                            },
+                            title: showAddressSearch ? 'Close address search' : 'Search for a destination',
+                            icon: showAddressSearch ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />,
+                            active: showAddressSearch,
+                        },
+                        {
+                            key: 'calls',
+                            onClick: () => setShowActiveCalls(visible => !visible),
+                            title: showActiveCalls ? 'Hide calls from map' : 'Show calls on map',
+                            icon: showActiveCalls ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />,
+                            active: showActiveCalls,
+                        },
+                        {
+                            key: 'theme',
+                            onClick: () => setMapTheme(theme => theme === 'day' ? 'night' : 'day'),
+                            title: mapTheme === 'night' ? 'Use day map' : 'Use night map',
+                            icon: <Layers className="h-4 w-4" />,
+                            active: mapTheme === 'night',
+                        },
+                        {
+                            key: 'heatmap',
+                            onClick: () => setShowHeatmap(visible => !visible),
+                            title: showHeatmap ? 'Hide call heatmap' : 'Show call heatmap',
+                            icon: <Flame className="h-4 w-4" />,
+                            active: showHeatmap,
+                            disabled: activeCalls.length === 0,
+                        },
+                    ].map((button, index, controls) => (
+                        <button
+                            key={button.key}
+                            type="button"
+                            onClick={button.onClick}
+                            title={button.title}
+                            aria-label={button.title}
+                            aria-pressed={button.active}
+                            disabled={button.disabled}
+                            className={`flex h-11 w-11 items-center justify-center transition-colors ${
+                                index < controls.length - 1 ? 'border-b border-[#263c52]' : ''
+                            } ${
+                                button.active
+                                    ? 'bg-[#153b65] text-[#8cc7ff]'
+                                    : 'bg-transparent text-slate-300 hover:bg-[#142336] hover:text-white'
+                            } disabled:cursor-not-allowed disabled:opacity-30`}
+                        >
+                            {button.icon}
+                        </button>
+                    ))}
+                </div>
             </motion.div>
 
             {/* ══ BOTTOM STATUS STRIP ══ */}
