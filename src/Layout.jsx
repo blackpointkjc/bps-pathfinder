@@ -245,6 +245,10 @@ function hasFullAccess(user) {
 }
 
 const FULLSCREEN_PAGES = new Set(['Navigation']);
+const DARK_WORKSPACE_PAGES = new Set([
+  'CommandDashboard', 'DispatchCenter', 'FieldUnitView', 'CallHistory',
+  'BOLOAlerts', 'RecordsAssistant', 'Personnel', 'PathfinderReports', 'AdminPortal'
+]);
 
 function normalizedRoles(user) {
   return new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
@@ -481,7 +485,7 @@ export default function Layout({ children, currentPageName }) {
         <button onClick={() => { stopAllAlerts(); setActiveAlert(null); }} className="rounded border border-red-500/50 px-2 py-1 text-xs font-bold hover:bg-red-900">ACKNOWLEDGE</button>
       </div>}
 
-      <main className="min-h-0 flex-1 overflow-auto bg-[#eef2f7] text-slate-900">{children}</main>
+      <main className={`min-h-0 flex-1 overflow-auto ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'light-workspace bg-[#eef2f7] text-slate-900'}`}>{children}</main>
     </section>
   </div>;
 }
