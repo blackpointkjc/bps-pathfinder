@@ -466,7 +466,7 @@ export default function DispatchCenter() {
                         {/* Call Detail */}
                         <div className="flex-none border-b border-[#1e2d4a]" style={{minHeight: 0}}>
                             {selectedCall ? (
-                                <div className="overflow-auto" style={{maxHeight: '220px'}}>
+                                <div className="overflow-auto" style={{maxHeight: '340px'}}>
                                     <div className="px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-3">
                                         <span className="text-[#f5a623] font-bold text-xs">EVENT #{selectedCall.id?.slice(-8).toUpperCase()}</span>
                                         <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(selectedCall.priority)}`}>{(selectedCall.priority || 'low').toUpperCase()}</span>
@@ -484,12 +484,49 @@ export default function DispatchCenter() {
                                         {selectedCall.caller_phone && <div><span className="text-slate-500">PHONE: </span><span className="text-white">{selectedCall.caller_phone}</span></div>}
                                         <div><span className="text-slate-500">DISTRICT/PCT: </span><span className="text-white">{callDistrict !== null ? callDistrict : selectedCall.zone || '—'}</span></div>
                                     </div>
+                                    {selectedCall.hazards && (
+                                        <div className="mx-4 mb-2 flex items-start gap-2 rounded border border-red-500/40 bg-red-950/40 p-2 text-[10px] text-red-200">
+                                            <AlertTriangle className="w-3 h-3 mt-0.5 flex-none" />
+                                            <div><span className="font-bold">SAFETY ALERT: </span>{selectedCall.hazards}</div>
+                                        </div>
+                                    )}
                                     {selectedCall.description && (
                                         <div className="px-4 pb-2">
                                             <div className="text-[9px] text-slate-500 mb-1">NARRATIVE</div>
                                             <div className="text-[10px] text-slate-300 bg-[#111827] rounded p-2 leading-relaxed">{selectedCall.description}</div>
                                         </div>
                                     )}
+                                    <div className="px-4 pb-2 flex items-center gap-1.5 flex-wrap">
+                                        <span className="text-[9px] text-slate-500 mr-1">CALL STATUS</span>
+                                        {['New','Dispatched','Enroute','On Scene','Cleared'].map(status => (
+                                            <button key={status} onClick={() => updateCallStatus(status)} disabled={selectedCall.status === status}
+                                                className={`px-2 py-1 rounded border text-[9px] ${selectedCall.status === status ? 'border-blue-400 bg-blue-500/20 text-blue-200' : 'border-slate-600 text-slate-400 hover:border-slate-400 hover:text-white'}`}>
+                                                {status.toUpperCase()}
+                                            </button>
+                                        ))}
+                                        <button onClick={() => updateCallStatus('Cancelled')} className="px-2 py-1 rounded border border-red-700 text-[9px] text-red-400 hover:bg-red-950/50">CANCEL</button>
+                                    </div>
+                                    <div className="px-4 pb-3 grid grid-cols-[1fr_260px] gap-3">
+                                        <div>
+                                            <div className="text-[9px] text-slate-500 mb-1 flex items-center gap-1"><History className="w-3 h-3" /> CAD TIMELINE / NOTES</div>
+                                            <div className="bg-[#111827] border border-[#263653] rounded max-h-24 overflow-y-auto">
+                                                {callNotes.length === 0 ? <div className="p-2 text-[9px] text-slate-600">No dispatcher notes recorded.</div> : callNotes.map(note => (
+                                                    <div key={note.id} className="px-2 py-1.5 border-b border-[#1e2d4a] last:border-0 text-[9px]">
+                                                        <div className="flex gap-2 text-slate-500"><span className="text-blue-300">{note.author_name || 'Dispatch'}</span><span>{new Date(note.created_date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div>
+                                                        <div className="text-slate-200 mt-0.5">{note.note}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[9px] text-slate-500 mb-1">ADD DISPATCH NOTE</div>
+                                            <textarea value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addCallNote(); } }}
+                                                placeholder="Type update, then Enter..." className="w-full h-16 resize-none bg-[#111827] border border-[#263653] rounded p-2 text-[10px] text-white outline-none focus:border-blue-500" />
+                                            <button onClick={addCallNote} disabled={savingNote || !noteText.trim()} className="w-full mt-1 py-1 bg-blue-700 hover:bg-blue-600 disabled:opacity-40 rounded text-[9px] font-bold">
+                                                {savingNote ? 'SAVING...' : 'POST TO CAD LOG'}
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="flex items-center justify-center h-16 text-[10px] text-slate-600">
