@@ -802,8 +802,8 @@ export default function AdminTrainingCompliance() {
     setShowPrintDialog(false);
   };
 
-  if (user?.role !== 'admin') {
-    return <div className="p-8 text-center"><Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" /><h2 className="text-xl font-bold">Admin Access Required</h2></div>;
+  if (!hasTrainingAccess) {
+    return <div className="p-8 text-center"><Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" /><h2 className="text-xl font-bold">Trainer Access Required</h2></div>;
   }
 
   return (
