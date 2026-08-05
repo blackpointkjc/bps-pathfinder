@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Briefcase, Plus, Mail, Phone, MapPin, Edit, Trash2, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -39,7 +40,8 @@ export default function ManageClients() {
     queryFn: () => base44.auth.me(),
   });
 
-  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('full_access') || user?.additional_roles?.includes('hr');
+  const isSystemAdmin = user?.role === 'admin';
+  const hasAccess = isSystemAdmin || user?.additional_roles?.includes('full_access') || user?.additional_roles?.includes('hr');
 
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
@@ -91,12 +93,20 @@ export default function ManageClients() {
 
   const updateClientMutation = useMutation({
     mutationFn: async ({ id, data }) => {
+      const requestedRole = data.role || 'user';
+      if (editingClient?.role !== requestedRole) {
+        if (!isSystemAdmin) throw new Error('Only a current system administrator can grant or remove administrator status.');
+        const roleResult = await base44.functions.invoke('updateUser', {
+          userId: id,
+          updates: { role: requestedRole },
+        });
+        if (roleResult?.error) throw new Error(roleResult.error);
+      }
       const updated = await base44.entities.User.update(id, {
         first_name: data.first_name,
         last_name: data.last_name,
         email: data.email,
         mobile_phone: data.mobile_phone,
-        role: 'user',
         additional_roles: ['client'],
         assigned_location: data.property_name,
         assigned_locations: [data.property_name],
@@ -343,6 +353,21 @@ export default function ManageClients() {
                 </SelectContent>
               </Select>
             </div>
+            {editingClient && isSystemAdmin && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-950/20 p-4">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="client_system_admin"
+                    checked={formData.role === 'admin'}
+                    onCheckedChange={(checked) => setFormData({ ...formData, role: checked ? 'admin' : 'user' })}
+                  />
+                  <Label htmlFor="client_system_admin" className="cursor-pointer">
+                    <div className="font-bold text-amber-300">System Administrator</div>
+                    <div className="text-xs text-slate-400">Adds full administrative authority while retaining this client account assignment.</div>
+                  </Label>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email Address *</Label>
               <Input
