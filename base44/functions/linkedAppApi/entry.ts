@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
         }
 
         if (action === 'update') {
+            if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
             if (!entity || !entityId || !data) return Response.json({ error: 'Missing entity, entityId, or data' }, { status: 400 });
             const res = await fetch(BRIDGE_URL, {
                 method: 'POST',
@@ -41,6 +42,7 @@ Deno.serve(async (req) => {
         }
 
         if (action === 'create') {
+            if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
             if (!entity || !data) return Response.json({ error: 'Missing entity or data' }, { status: 400 });
             const res = await fetch(BRIDGE_URL, {
                 method: 'POST',

@@ -174,6 +174,11 @@ async function smartGeocode(location, agency) {
 Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
+
+        const user = await base44.auth.me();
+        if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+
         let body = {};
         try { body = await req.json(); } catch (e) {}
         const limit = Math.min(parseInt(body?.limit) || 5, 50);
