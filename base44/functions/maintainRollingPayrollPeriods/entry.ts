@@ -18,9 +18,10 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     if (body?.action === 'save' && body?.period) {
       const period = body.period;
-      const saved = period.id
-        ? await base44.asServiceRole.entities.PayrollPeriod.update(period.id, { ...period, id: undefined })
-        : await base44.asServiceRole.entities.PayrollPeriod.create(period);
+      const { id, ...periodData } = period;
+      const saved = id
+        ? await base44.asServiceRole.entities.PayrollPeriod.update(id, periodData)
+        : await base44.asServiceRole.entities.PayrollPeriod.create(periodData);
       return Response.json({ success: true, saved });
     }
     if (body?.action === 'delete' && body?.id) {
