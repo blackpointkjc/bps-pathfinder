@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FileText, Plus, Clock, Printer } from "lucide-react";
+import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
@@ -297,6 +298,12 @@ export default function Summons() {
   };
 
   const printSummons = (summons) => {
+    openVirginiaSummonsPrint(summons, {
+      officerName: summons.officer_name || getOfficerFullDisplay(summons.created_by),
+      badge: summons.officer_code_badge || '',
+    });
+    return;
+
     const printWindow = window.open('', '', 'width=1100,height=850');
     
     const caseNum = summons.case_number || '';
