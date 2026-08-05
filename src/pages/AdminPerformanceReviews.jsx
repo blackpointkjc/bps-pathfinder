@@ -39,6 +39,8 @@ export default function AdminPerformanceReviews() {
     queryFn: () => base44.auth.me(),
   });
 
+  const hasHRAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access');
+
   const { data: allUsers, error: usersError } = useQuery({
     queryKey: ['allUsers'],
     queryFn: async () => {
@@ -53,7 +55,7 @@ export default function AdminPerformanceReviews() {
         throw err;
       }
     },
-    enabled: user?.role === 'admin',
+    enabled: hasHRAccess,
     retry: 3,
     staleTime: 0,
   });
@@ -299,11 +301,11 @@ Review Date: ${format(new Date(), 'MMMM d, yyyy')}`
     return filtered;
   }, [allUsers]);
 
-  if (user?.role !== 'admin') {
+  if (!hasHRAccess) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900">Admin Access Required</h2>
+        <h2 className="text-2xl font-bold text-slate-900">HR Access Required</h2>
       </div>
     );
   }
