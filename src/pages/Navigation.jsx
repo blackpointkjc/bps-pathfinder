@@ -86,6 +86,7 @@ export default function Navigation() {
 
     const locationWatchId = useRef(null);
     const forcePollRef = useRef(null);
+    const syncingGracRef = useRef(false);
     const lastUpdateRef = useRef(0);
     const unitStatusRef = useRef(unitStatus);
 
@@ -112,10 +113,34 @@ export default function Navigation() {
     }, [currentUser]);
 
     useEffect(() => {
-        fetchCalls();
+        const syncLiveCalls = async () => {
+            if (syncingGracRef.current || document.hidden) return;
+            syncingGracRef.current = true;
+            try {
+                await base44.functions.invoke('ingestGractivecalls', {});
+                await fetchCalls();
+            } catch (error) {
+                console.warn('[NAV] GRAC live sync failed:', error?.message);
+            } finally {
+                syncingGracRef.current = false;
+            }
+        };
+
+        syncLiveCalls();
         loadMonitoredProperties();
-        const i = setInterval(() => { fetchCalls(); loadMonitoredProperties(); }, 60000);
-        return () => clearInterval(i);
+        const syncInterval = setInterval(syncLiveCalls, 10000);
+        const localInterval = setInterval(fetchCalls, 5000);
+        const propertyInterval = setInterval(loadMonitoredProperties, 60000);
+        const onVisibility = () => {
+            if (!document.hidden) syncLiveCalls();
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+        return () => {
+            clearInterval(syncInterval);
+            clearInterval(localInterval);
+            clearInterval(propertyInterval);
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
     }, []);
 
 
