@@ -123,19 +123,14 @@ export default function ActiveCalls() {
         try {
             toast.loading('Scraping gractivecalls.com...', { id: 'scrape' });
             
-            const result = await base44.functions.invoke('scrapeActiveCalls', {});
+            const result = await base44.functions.invoke('ingestGractivecalls', {});
             
             console.log('📊 Scraper result:', result.data);
             
-            // Show diagnostics
-            const diag = result.data?.diagnostics;
-            if (diag) {
-                console.log('🏢 Agencies detected:', diag.agenciesDetected?.join(', '));
-                console.log('📝 Total rows:', diag.totalRows, 'Parse errors:', diag.parseErrors);
-            }
+            const { created = 0, updated = 0, closed = 0, geocoded = 0 } = result.data || {};
             
             toast.success(
-                `✅ Scraped ${result.data?.saved || 0} calls (${diag?.agenciesDetected?.length || 0} agencies: ${diag?.agenciesDetected?.join(', ') || 'none'})`,
+                `✅ Synced calls: ${created} new, ${updated} updated, ${closed} closed (${geocoded} geocoded)`,
                 { id: 'scrape', duration: 5000 }
             );
             
