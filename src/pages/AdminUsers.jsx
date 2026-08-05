@@ -693,11 +693,7 @@ export default function AdminUsers() {
                         className="bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
                         onClick={async () => {
                           if (window.confirm(`Assign ${userData.first_name || userData.email} as a Student?`)) {
-                            const newRoles = ['student'];
-                            await base44.entities.User.update(userData.id, { additional_roles: newRoles, rank: 'Student' });
-                            queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
-      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+                            await assignUserCategory(userData, 'student');
                           }
                         }}
                       >
@@ -709,11 +705,7 @@ export default function AdminUsers() {
                         className="bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
                         onClick={async () => {
                           if (window.confirm(`Assign ${userData.first_name || userData.email} as an Officer?`)) {
-                            const newRoles = ['officer', 'cad_access'];
-                            await base44.entities.User.update(userData.id, { additional_roles: newRoles, rank: 'Officer' });
-                            queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
-      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+                            await assignUserCategory(userData, 'officer');
                           }
                         }}
                       >
@@ -725,16 +717,7 @@ export default function AdminUsers() {
                         className="bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100"
                         onClick={async () => {
                           if (window.confirm(`Assign ${userData.first_name || userData.email} as a Client? The property can be selected from Manage Clients.`)) {
-                            await base44.entities.User.update(userData.id, {
-                              additional_roles: ['client'],
-                              rank: 'Client',
-                              assigned_location: '',
-                              assigned_locations: [],
-                              assigned_sites: [],
-                            });
-                            queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
-                            queryClient.invalidateQueries({ queryKey: ['clientUsers'] });
-                            queryClient.invalidateQueries({ queryKey: ['users'] });
+                            await assignUserCategory(userData, 'client');
                           }
                         }}
                       >
