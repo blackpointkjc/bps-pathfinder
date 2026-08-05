@@ -481,7 +481,7 @@ export default function Layout({ children, currentPageName }) {
         <button onClick={() => { stopAllAlerts(); setActiveAlert(null); }} className="rounded border border-red-500/50 px-2 py-1 text-xs font-bold hover:bg-red-900">ACKNOWLEDGE</button>
       </div>}
 
-      <main className="min-h-0 flex-1 overflow-auto bg-[#07101b]">{children}</main>
+      <main className="min-h-0 flex-1 overflow-auto bg-[#eef2f7] text-slate-900">{children}</main>
     </section>
   </div>;
 }
