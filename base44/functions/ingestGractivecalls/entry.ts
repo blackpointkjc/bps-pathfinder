@@ -124,57 +124,85 @@ const SOURCE_PREFIX = {
     henrico: 'henrico',
 };
 
-// Parse the gractivecalls.com card-based layout. Each call is an <a href="/call/<hash>">
-// with 4 child divs: [time elapsed+clock], [incident + location], [status badge], [agency].
-// Two anchors exist per call (list-row + card variants) — dedupe by the gractive hash.
+// Parse GRAC's server-rendered __NEXT_DATA__ payload first. This is much more stable
+// than scraping presentation HTML and includes coordinates for every plotted call.
+// Retain an HTML fallback in case GRAC changes its Next.js data shape.
 function parseGractive(html) {
     const $ = cheerio.load(html);
+    const nextDataText = $('#__NEXT_DATA__').text();
+
+    if (nextDataText) {
+        try {
+            const nextData = JSON.parse(nextDataText);
+            const apiCalls = nextData?.props?.pageProps?.fallback?.['/api/active'];
+            if (Array.isArray(apiCalls) && apiCalls.length > 0) {
+                return apiCalls
+                    .filter(row => row?._id && row?.incident && row?.location && ALLOWED_AGENCIES.has(String(row.agency || '').toUpperCase()))
+                    .map(row => {
+                        const agency = String(row.agency).toUpperCase();
+                        const source = AGENCY_SOURCE[agency] || 'chesterfield';
+                        const prefix = SOURCE_PREFIX[source];
+                        const coords = Array.isArray(row.coords) ? row.coords : [];
+                        const latitude = Number(coords[0]);
+                        const longitude = Number(coords[1]);
+                        const received = new Date(row.timeReceived);
+
+                        return {
+                            call_id: `${prefix}-${row._id}`,
+                            incident: String(row.incident).trim(),
+                            location: String(row.location).trim(),
+                            agency,
+                            zone: String(row.district || ''),
+                            status: normalizeStatus(String(row.status || '').replace(/\s+\d{1,2}:\d{2}\s*(AM|PM)?$/i, '')),
+                            priority: 'medium',
+                            time_received: Number.isNaN(received.getTime()) ? new Date().toISOString() : received.toISOString(),
+                            source,
+                            description: `${String(row.incident).trim()} at ${String(row.location).trim()}`,
+                            ...(Number.isFinite(latitude) && Number.isFinite(longitude)
+                                ? { latitude, longitude, geo_confidence: 'high', geo_method: 'grac', geo_approximate: false }
+                                : {})
+                        };
+                    });
+            }
+        } catch (error) {
+            console.warn('Unable to parse GRAC __NEXT_DATA__, using HTML fallback:', error?.message);
+        }
+    }
+
     const seen = new Set();
     const calls = [];
     $('a[href*="/call/"]').each((_, a) => {
         const href = $(a).attr('href') || '';
-        const hashMatch = href.match(/\/call\/([a-f0-9]+)/i);
-        if (!hashMatch) return;
-        const hash = hashMatch[1];
-        if (seen.has(hash)) return;
-        const divs = $(a).children('div');
-        if (divs.length < 4) return; // try the next anchor for this same hash
+        const hash = href.match(/\/call\/([a-f0-9]+)/i)?.[1];
+        if (!hash || seen.has(hash)) return;
+
+        const spans = $(a).find('span').toArray().map(s => $(s).text().trim()).filter(Boolean);
+        const agency = spans.find(t => ALLOWED_AGENCIES.has(t.toUpperCase()))?.toUpperCase();
+        const status = spans.find(t => /^(DISPATCHED|ENROUTE|ARRIVED|ON SCENE|PENDING|NEW)$/i.test(t));
+        const elapsed = spans.find(t => /^\d+\s*(m|h)\s+ago$/i.test(t));
+        if (!agency || !status) return;
+
+        const candidates = spans.filter(t => t !== agency && t !== status && t !== elapsed && !/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(t));
+        if (candidates.length < 2) return;
+        const incident = candidates[0];
+        const location = candidates[candidates.length - 1];
+        if (!incident || !location) return;
+
         seen.add(hash);
-
-        const elapsed = $(divs[0]).find('span').first().text().trim(); // e.g. "6m ago" / "1h ago"
-        const locTexts = $(divs[1]).find('span').toArray()
-            .map(s => $(s).text().trim()).filter(t => t.length > 1);
-        const incident = locTexts[0] || '';
-        const location = locTexts[locTexts.length - 1] || '';
-        let status = '';
-        $(divs[2]).find('span').each((_, s) => {
-            const t = $(s).text().trim();
-            if (t) status = t;
-        });
-        const agency = $(divs[3]).find('span').first().text().trim().toUpperCase();
-
-        if (!incident || !location || !agency) return;
-        if (!ALLOWED_AGENCIES.has(agency)) return;
-
         const source = AGENCY_SOURCE[agency] || 'chesterfield';
-        const prefix = SOURCE_PREFIX[source];
-        const callId = `${prefix}-${hash}`;
-
-        // Compute time_received from the relative elapsed text (robust across date boundaries)
         let minutesAgo = 0;
-        const em = elapsed.match(/(\d+)\s*(m|h)/i);
+        const em = elapsed?.match(/(\d+)\s*(m|h)/i);
         if (em) minutesAgo = parseInt(em[1]) * (em[2].toLowerCase() === 'h' ? 60 : 1);
-        const time_received = clampFuture(new Date(Date.now() - minutesAgo * 60000).toISOString());
 
         calls.push({
-            call_id: callId,
+            call_id: `${SOURCE_PREFIX[source]}-${hash}`,
             incident,
             location,
             agency,
             zone: '',
             status: normalizeStatus(status),
             priority: 'medium',
-            time_received,
+            time_received: new Date(Date.now() - minutesAgo * 60000).toISOString(),
             source,
             description: `${incident} at ${location}`
         });
@@ -213,12 +241,9 @@ Deno.serve(async (req) => {
             }, { status: 502 });
         }
 
-        // Phase out: only keep calls received within the last 2 hours (ET). Anything
-        // older is closed and ages out, even if gractive still lists it.
-        const twoHourCutoff = Date.now() - 2 * 60 * 60 * 1000;
-        const activeCalls = allCalls.filter(c => new Date(c.time_received).getTime() >= twoHourCutoff);
-        const phasedOut = allCalls.length - activeCalls.length;
-        if (phasedOut > 0) console.log(`Phased out ${phasedOut} calls older than 2h`);
+        // GRAC's /api/active payload is already the source of truth for active calls.
+        // Keep every call currently present, regardless of age.
+        const activeCalls = allCalls;
 
         // One row per call (keyed by the gractive call hash): update status on existing
         // records instead of creating duplicates each sync.
