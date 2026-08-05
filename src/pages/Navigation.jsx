@@ -7,7 +7,7 @@ import MapView from '@/components/map/MapView';
 import VACountiesBoundaries from '@/components/map/VACountiesBoundaries';
 import {
     Layers, RefreshCw, Radio, MapPin, Users,
-    Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Shield, Zap, Navigation2, Square, Search
+    Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Shield, Zap, Navigation2, Square, Search, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
@@ -64,6 +64,7 @@ export default function Navigation() {
         return h >= 6 && h < 19 ? 'day' : 'night';
     });
     const [showCallSidebar, setShowCallSidebar] = useState(false);
+    const [callSidebarCollapsed, setCallSidebarCollapsed] = useState(false);
     const [selectedCall, setSelectedCall] = useState(null);
     const [callDistrict, setCallDistrict] = useState(null);
     const [showHeatmap, setShowHeatmap] = useState(false);
@@ -581,7 +582,7 @@ export default function Navigation() {
                     showHeatmap={showHeatmap}
                     allCalls={activeCalls}
                     onCallClick={(call) => {
-                        setSelectedCall(call); setShowCallSidebar(true); setCallDistrict(null);
+                        setSelectedCall(call); setShowCallSidebar(true); setCallSidebarCollapsed(false); setCallDistrict(null);
                         if (call.latitude && call.longitude) lookupDistrict(call.latitude, call.longitude).then(d => setCallDistrict(d));
                     }}
                 >
@@ -1029,7 +1030,7 @@ export default function Navigation() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 320 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute top-[34px] right-0 bottom-[32px] w-80 bg-[#0a0e1a]/97 backdrop-blur-md border-l border-[#1e2d4a] z-[1006] overflow-y-auto pointer-events-auto flex flex-col"
+                        className={`absolute top-[34px] right-0 bottom-[32px] bg-[#0a0e1a]/97 backdrop-blur-md border-l border-[#1e2d4a] z-[1006] pointer-events-auto flex flex-col transition-[width] duration-200 ${callSidebarCollapsed ? 'w-12 overflow-hidden' : 'w-80 overflow-y-auto'}`}
                     >
                         {/* Header */}
                         <div className="flex-none flex items-center justify-between px-4 py-3 border-b border-[#1e2d4a] bg-[#0d1220]">
