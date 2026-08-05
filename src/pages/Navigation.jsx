@@ -88,6 +88,7 @@ export default function Navigation() {
     const [addressResults, setAddressResults] = useState([]);
     const [addressSearching, setAddressSearching] = useState(false);
     const [showAddressSearch, setShowAddressSearch] = useState(false);
+    const [lastGpsFixAt, setLastGpsFixAt] = useState(null);
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
@@ -121,7 +122,7 @@ export default function Navigation() {
     useEffect(() => {
         if (!currentUser) return;
         fetchOtherUnits();
-        const i = setInterval(fetchOtherUnits, 15000);
+        const i = setInterval(fetchOtherUnits, 5000);
         return () => clearInterval(i);
     }, [currentUser]);
 
@@ -251,7 +252,9 @@ export default function Navigation() {
     // Credit-free GPS update: write the signed-in officer's profile directly.
     const pushLocationUpdate = useCallback(async (coords, hdg, spd, accuracy) => {
         const now = Date.now();
-        if (now - lastUpdateRef.current < 12000) return;
+        const moving = Number(spd) > 2;
+        const minimumInterval = moving ? 3000 : 7000;
+        if (now - lastUpdateRef.current < minimumInterval) return;
         lastUpdateRef.current = now;
         const [latitude, longitude] = coords;
         try {
@@ -284,6 +287,7 @@ export default function Navigation() {
                 const hdg = (pos.coords.heading !== null && pos.coords.heading >= 0) ? pos.coords.heading : null;
                 const spd = pos.coords.speed ? Math.round(pos.coords.speed * 2.237) : 0;
                 setCurrentLocation(coords);
+                setLastGpsFixAt(pos.timestamp || Date.now());
                 if (hdg !== null) setHeading(hdg);
                 setSpeed(spd);
                 setLocationHistory(prev => [...prev, coords].slice(-30));
@@ -304,12 +308,17 @@ export default function Navigation() {
                 (pos) => {
                     const coords = [pos.coords.latitude, pos.coords.longitude];
                     setCurrentLocation(coords);
-                    pushLocationUpdate(coords, pos.coords.heading, pos.coords.speed ? pos.coords.speed * 2.237 : 0, pos.coords.accuracy);
+                    setLastGpsFixAt(pos.timestamp || Date.now());
+                    const fallbackHeading = (pos.coords.heading !== null && pos.coords.heading >= 0) ? pos.coords.heading : heading;
+                    const fallbackSpeed = pos.coords.speed ? pos.coords.speed * 2.237 : 0;
+                    if (fallbackHeading !== null) setHeading(fallbackHeading);
+                    setSpeed(Math.round(fallbackSpeed));
+                    pushLocationUpdate(coords, fallbackHeading, fallbackSpeed, pos.coords.accuracy);
                 },
                 () => {},
                 { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
             );
-        }, 20000);
+        }, 8000);
     };
 
     const stopTracking = () => {
@@ -329,19 +338,39 @@ export default function Navigation() {
         return `${type.charAt(0).toUpperCase() + type.slice(1)}${modifier}${road}`;
     };
 
+    const getFreshDeviceLocation = () => new Promise((resolve) => {
+        if (!navigator.geolocation) {
+            resolve(currentLocation);
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const fresh = [pos.coords.latitude, pos.coords.longitude];
+                const freshHeading = (pos.coords.heading !== null && pos.coords.heading >= 0) ? pos.coords.heading : heading;
+                const freshSpeed = pos.coords.speed ? pos.coords.speed * 2.237 : speed;
+                setCurrentLocation(fresh);
+                setLastGpsFixAt(pos.timestamp || Date.now());
+                if (freshHeading !== null) setHeading(freshHeading);
+                setSpeed(Math.round(freshSpeed || 0));
+                pushLocationUpdate(fresh, freshHeading, freshSpeed, pos.coords.accuracy || 0);
+                resolve(fresh);
+            },
+            () => resolve(currentLocation),
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+        );
+    });
+
     const startNavigationToPoint = async (destination, options = {}) => {
         const coords = destination?.coords || (destination?.latitude && destination?.longitude ? [Number(destination.latitude), Number(destination.longitude)] : null);
         if (!coords || !Number.isFinite(Number(coords[0])) || !Number.isFinite(Number(coords[1]))) {
             toast.error('This destination does not have mapped coordinates');
             return;
         }
-        if (!currentLocation) {
-            toast.error('Waiting for your GPS location');
-            return;
-        }
         setRouting(true);
         try {
-            const [lat, lng] = currentLocation;
+            const freshLocation = await getFreshDeviceLocation();
+            if (!freshLocation) throw new Error('Waiting for a current GPS location');
+            const [lat, lng] = freshLocation;
             const [destLat, destLng] = coords.map(Number);
             const url = `https://router.project-osrm.org/route/v1/driving/${lng},${lat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true&annotations=true`;
             const response = await fetch(url);
@@ -360,7 +389,7 @@ export default function Navigation() {
             setShowAddressSearch(false);
             setAddressResults([]);
             setAddressQuery('');
-            setMapCenter([destLat, destLng]);
+            setMapCenter(null);
             if (options.setEnroute !== false) await handleStatusChange('Enroute');
             toast.success(`Navigation started to ${destination.name || destination.address || 'destination'}`);
         } catch (error) {
@@ -419,7 +448,7 @@ export default function Navigation() {
     const fetchOtherUnits = async () => {
         try {
             const users = await base44.entities.User.list('-last_updated', 200);
-            const cutoff = Date.now() - 12 * 60 * 60 * 1000;
+            const cutoff = Date.now() - 30 * 60 * 1000;
             const visible = (users || []).filter(u => {
                 if (u.id === currentUser?.id) return false;
                 if (u.show_on_map === false) return false;
@@ -501,7 +530,8 @@ export default function Navigation() {
     const selfEntry = currentUser ? { ...currentUser, status: unitStatus } : null;
     const otherOnline = otherUnits.filter(u => u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
     const onlineUnits = selfEntry ? [selfEntry, ...otherOnline] : otherOnline;
-    const mapVisibleUnits = isSupervisorUser ? otherUnits : otherUnits.filter(u => u.status !== 'Out of Service');
+    // Officer-safety rule: every authorized officer sees every recently active unit.
+    const mapVisibleUnits = otherUnits;
 
     const criticalCalls = activeCalls.filter(isCriticalCall);
     const unassignedCalls = activeCalls.filter(c => !c.assigned_units?.length && !c.source);
