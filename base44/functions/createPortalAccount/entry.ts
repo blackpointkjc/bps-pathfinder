@@ -120,59 +120,54 @@ Deno.serve(async (req) => {
     let invitationSent = false;
     let invitationError = '';
     let assignmentError = '';
+    let assignmentPending = false;
 
+    const employeeRoles = accountType === 'employee' ? ['officer', 'cad_access'] : [accountType];
+    const updates: Record<string, unknown> = {
+      email: normalizedEmail,
+      first_name,
+      last_name,
+      mobile_phone: mobile_phone || '',
+      role: 'user',
+      additional_roles: employeeRoles,
+      assigned_location: accountType === 'client' ? assigned_location || '' : '',
+      assigned_locations: accountType === 'client' && assigned_location ? [assigned_location] : [],
+      assigned_sites: accountType === 'client' && assigned_location ? [assigned_location] : [],
+      rank: accountType === 'student' ? 'Student' : accountType === 'client' ? 'Client' : rank || 'Officer',
+    };
+
+    // Provision the actual portal User record with service-role access first. This
+    // works for Trainer-created students and HR-created clients without granting
+    // either role system-administrator privileges.
     if (!portalUser) {
       try {
-        let invitation;
+        portalUser = await base44.asServiceRole.entities.User.create(updates);
+      } catch (createError) {
+        assignmentError = createError?.message || 'Unable to provision the portal user record';
+        console.error('Portal user provisioning failed', createError);
         try {
-          invitation = await base44.asServiceRole.users.inviteUser(normalizedEmail, 'user');
-        } catch (serviceRoleError) {
-          console.warn('Service-role invitation path failed; trying authenticated invitation path', serviceRoleError);
-          invitation = await (base44 as any).users.inviteUser(normalizedEmail, 'user');
-        }
-        invitationSent = true;
-        // Do not trust the invitation response as an editable User entity. Some Base44
-        // invitation responses contain an invitation id rather than the User entity id.
-        portalUser = null;
-
-        // Base44 may create the pending User record asynchronously. Retry long enough
-        // for both the client and student management pages to display the new account.
-        for (let attempt = 0; attempt < 8 && !portalUser?.id; attempt += 1) {
-          if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 750));
-          try {
-            const refreshed = await base44.asServiceRole.entities.User.list();
-            portalUser = (refreshed || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
-          } catch (error) {
-            directoryError = error?.message || directoryError;
-            console.error('Unable to refresh pending portal user', error);
-          }
-        }
-      } catch (inviteError) {
-        invitationError = inviteError?.message || 'Unable to send the Base44 invitation';
-        const normalizedError = invitationError.toLowerCase();
-        const alreadyPending = normalizedError.includes('already') || normalizedError.includes('exist') || normalizedError.includes('pending') || normalizedError.includes('invited');
-        if (alreadyPending) {
-          invitationSent = true;
           const refreshed = await base44.asServiceRole.entities.User.list();
           portalUser = (refreshed || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
+        } catch (refreshError) {
+          directoryError = refreshError?.message || directoryError;
         }
-        console.error('Portal invitation failed', inviteError);
       }
     }
 
-    let assignmentPending = false;
+    // Send the native Base44 invitation as a separate best-effort step. The installed
+    // SDK exposes invitation through auth/users on the authenticated client; there is
+    // no asServiceRole.users module.
+    try {
+      await base44.auth.inviteUser(normalizedEmail, 'user');
+      invitationSent = true;
+    } catch (inviteError) {
+      invitationError = inviteError?.message || 'Native invitation could not be sent';
+      const normalizedError = invitationError.toLowerCase();
+      invitationSent = normalizedError.includes('already') || normalizedError.includes('exist') || normalizedError.includes('pending') || normalizedError.includes('invited');
+      console.warn('Native portal invitation was not completed', inviteError);
+    }
+
     if (portalUser?.id) {
-      const employeeRoles = accountType === 'employee' ? ['officer', 'cad_access'] : [accountType];
-      const updates: Record<string, unknown> = {
-        first_name,
-        last_name,
-        mobile_phone: mobile_phone || '',
-        additional_roles: employeeRoles,
-        assigned_location: accountType === 'client' ? assigned_location || '' : '',
-        assigned_locations: accountType === 'client' && assigned_location ? [assigned_location] : [],
-        assigned_sites: accountType === 'client' && assigned_location ? [assigned_location] : [],
-        rank: accountType === 'student' ? 'Student' : accountType === 'client' ? 'Client' : rank || 'Officer',
-      };
 
       if (accountType === 'employee') {
         Object.assign(updates, {
