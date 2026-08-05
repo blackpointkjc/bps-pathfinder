@@ -442,6 +442,7 @@ export default function DispatchCenter() {
                                         </span>
                                     </div>
                                     <div className="col-span-5">
+                                        <div className="text-[9px] font-mono font-bold text-[#7ec1ff] truncate">{call.call_id || 'UNASSIGNED'}</div>
                                         <div className="text-[10px] text-white font-bold truncate leading-tight">{call.incident}</div>
                                         <div className="text-[9px] text-slate-400 truncate">{call.location}</div>
                                     </div>
@@ -461,7 +462,7 @@ export default function DispatchCenter() {
                             {selectedCall ? (
                                 <div className="overflow-auto" style={{maxHeight: '340px'}}>
                                     <div className="px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-3">
-                                        <span className="text-[#f5a623] font-bold text-xs">EVENT #{selectedCall.id?.slice(-8).toUpperCase()}</span>
+                                        <span className="text-[#f5a623] font-bold text-xs">CAD #{selectedCall.call_id || selectedCall.id?.slice(-8).toUpperCase()}</span>
                                         <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(selectedCall.priority)}`}>{(selectedCall.priority || 'low').toUpperCase()}</span>
                                         <span className="text-[10px] text-slate-400">{selectedCall.status}</span>
                                         <span className="ml-auto text-[9px] text-slate-500">
