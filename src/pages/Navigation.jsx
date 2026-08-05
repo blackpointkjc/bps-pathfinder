@@ -156,6 +156,31 @@ export default function Navigation() {
 
     useEffect(() => { unitStatusRef.current = unitStatus; }, [unitStatus]);
 
+    useEffect(() => {
+        if (!isNavigating || !currentLocation || navSteps.length === 0) return;
+        const step = navSteps[navStepIndex];
+        const location = step?.maneuver?.location;
+        if (!location) return;
+        const [lng, lat] = location;
+        const toRad = value => value * Math.PI / 180;
+        const dLat = toRad(lat - currentLocation[0]);
+        const dLng = toRad(lng - currentLocation[1]);
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(currentLocation[0])) * Math.cos(toRad(lat)) * Math.sin(dLng / 2) ** 2;
+        const miles = 3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        if (miles < 0.035 && navStepIndex < navSteps.length - 1) setNavStepIndex(index => index + 1);
+        if (navDestination?.coords) {
+            const [destLat, destLng] = navDestination.coords;
+            const ddLat = toRad(destLat - currentLocation[0]);
+            const ddLng = toRad(destLng - currentLocation[1]);
+            const da = Math.sin(ddLat / 2) ** 2 + Math.cos(toRad(currentLocation[0])) * Math.cos(toRad(destLat)) * Math.sin(ddLng / 2) ** 2;
+            const remaining = 3958.8 * 2 * Math.atan2(Math.sqrt(da), Math.sqrt(1 - da));
+            if (remaining < 0.03) {
+                toast.success('Arrived at call location');
+                stopInAppNavigation();
+            }
+        }
+    }, [currentLocation, isNavigating, navStepIndex, navSteps, navDestination]);
+
     const init = async () => {
         try {
             const user = await base44.auth.me();
