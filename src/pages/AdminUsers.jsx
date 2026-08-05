@@ -141,6 +141,8 @@ export default function AdminUsers() {
       return response;
     },
     onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowCreateDialog(false);
       resetCreateForm();
@@ -158,6 +160,8 @@ export default function AdminUsers() {
   const updateUserMutation = useMutation({
     mutationFn: ({ id, userData }) => base44.entities.User.update(id, userData),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowDialog(false);
       setEditingUser(null);
@@ -409,6 +413,8 @@ export default function AdminUsers() {
       await base44.entities.User.update(editingUser, { profile_photo_url: file_url });
       setEditFormData(prev => ({ ...prev, profile_photo_url: file_url }));
       setPhotoToCrop(null);
+      queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       queryClient.invalidateQueries({ queryKey: ['users'] });
     } catch (error) {
       console.error('Profile photo upload failed:', error);
@@ -671,7 +677,9 @@ export default function AdminUsers() {
                           if (window.confirm(`Move ${userData.first_name || userData.email} to Student role?`)) {
                             const newRoles = [...(userData.additional_roles || []).filter(r => r !== 'student'), 'student'];
                             await base44.entities.User.update(userData.id, { additional_roles: newRoles });
-                            queryClient.invalidateQueries({ queryKey: ['users'] });
+                            queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
                           }
                         }}
                       >
@@ -685,7 +693,9 @@ export default function AdminUsers() {
                           if (window.confirm(`Hire ${userData.first_name || userData.email} as a Company Employee (Officer role)?`)) {
                             const newRoles = [...(userData.additional_roles || []).filter(r => r !== 'officer'), 'officer'];
                             await base44.entities.User.update(userData.id, { additional_roles: newRoles });
-                            queryClient.invalidateQueries({ queryKey: ['users'] });
+                            queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
                           }
                         }}
                       >
@@ -707,7 +717,9 @@ export default function AdminUsers() {
                             const action = newRole === 'admin' ? 'grant full admin access to' : 'remove admin access from';
                             if (window.confirm(`Are you sure you want to ${action} ${userData.first_name} ${userData.last_name}?`)) {
                               await base44.entities.User.update(userData.id, { role: newRole });
-                              queryClient.invalidateQueries({ queryKey: ['users'] });
+                              queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
                               alert(`✅ User role updated to ${newRole}`);
                             }
                           } catch (error) {
