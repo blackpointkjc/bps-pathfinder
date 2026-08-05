@@ -153,6 +153,7 @@ const CENTER_CONFIG = {
         ['Compliance Tracker', 'TrainingComplianceTracker', BarChart3],
         ['Certification Alerts', 'AdminCertificationAlerts', Bell],
         ['Manage Students', 'ManageStudents', Users],
+        ['Training Users & Invitations', 'AdminUsers', Users],
         ['Officer Certification Management', 'TrainingManageCompanyEmployees', Users],
         ['Training Records', 'TrainingRecords', BookOpen],
       ]},
