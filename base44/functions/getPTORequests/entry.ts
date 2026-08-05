@@ -14,9 +14,12 @@ Deno.serve(async (req) => {
     const hasHR = user.role === 'admin' || roles.has('hr') || roles.has('full_access');
 
     if (action === 'list') {
-      if (!hasHR) return Response.json({ error: 'HR access required', requests: [] }, { status: 403 });
       const requests = await base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000);
-      return Response.json({ success: true, requests: requests || [] });
+      if (hasHR) return Response.json({ success: true, requests: requests || [] });
+      const mine = (requests || []).filter((entry: any) =>
+        String(entry.requested_by_email || entry.created_by || '').toLowerCase() === String(user.email || '').toLowerCase()
+      );
+      return Response.json({ success: true, requests: mine });
     }
 
     if (action === 'submit') {
