@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle2, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
-const narrativeHints = /description|narrative|summary|details|action|reason|statement|observations|notes|circumstances|incident|activity|resolution|property|subject|offense|probable|complaint|maintenance|condition/i;
+const narrativeHints = /description|narrative|summary|details|action|reason|statement|observations|notes|circumstances|incident|activity|resolution|property|subject|offense|probable|complaint|maintenance|condition|disposition|finding|damage|door|contact/i;
 const skipHints = /email|phone|date|time|number|license|plate|address|location|name|signature|id|status|rank|unit|dob/i;
 
 function setNativeValue(element, value) {
@@ -49,8 +49,9 @@ export default function RequiredAIReportReview({ label = 'Review & Professionali
     const form = buttonRef.current?.closest('form');
     if (!form) return;
     const controls = [...form.querySelectorAll('textarea, input[type="text"]')].filter(el => {
-      const key = `${el.name || ''} ${el.id || ''} ${el.placeholder || ''}`;
-      return el.value?.trim().length >= 8 && narrativeHints.test(key) && !skipHints.test(key);
+      const key = `${el.name || ''} ${el.id || ''} ${el.placeholder || ''} ${el.getAttribute('aria-label') || ''}`;
+      const isNarrativeTextarea = el.tagName === 'TEXTAREA' && !skipHints.test(key);
+      return el.value?.trim().length >= 3 && (isNarrativeTextarea || narrativeHints.test(key)) && !skipHints.test(key);
     });
     if (!controls.length) {
       toast.error('Add report narrative details before requesting AI review.');
@@ -64,27 +65,11 @@ export default function RequiredAIReportReview({ label = 'Review & Professionali
         field: el.name || el.id || `field_${index}`,
         text: el.value.trim(),
       }));
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are reviewing a professional security officer report. Rewrite each narrative field for grammar, clarity, professional tone, chronological accuracy, and objective factual wording. Do not invent facts, legal conclusions, identities, actions, or evidence. Preserve every material detail and first-person/third-person meaning. Avoid exaggerated language. Return only JSON matching the requested schema.\n\nFields:\n${JSON.stringify(fields)}`,
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            fields: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  index: { type: 'number' },
-                  text: { type: 'string' },
-                },
-                required: ['index', 'text'],
-              },
-            },
-          },
-          required: ['fields'],
-        },
-      });
-      const rewritten = response?.fields || response?.data?.fields || [];
+      const response = await base44.functions.invoke('professionalizeReport', { fields });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      const rewritten = payload.fields || [];
+      if (!rewritten.length) throw new Error('The AI review returned no revisions. Please try again.');
       rewritten.forEach(item => {
         const control = controls[item.index];
         if (control && item.text) {
