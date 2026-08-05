@@ -61,93 +61,56 @@ export default function ManageClients() {
     enabled: hasAccess,
   });
 
+  const waitForInvitedUser = async (email) => {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const allUsers = await base44.entities.User.list();
+      const invitedUser = allUsers.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      if (invitedUser) return invitedUser;
+      await new Promise(resolve => setTimeout(resolve, 750));
+    }
+    return null;
+  };
+
   const createClientMutation = useMutation({
     mutationFn: async (data) => {
-      await base44.integrations.Core.SendEmail({
-        from_name: "Virtus Security - New Client Request",
-        to: "khiers@virtussecurity.net",
-        subject: "New Client Account Request",
-        body: `<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-    .header h1 { margin: 0; font-size: 24px; }
-    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 2px solid #e5e7eb; }
-    .info-section { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #7c3aed; }
-    .info-item { padding: 10px 0; border-bottom: 1px solid #e5e7eb; display: grid; grid-template-columns: 150px 1fr; gap: 10px; }
-    .info-item:last-child { border-bottom: none; }
-    .label { font-weight: bold; color: #7c3aed; }
-    .value { color: #333; }
-    .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>🏢 New Client Account Request</h1>
-      <p style="margin: 10px 0 0 0; font-size: 14px;">VirtusConnect System</p>
-    </div>
-    
-    <div class="content">
-      <h2 style="color: #7c3aed; margin-top: 0;">Client Information</h2>
-      
-      <p>A request has been made to create a new client portal account in VirtusConnect. Please process the following information:</p>
-      
-      <div class="info-section">
-        <h3 style="margin-top: 0; color: #7c3aed; font-size: 16px;">Property & Contact Details</h3>
-        <div class="info-item">
-          <span class="label">Property Manager:</span>
-          <span class="value">${data.first_name} ${data.last_name}</span>
-        </div>
-        <div class="info-item">
-          <span class="label">Property Name:</span>
-          <span class="value">${data.property_name}</span>
-        </div>
-        <div class="info-item">
-          <span class="label">Email:</span>
-          <span class="value">${data.email}</span>
-        </div>
-        <div class="info-item">
-          <span class="label">Phone:</span>
-          <span class="value">${data.mobile_phone}</span>
-        </div>
-      </div>
+      const existingUsers = await base44.entities.User.list();
+      let clientUser = existingUsers.find(u => u.email?.toLowerCase() === data.email.toLowerCase());
 
-      <div style="background: #dbeafe; border-left: 4px solid #7c3aed; padding: 15px; margin: 20px 0; border-radius: 4px;">
-        <p style="margin: 0; color: #7c3aed; font-weight: bold;">📝 Action Required:</p>
-        <p style="margin: 5px 0 0 0; color: #1e3a8a;">
-          1. Invite this email address (${data.email}) to Virtus Connect via Dashboard → Users → Invite User<br/>
-          2. Set role='user' and additional_roles=['client']<br/>
-          3. Set first_name="${data.first_name}", last_name="${data.last_name}"<br/>
-          4. Set assigned_location to "${data.property_name}"<br/>
-          5. Update Location "${data.property_name}" with assigned_client_email="${data.email}"<br/>
-          6. The client will receive their welcome email automatically with setup instructions
-        </p>
-      </div>
-      
-      <div class="footer">
-        <p><strong>VirtusConnect</strong><br/>
-        Virtus Security Services<br/>
-        Automated System Notification</p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>`
+      if (!clientUser) {
+        const invitation = await base44.users.inviteUser(data.email, 'user');
+        clientUser = invitation?.user || (invitation?.id ? invitation : null) || await waitForInvitedUser(data.email);
+      }
+
+      if (!clientUser?.id) {
+        throw new Error('The invitation was sent, but the user record is not ready yet. Open Manage Clients again after the client accepts the invitation to finish assignment.');
+      }
+
+      const updated = await base44.entities.User.update(clientUser.id, {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        mobile_phone: data.mobile_phone,
+        role: 'user',
+        additional_roles: ['client'],
+        assigned_location: data.property_name,
+        assigned_locations: [data.property_name],
+        assigned_sites: [data.property_name],
       });
-      
-      return { success: true };
+
+      const location = locations?.find(loc => loc.site_name === data.property_name);
+      if (location) {
+        await base44.entities.Location.update(location.id, { assigned_client_email: data.email });
+      }
+
+      return updated;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clientUsers'] });
       queryClient.invalidateQueries({ queryKey: ['activeLocations'] });
       setShowDialog(false);
       resetForm();
-      alert('Client account request submitted successfully! The account will be created and activated within 24-48 hours.');
+      alert('Client invitation sent and Client Portal access assigned.');
     },
+    onError: (error) => alert('Unable to create client account: ' + error.message),
   });
 
   const updateClientMutation = useMutation({
@@ -157,8 +120,11 @@ export default function ManageClients() {
         last_name: data.last_name,
         email: data.email,
         mobile_phone: data.mobile_phone,
+        role: 'user',
+        additional_roles: ['client'],
         assigned_location: data.property_name,
-        role: data.role,
+        assigned_locations: [data.property_name],
+        assigned_sites: [data.property_name],
       });
 
       // Update old location to remove client assignment
@@ -331,22 +297,6 @@ export default function ManageClients() {
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
-                      {client.role !== 'admin' && (
-                        <Button
-                          onClick={async () => {
-                            if (window.confirm(`Make ${client.full_name || client.email} an admin? This will give them full system access.`)) {
-                              await base44.entities.User.update(client.id, { role: 'admin' });
-                              queryClient.invalidateQueries({ queryKey: ['clientUsers'] });
-                            }
-                          }}
-                          variant="outline"
-                          size="sm"
-                          className="text-amber-600 border-amber-300 hover:bg-amber-50"
-                        >
-                          <Shield className="w-4 h-4 mr-1" />
-                          Admin
-                        </Button>
-                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -399,7 +349,7 @@ export default function ManageClients() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="property_name">Property Name *</Label>
+              <Label htmlFor="property_name">Assigned Client Property *</Label>
               <Select
                 value={formData.property_name}
                 onValueChange={(value) => setFormData({...formData, property_name: value})}
@@ -439,27 +389,6 @@ export default function ManageClients() {
                 required
               />
             </div>
-
-            {editingClient && (
-              <div className="space-y-2">
-                <Label htmlFor="role">Base Role *</Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value) => setFormData({...formData, role: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user">User (Standard Access)</SelectItem>
-                    <SelectItem value="admin">Admin (Full System Access)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-slate-500">
-                  Note: If set to Admin with client role, they will only see the client portal
-                </p>
-              </div>
-            )}
 
             <div className="flex gap-3 justify-end pt-4">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
