@@ -631,7 +631,7 @@ export default function AdminSupervisorReports() {
               <CardContent>
                 <div className="space-y-3">
                   {(siteChecks || []).map((check) => (
-                    <div key={check.id} className={`p-4 rounded-lg border-l-4 ${check.action_type === 'arrival' ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-400'}`}>
+                    <div key={check.id} className={`p-4 rounded-lg border ${check.action_type === 'arrival' ? 'bg-emerald-950/30 border-emerald-700 text-slate-100' : 'bg-red-950/30 border-red-700 text-slate-100'}`}>
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-semibold text-slate-900">{check.dar_entry_text}</p>
