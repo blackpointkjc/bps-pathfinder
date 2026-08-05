@@ -580,6 +580,48 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   outline-offset: 2px;
 }
 
+/* Dark operational surfaces for HR management pages that previously mixed white and pastel cards. */
+.cad-app main .pto-loss-page,
+.cad-app main .divisions-page {
+  background: #0b1420 !important;
+  color: #e5edf5 !important;
+}
+.cad-app main .pto-loss-page .bg-white,
+.cad-app main .pto-loss-page .bg-slate-50,
+.cad-app main .pto-loss-page .bg-red-50,
+.cad-app main .pto-loss-page .bg-orange-50,
+.cad-app main .pto-loss-page .bg-blue-50,
+.cad-app main .divisions-page .bg-white,
+.cad-app main .divisions-page .bg-slate-50,
+.cad-app main .divisions-page .bg-blue-50,
+.cad-app main .divisions-page .bg-purple-50 {
+  background: #111d2b !important;
+  color: #e5edf5 !important;
+}
+.cad-app main .pto-loss-page .text-slate-900,
+.cad-app main .pto-loss-page .text-slate-800,
+.cad-app main .pto-loss-page .text-slate-700,
+.cad-app main .divisions-page .text-slate-900,
+.cad-app main .divisions-page .text-slate-800,
+.cad-app main .divisions-page .text-slate-700,
+.cad-app main .divisions-page .text-blue-900,
+.cad-app main .divisions-page .text-purple-900 {
+  color: #f8fafc !important;
+}
+.cad-app main .pto-loss-page .text-slate-600,
+.cad-app main .pto-loss-page .text-slate-500,
+.cad-app main .divisions-page .text-slate-600,
+.cad-app main .divisions-page .text-slate-500 {
+  color: #b4c3d2 !important;
+}
+.cad-app main .pto-loss-page [class*="border-red-"],
+.cad-app main .pto-loss-page [class*="border-orange-"],
+.cad-app main .pto-loss-page [class*="border-blue-"],
+.cad-app main .divisions-page [class*="border-blue-"],
+.cad-app main .divisions-page [class*="border-purple-"] {
+  border-color: #31475e !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
