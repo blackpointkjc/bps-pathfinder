@@ -31,6 +31,15 @@
       "type": "string",
       "description": "Related call ID if applicable"
     },
+    "message_type": {
+      "type": "string",
+      "enum": [
+        "dispatch_message",
+        "company_broadcast"
+      ],
+      "default": "dispatch_message",
+      "description": "Operational direct message or company-wide broadcast"
+    },
     "description": {
       "type": "string",
       "maxLength": 1000,
@@ -66,6 +75,9 @@
         },
         {
           "data.recipient_id": "dispatch"
+        },
+        {
+          "data.recipient_id": "company"
         },
         {
           "data.sender_id": "dispatch"
