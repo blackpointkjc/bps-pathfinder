@@ -104,10 +104,16 @@ export default function AdminTrainingCompliance() {
     queryFn: () => base44.entities.TrainingSubmission.list('-submission_date'),
     refetchInterval: 30000,
   });
+  const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const hasTrainingAccess = user?.role === 'admin' || userRoles.has('trainer') || userRoles.has('full_access');
   const { data: allUsers = [] } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
-    enabled: user?.role === 'admin',
+    queryKey: ['trainingUsers'],
+    queryFn: async () => {
+      const response = await base44.functions.invoke('getTrainingUsers', {});
+      if (response?.error) throw new Error(response.error);
+      return response?.users || [];
+    },
+    enabled: hasTrainingAccess,
     staleTime: 60000,
   });
   const { data: trainingModules = [] } = useQuery({
