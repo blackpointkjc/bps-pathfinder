@@ -41,21 +41,22 @@ export default function AdminPTOApproval() {
     initialData: [],
   });
 
-  const { data: pendingRequests } = useQuery({
-    queryKey: ['pendingPTORequests'],
-    queryFn: () => base44.entities.TimeOffRequest.filter({ status: 'pending' }, '-created_date'),
-    enabled: hasHRAccess,
-  });
-
-  const { data: reviewedRequests } = useQuery({
-    queryKey: ['reviewedPTORequests'],
+  const { data: allPTORequests = [], isLoading: ptoLoading, error: ptoError } = useQuery({
+    queryKey: ['allPTORequestsForHR'],
     queryFn: async () => {
-      const approved = await base44.entities.TimeOffRequest.filter({ status: 'approved' }, '-reviewed_date', 50);
-      const denied = await base44.entities.TimeOffRequest.filter({ status: 'denied' }, '-reviewed_date', 50);
-      return [...approved, ...denied];
+      const result = await base44.functions.invoke('getPTORequests', {});
+      if (result?.error) throw new Error(result.error);
+      return result?.requests || [];
     },
     enabled: hasHRAccess,
+    initialData: [],
+    refetchInterval: 5000,
   });
+
+  const pendingRequests = allPTORequests.filter(request => String(request.status || '').toLowerCase() === 'pending');
+  const reviewedRequests = allPTORequests
+    .filter(request => ['approved', 'denied'].includes(String(request.status || '').toLowerCase()))
+    .sort((a, b) => new Date(b.reviewed_date || b.updated_date || b.created_date || 0) - new Date(a.reviewed_date || a.updated_date || a.created_date || 0));
 
   const getAdminName = (email) => {
     if (!email || !allUsers || allUsers.length === 0) return 'Admin';
@@ -189,8 +190,7 @@ export default function AdminPTOApproval() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pendingPTORequests'] });
-      queryClient.invalidateQueries({ queryKey: ['reviewedPTORequests'] });
+      queryClient.invalidateQueries({ queryKey: ['allPTORequestsForHR'] });
       setShowDialog(false);
       setSelectedRequest(null);
       setAdminNotes("");
@@ -242,9 +242,12 @@ export default function AdminPTOApproval() {
           <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
           <div>
             <h1 className="text-3xl font-bold text-slate-900">PTO Approval</h1>
-            <p className="text-slate-600">Review and approve time-off requests</p>
+            <p className="text-slate-600">Review pending requests and complete PTO decision history</p>
           </div>
         </div>
+
+        {ptoLoading && <p className="text-slate-400">Loading PTO requests…</p>}
+        {ptoError && <Card className="border-red-700/50 bg-red-950/20"><CardContent className="p-4 text-red-300">Unable to load PTO requests: {ptoError.message}</CardContent></Card>}
 
         <Card className="border-none shadow-lg">
           <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50">
