@@ -394,12 +394,16 @@ export default function ManageCompanyEmployees() {
                 )}
                 {uploadingPhoto && <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center"><Loader2 className="w-6 h-6 text-white animate-spin" /></div>}
               </div>
-              <label className="cursor-pointer">
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handlePhotoUpload(e.target.files[0])} disabled={uploadingPhoto} />
-                <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50">
-                  <Camera className="w-4 h-4" />{uploadingPhoto ? 'Uploading...' : 'Change Photo'}
-                </span>
-              </label>
+              {canManageEmployees ? (
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handlePhotoUpload(e.target.files[0])} disabled={uploadingPhoto} />
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50">
+                    <Camera className="w-4 h-4" />{uploadingPhoto ? 'Uploading...' : 'Change Photo'}
+                  </span>
+                </label>
+              ) : (
+                <span className="text-sm text-slate-500">Photo changes are managed by Training.</span>
+              )}
             </div>
 
             <Tabs defaultValue="basic">
@@ -409,6 +413,7 @@ export default function ManageCompanyEmployees() {
                 <TabsTrigger value="emergency">Emergency Contact</TabsTrigger>
               </TabsList>
               <TabsContent value="basic" className="space-y-4 mt-4">
+                <fieldset disabled={isHrReadOnly} className="space-y-4 disabled:opacity-90">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div><Label className="text-xs text-slate-500">First Name</Label><Input value={editFormData.first_name || ""} onChange={(e) => setEditFormData({...editFormData, first_name: e.target.value})} /></div>
                   <div><Label className="text-xs text-slate-500">Last Name</Label><Input value={editFormData.last_name || ""} onChange={(e) => setEditFormData({...editFormData, last_name: e.target.value})} /></div>
@@ -475,21 +480,24 @@ export default function ManageCompanyEmployees() {
                     </div>
                   </div>
                 </div>
+                </fieldset>
               </TabsContent>
               <TabsContent value="certs" className="mt-4">
-                <OfficerCertificationsTab editFormData={editFormData} setEditFormData={setEditFormData} />
+                <OfficerCertificationsTab editFormData={editFormData} setEditFormData={setEditFormData} readOnly={isHrReadOnly} />
               </TabsContent>
               <TabsContent value="emergency" className="space-y-4 mt-4">
+                <fieldset disabled={isHrReadOnly}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div><Label className="text-xs text-slate-500">Emergency Contact Name</Label><Input value={editFormData.emergency_contact_name || ""} onChange={(e) => setEditFormData({...editFormData, emergency_contact_name: e.target.value})} /></div>
                   <div><Label className="text-xs text-slate-500">Relationship</Label><Input value={editFormData.emergency_contact_relationship || ""} onChange={(e) => setEditFormData({...editFormData, emergency_contact_relationship: e.target.value})} /></div>
                   <div><Label className="text-xs text-slate-500">Emergency Phone</Label><Input type="tel" value={editFormData.emergency_contact_phone || ""} onChange={(e) => setEditFormData({...editFormData, emergency_contact_phone: e.target.value})} /></div>
                 </div>
+                </fieldset>
               </TabsContent>
             </Tabs>
 
             {/* Roles */}
-            <div className="border-t pt-4">
+            <fieldset disabled={isHrReadOnly} className="border-t pt-4">
               <Label className="text-base font-semibold mb-3 block">System Roles & Permissions</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {[
@@ -517,10 +525,10 @@ export default function ManageCompanyEmployees() {
                   </div>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             {/* Equipment */}
-            <div className="border-t pt-4">
+            <fieldset disabled={isHrReadOnly} className="border-t pt-4">
               <Label className="text-base font-semibold mb-3 block">Equipment ({equipment?.filter(e => e.assigned_to === selectedUser?.email).length || 0})</Label>
               <div className="p-4 bg-slate-50 rounded-lg border border-slate-300 space-y-3">
                 {equipment?.filter(e => e.assigned_to === selectedUser?.email).map(item => (
@@ -538,7 +546,7 @@ export default function ManageCompanyEmployees() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
+            </fieldset>
 
             {editFormData.termination_date && (
               <Alert variant="destructive">
@@ -548,8 +556,10 @@ export default function ManageCompanyEmployees() {
             )}
 
             <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => { setShowDialog(false); setEditingUser(null); }}><X className="w-4 h-4 mr-2" />Cancel</Button>
-              <Button type="submit" disabled={updateUserMutation.isPending}><Save className="w-4 h-4 mr-2" />{updateUserMutation.isPending ? 'Saving...' : 'Save Changes'}</Button>
+              <Button type="button" variant="outline" onClick={() => { setShowDialog(false); setEditingUser(null); }}><X className="w-4 h-4 mr-2" />Close</Button>
+              {canManageEmployees && (
+                <Button type="submit" disabled={updateUserMutation.isPending}><Save className="w-4 h-4 mr-2" />{updateUserMutation.isPending ? 'Saving...' : 'Save Changes'}</Button>
+              )}
             </div>
           </form>
         </DialogContent>
