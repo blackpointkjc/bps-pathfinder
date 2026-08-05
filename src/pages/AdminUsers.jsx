@@ -90,7 +90,7 @@ export default function AdminUsers() {
     queryFn: () => base44.auth.me(),
   });
 
-  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access');
+  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('full_access');
 
   const { data: users, isLoading, error } = useQuery({
     queryKey: ['portalUsers', user?.role, ...(user?.additional_roles || [])],
@@ -123,10 +123,10 @@ export default function AdminUsers() {
     initialData: [],
   });
 
-  const createOfficerMutation = useMutation({
+  const createUserMutation = useMutation({
     mutationFn: async (data) => {
       const response = await base44.functions.invoke('createPortalAccount', {
-        accountType: 'employee',
+        accountType: 'pending',
         ...data,
       });
       if (response?.error) throw new Error(response.error);
@@ -139,13 +139,13 @@ export default function AdminUsers() {
       setShowCreateDialog(false);
       resetCreateForm();
       if (result?.email_sent === false) {
-        alert(`✅ Employee account created, but the Black Point welcome email could not be delivered. ${result?.email_error || 'Verify the email address and resend the invitation.'}`);
+        alert(`✅ Pending user created, but the Black Point welcome email could not be delivered. ${result?.email_error || 'Verify the email address and resend the invitation.'}`);
       } else {
-        alert('✅ Employee account created. The Black Point account-created email and login invitation were sent.');
+        alert('✅ Pending user created. Assign the person as Officer, Student, or Client from this page.');
       }
     },
     onError: (error) => {
-      alert('❌ Failed to create employee account: ' + error.message);
+      alert('❌ Failed to create pending user: ' + error.message);
     }
   });
 
@@ -477,7 +477,7 @@ export default function AdminUsers() {
 
   const handleCreateSubmit = (e) => {
     e.preventDefault();
-    createOfficerMutation.mutate(createFormData);
+    createUserMutation.mutate(createFormData);
   };
 
   // Debug logging
@@ -545,7 +545,7 @@ export default function AdminUsers() {
             <Users className="w-8 h-8 text-blue-600" />
             <div>
               <h1 className="text-3xl font-bold text-slate-900">Pending Users</h1>
-              <p className="text-slate-600">New users awaiting officer or company employee role assignment</p>
+              <p className="text-slate-600">Create one user account, then assign the person as Officer, Student, or Client</p>
             </div>
           </div>
           <div className="flex gap-3">
@@ -575,7 +575,7 @@ export default function AdminUsers() {
               className="bg-blue-600 hover:bg-blue-700 shadow-md transition-all duration-200 rounded-lg"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Create Officer
+              Create User
             </Button>
           </div>
         </div>
@@ -666,8 +666,8 @@ export default function AdminUsers() {
                         size="sm"
                         className="bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
                         onClick={async () => {
-                          if (window.confirm(`Move ${userData.first_name || userData.email} to Student role?`)) {
-                            const newRoles = [...(userData.additional_roles || []).filter(r => r !== 'student'), 'student'];
+                          if (window.confirm(`Assign ${userData.first_name || userData.email} as a Student?`)) {
+                            const newRoles = ['student'];
                             await base44.entities.User.update(userData.id, { additional_roles: newRoles });
                             queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
@@ -675,15 +675,15 @@ export default function AdminUsers() {
                           }
                         }}
                       >
-                        Move to Student
+                        Assign Student
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         className="bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
                         onClick={async () => {
-                          if (window.confirm(`Hire ${userData.first_name || userData.email} as a Company Employee (Officer role)?`)) {
-                            const newRoles = [...(userData.additional_roles || []).filter(r => r !== 'officer'), 'officer'];
+                          if (window.confirm(`Assign ${userData.first_name || userData.email} as an Officer?`)) {
+                            const newRoles = ['officer', 'cad_access'];
                             await base44.entities.User.update(userData.id, { additional_roles: newRoles });
                             queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
@@ -1348,9 +1348,9 @@ export default function AdminUsers() {
                 <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
-              <Button type="submit" disabled={createOfficerMutation.isPending}>
+              <Button type="submit" disabled={createUserMutation.isPending}>
                 <Save className="w-4 h-4 mr-2" />
-                {createOfficerMutation.isPending ? 'Sending...' : 'Submit Request'}
+                {createUserMutation.isPending ? 'Creating...' : 'Create Pending User'}
               </Button>
             </div>
           </form>
