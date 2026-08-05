@@ -165,11 +165,6 @@ import TrespassingNotices from './pages/TrespassingNotices';
 import VAContactSheet from './pages/VAContactSheet';
 import VACriminalComplaints from './pages/VACriminalComplaints';
 import VATrespassNotices from './pages/VATrespassNotices';
-import VendorAudit from './pages/VendorAudit';
-import VendorDashboard from './pages/VendorDashboard';
-import VendorLogin from './pages/VendorLogin';
-import VendorTenants from './pages/VendorTenants';
-import VendorUsers from './pages/VendorUsers';
 import QRPatrolScan from './pages/QRPatrolScan.jsx';
 import AdminQRCheckpoints from './pages/AdminQRCheckpoints';
 import AdminQRPrintManager from './pages/AdminQRPrintManager';
@@ -297,11 +292,6 @@ export const PAGES = {
     "VAContactSheet": VAContactSheet,
     "VACriminalComplaints": VACriminalComplaints,
     "VATrespassNotices": VATrespassNotices,
-    "VendorAudit": VendorAudit,
-    "VendorDashboard": VendorDashboard,
-    "VendorLogin": VendorLogin,
-    "VendorTenants": VendorTenants,
-    "VendorUsers": VendorUsers,
     "QRPatrolScan": QRPatrolScan,
     "AdminQRCheckpoints": AdminQRCheckpoints,
     "AdminQRPrintManager": AdminQRPrintManager,

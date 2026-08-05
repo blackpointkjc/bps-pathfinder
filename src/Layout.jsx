@@ -142,12 +142,6 @@ const CENTER_CONFIG = {
         ['Portal Settings', 'AdminPortalSettings', Settings],
         ['Client Feedback', 'AdminClientFeedback', Award],
       ]},
-      { label: 'Vendor Management', items: [
-        ['Vendor Dashboard', 'VendorDashboard', Gauge],
-        ['Vendor Tenants', 'VendorTenants', Building2],
-        ['Vendor Users', 'VendorUsers', Users],
-        ['Vendor Audit', 'VendorAudit', ClipboardCheck],
-      ]},
       { label: 'QR Patrol', items: [
         ['QR Checkpoints', 'AdminQRCheckpoints', MapPin],
         ['QR Print Manager', 'AdminQRPrintManager', FileText],
