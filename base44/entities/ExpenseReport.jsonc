@@ -41,6 +41,26 @@
       "type": "string",
       "description": "Receipt image/document URL"
     },
+    "start_mileage": {
+      "type": "number",
+      "description": "Vehicle odometer reading at the beginning of travel"
+    },
+    "end_mileage": {
+      "type": "number",
+      "description": "Vehicle odometer reading at the end of travel"
+    },
+    "travel_miles": {
+      "type": "number",
+      "description": "Calculated travel mileage"
+    },
+    "start_mileage_photo_url": {
+      "type": "string",
+      "description": "Photo of the starting odometer reading"
+    },
+    "end_mileage_photo_url": {
+      "type": "string",
+      "description": "Photo of the ending odometer reading"
+    },
     "status": {
       "type": "string",
       "enum": [
