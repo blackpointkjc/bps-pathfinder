@@ -1,0 +1,17 @@
+{
+  "name": "ingestGractivecalls",
+  "entrypoint": "entry.ts",
+  "automations": [
+    {
+      "name": "Ingest Greater Richmond active calls",
+      "description": "Fetch and upsert Richmond, Henrico, and Chesterfield police and fire calls without AI or paid integrations.",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "simple",
+      "repeat_unit": "minutes",
+      "repeat_interval": 2,
+      "is_active": true,
+      "function_args": {}
+    }
+  ]
+}
