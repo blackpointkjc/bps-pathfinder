@@ -27,10 +27,12 @@ export default function AdminPTOReview() {
     queryFn: () => base44.auth.me(),
   });
 
+  const hasHRAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access');
+
   const { data: pendingRequests } = useQuery({
     queryKey: ['pendingPTORequests'],
     queryFn: () => base44.entities.TimeOffRequest.filter({ status: 'pending' }, '-created_date'),
-    enabled: user?.role === 'admin',
+    enabled: hasHRAccess,
   });
 
   const { data: reviewedRequests } = useQuery({
@@ -40,7 +42,7 @@ export default function AdminPTOReview() {
       const denied = await base44.entities.TimeOffRequest.filter({ status: 'denied' }, '-reviewed_date', 50);
       return [...approved, ...denied];
     },
-    enabled: user?.role === 'admin',
+    enabled: hasHRAccess,
   });
 
   const updateRequestMutation = useMutation({
@@ -58,7 +60,7 @@ export default function AdminPTOReview() {
         await base44.integrations.Core.SendEmail({
           to: request.created_by,
           subject: `Time Off Request ${status === 'approved' ? 'Approved' : 'Denied'}`,
-          body: `Your time off request from ${format(new Date(request.start_date), 'MMM d, yyyy')} to ${format(new Date(request.end_date), 'MMM d, yyyy')} has been ${status}.\n\n${notes ? `Admin Notes: ${notes}` : ''}\n\nVirtus Security\nRichmond, VA`
+          body: `Your time off request from ${format(new Date(request.start_date), 'MMM d, yyyy')} to ${format(new Date(request.end_date), 'MMM d, yyyy')} has been ${status}.\n\n${notes ? `Admin Notes: ${notes}` : ''}\n\nBlack Point Protection\nRichmond, VA`
         });
       }
     },
@@ -88,11 +90,11 @@ export default function AdminPTOReview() {
     }
   };
 
-  if (user?.role !== 'admin') {
+  if (!hasHRAccess) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Admin Access Required</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">HR Access Required</h2>
         <p className="text-slate-600">You don't have permission to access this page.</p>
       </div>
     );
