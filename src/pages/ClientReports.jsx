@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
 import {
   Dialog,
   DialogContent,
@@ -172,9 +173,16 @@ export default function ClientReports() {
   });
 
   const printClientReport = (report, type, allUsersList) => {
-    const printWindow = window.open('', '', 'width=850,height=1100');
-    
     const officerName = getOfficerName(getReportOfficerEmail(report));
+    if (type === 'summons') {
+      openVirginiaSummonsPrint(report, {
+        officerName: report.officer_name || officerName,
+        badge: report.officer_code_badge || '',
+      });
+      return;
+    }
+
+    const printWindow = window.open('', '', 'width=850,height=1100');
     const officerSig = getOfficerSignature(report);
     
     let reportTitle = '';
