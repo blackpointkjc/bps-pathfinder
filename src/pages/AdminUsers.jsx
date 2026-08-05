@@ -90,7 +90,7 @@ export default function AdminUsers() {
     queryFn: () => base44.auth.me(),
   });
 
-  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr');
+  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('trainer') || user?.additional_roles?.includes('full_access');
 
   const { data: users, isLoading, error } = useQuery({
     queryKey: ['users'],
