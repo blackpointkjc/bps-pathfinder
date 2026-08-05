@@ -13,6 +13,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
 import { findPropertyMatch, playPropertyAlert, stopAllAlerts } from '@/utils/alertUtils';
+import GlobalMessageBanner from '@/components/GlobalMessageBanner';
 
 const CENTER_CONFIG = {
   cad: {
@@ -560,12 +561,12 @@ export default function Layout({ children, currentPageName }) {
     return <Navigate to={createPageUrl(defaultPageForUser(user))} replace />;
   }
 
-  if (FULLSCREEN_PAGES.has(currentPageName)) return <div className="h-full w-full bg-[#050a12]">{children}</div>;
+  if (FULLSCREEN_PAGES.has(currentPageName)) return <div className="h-full w-full bg-[#050a12]"><GlobalMessageBanner user={user} />{children}</div>;
 
   const criticalOutage = outages.some(item => item.severity === 'outage');
   const centerLabel = CENTER_CONFIG[activeCenter]?.label || 'CAD Center';
 
-  return <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app">
+  return <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><GlobalMessageBanner user={user} />
     <aside className="relative hidden flex-col border-r border-[#1c3049] md:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
       <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} onToggleCollapsed={() => setCollapsed(value => !value)} />
     </aside>
