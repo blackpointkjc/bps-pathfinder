@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Plus, Shield, Radio, Map as MapIcon, RefreshCw } from 'lucide-react';
+import { Shield, Radio, Map as MapIcon, RefreshCw } from 'lucide-react';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { createPageUrl } from '../utils';
 import { stopAllAlerts } from '@/utils/alertUtils';
@@ -15,7 +15,6 @@ import ActiveCallMarkers from '@/components/map/ActiveCallMarkers';
 import CreateCallDialog from '@/components/dispatch/CreateCallDialog';
 import PriorCallsView from '@/components/dispatch/PriorCallsView';
 import MessagingPanel from '@/components/dispatch/MessagingPanel';
-import QuickActions from '@/components/dispatch/QuickActions';
 import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
 import 'leaflet/dist/leaflet.css';
 
@@ -96,7 +95,7 @@ export default function DispatchCenter() {
             
             if (!hasDispatchAccess) {
                 toast.error('Unauthorized - Dispatch access required');
-                navigate(createPageUrl('CADHome'));
+                navigate(createPageUrl('CommandDashboard'));
                 return;
             }
 
