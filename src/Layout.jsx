@@ -485,7 +485,6 @@ export default function Layout({ children, currentPageName }) {
 
     const monitor = async () => {
       try {
-        await base44.functions.invoke('ensureCadNumbers', {}).catch(() => null);
         const [calls, properties, existingAlerts] = await Promise.all([
           base44.entities.DispatchCall.list('-created_date', 300),
           base44.entities.MonitoredProperty.filter({ enabled: true }),
