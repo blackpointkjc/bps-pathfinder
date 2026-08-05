@@ -6,6 +6,10 @@
       "type": "string",
       "description": "Unique call identifier"
     },
+    "external_call_id": {
+      "type": "string",
+      "description": "Stable upstream GRAC call identifier used for idempotent synchronization"
+    },
     "incident": {
       "type": "string",
       "description": "Type of incident"
