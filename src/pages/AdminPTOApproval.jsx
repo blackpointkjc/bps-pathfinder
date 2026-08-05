@@ -72,9 +72,11 @@ export default function AdminPTOApproval() {
   };
 
   const resolveOfficer = (requestOrEmail) => {
-    const request = typeof requestOrEmail === 'object' ? requestOrEmail : null;
-    const email = String(request?.requested_by_email || request?.created_by || requestOrEmail || '').trim().toLowerCase();
-    const savedName = String(request?.requested_by_name || '').trim();
+    const request = requestOrEmail && typeof requestOrEmail === 'object' ? requestOrEmail : null;
+    const rawEmail = request ? (request.requested_by_email || request.created_by || '') : requestOrEmail;
+    const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
+    const rawName = request?.requested_by_name;
+    const savedName = typeof rawName === 'string' ? rawName.trim() : '';
     const officer = allUsers.find(u => String(u.email || '').trim().toLowerCase() === email);
     const fullName = officer
       ? ([officer.first_name, officer.last_name].filter(Boolean).join(' ') || officer.full_name || savedName)
