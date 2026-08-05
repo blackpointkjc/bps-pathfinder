@@ -145,6 +145,7 @@ import OfficerTraining from './pages/OfficerTraining';
 import OpenDoorReports from './pages/OpenDoorReports';
 import OpenShifts from './pages/OpenShifts';
 import PayrollDates from './pages/PayrollDates';
+import OfficerPayrollDates from './pages/OfficerPayrollDates';
 import PostOrders from './pages/PostOrders';
 import RankDuties from './pages/RankDuties';
 import RankStructure from './pages/RankStructure';
@@ -274,6 +275,7 @@ export const PAGES = {
     "OpenDoorReports": OpenDoorReports,
     "OpenShifts": OpenShifts,
     "PayrollDates": PayrollDates,
+    "OfficerPayrollDates": OfficerPayrollDates,
     "PostOrders": PostOrders,
     "RankDuties": RankDuties,
     "RankStructure": RankStructure,
