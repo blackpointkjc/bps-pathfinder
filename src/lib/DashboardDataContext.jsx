@@ -9,10 +9,10 @@ import { base44 } from '@/api/base44Client';
 
 const DashboardDataContext = createContext(null);
 
-const POLL_INTERVAL_MS = 5_000;         // Read local entity changes every 5 seconds
-const GRAC_SYNC_INTERVAL_MS = 30_000;   // One controlled upstream sync every 30 seconds
+const POLL_INTERVAL_MS = 2_000;         // Read local entity changes every 2 seconds
+const GRAC_SYNC_INTERVAL_MS = 3_000;    // Credit-free direct GRAC sync every 3 seconds
 const RATE_LIMIT_BACKOFF_MS = 60_000;   // 60s wait after 429
-const MIN_REFRESH_MS = 4_000;           // Prevent overlapping local refreshes
+const MIN_REFRESH_MS = 1_500;           // Prevent overlapping local refreshes
 
 function isRateLimitError(err) {
     return err?.status === 429 || String(err?.message || err).includes('429') || String(err?.message || err).toLowerCase().includes('rate limit');
@@ -151,7 +151,7 @@ export function DashboardDataProvider({ children }) {
         syncGrac();
     }, [syncGrac]);
 
-    // Refresh local entity data every 30 seconds.
+    // Refresh local entity data every 2 seconds for near-real-time CAD updates.
     useEffect(() => {
         const id = setInterval(() => loadData(false), POLL_INTERVAL_MS);
         return () => clearInterval(id);
