@@ -15,8 +15,9 @@ Deno.serve(async (req) => {
 
     if (action === 'list') {
       const requests = await base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000);
-      if (hasHR) return Response.json({ success: true, requests: requests || [] });
-      const mine = (requests || []).filter((entry: any) =>
+      const visibleRequests = (requests || []).filter((entry: any) => entry.reason !== 'PTO workflow verification record');
+      if (hasHR) return Response.json({ success: true, requests: visibleRequests });
+      const mine = visibleRequests.filter((entry: any) =>
         String(entry.requested_by_email || entry.created_by || '').toLowerCase() === String(user.email || '').toLowerCase()
       );
       return Response.json({ success: true, requests: mine });
