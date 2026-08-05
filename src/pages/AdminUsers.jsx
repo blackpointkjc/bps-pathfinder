@@ -103,6 +103,40 @@ export default function AdminUsers() {
     staleTime: 0,
   });
 
+  const { data: accessRequests = [] } = useQuery({
+    queryKey: ['pendingAccessRequests'],
+    queryFn: () => base44.entities.AccessRequest.filter({ status: 'pending' }, '-created_date', 500),
+    enabled: hasAccess,
+    refetchInterval: 10000,
+    initialData: [],
+  });
+
+  const convertAccessRequest = useMutation({
+    mutationFn: async request => {
+      const response = await base44.functions.invoke('createPortalAccount', {
+        accountType: 'pending',
+        first_name: String(request.full_name || '').trim().split(/\s+/)[0] || 'Pending',
+        last_name: String(request.full_name || '').trim().split(/\s+/).slice(1).join(' '),
+        email: request.email,
+        mobile_phone: request.phone || '',
+      });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      await base44.entities.AccessRequest.update(request.id, {
+        status: 'invited',
+        processed_by: user?.email || '',
+        processed_at: new Date().toISOString(),
+      });
+      return request;
+    },
+    onSuccess: request => {
+      queryClient.invalidateQueries({ queryKey: ['pendingAccessRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
+      alert(`Invitation sent to ${request.email}. The account will appear in Pending Users when Base44 finishes creating it.`);
+    },
+    onError: error => alert(`Unable to process access request: ${error.message}`),
+  });
+
   const { data: locations } = useQuery({
     queryKey: ['locations'],
     queryFn: () => base44.entities.Location.list(),
