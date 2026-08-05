@@ -12,7 +12,19 @@ Deno.serve(async (req) => {
 
     const allUsers = await base44.asServiceRole.entities.User.list();
     const clients = (allUsers || [])
-      .filter((entry: any) => (entry.additional_roles || []).map((role: string) => String(role).toLowerCase()).includes('client'))
+      .filter((entry: any) => {
+        const entryRoles = (entry.additional_roles || []).map((role: string) => String(role).toLowerCase());
+        const rank = String(entry.rank || '').toLowerCase();
+        const userType = String(entry.user_type || '').toLowerCase();
+        return !entry.termination_date && (
+          entryRoles.includes('client') ||
+          rank === 'client' ||
+          userType === 'client' ||
+          Boolean(entry.assigned_location) ||
+          (entry.assigned_locations || []).length > 0 ||
+          (entry.assigned_sites || []).length > 0
+        );
+      })
       .map((entry: any) => ({
         id: entry.id,
         email: entry.email || '',
