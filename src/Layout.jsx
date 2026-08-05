@@ -112,7 +112,6 @@ const CENTER_CONFIG = {
         ['Company Analytics', 'AdminAnalytics', BarChart3],
         ['Location Tracker', 'AdminLocationTracker', MapPin],
         ['Geofence Alerts', 'AdminGeofenceAlerts', AlertTriangle],
-        ['Active Tracker', 'ActiveTracker', Activity],
       ]},
       { label: 'Reports & Quality', items: [
         ['All Reports', 'AdminReports', ClipboardList],
