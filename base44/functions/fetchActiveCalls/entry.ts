@@ -47,7 +47,13 @@ async function geocodeAddress(address) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    
+
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (user.role !== 'admin' && user.role !== 'dispatch') {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // Fetch all active locations with coordinates
     const locations = await base44.asServiceRole.entities.Location.list();
     const locationsWithCoords = locations.filter(loc => 
