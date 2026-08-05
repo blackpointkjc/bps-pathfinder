@@ -90,19 +90,11 @@ export default function AdminUsers() {
     queryFn: () => base44.auth.me(),
   });
 
-  const hasTrainerRole = user?.additional_roles?.includes('trainer');
-  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || hasTrainerRole || user?.additional_roles?.includes('full_access');
+  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access');
 
   const { data: users, isLoading, error } = useQuery({
     queryKey: ['portalUsers', user?.role, ...(user?.additional_roles || [])],
-    queryFn: async () => {
-      if (hasTrainerRole && user?.role !== 'admin' && !user?.additional_roles?.includes('full_access') && !user?.additional_roles?.includes('hr')) {
-        const response = await base44.functions.invoke('getTrainingUsers', {});
-        if (response?.error) throw new Error(response.error);
-        return response?.users || [];
-      }
-      return await base44.entities.User.list() || [];
-    },
+    queryFn: async () => await base44.entities.User.list() || [],
     enabled: hasAccess,
     retry: 3,
     staleTime: 0,
