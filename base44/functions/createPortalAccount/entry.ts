@@ -108,10 +108,18 @@ Deno.serve(async (req) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
-    const users = await base44.asServiceRole.entities.User.list();
+    let users: any[] = [];
+    let directoryError = '';
+    try {
+      users = await base44.asServiceRole.entities.User.list();
+    } catch (error) {
+      directoryError = error?.message || 'Unable to read the user directory';
+      console.error('Unable to read user directory during portal account creation', error);
+    }
     let portalUser = (users || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
     let invitationSent = false;
     let invitationError = '';
+    let assignmentError = '';
 
     if (!portalUser) {
       try {
@@ -123,15 +131,20 @@ Deno.serve(async (req) => {
           invitation = await (base44 as any).users.inviteUser(normalizedEmail, 'user');
         }
         invitationSent = true;
-        portalUser = invitation?.user || invitation;
+        // Do not trust the invitation response as an editable User entity. Some Base44
+        // invitation responses contain an invitation id rather than the User entity id.
+        portalUser = null;
 
         // Base44 may create the pending User record asynchronously. Retry long enough
         // for both the client and student management pages to display the new account.
-        if (!portalUser?.id) {
-          for (let attempt = 0; attempt < 8 && !portalUser?.id; attempt += 1) {
-            if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 750));
+        for (let attempt = 0; attempt < 8 && !portalUser?.id; attempt += 1) {
+          if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 750));
+          try {
             const refreshed = await base44.asServiceRole.entities.User.list();
             portalUser = (refreshed || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
+          } catch (error) {
+            directoryError = error?.message || directoryError;
+            console.error('Unable to refresh pending portal user', error);
           }
         }
       } catch (inviteError) {
@@ -175,17 +188,29 @@ Deno.serve(async (req) => {
         });
       }
 
-      await base44.asServiceRole.entities.User.update(portalUser.id, updates);
+      try {
+        await base44.asServiceRole.entities.User.update(portalUser.id, updates);
+      } catch (error) {
+        assignmentPending = true;
+        assignmentError = error?.message || 'The invited user is not editable yet';
+        console.error('Unable to assign portal profile and roles immediately', error);
+      }
 
-      if (accountType === 'client' && assigned_location) {
-        const locations = await base44.asServiceRole.entities.Location.list();
-        const location = (locations || []).find((l: any) => l.site_name === assigned_location);
-        if (location?.id) {
-          await base44.asServiceRole.entities.Location.update(location.id, { assigned_client_email: normalizedEmail });
+      if (!assignmentPending && accountType === 'client' && assigned_location) {
+        try {
+          const locations = await base44.asServiceRole.entities.Location.list();
+          const location = (locations || []).find((l: any) => l.site_name === assigned_location);
+          if (location?.id) {
+            await base44.asServiceRole.entities.Location.update(location.id, { assigned_client_email: normalizedEmail });
+          }
+        } catch (error) {
+          assignmentError = error?.message || 'Unable to link the client to the selected property';
+          console.error('Unable to link client location during account creation', error);
         }
       }
     } else {
       assignmentPending = true;
+      assignmentError = invitationError || directoryError || 'The invited account is still pending creation';
     }
 
     // Do not turn a recoverable invitation-provider failure into a gateway error.
@@ -216,6 +241,8 @@ Deno.serve(async (req) => {
       invitation_error: invitationError || undefined,
       invitation_pending: !portalUser && !invitationSent,
       assignment_pending: assignmentPending,
+      assignment_error: assignmentError || undefined,
+      directory_error: directoryError || undefined,
       user_id: portalUser?.id || null,
       email_sent: emailSent,
       email_error: emailError || undefined,
