@@ -7,7 +7,7 @@ import MapView from '@/components/map/MapView';
 import VACountiesBoundaries from '@/components/map/VACountiesBoundaries';
 import {
     Layers, RefreshCw, Radio, MapPin, Users,
-    Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Shield, Zap, Navigation2, Square
+    Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Shield, Zap, Navigation2, Square, Search
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
