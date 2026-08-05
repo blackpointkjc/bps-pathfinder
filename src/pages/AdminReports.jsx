@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
+import { openVirginiaCriminalComplaintPrint } from "@/utils/virginiaCriminalComplaintPrint";
 import {
   MobileResponsiveDialog,
   MobileResponsiveDialogContent,
@@ -390,6 +391,20 @@ export default function AdminReports() {
       openVirginiaSummonsPrint(report, {
         officerName: report.officer_name || officerName,
         badge: report.officer_code_badge || '',
+      });
+      return;
+    }
+    if (type === 'criminal') {
+      const officer = allUsers?.find(u => u.email === report.created_by);
+      const complainantName = officer?.last_name && officer?.first_name
+        ? `${officer.last_name.toUpperCase()}, ${officer.first_name}${officer.middle_name ? ` ${officer.middle_name}` : ''}`
+        : (report.complainant_name || officerName);
+      const site = locations?.find(loc => loc.site_name === report.location);
+      openVirginiaCriminalComplaintPrint(report, {
+        displayLocation: site?.address || report.location,
+        officerName,
+        complainantName,
+        signatureName: getOfficerSignature(report.created_by),
       });
       return;
     }
