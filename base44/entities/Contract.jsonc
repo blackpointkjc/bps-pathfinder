@@ -1,0 +1,141 @@
+{
+  "name": "Contract",
+  "type": "object",
+  "properties": {
+    "contract_number": {
+      "type": "string"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "Linked client ID"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string",
+      "description": "Contract title / description"
+    },
+    "service_type": {
+      "type": "string",
+      "enum": [
+        "patrol",
+        "dispatch",
+        "alarm_response",
+        "executive_protection",
+        "event_security",
+        "consulting",
+        "other"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending_signature",
+        "active",
+        "expired",
+        "cancelled",
+        "renewed"
+      ],
+      "default": "draft"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "monthly_value": {
+      "type": "number"
+    },
+    "total_value": {
+      "type": "number"
+    },
+    "billing_cycle": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "quarterly",
+        "annually",
+        "one_time"
+      ],
+      "default": "monthly"
+    },
+    "auto_renew": {
+      "type": "boolean",
+      "default": false
+    },
+    "renewal_notice_days": {
+      "type": "integer",
+      "default": 30
+    },
+    "signed_file_url": {
+      "type": "string",
+      "description": "URL of signed contract file"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "assigned_manager": {
+      "type": "string"
+    },
+    "assigned_manager_name": {
+      "type": "string"
+    },
+    "site_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Linked service site IDs"
+    }
+  },
+  "required": [
+    "client_id",
+    "client_name",
+    "title",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": null,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

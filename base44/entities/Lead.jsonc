@@ -1,0 +1,148 @@
+{
+  "name": "Lead",
+  "type": "object",
+  "properties": {
+    "company_name": {
+      "type": "string",
+      "description": "Company or organization name"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Primary contact name"
+    },
+    "contact_email": {
+      "type": "string",
+      "description": "Contact email"
+    },
+    "contact_phone": {
+      "type": "string",
+      "description": "Contact phone number"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "referral",
+        "website",
+        "cold_call",
+        "event",
+        "partner",
+        "other"
+      ],
+      "description": "Lead source"
+    },
+    "service_interest": {
+      "type": "string",
+      "enum": [
+        "patrol",
+        "dispatch",
+        "alarm_response",
+        "executive_protection",
+        "event_security",
+        "consulting",
+        "other"
+      ],
+      "description": "Service they are interested in"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "new",
+        "contacted",
+        "qualified",
+        "proposal_sent",
+        "negotiating",
+        "won",
+        "lost"
+      ],
+      "default": "new",
+      "description": "Pipeline stage"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "default": "medium"
+    },
+    "estimated_value": {
+      "type": "number",
+      "description": "Estimated contract value"
+    },
+    "follow_up_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Next follow-up date"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notes about the lead"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "User ID assigned to this lead"
+    },
+    "assigned_name": {
+      "type": "string",
+      "description": "Name of assigned user"
+    },
+    "last_activity": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last activity timestamp"
+    },
+    "lost_reason": {
+      "type": "string",
+      "description": "Reason if lead was lost"
+    },
+    "converted_client_id": {
+      "type": "string",
+      "description": "Client ID if converted"
+    }
+  },
+  "required": [
+    "company_name",
+    "contact_name"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": null,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
