@@ -85,6 +85,53 @@ function chooseCanonical(records: any[]) {
   })[0];
 }
 
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function acquireIngestionLease(base44: any) {
+  const token = crypto.randomUUID();
+  const now = Date.now();
+  const counters = await base44.asServiceRole.entities.CadCounter.filter({ counter_key: 'dispatch_call' });
+  let counter = counters?.[0];
+
+  if (!counter) {
+    const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
+    const highest = (calls || []).reduce((max: number, call: any) => {
+      const match = String(call.call_id || '').match(/^B(\d+)$/i);
+      return Math.max(max, match ? Number(match[1]) : 0);
+    }, 0);
+    counter = await base44.asServiceRole.entities.CadCounter.create({
+      counter_key: 'dispatch_call',
+      last_number: highest,
+      ingestion_lock_token: '',
+      ingestion_locked_until: new Date(0).toISOString(),
+    });
+  }
+
+  const lockedUntil = new Date(counter.ingestion_locked_until || 0).getTime();
+  if (lockedUntil > now) return null;
+
+  await base44.asServiceRole.entities.CadCounter.update(counter.id, {
+    ingestion_lock_token: token,
+    ingestion_locked_until: new Date(now + 60_000).toISOString(),
+  });
+
+  // Let simultaneous contenders finish their writes, then only the final token owner proceeds.
+  await wait(500);
+  const verified = (await base44.asServiceRole.entities.CadCounter.filter({ counter_key: 'dispatch_call' }))?.[0];
+  return verified?.ingestion_lock_token === token ? { id: verified.id, token } : null;
+}
+
+async function releaseIngestionLease(base44: any, lease: any) {
+  if (!lease) return;
+  const current = (await base44.asServiceRole.entities.CadCounter.filter({ counter_key: 'dispatch_call' }))?.[0];
+  if (current?.id === lease.id && current?.ingestion_lock_token === lease.token) {
+    await base44.asServiceRole.entities.CadCounter.update(lease.id, {
+      ingestion_lock_token: '',
+      ingestion_locked_until: new Date(0).toISOString(),
+    }).catch(() => null);
+  }
+}
+
 Deno.serve(async (req) => {
   const startedAt = Date.now();
   try {
@@ -94,6 +141,12 @@ Deno.serve(async (req) => {
     const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
     if (user.role !== 'admin' && user.role !== 'dispatch' && !roles.has('cad_access') && !roles.has('full_access')) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
+    const lease = await acquireIngestionLease(base44);
+    if (!lease) {
+      return Response.json({ success: true, skipped: true, reason: 'GRAC synchronization already in progress' });
+    }
+
+    try {
     const response = await fetch(GRAC_API_URL, { headers: { Accept: 'application/json', 'User-Agent': 'BPS-Pathfinder-CAD/4.0' }, signal: AbortSignal.timeout(20_000) });
     if (!response.ok) return Response.json({ success: false, error: `GRAC API returned HTTP ${response.status}` }, { status: 502 });
     const payload = await response.json();
@@ -196,6 +249,9 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({ success: true, active: incoming.length, created, updated, removed, duplicates_removed: duplicatesRemoved, synced_at: new Date().toISOString(), duration_ms: Date.now() - startedAt });
+    } finally {
+      await releaseIngestionLease(base44, lease);
+    }
   } catch (error) {
     console.error('GRAC ingestion failed:', error);
     return Response.json({ success: false, error: error?.message || 'GRAC ingestion failed' }, { status: 500 });
