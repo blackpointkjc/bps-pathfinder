@@ -501,7 +501,7 @@ export default function AdminPTOLossReport() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="pto-loss-page p-4 md:p-8 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex justify-between items-center flex-wrap gap-4">
             <div className="flex items-center gap-3">
