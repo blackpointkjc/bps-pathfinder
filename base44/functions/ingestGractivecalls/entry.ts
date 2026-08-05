@@ -103,9 +103,15 @@ Deno.serve(async (req) => {
       if (key) existingExternal.set(key, record);
     }
 
+    const legacyCalls = [...existingExternal.values()].filter(record => !/^B\d+$/i.test(String(record.call_id || '')));
     const newCalls = incoming.filter(call => !existingExternal.has(call.external_key));
-    const cadNumbers = await reserveCadNumbers(base44, newCalls.length);
+    const cadNumbers = await reserveCadNumbers(base44, legacyCalls.length + newCalls.length);
     let cadIndex = 0;
+
+    // Migrate existing external-feed records from grac-* identifiers to Black Point CAD numbers.
+    for (const legacy of legacyCalls) {
+      await base44.asServiceRole.entities.DispatchCall.update(legacy.id, { call_id: cadNumbers[cadIndex++] });
+    }
     let created = 0;
     let updated = 0;
     let removed = 0;
@@ -125,8 +131,7 @@ Deno.serve(async (req) => {
     const currentKeys = new Set(incoming.map(call => call.external_key));
     for (const record of existingCalls || []) {
       const key = externalKey(record);
-      const legacyExternalId = String(record.call_id || '').startsWith('grac-');
-      if (legacyExternalId || (key && !currentKeys.has(key))) {
+      if (key && !currentKeys.has(key)) {
         try {
           await base44.asServiceRole.entities.DispatchCall.delete(record.id);
           removed += 1;
