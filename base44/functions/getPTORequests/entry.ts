@@ -96,8 +96,14 @@ Deno.serve(async (req) => {
         });
       }
 
-      await base44.asServiceRole.entities.TimeOffRequest.delete(request_id);
-      return Response.json({ success: true, removed: true, restored_hours: request.request_type === 'paid' ? hours : 0 });
+      await base44.asServiceRole.entities.TimeOffRequest.update(request_id, {
+        status: 'cancelled',
+        cancelled_by: user.email,
+        cancelled_date: new Date().toISOString(),
+        hours_restored: request.request_type === 'paid' ? hours : 0,
+        admin_notes: admin_notes || `Approved PTO was cancelled by HR. ${hours.toFixed(1)} hours were returned to the officer's PTO balance.`,
+      });
+      return Response.json({ success: true, removed_from_hr: true, restored_hours: request.request_type === 'paid' ? hours : 0 });
     }
 
     if (action === 'manual') {
