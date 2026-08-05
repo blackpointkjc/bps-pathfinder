@@ -658,6 +658,28 @@ export default function AdminUsers() {
           </div>
         )}
 
+        {!isLoading && !error && accessRequests.length > 0 && (
+          <Card className="mb-5 border border-amber-500/30 bg-amber-950/20">
+            <CardHeader><CardTitle className="flex items-center gap-2 text-amber-200"><Mail className="h-5 w-5" />Access Requests ({accessRequests.length})</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {accessRequests.map(request => (
+                <div key={request.id} className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-slate-900/70 p-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="font-bold text-white">{request.full_name}</p>
+                    <p className="text-sm text-slate-300">{request.email}{request.phone ? ` · ${request.phone}` : ''}</p>
+                    <p className="mt-1 text-xs uppercase tracking-wider text-amber-300">Requested: {request.requested_category || 'Administrator should decide'}</p>
+                    {request.notes && <p className="mt-2 text-sm text-slate-400">{request.notes}</p>}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button disabled={convertAccessRequest.isPending} onClick={() => convertAccessRequest.mutate(request)} className="bg-[#c9a227] text-black hover:bg-[#ddb940]">Create Pending User</Button>
+                    <Button variant="outline" onClick={async () => { await base44.entities.AccessRequest.update(request.id, { status: 'denied', processed_by: user?.email || '', processed_at: new Date().toISOString() }); queryClient.invalidateQueries({ queryKey: ['pendingAccessRequests'] }); }} className="border-red-700 text-red-300">Deny</Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         {!isLoading && !error && (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
