@@ -36,7 +36,9 @@ export default function AdminManualPTO() {
     queryKey: ['hrUsers'],
     queryFn: async () => {
       const result = await base44.functions.invoke('getHRUsers', {});
-      return result?.users || [];
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.users || [];
     },
     enabled: user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access'),
     initialData: [],
@@ -52,48 +54,9 @@ export default function AdminManualPTO() {
     mutationFn: async (data) => {
       const officer = activeUsers.find(u => u.email === data.officer_email);
       if (!officer) throw new Error('Officer not found');
-
-      // Add hours to the appropriate balance
-      if (data.pto_type === 'pto') {
-        const currentPTOBalance = officer.pto_balance_hours || 0;
-        const newBalance = currentPTOBalance + parseFloat(data.hours);
-
-        await base44.entities.User.update(officer.id, {
-          pto_balance_hours: newBalance,
-          pto_year_to_date_used: (officer.pto_year_to_date_used || 0) - parseFloat(data.hours) // Negative because we're adding
-        });
-      } else {
-        // Sick time
-        const currentSickBalance = officer.sick_time_balance_hours || 0;
-        const newBalance = currentSickBalance + parseFloat(data.hours);
-
-        await base44.entities.User.update(officer.id, {
-          sick_time_balance_hours: newBalance,
-          sick_time_year_to_date_used: (officer.sick_time_year_to_date_used || 0) - parseFloat(data.hours) // Negative because we're adding
-        });
-      }
-
-      // If remove_shifts is true, find and reassign shifts during this period
-      if (data.remove_shifts) {
-        const startDate = new Date(data.start_date);
-        const endDate = new Date(data.end_date);
-
-        const officerShifts = schedules.filter(s => {
-          const shiftDate = new Date(s.shift_date);
-          return s.officer_email === data.officer_email && 
-                 shiftDate >= startDate && 
-                 shiftDate <= endDate &&
-                 !s.is_open;
-        });
-
-        // Mark shifts as open
-        for (const shift of officerShifts) {
-          await base44.entities.Schedule.update(shift.id, {
-            officer_email: 'OPEN',
-            is_open: true
-          });
-        }
-      }
+      const response = await base44.functions.invoke('getPTORequests', { action: 'manual', ...data });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
 
       // Send notification email
       await base44.integrations.Core.SendEmail({
@@ -146,9 +109,11 @@ export default function AdminManualPTO() {
 </body>
 </html>`
       });
+      return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activeUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['hrUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['allPTORequestsForHR'] });
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
       setShowDialog(false);
       setFormData({
