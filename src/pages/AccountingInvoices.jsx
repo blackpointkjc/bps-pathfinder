@@ -37,8 +37,9 @@ export default function AccountingInvoices() {
     queryKey: ['accountingClientDirectory'],
     queryFn: async () => {
       const response = await base44.functions.invoke('getClientUsers', {});
-      if (response?.error) throw new Error(response.error);
-      return response?.clients || [];
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.clients || [];
     },
     enabled: isAccountingRole,
     staleTime: 30000,
