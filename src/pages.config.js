@@ -131,7 +131,6 @@ import MDCriminalComplaints from './pages/MDCriminalComplaints';
 import MDTrespassNotices from './pages/MDTrespassNotices';
 import MaintenanceReports from './pages/MaintenanceReports';
 import ManageClients from './pages/ManageClients';
-import ManageCompanyEmployees from './pages/ManageCompanyEmployees';
 import HRManageCompanyEmployees from './pages/HRManageCompanyEmployees';
 import TrainingManageCompanyEmployees from './pages/TrainingManageCompanyEmployees';
 import ManageStudents from './pages/ManageStudents';
@@ -263,7 +262,6 @@ export const PAGES = {
     "MDTrespassNotices": MDTrespassNotices,
     "MaintenanceReports": MaintenanceReports,
     "ManageClients": ManageClients,
-    "ManageCompanyEmployees": ManageCompanyEmployees,
     "HRManageCompanyEmployees": HRManageCompanyEmployees,
     "TrainingManageCompanyEmployees": TrainingManageCompanyEmployees,
     "ManageStudents": ManageStudents,
