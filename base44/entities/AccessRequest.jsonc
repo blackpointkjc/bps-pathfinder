@@ -1,0 +1,70 @@
+{
+  "name": "AccessRequest",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string",
+      "description": "Name supplied by the person requesting access"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email address requesting access"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Optional phone number"
+    },
+    "requested_category": {
+      "type": "string",
+      "enum": [
+        "unsure",
+        "officer",
+        "student",
+        "client"
+      ],
+      "default": "unsure"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "invited",
+        "completed",
+        "denied"
+      ],
+      "default": "pending"
+    },
+    "processed_by": {
+      "type": "string"
+    },
+    "processed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "full_name",
+    "email"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
