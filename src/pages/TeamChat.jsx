@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { MessageCircle, Send, Users, Phone } from "lucide-react";
-import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -30,9 +29,13 @@ export default function TeamChat() {
     refetchInterval: 3000,
   });
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['chatDirectory'],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getChatDirectory', {});
+      return result?.users || [];
+    },
+    initialData: [],
   });
 
   const sendMessageMutation = useMutation({
@@ -54,9 +57,24 @@ export default function TeamChat() {
     });
   };
 
-  const getUserPhoto = (email) => {
-    const userData = allUsers?.find(u => u.email === email);
-    return userData?.profile_photo_url;
+  const getUserRecord = (email) => allUsers.find(u => String(u.email).toLowerCase() === String(email || '').toLowerCase());
+
+  const getUserPhoto = (email) => getUserRecord(email)?.profile_photo_url;
+
+  const getSenderName = (msg) => {
+    const sender = getUserRecord(msg.created_by);
+    const directoryName = sender?.first_name && sender?.last_name ? `${sender.first_name} ${sender.last_name}` : sender?.full_name;
+    return msg.sender_name || directoryName || msg.created_by || 'Unknown User';
+  };
+
+  const formatMessageDateTime = (value) => {
+    if (!value) return 'Date unavailable';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Date unavailable';
+    return date.toLocaleString('en-US', {
+      timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true,
+    });
   };
 
   const getUserInitial = (email, name) => {
@@ -125,7 +143,7 @@ export default function TeamChat() {
                   >
                     {showName && (
                       <Avatar className={`w-10 h-10 flex-shrink-0 ${isOwnMessage ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-slate-400 to-slate-500'}`}>
-                        <AvatarImage src={getUserPhoto(msg.created_by)} alt={msg.sender_name} />
+                        <AvatarImage src={getUserPhoto(msg.created_by)} alt={getSenderName(msg)} />
                         <AvatarFallback className="text-white font-semibold">
                           {getUserInitial(msg.created_by, msg.sender_name)}
                         </AvatarFallback>
@@ -137,7 +155,7 @@ export default function TeamChat() {
                       {showName && (
                         <div className={`flex items-baseline gap-2 mb-1 px-2 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
                           <span className="text-xs font-semibold text-slate-700">
-                            {isOwnMessage ? 'You' : msg.sender_name}
+                            {isOwnMessage ? `You — ${getSenderName(msg)}` : getSenderName(msg)}
                           </span>
                           {!isOwnMessage && userPhone && (
                             <button
@@ -161,7 +179,7 @@ export default function TeamChat() {
                       </div>
                       {showTime && (
                         <span className={`text-xs text-slate-400 mt-1 px-2`}>
-                          {format(new Date(msg.created_date), 'h:mm a')}
+                          {formatMessageDateTime(msg.created_date)}
                         </span>
                       )}
                     </div>
