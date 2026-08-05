@@ -20,7 +20,11 @@ export default function ExpenseReports() {
     category: "travel",
     amount: "",
     description: "",
-    receipt_url: ""
+    receipt_url: "",
+    start_mileage: "",
+    end_mileage: "",
+    start_mileage_photo_url: "",
+    end_mileage_photo_url: ""
   });
 
   const queryClient = useQueryClient();
@@ -63,28 +67,56 @@ export default function ExpenseReports() {
       category: "travel",
       amount: "",
       description: "",
-      receipt_url: ""
+      receipt_url: "",
+      start_mileage: "",
+      end_mileage: "",
+      start_mileage_photo_url: "",
+      end_mileage_photo_url: ""
     });
   };
 
-  const handleReceiptUpload = async (e) => {
-    const file = e.target.files[0];
+  const handleFileUpload = async (e, field, label) => {
+    const file = e.target.files?.[0];
     if (!file) return;
-
     setUploading(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setFormData(prev => ({ ...prev, receipt_url: file_url }));
+      setFormData(prev => ({ ...prev, [field]: file_url }));
     } catch (error) {
-      alert('Failed to upload receipt');
+      alert(`Failed to upload ${label}`);
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   };
 
+  const handleReceiptUpload = (e) => handleFileUpload(e, 'receipt_url', 'receipt');
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    submitExpenseMutation.mutate(formData);
+    const payload = { ...formData, amount: Number(formData.amount) };
+    if (formData.category === 'travel') {
+      const start = Number(formData.start_mileage);
+      const end = Number(formData.end_mileage);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+        alert('Enter valid starting and ending mileage. Ending mileage cannot be less than starting mileage.');
+        return;
+      }
+      if (!formData.start_mileage_photo_url || !formData.end_mileage_photo_url) {
+        alert('Travel expenses require photos of both the starting and ending odometer readings.');
+        return;
+      }
+      payload.start_mileage = start;
+      payload.end_mileage = end;
+      payload.travel_miles = end - start;
+    } else {
+      delete payload.start_mileage;
+      delete payload.end_mileage;
+      delete payload.travel_miles;
+      delete payload.start_mileage_photo_url;
+      delete payload.end_mileage_photo_url;
+    }
+    submitExpenseMutation.mutate(payload);
   };
 
   const getStatusColor = (status) => {
