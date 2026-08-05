@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { MapPin, AlertTriangle, CheckCircle, MessageSquare } from 'lucide-react';
+import { toast } from 'sonner';
 
 const STATUS_BTNS = [
   { value: 'Enroute', label: 'EN ROUTE', cls: 'bg-blue-900/50 border-blue-600 text-blue-300 hover:bg-blue-900' },
@@ -22,6 +23,7 @@ export default function FieldCallActions({ call, onStatusChange }) {
   const [saving, setSaving] = useState(false);
   const [noteAdded, setNoteAdded] = useState(false);
   const [status, setStatus] = useState(call?.status);
+  const [backupSent, setBackupSent] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -70,18 +72,43 @@ export default function FieldCallActions({ call, onStatusChange }) {
   };
 
   const requestBackup = async () => {
-    if (!call || !user) return;
+    if (!call || !user || saving) return;
     setSaving(true);
+    setBackupSent(false);
+    const officerLabel = myUnit?.label || user.unit_number || `${user.rank || 'Officer'} ${user.last_name || user.full_name || ''}`.trim();
+    const callLabel = call.call_id || call.id?.slice(-8)?.toUpperCase() || 'UNKNOWN';
+    const location = call.location || call.address || 'Unknown location';
+    const requestedAt = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    const alertText = `URGENT BACKUP REQUEST — ${officerLabel} needs assistance at ${location}. Call ${callLabel}: ${call.incident || 'Active call'}. Requested ${requestedAt}.`;
+
     try {
-      await base44.entities.CallNote.create({
-        call_id: call.id,
-        author_id: user.id,
-        author_name: user.full_name || 'Field Unit',
-        note: `🚨 BACKUP REQUESTED by ${myUnit?.label || user.full_name} at ${new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}`,
-        note_type: 'hazard',
-      });
-    } catch (e) {}
-    setSaving(false);
+      await Promise.all([
+        base44.entities.CallNote.create({
+          call_id: call.id,
+          author_id: user.id,
+          author_name: officerLabel,
+          note: `🚨 ${alertText}`,
+          note_type: 'hazard',
+        }),
+        base44.entities.Message.create({
+          sender_id: user.id,
+          sender_name: officerLabel,
+          recipient_id: 'dispatch',
+          recipient_name: 'Dispatch',
+          message: alertText,
+          read: false,
+          message_type: 'backup_request',
+        }),
+      ]);
+      setBackupSent(true);
+      toast.success('Backup request sent to Dispatch');
+      window.setTimeout(() => setBackupSent(false), 5000);
+    } catch (error) {
+      console.error('[FieldCall] backup request failed:', error);
+      toast.error('Backup request failed. Use radio or phone immediately.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addNote = async () => {
@@ -133,9 +160,10 @@ export default function FieldCallActions({ call, onStatusChange }) {
         </div>
       </div>
 
-      <button onClick={requestBackup} disabled={saving}
-        className="w-full py-2.5 bg-red-800 hover:bg-red-700 border border-red-500 rounded font-mono text-[11px] font-black text-red-200 tracking-widest flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
-        <AlertTriangle className="w-4 h-4" /> REQUEST BACKUP
+      <button onClick={requestBackup} disabled={saving || backupSent}
+        className={`w-full py-2.5 border rounded font-mono text-[11px] font-black tracking-widest flex items-center justify-center gap-2 transition-colors disabled:opacity-70 ${backupSent ? 'bg-green-800 border-green-500 text-green-100' : 'bg-red-800 hover:bg-red-700 border-red-500 text-red-100'}`}>
+        {backupSent ? <CheckCircle className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+        {saving ? 'SENDING BACKUP REQUEST...' : backupSent ? 'BACKUP REQUEST SENT' : 'REQUEST BACKUP'}
       </button>
 
       <div>
