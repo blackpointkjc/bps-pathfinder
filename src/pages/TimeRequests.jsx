@@ -24,13 +24,17 @@ export default function TimeRequests() {
     refetchInterval: 5000,
   });
 
-  const { data: requests } = useQuery({
-    queryKey: ['timeOffRequests'],
-    queryFn: () => base44.entities.TimeOffRequest.filter(
-      { created_by: user?.email },
-      '-created_date'
-    ),
-    enabled: !!user,
+  const { data: requests = [], error: requestsError } = useQuery({
+    queryKey: ['timeOffRequests', user?.email],
+    queryFn: async () => {
+      const response = await base44.functions.invoke('getPTORequests', { action: 'list' });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.requests || [];
+    },
+    enabled: !!user?.email,
+    refetchInterval: 5000,
+    initialData: [],
   });
 
   const calculateBusinessDays = (start, end) => {
@@ -56,17 +60,10 @@ export default function TimeRequests() {
 
   const createRequestMutation = useMutation({
     mutationFn: async (data) => {
-      const created = await base44.entities.TimeOffRequest.create(data);
-      
-      // If approved and paid, deduct from PTO balance
-      if (data.status === 'approved' && data.request_type === 'paid') {
-        await base44.auth.updateMe({
-          pto_balance_hours: (user.pto_balance_hours || 0) - data.hours_requested,
-          pto_year_to_date_used: (user.pto_year_to_date_used || 0) + data.hours_requested
-        });
-      }
-      
-      return created;
+      const response = await base44.functions.invoke('getPTORequests', { action: 'submit', ...data });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.request;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timeOffRequests'] });
@@ -231,6 +228,12 @@ export default function TimeRequests() {
                 </div>
               </form>
             </CardContent>
+          </Card>
+        )}
+
+        {requestsError && (
+          <Card className="border-red-700/50 bg-red-950/20">
+            <CardContent className="p-4 text-red-300">Unable to load your PTO requests: {requestsError.message}</CardContent>
           </Card>
         )}
 
