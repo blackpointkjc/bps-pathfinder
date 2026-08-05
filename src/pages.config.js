@@ -133,6 +133,7 @@ import MaintenanceReports from './pages/MaintenanceReports';
 import ManageClients from './pages/ManageClients';
 import HRManageCompanyEmployees from './pages/HRManageCompanyEmployees';
 import TrainingManageCompanyEmployees from './pages/TrainingManageCompanyEmployees';
+import ManageCompanyEmployees from './pages/ManageCompanyEmployees';
 import ManageStudents from './pages/ManageStudents';
 import ManageTimeEntries from './pages/ManageTimeEntries';
 import MyPerformanceAnalytics from './pages/MyPerformanceAnalytics';
@@ -263,6 +264,7 @@ export const PAGES = {
     "ManageClients": ManageClients,
     "HRManageCompanyEmployees": HRManageCompanyEmployees,
     "TrainingManageCompanyEmployees": TrainingManageCompanyEmployees,
+    "ManageCompanyEmployees": ManageCompanyEmployees,
     "ManageStudents": ManageStudents,
     "ManageTimeEntries": ManageTimeEntries,
     "MyPerformanceAnalytics": MyPerformanceAnalytics,
