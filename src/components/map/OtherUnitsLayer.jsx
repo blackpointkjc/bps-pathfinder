@@ -150,12 +150,12 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
         >
             {unitsToShow.map((unit) => {
                 const markerKey = `${unit.id}-${unit.latitude?.toFixed(5)}-${unit.longitude?.toFixed(5)}-${unit.status}-${unit.last_updated || ''}`;
-                console.log(`[Map] Rendering marker: ${unit.unit_number||unit.id} key=${markerKey}`);
                 return (
                 <Marker
                     key={markerKey}
                     position={[unit.latitude, unit.longitude]}
                     icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor, unit.unit_number, unit.isUnionLead)}
+                    eventHandlers={{ click: () => onUnitClick?.(unit) }}
                 >
                         <Popup>
                             <div className="p-3 min-w-[240px]">
@@ -208,6 +208,11 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                                             <Clock className="w-3 h-3" />
                                             <span className="text-xs">Last seen: {new Date(unit.last_updated).toLocaleTimeString()}</span>
                                         </div>
+                                    )}
+                                    {onUnitClick && (
+                                        <button onClick={() => onUnitClick(unit)} className="mt-3 w-full rounded bg-blue-700 px-3 py-2 text-xs font-bold text-white hover:bg-blue-600">
+                                            Navigate to Unit
+                                        </button>
                                     )}
                                 </div>
                             </div>
