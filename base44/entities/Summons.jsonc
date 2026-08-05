@@ -8,7 +8,7 @@
     },
     "summons_number": {
       "type": "string",
-      "description": "Virtus tracking number"
+      "description": "Black Point tracking number"
     },
     "summons_date": {
       "type": "string",
