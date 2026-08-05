@@ -59,9 +59,14 @@ export default function ManageStudents() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowCreateDialog(false);
       setCreateForm({ first_name: '', last_name: '', email: '', mobile_phone: '' });
-      toast.success(result?.assignment_pending
+      const accountMessage = result?.assignment_pending
         ? 'Invitation sent. Student Portal access will be assigned after acceptance.'
-        : 'Student invitation sent. Student Portal-only access assigned.');
+        : 'Student invitation sent. Student Portal-only access assigned.';
+      if (result?.email_sent === false) {
+        toast.error(`${accountMessage} Welcome email delivery failed: ${result?.email_error || 'verify the email address.'}`);
+      } else {
+        toast.success(`${accountMessage} The Black Point account-created email was sent.`);
+      }
     },
     onError: (err) => toast.error('Unable to create student: ' + err.message),
   });
