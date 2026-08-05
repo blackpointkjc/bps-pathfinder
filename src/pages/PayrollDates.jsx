@@ -51,11 +51,11 @@ export default function PayrollDates() {
 
   const saveMutation = useMutation({
     mutationFn: async data => {
-      if (editing) return base44.entities.PayrollPeriod.update(editing.id, data);
       if (!canManage) throw new Error('Accounting access required');
-      const response = await base44.functions.invoke('maintainRollingPayrollPeriods', { manual_period: data });
-      if (response?.data?.error) throw new Error(response.data.error);
-      return response;
+      const response = await base44.functions.invoke('maintainRollingPayrollPeriods', { action: 'save', period: editing ? { ...data, id: editing.id } : data });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payrollPeriods'] });
@@ -64,14 +64,13 @@ export default function PayrollDates() {
     onError: e => toast.error(e.message || 'Unable to save payroll dates'),
   });
 
-  const deleteMutation = useMutation({ mutationFn: id => base44.entities.PayrollPeriod.delete(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payrollPeriods'] }) });
+  const deleteMutation = useMutation({ mutationFn: async id => { const response = await base44.functions.invoke('maintainRollingPayrollPeriods', { action: 'delete', id }); const payload = response?.data || response || {}; if (payload.error) throw new Error(payload.error); return payload; }, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payrollPeriods'] }) });
 
   const openForm = period => { setEditing(period || null); setForm(period ? { ...period, period_number: String(period.period_number || '') } : emptyForm); setDialogOpen(true); };
   const submit = e => {
     e.preventDefault();
     const data = { ...form, year: Number(form.start_date?.slice(0,4) || new Date().getFullYear()), period_number: Number(form.period_number) };
-    if (editing) saveMutation.mutate(data);
-    else base44.entities.PayrollPeriod.create(data).then(() => { queryClient.invalidateQueries({queryKey:['payrollPeriods']}); setDialogOpen(false); setForm(emptyForm); toast.success('Payroll period added'); }).catch(e => toast.error(e.message));
+    saveMutation.mutate(data);
   };
 
   return <div className="min-h-screen p-4 md:p-8">
