@@ -30,7 +30,7 @@ const CENTER_CONFIG = {
         ['BOLO / Alerts', 'BOLOAlerts', FileWarning],
         ['Records AI', 'RecordsAssistant', Bot],
       ]},
-      { label: 'Administration', items: [
+      { label: 'Administration', fullAccessOnly: true, items: [
         ['Personnel', 'Personnel', Users],
         ['CAD Reports', 'PathfinderReports', BarChart3],
         ['Admin Control', 'AdminPortal', Activity],
@@ -113,38 +113,25 @@ const CENTER_CONFIG = {
       { label: 'Command & Analytics', items: [
         ['Admin Dashboard', 'AdminDashboard', Gauge],
         ['Company Analytics', 'AdminAnalytics', BarChart3],
-        ['Pending Users', 'AdminUsers', Users],
-        ['Manage Employees', 'ManageCompanyEmployees', Briefcase],
-        ['Officer Roster', 'AdminOfficerRoster', Users],
-        ['Officer Management', 'AdminOfficerManagement', UserCheck],
         ['Location Tracker', 'AdminLocationTracker', MapPin],
         ['Geofence Alerts', 'AdminGeofenceAlerts', AlertTriangle],
+        ['Active Tracker', 'ActiveTracker', Activity],
       ]},
-      { label: 'Reports & Compliance', items: [
+      { label: 'Reports & Quality', items: [
         ['All Reports', 'AdminReports', ClipboardList],
         ['Client Reports', 'AdminClientReports', FileText],
         ['Supervisor Reports', 'AdminSupervisorReports', UserCheck],
         ['Confidential Reports', 'AdminConfidentialReports', ShieldCheck],
         ['Complaints', 'AdminComplaints', AlertTriangle],
         ['Commendations', 'AdminCommendations', Award],
-        ['Performance Reviews', 'AdminPerformanceReviews', ClipboardCheck],
-        ['Certification Alerts', 'AdminCertificationAlerts', Bell],
       ]},
-      { label: 'Scheduling & Payroll', items: [
+      { label: 'Scheduling', items: [
         ['Scheduling', 'AdminScheduling', Calendar],
         ['Planned Shifts', 'AdminPlannedShifts', Calendar],
         ['Shift Bids', 'AdminShiftBids', Briefcase],
-        ['Time Entries', 'AdminTimeEntries', Clock3],
-        ['Manage Time Entries', 'ManageTimeEntries', Clock3],
-        ['Payroll', 'AdminPayroll', DollarSign],
-        ['Payroll Configuration', 'AdminPayrollConfig', Settings],
-        ['PTO Approval', 'AdminPTOApproval', ClipboardCheck],
-        ['PTO Review', 'AdminPTOReview', ClipboardList],
-        ['Manual PTO', 'AdminManualPTO', CalendarClock],
       ]},
       { label: 'Operations Management', items: [
         ['Locations', 'AdminLocations', Building2],
-        ['Divisions', 'AdminDivisions', Layers],
         ['Equipment', 'AdminEquipment', Package],
         ['Documents', 'AdminDocuments', FileText],
         ['Post Orders', 'AdminPostOrders', BookOpen],
@@ -154,8 +141,6 @@ const CENTER_CONFIG = {
         ['Special Requests', 'AdminSpecialRequests', CalendarClock],
         ['Portal Settings', 'AdminPortalSettings', Settings],
         ['Client Feedback', 'AdminClientFeedback', Award],
-        ['Support Staff Clock', 'AdminSupportStaffClock', Clock3],
-        ['Active Tracker', 'ActiveTracker', Activity],
       ]},
       { label: 'Vendor Management', items: [
         ['Vendor Dashboard', 'VendorDashboard', Gauge],
@@ -177,8 +162,8 @@ const CENTER_CONFIG = {
       { label: 'Training', items: [
         ['Training Creation', 'AdminTraining', GraduationCap],
         ['Training & Compliance', 'AdminTrainingCompliance', ShieldCheck],
-        ['Training Compliance', 'TrainingCompliance', ClipboardCheck],
         ['Compliance Tracker', 'TrainingComplianceTracker', BarChart3],
+        ['Certification Alerts', 'AdminCertificationAlerts', Bell],
         ['Manage Students', 'ManageStudents', Users],
         ['Student Portal', 'StudentPortal', GraduationCap],
         ['Training Records', 'TrainingRecords', BookOpen],
@@ -192,9 +177,7 @@ const CENTER_CONFIG = {
       { label: 'People Operations', items: [
         ['Manage Employees', 'ManageCompanyEmployees', Briefcase],
         ['Pending Users', 'AdminUsers', Users],
-        ['Officer Management', 'AdminOfficerManagement', UserCheck],
-        ['Officer Roster', 'AdminOfficerRoster', Users],
-        ['Time Entries', 'AdminTimeEntries', Clock3],
+        ['Officer Roster & Management', 'AdminOfficerRoster', Users],
         ['Manage Time Entries', 'ManageTimeEntries', Clock3],
         ['Support Staff Clock', 'AdminSupportStaffClock', Clock3],
       ]},
@@ -214,12 +197,13 @@ const CENTER_CONFIG = {
     groups: [
       { label: 'Accounting', items: [
         ['Payroll Management', 'AccountingPayroll', DollarSign],
+        ['Payroll Processing', 'AdminPayroll', DollarSign],
+        ['Payroll Configuration', 'AdminPayrollConfig', Settings],
         ['Client Invoices', 'AccountingInvoices', FileText],
         ['Company Profit', 'AccountingProfit', BarChart3],
         ['Tax Liability', 'AccountingTaxLiability', ClipboardList],
         ['W-2 Generator', 'AccountingW2Generator', FileText],
         ['Expense Approval', 'AdminExpenseApproval', ClipboardCheck],
-        ['PTO Loss Report', 'AdminPTOLossReport', AlertTriangle],
       ]},
     ],
   },
@@ -245,10 +229,18 @@ const CENTER_CONFIG = {
   },
 };
 
-const PAGE_TO_CENTER = Object.entries(CENTER_CONFIG).reduce((map, [center, config]) => {
-  config.groups.forEach(group => group.items.forEach(([, page]) => { map[page] = center; }));
+const PAGE_TO_CENTERS = Object.entries(CENTER_CONFIG).reduce((map, [center, config]) => {
+  config.groups.forEach(group => group.items.forEach(([, page]) => {
+    map[page] = [...new Set([...(map[page] || []), center])];
+  }));
   return map;
 }, {});
+
+const FULL_ACCESS_PAGES = new Set(['Personnel', 'PathfinderReports', 'AdminPortal']);
+
+function hasFullAccess(user) {
+  return user?.role === 'admin' || normalizedRoles(user).has('full_access');
+}
 
 const FULLSCREEN_PAGES = new Set(['Navigation']);
 
@@ -273,27 +265,27 @@ function roleName(user) {
 
 function allowedCenters(user) {
   const roles = normalizedRoles(user);
-  const isAdmin = user?.role === 'admin';
-  const isDispatch = user?.role === 'dispatch';
-  const fullAccess = roles.has('full_access');
+  const fullAccess = hasFullAccess(user);
   const centers = [];
 
-  if (isAdmin || isDispatch || fullAccess || roles.has('cad_access') || roles.has('officer') || roles.has('supervisor')) centers.push('cad');
-  if (isAdmin || fullAccess || roles.has('officer')) centers.push('officer');
-  if (isAdmin || fullAccess || roles.has('supervisor')) centers.push('supervisor');
-  if (isAdmin || fullAccess || roles.has('hr')) centers.push('hr');
-  if (isAdmin || fullAccess) centers.push('admin');
-  if (isAdmin || fullAccess || roles.has('trainer')) centers.push('training');
-  if (isAdmin || fullAccess || roles.has('accounting')) centers.push('accounting');
-  if (isAdmin || roles.has('client') || user?.user_type === 'client') centers.push('client');
+  if (fullAccess || user?.role === 'dispatch' || roles.has('cad_access') || roles.has('officer') || roles.has('supervisor')) centers.push('cad');
+  if (fullAccess || roles.has('officer')) centers.push('officer');
+  if (fullAccess || roles.has('supervisor')) centers.push('supervisor');
+  if (fullAccess || roles.has('hr')) centers.push('hr');
+  if (fullAccess) centers.push('admin');
+  if (fullAccess || roles.has('trainer')) centers.push('training');
+  if (fullAccess || roles.has('accounting')) centers.push('accounting');
+  if (fullAccess || roles.has('client') || user?.user_type === 'client') centers.push('client');
 
   return [...new Set(centers)];
 }
 
 function canAccessPage(user, pageName) {
-  const center = PAGE_TO_CENTER[pageName];
-  if (!center) return true;
-  return allowedCenters(user).includes(center);
+  if (FULL_ACCESS_PAGES.has(pageName)) return hasFullAccess(user);
+  const centers = PAGE_TO_CENTERS[pageName];
+  if (!centers?.length) return true;
+  const available = allowedCenters(user);
+  return centers.some(center => available.includes(center));
 }
 
 function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, onCloseMobile }) {
@@ -301,6 +293,7 @@ function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, curre
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
   const query = search.trim().toLowerCase();
   const groups = center.groups
+    .filter(group => !group.fullAccessOnly || hasFullAccess(user))
     .map(group => ({
       ...group,
       items: group.items.filter(([label]) => !query || label.toLowerCase().includes(query)),
@@ -389,8 +382,8 @@ export default function Layout({ children, currentPageName }) {
   };
 
   useEffect(() => {
-    const pageCenter = PAGE_TO_CENTER[currentPageName];
-    if (pageCenter && allowedCenters(user).includes(pageCenter)) setActiveCenter(pageCenter);
+    const pageCenter = (PAGE_TO_CENTERS[currentPageName] || []).find(center => allowedCenters(user).includes(center));
+    if (pageCenter) setActiveCenter(pageCenter);
   }, [currentPageName, user?.role, JSON.stringify(user?.additional_roles || [])]);
 
   useEffect(() => {
