@@ -47,8 +47,12 @@ export default function TrainingComplianceTracker() {
     refetchInterval: 30000,
   });
   const { data: allUsers = [] } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryKey: ['trainingUsers'],
+    queryFn: async () => {
+      const response = await base44.functions.invoke('getTrainingUsers', {});
+      if (response?.error) throw new Error(response.error);
+      return response?.users || [];
+    },
     enabled: hasTrainingAccess,
     staleTime: 30000,
   });
