@@ -19,9 +19,19 @@ Deno.serve(async (req) => {
         console.log('📝 Updates:', JSON.stringify(updates, null, 2));
 
         // Update the user's profile using asServiceRole
-        const updatePayload = {};
-        const fields = ['full_name','rank','last_name','unit_number','dispatch_role','is_supervisor','show_on_map','role','status'];
-        for (const f of fields) { if (updates[f] !== undefined) updatePayload[f] = updates[f]; }
+        const updatePayload: Record<string, unknown> = {};
+        const fields = ['full_name','rank','last_name','unit_number','dispatch_role','is_supervisor','show_on_map','role','status','additional_roles'];
+        for (const f of fields) {
+            if (updates[f] !== undefined) updatePayload[f] = updates[f];
+        }
+
+        if (updatePayload.role !== undefined && !['user', 'admin'].includes(String(updatePayload.role))) {
+            return Response.json({ error: 'Role must be user or admin' }, { status: 400 });
+        }
+        if (updatePayload.additional_roles !== undefined && !Array.isArray(updatePayload.additional_roles)) {
+            return Response.json({ error: 'additional_roles must be an array' }, { status: 400 });
+        }
+
         await base44.asServiceRole.entities.User.update(userId, updatePayload);
 
         console.log('✅ User updated successfully');
