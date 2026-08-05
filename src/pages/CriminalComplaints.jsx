@@ -539,7 +539,7 @@ export default function CriminalComplaints() {
         </div>
         
         <div style="margin-top: 8px; text-align: center; font-size: 7pt; color: #000; border-top: 2px solid #000; padding-top: 6px;">
-          <p><strong>VIRTUS SECURITY SERVICES</strong></p>
+          <p><strong>BLACK POINT PROTECTION SERVICES</strong></p>
           <p style="margin-top: 2px;">VA DCJS 11-6066 & Maryland 106-4738</p>
           <p style="margin-top: 3px; color: #666;">Complaint #: ${complaint.complaint_number || ''} | Generated: ${format(new Date(), 'MM/dd/yyyy HH:mm')}</p>
           ${complaint.officer_ip_address ? `<p style="color: #666;">Officer IP: ${complaint.officer_ip_address}</p>` : ''}

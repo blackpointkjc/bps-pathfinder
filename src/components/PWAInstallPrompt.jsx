@@ -57,7 +57,7 @@ export default function PWAInstallPrompt() {
             <Smartphone className="w-6 h-6 text-white" />
           </div>
           <div className="flex-1">
-            <h3 className="font-bold text-slate-900 mb-1">Install VirtusConnect</h3>
+            <h3 className="font-bold text-slate-900 mb-1">Install Black Point Portal</h3>
             <p className="text-sm text-slate-600 mb-3">
               Install our app for offline access, faster load times, and push notifications.
             </p>

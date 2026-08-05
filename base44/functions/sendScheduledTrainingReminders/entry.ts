@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.integrations.Core.SendEmail({
       to: n.recipient_email,
       subject: n.title,
-      body: `<p>${n.message}</p><p style="color:#666;font-size:12px;">This is an automated in-service renewal reminder from BPS Connect.</p>`,
+      body: `<p>${n.message}</p><p style="color:#666;font-size:12px;">This is an automated in-service renewal reminder from Black Point Portal.</p>`,
     }).catch(() => {});
     sent++;
   }

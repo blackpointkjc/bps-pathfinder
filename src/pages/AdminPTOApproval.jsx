@@ -155,7 +155,7 @@ export default function AdminPTOApproval() {
       ${status === 'approved' ? '<p style="color: #10b981; font-weight: bold;">&#10003; Your time off has been approved. Enjoy your time away!</p>' : '<p style="color: #dc2626; font-weight: bold;">Your request was not approved at this time. Please contact your supervisor if you have questions.</p>'}
       
       <center>
-        <a href="https://virtusconnect.base44.app" class="button">View in VirtusConnect</a>
+        <a href="https://pathfinderbps.base44.app" class="button">View in Black Point Portal</a>
       </center>
       
       <div class="footer">
@@ -185,7 +185,7 @@ export default function AdminPTOApproval() {
                 from_name: "Black Point Protection",
                 to: officer.mobile_phone + carrier,
                 subject: "",
-                body: `Black Point Protection: Your PTO request for ${format(new Date(request.start_date), 'MMM d')}-${format(new Date(request.end_date), 'MMM d')} has been APPROVED. Check VirtusConnect for details.`
+                body: `Black Point Protection: Your PTO request for ${format(new Date(request.start_date), 'MMM d')}-${format(new Date(request.end_date), 'MMM d')} has been APPROVED. Check Black Point Portal for details.`
               });
             } catch (error) {
               console.log(`SMS attempt failed for carrier ${carrier}`);

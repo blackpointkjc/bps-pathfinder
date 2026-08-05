@@ -70,7 +70,7 @@ export default function AdminAnnouncements() {
       ];
 
       const priorityEmoji = data.priority === 'urgent' ? '🚨' : data.priority === 'important' ? '⚠️' : '📢';
-      const smsMessage = `${priorityEmoji} Black Point Protection: ${data.title}. Check BPS Connect for full announcement.`;
+      const smsMessage = `${priorityEmoji} Black Point Protection: ${data.title}. Check Black Point Portal for full announcement.`;
 
       for (const officer of activeOfficers) {
         for (const carrier of smsCarriers) {

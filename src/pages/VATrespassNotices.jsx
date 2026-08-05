@@ -274,7 +274,7 @@ export default function VATrespassNotices() {
 
             try {
               await base44.integrations.Core.SendEmail({
-                from_name: "Virtus Security",
+                from_name: "Black Point Protection",
                 to: location.assigned_client_email,
                 subject: `🚫 New Trespass Notice - ${notice.subject_name} - ${location.site_name}`,
                 body: `NEW TRESPASS NOTICE ISSUED\n\n` +
@@ -284,7 +284,7 @@ export default function VATrespassNotices() {
                      `Subject: ${notice.subject_name}\n` +
                      `Duration: ${notice.expiration_date ? `Until ${format(new Date(notice.expiration_date), 'MMMM d, yyyy')}` : (notice.duration || 'Permanent')}\n\n` +
                      `REASON:\n${notice.reason}\n\n` +
-                     `View and manage this notice in your VirtusConnect Client Portal.\n` +
+                     `View and manage this notice in your Black Point Portal Client Portal.\n` +
                      `You can update the expiration date from the Trespass Management page.`
               });
             } catch (error) {
@@ -550,7 +550,7 @@ export default function VATrespassNotices() {
                 }
                 <div style="font-size: 8pt; text-align: center;">
                   ${officerFullName}<br/>
-                  Virtus Security Services<br/>
+                  Black Point Protection Services<br/>
                   ${notice.officer_ip_address ? `IP: ${notice.officer_ip_address}<br/>` : ''}
                   ${notice.created_date ? `Signed (Zulu): ${signedDateZulu}` : ''}
                 </div>

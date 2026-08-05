@@ -489,7 +489,7 @@ export default function DailyActivityReports() {
         
         <div class="report-container">
           <div class="header">
-            <img src="${LOGO_URL}" alt="Virtus Security" class="logo" />
+            <img src="${LOGO_URL}" alt="Black Point Protection" class="logo" />
             <div class="title">SHIFT ACTIVITY REPORT</div>
             <div class="subtitle">Daily Operations Summary</div>
             <div class="dcjs">${DCJS_ID}</div>
@@ -615,7 +615,7 @@ export default function DailyActivityReports() {
           </div>
           
           <div class="footer">
-            <strong>VIRTUS SECURITY SERVICES</strong>
+            <strong>BLACK POINT PROTECTION SERVICES</strong>
             <div style="margin-top: 4px;">VA DCJS #11-6066 | Maryland #106-4738</div>
             <div style="margin-top: 2px;">Confidential Document - For Official Use Only</div>
           </div>

@@ -174,7 +174,7 @@ export default function AdminScheduling() {
       if (isReady) {
         await base44.entities.Announcement.create({
           title: `📅 Week Schedule Ready: ${format(currentWeekStart, 'MMM d')} - ${format(addDays(currentWeekStart, 6), 'MMM d, yyyy')}`,
-          message: `The schedule for the week of ${format(currentWeekStart, 'MMMM d')} to ${format(addDays(currentWeekStart, 6), 'MMMM d, yyyy')} is now available. Please check your schedule in BPS Connect and note any changes to your shifts.`,
+          message: `The schedule for the week of ${format(currentWeekStart, 'MMMM d')} to ${format(addDays(currentWeekStart, 6), 'MMMM d, yyyy')} is now available. Please check your schedule in Black Point Portal and note any changes to your shifts.`,
           priority: 'important'
         });
       }
@@ -2571,9 +2571,9 @@ Return ONLY a JSON array of suggestion objects with this structure:
             <div className="bg-white p-8">
               <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-slate-200">
                 <div className="flex items-center gap-3">
-                  <img src={LOGO_URL} alt="Virtus Security" className="w-16 h-16 object-contain" />
+                  <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
                   <div>
-                    <h2 className="text-xl font-bold text-slate-900">VIRTUS SECURITY</h2>
+                    <h2 className="text-xl font-bold text-slate-900">BLACK POINT PROTECTION</h2>
                     <p className="text-slate-600">Richmond, VA</p>
                   </div>
                 </div>

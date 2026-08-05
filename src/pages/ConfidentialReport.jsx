@@ -250,7 +250,7 @@ export default function ConfidentialReport() {
               <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                 <p className="text-xs text-slate-600 leading-relaxed">
                   <strong>Your Rights:</strong> This report is for your protection and the betterment of our workplace.
-                  Virtus Security prohibits retaliation against anyone who reports concerns in good faith.
+                  Black Point Protection prohibits retaliation against anyone who reports concerns in good faith.
                   Your report will be reviewed promptly and handled with the utmost confidentiality and professionalism.
                 </p>
               </div>

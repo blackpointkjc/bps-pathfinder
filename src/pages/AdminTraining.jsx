@@ -207,7 +207,7 @@ export default function AdminTraining() {
               <h3>${data.title}</h3>
               <p>${data.description}</p>
               ${data.due_after_days ? `<p><strong>Deadline:</strong> Complete within ${data.due_after_days} days of assignment</p>` : ''}
-              <p>Please log in to the BPS Connect portal to complete this training.</p>
+              <p>Please log in to the Black Point Portal portal to complete this training.</p>
               <p>Best regards,<br/>Black Point Protection Training Team</p>
             `
           }).catch(err => console.error('Email failed:', err))

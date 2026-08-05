@@ -334,7 +334,7 @@ export default function AdminLocationTracker() {
     <div className="p-4 md:p-8 min-h-screen">
       <div className="max-w-[1400px] mx-auto space-y-8">
         <div className="flex items-center gap-4">
-          <img src={LOGO_URL} alt="Virtus Security" className="w-16 h-16 object-contain" />
+          <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
               <Activity className="w-8 h-8 text-green-600" />

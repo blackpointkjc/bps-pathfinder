@@ -125,7 +125,7 @@ export default function ClientTrespass() {
 
       for (const admin of adminUsers) {
         await base44.integrations.Core.SendEmail({
-          from_name: "VirtusConnect Client Portal",
+          from_name: "Black Point Portal Client Portal",
           to: admin.email,
           subject: `Trespass Notice Request from ${user?.full_name || user?.email}`,
           body: `

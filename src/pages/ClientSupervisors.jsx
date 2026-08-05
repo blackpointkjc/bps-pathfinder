@@ -69,7 +69,7 @@ export default function ClientSupervisors() {
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
         <h2 className="text-2xl font-bold text-slate-900 mb-2">No Location Assigned</h2>
-        <p className="text-slate-600">Please contact Virtus Security.</p>
+        <p className="text-slate-600">Please contact Black Point Protection.</p>
       </div>
     );
   }
@@ -218,7 +218,7 @@ export default function ClientSupervisors() {
               <p><strong>For immediate site issues:</strong> Contact your Site Supervisor</p>
               <p><strong>For escalated concerns:</strong> Contact Division Command (Senior Corporal through Captain)</p>
               <p className="text-xs text-blue-600 mt-3">
-                Note: Contact information is not displayed for security and privacy reasons. For urgent matters, please contact Virtus Security dispatch.
+                Note: Contact information is not displayed for security and privacy reasons. For urgent matters, please contact Black Point Protection dispatch.
               </p>
             </div>
           </CardContent>

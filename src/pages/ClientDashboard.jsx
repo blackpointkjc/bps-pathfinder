@@ -81,7 +81,7 @@ export default function ClientDashboard() {
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
         <h2 className="text-2xl font-bold text-slate-900 mb-2">No Location Assigned</h2>
-        <p className="text-slate-600">Please contact Virtus Security to assign your account to a location.</p>
+        <p className="text-slate-600">Please contact Black Point Protection to assign your account to a location.</p>
       </div>
     );
   }

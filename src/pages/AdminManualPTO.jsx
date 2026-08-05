@@ -81,7 +81,7 @@ export default function AdminManualPTO() {
   <div class="container">
     <div class="header">
       <h1>${data.pto_type === 'pto' ? '🎉 PTO Added' : '🏥 Sick Time Added'}</h1>
-      <p style="margin: 10px 0 0 0;">Virtus Security Services</p>
+      <p style="margin: 10px 0 0 0;">Black Point Protection Services</p>
     </div>
     
     <div class="content">
@@ -98,10 +98,10 @@ export default function AdminManualPTO() {
         ${data.reason ? `<div class="info-item"><strong>Reason:</strong> ${data.reason}</div>` : ''}
       </div>
       
-      <p>You can view your updated balance in VirtusConnect.</p>
+      <p>You can view your updated balance in Black Point Portal.</p>
       
       <div class="footer">
-        <p><strong>Virtus Security Services</strong><br/>
+        <p><strong>Black Point Protection Services</strong><br/>
         Richmond, Virginia</p>
       </div>
     </div>

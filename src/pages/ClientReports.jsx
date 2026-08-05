@@ -123,7 +123,7 @@ export default function ClientReports() {
 
       for (const admin of adminUsers) {
         await base44.integrations.Core.SendEmail({
-          from_name: "BPS Connect Client Portal",
+          from_name: "Black Point Portal Client Portal",
           to: admin.email,
           subject: `Report Request from ${user?.full_name || user?.email}`,
           body: `

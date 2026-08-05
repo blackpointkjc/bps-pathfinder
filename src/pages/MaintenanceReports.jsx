@@ -337,7 +337,7 @@ export default function MaintenanceReports() {
         
         <div class="report-container">
           <div class="header">
-            <img src="${LOGO_URL}" alt="Virtus Security" class="logo" />
+            <img src="${LOGO_URL}" alt="Black Point Protection" class="logo" />
             <div class="title">MAINTENANCE REPORT</div>
             <div class="subtitle">Facility Maintenance Request</div>
             <div class="dcjs">VA DCJS #11-6066 | Maryland #106-4738</div>
@@ -422,7 +422,7 @@ export default function MaintenanceReports() {
           </div>
           
           <div class="footer">
-            <strong>VIRTUS SECURITY SERVICES</strong>
+            <strong>BLACK POINT PROTECTION SERVICES</strong>
             <div style="margin-top: 5px;">VA DCJS #11-6066 | Maryland #106-4738</div>
             <div style="margin-top: 3px;">For Property Management Use Only</div>
           </div>

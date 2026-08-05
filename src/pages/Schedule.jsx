@@ -314,7 +314,7 @@ export default function Schedule() {
       </head>
       <body>
         <div class="header">
-          <img src="${LOGO_URL}" alt="Virtus Security" class="logo" />
+          <img src="${LOGO_URL}" alt="Black Point Protection" class="logo" />
           <h1>Officer Schedule</h1>
           <div class="officer">${user?.full_name}</div>
           <div class="date-range">
@@ -331,7 +331,7 @@ export default function Schedule() {
         ${scheduleHTML || '<p style="text-align: center; padding: 20px; color: #999;">No shifts or time off scheduled for this period.</p>'}
 
         <div class="footer">
-          <strong>VIRTUS SECURITY SERVICES</strong> | Richmond, VA<br/>
+          <strong>BLACK POINT PROTECTION SERVICES</strong> | Richmond, VA<br/>
           Printed: ${format(new Date(), 'MMM d, yyyy h:mm a')}
         </div>
       </body>

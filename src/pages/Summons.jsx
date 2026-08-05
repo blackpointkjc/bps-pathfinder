@@ -801,7 +801,7 @@ export default function Summons() {
           
           <div class="footer">
             <div>290 ${caseNum}</div>
-            <div style="margin-top: 1px;"><strong>VIRTUS SECURITY</strong> | VA DCJS 11-6066 & Maryland 106-4738</div>
+            <div style="margin-top: 1px;"><strong>BLACK POINT PROTECTION</strong> | VA DCJS 11-6066 & Maryland 106-4738</div>
             <div style="margin-top: 1px;">COURT COPY - PAGE 1 | PD 60 (8/13)</div>
           </div>
         </div>

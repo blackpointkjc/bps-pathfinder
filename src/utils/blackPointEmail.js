@@ -2,10 +2,10 @@ const LOGO_URL = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/pub
 const PORTAL_URL = 'https://pathfinderbps.base44.app';
 
 const replaceLegacyBranding = value => String(value || '')
-  .replace(/VirtusConnect/gi, 'Black Point Portal')
-  .replace(/Virtus Security Services/gi, 'Black Point Protection Services')
-  .replace(/Virtus Security/gi, 'Black Point Protection')
-  .replace(/BPS Connect/gi, 'Black Point Portal')
+  .replace(/Black Point Portal/gi, 'Black Point Portal')
+  .replace(/Black Point Protection Services/gi, 'Black Point Protection Services')
+  .replace(/Black Point Protection/gi, 'Black Point Protection')
+  .replace(/Black Point Portal/gi, 'Black Point Portal')
   .replace(/virtusconnect\.base44\.app/gi, 'pathfinderbps.base44.app');
 
 const plainToHtml = text => replaceLegacyBranding(text)

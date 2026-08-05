@@ -231,7 +231,7 @@ export default function MDTrespassNotices() {
 
             try {
               await base44.integrations.Core.SendEmail({
-                from_name: "Virtus Security",
+                from_name: "Black Point Protection",
                 to: location.assigned_client_email,
                 subject: `🚫 New MD Trespass Notice - ${notice.subject_name} - ${location.site_name}`,
                 body: `NEW MD TRESPASS NOTICE ISSUED\n\n` +
@@ -241,7 +241,7 @@ export default function MDTrespassNotices() {
                      `Subject: ${notice.subject_name}\n` +
                      `Duration: ${notice.expiration_date ? `Until ${format(new Date(notice.expiration_date), 'MMMM d, yyyy')}` : (notice.duration || 'Permanent')}\n\n` +
                      `REASON:\n${notice.reason}\n\n` +
-                     `View and manage this notice in your VirtusConnect Client Portal.`
+                     `View and manage this notice in your Black Point Portal Client Portal.`
               });
             } catch (error) {
               console.error('Error sending email to client:', error);
@@ -452,7 +452,7 @@ export default function MDTrespassNotices() {
                 <div class="sig-line">${getOfficerSignature(notice.created_by)}</div>
                 <div style="font-size: 8pt; text-align: center;">
                   ${officerFullName}<br/>
-                  Virtus Security Services<br/>
+                  Black Point Protection Services<br/>
                   ${notice.officer_ip_address ? `IP: ${notice.officer_ip_address}<br/>` : ''}
                   ${notice.created_date ? `Signed: ${format(new Date(notice.created_date), 'MMM d, yyyy h:mm a')}` : ''}
                 </div>
@@ -461,7 +461,7 @@ export default function MDTrespassNotices() {
           </div>
           
           <div class="footer">
-            <p><strong>VIRTUS SECURITY SERVICES</strong></p>
+            <p><strong>BLACK POINT PROTECTION SERVICES</strong></p>
             <p style="margin-top: 3px;">VA DCJS 11-6066 & Maryland 106-4738</p>
             <p style="margin-top: 3px;">THIS IS AN OFFICIAL TRESPASS NOTICE - RETAIN FOR YOUR RECORDS</p>
           </div>

@@ -260,7 +260,7 @@ export default function TrespassingNotices() {
 
             try {
               await base44.integrations.Core.SendEmail({
-                from_name: "Virtus Security",
+                from_name: "Black Point Protection",
                 to: location.assigned_client_email,
                 subject: `🚫 New Trespass Notice - ${notice.subject_name} - ${location.site_name}`,
                 body: `NEW TRESPASS NOTICE ISSUED\n\n` +
@@ -270,7 +270,7 @@ export default function TrespassingNotices() {
                      `Subject: ${notice.subject_name}\n` +
                      `Duration: ${notice.expiration_date ? `Until ${format(new Date(notice.expiration_date), 'MMMM d, yyyy')}` : (notice.duration || 'Permanent')}\n\n` +
                      `REASON:\n${notice.reason}\n\n` +
-                     `View and manage this notice in your VirtusConnect Client Portal.\n` +
+                     `View and manage this notice in your Black Point Portal Client Portal.\n` +
                      `You can update the expiration date from the Trespass Management page.`
               });
             } catch (error) {
@@ -528,7 +528,7 @@ export default function TrespassingNotices() {
                 <div class="sig-line">${getOfficerSignature(notice.created_by)}</div>
                 <div style="font-size: 8pt; text-align: center;">
                   ${officerFullName}<br/>
-                  Virtus Security Services<br/>
+                  Black Point Protection Services<br/>
                   ${notice.officer_ip_address ? `IP: ${notice.officer_ip_address}<br/>` : ''}
                   ${notice.created_date ? `Signed: ${format(new Date(notice.created_date), 'MMM d, yyyy h:mm a')}` : ''}
                 </div>
@@ -537,7 +537,7 @@ export default function TrespassingNotices() {
           </div>
           
           <div class="footer">
-            <p><strong>VIRTUS SECURITY SERVICES</strong></p>
+            <p><strong>BLACK POINT PROTECTION SERVICES</strong></p>
             <p style="margin-top: 3px;">VA DCJS 11-6066 & Maryland 106-4738</p>
             <p style="margin-top: 3px;">THIS IS AN OFFICIAL TRESPASS NOTICE - RETAIN FOR YOUR RECORDS</p>
           </div>
@@ -924,7 +924,7 @@ export default function TrespassingNotices() {
                             <div className="mt-3 pt-3 border-t border-slate-200 flex items-center gap-2 text-xs text-slate-500">
                               <span className="font-medium">Issued by: {getOfficerIdentifier(notice.created_by)}</span>
                               <span>•</span>
-                              <span>Virtus Security</span>
+                              <span>Black Point Protection</span>
                             </div>
                           </CardContent>
                         </Card>
@@ -1060,7 +1060,7 @@ export default function TrespassingNotices() {
                       </p>
                     </div>
                     <p><strong>Officer:</strong> {getOfficerSignature(selectedNotice.created_by)}</p>
-                    <p><strong>Agency:</strong> Virtus Security Services</p>
+                    <p><strong>Agency:</strong> Black Point Protection Services</p>
                     <p><strong>Location:</strong> {selectedNotice.location}</p>
                     <p><strong>Date:</strong> {format(new Date(selectedNotice.notice_date), 'MMMM d, yyyy h:mm a')}</p>
                     {selectedNotice.officer_ip_address && selectedNotice.created_date && (
@@ -1076,7 +1076,7 @@ export default function TrespassingNotices() {
                   </div>
 
                   <div className="mt-10 pt-4 border-t-2 border-gray-300 text-center text-xs text-gray-500">
-                    <p className="font-bold mb-1">VIRTUS SECURITY SERVICES</p>
+                    <p className="font-bold mb-1">BLACK POINT PROTECTION SERVICES</p>
                     <p>Richmond, VA | Printed on {format(new Date(), 'MMM d, yyyy h:mm a')}</p>
                     <p className="mt-2 font-bold">THIS IS AN OFFICIAL LEGAL NOTICE - RETAIN FOR YOUR RECORDS</p>
                   </div>

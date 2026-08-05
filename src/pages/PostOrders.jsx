@@ -275,7 +275,7 @@ export default function PostOrders() {
                   <Shield className="w-6 h-6" />
                   General Post Orders
                 </CardTitle>
-                <p className="text-sm text-slate-200 mt-2">General Security Post Orders – Virtus Security</p>
+                <p className="text-sm text-slate-200 mt-2">General Security Post Orders – Black Point Protection</p>
                 <p className="text-sm text-slate-200">
                   <strong className="text-white">Post Type:</strong> {selectedPostOrder.post_type === 'armed' ? 'Armed' : selectedPostOrder.post_type === 'concealed_carry' ? 'Concealed Carry' : 'Unarmed'}
                 </p>

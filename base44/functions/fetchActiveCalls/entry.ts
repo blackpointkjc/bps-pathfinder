@@ -27,7 +27,7 @@ async function geocodeAddress(address) {
       `https://nominatim.openstreetmap.org/search?q=${searchAddress}&format=json&limit=1`,
       {
         headers: {
-          'User-Agent': 'VirtusConnect Security App'
+          'User-Agent': 'Black Point Portal Security App'
         }
       }
     );

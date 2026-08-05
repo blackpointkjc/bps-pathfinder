@@ -170,7 +170,7 @@ export default function AdminReports() {
                        `Officer: ${officerName}\n\n` +
                        `ACTIVITIES:\n${report.activities}\n\n` +
                        (report.incidents ? `INCIDENTS:\n${report.incidents}\n\n` : '') +
-                       `View full report in your BPS Connect Client Portal.`;
+                       `View full report in your Black Point Portal Client Portal.`;
         } else if (type === 'daily_activity') {
           const reportDate = report.report_date ? format(new Date(report.report_date), 'EEEE, MMMM d, yyyy') : 'Unknown Date';
           subjectClient = `✅ Daily Activity Report Approved - ${location.site_name} - ${reportDate}`;
@@ -180,7 +180,7 @@ export default function AdminReports() {
                        `Shift Time: ${report.start_time} - ${report.end_time}\n` +
                        `Officer: ${officerName}\n\n` +
                        `HOURLY ACTIVITIES:\n${report.hourly_entries}\n\n` +
-                       `View full report in your BPS Connect Client Portal.`;
+                       `View full report in your Black Point Portal Client Portal.`;
         } else if (type === 'incident') {
           const incidentDate = report.incident_date ? format(new Date(report.incident_date), 'MMMM d, yyyy') : 'Unknown Date';
           subjectClient = `⚠️ Incident Report Approved - ${report.incident_type.toUpperCase().replace(/_/g, ' ')} - ${location.site_name}`;
@@ -192,7 +192,7 @@ export default function AdminReports() {
                        `Type: ${report.incident_type.replace(/_/g, ' ').toUpperCase()}\n` +
                        `Severity: ${report.severity.toUpperCase()}\n\n` +
                        `DESCRIPTION:\n${report.description}\n\n` +
-                       `View full report in your BPS Connect Client Portal.`;
+                       `View full report in your Black Point Portal Client Portal.`;
         } else if (type === 'trespass') {
           const noticeDate = report.notice_date ? format(new Date(report.notice_date), 'MMMM d, yyyy h:mm a') : 'Unknown Date';
           subjectClient = `🚫 Trespass Notice Approved - ${report.subject_name} - ${location.site_name}`;
@@ -203,7 +203,7 @@ export default function AdminReports() {
                        `Subject: ${report.subject_name}\n` +
                        `Duration: ${report.duration || 'Not specified'}\n\n` +
                        `REASON:\n${report.reason}\n\n` +
-                       `View full notice in your BPS Connect Client Portal.`;
+                       `View full notice in your Black Point Portal Client Portal.`;
         } else if (type === 'parking') {
           const violationDate = report.violation_date ? format(new Date(report.violation_date), 'MMMM d, yyyy') : 'Unknown Date';
           subjectClient = `🚗 Parking Violation Approved - ${report.license_plate} - ${location.site_name}`;
@@ -215,7 +215,7 @@ export default function AdminReports() {
                        `Vehicle: ${report.vehicle_make} ${report.vehicle_model} (${report.vehicle_color})\n` +
                        `License Plate: ${report.license_plate} (${report.license_state})\n` +
                        `Violation: ${report.violation_type.replace(/_/g, ' ').toUpperCase()}\n\n` +
-                       `View full violation in your BPS Connect Client Portal.`;
+                       `View full violation in your Black Point Portal Client Portal.`;
         } else if (type === 'criminal') {
           const complaintDate = report.complaint_date ? format(new Date(report.complaint_date), 'MMMM d, yyyy') : 'Unknown Date';
           subjectClient = `⚖️ Criminal Complaint Approved - ${location.site_name}`;
@@ -226,7 +226,7 @@ export default function AdminReports() {
                        `Officer: ${officerName}\n` +
                        `Accused: ${report.accused_first_name} ${report.accused_last_name}\n` +
                        `Violation: ${report.violation_code || 'Not specified'}\n\n` +
-                       `View full complaint in your BPS Connect Client Portal.`;
+                       `View full complaint in your Black Point Portal Client Portal.`;
         } else if (type === 'summons') {
           const offenseDate = report.offense_date ? format(new Date(report.offense_date), 'MMMM d, yyyy') : 'Unknown Date';
           subjectClient = `📋 VA Summons Approved - ${report.violator_first_name} ${report.violator_last_name} - ${location.site_name}`;
@@ -237,7 +237,7 @@ export default function AdminReports() {
                        `Officer: ${officerName}\n` +
                        `Defendant: ${report.violator_first_name} ${report.violator_last_name}\n` +
                        `Violation: ${report.violation_code}\n\n` +
-                       `View full summons in your BPS Connect Client Portal.`;
+                       `View full summons in your Black Point Portal Client Portal.`;
         }
 
         // Create announcement for client users at this location

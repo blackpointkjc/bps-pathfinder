@@ -621,7 +621,7 @@ Provide:
         
         <div class="report-container">
           <div class="header">
-            <img src="${LOGO_URL}" alt="Virtus Security" class="logo" />
+            <img src="${LOGO_URL}" alt="Black Point Protection" class="logo" />
             <div class="title">INCIDENT REPORT</div>
             <div class="subtitle">Security Incident Documentation</div>
             <div class="dcjs">${DCJS_ID}</div>
@@ -1407,7 +1407,7 @@ Provide:
                     </div>
 
                     <div className="mt-3 pt-3 border-t border-slate-200 flex items-center gap-2 text-xs text-slate-500">
-                      <span className="font-medium">Virtus Security</span>
+                      <span className="font-medium">Black Point Protection</span>
                       <span>•</span>
                       <span>Richmond, VA</span>
                       <span>•</span>

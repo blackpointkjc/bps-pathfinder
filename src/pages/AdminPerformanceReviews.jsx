@@ -257,7 +257,7 @@ export default function AdminPerformanceReviews() {
 
 Overall Rating: ${data.overall_rating}/5 stars
 
-Please log in to VirtusConnect to view the complete review and acknowledge receipt.
+Please log in to Black Point Portal to view the complete review and acknowledge receipt.
 
 Reviewed by: ${user.first_name} ${user.last_name}
 Review Date: ${format(new Date(), 'MMMM d, yyyy')}`
