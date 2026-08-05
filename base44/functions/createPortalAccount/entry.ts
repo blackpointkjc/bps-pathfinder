@@ -111,14 +111,26 @@ Deno.serve(async (req) => {
     const users = await base44.asServiceRole.entities.User.list();
     let portalUser = (users || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
     let invitationSent = false;
+    let invitationError = '';
 
     if (!portalUser) {
-      const invitation = await base44.asServiceRole.users.inviteUser(normalizedEmail, 'user');
-      invitationSent = true;
-      portalUser = invitation?.user || invitation;
-      if (!portalUser?.id) {
-        const refreshed = await base44.asServiceRole.entities.User.list();
-        portalUser = (refreshed || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
+      try {
+        const invitation = await base44.asServiceRole.users.inviteUser(normalizedEmail, 'user');
+        invitationSent = true;
+        portalUser = invitation?.user || invitation;
+
+        // Base44 may create the pending User record asynchronously. Retry briefly so
+        // portal permissions can be attached immediately when the record becomes available.
+        if (!portalUser?.id) {
+          for (let attempt = 0; attempt < 4 && !portalUser?.id; attempt += 1) {
+            if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 500));
+            const refreshed = await base44.asServiceRole.entities.User.list();
+            portalUser = (refreshed || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
+          }
+        }
+      } catch (inviteError) {
+        invitationError = inviteError?.message || 'Unable to send the Base44 invitation';
+        console.error('Portal invitation failed', inviteError);
       }
     }
 
@@ -129,7 +141,6 @@ Deno.serve(async (req) => {
         first_name,
         last_name,
         mobile_phone: mobile_phone || '',
-        role: 'user',
         additional_roles: employeeRoles,
         assigned_location: accountType === 'client' ? assigned_location || '' : '',
         assigned_locations: accountType === 'client' && assigned_location ? [assigned_location] : [],
@@ -164,6 +175,14 @@ Deno.serve(async (req) => {
       assignmentPending = true;
     }
 
+    // A brand-new address must receive the platform invitation. Do not report a
+    // successful account creation when the native invitation itself failed.
+    if (!portalUser && !invitationSent) {
+      return Response.json({
+        error: invitationError || 'Unable to create or invite this account. Please verify the email address and try again.'
+      }, { status: 502 });
+    }
+
     let emailSent = false;
     let emailError = '';
     try {
@@ -182,6 +201,7 @@ Deno.serve(async (req) => {
     return Response.json({
       success: true,
       invitation_sent: invitationSent,
+      invitation_error: invitationError || undefined,
       assignment_pending: assignmentPending,
       user_id: portalUser?.id || null,
       email_sent: emailSent,
