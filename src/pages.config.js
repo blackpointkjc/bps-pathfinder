@@ -20,7 +20,7 @@
  *   }
  *   
  *   export const pagesConfig = {
- *       mainPage: "HomePage",
+ *       mainPage: "CommandDashboard",
  *       Pages: PAGES,
  *   };
  * 
@@ -46,14 +46,14 @@ import __Layout from './Layout.jsx';
  *   }
  *
  *   export const pagesConfig = {
- *       mainPage: "Home",
+ *       mainPage: "CommandDashboard",
  *       Pages: PAGES,
  *       Layout: __Layout,
  *   };
  *
  * To change the main page from HomePage to Dashboard, use find_replace:
- *   Old: mainPage: "HomePage",
- *   New: mainPage: "Dashboard",
+ *   Old: mainPage: "CommandDashboard",
+ *   New: mainPage: "CommandDashboard",
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
@@ -326,7 +326,7 @@ export const PAGES = {
 }
 
 export const pagesConfig = {
-    mainPage: "Dashboard",
+    mainPage: "CommandDashboard",
     Pages: PAGES,
     Layout: __Layout,
 };

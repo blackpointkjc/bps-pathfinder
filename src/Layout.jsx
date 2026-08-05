@@ -2,70 +2,211 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Activity, BarChart3, Bot, ChevronLeft, ChevronRight, Clock3, FileWarning,
-  Gauge, LogOut, Map, Menu, Radio, Shield, Siren, Users, X
+  Activity, AlertTriangle, Award, BarChart3, Bell, BookOpen, Bot, Briefcase,
+  Building2, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight,
+  ClipboardCheck, ClipboardList, Clock3, DollarSign, DoorOpen, FileText,
+  FileWarning, Gauge, GraduationCap, Layers, LogOut, Map, MapPin, Menu,
+  MessageCircle, Package, Radio, Search, Settings, Shield, ShieldCheck,
+  Siren, UserCheck, UserX, Users, Wrench, X
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
 import { stopAllAlerts } from '@/utils/alertUtils';
 
-const NAV_GROUPS = [
-  {
-    label: 'OPERATIONS',
-    items: [
-      { label: 'Command', page: 'CommandDashboard', icon: Gauge, roles: ['user', 'dispatch', 'admin'] },
-      { label: 'Dispatch', page: 'DispatchCenter', icon: Radio, roles: ['dispatch', 'admin'] },
-      { label: 'Live Map', page: 'Navigation', icon: Map, roles: ['user', 'dispatch', 'admin'] },
-      { label: 'Field Unit', page: 'FieldUnitView', icon: Shield, roles: ['user', 'dispatch', 'admin'] },
+const CENTER_CONFIG = {
+  cad: {
+    label: 'CAD Center',
+    icon: Radio,
+    groups: [
+      { label: 'Operations', items: [
+        ['Command Dashboard', 'CommandDashboard', Gauge],
+        ['Dispatch Center', 'DispatchCenter', Radio],
+        ['Live Map', 'Navigation', Map],
+        ['Field Unit', 'FieldUnitView', Shield],
+      ]},
+      { label: 'Intelligence', items: [
+        ['Call History', 'CallHistory', Clock3],
+        ['BOLO / Alerts', 'BOLOAlerts', FileWarning],
+        ['Records AI', 'RecordsAssistant', Bot],
+      ]},
+      { label: 'Administration', items: [
+        ['Personnel', 'Personnel', Users],
+        ['CAD Reports', 'Reports', BarChart3],
+        ['Admin Control', 'AdminPortal', Activity],
+      ]},
     ],
   },
-  {
-    label: 'INTELLIGENCE',
-    items: [
-      { label: 'Call History', page: 'CallHistory', icon: Clock3, roles: ['admin'] },
-      { label: 'BOLO / Alerts', page: 'BOLOAlerts', icon: FileWarning, roles: ['admin'] },
-      { label: 'Records AI', page: 'RecordsAssistant', icon: Bot, roles: ['admin'] },
+  officer: {
+    label: 'Officer Center',
+    icon: Shield,
+    groups: [
+      { label: 'Dashboard', items: [
+        ['Dashboard', 'Dashboard', Gauge],
+        ['My Profile', 'OfficerProfile', UserCheck],
+        ['My Performance', 'MyPerformanceAnalytics', BarChart3],
+      ]},
+      { label: 'Schedule', items: [
+        ['Time Clock', 'TimeClock', Clock3],
+        ['My Schedule', 'Schedule', Calendar],
+        ['Open Shifts', 'OpenShifts', Briefcase],
+        ['Time Requests', 'TimeRequests', CalendarClock],
+        ['Payroll Dates', 'PayrollDates', DollarSign],
+      ]},
+      { label: 'Reports', items: [
+        ['Daily Activity Reports', 'DailyActivityReports', ClipboardList],
+        ['Incident Reports', 'IncidentReports', AlertTriangle],
+        ['Maintenance', 'MaintenanceReports', Wrench],
+        ['Open Door Reports', 'OpenDoorReports', DoorOpen],
+        ['Confidential Report', 'ConfidentialReport', ShieldCheck],
+        ['QR Patrol Scan', 'QRPatrolScan', MapPin],
+        ['VA Trespass Notices', 'VATrespassNotices', UserX],
+        ['VA Criminal Complaint', 'VACriminalComplaints', Shield],
+        ['MD Trespass Notices', 'MDTrespassNotices', UserX],
+        ['MD Criminal Complaint', 'MDCriminalComplaints', Shield],
+      ]},
+      { label: 'Communication', items: [
+        ['Team Chat', 'TeamChat', MessageCircle],
+        ['Announcements', 'Announcements', Bell],
+        ['Expense Reports', 'ExpenseReports', DollarSign],
+      ]},
+      { label: 'Resources', items: [
+        ['Rank Duties', 'RankDuties', Shield],
+        ['Post Orders', 'PostOrders', BookOpen],
+        ['Training & Compliance', 'OfficerTraining', GraduationCap],
+      ]},
     ],
   },
-  {
-    label: 'ADMINISTRATION',
-    items: [
-      { label: 'Personnel', page: 'Personnel', icon: Users, roles: ['admin'] },
-      { label: 'CAD Reports', page: 'Reports', icon: BarChart3, roles: ['admin'] },
-      { label: 'Admin Control', page: 'AdminPortal', icon: Activity, roles: ['admin'] },
+  supervisor: {
+    label: 'Supervisor Center',
+    icon: ClipboardCheck,
+    groups: [
+      { label: 'Supervisor Portal', items: [
+        ['My Action Items', 'SupervisorTasks', ClipboardList],
+        ['My Daily Code', 'SupervisorDailyCode', ShieldCheck],
+        ['Rank Structure', 'RankStructure', Shield],
+        ['Division Directory', 'DivisionDirectory', Users],
+        ['Performance Review Tasks', 'SupervisorPerformanceReview', ClipboardCheck],
+        ['Officer Inspections', 'SupervisorInspections', ClipboardCheck],
+        ['Write-Up Reports', 'SupervisorWriteUps', FileWarning],
+        ['Use-of-Force Reports', 'SupervisorUseOfForce', AlertTriangle],
+        ['File Complaints', 'SupervisorComplaints', AlertTriangle],
+        ['Call-Out Management', 'SupervisorCallOuts', UserCheck],
+        ['Supervisor Chat', 'SupervisorChat', MessageCircle],
+      ]},
     ],
   },
-  {
-    label: 'WORKFORCE',
-    items: [
-      { label: 'Time Clock', page: 'TimeClock', icon: Clock3, roles: ['user', 'dispatch', 'admin'] },
-      { label: 'My Schedule', page: 'Schedule', icon: Activity, roles: ['user', 'dispatch', 'admin'] },
-      { label: 'Officer Roster', page: 'OfficerRoster', icon: Users, roles: ['dispatch', 'admin'] },
-      { label: 'Scheduling Admin', page: 'AdminScheduling', icon: Activity, roles: ['admin'] },
-      { label: 'Payroll', page: 'AccountingPayroll', icon: BarChart3, roles: ['admin'] },
+  admin: {
+    label: 'Admin Center',
+    icon: Settings,
+    groups: [
+      { label: 'Command & Analytics', items: [
+        ['Admin Dashboard', 'AdminDashboard', Gauge],
+        ['Company Analytics', 'AdminAnalytics', BarChart3],
+        ['Pending Users', 'AdminUsers', Users],
+        ['Manage Employees', 'ManageCompanyEmployees', Briefcase],
+        ['Officer Roster', 'AdminOfficerRoster', Users],
+        ['Officer Management', 'AdminOfficerManagement', UserCheck],
+        ['Location Tracker', 'AdminLocationTracker', MapPin],
+        ['Geofence Alerts', 'AdminGeofenceAlerts', AlertTriangle],
+      ]},
+      { label: 'Reports & Compliance', items: [
+        ['All Reports', 'AdminReports', ClipboardList],
+        ['Client Reports', 'AdminClientReports', FileText],
+        ['Supervisor Reports', 'AdminSupervisorReports', UserCheck],
+        ['Confidential Reports', 'AdminConfidentialReports', ShieldCheck],
+        ['Complaints', 'AdminComplaints', AlertTriangle],
+        ['Commendations', 'AdminCommendations', Award],
+        ['Performance Reviews', 'AdminPerformanceReviews', ClipboardCheck],
+        ['Certification Alerts', 'AdminCertificationAlerts', Bell],
+      ]},
+      { label: 'Scheduling & Payroll', items: [
+        ['Scheduling', 'AdminScheduling', Calendar],
+        ['Planned Shifts', 'AdminPlannedShifts', Calendar],
+        ['Shift Bids', 'AdminShiftBids', Briefcase],
+        ['Time Entries', 'AdminTimeEntries', Clock3],
+        ['Manage Time Entries', 'ManageTimeEntries', Clock3],
+        ['Payroll', 'AdminPayroll', DollarSign],
+        ['Payroll Configuration', 'AdminPayrollConfig', Settings],
+        ['PTO Approval', 'AdminPTOApproval', ClipboardCheck],
+        ['PTO Review', 'AdminPTOReview', ClipboardList],
+        ['Manual PTO', 'AdminManualPTO', CalendarClock],
+      ]},
+      { label: 'Operations Management', items: [
+        ['Locations', 'AdminLocations', Building2],
+        ['Divisions', 'AdminDivisions', Layers],
+        ['Equipment', 'AdminEquipment', Package],
+        ['Documents', 'AdminDocuments', FileText],
+        ['Post Orders', 'AdminPostOrders', BookOpen],
+        ['Announcements', 'AdminAnnouncements', Bell],
+        ['Messages', 'AdminMessages', MessageCircle],
+        ['Notifications', 'AdminNotifications', Bell],
+        ['Special Requests', 'AdminSpecialRequests', CalendarClock],
+        ['Portal Settings', 'AdminPortalSettings', Settings],
+      ]},
+      { label: 'QR Patrol', items: [
+        ['QR Checkpoints', 'AdminQRCheckpoints', MapPin],
+        ['QR Print Manager', 'AdminQRPrintManager', FileText],
+        ['QR Patrol Reports', 'AdminQRReports', BarChart3],
+      ]},
     ],
   },
-  {
-    label: 'REPORTING',
-    items: [
-      { label: 'Incident Reports', page: 'IncidentReports', icon: FileWarning, roles: ['user', 'dispatch', 'admin'] },
-      { label: 'Daily Activity', page: 'DailyActivityReports', icon: BarChart3, roles: ['user', 'dispatch', 'admin'] },
-      { label: 'Maintenance', page: 'MaintenanceReports', icon: Activity, roles: ['user', 'dispatch', 'admin'] },
-      { label: 'All Operations Reports', page: 'AdminReports', icon: BarChart3, roles: ['admin'] },
+  training: {
+    label: 'Training Center',
+    icon: GraduationCap,
+    groups: [
+      { label: 'Training', items: [
+        ['Training Creation', 'AdminTraining', GraduationCap],
+        ['Training & Compliance', 'AdminTrainingCompliance', ShieldCheck],
+        ['Training Compliance', 'TrainingCompliance', ClipboardCheck],
+        ['Compliance Tracker', 'TrainingComplianceTracker', BarChart3],
+        ['Manage Students', 'ManageStudents', Users],
+        ['Student Portal', 'StudentPortal', GraduationCap],
+        ['Training Records', 'TrainingRecords', BookOpen],
+      ]},
     ],
   },
-  {
-    label: 'ORGANIZATION',
-    items: [
-      { label: 'Clients', page: 'ManageClients', icon: Users, roles: ['admin'] },
-      { label: 'Training', page: 'AdminTraining', icon: Shield, roles: ['admin'] },
-      { label: 'Documents', page: 'AdminDocuments', icon: FileWarning, roles: ['admin'] },
-      { label: 'Accounting', page: 'AccountingProfit', icon: BarChart3, roles: ['admin'] },
-      { label: 'Team Chat', page: 'TeamChat', icon: Radio, roles: ['user', 'dispatch', 'admin'] },
+  accounting: {
+    label: 'Accounting Center',
+    icon: DollarSign,
+    groups: [
+      { label: 'Accounting', items: [
+        ['Payroll Management', 'AccountingPayroll', DollarSign],
+        ['Client Invoices', 'AccountingInvoices', FileText],
+        ['Company Profit', 'AccountingProfit', BarChart3],
+        ['Tax Liability', 'AccountingTaxLiability', ClipboardList],
+        ['W-2 Generator', 'AccountingW2Generator', FileText],
+        ['Expense Approval', 'AdminExpenseApproval', ClipboardCheck],
+        ['PTO Loss Report', 'AdminPTOLossReport', AlertTriangle],
+      ]},
     ],
   },
-];
+  client: {
+    label: 'Client Center',
+    icon: Building2,
+    groups: [
+      { label: 'Client Portal', items: [
+        ['Dashboard', 'ClientDashboard', Gauge],
+        ['Security Alerts', 'ClientAlerts', AlertTriangle],
+        ['Special Requests', 'ClientSpecialRequests', CalendarClock],
+        ['Site Supervisors', 'ClientSupervisors', UserCheck],
+        ['All Reports', 'ClientReports', FileText],
+        ['QR Patrol Reports', 'ClientQRReports', MapPin],
+        ['Payroll & Invoicing', 'ClientPayrollReport', DollarSign],
+        ['Trespass Management', 'ClientTrespass', UserX],
+        ['Site Schedule', 'ClientSchedule', Calendar],
+        ['Training Documents', 'ClientDocuments', BookOpen],
+        ['Feedback', 'ClientFeedback', Award],
+        ['Location Info', 'ClientLocation', MapPin],
+      ]},
+    ],
+  },
+};
+
+const PAGE_TO_CENTER = Object.entries(CENTER_CONFIG).reduce((map, [center, config]) => {
+  config.groups.forEach(group => group.items.forEach(([, page]) => { map[page] = center; }));
+  return map;
+}, {});
 
 const FULLSCREEN_PAGES = new Set(['Navigation']);
 
@@ -75,65 +216,83 @@ function roleName(user) {
   return 'FIELD UNIT';
 }
 
-function Sidebar({ collapsed, mobile = false, user, groups, currentPageName, onCloseMobile }) {
+function allowedCenters(user) {
+  if (user?.role === 'admin') return Object.keys(CENTER_CONFIG);
+  if (user?.role === 'dispatch') return ['cad', 'officer', 'supervisor'];
+  if (user?.additional_roles?.includes('supervisor')) return ['cad', 'officer', 'supervisor'];
+  if (user?.additional_roles?.includes('client') || user?.user_type === 'client') return ['client'];
+  return ['cad', 'officer'];
+}
+
+function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, onCloseMobile }) {
+  const availableCenters = allowedCenters(user);
+  const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
+  const query = search.trim().toLowerCase();
+  const groups = center.groups
+    .map(group => ({
+      ...group,
+      items: group.items.filter(([label]) => !query || label.toLowerCase().includes(query)),
+    }))
+    .filter(group => group.items.length > 0);
+
   return (
-    <div className="flex h-full flex-col bg-[#08111f]">
-      <div className="h-16 border-b border-[#1c3049] px-3 flex items-center gap-3">
-        <div className="relative flex h-10 w-10 items-center justify-center rounded bg-[#12315a] border border-[#2c5d91]">
-          <Shield className="h-5 w-5 text-[#8cc7ff]" />
-          <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#08111f] bg-emerald-400" />
-        </div>
-        {(!collapsed || mobile) && (
-          <div className="min-w-0">
-            <div className="text-[12px] font-black tracking-[0.18em] text-white">BPS PATHFINDER</div>
-            <div className="text-[9px] tracking-[0.2em] text-[#6f8aa8]">PUBLIC SAFETY CAD</div>
+    <div className="flex h-full flex-col bg-[#07111f]">
+      <div className="border-b border-[#1b3048] px-3 py-3">
+        <div className="flex items-center gap-3">
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#315f8e] bg-[#12315a]">
+            <Shield className="h-5 w-5 text-[#8cc7ff]" />
+            <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#07111f] bg-emerald-400" />
           </div>
-        )}
+          {(!collapsed || mobile) && <div className="min-w-0">
+            <div className="text-[12px] font-black tracking-[0.16em] text-white">BPS PATHFINDER</div>
+            <div className="text-[9px] tracking-[0.16em] text-[#7290ad]">BLACK POINT PROTECTION</div>
+          </div>}
+        </div>
+
+        {(!collapsed || mobile) && <div className="mt-3 grid grid-cols-2 gap-1.5">
+          {availableCenters.map(key => {
+            const item = CENTER_CONFIG[key];
+            const Icon = item.icon;
+            const active = activeCenter === key;
+            return <button key={key} onClick={() => setActiveCenter(key)} className={`flex items-center gap-2 rounded-md border px-2 py-2 text-left text-[10px] font-bold transition ${active ? 'border-[#4385c6] bg-[#153b65] text-white' : 'border-[#1c3249] bg-[#0c1a2a] text-[#87a0b8] hover:bg-[#11263d] hover:text-white'}`}>
+              <Icon className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{item.label.replace(' Center', '')}</span>
+            </button>;
+          })}
+        </div>}
       </div>
 
+      {(!collapsed || mobile) && <div className="px-3 pt-3">
+        <div className="flex items-center gap-2 rounded-md border border-[#1c3249] bg-[#0a1726] px-2.5 py-2">
+          <Search className="h-3.5 w-3.5 text-[#65819d]" />
+          <input value={search} onChange={event => setSearch(event.target.value)} placeholder={`Search ${center.label}`} className="w-full bg-transparent text-[11px] text-white outline-none placeholder:text-[#55708a]" />
+        </div>
+      </div>}
+
       <nav className="flex-1 overflow-y-auto px-2 py-3">
-        {groups.map(group => (
-          <div key={group.label} className="mb-4">
-            {(!collapsed || mobile) && (
-              <div className="px-2 pb-1.5 text-[9px] font-bold tracking-[0.22em] text-[#54708f]">{group.label}</div>
-            )}
-            <div className="space-y-1">
-              {group.items.map(({ label, page, icon: Icon }) => {
-                const active = currentPageName === page;
-                return (
-                  <Link
-                    key={page}
-                    to={createPageUrl(page)}
-                    title={collapsed && !mobile ? label : undefined}
-                    onClick={() => onCloseMobile && onCloseMobile()}
-                    className={`relative flex h-10 items-center gap-3 rounded px-3 transition-colors ${
-                      active
-                        ? 'bg-[#14345c] text-white border border-[#2d6095]'
-                        : 'text-[#8ea4bc] border border-transparent hover:bg-[#101f32] hover:text-white'
-                    } ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
-                  >
-                    {active && <span className="absolute left-0 top-2 bottom-2 w-0.5 bg-[#55aaff]" />}
-                    <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-[#76bcff]' : 'text-[#6683a0]'}`} />
-                    {(!collapsed || mobile) && <span className="text-[11px] font-bold tracking-wide">{label}</span>}
-                  </Link>
-                );
-              })}
-            </div>
+        {groups.map(group => <div key={group.label} className="mb-4">
+          {(!collapsed || mobile) && <div className="px-2 pb-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-[#54708f]">{group.label}</div>}
+          <div className="space-y-1">
+            {group.items.map(([label, page, Icon]) => {
+              const active = currentPageName === page;
+              return <Link key={page} to={createPageUrl(page)} title={collapsed && !mobile ? label : undefined} onClick={() => onCloseMobile?.()} className={`relative flex min-h-10 items-center gap-3 rounded-md border px-3 py-2 transition ${active ? 'border-[#2f6499] bg-[#14385f] text-white' : 'border-transparent text-[#8ea4bc] hover:border-[#1c3650] hover:bg-[#102239] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
+                {active && <span className="absolute bottom-2 left-0 top-2 w-0.5 bg-[#55aaff]" />}
+                <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-[#7ec1ff]' : 'text-[#6683a0]'}`} />
+                {(!collapsed || mobile) && <span className="text-[11px] font-bold leading-tight">{label}</span>}
+              </Link>;
+            })}
           </div>
-        ))}
+        </div>)}
+        {groups.length === 0 && (!collapsed || mobile) && <div className="px-3 py-8 text-center text-xs text-[#68829b]">No tools match your search.</div>}
       </nav>
 
-      <div className="border-t border-[#1c3049] p-2">
-        {(!collapsed || mobile) && (
-          <div className="mb-2 rounded border border-[#1c3049] bg-[#0c1828] px-3 py-2">
-            <div className="text-[9px] tracking-widest text-[#597491]">{roleName(user)}</div>
-            <div className="truncate text-[11px] font-bold text-white">{[user?.rank, user?.last_name].filter(Boolean).join(' ') || user?.full_name || user?.email || 'AUTHORIZED USER'}</div>
-            <div className="mt-1 text-[9px] text-emerald-400">● SECURE SESSION</div>
-          </div>
-        )}
+      <div className="border-t border-[#1b3048] p-2">
+        {(!collapsed || mobile) && <div className="mb-2 rounded-md border border-[#1c3049] bg-[#0c1828] px-3 py-2">
+          <div className="text-[9px] tracking-widest text-[#597491]">{roleName(user)}</div>
+          <div className="truncate text-[11px] font-bold text-white">{[user?.rank, user?.last_name].filter(Boolean).join(' ') || user?.full_name || user?.email || 'AUTHORIZED USER'}</div>
+          <div className="mt-1 text-[9px] text-emerald-400">● SECURE SESSION</div>
+        </div>}
         <button onClick={() => base44.auth.logout('/')} className={`flex h-10 w-full items-center gap-3 rounded px-3 text-[#8399b0] hover:bg-red-950/30 hover:text-red-300 ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
-          <LogOut className="h-4 w-4" />
-          {(!collapsed || mobile) && <span className="text-[11px] font-bold">SIGN OUT</span>}
+          <LogOut className="h-4 w-4" />{(!collapsed || mobile) && <span className="text-[11px] font-bold">SIGN OUT</span>}
         </button>
       </div>
     </div>
@@ -148,16 +307,27 @@ export default function Layout({ children, currentPageName }) {
   const [activeAlert, setActiveAlert] = useState(null);
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
+  const [search, setSearch] = useState('');
+  const [activeCenter, setActiveCenterState] = useState(() => localStorage.getItem('bps-active-center') || 'cad');
+
+  const setActiveCenter = center => {
+    setActiveCenterState(center);
+    setSearch('');
+    localStorage.setItem('bps-active-center', center);
+  };
 
   useEffect(() => {
-    const tick = setInterval(() => setClock(new Date()), 1000);
-    return () => clearInterval(tick);
+    const pageCenter = PAGE_TO_CENTER[currentPageName];
+    if (pageCenter && allowedCenters(user).includes(pageCenter)) setActiveCenter(pageCenter);
+  }, [currentPageName, user?.role]);
+
+  useEffect(() => {
+    const id = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
-    const load = () => base44.entities.SystemOutage.filter({ resolved_at: null })
-      .then(data => setOutages(data || []))
-      .catch(() => setOutages([]));
+    const load = () => base44.entities.SystemOutage.filter({ resolved_at: null }).then(setOutages).catch(() => setOutages([]));
     load();
     const id = setInterval(load, 60000);
     return () => clearInterval(id);
@@ -174,87 +344,51 @@ export default function Layout({ children, currentPageName }) {
     };
   }, []);
 
-  const groups = useMemo(() => {
-    const role = user?.role === 'admin' ? 'admin' : user?.role === 'dispatch' ? 'dispatch' : 'user';
-    return NAV_GROUPS
-      .map(group => ({ ...group, items: group.items.filter(item => item.roles.includes(role)) }))
-      .filter(group => group.items.length);
+  useEffect(() => {
+    const available = allowedCenters(user);
+    if (!available.includes(activeCenter)) setActiveCenter(available[0] || 'cad');
   }, [user?.role]);
 
-  const acknowledge = () => {
-    stopAllAlerts();
-    setActiveAlert(null);
-  };
-
-  if (FULLSCREEN_PAGES.has(currentPageName)) {
-    return <div className="h-full w-full bg-[#050a12]">{children}</div>;
-  }
+  if (FULLSCREEN_PAGES.has(currentPageName)) return <div className="h-full w-full bg-[#050a12]">{children}</div>;
 
   const criticalOutage = outages.some(item => item.severity === 'outage');
+  const centerLabel = CENTER_CONFIG[activeCenter]?.label || 'CAD Center';
 
-  return (
-    <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app">
-      <aside className="hidden md:flex relative flex-col border-r border-[#1c3049]" style={{ width: collapsed ? 64 : 224, transition: 'width .18s ease' }}>
-        <Sidebar collapsed={collapsed} user={user} groups={groups} currentPageName={currentPageName} />
-        <button
-          onClick={() => setCollapsed(value => !value)}
-          className="absolute -right-3 top-20 z-40 flex h-8 w-6 items-center justify-center rounded border border-[#294867] bg-[#0b1726] text-[#7892ac] hover:text-white"
-          aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-        >
-          {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
-        </button>
-      </aside>
+  return <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app">
+    <aside className="relative hidden flex-col border-r border-[#1c3049] md:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
+      <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} />
+      <button onClick={() => setCollapsed(value => !value)} className="absolute -right-3 top-20 z-40 flex h-8 w-6 items-center justify-center rounded border border-[#294867] bg-[#0b1726] text-[#7892ac] hover:text-white" aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}>
+        {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
+      </button>
+    </aside>
 
-      <AnimatePresence>
-        {mobileOpen && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-black/70 md:hidden" onClick={() => setMobileOpen(false)} />
-            <motion.aside initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }} className="fixed inset-y-0 left-0 z-50 w-64 border-r border-[#1c3049] md:hidden">
-              <button onClick={() => setMobileOpen(false)} className="absolute right-3 top-3 z-10 text-[#8199b2]"><X className="h-4 w-4" /></button>
-              <Sidebar mobile collapsed={collapsed} user={user} groups={groups} currentPageName={currentPageName} onCloseMobile={() => setMobileOpen(false)} />
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+    <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/70 md:hidden" onClick={() => setMobileOpen(false)}>
+      <motion.aside initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }} className="h-full w-[290px] border-r border-[#1c3049]" onClick={event => event.stopPropagation()}>
+        <Sidebar mobile user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} onCloseMobile={() => setMobileOpen(false)} />
+      </motion.aside>
+    </motion.div>}</AnimatePresence>
 
-      <section className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center gap-3 border-b border-[#1c3049] bg-[#091321] px-3">
-          <button onClick={() => setMobileOpen(true)} className="md:hidden text-[#8fa8c2]"><Menu className="h-4 w-4" /></button>
-          <div className="flex items-center gap-2">
-            <Siren className="h-4 w-4 text-[#5aabff]" />
-            <span className="text-[11px] font-black tracking-[0.16em]">{(currentPageName || 'COMMAND').replace(/([a-z])([A-Z])/g, '$1 $2').toUpperCase()}</span>
+    <section className="flex min-w-0 flex-1 flex-col">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-3 md:px-5">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setMobileOpen(true)} className="rounded border border-[#294867] p-2 text-[#89a3bd] md:hidden"><Menu className="h-4 w-4" /></button>
+          <div>
+            <div className="text-[11px] font-black uppercase tracking-[0.15em] text-white">{centerLabel}</div>
+            <div className="text-[9px] tracking-widest text-[#607c98]">UNIFIED OPERATIONS PLATFORM</div>
           </div>
-          <div className="h-4 w-px bg-[#223852]" />
-          <span className="hidden text-[9px] tracking-widest text-[#607c98] sm:block">REGIONAL OPERATIONS NETWORK</span>
-          <div className="flex-1" />
-          <Link to={createPageUrl('AdminPortal')} className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[9px] font-bold ${
-            criticalOutage ? 'border-red-600/60 bg-red-950/40 text-red-300' : outages.length ? 'border-amber-600/50 bg-amber-950/30 text-amber-300' : 'border-emerald-700/50 bg-emerald-950/20 text-emerald-300'
-          }`}>
-            <Activity className="h-3 w-3" />
-            {criticalOutage ? 'SYSTEM OUTAGE' : outages.length ? 'SYSTEM DEGRADED' : 'SYSTEM NORMAL'}
-          </Link>
-          <div className="hidden text-right font-mono sm:block">
-            <div className="text-[11px] font-bold text-white">{clock.toLocaleTimeString('en-US', { hour12: false, timeZone: 'America/New_York' })}</div>
-            <div className="text-[8px] tracking-widest text-[#607c98]">EASTERN TIME</div>
-          </div>
-        </header>
+        </div>
+        <div className="flex items-center gap-3 text-[10px] text-[#7791aa]">
+          {criticalOutage && <span className="hidden rounded border border-red-700/60 bg-red-950/40 px-2 py-1 font-bold text-red-300 sm:block">SYSTEM OUTAGE</span>}
+          <span className="font-mono text-[#9fb6cc]">{clock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+        </div>
+      </header>
 
-        {activeAlert && (
-          <div className="flex h-10 shrink-0 items-center gap-3 border-b border-red-600 bg-red-950/80 px-3">
-            <span className="flex items-center gap-1.5 text-[10px] font-black tracking-wider text-red-300"><Siren className="h-3.5 w-3.5" /> PRIORITY ALERT</span>
-            <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-white">{activeAlert.incident} — {activeAlert.location}</span>
-            <button onClick={acknowledge} className="rounded border border-red-500 bg-red-700 px-3 py-1 text-[9px] font-black">ACKNOWLEDGE</button>
-          </div>
-        )}
+      {activeAlert && <div className="flex items-center justify-between border-b border-red-600 bg-red-950 px-4 py-2 text-sm text-red-100">
+        <div className="flex items-center gap-2"><Siren className="h-4 w-4 animate-pulse" /><span className="font-bold">{activeAlert.title || 'Priority dispatch alert'}</span></div>
+        <button onClick={() => { stopAllAlerts(); setActiveAlert(null); }} className="rounded border border-red-500/50 px-2 py-1 text-xs font-bold hover:bg-red-900">ACKNOWLEDGE</button>
+      </div>}
 
-        <main className="min-h-0 flex-1 overflow-auto bg-[#060c15]">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={location.pathname} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: .12 }} className="h-full">
-              {children}
-            </motion.div>
-          </AnimatePresence>
-        </main>
-      </section>
-    </div>
-  );
+      <main className="min-h-0 flex-1 overflow-auto bg-[#07101b]">{children}</main>
+    </section>
+  </div>;
 }
