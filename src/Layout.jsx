@@ -53,7 +53,7 @@ const CENTER_CONFIG = {
         ['My Schedule', 'Schedule', Calendar],
         ['Open Shifts', 'OpenShifts', Briefcase],
         ['Time Requests', 'TimeRequests', CalendarClock],
-        ['Payroll Dates', 'PayrollDates', DollarSign],
+        ['Payroll Dates', 'OfficerPayrollDates', DollarSign],
       ]},
       { label: 'Reports', items: [
         ['Daily Activity Reports', 'DailyActivityReports', ClipboardList],
