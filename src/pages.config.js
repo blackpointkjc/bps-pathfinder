@@ -33,6 +33,7 @@ import PathfinderReports from './pages/Reports';
 import CallHistory from './pages/CallHistory';
 import Navigation from './pages/Navigation';
 import RecordsAssistant from './pages/RecordsAssistant';
+import RecordViewer from './pages/RecordViewer';
 import DispatchCenter from './pages/DispatchCenter';
 import CommandDashboard from './pages/CommandDashboard';
 import FieldUnitView from './pages/FieldUnitView';
@@ -296,6 +297,7 @@ export const PAGES = {
     "CallHistory": CallHistory,
     "Navigation": Navigation,
     "RecordsAssistant": RecordsAssistant,
+    "RecordViewer": RecordViewer,
     "DispatchCenter": DispatchCenter,
     "CommandDashboard": CommandDashboard,
     "FieldUnitView": FieldUnitView,
