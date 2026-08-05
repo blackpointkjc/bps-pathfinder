@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
+import { openVirginiaCriminalComplaintPrint } from "@/utils/virginiaCriminalComplaintPrint";
 import {
   Dialog,
   DialogContent,
@@ -178,6 +179,15 @@ export default function ClientReports() {
       openVirginiaSummonsPrint(report, {
         officerName: report.officer_name || officerName,
         badge: report.officer_code_badge || '',
+      });
+      return;
+    }
+    if (type === 'criminal') {
+      openVirginiaCriminalComplaintPrint(report, {
+        displayLocation: report.location,
+        officerName,
+        complainantName: report.complainant_name || officerName,
+        signatureName: officerSig,
       });
       return;
     }
