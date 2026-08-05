@@ -419,6 +419,11 @@ export default function Layout({ children, currentPageName }) {
   };
 
   useEffect(() => {
+    document.documentElement.classList.toggle('bps-night-mode', nightMode);
+    return () => document.documentElement.classList.remove('bps-night-mode');
+  }, [nightMode]);
+
+  useEffect(() => {
     const pageCenter = (PAGE_TO_CENTERS[currentPageName] || []).find(center => allowedCenters(user).includes(center));
     if (pageCenter) setActiveCenter(pageCenter);
   }, [currentPageName, user?.role, JSON.stringify(user?.additional_roles || [])]);
