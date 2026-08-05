@@ -53,17 +53,22 @@ export default function SupervisorChat() {
     sendMessageMutation.mutate({
       message: message.trim(),
       sender_name: senderName,
+      sender_email: user?.email || '',
+      sender_photo_url: user?.profile_photo_url || '',
     });
   };
 
   const getUserRecord = (email) => allUsers.find(u => String(u.email).toLowerCase() === String(email || '').toLowerCase());
 
-  const getUserPhoto = (email) => getUserRecord(email)?.profile_photo_url;
+  const getMessageEmail = (msg) => msg.sender_email || msg.created_by || '';
+
+  const getUserPhoto = (msg) => msg.sender_photo_url || getUserRecord(getMessageEmail(msg))?.profile_photo_url;
 
   const getSenderName = (msg) => {
-    const sender = getUserRecord(msg.created_by);
+    const senderEmail = getMessageEmail(msg);
+    const sender = getUserRecord(senderEmail);
     const directoryName = sender?.first_name && sender?.last_name ? `${sender.first_name} ${sender.last_name}` : sender?.full_name;
-    return msg.sender_name || directoryName || msg.created_by || 'Unknown User';
+    return directoryName || msg.sender_name || senderEmail || 'Unknown User';
   };
 
   const formatMessageDateTime = (value) => {
@@ -129,10 +134,12 @@ export default function SupervisorChat() {
           <ScrollArea className="flex-1 p-6" ref={scrollRef}>
             <div className="space-y-4">
               {reversedMessages?.map((msg, index) => {
-                const isOwnMessage = msg.created_by === user?.email;
-                const showName = index === 0 || reversedMessages[index - 1]?.created_by !== msg.created_by;
-                const showTime = index === reversedMessages.length - 1 || 
-                                reversedMessages[index + 1]?.created_by !== msg.created_by;
+                const senderEmail = getMessageEmail(msg);
+                const previousSender = index > 0 ? getMessageEmail(reversedMessages[index - 1]) : null;
+                const nextSender = index < reversedMessages.length - 1 ? getMessageEmail(reversedMessages[index + 1]) : null;
+                const isOwnMessage = senderEmail.toLowerCase() === String(user?.email || '').toLowerCase();
+                const showName = index === 0 || previousSender !== senderEmail;
+                const showTime = index === reversedMessages.length - 1 || nextSender !== senderEmail;
                 
                 return (
                   <div
@@ -141,9 +148,9 @@ export default function SupervisorChat() {
                   >
                     {showName && (
                       <Avatar className={`w-10 h-10 flex-shrink-0 ${isOwnMessage ? 'bg-gradient-to-br from-green-500 to-green-600' : 'bg-gradient-to-br from-slate-400 to-slate-500'}`}>
-                        <AvatarImage src={getUserPhoto(msg.created_by)} alt={getSenderName(msg)} />
+                        <AvatarImage src={getUserPhoto(msg)} alt={getSenderName(msg)} />
                         <AvatarFallback className="text-white font-semibold">
-                          {getUserInitial(msg.created_by, msg.sender_name)}
+                          {getUserInitial(senderEmail, getSenderName(msg))}
                         </AvatarFallback>
                       </Avatar>
                     )}
