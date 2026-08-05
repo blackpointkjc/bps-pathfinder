@@ -133,7 +133,6 @@ import MyPerformanceAnalytics from './pages/MyPerformanceAnalytics';
 import OfficerAnalytics from './pages/OfficerAnalytics';
 import OfficerAvailability from './pages/OfficerAvailability';
 import OfficerInbox from './pages/OfficerInbox';
-import OfficerPayroll from './pages/OfficerPayroll';
 import OfficerPerformance from './pages/OfficerPerformance';
 import OfficerProfile from './pages/OfficerProfile';
 import OfficerRoster from './pages/OfficerRoster';
@@ -151,7 +150,6 @@ import Summons from './pages/Summons';
 import SupervisorCallOuts from './pages/SupervisorCallOuts';
 import SupervisorChat from './pages/SupervisorChat';
 import SupervisorComplaints from './pages/SupervisorComplaints';
-import SupervisorDirectory from './pages/SupervisorDirectory';
 import SupervisorInspections from './pages/SupervisorInspections';
 import SupervisorPerformanceReview from './pages/SupervisorPerformanceReview';
 import SupervisorTasks from './pages/SupervisorTasks';
@@ -259,7 +257,6 @@ export const PAGES = {
     "OfficerAnalytics": OfficerAnalytics,
     "OfficerAvailability": OfficerAvailability,
     "OfficerInbox": OfficerInbox,
-    "OfficerPayroll": OfficerPayroll,
     "OfficerPerformance": OfficerPerformance,
     "OfficerProfile": OfficerProfile,
     "OfficerRoster": OfficerRoster,
@@ -277,7 +274,6 @@ export const PAGES = {
     "SupervisorCallOuts": SupervisorCallOuts,
     "SupervisorChat": SupervisorChat,
     "SupervisorComplaints": SupervisorComplaints,
-    "SupervisorDirectory": SupervisorDirectory,
     "SupervisorInspections": SupervisorInspections,
     "SupervisorPerformanceReview": SupervisorPerformanceReview,
     "SupervisorTasks": SupervisorTasks,
