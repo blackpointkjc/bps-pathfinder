@@ -20,6 +20,8 @@ const STATUS_COLORS = {
   rejected: "bg-red-100 text-red-800",
   expired: "bg-gray-100 text-gray-800",
   overdue: "bg-red-100 text-red-700",
+  missing: "bg-red-100 text-red-800",
+  expiring_soon: "bg-amber-100 text-amber-800",
 };
 
 export default function TrainingComplianceTracker() {
@@ -30,36 +32,106 @@ export default function TrainingComplianceTracker() {
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
+  const userRoles = new Set((user?.additional_roles || []).map(r => String(r).toLowerCase()));
+  const hasTrainingAccess = user?.role === 'admin' || userRoles.has('trainer') || userRoles.has('full_access');
   const { data: assignments = [] } = useQuery({
     queryKey: ['allTrainingAssignments'],
     queryFn: () => base44.entities.TrainingAssignment.list('-assigned_date'),
-    enabled: user?.role === 'admin',
+    enabled: hasTrainingAccess,
     refetchInterval: 30000,
   });
   const { data: submissions = [] } = useQuery({
     queryKey: ['allTrainingSubmissions'],
     queryFn: () => base44.entities.TrainingSubmission.list('-submission_date'),
-    enabled: user?.role === 'admin',
+    enabled: hasTrainingAccess,
     refetchInterval: 30000,
   });
   const { data: allUsers = [] } = useQuery({
     queryKey: ['allUsers'],
     queryFn: () => base44.entities.User.list(),
-    enabled: user?.role === 'admin',
+    enabled: hasTrainingAccess,
     staleTime: 30000,
   });
   const { data: trainingCompletions = [] } = useQuery({
     queryKey: ['allTrainingCompletions'],
     queryFn: () => base44.entities.TrainingCompletion.list('-completed_date'),
-    enabled: user?.role === 'admin',
+    enabled: hasTrainingAccess,
     staleTime: 60000,
   });
   const { data: trainingModules = [] } = useQuery({
     queryKey: ['trainingModules'],
     queryFn: () => base44.entities.TrainingModule.list('-created_date'),
-    enabled: user?.role === 'admin',
+    enabled: hasTrainingAccess,
     staleTime: 60000,
   });
+  const { data: trainingRequirements = [] } = useQuery({
+    queryKey: ['trainingRequirements'],
+    queryFn: () => base44.entities.TrainingRequirement.list('-created_date'),
+    enabled: hasTrainingAccess,
+    staleTime: 60000,
+  });
+
+  const activeOfficers = useMemo(() => allUsers.filter(u =>
+    !u.termination_date && u.employment_status !== 'terminated' &&
+    (u.role === 'admin' || (u.additional_roles || []).map(r => String(r).toLowerCase()).includes('officer'))
+  ), [allUsers]);
+
+  const complianceRows = useMemo(() => {
+    const normalize = value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const soon = new Date(today); soon.setDate(soon.getDate() + 90);
+    const mandatory = [];
+    trainingRequirements.filter(r => r.active !== false && r.is_mandatory !== false).forEach(r => mandatory.push({
+      id: `req_${r.id}`, requirement_id: r.id, name: r.training_name, category: r.category || 'other',
+      renewal_period_months: r.renewal_period_months || 0, course_id: r.course_id || '', source: 'requirement'
+    }));
+    trainingModules.filter(m => m.active !== false && m.required === true).forEach(m => {
+      if (!mandatory.some(x => normalize(x.name) === normalize(m.title))) mandatory.push({
+        id: `module_${m.id}`, module_id: m.id, name: m.title, category: m.category || m.training_category || 'other',
+        renewal_period_months: m.renewal_period_months || 0, course_id: m.course_id || '', source: 'module'
+      });
+    });
+
+    const result = [];
+    activeOfficers.forEach(officer => {
+      const certs = Array.isArray(officer.officer_certifications) ? officer.officer_certifications : [];
+      mandatory.forEach(req => {
+        const assignment = assignments.find(a => a.officer_email === officer.email && (
+          (req.requirement_id && a.requirement_id === req.requirement_id) || normalize(a.training_name) === normalize(req.name)
+        ));
+        const completion = trainingCompletions.find(c => c.officer_email === officer.email && c.completed && (
+          (req.module_id && c.training_module_id === req.module_id) || normalize(c.module_title || c.training_title) === normalize(req.name)
+        ));
+        const cert = certs.find(c => {
+          const courseMatch = req.course_id && normalize(c.course_id) === normalize(req.course_id);
+          const nameMatch = normalize(c.training_name) === normalize(req.name);
+          return courseMatch || nameMatch;
+        });
+        let status = 'missing';
+        let expiration_date = cert?.expiration_date || assignment?.expiration_date || null;
+        if (assignment) status = getEffectiveStatus(assignment);
+        if (completion || cert) status = 'approved';
+        if (cert?.status === 'pending') status = 'pending_review';
+        if (expiration_date) {
+          const exp = new Date(expiration_date); exp.setHours(0,0,0,0);
+          if (exp < today) status = 'expired';
+          else if (exp <= soon) status = 'expiring_soon';
+        }
+        result.push({
+          ...(assignment || {}), id: assignment?.id || `gap_${officer.id}_${req.id}`,
+          officer_email: officer.email,
+          officer_name: [officer.rank, officer.last_name].filter(Boolean).join(' ') || `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email,
+          training_name: req.name, category: req.category,
+          requirement_id: req.requirement_id || assignment?.requirement_id,
+          is_mandatory: true, expiration_date, status,
+          compliance_source: cert ? 'employee_certification' : completion ? 'training_completion' : assignment ? 'assignment' : 'missing_requirement',
+          certificate_number: cert?.certificate_number || '', course_id: cert?.course_id || req.course_id || '',
+        });
+      });
+    });
+    assignments.forEach(a => { if (!result.some(r => r.id === a.id)) result.push(a); });
+    return result;
+  }, [activeOfficers, trainingRequirements, trainingModules, assignments, trainingCompletions]);
 
   // Admin marks company module complete for a specific officer
   const markCompleteMutation = useMutation({
@@ -189,13 +261,14 @@ export default function TrainingComplianceTracker() {
   }, [queryClient]);
 
   const getEffectiveStatus = (a) => {
+    if (['missing', 'expired', 'expiring_soon'].includes(a.status)) return a.status;
     if (a.status === 'approved') return 'approved';
     if (a.due_date && isPast(parseISO(a.due_date))) return 'overdue';
     return a.status;
   };
 
   const filteredAssignments = useMemo(() => {
-    return assignments.filter(a => {
+    return complianceRows.filter(a => {
       const eff = getEffectiveStatus(a);
       if (filters.officer && !a.officer_name?.toLowerCase().includes(filters.officer.toLowerCase()) && !a.officer_email?.toLowerCase().includes(filters.officer.toLowerCase())) return false;
       if (filters.training && !a.training_name?.toLowerCase().includes(filters.training.toLowerCase())) return false;
@@ -204,16 +277,18 @@ export default function TrainingComplianceTracker() {
       if (filters.dueDateEnd && a.due_date && isAfter(parseISO(a.due_date), parseISO(filters.dueDateEnd))) return false;
       return true;
     });
-  }, [assignments, filters]);
+  }, [complianceRows, filters]);
 
   const stats = useMemo(() => ({
-    total: assignments.length,
-    approved: assignments.filter(a => a.status === 'approved').length,
-    pending_review: assignments.filter(a => a.status === 'pending_review').length,
-    overdue: assignments.filter(a => a.due_date && isPast(parseISO(a.due_date)) && a.status !== 'approved').length,
-    rejected: assignments.filter(a => a.status === 'rejected').length,
-    not_started: assignments.filter(a => a.status === 'assigned').length,
-  }), [assignments]);
+    total: complianceRows.length,
+    approved: complianceRows.filter(a => getEffectiveStatus(a) === 'approved').length,
+    pending_review: complianceRows.filter(a => getEffectiveStatus(a) === 'pending_review').length,
+    overdue: complianceRows.filter(a => ['overdue','expired'].includes(getEffectiveStatus(a))).length,
+    rejected: complianceRows.filter(a => getEffectiveStatus(a) === 'rejected').length,
+    not_started: complianceRows.filter(a => ['assigned','missing'].includes(getEffectiveStatus(a))).length,
+    missing: complianceRows.filter(a => getEffectiveStatus(a) === 'missing').length,
+    expiring_soon: complianceRows.filter(a => getEffectiveStatus(a) === 'expiring_soon').length,
+  }), [complianceRows]);
 
   const byTraining = useMemo(() => {
     const map = {};
@@ -391,8 +466,8 @@ export default function TrainingComplianceTracker() {
     win.document.close();
   };
 
-  if (user?.role !== 'admin') {
-    return <div className="p-8 text-center"><Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" /><h2 className="text-xl font-bold">Admin Access Required</h2></div>;
+  if (!hasTrainingAccess) {
+    return <div className="p-8 text-center"><Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" /><h2 className="text-xl font-bold">Training Access Required</h2></div>;
   }
 
   return (

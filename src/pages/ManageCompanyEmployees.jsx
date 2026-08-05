@@ -89,6 +89,8 @@ export default function ManageCompanyEmployees() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      queryClient.invalidateQueries({ queryKey: ['allUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['trainingComplianceMatrix'] });
       setShowDialog(false);
       setEditingUser(null);
       alert('User updated successfully');
@@ -199,7 +201,8 @@ export default function ManageCompanyEmployees() {
       role: userData.role || "user",
       additional_roles: userData.additional_roles || [],
       assigned_sites: userData.assigned_sites || [],
-      profile_photo_url: userData.profile_photo_url || ""
+      profile_photo_url: userData.profile_photo_url || "",
+      officer_certifications: Array.isArray(userData.officer_certifications) ? userData.officer_certifications : []
     });
     setSelectedUser(userData);
     setShowDialog(true);
