@@ -21,6 +21,7 @@ Deno.serve(async (req) => {
       .map((entry: any) => ({
         id: entry.id,
         email: entry.email,
+        role: entry.role || 'user',
         first_name: entry.first_name || '',
         last_name: entry.last_name || '',
         full_name: entry.full_name || '',
