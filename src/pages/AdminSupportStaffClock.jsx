@@ -29,13 +29,7 @@ export default function AdminSupportStaffClock() {
       const eligible = users.filter(u => {
         const staffRoles = new Set((u.additional_roles || []).map(role => String(role).toLowerCase()));
         const staffRank = String(u.rank || '').toLowerCase();
-        return (
-          u.role === 'admin' ||
-          ['support staff', 'human resources'].includes(staffRank) ||
-          staffRoles.has('support_staff') ||
-          staffRoles.has('hr') ||
-          staffRoles.has('trainer')
-        );
+        return ['support staff', 'human resources'].includes(staffRank) || staffRoles.has('support_staff');
       });
       return canManageAll ? eligible : eligible.filter(u => u.email === user?.email);
     },
