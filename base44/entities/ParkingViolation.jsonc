@@ -143,6 +143,29 @@
     "registration_photo": {
       "type": "string",
       "description": "Photo of vehicle registration"
+    },
+    "linked_call_id": {
+      "type": "string",
+      "description": "Linked Pathfinder DispatchCall record ID"
+    },
+    "linked_call_number": {
+      "type": "string",
+      "description": "Linked CAD call number"
+    },
+    "primary_officer_id": {
+      "type": "string",
+      "description": "Primary officer user ID from the linked call"
+    },
+    "primary_officer_name": {
+      "type": "string",
+      "description": "Primary officer display name from the linked call"
+    },
+    "backup_officer_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Backup officer IDs from the linked call"
     }
   },
   "required": [

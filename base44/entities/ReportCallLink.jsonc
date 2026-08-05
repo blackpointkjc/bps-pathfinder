@@ -1,0 +1,50 @@
+{
+  "name": "ReportCallLink",
+  "type": "object",
+  "properties": {
+    "call_id": {
+      "type": "string",
+      "description": "DispatchCall record ID"
+    },
+    "call_number": {
+      "type": "string",
+      "description": "CAD call number"
+    },
+    "report_type": {
+      "type": "string",
+      "description": "Entity/report type"
+    },
+    "report_id": {
+      "type": "string",
+      "description": "Linked report record ID"
+    },
+    "report_number": {
+      "type": "string",
+      "description": "Human-readable report or citation number"
+    },
+    "primary_officer_id": {
+      "type": "string"
+    },
+    "primary_officer_name": {
+      "type": "string"
+    },
+    "linked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "detached"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "call_id",
+    "report_type",
+    "report_id",
+    "linked_at"
+  ]
+}

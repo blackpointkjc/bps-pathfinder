@@ -160,11 +160,11 @@
     },
     "linked_call_id": {
       "type": "string",
-      "description": "ID of the call for service this report is linked to"
+      "description": "Linked Pathfinder DispatchCall record ID"
     },
     "linked_call_number": {
       "type": "string",
-      "description": "Call number from dispatch for easy reference"
+      "description": "Linked CAD call number"
     },
     "suspect_id_scanned": {
       "type": "boolean",
@@ -192,6 +192,21 @@
     "victim_scan_data": {
       "type": "string",
       "description": "Victim scan metadata as JSON"
+    },
+    "primary_officer_id": {
+      "type": "string",
+      "description": "Primary officer user ID from the linked call"
+    },
+    "primary_officer_name": {
+      "type": "string",
+      "description": "Primary officer display name from the linked call"
+    },
+    "backup_officer_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Backup officer IDs from the linked call"
     }
   },
   "required": [

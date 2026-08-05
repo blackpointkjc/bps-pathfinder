@@ -48,6 +48,9 @@ export default function IncidentReports() {
     photo_url: "",
     linked_call_id: "",
     linked_call_number: "",
+    primary_officer_id: "",
+    primary_officer_name: "",
+    backup_officer_ids: [],
   });
 
   // Check if we're creating a report from a call for service
@@ -138,6 +141,37 @@ export default function IncidentReports() {
     queryFn: () => base44.entities.User.list(),
     initialData: [],
   });
+
+  const { data: activeDispatchCalls } = useQuery({
+    queryKey: ['activeDispatchCallsForReports'],
+    queryFn: async () => {
+      const calls = await base44.entities.DispatchCall.list('-time_received');
+      return calls.filter(call => !['Cleared', 'Cancelled'].includes(call.status));
+    },
+    initialData: [],
+    refetchInterval: 15000,
+  });
+
+  const selectDispatchCall = (callId) => {
+    if (callId === 'none') {
+      setFormData(prev => ({ ...prev, linked_call_id: '', linked_call_number: '', primary_officer_id: '', primary_officer_name: '', backup_officer_ids: [] }));
+      return;
+    }
+    const call = activeDispatchCalls.find(item => item.id === callId);
+    if (!call) return;
+    const primaryId = call.assigned_units?.[0] || '';
+    const primary = allUsers.find(item => item.id === primaryId);
+    setFormData(prev => ({
+      ...prev,
+      linked_call_id: call.id,
+      linked_call_number: call.call_id || call.id,
+      primary_officer_id: primaryId,
+      primary_officer_name: primary ? `${primary.rank || ''} ${primary.first_name || ''} ${primary.last_name || ''}`.replace(/\s+/g, ' ').trim() : '',
+      backup_officer_ids: call.assigned_units?.slice(1) || [],
+      location: call.location || prev.location,
+      description: prev.description || call.description || '',
+    }));
+  };
 
   useEffect(() => {
     if (!isAdmin && !editingReportId && activeEntry?.location && locations) {
@@ -265,6 +299,20 @@ Provide:
           officer_ip_address: ipAddress,
         });
 
+        if (data.linked_call_id) {
+          await base44.entities.ReportCallLink.create({
+            call_id: data.linked_call_id,
+            call_number: data.linked_call_number || '',
+            report_type: 'IncidentReport',
+            report_id: report.id,
+            report_number: newReportNumber,
+            primary_officer_id: data.primary_officer_id || '',
+            primary_officer_name: data.primary_officer_name || '',
+            linked_at: new Date().toISOString(),
+            status: 'active',
+          });
+        }
+
         // Alert supervisors if critical
         if (supervisorAlert && !isDraft) {
           const supervisors = await base44.entities.User.list();
@@ -328,6 +376,11 @@ Provide:
       police_report_number: "",
       severity: "medium",
       photo_url: "",
+      linked_call_id: "",
+      linked_call_number: "",
+      primary_officer_id: "",
+      primary_officer_name: "",
+      backup_officer_ids: [],
     });
   };
 
@@ -823,6 +876,26 @@ Provide:
                   </div>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Link to Active Call for Service</Label>
+                    <Select value={formData.linked_call_id || 'none'} onValueChange={selectDispatchCall}>
+                      <SelectTrigger><SelectValue placeholder="Select an active CAD call" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No linked call</SelectItem>
+                        {activeDispatchCalls.map(call => (
+                          <SelectItem key={call.id} value={call.id}>
+                            {call.call_id || call.id.slice(-8)} — {call.incident} — {call.location}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formData.linked_call_id && (
+                      <div className="rounded-md border bg-slate-50 p-3 text-sm">
+                        <strong>CAD:</strong> {formData.linked_call_number} · <strong>Primary:</strong> {formData.primary_officer_name || 'Assigned unit pending'}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="location">Site Location *</Label>
                     <Select
