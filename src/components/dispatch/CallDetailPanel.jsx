@@ -5,12 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { MapPin, Clock, User, Phone, AlertTriangle, FileText, Send, Save } from 'lucide-react';
+import { MapPin, Clock, User, AlertTriangle, FileText, Send, Save } from 'lucide-react';
 import { cleanIncident } from '@/utils/callUtils';
-import { motion } from 'framer-motion';
 
 export default function CallDetailPanel({ call, currentUser, onUpdate, units }) {
     const [notes, setNotes] = useState([]);

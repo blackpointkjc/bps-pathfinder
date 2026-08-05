@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Wrench, AlertTriangle, Plus, CheckCircle, Trash2 } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 export default function MaintenanceTracking({ units }) {
     const [maintenance, setMaintenance] = useState([]);

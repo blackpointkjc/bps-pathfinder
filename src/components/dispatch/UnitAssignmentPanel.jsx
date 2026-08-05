@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Users, Plus, X, Search, MapPin } from 'lucide-react';
+import { Plus, X, Search } from 'lucide-react';
 
 export default function UnitAssignmentPanel({ call, units, onUpdate }) {
     const [searchTerm, setSearchTerm] = useState('');

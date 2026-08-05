@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { ClipboardList, Users, Radio, AlertTriangle, Clock, CheckCircle, Search, Filter } from 'lucide-react';
+import { ClipboardList, Users, Radio, AlertTriangle, Clock, Search } from 'lucide-react';
 
 const STATUS_COLOR = {
   'New':               'text-slate-400',

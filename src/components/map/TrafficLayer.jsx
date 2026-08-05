@@ -1,6 +1,4 @@
-import { useEffect } from 'react';
-import { Polyline, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import { Polyline } from 'react-leaflet';
 
 // Simulate traffic conditions for route segments
 export function generateTrafficData(routeCoords) {

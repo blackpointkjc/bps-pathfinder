@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { playDispatchAlert, stopDispatchAlert, setDispatchAlertMuted, shouldAlertForGeofence } from '@/utils/alertUtils';
+import { playDispatchAlert, setDispatchAlertMuted, shouldAlertForGeofence } from '@/utils/alertUtils';
 import { classifyCall } from '@/lib/cadCallTypes';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
-import { RefreshCw, Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX } from 'lucide-react';
+import { Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX } from 'lucide-react';
 
 const PRIORITY_CONFIG = {
     critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },

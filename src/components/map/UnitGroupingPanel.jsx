@@ -4,7 +4,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { X, Users, UserPlus, UserMinus, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';

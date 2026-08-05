@@ -3,8 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { stopAllAlerts } from '@/utils/alertUtils';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-    Radio, Activity, MapPin, Clock, Shield, Users, BarChart2,
-    ChevronLeft, ChevronRight, Settings,
+    Radio, Activity, MapPin, Clock, Shield, Users, BarChart2, Settings,
     Home, Zap, FileText, Menu, X, LogOut, ClipboardList
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';

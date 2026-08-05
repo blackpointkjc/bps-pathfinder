@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    Navigation, ArrowRight, ArrowLeft, ArrowUp,
+import { ArrowRight, ArrowLeft, ArrowUp,
     ArrowUpRight, ArrowUpLeft, RotateCw, MapPin, X
 } from 'lucide-react';
 

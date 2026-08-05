@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, X, Radio, Users } from 'lucide-react';
+import { X, Radio, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function RealTimeAlert({ alert, onDismiss, onNavigate }) {

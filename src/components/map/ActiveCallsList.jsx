@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { X, MapPin, Clock, AlertCircle, Navigation as NavigationIcon, AlertTriangle, Flame, Info } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
 
 const getAgencyBadgeColor = (agency) => {
     if (agency?.includes('RPD')) return 'bg-red-100 text-red-700 border-red-300';

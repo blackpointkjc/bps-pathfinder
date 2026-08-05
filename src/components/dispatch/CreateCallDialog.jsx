@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { X, Send, MapPin, AlertCircle } from 'lucide-react';
+import { X, Send, AlertCircle } from 'lucide-react';
 import { CALL_TYPES, findCallType } from '@/lib/cadCallTypes';
 
 export default function CreateCallDialog({ units, currentUser, onClose, onCreated, initialCallType, initialPriority }) {

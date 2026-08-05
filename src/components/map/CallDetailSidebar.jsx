@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -46,7 +45,7 @@ export default function CallDetailSidebar({ call, onClose, onEnroute, onCenter }
             fetchHistoricalCalls();
             fetchNearbyUnits();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [call]);
 
     const fetchHistoricalCalls = async () => {

@@ -5,16 +5,14 @@ import CollapsePanelButton from '@/components/CollapsePanelButton';
 import { base44 } from '@/api/base44Client';
 import MapView from '@/components/map/MapView';
 import VACountiesBoundaries from '@/components/map/VACountiesBoundaries';
-import { Badge } from '@/components/ui/badge';
 import {
-    Layers, RefreshCw, Radio, MapPin, Users, Activity,
-    Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame,
-    ChevronLeft, ChevronRight, X, Clock, AlertTriangle, Shield, Zap
+    Layers, RefreshCw, Radio, MapPin, Users,
+    Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Shield, Zap
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { isCriticalCall } from '@/lib/cadCallUtils';
-import { splitCallsByCoords, normalizeAddress } from '@/lib/geocodingPipeline';
+import { splitCallsByCoords } from '@/lib/geocodingPipeline';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';

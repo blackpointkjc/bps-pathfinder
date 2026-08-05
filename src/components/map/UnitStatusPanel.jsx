@@ -2,12 +2,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { CheckCircle2, Navigation as NavigationIcon, MapPin, Clock, XCircle, X, Car, Home, Coffee, BookOpen, Heart, Crosshair } from 'lucide-react';
+import { CheckCircle2, Navigation as NavigationIcon, MapPin, Clock, XCircle, X, Car, Home, Coffee, BookOpen, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 
 const STATUS_OPTIONS = [

@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search, Filter, AlertCircle, Clock, MapPin, Target } from 'lucide-react';
+import { Search, AlertCircle, MapPin, Target } from 'lucide-react';
 import { motion } from 'framer-motion';
 import OptimalDispatchPanel from './OptimalDispatchPanel';
 

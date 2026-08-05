@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Clock, Route, Car, TrendingUp, AlertCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';

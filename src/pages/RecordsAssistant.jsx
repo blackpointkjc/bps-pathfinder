@@ -3,7 +3,6 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { Send, Bot, Loader2, Plus, MessageSquare } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 

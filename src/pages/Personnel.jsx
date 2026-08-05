@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, Edit2, MapPin, Save, X, RefreshCw } from 'lucide-react';
+import { Search, MapPin, Save, X, RefreshCw } from 'lucide-react';
 import { createPageUrl } from '../utils';
 
 const STATUS_CFG = {

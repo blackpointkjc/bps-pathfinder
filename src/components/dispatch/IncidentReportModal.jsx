@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { X, FileText, Shield, Send, Loader2, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 
 const FIELD = ({ label, children, required }) => (

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, Radio, Users, Activity, BarChart3, MapPin, Shield, Clock, FileText, Archive, Settings } from 'lucide-react';
+import { Menu, Radio, Activity, MapPin, Shield, Clock, FileText, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 

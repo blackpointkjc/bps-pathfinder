@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { X, History, Search, Clock, MapPin, User, FileText } from 'lucide-react';
-import { formatDistanceToNow, format } from 'date-fns';
+import { format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
 
 export default function HistoricalLogsPanel({ isOpen, onClose }) {

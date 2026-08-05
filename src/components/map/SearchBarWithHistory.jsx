@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Search, X, Loader2, Clock, MapPin } from 'lucide-react';
+import { Search, X, Loader2, Clock } from 'lucide-react';
 
 export default function SearchBarWithHistory({ onSearch, isSearching, onClear }) {
     const [query, setQuery] = useState('');

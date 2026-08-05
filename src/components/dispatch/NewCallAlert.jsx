@@ -1,4 +1,4 @@
-import { AlertTriangle, MapPin, X, CheckCircle } from 'lucide-react';
+import { AlertTriangle, MapPin, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 

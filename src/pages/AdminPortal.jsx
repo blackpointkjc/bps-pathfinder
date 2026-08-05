@@ -1,22 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Shield, Edit2, Mail, User, Award, Hash, Wrench, Car, MapPin, Activity, Database, Server, TrendingUp, Clock, AlertTriangle, BarChart3, XCircle, CheckCircle } from 'lucide-react';
-import { createPageUrl } from '../utils';
+import { Users, Shield, Edit2, Wrench, Car, MapPin, Server, TrendingUp, Clock, AlertTriangle, BarChart3, XCircle } from 'lucide-react';
 import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import VehicleManagement from '@/components/admin/VehicleManagement';
-import LocationTracking from '@/components/admin/LocationTracking';
-import CarolineGISLookup from '@/components/admin/CarolineGISLookup';
-import IngestionDebugPanel from '@/components/admin/IngestionDebugPanel';
 import PropertyMonitoring from '@/components/admin/PropertyMonitoring';
 
 import SystemIssuesPanel from '@/components/admin/SystemIssuesPanel';

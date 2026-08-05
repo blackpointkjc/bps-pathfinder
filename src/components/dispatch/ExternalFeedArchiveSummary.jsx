@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Archive, Clock, TrendingDown } from 'lucide-react';
-import { createPageUrl } from '@/utils';
+import { Archive, TrendingDown } from 'lucide-react';
 
 export default function ExternalFeedArchiveSummary({ onViewArchived }) {
     const [summary, setSummary] = useState({

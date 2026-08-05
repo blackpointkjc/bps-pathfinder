@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Radio, MapPin, Clock, AlertTriangle, CheckCircle, MessageSquare, PhoneCall, Shield, Navigation } from 'lucide-react';
+import { Radio, MapPin, AlertTriangle, CheckCircle, MessageSquare } from 'lucide-react';
 
 const STATUS_BTNS = [
   { value: 'Available',      label: 'AVAILABLE',       cls: 'bg-green-800 border-green-500 text-green-200 hover:bg-green-700' },

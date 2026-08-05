@@ -4,7 +4,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Navigation, MapPin, X, Clock } from 'lucide-react';
-import { toast } from 'sonner';
 
 export default function AutoDispatchSuggestion({ suggestion, onAccept, onDismiss }) {
     const [timeRemaining, setTimeRemaining] = useState(15);

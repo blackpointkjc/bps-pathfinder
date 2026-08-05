@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
-import { Flame, Phone, MapPin } from 'lucide-react';
+import { Flame, MapPin } from 'lucide-react';
 
 // Fire station icon with agency label
 const fireStationIcon = new L.DivIcon({
