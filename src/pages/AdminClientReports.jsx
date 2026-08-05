@@ -132,8 +132,7 @@ export default function AdminClientReports() {
         </head>
         <body>
           <div class="header">
-            <img src="${LOGO_URL}" alt="Virtus Security" class="logo" />
-            <h1>VIRTUS SECURITY</h1>
+            <h1>BLACK POINT PROTECTION</h1>
             <p>Richmond, VA</p>
             <h2 style="margin-top: 20px;">HOURS REPORT</h2>
             <p class="site">${selectedLocation}</p>
@@ -196,7 +195,7 @@ export default function AdminClientReports() {
           </div>
 
           <div class="footer">
-            <p><strong>Virtus Security - Professional Security Services</strong></p>
+            <p><strong>Black Point Protection</strong></p>
             <p>Richmond, VA | This report is for billing purposes</p>
             ${selectedLocationData?.site_email ? `<p>Site Contact: ${selectedLocationData.site_email}</p>` : ''}
           </div>
@@ -205,7 +204,7 @@ export default function AdminClientReports() {
       `;
 
       await base44.integrations.Core.SendEmail({
-        from_name: "Virtus Security",
+        from_name: "Black Point Protection",
         to: selectedLocationData.assigned_client_email,
         subject: `Hours Report - ${selectedLocation} - ${format(new Date(startDate), 'MMM d')} to ${format(new Date(endDate), 'MMM d, yyyy')}`,
         body: reportHTML
@@ -349,7 +348,6 @@ export default function AdminClientReports() {
       </head>
       <body>
         <div class="header">
-          <img src="${LOGO_URL}" alt="Virtus Security" class="logo" />
           <h1>Client Activity Report</h1>
           <div class="site">${selectedLocation}</div>
           <div>${format(new Date(startDate), 'MMM d, yyyy')} - ${format(new Date(endDate), 'MMM d, yyyy')}</div>
@@ -362,7 +360,7 @@ export default function AdminClientReports() {
         ${reportsHTML || '<p style="text-align: center; padding: 20px;">No reports found</p>'}
 
         <div class="footer">
-          <strong>VIRTUS SECURITY SERVICES</strong> | Richmond, VA | Printed: ${format(new Date(), 'MMM d, yyyy h:mm a')}
+          <strong>BLACK POINT PROTECTION</strong> | Richmond, VA | Printed: ${format(new Date(), 'MMM d, yyyy h:mm a')}
         </div>
       </body>
       </html>
@@ -396,7 +394,6 @@ export default function AdminClientReports() {
     <div className="p-4 md:p-8 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex items-center gap-4 print:mb-8">
-          <img src={LOGO_URL} alt="Virtus Security" className="w-16 h-16 object-contain" />
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Client Reports</h1>
             <p className="text-slate-600">Generate hours and activity reports for client sites</p>
@@ -546,8 +543,7 @@ export default function AdminClientReports() {
             <div className="bg-white p-8 rounded-lg shadow-lg">
               <div className="flex items-center justify-between mb-8 pb-4 border-b-2 border-slate-200">
                 <div>
-                  <img src={LOGO_URL} alt="Virtus Security" className="w-24 h-24 object-contain mb-2" />
-                  <h2 className="text-2xl font-bold text-slate-900">VIRTUS SECURITY</h2>
+                  <h2 className="text-2xl font-bold text-slate-900">BLACK POINT PROTECTION</h2>
                   <p className="text-slate-600">Richmond, VA</p>
                 </div>
                 <div className="text-right">
@@ -654,7 +650,7 @@ export default function AdminClientReports() {
               </div>
 
               <div className="mt-8 pt-4 border-t border-slate-200 text-center text-sm text-slate-500">
-                <p>Virtus Security - Professional Security Services</p>
+                <p>Black Point Protection</p>
                 <p>Richmond, VA | This report is for billing purposes</p>
                 {selectedLocationData?.site_email && (
                   <p>Site Contact: {selectedLocationData.site_email}</p>
