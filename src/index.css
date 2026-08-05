@@ -289,6 +289,32 @@ body {
 }
 
 /* Field-friendly night mode for non-CAD workspaces. */
+html.bps-night-mode {
+  --background: 216 38% 8%;
+  --foreground: 210 32% 94%;
+  --card: 215 34% 12%;
+  --card-foreground: 210 32% 94%;
+  --popover: 215 36% 11%;
+  --popover-foreground: 210 32% 94%;
+  --primary: 207 58% 36%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 214 30% 17%;
+  --secondary-foreground: 210 32% 92%;
+  --muted: 214 28% 17%;
+  --muted-foreground: 211 18% 68%;
+  --accent: 211 32% 21%;
+  --accent-foreground: 210 32% 96%;
+  --border: 211 28% 28%;
+  --input: 211 28% 28%;
+  --ring: 207 76% 62%;
+}
+
+html.bps-night-mode [role="dialog"],
+html.bps-night-mode [role="listbox"],
+html.bps-night-mode [data-radix-popper-content-wrapper] > div {
+  color: hsl(var(--popover-foreground));
+}
+
 .cad-app main.night-workspace {
   color: #e5edf5;
   background: #0b1420;
@@ -308,6 +334,9 @@ body {
   background-image: none !important;
 }
 
+.cad-app main.night-workspace .bg-card,
+.cad-app main.night-workspace .bg-background,
+.cad-app main.night-workspace .bg-popover,
 .cad-app main.night-workspace .bg-white,
 .cad-app main.night-workspace .bg-slate-50,
 .cad-app main.night-workspace .bg-slate-100,
@@ -327,6 +356,7 @@ body {
   color: #e5edf5 !important;
 }
 
+.cad-app main.night-workspace .bg-card,
 .cad-app main.night-workspace [class*="rounded"].shadow,
 .cad-app main.night-workspace [class*="rounded"].shadow-sm,
 .cad-app main.night-workspace [class*="rounded"].shadow-md,
@@ -334,6 +364,18 @@ body {
 .cad-app main.night-workspace [class*="rounded"].shadow-xl {
   border-color: #2b4158 !important;
   box-shadow: 0 1px 2px rgba(0,0,0,.35), 0 10px 28px rgba(0,0,0,.28) !important;
+}
+
+.cad-app main.night-workspace [data-state="active"],
+.cad-app main.night-workspace [role="tab"][data-state="active"] {
+  background-color: #1a2a3c !important;
+  color: #f8fafc !important;
+  border-color: #38536d !important;
+}
+
+.cad-app main.night-workspace [role="tablist"] {
+  background-color: #111d2b !important;
+  border: 1px solid #2b4158 !important;
 }
 
 .cad-app main.night-workspace h1,
