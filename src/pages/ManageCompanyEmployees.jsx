@@ -479,12 +479,13 @@ export default function ManageCompanyEmployees() {
               <Label className="text-base font-semibold mb-3 block">System Roles & Permissions</Label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {[
-                  { id: 'officer', label: 'Officer Role', desc: 'Company employee access', color: 'text-blue-700' },
-                  { id: 'supervisor', label: 'Supervisor Tools', desc: 'Inspections, write-ups, supervisor chat' },
-                  { id: 'hr', label: 'HR Access', desc: 'PTO, time entries, manage officers' },
-                  { id: 'accounting', label: 'Accounting Access', desc: 'Payroll, invoices, financial reports' },
-                  { id: 'trainer', label: 'Trainer', desc: 'Training portal access', color: 'text-indigo-700' },
-                  { id: 'full_access', label: 'Full Access', desc: 'All officer tools access', color: 'text-purple-700' },
+                  { id: 'cad_access', label: 'CAD Access', desc: 'Command, dispatch, live map, field unit and CAD records', color: 'text-sky-800' },
+                  { id: 'officer', label: 'Officer Role', desc: 'Company employee and Officer Center access', color: 'text-blue-800' },
+                  { id: 'supervisor', label: 'Supervisor Tools', desc: 'CAD, inspections, write-ups and supervisor chat', color: 'text-cyan-800' },
+                  { id: 'hr', label: 'HR Access', desc: 'PTO, time entries and employee management', color: 'text-emerald-800' },
+                  { id: 'accounting', label: 'Accounting Access', desc: 'Payroll, invoices and financial reports', color: 'text-amber-800' },
+                  { id: 'trainer', label: 'Trainer', desc: 'Training creation, compliance and student records', color: 'text-indigo-800' },
+                  { id: 'full_access', label: 'Full Access', desc: 'Access to every internal operations center', color: 'text-purple-800' },
                 ].map(({ id, label, desc, color }) => (
                   <div key={id} className="flex items-center space-x-2">
                     <Checkbox
@@ -507,9 +508,9 @@ export default function ManageCompanyEmployees() {
             {/* Equipment */}
             <div className="border-t pt-4">
               <Label className="text-base font-semibold mb-3 block">Equipment ({equipment?.filter(e => e.assigned_to === selectedUser?.email).length || 0})</Label>
-              <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-200 space-y-3">
+              <div className="p-4 bg-slate-50 rounded-lg border border-slate-300 space-y-3">
                 {equipment?.filter(e => e.assigned_to === selectedUser?.email).map(item => (
-                  <div key={item.id} className="flex items-center justify-between p-2 bg-white rounded border border-cyan-200">
+                  <div key={item.id} className="flex items-center justify-between p-2 bg-white rounded border border-slate-300 text-slate-900">
                     <div><p className="text-sm font-medium">{item.product_name}</p><p className="text-xs text-slate-500">{item.equipment_type}</p></div>
                     <Button size="sm" variant="ghost" className="text-red-600" onClick={() => unassignEquipmentMutation.mutate({ equipmentId: item.id })}><Unlink className="w-4 h-4" /></Button>
                   </div>
