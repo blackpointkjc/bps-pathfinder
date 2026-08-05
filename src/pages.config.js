@@ -99,10 +99,8 @@ import AdminShiftBids from './pages/AdminShiftBids';
 import AdminSpecialRequests from './pages/AdminSpecialRequests';
 import AdminSupervisorReports from './pages/AdminSupervisorReports';
 import AdminSupportStaffClock from './pages/AdminSupportStaffClock';
-import AdminTimeEntries from './pages/AdminTimeEntries';
 import AdminTraining from './pages/AdminTraining';
 import AdminTrainingCompliance from './pages/AdminTrainingCompliance';
-import TrainingCompliance from './pages/TrainingCompliance';
 import TrainingComplianceTracker from './pages/TrainingComplianceTracker';
 import AdminUsers from './pages/AdminUsers';
 import Announcements from './pages/Announcements';
@@ -233,10 +231,8 @@ export const PAGES = {
     "AdminSpecialRequests": AdminSpecialRequests,
     "AdminSupervisorReports": AdminSupervisorReports,
     "AdminSupportStaffClock": AdminSupportStaffClock,
-    "AdminTimeEntries": AdminTimeEntries,
     "AdminTraining": AdminTraining,
     "AdminTrainingCompliance": AdminTrainingCompliance,
-    "TrainingCompliance": TrainingCompliance,
     "TrainingComplianceTracker": TrainingComplianceTracker,
     "AdminUsers": AdminUsers,
     "Announcements": Announcements,
