@@ -36,6 +36,13 @@ Deno.serve(async (req) => {
     if (!allowed) return Response.json({ error: 'Records access required' }, { status: 403 });
 
     const body = await req.json();
+    if (body?.action === 'get' && body?.entity && body?.id) {
+      const source = SOURCES.find(([entityName]) => entityName === body.entity);
+      if (!source) return Response.json({ error: 'Unsupported record type' }, { status: 400 });
+      const entity = (base44.asServiceRole.entities as any)[body.entity];
+      const record = await entity.get(body.id);
+      return Response.json({ record, source: source[1], page: source[2] });
+    }
     const query = String(body?.query || '').trim().toLowerCase();
     if (query.length < 2) return Response.json({ results: [], searched_sources: 0 });
     const terms = query.split(/\s+/).filter(Boolean);
