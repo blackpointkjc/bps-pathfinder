@@ -21,8 +21,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '../utils';
 
 export default function AdminUsers() {
+  const navigate = useNavigate();
   const [editingUser, setEditingUser] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -497,6 +500,29 @@ export default function AdminUsers() {
     !u.additional_roles?.includes('student');
 
   const activeUsers = users?.filter(u => !u.termination_date && isPendingUser(u)) || [];
+
+  const assignUserCategory = async (userData, category) => {
+    const categoryConfig = {
+      student: { roles: ['student'], rank: 'Student', page: 'ManageStudents' },
+      officer: { roles: ['officer', 'cad_access'], rank: 'Officer', page: 'ManageCompanyEmployees' },
+      client: { roles: ['client'], rank: 'Client', page: 'ManageClients' },
+    };
+    const config = categoryConfig[category];
+    if (!config) return;
+    const response = await base44.functions.invoke('updateUser', {
+      userId: userData.id,
+      updates: { role: 'user', additional_roles: config.roles, rank: config.rank },
+    });
+    const payload = response?.data || response || {};
+    if (payload.error) throw new Error(payload.error);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['portalUsers'] }),
+      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] }),
+      queryClient.invalidateQueries({ queryKey: ['clientUsers'] }),
+      queryClient.invalidateQueries({ queryKey: ['users'] }),
+    ]);
+    navigate(`${createPageUrl(config.page)}?email=${encodeURIComponent(userData.email || '')}`);
+  };
   const terminatedUsers = users?.filter(u => u.termination_date && isPendingUser(u)) || [];
   
   console.log('Active users:', activeUsers.length);
