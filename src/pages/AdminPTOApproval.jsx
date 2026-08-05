@@ -82,35 +82,23 @@ export default function AdminPTOApproval() {
   const updateRequestMutation = useMutation({
     mutationFn: async ({ id, status, notes }) => {
       const request = pendingRequests.find(r => r.id === id);
-      
-      await base44.entities.TimeOffRequest.update(id, {
+      const response = await base44.functions.invoke('getPTORequests', {
+        action: 'review',
+        request_id: id,
         status,
         admin_notes: notes,
-        reviewed_by: user.email,
-        reviewed_date: new Date().toISOString()
       });
-
-      // If approved and paid, deduct from officer's PTO balance
-      if (status === 'approved' && request.request_type === 'paid') {
-        const officer = allUsers?.find(u => u.email === request.created_by);
-        if (officer) {
-          const newBalance = (officer.pto_balance_hours || 0) - (request.hours_requested || 0);
-          const newUsed = (officer.pto_year_to_date_used || 0) + (request.hours_requested || 0);
-          
-          await base44.entities.User.update(officer.id, {
-            pto_balance_hours: Math.max(0, newBalance),
-            pto_year_to_date_used: newUsed
-          });
-        }
-      }
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
 
       if (request) {
-        const officer = allUsers?.find(u => u.email === request.created_by);
+        const requestEmail = request.requested_by_email || request.created_by;
+        const officer = allUsers?.find(u => u.email === requestEmail);
         
         // Send email notification
         await base44.integrations.Core.SendEmail({
           from_name: "Black Point Protection HR",
-          to: request.created_by,
+          to: request.requested_by_email || request.created_by,
           subject: `Time Off Request ${status === 'approved' ? 'Approved ✅' : 'Denied ❌'}`,
           body: `<!DOCTYPE html>
 <html>
@@ -137,7 +125,7 @@ export default function AdminPTOApproval() {
     <div class="content">
       <h2 style="color: ${status === 'approved' ? '#10b981' : '#dc2626'}; margin-top: 0;">Time Off Request ${status === 'approved' ? 'Approved' : 'Denied'}</h2>
       
-      <p>Hello ${getOfficerName(request.created_by)},</p>
+      <p>Hello ${getOfficerName(request.requested_by_email || request.created_by)},</p>
       
       <p>Your time off request has been ${status}.</p>
       
@@ -260,12 +248,12 @@ export default function AdminPTOApproval() {
           <CardContent className="p-6">
             <div className="space-y-4">
               {pendingRequests?.map((request) => {
-                const officer = allUsers?.find(u => u.email === request.created_by);
+                const officer = allUsers?.find(u => u.email === (request.requested_by_email || request.created_by));
                 return (
                 <div key={request.id} className="p-5 bg-slate-50 rounded-lg border-l-4 border-amber-500">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <p className="font-bold text-slate-900 mb-2">{getOfficerName(request.created_by)}</p>
+                      <p className="font-bold text-slate-900 mb-2">{getOfficerName(request.requested_by_email || request.created_by)}</p>
                       <p className="text-sm text-slate-600 mb-2">
                         {format(new Date(request.start_date), 'MMM d, yyyy')} - {format(new Date(request.end_date), 'MMM d, yyyy')}
                       </p>
@@ -324,7 +312,7 @@ export default function AdminPTOApproval() {
                 <div key={request.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <p className="font-semibold text-slate-900">{getOfficerName(request.created_by)}</p>
+                      <p className="font-semibold text-slate-900">{getOfficerName(request.requested_by_email || request.created_by)}</p>
                       <p className="text-sm text-slate-600">
                         {format(new Date(request.start_date), 'MMM d, yyyy')} - {format(new Date(request.end_date), 'MMM d, yyyy')}
                       </p>
@@ -368,7 +356,7 @@ export default function AdminPTOApproval() {
           {selectedRequest && (
             <div className="space-y-4 py-4">
               <div className="p-4 bg-slate-50 rounded-lg">
-                <p className="font-semibold text-slate-900">{getOfficerName(selectedRequest.created_by)}</p>
+                <p className="font-semibold text-slate-900">{getOfficerName(selectedRequest.requested_by_email || selectedRequest.created_by)}</p>
                 <p className="text-sm text-slate-600">
                   {format(new Date(selectedRequest.start_date), 'MMM d, yyyy')} - {format(new Date(selectedRequest.end_date), 'MMM d, yyyy')}
                 </p>
