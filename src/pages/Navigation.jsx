@@ -87,6 +87,7 @@ export default function Navigation() {
     const [addressQuery, setAddressQuery] = useState('');
     const [addressResults, setAddressResults] = useState([]);
     const [addressSearching, setAddressSearching] = useState(false);
+    const [showAddressSearch, setShowAddressSearch] = useState(false);
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
@@ -356,7 +357,9 @@ export default function Navigation() {
             setNavDurationMinutes(Math.max(1, Math.round(route.duration / 60)));
             setIsNavigating(true);
             setShowCallSidebar(false);
+            setShowAddressSearch(false);
             setAddressResults([]);
+            setAddressQuery('');
             setMapCenter([destLat, destLng]);
             if (options.setEnroute !== false) await handleStatusChange('Enroute');
             toast.success(`Navigation started to ${destination.name || destination.address || 'destination'}`);
@@ -629,33 +632,58 @@ export default function Navigation() {
                 </div>
             )}
 
+            {/* Map search toggle */}
+            {!isNavigating && (
+                <button
+                    type="button"
+                    onClick={() => {
+                        setShowAddressSearch(open => !open);
+                        if (showAddressSearch) {
+                            setAddressResults([]);
+                            setAddressQuery('');
+                        }
+                    }}
+                    className="absolute right-4 top-12 z-[1210] flex h-11 w-11 items-center justify-center rounded-xl border border-[#31475e] bg-[#0a0e1a]/95 text-slate-100 shadow-2xl backdrop-blur-md hover:bg-[#142336] pointer-events-auto"
+                    aria-label={showAddressSearch ? 'Close address search' : 'Open address search'}
+                    title={showAddressSearch ? 'Close address search' : 'Search address'}
+                >
+                    {showAddressSearch ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+                </button>
+            )}
+
             {/* Street address search and destination routing */}
-            <div className="absolute top-12 left-1/2 z-[1012] w-[min(92vw,560px)] -translate-x-1/2 pointer-events-auto">
-                <form onSubmit={searchAddress} className="flex items-center gap-2 rounded-xl border border-[#31475e] bg-[#0a0e1a]/95 p-2 shadow-2xl backdrop-blur-md">
-                    <Search className="ml-2 h-4 w-4 text-slate-400" />
-                    <input
-                        value={addressQuery}
-                        onChange={(event) => setAddressQuery(event.target.value)}
-                        placeholder="Search an address, building, or place"
-                        className="h-9 flex-1 bg-transparent px-1 text-sm text-white outline-none placeholder:text-slate-500"
-                    />
-                    <button type="submit" disabled={addressSearching || addressQuery.trim().length < 3}
-                        className="flex h-9 items-center gap-1 rounded-lg bg-blue-700 px-3 text-xs font-bold text-white hover:bg-blue-600 disabled:opacity-50">
-                        <Navigation2 className="h-4 w-4" /> {addressSearching ? 'SEARCHING' : 'GO'}
-                    </button>
-                </form>
-                {addressResults.length > 0 && (
-                    <div className="mt-1 max-h-72 overflow-y-auto rounded-xl border border-[#31475e] bg-[#0a0e1a]/98 shadow-2xl">
-                        {addressResults.map((result, index) => (
-                            <button key={`${result.name}-${index}`} onClick={() => startNavigationToPoint(result)}
-                                className="flex w-full items-start gap-3 border-b border-[#1e2d4a] px-4 py-3 text-left hover:bg-[#142336] last:border-b-0">
-                                <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400" />
-                                <span className="text-xs leading-relaxed text-slate-200">{result.name}</span>
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div>
+            {!isNavigating && showAddressSearch && (
+                <div className="absolute top-12 left-1/2 z-[1200] w-[min(92vw,560px)] -translate-x-1/2 pointer-events-auto">
+                    <form onSubmit={searchAddress} className="flex items-center gap-2 rounded-xl border border-[#45637f] bg-[#07111f] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.65)]">
+                        <Search className="ml-2 h-4 w-4 text-slate-400" />
+                        <input
+                            autoFocus
+                            value={addressQuery}
+                            onChange={(event) => setAddressQuery(event.target.value)}
+                            placeholder="Search an address, building, or place"
+                            className="h-9 flex-1 bg-transparent px-1 text-sm text-white outline-none placeholder:text-slate-500"
+                        />
+                        <button type="submit" disabled={addressSearching || addressQuery.trim().length < 3}
+                            className="flex h-9 items-center gap-1 rounded-lg bg-blue-700 px-3 text-xs font-bold text-white hover:bg-blue-600 disabled:opacity-50">
+                            <Navigation2 className="h-4 w-4" /> {addressSearching ? 'SEARCHING' : 'GO'}
+                        </button>
+                    </form>
+                    {addressResults.length > 0 && (
+                        <div className="relative z-[1220] mt-2 max-h-[55vh] overflow-y-auto rounded-xl border border-[#45637f] bg-[#07111f] shadow-[0_24px_70px_rgba(0,0,0,0.8)]">
+                            <div className="border-b border-[#1e2d4a] px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                Select a destination
+                            </div>
+                            {addressResults.map((result, index) => (
+                                <button key={`${result.name}-${index}`} onClick={() => startNavigationToPoint(result)}
+                                    className="flex w-full items-start gap-3 border-b border-[#1e2d4a] px-4 py-3 text-left hover:bg-[#142336] last:border-b-0">
+                                    <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400" />
+                                    <span className="text-xs leading-relaxed text-slate-100">{result.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* ══ LEFT PANEL ══ */}
             <div className="absolute top-[34px] left-0 bottom-0 z-[1005] flex pointer-events-none">
