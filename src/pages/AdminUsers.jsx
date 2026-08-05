@@ -134,46 +134,25 @@ export default function AdminUsers() {
 
   const createOfficerMutation = useMutation({
     mutationFn: async (data) => {
-      // Send invitation - user will complete profile after logging in
-      await base44.users.inviteUser(data.email, 'user');
-
-      // Send notification to admins
-      const adminUsers = users?.filter(u => u.role === 'admin') || [];
-      for (const admin of adminUsers) {
-        try {
-          await base44.integrations.Core.SendEmail({
-            from_name: "BPS Connect",
-            to: admin.email,
-            subject: "Officer Invitation Sent",
-            body: `
-              <h2>📧 Officer Invitation Sent</h2>
-              <p>An invitation has been sent to:</p>
-              <p><strong>${data.first_name} ${data.last_name}</strong> (${data.email})</p>
-              <p>They will receive login credentials via email and can complete their profile after logging in.</p>
-              <p><strong>Important:</strong> After the officer logs in for the first time, you'll need to edit their profile to add:</p>
-              <ul>
-                <li>Rank: ${data.rank}</li>
-                ${data.unit_number ? `<li>Unit Number: ${data.unit_number}</li>` : ''}
-                ${data.division ? `<li>Division: ${data.division}</li>` : ''}
-                ${data.hire_date ? `<li>Hire Date: ${data.hire_date}</li>` : ''}
-              </ul>
-            `
-          });
-        } catch (error) {
-          console.error(`Failed to send email to admin ${admin.email}:`, error);
-        }
-      }
-
-      return { success: true };
+      const response = await base44.functions.invoke('createPortalAccount', {
+        accountType: 'employee',
+        ...data,
+      });
+      if (response?.error) throw new Error(response.error);
+      return response;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowCreateDialog(false);
       resetCreateForm();
-      alert('✅ Invitation sent! The officer will receive login credentials via email. After they log in, you can edit their profile to add rank, division, and other details.');
+      if (result?.email_sent === false) {
+        alert(`✅ Employee account created, but the Black Point welcome email could not be delivered. ${result?.email_error || 'Verify the email address and resend the invitation.'}`);
+      } else {
+        alert('✅ Employee account created. The Black Point account-created email and login invitation were sent.');
+      }
     },
     onError: (error) => {
-      alert('❌ Failed to send invitation: ' + error.message);
+      alert('❌ Failed to create employee account: ' + error.message);
     }
   });
 
