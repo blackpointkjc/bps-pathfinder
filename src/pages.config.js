@@ -134,7 +134,6 @@ import ManageTimeEntries from './pages/ManageTimeEntries';
 import MyPerformanceAnalytics from './pages/MyPerformanceAnalytics';
 import OfficerAnalytics from './pages/OfficerAnalytics';
 import OfficerAvailability from './pages/OfficerAvailability';
-import OfficerAvailabilityon from './pages/OfficerAvailabilityon';
 import OfficerInbox from './pages/OfficerInbox';
 import OfficerMobile from './pages/OfficerMobile';
 import OfficerPayroll from './pages/OfficerPayroll';
@@ -269,7 +268,6 @@ export const PAGES = {
     "MyPerformanceAnalytics": MyPerformanceAnalytics,
     "OfficerAnalytics": OfficerAnalytics,
     "OfficerAvailability": OfficerAvailability,
-    "OfficerAvailabilityon": OfficerAvailabilityon,
     "OfficerInbox": OfficerInbox,
     "OfficerMobile": OfficerMobile,
     "OfficerPayroll": OfficerPayroll,
