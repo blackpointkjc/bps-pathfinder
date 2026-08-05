@@ -13,14 +13,14 @@ import { toast } from "sonner";
 
 const emptyForm = { period_name: "", start_date: "", end_date: "", deposit_date: "", period_number: "", status: "upcoming" };
 
-export default function PayrollDates() {
+export default function PayrollDates({ readOnly = false }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const queryClient = useQueryClient();
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
-  const canManage = user?.role === 'admin' || roles.has('accounting') || roles.has('full_access');
+  const canManage = !readOnly && (user?.role === 'admin' || roles.has('accounting'));
   const { data: periods = [], isLoading } = useQuery({ queryKey: ['payrollPeriods'], queryFn: () => base44.entities.PayrollPeriod.list('-start_date') });
 
   const sorted = useMemo(() => [...periods].sort((a,b) => a.start_date.localeCompare(b.start_date)), [periods]);
