@@ -514,6 +514,37 @@ Provide:
     const createdDateZulu = report.created_date ? toZulu(report.created_date) : '';
     const submittedZulu = report.created_date ? toZulu(report.created_date) : 'N/A';
     
+    // HTML-escape user-controlled fields before interpolating into the print template
+    // to prevent stored XSS via document.write().
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+    const e = {
+      report_number: esc(report.report_number || 'N/A'),
+      call_number: esc(report.call_number || 'N/A'),
+      severity: esc(report.severity),
+      severityClass: esc(report.severity),
+      location: esc(report.location),
+      specific_location: esc(report.specific_location),
+      incident_type: esc(report.incident_type?.replace(/_/g, ' ').toUpperCase()),
+      description: esc(report.description),
+      suspect_description: esc(report.suspect_description),
+      suspect_vehicle: esc(report.suspect_vehicle),
+      victims: esc(report.victims),
+      persons_involved: esc(report.persons_involved),
+      witnesses: esc(report.witnesses),
+      injury_details: esc(report.injury_details),
+      damage_details: esc(report.damage_details),
+      estimated_value: esc(report.estimated_value),
+      action_taken: esc(report.action_taken),
+      police_report_number: esc(report.police_report_number),
+      photo_url: esc(report.photo_url),
+      officer_ip_address: esc(report.officer_ip_address),
+      created_by: esc(report.created_by),
+      officer_name: esc(officerName),
+      officer_sig: esc(officerSig),
+    };
+    
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -598,11 +629,11 @@ Provide:
           <div class="meta-bar">
             <div class="meta-item">
               <span class="meta-label">Report #</span>
-              <span class="meta-value">${report.report_number || 'N/A'}</span>
+              <span class="meta-value">${e.report_number}</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">Call #</span>
-              <span class="meta-value">${report.call_number || 'N/A'}</span>
+              <span class="meta-value">${e.call_number}</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">Submitted (Zulu)</span>
@@ -610,8 +641,8 @@ Provide:
             </div>
           </div>
 
-          <div class="severity-banner severity-${report.severity}">
-            SEVERITY: ${report.severity?.toUpperCase()} ${report.severity === 'critical' ? '🚨' : ''}
+          <div class="severity-banner severity-${e.severityClass}">
+            SEVERITY: ${e.severity} ${report.severity === 'critical' ? '🚨' : ''}
           </div>
           
           <div class="content">
@@ -636,25 +667,25 @@ Provide:
               <div class="grid-2">
                 <div class="field-box">
                   <div class="field-label">Site Location</div>
-                  <div class="field-value">${report.location}</div>
+                  <div class="field-value">${e.location}</div>
                 </div>
                 ${report.specific_location ? `
                 <div class="field-box">
                   <div class="field-label">Specific Location</div>
-                  <div class="field-value">${report.specific_location}</div>
+                  <div class="field-value">${e.specific_location}</div>
                 </div>
                 ` : ''}
               </div>
               <div class="field-box">
                 <div class="field-label">Incident Type</div>
-                <div class="field-value">${report.incident_type?.replace(/_/g, ' ').toUpperCase()}</div>
+                <div class="field-value">${e.incident_type}</div>
               </div>
             </div>
 
             <div class="section">
               <div class="section-title">Incident Description</div>
               <div class="field-box">
-                <div class="field-value">${report.description}</div>
+                <div class="field-value">${e.description}</div>
               </div>
             </div>
 
@@ -664,13 +695,13 @@ Provide:
               ${report.suspect_description ? `
               <div class="field-box">
                 <div class="field-label">Suspect Description</div>
-                <div class="field-value">${report.suspect_description}</div>
+                <div class="field-value">${e.suspect_description}</div>
               </div>
               ` : ''}
               ${report.suspect_vehicle ? `
               <div class="field-box">
                 <div class="field-label">Suspect Vehicle</div>
-                <div class="field-value">${report.suspect_vehicle}</div>
+                <div class="field-value">${e.suspect_vehicle}</div>
               </div>
               ` : ''}
             </div>
@@ -682,19 +713,19 @@ Provide:
               ${report.victims ? `
               <div class="field-box">
                 <div class="field-label">Victim(s)</div>
-                <div class="field-value">${report.victims}</div>
+                <div class="field-value">${e.victims}</div>
               </div>
               ` : ''}
               ${report.persons_involved ? `
               <div class="field-box">
                 <div class="field-label">Other Persons Involved</div>
-                <div class="field-value">${report.persons_involved}</div>
+                <div class="field-value">${e.persons_involved}</div>
               </div>
               ` : ''}
               ${report.witnesses ? `
               <div class="field-box">
                 <div class="field-label">Witnesses</div>
-                <div class="field-value">${report.witnesses}</div>
+                <div class="field-value">${e.witnesses}</div>
               </div>
               ` : ''}
             </div>
@@ -706,18 +737,18 @@ Provide:
               ${report.injuries_reported && report.injury_details ? `
               <div class="field-box">
                 <div class="field-label">⚠️ Injuries Reported</div>
-                <div class="field-value">${report.injury_details}</div>
+                <div class="field-value">${e.injury_details}</div>
               </div>
               ` : ''}
               ${report.property_damage && report.damage_details ? `
               <div class="field-box">
                 <div class="field-label">Property Damage</div>
-                <div class="field-value">${report.damage_details}</div>
+                <div class="field-value">${e.damage_details}</div>
               </div>
               ${report.estimated_value ? `
               <div class="field-box">
                 <div class="field-label">Estimated Value</div>
-                <div class="field-value">$${report.estimated_value}</div>
+                <div class="field-value">$${e.estimated_value}</div>
               </div>
               ` : ''}
               ` : ''}
@@ -728,7 +759,7 @@ Provide:
             <div class="section">
               <div class="section-title">Action Taken</div>
               <div class="field-box">
-                <div class="field-value">${report.action_taken}</div>
+                <div class="field-value">${e.action_taken}</div>
               </div>
             </div>
             ` : ''}
@@ -738,7 +769,7 @@ Provide:
               <div class="grid-2">
                 <div class="field-box">
                   <div class="field-label">Police</div>
-                  <div class="field-value">${report.police_notified ? '✓ YES' : '✗ NO'}${report.police_report_number ? ` - Report #${report.police_report_number}` : ''}</div>
+                  <div class="field-value">${report.police_notified ? '✓ YES' : '✗ NO'}${report.police_report_number ? ` - Report #${e.police_report_number}` : ''}</div>
                 </div>
                 <div class="field-box">
                   <div class="field-label">EMS</div>
@@ -754,15 +785,15 @@ Provide:
             ${report.photo_url ? `
             <div class="photo-section">
               <div class="section-title">Photo Evidence</div>
-              <img src="${report.photo_url}" alt="Incident scene" />
+              <img src="${e.photo_url}" alt="Incident scene" />
             </div>
             ` : ''}
             
             <div class="signature-section">
               <div class="field-label">Reporting Officer Signature</div>
-              <div class="sig-line">${officerSig}</div>
+              <div class="sig-line">${e.officer_sig}</div>
               <div class="sig-details">
-                ${officerName} | ${report.officer_ip_address ? `IP: ${report.officer_ip_address} | ` : ''}Electronically Signed (Zulu): ${createdDateZulu || 'N/A'}
+                ${e.officer_name} | ${report.officer_ip_address ? `IP: ${e.officer_ip_address} | ` : ''}Electronically Signed (Zulu): ${createdDateZulu || 'N/A'}
               </div>
             </div>
           </div>

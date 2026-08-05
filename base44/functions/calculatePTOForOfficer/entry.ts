@@ -9,6 +9,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'officer_email is required' }, { status: 400 });
     }
 
+    // Authenticate caller and enforce authorization: admins may calculate PTO for
+    // any officer; non-admins may only calculate for their own account.
+    let caller;
+    try {
+      caller = await base44.auth.me();
+    } catch (_e) {
+      return Response.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    if (!caller) {
+      return Response.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    const isAdmin = caller.role === 'admin';
+    if (!isAdmin && caller.email !== officer_email) {
+      return Response.json({ error: 'Not authorized to calculate PTO for this officer' }, { status: 403 });
+    }
+
     // Get the officer
     const users = await base44.asServiceRole.entities.User.list();
     const officer = users.find(u => u.email === officer_email);
