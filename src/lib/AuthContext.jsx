@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
@@ -14,6 +14,7 @@ const withTimeout = (promise, milliseconds, label) => {
 };
 
 export const AuthProvider = ({ children }) => {
+  const requestSequence = useRef(0);
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -21,11 +22,34 @@ export const AuthProvider = ({ children }) => {
   const [authError, setAuthError] = useState(null);
   const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
 
-  useEffect(() => {
-    checkAppState();
+  const checkUserAuth = useCallback(async (requestId) => {
+    try {
+      setIsLoadingAuth(true);
+      const currentUser = await withTimeout(base44.auth.me(), 12000, 'Authentication request');
+      if (requestId !== requestSequence.current) return;
+      setUser(currentUser);
+      setIsAuthenticated(true);
+      setAuthError(null);
+    } catch (error) {
+      if (requestId !== requestSequence.current) return;
+      console.error('User auth check failed:', error);
+      setUser(null);
+      setIsAuthenticated(false);
+      if (error.status === 401 || error.status === 403) {
+        setAuthError({ type: 'auth_required', message: 'Authentication required' });
+      } else {
+        setAuthError({
+          type: 'unknown',
+          message: error.message || 'Unable to verify the secure session'
+        });
+      }
+    } finally {
+      if (requestId === requestSequence.current) setIsLoadingAuth(false);
+    }
   }, []);
 
-  const checkAppState = async () => {
+  const checkAppState = useCallback(async () => {
+    const requestId = ++requestSequence.current;
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
@@ -51,7 +75,7 @@ export const AuthProvider = ({ children }) => {
         
         // If we got the app public settings successfully, check if user is authenticated
         if (appParams.token) {
-          await checkUserAuth();
+          await checkUserAuth(requestId);
         } else {
           setIsLoadingAuth(false);
           setIsAuthenticated(false);
@@ -97,32 +121,14 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingPublicSettings(false);
       setIsLoadingAuth(false);
     }
-  };
+  }, [checkUserAuth]);
 
-  const checkUserAuth = async () => {
-    try {
-      // Now check if the user is authenticated
-      setIsLoadingAuth(true);
-      const currentUser = await withTimeout(base44.auth.me(), 12000, 'Authentication request');
-      setUser(currentUser);
-      setIsAuthenticated(true);
-      setIsLoadingAuth(false);
-    } catch (error) {
-      console.error('User auth check failed:', error);
-      setIsLoadingAuth(false);
-      setIsAuthenticated(false);
-      
-      // If user auth fails, it might be an expired token
-      if (error.status === 401 || error.status === 403) {
-        setAuthError({
-          type: 'auth_required',
-          message: 'Authentication required'
-        });
-      }
-    }
-  };
+  useEffect(() => {
+    checkAppState();
+    return () => { requestSequence.current += 1; };
+  }, [checkAppState]);
 
-  const logout = (shouldRedirect = true) => {
+  const logout = useCallback((shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
     
@@ -133,12 +139,11 @@ export const AuthProvider = ({ children }) => {
       // Just remove the token without redirect
       base44.auth.logout();
     }
-  };
+  }, []);
 
-  const navigateToLogin = () => {
-    // Use the SDK's redirectToLogin method
+  const navigateToLogin = useCallback(() => {
     base44.auth.redirectToLogin(window.location.href);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ 
