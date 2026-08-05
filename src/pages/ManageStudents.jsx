@@ -170,9 +170,7 @@ export default function ManageStudents() {
             <p className="text-slate-500 text-sm">{students.length} student{students.length !== 1 ? 's' : ''} registered</p>
           </div>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)} className="bg-violet-700 hover:bg-violet-800">
-          <Plus className="w-4 h-4 mr-2" />Create Student
-        </Button>
+        <Badge className="border border-violet-500/40 bg-violet-950/40 text-violet-200">Assigned through Admin → Pending Users</Badge>
       </div>
 
       {isLoading && (
@@ -186,7 +184,7 @@ export default function ManageStudents() {
         <Card>
           <CardContent className="p-12 text-center">
             <GraduationCap className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-            <p className="text-slate-500">No students found. Use Create Student to send an invitation with Student Portal-only access.</p>
+            <p className="text-slate-500">No students are assigned. Assign a pending user as Student from Admin → Pending Users.</p>
           </CardContent>
         </Card>
       )}
@@ -266,27 +264,6 @@ export default function ManageStudents() {
           );
         })}
       </div>
-
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Create Student Account</DialogTitle></DialogHeader>
-          <form onSubmit={(e) => { e.preventDefault(); createStudentMutation.mutate(createForm); }} className="space-y-4 mt-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>First Name *</Label><Input required value={createForm.first_name} onChange={(e) => setCreateForm(p => ({...p, first_name: e.target.value}))} /></div>
-              <div><Label>Last Name *</Label><Input required value={createForm.last_name} onChange={(e) => setCreateForm(p => ({...p, last_name: e.target.value}))} /></div>
-            </div>
-            <div><Label>Email *</Label><Input type="email" required value={createForm.email} onChange={(e) => setCreateForm(p => ({...p, email: e.target.value}))} /></div>
-            <div><Label>Mobile Phone</Label><Input type="tel" value={createForm.mobile_phone} onChange={(e) => setCreateForm(p => ({...p, mobile_phone: e.target.value}))} /></div>
-            <div className="rounded border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900">This account will receive only the Student Portal. It will not receive CAD, Officer, HR, Trainer, Accounting, or Admin access.</div>
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
-              <Button type="submit" disabled={createStudentMutation.isPending} className="bg-violet-700 hover:bg-violet-800">
-                {createStudentMutation.isPending ? 'Sending Invitation...' : 'Invite Student'}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={!!editingStudent} onOpenChange={() => setEditingStudent(null)}>
         <DialogContent className="max-w-md">
