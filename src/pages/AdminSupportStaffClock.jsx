@@ -1,14 +1,12 @@
-import React, { useState } from "react";
+import React from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, UserCheck, Calendar, DollarSign } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 
 export default function AdminSupportStaffClock() {
-  const [selectedStaff, setSelectedStaff] = useState("");
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -18,40 +16,22 @@ export default function AdminSupportStaffClock() {
 
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const isSupportRank = ['support staff', 'human resources'].includes(String(user?.rank || '').toLowerCase());
-  const canManageAll = user?.role === 'admin' || roles.has('hr') || roles.has('trainer') || roles.has('full_access');
-  const hasAccess = canManageAll || isSupportRank || roles.has('support_staff');
-
-  const { data: supportStaff = [] } = useQuery({
-    queryKey: ['supportStaffDirectory'],
-    queryFn: async () => {
-      const result = await base44.functions.invoke('getHRUsers', {});
-      const users = result?.users || [];
-      const eligible = users.filter(u => {
-        const staffRoles = new Set((u.additional_roles || []).map(role => String(role).toLowerCase()));
-        const staffRank = String(u.rank || '').toLowerCase();
-        return ['support staff', 'human resources'].includes(staffRank) || staffRoles.has('support_staff');
-      });
-      return canManageAll ? eligible : eligible.filter(u => u.email === user?.email);
-    },
-    enabled: hasAccess,
-    initialData: [],
-  });
+  const hasAccess = user?.role === 'admin' || roles.has('hr') || roles.has('trainer') || roles.has('full_access') || isSupportRank || roles.has('support_staff');
 
   const { data: activeEntries } = useQuery({
     queryKey: ['supportStaffActiveEntries'],
     queryFn: async () => {
       const entries = await base44.entities.TimeEntry.list('-clock_in', 50);
-      return entries.filter(e => !e.clock_out && supportStaff?.some(s => s.email === e.officer_email));
+      return entries.filter(e => !e.clock_out && e.officer_email === user?.email);
     },
-    enabled: !!supportStaff,
+    enabled: hasAccess && !!user?.email,
     refetchInterval: 5000,
   });
 
   const clockInMutation = useMutation({
-    mutationFn: async (staffEmail) => {
-      const staff = supportStaff.find(s => s.email === staffEmail);
+    mutationFn: async () => {
       return await base44.entities.TimeEntry.create({
-        officer_email: staffEmail,
+        officer_email: user.email,
         clock_in: new Date().toISOString(),
         location: 'Office - Administrative',
         clock_in_latitude: 0,
@@ -60,8 +40,7 @@ export default function AdminSupportStaffClock() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['supportStaffActiveEntries'] });
-      alert('Support staff clocked in successfully!');
-      setSelectedStaff("");
+      alert('You are clocked in successfully!');
     },
   });
 
@@ -88,9 +67,8 @@ export default function AdminSupportStaffClock() {
     );
   }
 
-  const availableStaff = supportStaff?.filter(s => 
-    !activeEntries?.some(e => e.officer_email === s.email)
-  ) || [];
+  const activeEntry = activeEntries?.[0];
+  const displayName = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.email || 'Current User';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-purple-50 p-4 md:p-8">
@@ -102,7 +80,7 @@ export default function AdminSupportStaffClock() {
             </div>
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">Support Staff Time Clock</h1>
-              <p className="text-slate-600 mt-1">Clock in or out for Support Staff, Human Resources, Trainers, and Administrators</p>
+              <p className="text-slate-600 mt-1">Personal support time clock for {displayName}</p>
             </div>
           </div>
         </div>
@@ -112,47 +90,33 @@ export default function AdminSupportStaffClock() {
             <CardTitle>Clock In</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-3">
-              <Select value={selectedStaff} onValueChange={setSelectedStaff}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select staff member..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableStaff.map((staff) => (
-                    <SelectItem key={staff.email} value={staff.email}>
-                      {staff.first_name} {staff.last_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                onClick={() => clockInMutation.mutate(selectedStaff)}
-                disabled={!selectedStaff || clockInMutation.isPending}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                Clock In
-              </Button>
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-900/30 p-4">
+              <div>
+                <p className="font-bold">{displayName}</p>
+                <p className="text-sm text-slate-400">{user?.rank || 'Support Personnel'} · {user?.email}</p>
+              </div>
+              {!activeEntry ? (
+                <Button onClick={() => clockInMutation.mutate()} disabled={clockInMutation.isPending} className="bg-green-600 hover:bg-green-700">Clock In</Button>
+              ) : (
+                <Button onClick={() => clockOutMutation.mutate(activeEntry.id)} disabled={clockOutMutation.isPending} variant="outline" className="border-red-600 text-red-400">Clock Out</Button>
+              )}
             </div>
-            {availableStaff.length === 0 && (
-              <p className="text-sm text-slate-500">All support staff are currently clocked in</p>
-            )}
           </CardContent>
         </Card>
 
         <Card className="border-none shadow-xl">
           <CardHeader>
-            <CardTitle>Currently Clocked In</CardTitle>
+            <CardTitle>My Current Clock Status</CardTitle>
           </CardHeader>
           <CardContent>
             {activeEntries?.length === 0 ? (
               <div className="text-center py-12">
                 <Clock className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                <p className="text-slate-500">No support staff currently clocked in</p>
+                <p className="text-slate-500">You are not currently clocked in</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {activeEntries?.map((entry) => {
-                  const staff = supportStaff?.find(s => s.email === entry.officer_email);
                   const clockInTime = new Date(entry.clock_in);
                   const now = new Date();
                   const hoursWorked = ((now - clockInTime) / (1000 * 60 * 60)).toFixed(2);
@@ -166,9 +130,9 @@ export default function AdminSupportStaffClock() {
                           </div>
                           <div>
                             <h3 className="font-bold text-lg">
-                              {staff?.first_name} {staff?.last_name}
+                              {displayName}
                             </h3>
-                            <p className="text-sm text-slate-600">{staff?.email}</p>
+                            <p className="text-sm text-slate-600">{user?.email}</p>
                             <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
                               <div className="flex items-center gap-1">
                                 <Calendar className="w-4 h-4" />
