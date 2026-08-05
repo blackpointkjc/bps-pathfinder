@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
     // attach the editable profile fields.
     if (accountType === 'pending' && !portalUser) {
       try {
-        await base44.auth.inviteUser(normalizedEmail, 'user');
+        await base44.users.inviteUser(normalizedEmail, 'user');
         invitationSent = true;
       } catch (inviteError) {
         invitationError = inviteError?.message || 'Native invitation could not be sent';
@@ -160,7 +160,13 @@ Deno.serve(async (req) => {
         const alreadyExists = normalizedError.includes('already') || normalizedError.includes('exist') || normalizedError.includes('pending') || normalizedError.includes('invited');
         invitationSent = alreadyExists;
         if (!alreadyExists) {
-          return Response.json({ success: false, error: invitationError, error_stage: 'invitation' });
+          return Response.json({
+            success: false,
+            error: invitationError,
+            error_stage: 'invitation',
+            provider_status: inviteError?.status || inviteError?.response?.status || null,
+            provider_detail: inviteError?.data || inviteError?.response?.data || null,
+          });
         }
       }
 
@@ -184,7 +190,7 @@ Deno.serve(async (req) => {
 
     if (accountType !== 'pending') {
       try {
-        await base44.auth.inviteUser(normalizedEmail, 'user');
+        await base44.users.inviteUser(normalizedEmail, 'user');
         invitationSent = true;
       } catch (inviteError) {
         invitationError = inviteError?.message || 'Native invitation could not be sent';
