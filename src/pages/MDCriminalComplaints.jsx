@@ -119,6 +119,8 @@ export default function MDCriminalComplaints() {
     initialData: [],
   });
 
+  const agencyId = user ? `Black Point Protection - ${user.unit_number || user.badge_number || ''}` : "";
+
   useEffect(() => {
     if (user) {
       const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();

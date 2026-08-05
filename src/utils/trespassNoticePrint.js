@@ -19,6 +19,46 @@ const fullAddress = (notice) => [
   [notice.subject_city, notice.subject_state, notice.subject_zip].filter(Boolean).join(', ').replace(/, ([^,]+)$/, ' $1'),
 ].filter(Boolean).join('\n');
 
+export function resolvePoliceDepartment(location = {}) {
+  const haystack = [
+    location.site_name,
+    location.address,
+    location.subdivision,
+    location.division,
+    location.city,
+    location.county,
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  if (/richmond/.test(haystack)) return 'Richmond Police Department';
+  if (/henrico/.test(haystack)) return 'Henrico County Police Division';
+  if (/chesterfield/.test(haystack)) return 'Chesterfield County Police Department';
+  if (/hanover/.test(haystack)) return 'Hanover County Sheriff’s Office';
+  if (/petersburg/.test(haystack)) return 'Petersburg Bureau of Police';
+  if (/hopewell/.test(haystack)) return 'Hopewell Police Department';
+  if (/colonial heights/.test(haystack)) return 'Colonial Heights Police Department';
+  if (/fairfax county/.test(haystack)) return 'Fairfax County Police Department';
+  if (/fairfax city/.test(haystack)) return 'City of Fairfax Police Department';
+  if (/alexandria/.test(haystack)) return 'Alexandria Police Department';
+  if (/arlington/.test(haystack)) return 'Arlington County Police Department';
+  if (/prince william/.test(haystack)) return 'Prince William County Police Department';
+  if (/norfolk/.test(haystack)) return 'Norfolk Police Department';
+  if (/virginia beach/.test(haystack)) return 'Virginia Beach Police Department';
+  if (/chesapeake/.test(haystack)) return 'Chesapeake Police Department';
+  if (/newport news/.test(haystack)) return 'Newport News Police Department';
+  if (/hampton/.test(haystack)) return 'Hampton Police Division';
+  if (/portsmouth/.test(haystack)) return 'Portsmouth Police Department';
+  if (/suffolk/.test(haystack)) return 'Suffolk Police Department';
+  if (/baltimore county/.test(haystack)) return 'Baltimore County Police Department';
+  if (/baltimore/.test(haystack)) return 'Baltimore Police Department';
+  if (/prince george/.test(haystack)) return 'Prince George’s County Police Department';
+  if (/montgomery/.test(haystack)) return 'Montgomery County Department of Police';
+  if (/anne arundel/.test(haystack)) return 'Anne Arundel County Police Department';
+
+  return String(location.division || '').toLowerCase().includes('maryland')
+    ? 'the local Maryland law-enforcement agency'
+    : 'the local law-enforcement agency';
+}
+
 export function openTrespassNoticePrint(notice, options = {}) {
   const jurisdiction = String(options.jurisdiction || 'VA').toUpperCase();
   const propertyName = options.propertyName || notice.location || '';
@@ -28,6 +68,11 @@ export function openTrespassNoticePrint(notice, options = {}) {
   const senderPhone = options.senderPhone || '';
   const officerName = options.officerName || 'Officer';
   const signatureName = options.signatureName || officerName;
+  const policeDepartment = options.policeDepartment || resolvePoliceDepartment(options.locationRecord || {
+    site_name: propertyName,
+    address: propertyAddress,
+    division: jurisdiction === 'MD' ? 'Maryland' : 'Virginia',
+  });
   const servedByPolice = Boolean(notice.police_notified);
   const legalText = jurisdiction === 'MD'
     ? 'If you return to or remain on the property after receiving this notice, you may be subject to arrest and prosecution under applicable Maryland trespass law.'
@@ -95,7 +140,7 @@ export function openTrespassNoticePrint(notice, options = {}) {
 
     <div class="warning">
       <strong>YOU WILL BE ARRESTED IMMEDIATELY, IF CAUGHT TRESPASSING ON THE ABOVE NAMED PROPERTY.</strong><br />
-      ${esc(legalText)} This notice has been issued because: <strong>${esc(notice.reason || 'Unauthorized presence on the property')}</strong>.
+      ${esc(legalText)} If law enforcement is required, <strong>${esc(policeDepartment)}</strong> will be contacted. This notice has been issued because: <strong>${esc(notice.reason || 'Unauthorized presence on the property')}</strong>.
       ${notice.duration ? `This notice remains in effect for ${esc(notice.duration)}.` : ''}
       ${notice.expiration_date ? ` It expires on ${esc(fmtDate(notice.expiration_date))}.` : ''}
     </div>
@@ -108,7 +153,7 @@ export function openTrespassNoticePrint(notice, options = {}) {
     </div>
 
     <div class="service">
-      Notice served in hand by ${servedByPolice ? 'Police' : 'Black Point Protection Officer'}:
+      Notice served in hand by ${servedByPolice ? esc(policeDepartment) : 'Black Point Protection Officer'}:
       <span class="service-choice">${servedByPolice ? 'Yes' : 'No'}</span> Yes
       <span class="service-choice">${servedByPolice ? 'No' : 'Yes'}</span> No
     </div>
