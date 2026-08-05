@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,8 +81,26 @@ export default function ClientReports() {
     enabled: !!effectiveLocation,
   });
 
-  const getOfficerName = () => 'Redacted';
-  const getOfficerSignature = () => 'Redacted';
+  const reportOfficerEmails = useMemo(() => {
+    if (!reports) return [];
+    return [...new Set(Object.values(reports).flat().map(report => report.officer_email || report.reporting_officer_email || report.primary_officer_email || report.created_by).filter(Boolean))];
+  }, [reports]);
+
+  const { data: officerDirectory = [] } = useQuery({
+    queryKey: ['clientReportOfficerDirectory', reportOfficerEmails.join(',')],
+    queryFn: async () => {
+      const response = await base44.functions.invoke('getClientOfficerDirectory', { officerEmails: reportOfficerEmails });
+      return response?.data?.officers || response?.officers || [];
+    },
+    enabled: reportOfficerEmails.length > 0,
+  });
+
+  const getReportOfficerEmail = (report) => report?.officer_email || report?.reporting_officer_email || report?.primary_officer_email || report?.created_by || '';
+  const getOfficerName = (email) => {
+    const officer = officerDirectory.find(item => item.email === email);
+    return officer ? `${officer.rank || 'Officer'} ${officer.last_name || ''}`.trim() : 'Officer';
+  };
+  const getOfficerSignature = (report) => getOfficerName(getReportOfficerEmail(report));
 
   const handleView = (type, report) => {
     setViewingReport(report);
@@ -156,8 +174,8 @@ export default function ClientReports() {
   const printClientReport = (report, type, allUsersList) => {
     const printWindow = window.open('', '', 'width=850,height=1100');
     
-    const officerName = 'Redacted';
-    const officerSig = 'Redacted';
+    const officerName = getOfficerName(getReportOfficerEmail(report));
+    const officerSig = getOfficerSignature(report);
     
     let reportTitle = '';
     let reportContent = '';
@@ -784,7 +802,7 @@ export default function ClientReports() {
                   <div key={report.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900">Redacted</h4>
+                        <h4 className="font-semibold text-slate-900">{getOfficerName(getReportOfficerEmail(report))}</h4>
                         <p className="text-sm text-slate-600">
                           {format(new Date(
                             report.shift_date || report.incident_date || report.notice_date || 
@@ -873,7 +891,7 @@ export default function ClientReports() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-slate-500">Officer</p>
-                  <p className="font-medium">Redacted</p>
+                  <p className="font-medium">{getOfficerName(getReportOfficerEmail(viewingReport))}</p>
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">Location</p>
@@ -1096,7 +1114,7 @@ export default function ClientReports() {
                 {viewingReport.signature_url ? (
                   <img src={viewingReport.signature_url} alt="Officer Signature" className="h-16 object-contain" />
                 ) : (
-                  <p className="text-2xl font-serif italic">Redacted</p>
+                  <p className="text-2xl font-serif italic">{getOfficerSignature(viewingReport)}</p>
                 )}
                 {viewingReport.officer_ip_address && viewingReport.created_date && (
                   <p className="text-xs text-slate-400 mt-1">
