@@ -103,6 +103,8 @@ import AdminSupportStaffClock from './pages/AdminSupportStaffClock';
 import AdminTraining from './pages/AdminTraining';
 import AdminTrainingCompliance from './pages/AdminTrainingCompliance';
 import TrainingComplianceTracker from './pages/TrainingComplianceTracker';
+import TrainingRecords from './pages/TrainingRecords';
+import StudentPortal from './pages/StudentPortal';
 import AdminUsers from './pages/AdminUsers';
 import Announcements from './pages/Announcements';
 import CallsForService from './pages/CallsForService';
@@ -129,6 +131,8 @@ import MDCriminalComplaints from './pages/MDCriminalComplaints';
 import MDTrespassNotices from './pages/MDTrespassNotices';
 import MaintenanceReports from './pages/MaintenanceReports';
 import ManageClients from './pages/ManageClients';
+import ManageCompanyEmployees from './pages/ManageCompanyEmployees';
+import ManageStudents from './pages/ManageStudents';
 import ManageTimeEntries from './pages/ManageTimeEntries';
 import MyPerformanceAnalytics from './pages/MyPerformanceAnalytics';
 import OfficerAnalytics from './pages/OfficerAnalytics';
@@ -150,6 +154,7 @@ import ShiftReports from './pages/ShiftReports';
 import Summons from './pages/Summons';
 import SupervisorCallOuts from './pages/SupervisorCallOuts';
 import SupervisorChat from './pages/SupervisorChat';
+import SupervisorDailyCode from './pages/SupervisorDailyCode';
 import SupervisorComplaints from './pages/SupervisorComplaints';
 import SupervisorInspections from './pages/SupervisorInspections';
 import SupervisorPerformanceReview from './pages/SupervisorPerformanceReview';
@@ -228,6 +233,8 @@ export const PAGES = {
     "AdminTraining": AdminTraining,
     "AdminTrainingCompliance": AdminTrainingCompliance,
     "TrainingComplianceTracker": TrainingComplianceTracker,
+    "TrainingRecords": TrainingRecords,
+    "StudentPortal": StudentPortal,
     "AdminUsers": AdminUsers,
     "Announcements": Announcements,
     "CallsForService": CallsForService,
@@ -254,6 +261,8 @@ export const PAGES = {
     "MDTrespassNotices": MDTrespassNotices,
     "MaintenanceReports": MaintenanceReports,
     "ManageClients": ManageClients,
+    "ManageCompanyEmployees": ManageCompanyEmployees,
+    "ManageStudents": ManageStudents,
     "ManageTimeEntries": ManageTimeEntries,
     "MyPerformanceAnalytics": MyPerformanceAnalytics,
     "OfficerAnalytics": OfficerAnalytics,
@@ -275,6 +284,7 @@ export const PAGES = {
     "Summons": Summons,
     "SupervisorCallOuts": SupervisorCallOuts,
     "SupervisorChat": SupervisorChat,
+    "SupervisorDailyCode": SupervisorDailyCode,
     "SupervisorComplaints": SupervisorComplaints,
     "SupervisorInspections": SupervisorInspections,
     "SupervisorPerformanceReview": SupervisorPerformanceReview,
