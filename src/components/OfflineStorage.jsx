@@ -1,7 +1,7 @@
 // Offline storage utilities for PWA functionality with cross-device sync support
 
-const OFFLINE_STORAGE_KEY = 'virtusconnect-offline-data';
-const DEVICE_ID_KEY = 'virtusconnect-device-id';
+const OFFLINE_STORAGE_KEY = 'bps-pathfinder-offline-data';
+const DEVICE_ID_KEY = 'bps-pathfinder-device-id';
 
 // Get or create a unique device ID
 const getDeviceId = () => {
