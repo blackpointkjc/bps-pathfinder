@@ -17,15 +17,9 @@ export default function RankStructure() {
     enabled: user?.role === 'admin',
   });
 
-  // Lt Colonel has two peers at the same level — rendered side by side
-  const LT_COLONEL_RANKS = [
-    "Lt Colonel (Director of Security Operations)",
-    "Lt Colonel (Director of Training and Compliance)",
-  ];
-
   const supervisoryRanks = [
     "Colonel (Director of Company Operations)",
-    "__LT_COLONEL_ROW__",
+    "Lt Colonel (Director of Security Operations)",
     "Major (Director of Field Operations)",
     "Captain",
     "Lieutenant",
@@ -39,7 +33,6 @@ export default function RankStructure() {
   const rankDisplayLabel = {
     "Colonel (Director of Company Operations)": "Colonel",
     "Lt Colonel (Director of Security Operations)": "Lt. Colonel",
-    "Lt Colonel (Director of Training and Compliance)": "Lt. Colonel",
     "Major (Director of Field Operations)": "Major",
     "Captain": "Captain",
     "Lieutenant": "Lieutenant",
@@ -93,7 +86,6 @@ export default function RankStructure() {
     switch (rank) {
       case "Colonel (Director of Company Operations)": return "bg-amber-100 text-amber-900 border-amber-400";
       case "Lt Colonel (Director of Security Operations)": return "bg-rose-100 text-rose-900 border-rose-400";
-      case "Lt Colonel (Director of Training and Compliance)": return "bg-rose-100 text-rose-900 border-rose-400";
       case "Major (Director of Field Operations)": return "bg-red-100 text-red-800 border-red-300";
       case "Captain": return "bg-orange-100 text-orange-800 border-orange-300";
       case "Lieutenant": return "bg-yellow-100 text-yellow-800 border-yellow-300";
@@ -129,58 +121,6 @@ export default function RankStructure() {
         {/* Pyramid Structure */}
         <div className="space-y-4">
           {supervisoryRanks.map((rank, index) => {
-            // Special case: side-by-side Lt Colonel row
-            if (rank === "__LT_COLONEL_ROW__") {
-              return (
-                <div key="lt-colonel-row" className="flex flex-col items-center">
-                  <div className="w-full max-w-4xl grid grid-cols-2 gap-4">
-                    {LT_COLONEL_RANKS.map((ltRank) => {
-                      const officers = getUsersByRank(ltRank);
-                      return (
-                        <Card key={ltRank} className="border-none shadow-lg hover:shadow-xl transition-shadow bg-white">
-                          <CardHeader className="pb-3">
-                            <div className="text-center">
-                              <Badge className={`${getRankColor(ltRank)} text-sm font-bold px-3 py-1.5 mb-1`}>
-                                {rankDisplayLabel[ltRank] || ltRank}
-                              </Badge>
-                              <p className="text-xs font-medium text-slate-600 mb-1">
-                                {ltRank.match(/\(([^)]+)\)/)?.[1] || ""}
-                              </p>
-                              <p className="text-xs text-slate-400">({officers.length} personnel)</p>
-                            </div>
-                          </CardHeader>
-                          {officers.length > 0 && (
-                            <CardContent className="pt-0">
-                              <div className="space-y-2">
-                                {officers.map((officer) => (
-                                  <div key={officer.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 transition-colors">
-                                    {officer.profile_photo_url ? (
-                                      <img src={officer.profile_photo_url} alt={`${officer.first_name} ${officer.last_name}`} className="w-8 h-8 rounded-full object-cover" />
-                                    ) : (
-                                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center text-white text-xs font-bold">
-                                        {officer.first_name?.charAt(0)}{officer.last_name?.charAt(0)}
-                                      </div>
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-semibold text-slate-900 truncate">{officer.first_name} {officer.last_name}</p>
-                                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                                        {officer.unit_number && <span>Unit #{officer.unit_number}</span>}
-                                        {officer.division && <span>• {officer.division}</span>}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </CardContent>
-                          )}
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            }
-
             const officers = getUsersByRank(rank);
             const widthPercent = 30 + (index * 10);
             
@@ -303,7 +243,7 @@ export default function RankStructure() {
             <div className="space-y-3 text-sm text-blue-800">
               <div className="text-center">
                 <p className="font-semibold mb-2">Executive Leadership</p>
-                <p>Colonel (Director of Company Operations) → Lt Colonel (Director of Security Operations) / Lt Colonel (Director of Training and Compliance) → Major (Director of Field Operations)</p>
+                <p>Colonel (Director of Company Operations) → Lt Colonel (Director of Security Operations) → Major (Director of Field Operations)</p>
               </div>
               <div className="text-center pt-3 border-t border-blue-200">
                 <p className="font-semibold mb-2">Field Supervision</p>
