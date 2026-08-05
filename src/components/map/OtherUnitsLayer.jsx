@@ -81,49 +81,18 @@ const getStatusColor = (status) => {
 export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     if (!units || units.length === 0) return null;
     
-    // Group units by union and filter
-    const unitsToShow = [];
-    const processedUnionIds = new Set();
-    
-    units.forEach(unit => {
-        // Skip current user only
-        if (unit.id === currentUserId) return;
-        
-        // If unit is in a union
-        if (unit.union_id) {
-            // Only process each union once
-            if (processedUnionIds.has(unit.union_id)) return;
-            processedUnionIds.add(unit.union_id);
-            
-            // Find all members of this union
-            const unionMembers = units.filter(u => u.union_id === unit.union_id);
-            
-            // Find highest ranking officer (lowest unit number or first alphabetically)
-            const leadUnit = unionMembers.sort((a, b) => {
-                const aNum = parseInt(a.unit_number) || 999;
-                const bNum = parseInt(b.unit_number) || 999;
-                return aNum - bNum;
-            })[0];
-            
-            // Mark as union leader
-            unitsToShow.push({
-                ...leadUnit,
-                isUnionLead: true,
-                unionMembers: unionMembers.length
-            });
-        } else {
-            // Regular unit, not in union
-            unitsToShow.push(unit);
-        }
-    });
+    // Officer-safety view: every officer remains an individual marker.
+    // Never collapse union/group members into a single lead-unit icon.
+    const unitsToShow = units.filter(unit => unit.id !== currentUserId);
 
     if (unitsToShow.length === 0) return null;
     
     return (
         <MarkerClusterGroup
             chunkedLoading
-            maxClusterRadius={20}
+            maxClusterRadius={8}
             spiderfyOnMaxZoom={true}
+            disableClusteringAtZoom={14}
             showCoverageOnHover={false}
             zoomToBoundsOnClick={true}
             iconCreateFunction={(cluster) => {
