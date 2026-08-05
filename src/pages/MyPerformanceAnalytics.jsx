@@ -111,9 +111,19 @@ export default function MyPerformanceAnalytics() {
 
   // Recent important notifications
   const recentNotifications = React.useMemo(() => {
-    if (!notifications) return [];
-    return notifications.filter(n => !n.is_read).slice(0, 5);
-  }, [notifications]);
+    if (!notifications || !user?.email) return [];
+    const myEmail = user.email.trim().toLowerCase();
+    return notifications
+      .filter(n => {
+        const recipient = String(n.recipient_email || '').trim().toLowerCase();
+        const isMine = recipient === myEmail;
+        const isCompanyWide = ['all', 'company', 'company-wide', 'company_wide', '*'].includes(recipient)
+          || n.type === 'company_broadcast'
+          || n.audience === 'company';
+        return !n.is_read && isMine && !isCompanyWide;
+      })
+      .slice(0, 5);
+  }, [notifications, user?.email]);
 
   // Calculate on-time rate - MONTHLY RESET
   const onTimeStats = React.useMemo(() => {
