@@ -1,168 +1,130 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { MessageSquare, Send, X } from 'lucide-react';
+import { MessageSquare, Send, X, Megaphone, Radio } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function MessagingPanel({ currentUser, units, isOpen, onClose }) {
-    const [messages, setMessages] = useState([]);
-    const [newMessage, setNewMessage] = useState('');
-    const [selectedRecipient, setSelectedRecipient] = useState('dispatch');
+const roleSet = (user) => new Set((user?.additional_roles || []).map(r => String(r).toLowerCase()));
+const isDispatchUser = (user) => user?.role === 'admin' || user?.role === 'dispatch' || user?.dispatch_role === true || roleSet(user).has('full_access');
 
-    useEffect(() => {
-        if (isOpen) {
-            loadMessages();
-            const interval = setInterval(loadMessages, 5000);
-            return () => clearInterval(interval);
+export default function MessagingPanel({ currentUser, units = [], isOpen = true, onClose, embedded = false }) {
+  const dispatchMode = isDispatchUser(currentUser);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [selectedRecipient, setSelectedRecipient] = useState(dispatchMode ? 'company' : 'dispatch');
+
+  const officers = useMemo(() => units.filter(unit => {
+    const roles = roleSet(unit);
+    return !unit.termination_date && unit.id !== currentUser?.id && roles.has('officer');
+  }), [units, currentUser?.id]);
+
+  const loadMessages = async () => {
+    if (!currentUser?.id) return;
+    try {
+      const all = await base44.entities.Message.list('-created_date', 300);
+      const visible = all.filter(msg => {
+        if (dispatchMode) {
+          return msg.sender_id === 'dispatch' || msg.recipient_id === 'dispatch' || msg.recipient_id === 'company';
         }
-    }, [isOpen]);
+        return msg.sender_id === currentUser.id || msg.recipient_id === currentUser.id || msg.recipient_id === 'company';
+      });
+      setMessages(visible.reverse());
+    } catch (error) {
+      console.error('Error loading dispatch messages:', error);
+    }
+  };
 
-    const loadMessages = async () => {
-        try {
-            // Load only messages where user is sender, recipient, or recipient is 'dispatch'
-            const allMessages = await base44.entities.Message.list('-created_date', 200);
-            
-            const filteredMessages = allMessages.filter(msg => {
-                // Show if user is the sender
-                if (msg.sender_id === currentUser.id) return true;
-                
-                // Show if message is to/from dispatch (broadcast)
-                if (msg.recipient_id === 'dispatch' || msg.sender_id === 'dispatch') return true;
-                
-                // Show if user is the recipient
-                if (msg.recipient_id === currentUser.id) return true;
-                
-                // Otherwise hide
-                return false;
-            });
-            
-            setMessages(filteredMessages || []);
-        } catch (error) {
-            console.error('Error loading messages:', error);
-        }
-    };
+  useEffect(() => {
+    if (!isOpen || !currentUser?.id) return;
+    loadMessages();
+    const interval = setInterval(loadMessages, 4000);
+    return () => clearInterval(interval);
+  }, [isOpen, currentUser?.id, dispatchMode]);
 
-    const sendMessage = async () => {
-        if (!newMessage.trim()) return;
-        
-        try {
-            await base44.entities.Message.create({
-                sender_id: currentUser.id,
-                sender_name: currentUser.unit_number || currentUser.full_name,
-                recipient_id: selectedRecipient,
-                recipient_name: selectedRecipient === 'dispatch' ? 'Dispatch' : units.find(u => u.id === selectedRecipient)?.unit_number || 'Unit',
-                message: newMessage,
-                read: false
-            });
-            
-            setNewMessage('');
-            await loadMessages();
-            toast.success('Message sent');
-        } catch (error) {
-            console.error('Error sending message:', error);
-            toast.error('Failed to send message');
-        }
-    };
+  const sendMessage = async () => {
+    const text = newMessage.trim();
+    if (!text) return;
+    try {
+      const recipient = dispatchMode ? selectedRecipient : 'dispatch';
+      const unit = officers.find(u => u.id === recipient);
+      await base44.entities.Message.create({
+        sender_id: dispatchMode ? 'dispatch' : currentUser.id,
+        sender_name: dispatchMode
+          ? `Dispatch — ${currentUser.rank || ''} ${currentUser.last_name || currentUser.full_name || ''}`.trim()
+          : `${currentUser.rank || 'Officer'} ${currentUser.last_name || currentUser.full_name || ''}`.trim(),
+        recipient_id: recipient,
+        recipient_name: recipient === 'company' ? 'Company Wide' : recipient === 'dispatch' ? 'Dispatch' : `${unit?.rank || 'Officer'} ${unit?.last_name || unit?.unit_number || ''}`.trim(),
+        message: text,
+        read: false,
+        message_type: recipient === 'company' ? 'company_broadcast' : 'dispatch_message'
+      });
+      setNewMessage('');
+      await loadMessages();
+      toast.success(recipient === 'company' ? 'Company-wide message sent' : 'Message sent');
+    } catch (error) {
+      console.error('Error sending dispatch message:', error);
+      toast.error('Failed to send message');
+    }
+  };
 
-    return (
-        <AnimatePresence>
-            {isOpen && (
-                <motion.div
-                    initial={{ opacity: 0, x: 300 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 300 }}
-                    className="fixed right-0 top-0 bottom-0 w-96 bg-slate-900 border-l border-slate-700 z-[9999] flex flex-col"
-                >
-                    <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                            <MessageSquare className="w-5 h-5 text-blue-500" />
-                            Messages
-                        </h3>
-                        <Button variant="ghost" size="icon" onClick={onClose}>
-                            <X className="w-4 h-4" />
-                        </Button>
-                    </div>
+  const content = (
+    <div className={`flex h-full flex-col bg-slate-900 ${embedded ? 'rounded-xl border border-slate-700 overflow-hidden' : ''}`}>
+      <div className="flex items-center justify-between border-b border-slate-700 p-4">
+        <div>
+          <h3 className="flex items-center gap-2 text-lg font-bold text-white">
+            <MessageSquare className="h-5 w-5 text-blue-400" />
+            {dispatchMode ? 'Dispatch Messaging' : 'Messages with Dispatch'}
+          </h3>
+          <p className="mt-1 text-xs text-slate-400">Two-way operational messaging and company broadcasts</p>
+        </div>
+        {!embedded && onClose && <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>}
+      </div>
 
-                    <ScrollArea className="flex-1 p-4 bg-slate-950">
-                        <div className="space-y-2">
-                            {messages.map(msg => {
-                                const isOwnMessage = msg.sender_id === currentUser.id;
-                                // Generate consistent color based on sender ID
-                                const senderHue = msg.sender_id === 'dispatch' ? 200 : 
-                                    Array.from(msg.sender_id).reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
-                                
-                                return (
-                                    <div
-                                        key={msg.id}
-                                        className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
-                                    >
-                                        <div className={`max-w-[75%] ${isOwnMessage ? 'ml-12' : 'mr-12'}`}>
-                                            {!isOwnMessage && (
-                                                <div className="text-xs font-semibold mb-1 px-1"
-                                                    style={{ color: `hsl(${senderHue}, 60%, 60%)` }}>
-                                                    {msg.sender_name}
-                                                </div>
-                                            )}
-                                            <div
-                                                className={`rounded-2xl px-4 py-2 shadow-sm ${
-                                                    isOwnMessage
-                                                        ? 'bg-blue-500 text-white rounded-br-sm'
-                                                        : 'text-white rounded-bl-sm'
-                                                }`}
-                                                style={!isOwnMessage ? {
-                                                    background: `hsl(${senderHue}, 40%, 35%)`
-                                                } : {}}
-                                            >
-                                                <p className="text-sm leading-relaxed">{msg.message}</p>
-                                            </div>
-                                            <div className={`text-[10px] text-slate-500 mt-1 px-1 ${
-                                                isOwnMessage ? 'text-right' : 'text-left'
-                                            }`}>
-                                                {new Date(msg.created_date).toLocaleTimeString('en-US', { 
-                                                    timeZone: 'America/New_York',
-                                                    hour: 'numeric',
-                                                    minute: '2-digit',
-                                                    hour12: true
-                                                })}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </ScrollArea>
+      <ScrollArea className="flex-1 bg-slate-950 p-4">
+        <div className="space-y-3">
+          {messages.length === 0 && <div className="py-12 text-center text-sm text-slate-500">No dispatch messages yet.</div>}
+          {messages.map(msg => {
+            const mine = dispatchMode ? msg.sender_id === 'dispatch' : msg.sender_id === currentUser.id;
+            const broadcast = msg.recipient_id === 'company';
+            return (
+              <div key={msg.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[82%] ${mine ? 'text-right' : 'text-left'}`}>
+                  <div className="mb-1 flex items-center gap-1 px-1 text-[11px] font-semibold text-slate-400">
+                    {broadcast ? <Megaphone className="h-3 w-3 text-amber-400" /> : <Radio className="h-3 w-3 text-blue-400" />}
+                    <span>{msg.sender_name || 'Dispatch'}</span>
+                    {broadcast && <span className="rounded bg-amber-900/50 px-1.5 py-0.5 text-[9px] text-amber-300">COMPANY WIDE</span>}
+                  </div>
+                  <div className={`rounded-xl border px-4 py-2 text-left text-sm ${mine ? 'border-blue-500/50 bg-blue-700 text-white' : broadcast ? 'border-amber-600/50 bg-amber-950/50 text-amber-100' : 'border-slate-700 bg-slate-800 text-slate-100'}`}>
+                    {msg.message}
+                  </div>
+                  <div className="mt-1 px-1 text-[10px] text-slate-500">
+                    {new Date(msg.created_date).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </ScrollArea>
 
-                    <div className="p-4 border-t border-slate-700 bg-slate-900">
-                        <select
-                            value={selectedRecipient}
-                            onChange={(e) => setSelectedRecipient(e.target.value)}
-                            className="flex h-9 w-full rounded-xl border bg-slate-800 border-slate-700 text-white px-3 py-1 text-sm mb-2"
-                        >
-                            <option value="dispatch">Dispatch</option>
-                            {units.map(unit => (
-                                <option key={unit.id} value={unit.id}>
-                                    {unit.unit_number || unit.full_name}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="flex gap-2">
-                            <Input
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                                placeholder="iMessage"
-                                className="bg-slate-800 border-slate-700 text-white rounded-full px-4"
-                            />
-                            <Button onClick={sendMessage} size="icon" className="rounded-full bg-blue-500 hover:bg-blue-600">
-                                <Send className="w-4 h-4" />
-                            </Button>
-                        </div>
-                    </div>
-                </motion.div>
-            )}
-        </AnimatePresence>
-    );
+      <div className="border-t border-slate-700 bg-slate-900 p-4">
+        {dispatchMode && (
+          <select value={selectedRecipient} onChange={e => setSelectedRecipient(e.target.value)} className="mb-2 h-10 w-full rounded-md border border-slate-600 bg-slate-800 px-3 text-sm text-white">
+            <option value="company">Company Wide Broadcast</option>
+            {officers.map(unit => <option key={unit.id} value={unit.id}>{`${unit.rank || 'Officer'} ${unit.last_name || unit.full_name || unit.unit_number || ''}`.trim()}</option>)}
+          </select>
+        )}
+        <div className="flex gap-2">
+          <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} placeholder={dispatchMode ? 'Enter dispatch message...' : 'Reply to dispatch...'} className="border-slate-600 bg-slate-800 text-white placeholder:text-slate-500" />
+          <Button onClick={sendMessage} disabled={!newMessage.trim()} className="bg-blue-700 hover:bg-blue-600"><Send className="h-4 w-4" /></Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (embedded) return content;
+  return <AnimatePresence>{isOpen && <motion.div initial={{ opacity: 0, x: 320 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 320 }} className="fixed inset-y-0 right-0 z-[9999] w-full max-w-md border-l border-slate-700">{content}</motion.div>}</AnimatePresence>;
 }
