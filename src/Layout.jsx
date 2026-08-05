@@ -6,8 +6,8 @@ import {
   Building2, Calendar, CalendarClock, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardCheck, ClipboardList, Clock3, DollarSign, DoorOpen, FileText,
   FileWarning, Gauge, GraduationCap, Layers, LogOut, Map, MapPin, Menu,
-  MessageCircle, Package, Radio, Search, Settings, Shield, ShieldCheck,
-  Siren, UserCheck, UserX, Users, Wrench, X
+  MessageCircle, Moon, Package, Radio, Search, Settings, Shield, ShieldCheck,
+  Siren, Sun, UserCheck, UserX, Users, Wrench, X
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -401,12 +401,21 @@ export default function Layout({ children, currentPageName }) {
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
   const [search, setSearch] = useState('');
+  const [nightMode, setNightMode] = useState(() => localStorage.getItem('bps-workspace-theme') !== 'day');
   const [activeCenter, setActiveCenterState] = useState(() => localStorage.getItem('bps-active-center') || 'cad');
 
   const setActiveCenter = center => {
     setActiveCenterState(center);
     setSearch('');
     localStorage.setItem('bps-active-center', center);
+  };
+
+  const toggleWorkspaceTheme = () => {
+    setNightMode(value => {
+      const next = !value;
+      localStorage.setItem('bps-workspace-theme', next ? 'night' : 'day');
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -474,7 +483,19 @@ export default function Layout({ children, currentPageName }) {
             <div className="text-[9px] tracking-widest text-[#607c98]">UNIFIED OPERATIONS PLATFORM</div>
           </div>
         </div>
-        <div className="flex items-center gap-3 text-[10px] text-[#7791aa]">
+        <div className="flex items-center gap-2 text-[10px] text-[#7791aa]">
+          {!DARK_WORKSPACE_PAGES.has(currentPageName) && (
+            <button
+              type="button"
+              onClick={toggleWorkspaceTheme}
+              className="flex items-center gap-1.5 rounded border border-[#294867] bg-[#0c1a2a] px-2.5 py-1.5 font-bold text-[#b8c9d9] hover:bg-[#15314f] hover:text-white"
+              aria-label={nightMode ? 'Switch to day mode' : 'Switch to night mode'}
+              title={nightMode ? 'Switch to day mode' : 'Switch to night mode'}
+            >
+              {nightMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{nightMode ? 'DAY' : 'NIGHT'}</span>
+            </button>
+          )}
           {criticalOutage && <span className="hidden rounded border border-red-700/60 bg-red-950/40 px-2 py-1 font-bold text-red-300 sm:block">SYSTEM OUTAGE</span>}
           <span className="font-mono text-[#9fb6cc]">{clock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
         </div>
@@ -485,7 +506,7 @@ export default function Layout({ children, currentPageName }) {
         <button onClick={() => { stopAllAlerts(); setActiveAlert(null); }} className="rounded border border-red-500/50 px-2 py-1 text-xs font-bold hover:bg-red-900">ACKNOWLEDGE</button>
       </div>}
 
-      <main className={`min-h-0 flex-1 overflow-auto ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'light-workspace bg-[#eef2f7] text-slate-900'}`}>{children}</main>
+      <main className={`min-h-0 flex-1 overflow-auto ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : nightMode ? 'night-workspace bg-[#0b1420] text-slate-100' : 'light-workspace bg-[#eef2f7] text-slate-900'}`}>{children}</main>
     </section>
   </div>;
 }
