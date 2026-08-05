@@ -270,7 +270,9 @@ Provide:
 
       let locationToSubmit = data.location;
       if (isAdmin && !data.location) {
-        locationToSubmit = "Admin - Remote Submission";
+        locationToSubmit = isDraft ? "Draft - Location TBD" : "Admin - Remote Submission";
+      } else if (!data.location && isDraft) {
+        locationToSubmit = activeEntry?.location?.split(' - ')[0] || "Draft - Location TBD";
       } else if (!isAdmin && !activeEntry?.location && !isDraft) {
         locationToSubmit = "Unknown Location";
       }
@@ -436,8 +438,8 @@ Provide:
   };
 
   const handleSaveAsDraft = () => {
-    if (!formData.incident_date || !formData.description) {
-      alert('Please fill in at least the incident date and description before saving as draft.');
+    if (!formData.incident_date) {
+      alert('Please select the incident date before saving as draft.');
       return;
     }
     setSaving(true);
