@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
 import {
   MobileResponsiveDialog,
   MobileResponsiveDialogContent,
@@ -384,9 +385,16 @@ export default function AdminReports() {
   };
 
   const printReport = (report, type) => {
-    const printWindow = window.open('', '', 'width=850,height=1100');
-
     const officerName = getOfficerName(report.created_by);
+    if (type === 'summons') {
+      openVirginiaSummonsPrint(report, {
+        officerName: report.officer_name || officerName,
+        badge: report.officer_code_badge || '',
+      });
+      return;
+    }
+
+    const printWindow = window.open('', '', 'width=850,height=1100');
     const officerSig = getOfficerSignature(report.created_by);
 
     // Convert to Zulu time
