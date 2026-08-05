@@ -47,6 +47,7 @@
         "block",
         "intersection",
         "street",
+        "grac",
         "none"
       ],
       "description": "Method used to geocode the location"
