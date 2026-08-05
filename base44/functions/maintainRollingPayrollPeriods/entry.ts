@@ -15,6 +15,19 @@ Deno.serve(async (req) => {
     const allowed = user.role === 'admin' || roles.has('accounting') || roles.has('full_access');
     if (!allowed) return Response.json({ error: 'Accounting access required' }, { status: 403 });
 
+    const body = await req.json().catch(() => ({}));
+    if (body?.action === 'save' && body?.period) {
+      const period = body.period;
+      const saved = period.id
+        ? await base44.asServiceRole.entities.PayrollPeriod.update(period.id, { ...period, id: undefined })
+        : await base44.asServiceRole.entities.PayrollPeriod.create(period);
+      return Response.json({ success: true, saved });
+    }
+    if (body?.action === 'delete' && body?.id) {
+      await base44.asServiceRole.entities.PayrollPeriod.delete(body.id);
+      return Response.json({ success: true });
+    }
+
     const periods = await base44.asServiceRole.entities.PayrollPeriod.list('start_date', 1000);
     const sorted = [...(periods || [])].sort((a: any, b: any) => String(a.start_date).localeCompare(String(b.start_date)));
     if (sorted.length < 3) {
