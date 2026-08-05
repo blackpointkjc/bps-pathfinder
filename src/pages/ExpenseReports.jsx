@@ -307,6 +307,32 @@ export default function ExpenseReports() {
               />
             </div>
 
+            {formData.category === 'travel' && (
+              <div className="rounded-lg border border-blue-700 bg-blue-950/20 p-4 space-y-4">
+                <div>
+                  <p className="font-semibold text-slate-100">Travel Mileage Verification</p>
+                  <p className="text-xs text-slate-400">Starting and ending odometer readings and both photos are required.</p>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Starting Mileage *</Label>
+                    <Input type="number" min="0" step="1" value={formData.start_mileage} onChange={(e) => setFormData({...formData, start_mileage:e.target.value})} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ending Mileage *</Label>
+                    <Input type="number" min="0" step="1" value={formData.end_mileage} onChange={(e) => setFormData({...formData, end_mileage:e.target.value})} required />
+                  </div>
+                </div>
+                {formData.start_mileage !== '' && formData.end_mileage !== '' && Number(formData.end_mileage) >= Number(formData.start_mileage) && (
+                  <p className="text-sm font-semibold text-blue-300">Travel distance: {Number(formData.end_mileage) - Number(formData.start_mileage)} miles</p>
+                )}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label>Starting Odometer Photo *</Label><Input type="file" accept="image/*" capture="environment" onChange={(e)=>handleFileUpload(e,'start_mileage_photo_url','starting odometer photo')} disabled={uploading}/>{formData.start_mileage_photo_url && <Badge className="bg-emerald-700">Start Photo Uploaded</Badge>}</div>
+                  <div className="space-y-2"><Label>Ending Odometer Photo *</Label><Input type="file" accept="image/*" capture="environment" onChange={(e)=>handleFileUpload(e,'end_mileage_photo_url','ending odometer photo')} disabled={uploading}/>{formData.end_mileage_photo_url && <Badge className="bg-emerald-700">End Photo Uploaded</Badge>}</div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Receipt Upload</Label>
               <div className="flex gap-2">
