@@ -259,6 +259,14 @@
           },
           "manually_verified": {
             "type": "boolean"
+          },
+          "certificate_number": {
+            "type": "string",
+            "description": "Certificate, permit, or card number"
+          },
+          "cert_file_url": {
+            "type": "string",
+            "description": "Uploaded certificate image or PDF"
           }
         }
       }
