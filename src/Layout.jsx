@@ -159,6 +159,7 @@ const CENTER_CONFIG = {
         ['Compliance Tracker', 'TrainingComplianceTracker', BarChart3],
         ['Certification Alerts', 'AdminCertificationAlerts', Bell],
         ['Manage Students', 'ManageStudents', Users],
+        ['Officer Certification Management', 'ManageCompanyEmployees', Users],
         ['Training Records', 'TrainingRecords', BookOpen],
       ]},
     ],
@@ -168,7 +169,7 @@ const CENTER_CONFIG = {
     icon: Users,
     groups: [
       { label: 'People Operations', items: [
-        ['Manage Employees', 'ManageCompanyEmployees', Briefcase],
+        ['Employee Directory (View Only)', 'ManageCompanyEmployees', Briefcase],
         ['Client Accounts & Assignments', 'ManageClients', Building2],
         ['Invitations & Pending Accounts', 'AdminUsers', Users],
         ['Manage Time Entries', 'ManageTimeEntries', Clock3],
