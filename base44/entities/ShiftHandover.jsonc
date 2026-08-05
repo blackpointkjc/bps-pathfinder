@@ -1,0 +1,93 @@
+{
+  "name": "ShiftHandover",
+  "type": "object",
+  "properties": {
+    "shift_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the shift"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location where shift occurred"
+    },
+    "departing_officer_email": {
+      "type": "string",
+      "description": "Email of officer completing shift"
+    },
+    "departing_officer_name": {
+      "type": "string",
+      "description": "Name of departing officer"
+    },
+    "incoming_officer_email": {
+      "type": "string",
+      "description": "Email of officer taking over shift"
+    },
+    "incoming_officer_name": {
+      "type": "string",
+      "description": "Name of incoming officer"
+    },
+    "shift_start": {
+      "type": "string",
+      "description": "Shift start time"
+    },
+    "shift_end": {
+      "type": "string",
+      "description": "Shift end time"
+    },
+    "key_updates": {
+      "type": "string",
+      "description": "Important updates from the shift"
+    },
+    "ongoing_issues": {
+      "type": "string",
+      "description": "Issues that need continued attention"
+    },
+    "pending_tasks": {
+      "type": "string",
+      "description": "Tasks that need to be completed"
+    },
+    "equipment_status": {
+      "type": "string",
+      "description": "Status of equipment at location"
+    },
+    "incident_count": {
+      "type": "number",
+      "description": "Number of incidents during shift"
+    },
+    "visitor_count": {
+      "type": "number",
+      "description": "Number of visitors logged"
+    },
+    "patrol_count": {
+      "type": "number",
+      "description": "Number of patrols conducted"
+    },
+    "ai_summary": {
+      "type": "string",
+      "description": "AI-generated summary of handover"
+    },
+    "urgent_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "AI-flagged urgent items"
+    },
+    "acknowledged_by_incoming": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether incoming officer has acknowledged"
+    },
+    "acknowledgement_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When handover was acknowledged"
+    }
+  },
+  "required": [
+    "shift_date",
+    "location",
+    "departing_officer_email"
+  ]
+}

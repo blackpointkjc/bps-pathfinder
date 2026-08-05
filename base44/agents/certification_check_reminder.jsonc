@@ -1,0 +1,15 @@
+{
+  "description": "Daily agent that creates certification check reminders for admin at midnight if certifications haven't been verified",
+  "instructions": "Every day at midnight (12:00 AM), check if a CertificationCheckAlert has been created for today. If not, create one reminding admin to verify all officer certifications are up to date. The alert should include a message reminding them to check DCJS and firearm certifications across all officers.",
+  "tool_configs": [
+    {
+      "entity_name": "CertificationCheckAlert",
+      "allowed_operations": [
+        "create",
+        "read"
+      ]
+    }
+  ],
+  "schedule": "0 0 * * *",
+  "name": "certification_check_reminder"
+}

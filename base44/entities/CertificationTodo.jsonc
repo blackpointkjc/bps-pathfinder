@@ -1,0 +1,52 @@
+{
+  "name": "CertificationTodo",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the officer"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Full name of the officer"
+    },
+    "certification_type": {
+      "type": "string",
+      "enum": [
+        "dcjs",
+        "firearm"
+      ],
+      "description": "Type of certification expiring"
+    },
+    "expiration_date": {
+      "type": "string",
+      "format": "date",
+      "description": "When the certification expires"
+    },
+    "days_until_expiration": {
+      "type": "number",
+      "description": "Number of days until expiration"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this alert has been acknowledged"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Admin notes about follow-up actions"
+    },
+    "last_alert_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this alert was last sent/created"
+    }
+  },
+  "required": [
+    "officer_email",
+    "officer_name",
+    "certification_type",
+    "expiration_date",
+    "days_until_expiration"
+  ]
+}

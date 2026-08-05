@@ -1,0 +1,63 @@
+{
+  "name": "GeofenceAlert",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the officer"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of the officer"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location/site name"
+    },
+    "alert_type": {
+      "type": "string",
+      "enum": [
+        "entered",
+        "exited",
+        "outside_zone"
+      ],
+      "description": "Type of geofence alert"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Officer's latitude when alert was triggered"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Officer's longitude when alert was triggered"
+    },
+    "distance_from_site": {
+      "type": "number",
+      "description": "Distance in meters from the site center"
+    },
+    "acknowledged": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the alert has been acknowledged"
+    },
+    "acknowledged_by": {
+      "type": "string",
+      "description": "Email of supervisor who acknowledged"
+    },
+    "acknowledged_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the alert was acknowledged"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notes about the alert"
+    }
+  },
+  "required": [
+    "officer_email",
+    "officer_name",
+    "location",
+    "alert_type"
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "name": "DailyActivityReport",
+  "type": "object",
+  "properties": {
+    "report_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the report"
+    },
+    "start_time": {
+      "type": "string",
+      "description": "Shift start time"
+    },
+    "end_time": {
+      "type": "string",
+      "description": "Shift end time"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location/post assignment"
+    },
+    "weather_conditions": {
+      "type": "string",
+      "description": "Weather conditions during shift"
+    },
+    "patrol_count": {
+      "type": "number",
+      "description": "Number of patrols conducted"
+    },
+    "visitors_logged": {
+      "type": "number",
+      "description": "Number of visitors logged"
+    },
+    "doors_checked": {
+      "type": "number",
+      "description": "Number of doors checked"
+    },
+    "hourly_entries": {
+      "type": "string",
+      "description": "Hourly time-stamped activity entries"
+    },
+    "vehicles_noted": {
+      "type": "string",
+      "description": "Suspicious or notable vehicles"
+    },
+    "persons_of_interest": {
+      "type": "string",
+      "description": "Persons of interest encountered"
+    },
+    "equipment_check": {
+      "type": "string",
+      "description": "Equipment status check"
+    },
+    "incidents": {
+      "type": "string",
+      "description": "Any incidents that occurred"
+    },
+    "photo_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Photos for the report"
+    },
+    "signature_url": {
+      "type": "string",
+      "description": "URL of officer signature image"
+    },
+    "device_timezone": {
+      "type": "string",
+      "description": "Device timezone when report was created"
+    },
+    "gps_latitude": {
+      "type": "number",
+      "description": "GPS latitude at time of submission"
+    },
+    "gps_longitude": {
+      "type": "number",
+      "description": "GPS longitude at time of submission"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "submitted",
+        "rejected",
+        "approved"
+      ],
+      "default": "submitted",
+      "description": "Report status"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Admin feedback for revisions"
+    },
+    "was_rejected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this report was previously rejected"
+    },
+    "officer_ip_address": {
+      "type": "string",
+      "description": "IP address of officer when submitting report"
+    }
+  },
+  "required": [
+    "report_date",
+    "location",
+    "hourly_entries"
+  ]
+}

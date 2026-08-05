@@ -1,0 +1,46 @@
+{
+  "name": "ReportActivityLog",
+  "type": "object",
+  "properties": {
+    "report_type": {
+      "type": "string",
+      "enum": [
+        "traffic_violation",
+        "criminal_complaint"
+      ],
+      "description": "Type of report this log belongs to"
+    },
+    "report_id": {
+      "type": "string",
+      "description": "ID of the report"
+    },
+    "action": {
+      "type": "string",
+      "description": "Action taken (e.g., 'Created', 'Court date set', 'Warrant issued', 'Arrested on site')"
+    },
+    "details": {
+      "type": "string",
+      "description": "Details of the action"
+    },
+    "performed_by": {
+      "type": "string",
+      "description": "Email of person who performed action"
+    },
+    "performed_by_name": {
+      "type": "string",
+      "description": "Name of person who performed action"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When action was performed"
+    }
+  },
+  "required": [
+    "report_type",
+    "report_id",
+    "action",
+    "performed_by",
+    "performed_by_name"
+  ]
+}

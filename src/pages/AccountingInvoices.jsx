@@ -1,0 +1,749 @@
+import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DollarSign, Plus, Send, FileText, Download } from "lucide-react";
+import { format, startOfMonth, endOfMonth } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+
+const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
+
+export default function AccountingInvoices() {
+  const [showDialog, setShowDialog] = useState(false);
+  const [selectedClient, setSelectedClient] = useState("");
+  const [selectedSite, setSelectedSite] = useState("");
+  const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [invoiceNotes, setInvoiceNotes] = useState("");
+  const [generating, setGenerating] = useState(false);
+
+  const queryClient = useQueryClient();
+
+  const { data: user } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => base44.auth.me(),
+  });
+
+  const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.role === 'admin';
+
+  const { data: clients } = useQuery({
+    queryKey: ['clients'],
+    queryFn: async () => {
+      const users = await base44.entities.User.list();
+      return users.filter(u => u.additional_roles?.includes('client'));
+    },
+    enabled: isAccountingRole,
+    initialData: [],
+  });
+
+  const { data: locations } = useQuery({
+    queryKey: ['locations'],
+    queryFn: () => base44.entities.Location.list(),
+    initialData: [],
+  });
+
+  const { data: timeEntries } = useQuery({
+    queryKey: ['timeEntries'],
+    queryFn: () => base44.entities.TimeEntry.list('-clock_in', 2000),
+    enabled: isAccountingRole,
+    initialData: [],
+  });
+
+  const { data: officers } = useQuery({
+    queryKey: ['officers'],
+    queryFn: () => base44.entities.User.list(),
+    initialData: [],
+  });
+
+  const { data: config } = useQuery({
+    queryKey: ['payrollConfig'],
+    queryFn: async () => {
+      const configs = await base44.entities.PayrollConfig.list();
+      return configs[0] || null;
+    },
+    enabled: isAccountingRole,
+  });
+
+  const { data: invoices = [] } = useQuery({
+    queryKey: ['invoices'],
+    queryFn: async () => {
+      try {
+        const allInvoices = await base44.entities.Invoice.list('-created_date', 1000);
+        return allInvoices || [];
+      } catch (error) {
+        console.error('Error fetching invoices:', error);
+        return [];
+      }
+    },
+    enabled: isAccountingRole,
+    refetchInterval: 3000,
+  });
+
+  const generateInvoiceMutation = useMutation({
+    mutationFn: async (invoiceData) => {
+      // Create invoice record
+      const invoice = await base44.entities.Invoice.create(invoiceData);
+      
+      // Create notification for client
+      await base44.entities.Notification.create({
+        recipient_email: invoiceData.client_email,
+        type: 'invoice',
+        title: `New Invoice - ${invoiceData.invoice_number}`,
+        message: `Invoice for ${invoiceData.site_name} from ${format(new Date(invoiceData.period_start), 'MMM d')} to ${format(new Date(invoiceData.period_end), 'MMM d, yyyy')}. Total: $${invoiceData.total_amount.toFixed(2)}`,
+        priority: 'normal',
+        action_link: '/ClientPayrollReport',
+      });
+
+      return invoice;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      setShowDialog(false);
+      alert('✅ Invoice created and sent to client!');
+    },
+  });
+
+  const generateInvoice = async () => {
+    if (!selectedClient || !selectedSite) {
+      alert('Please select a client and site');
+      return;
+    }
+
+    setGenerating(true);
+
+    try {
+      const location = locations.find(l => l.site_name === selectedSite);
+      const billRate = location?.site_bill_rate;
+
+      if (!billRate) {
+        alert('Site has no bill rate set. Please set the bill rate in Manage Locations.');
+        setGenerating(false);
+        return;
+      }
+
+      // Filter time entries for this site and date range
+      const siteEntries = timeEntries.filter(entry => {
+        if (!entry.clock_in || !entry.clock_out || entry.location !== selectedSite) return false;
+        const entryDate = new Date(entry.clock_in);
+        return entryDate >= new Date(startDate) && entryDate <= new Date(endDate);
+      });
+
+      let totalHours = 0;
+      const shifts = [];
+
+      siteEntries.forEach(entry => {
+        const hours = (new Date(entry.clock_out) - new Date(entry.clock_in)) / (1000 * 60 * 60);
+        totalHours += hours;
+        const officer = officers.find(o => o.email === entry.officer_email);
+        shifts.push({
+          date: format(new Date(entry.clock_in), 'MMM d, yyyy'),
+          officer: officer ? `${officer.first_name} ${officer.last_name}` : 'Officer',
+          clockIn: format(new Date(entry.clock_in), 'HH:mm'),
+          clockOut: format(new Date(entry.clock_out), 'HH:mm'),
+          hours: hours.toFixed(2),
+          rate: billRate.toFixed(2),
+          amount: (hours * billRate).toFixed(2)
+        });
+      });
+
+      const totalAmount = totalHours * billRate;
+      
+      // Generate invoice number: YY + sequential number
+      const currentYear = new Date().getFullYear().toString().slice(-2);
+      const yearInvoices = invoices.filter(inv => inv.invoice_number?.startsWith(currentYear));
+      const nextNumber = yearInvoices.length + 1;
+      const invoiceNumber = `${currentYear}${nextNumber.toString().padStart(3, '0')}`;
+      
+      // Calculate due date (30 days from today)
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+
+      // Send invoice data to client
+      await generateInvoiceMutation.mutateAsync({
+        client_email: selectedClient,
+        invoice_number: invoiceNumber,
+        site_name: selectedSite,
+        period_start: startDate,
+        period_end: endDate,
+        total_hours: totalHours,
+        bill_rate: billRate,
+        total_amount: totalAmount,
+        shifts: JSON.stringify(shifts),
+        notes: invoiceNotes,
+        due_date: format(dueDate, 'yyyy-MM-dd'),
+        status: 'sent'
+      });
+
+    } catch (error) {
+      console.error('Invoice generation error:', error);
+      alert('Failed to generate invoice');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  if (!isAccountingRole) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+        <Card className="max-w-md">
+          <CardContent className="p-8 text-center">
+            <DollarSign className="w-16 h-16 mx-auto mb-4 text-amber-600" />
+            <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
+            <p className="text-slate-600">You don't have accounting access.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const clientLocations = selectedClient 
+    ? locations.filter(l => l.assigned_client_email === selectedClient)
+    : [];
+
+  const generateAllSitesInvoices = async () => {
+    if (!selectedClient) {
+      alert('Please select a client first');
+      return;
+    }
+
+    const clientSites = clientLocations;
+    if (clientSites.length === 0) {
+      alert('This client has no assigned sites');
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      for (const site of clientSites) {
+        const location = locations.find(l => l.site_name === site);
+        const billRate = location?.site_bill_rate;
+
+        if (!billRate) {
+          console.warn(`Skipping ${site} - no bill rate set`);
+          continue;
+        }
+
+        const siteEntries = timeEntries.filter(entry => {
+          if (!entry.clock_in || !entry.clock_out || entry.location !== site) return false;
+          const entryDate = new Date(entry.clock_in);
+          return entryDate >= new Date(startDate) && entryDate <= new Date(endDate);
+        });
+
+        if (siteEntries.length === 0) continue;
+
+        let totalHours = 0;
+        const shifts = [];
+
+        siteEntries.forEach(entry => {
+          const hours = (new Date(entry.clock_out) - new Date(entry.clock_in)) / (1000 * 60 * 60);
+          totalHours += hours;
+          const officer = officers.find(o => o.email === entry.officer_email);
+          shifts.push({
+            date: format(new Date(entry.clock_in), 'MMM d, yyyy'),
+            officer: officer ? `${officer.first_name} ${officer.last_name}` : 'Officer',
+            clockIn: format(new Date(entry.clock_in), 'HH:mm'),
+            clockOut: format(new Date(entry.clock_out), 'HH:mm'),
+            hours: hours.toFixed(2),
+            rate: billRate.toFixed(2),
+            amount: (hours * billRate).toFixed(2)
+          });
+        });
+
+        const totalAmount = totalHours * billRate;
+        const currentYear = new Date().getFullYear().toString().slice(-2);
+        const yearInvoices = invoices.filter(inv => inv.invoice_number?.startsWith(currentYear));
+        const nextNumber = yearInvoices.length + 1;
+        const invoiceNumber = `${currentYear}${nextNumber.toString().padStart(3, '0')}`;
+        
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 30);
+
+        await generateInvoiceMutation.mutateAsync({
+          client_email: selectedClient,
+          invoice_number: invoiceNumber,
+          site_name: site,
+          period_start: startDate,
+          period_end: endDate,
+          total_hours: totalHours,
+          bill_rate: billRate,
+          total_amount: totalAmount,
+          shifts: JSON.stringify(shifts),
+          notes: invoiceNotes,
+          due_date: format(dueDate, 'yyyy-MM-dd'),
+          status: 'sent'
+        });
+      }
+      alert(`✅ Invoices generated and sent for ${clientSites.length} site(s)!`);
+    } catch (error) {
+      console.error('Bulk invoice generation error:', error);
+      alert('Error generating invoices');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="container mx-auto p-4 md:p-6 max-w-7xl min-h-screen">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Client Invoices</h1>
+          <p className="text-slate-600">Generate and send invoices to clients</p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={generateAllSitesInvoices}
+            disabled={generating || !selectedClient}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            All Sites
+          </Button>
+          <Button
+            onClick={() => setShowDialog(true)}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Single Site
+          </Button>
+        </div>
+      </div>
+
+      <Card className="mb-6 border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+        <CardHeader>
+          <CardTitle>Invoice Generator</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Select Client</Label>
+              <Select value={selectedClient} onValueChange={setSelectedClient}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose client..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map(client => (
+                    <SelectItem key={client.email} value={client.email}>
+                      {client.first_name && client.last_name 
+                        ? `${client.first_name} ${client.last_name}` 
+                        : client.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Select Site</Label>
+              <Select 
+                value={selectedSite} 
+                onValueChange={setSelectedSite}
+                disabled={!selectedClient}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose site..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientLocations.map(loc => (
+                    <SelectItem key={loc.id} value={loc.site_name}>
+                      {loc.site_name} {loc.site_bill_rate ? `($${loc.site_bill_rate}/hr)` : '(No rate set)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Period Start</Label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>Period End</Label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label>Invoice Notes (Optional)</Label>
+            <Textarea
+              placeholder="Additional notes for the invoice..."
+              value={invoiceNotes}
+              onChange={(e) => setInvoiceNotes(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          <Button
+            onClick={generateInvoice}
+            disabled={generating || !selectedClient || !selectedSite}
+            className="w-full bg-green-600 hover:bg-green-700 text-lg py-6"
+          >
+            {generating ? (
+              <>Generating Invoice...</>
+            ) : (
+              <>
+                <Send className="w-5 h-5 mr-2" />
+                Generate & Send Invoice to Client
+              </>
+            )}
+          </Button>
+
+          <p className="text-xs text-purple-900">
+            Invoice will be automatically sent to client portal and notify them via email
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Invoices ({invoices.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {invoices.length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+              <p className="text-slate-600">No invoices yet. Generate your first invoice above.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {invoices.map(invoice => {
+                const client = clients.find(c => c.email === invoice.client_email);
+                const clientName = client ? `${client.first_name} ${client.last_name}` : invoice.client_email;
+                
+                return (
+                  <div key={invoice.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-1">
+                        <p className="font-bold text-blue-600">#{invoice.invoice_number}</p>
+                        <Badge className={
+                          invoice.status === 'paid' ? 'bg-green-600' :
+                          invoice.status === 'overdue' ? 'bg-red-600' :
+                          invoice.status === 'sent' ? 'bg-blue-600' : 'bg-slate-600'
+                        }>
+                          {invoice.status}
+                        </Badge>
+                      </div>
+                      <p className="font-semibold text-slate-900">{clientName} - {invoice.site_name}</p>
+                      <p className="text-sm text-slate-600">
+                        {format(new Date(invoice.period_start), 'MMM d')} - {format(new Date(invoice.period_end), 'MMM d, yyyy')} • 
+                        {' '}{invoice.total_hours.toFixed(1)} hrs @ ${invoice.bill_rate}/hr
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Created {format(new Date(invoice.created_date), 'MMM d, yyyy')}
+                        {invoice.due_date && ` • Due ${format(new Date(invoice.due_date), 'MMM d, yyyy')}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-green-600">
+                        ${invoice.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-2"
+                        onClick={() => {
+                          const shifts = JSON.parse(invoice.shifts || '[]');
+                          const client = clients.find(c => c.email === invoice.client_email);
+                          const clientName = client ? `${client.first_name} ${client.last_name}` : invoice.client_email;
+                          
+                          const invoiceWindow = window.open('', '_blank');
+                          invoiceWindow.document.write(`
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                              <title>Invoice ${invoice.invoice_number}</title>
+                              <style>
+                                body { 
+                                  font-family: Arial, sans-serif; 
+                                  margin: 0;
+                                  padding: 40px;
+                                  background: white;
+                                }
+                                .invoice-container {
+                                  max-width: 8.5in;
+                                  margin: 0 auto;
+                                }
+                                .invoice-header {
+                                  display: flex;
+                                  justify-content: space-between;
+                                  border-bottom: 3px solid #3b82f6;
+                                  padding-bottom: 20px;
+                                  margin-bottom: 30px;
+                                }
+                                .company-info {
+                                  flex: 1;
+                                }
+                                .company-name {
+                                  font-size: 24px;
+                                  font-weight: bold;
+                                  color: #1e40af;
+                                  margin-bottom: 5px;
+                                }
+                                .company-details {
+                                  font-size: 11px;
+                                  color: #64748b;
+                                  line-height: 1.6;
+                                }
+                                .invoice-title {
+                                  text-align: right;
+                                  flex: 1;
+                                }
+                                .invoice-number {
+                                  font-size: 32px;
+                                  font-weight: bold;
+                                  color: #1e40af;
+                                }
+                                .invoice-date {
+                                  font-size: 12px;
+                                  color: #64748b;
+                                  margin-top: 5px;
+                                }
+                                .bill-to {
+                                  background: #f8fafc;
+                                  padding: 15px;
+                                  border-radius: 8px;
+                                  margin-bottom: 30px;
+                                }
+                                .bill-to-label {
+                                  font-size: 12px;
+                                  font-weight: bold;
+                                  color: #64748b;
+                                  margin-bottom: 5px;
+                                }
+                                .bill-to-name {
+                                  font-size: 16px;
+                                  font-weight: bold;
+                                  color: #1e293b;
+                                }
+                                .invoice-details {
+                                  display: grid;
+                                  grid-template-columns: repeat(3, 1fr);
+                                  gap: 15px;
+                                  margin-bottom: 30px;
+                                }
+                                .detail-box {
+                                  background: #f8fafc;
+                                  padding: 12px;
+                                  border-radius: 6px;
+                                }
+                                .detail-label {
+                                  font-size: 11px;
+                                  color: #64748b;
+                                  font-weight: 600;
+                                  margin-bottom: 4px;
+                                }
+                                .detail-value {
+                                  font-size: 14px;
+                                  font-weight: bold;
+                                  color: #1e293b;
+                                }
+                                table {
+                                  width: 100%;
+                                  border-collapse: collapse;
+                                  margin-bottom: 30px;
+                                }
+                                th {
+                                  background: #3b82f6;
+                                  color: white;
+                                  padding: 12px;
+                                  text-align: left;
+                                  font-size: 12px;
+                                  font-weight: 600;
+                                }
+                                td {
+                                  padding: 10px 12px;
+                                  border-bottom: 1px solid #e2e8f0;
+                                  font-size: 11px;
+                                  color: #475569;
+                                }
+                                tr:hover {
+                                  background: #f8fafc;
+                                }
+                                .totals {
+                                  text-align: right;
+                                  margin-top: 20px;
+                                }
+                                .total-row {
+                                  display: flex;
+                                  justify-content: flex-end;
+                                  padding: 8px 0;
+                                  font-size: 14px;
+                                }
+                                .total-label {
+                                  width: 150px;
+                                  text-align: right;
+                                  padding-right: 20px;
+                                  color: #64748b;
+                                }
+                                .total-value {
+                                  width: 120px;
+                                  font-weight: bold;
+                                  color: #1e293b;
+                                }
+                                .grand-total {
+                                  border-top: 2px solid #3b82f6;
+                                  padding-top: 10px;
+                                  margin-top: 10px;
+                                }
+                                .grand-total .total-label,
+                                .grand-total .total-value {
+                                  font-size: 18px;
+                                  color: #1e40af;
+                                }
+                                .footer {
+                                  margin-top: 40px;
+                                  padding-top: 20px;
+                                  border-top: 1px solid #e2e8f0;
+                                  text-align: center;
+                                  font-size: 11px;
+                                  color: #64748b;
+                                }
+                                .notes {
+                                  background: #fef3c7;
+                                  border-left: 4px solid #f59e0b;
+                                  padding: 15px;
+                                  margin-top: 30px;
+                                  border-radius: 4px;
+                                }
+                                .notes-title {
+                                  font-weight: bold;
+                                  color: #92400e;
+                                  margin-bottom: 8px;
+                                }
+                                .notes-text {
+                                  color: #78350f;
+                                  font-size: 12px;
+                                  line-height: 1.5;
+                                }
+                                @media print {
+                                  body { padding: 0; }
+                                  @page { margin: 0.5in; }
+                                }
+                              </style>
+                            </head>
+                            <body>
+                              <div class="invoice-container">
+                                <div class="invoice-header">
+                                  <div class="company-info">
+                                    <div class="company-name">${config?.company_legal_name || 'Black Point Protection Services'}</div>
+                                    <div class="company-details">
+                                      ${config?.company_address || '1971 University Blvd, Lynchburg, VA 24515'}<br>
+                                      Email: ${config?.payroll_email || 'admin@blackpointkjs.com'}<br>
+                                      Phone: ${config?.company_phone || '(555) 123-4567'}<br>
+                                      EIN: ${config?.employer_ein || '54-0946734'}
+                                    </div>
+                                  </div>
+                                  <div class="invoice-title">
+                                    <div class="invoice-number">#${invoice.invoice_number}</div>
+                                    <div class="invoice-date">Date: ${format(new Date(invoice.created_date), 'MMM d, yyyy')}</div>
+                                    <div class="invoice-date">Due: ${format(new Date(invoice.due_date), 'MMM d, yyyy')}</div>
+                                  </div>
+                                </div>
+
+                                <div class="bill-to">
+                                  <div class="bill-to-label">BILL TO</div>
+                                  <div class="bill-to-name">${clientName}</div>
+                                  <div class="company-details">${invoice.site_name}</div>
+                                </div>
+
+                                <div class="invoice-details">
+                                  <div class="detail-box">
+                                    <div class="detail-label">SERVICE PERIOD</div>
+                                    <div class="detail-value">${format(new Date(invoice.period_start), 'MMM d')} - ${format(new Date(invoice.period_end), 'MMM d, yyyy')}</div>
+                                  </div>
+                                  <div class="detail-box">
+                                    <div class="detail-label">TOTAL HOURS</div>
+                                    <div class="detail-value">${invoice.total_hours.toFixed(2)} hrs</div>
+                                  </div>
+                                  <div class="detail-box">
+                                    <div class="detail-label">HOURLY RATE</div>
+                                    <div class="detail-value">$${invoice.bill_rate.toFixed(2)}/hr</div>
+                                  </div>
+                                </div>
+
+                                <table>
+                                  <thead>
+                                    <tr>
+                                      <th>Date</th>
+                                      <th>Officer</th>
+                                      <th>Clock In</th>
+                                      <th>Clock Out</th>
+                                      <th style="text-align: right;">Hours</th>
+                                      <th style="text-align: right;">Rate</th>
+                                      <th style="text-align: right;">Amount</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    ${shifts.map(shift => `
+                                      <tr>
+                                        <td>${shift.date}</td>
+                                        <td>${shift.officer}</td>
+                                        <td>${shift.clockIn}</td>
+                                        <td>${shift.clockOut}</td>
+                                        <td style="text-align: right;">${shift.hours}</td>
+                                        <td style="text-align: right;">$${shift.rate}</td>
+                                        <td style="text-align: right;">$${shift.amount}</td>
+                                      </tr>
+                                    `).join('')}
+                                  </tbody>
+                                </table>
+
+                                <div class="totals">
+                                  <div class="total-row">
+                                    <div class="total-label">Subtotal:</div>
+                                    <div class="total-value">$${invoice.total_amount.toFixed(2)}</div>
+                                  </div>
+                                  <div class="total-row grand-total">
+                                    <div class="total-label">Total Due:</div>
+                                    <div class="total-value">$${invoice.total_amount.toFixed(2)}</div>
+                                  </div>
+                                </div>
+
+                                ${invoice.notes ? `
+                                  <div class="notes">
+                                    <div class="notes-title">Notes</div>
+                                    <div class="notes-text">${invoice.notes}</div>
+                                  </div>
+                                ` : ''}
+
+                                <div class="footer">
+                                  <p>Thank you for your business!</p>
+                                  <p>Payment is due within 30 days. Please remit payment to the address above.</p>
+                                  <p>${config?.company_legal_name || 'Black Point Protection Services'} • EIN: ${config?.employer_ein || '54-0946734'}</p>
+                                </div>
+                              </div>
+                              <script>window.print();</script>
+                            </body>
+                            </html>
+                          `);
+                        }}
+                      >
+                        <Download className="w-4 h-4 mr-1" />
+                        Download
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

@@ -1,0 +1,76 @@
+{
+  "name": "SecurityAlert",
+  "type": "object",
+  "properties": {
+    "alert_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When alert was triggered"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location of alert"
+    },
+    "alert_type": {
+      "type": "string",
+      "enum": [
+        "incident",
+        "emergency",
+        "suspicious_activity",
+        "breach",
+        "medical",
+        "fire",
+        "other"
+      ],
+      "description": "Type of alert"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium",
+      "description": "Alert severity"
+    },
+    "description": {
+      "type": "string",
+      "description": "Alert description"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Officer who reported"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "resolved",
+        "acknowledged"
+      ],
+      "default": "active",
+      "description": "Alert status"
+    },
+    "resolved_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When alert was resolved"
+    },
+    "resolution_notes": {
+      "type": "string",
+      "description": "Resolution details"
+    },
+    "client_notified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether client was notified"
+    }
+  },
+  "required": [
+    "location",
+    "alert_type",
+    "description"
+  ]
+}

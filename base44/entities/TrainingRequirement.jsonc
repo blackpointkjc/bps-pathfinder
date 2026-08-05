@@ -1,0 +1,83 @@
+{
+  "name": "TrainingRequirement",
+  "type": "object",
+  "properties": {
+    "training_name": {
+      "type": "string",
+      "description": "Name of the training requirement (e.g., CPR, DCJS, Fire Watch)"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "certification",
+        "safety",
+        "legal_compliance",
+        "site_specific",
+        "company_policy",
+        "emergency_response",
+        "first_aid",
+        "use_of_force",
+        "other"
+      ],
+      "description": "Training category"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description and instructions for the officer"
+    },
+    "required_proof_type": {
+      "type": "string",
+      "description": "What proof/documentation is required (e.g., card, certificate, signed form)"
+    },
+    "requires_photos": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether photo uploads are required"
+    },
+    "requires_expiration_date": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether expiration date must be entered"
+    },
+    "requires_certificate_number": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether certificate/card number is required"
+    },
+    "requires_approval": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether admin approval is required"
+    },
+    "is_mandatory": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this training is mandatory or optional"
+    },
+    "renewal_period_months": {
+      "type": "number",
+      "description": "How often this training must be renewed (in months). 0 = no renewal."
+    },
+    "renewal_requirement_id": {
+      "type": "string",
+      "description": "ID of the TrainingRequirement that becomes the renewal/recertification course"
+    },
+    "renewal_training_name": {
+      "type": "string",
+      "description": "Name of renewal training (cached for quick reference)"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this training template is active"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Default admin notes or instructions to include when assigning"
+    }
+  },
+  "required": [
+    "training_name",
+    "category"
+  ]
+}

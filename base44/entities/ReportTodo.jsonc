@@ -1,0 +1,53 @@
+{
+  "name": "ReportTodo",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Email of officer who needs to revise"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of the officer"
+    },
+    "report_type": {
+      "type": "string",
+      "enum": [
+        "shift_report",
+        "incident_report",
+        "trespass_notice",
+        "parking_violation"
+      ],
+      "description": "Type of report to revise"
+    },
+    "report_id": {
+      "type": "string",
+      "description": "ID of the report that needs revision"
+    },
+    "admin_feedback": {
+      "type": "string",
+      "description": "Feedback from admin on what needs to be fixed"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether officer has addressed the feedback"
+    },
+    "created_by_admin": {
+      "type": "string",
+      "description": "Email of admin who sent it back"
+    },
+    "rejection_count": {
+      "type": "number",
+      "default": 1,
+      "description": "Number of times this report has been rejected"
+    }
+  },
+  "required": [
+    "officer_email",
+    "officer_name",
+    "report_type",
+    "report_id",
+    "admin_feedback"
+  ]
+}

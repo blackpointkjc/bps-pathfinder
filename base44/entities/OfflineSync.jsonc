@@ -1,0 +1,38 @@
+{
+  "name": "OfflineSync",
+  "type": "object",
+  "properties": {
+    "sync_type": {
+      "type": "string",
+      "description": "Type of data being synced (report_draft, form_data, etc.)"
+    },
+    "entity_type": {
+      "type": "string",
+      "description": "Entity type this sync data belongs to"
+    },
+    "draft_data": {
+      "type": "object",
+      "description": "The draft/unsaved data",
+      "additionalProperties": true
+    },
+    "device_id": {
+      "type": "string",
+      "description": "Unique device identifier"
+    },
+    "last_edited": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this draft was last edited"
+    },
+    "synced": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this has been fully submitted"
+    }
+  },
+  "required": [
+    "sync_type",
+    "entity_type",
+    "draft_data"
+  ]
+}

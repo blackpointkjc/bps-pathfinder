@@ -1,0 +1,136 @@
+{
+  "name": "Complaint",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the officer subject of complaint"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of the officer"
+    },
+    "complaint_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date complaint was filed"
+    },
+    "incident_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date of the incident"
+    },
+    "complaint_type": {
+      "type": "string",
+      "enum": [
+        "unprofessional_conduct",
+        "policy_violation",
+        "excessive_force",
+        "discourtesy",
+        "neglect_of_duty",
+        "tardiness",
+        "uniform_violation",
+        "client_complaint",
+        "other"
+      ],
+      "description": "Type of complaint"
+    },
+    "complainant_name": {
+      "type": "string",
+      "description": "Name of person filing complaint"
+    },
+    "complainant_contact": {
+      "type": "string",
+      "description": "Contact info of complainant"
+    },
+    "complainant_type": {
+      "type": "string",
+      "enum": [
+        "client",
+        "public",
+        "coworker",
+        "supervisor",
+        "other"
+      ],
+      "description": "Type of complainant"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location where incident occurred"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the complaint"
+    },
+    "investigation_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "under_investigation",
+        "sustained",
+        "not_sustained",
+        "unfounded",
+        "exonerated"
+      ],
+      "default": "pending",
+      "description": "Status of investigation"
+    },
+    "investigation_notes": {
+      "type": "string",
+      "description": "Investigation findings and notes"
+    },
+    "investigated_by": {
+      "type": "string",
+      "description": "Email of investigator"
+    },
+    "investigation_completed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When investigation was completed"
+    },
+    "officer_statement": {
+      "type": "string",
+      "description": "Officer's statement in response"
+    },
+    "witnesses": {
+      "type": "string",
+      "description": "Witness information"
+    },
+    "related_incident_id": {
+      "type": "string",
+      "description": "ID of related incident report"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "minor",
+        "moderate",
+        "serious",
+        "critical"
+      ],
+      "default": "moderate",
+      "description": "Severity of complaint"
+    },
+    "disciplinary_action_taken": {
+      "type": "string",
+      "description": "Description of any disciplinary action"
+    },
+    "related_writeup_id": {
+      "type": "string",
+      "description": "ID of related write-up report if created"
+    },
+    "exclude_from_performance_review": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to exclude this from officer's performance review"
+    }
+  },
+  "required": [
+    "officer_email",
+    "officer_name",
+    "complaint_date",
+    "incident_date",
+    "complaint_type",
+    "description"
+  ]
+}

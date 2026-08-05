@@ -1,0 +1,77 @@
+{
+  "name": "Invoice",
+  "type": "object",
+  "properties": {
+    "invoice_number": {
+      "type": "string",
+      "description": "Invoice number in format YY + sequential number (e.g., 26001, 26002)"
+    },
+    "client_email": {
+      "type": "string",
+      "description": "Email of the client"
+    },
+    "site_name": {
+      "type": "string",
+      "description": "Site/location name"
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date",
+      "description": "Invoice period start date"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date",
+      "description": "Invoice period end date"
+    },
+    "total_hours": {
+      "type": "number",
+      "description": "Total billable hours"
+    },
+    "bill_rate": {
+      "type": "number",
+      "description": "Hourly bill rate"
+    },
+    "total_amount": {
+      "type": "number",
+      "description": "Total invoice amount"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "sent",
+        "paid",
+        "overdue"
+      ],
+      "default": "sent",
+      "description": "Invoice status"
+    },
+    "shifts": {
+      "type": "string",
+      "description": "JSON string of shift details"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional invoice notes"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Payment due date"
+    },
+    "paid_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date invoice was paid"
+    }
+  },
+  "required": [
+    "invoice_number",
+    "client_email",
+    "site_name",
+    "period_start",
+    "period_end",
+    "total_amount"
+  ]
+}

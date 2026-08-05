@@ -1,0 +1,73 @@
+{
+  "name": "ClientFeedback",
+  "type": "object",
+  "properties": {
+    "feedback_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When feedback was submitted"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Officer being reviewed"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location where service was provided"
+    },
+    "shift_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the shift being reviewed"
+    },
+    "rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Overall rating (1-5 stars)"
+    },
+    "professionalism": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Professionalism rating"
+    },
+    "punctuality": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Punctuality rating"
+    },
+    "communication": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Communication rating"
+    },
+    "comments": {
+      "type": "string",
+      "description": "Additional comments from client"
+    },
+    "commendation": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is a commendation"
+    },
+    "complaint": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is a complaint"
+    },
+    "officer_notified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether officer has been notified"
+    }
+  },
+  "required": [
+    "officer_email",
+    "location",
+    "shift_date",
+    "rating"
+  ]
+}

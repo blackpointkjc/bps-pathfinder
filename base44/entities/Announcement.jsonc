@@ -1,0 +1,54 @@
+{
+  "name": "Announcement",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Announcement title"
+    },
+    "message": {
+      "type": "string",
+      "description": "Announcement message content"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "important",
+        "urgent"
+      ],
+      "default": "normal",
+      "description": "Priority level of the announcement"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "Optional photo for announcement"
+    },
+    "attachment_url": {
+      "type": "string",
+      "description": "Optional file attachment URL"
+    },
+    "attachment_name": {
+      "type": "string",
+      "description": "Name of the attached file"
+    },
+    "pinged_users": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of officer emails who are specifically pinged"
+    },
+    "read_by": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of emails who have read this announcement"
+    }
+  },
+  "required": [
+    "title",
+    "message"
+  ]
+}

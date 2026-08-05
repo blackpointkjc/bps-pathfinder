@@ -1,0 +1,1391 @@
+import React, { useState, useEffect } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Shield, MapPin, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Search, Mail, Calendar, UserCheck, Target } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  MobileResponsiveDialog,
+  MobileResponsiveDialogContent,
+  MobileResponsiveDialogHeader,
+  MobileResponsiveDialogTitle,
+} from "../components/MobileResponsiveDialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { format } from 'date-fns';
+
+// Fix leaflet default marker icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+function MapUpdater({ center, zoom }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center) {
+      map.setView(center, zoom);
+    }
+  }, [center, zoom, map]);
+  return null;
+}
+
+export default function AdminLocations() {
+  const [showDialog, setShowDialog] = useState(false);
+  const [editingLocation, setEditingLocation] = useState(null);
+  // Removed selectedDivision state as per changes to UI with Tabs
+  const [formData, setFormData] = useState({
+    site_name: "",
+    address: "",
+    site_email: "",
+    assigned_client_email: "",
+    assigned_supervisors: [],
+    latitude: null,
+    longitude: null,
+    division: "",
+    subdivision: "",
+    active: true,
+    contract_start_date: "",
+    contract_end_date: "",
+    is_special_event: false,
+    site_bill_rate: null,
+    site_bill_rate_holiday_armed: null,
+    site_bill_rate_holiday_unarmed: null,
+    site_bill_rate_rush_armed: null,
+    site_bill_rate_rush_unarmed: null,
+    site_bill_rate_unarmed: null,
+    max_hours_per_week: null,
+    shift_start_time: "",
+    shift_end_time: "",
+    preferred_shift_length: null,
+    min_officers_per_shift: null,
+    max_officers_per_shift: null,
+    coverage_days: [],
+    coverage_notes: "",
+    exclude_from_auto_schedule: false,
+    day_specific_settings: {},
+    notes: "",
+    geofence_enabled: false,
+    geofence_radius_meters: 100,
+  });
+  const [geocoding, setGeocoding] = useState(false);
+  const [mapCenter, setMapCenter] = useState([37.5407, -77.4360]); // Richmond, VA default
+  const queryClient = useQueryClient();
+
+  const { data: user } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => base44.auth.me(),
+  });
+
+  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('support');
+
+  const { data: divisions } = useQuery({
+    queryKey: ['activeDivisions'],
+    queryFn: async () => {
+      const allDivisions = await base44.entities.Division.list('division_name');
+      return allDivisions.filter(div => div.active);
+    },
+    enabled: hasAccess,
+  });
+
+  const { data: locations } = useQuery({
+    queryKey: ['locations'],
+    queryFn: async () => {
+      const allLocations = await base44.entities.Location.list('site_name');
+      // Check contract dates and auto-deactivate if needed
+      const now = new Date();
+      now.setHours(0, 0, 0, 0); // Normalize 'now' to start of day for comparison
+      const updatedLocations = await Promise.all(allLocations.map(async (loc) => {
+        if (loc.contract_end_date && loc.active) {
+          const endDate = new Date(loc.contract_end_date);
+          endDate.setHours(12, 0, 0, 0); // Set to 12pm on the end date for comparison
+          if (now.getTime() >= endDate.getTime()) {
+            // Auto-deactivate - this will trigger on next page load
+            // Fire and forget the update to the database. The query itself will reflect the inactive state immediately.
+            console.log(`Auto-deactivating location: ${loc.site_name} (ID: ${loc.id}) due to contract end date.`);
+            await base44.entities.Location.update(loc.id, { active: false });
+            return { ...loc, active: false };
+          }
+        }
+        return loc;
+      }));
+      return updatedLocations;
+    },
+    enabled: hasAccess,
+  });
+
+  const { data: clientUsers } = useQuery({
+    queryKey: ['clientUsers'],
+    queryFn: async () => {
+      const users = await base44.entities.User.list();
+      return users.filter(u => u.additional_roles?.includes('client'));
+    },
+    enabled: hasAccess,
+  });
+
+  const { data: supervisorUsers } = useQuery({
+    queryKey: ['supervisorUsers'],
+    queryFn: async () => {
+      const users = await base44.entities.User.list();
+      return users.filter(u => u.additional_roles?.includes('supervisor'));
+    },
+    enabled: hasAccess,
+  });
+
+  const createLocationMutation = useMutation({
+    mutationFn: (data) => base44.entities.Location.create(data),
+    onSuccess: async (newLocation) => {
+      queryClient.invalidateQueries({ queryKey: ['locations'] });
+
+      // If a client was assigned, update their user record
+      if (newLocation.assigned_client_email) {
+        const clientUsers = await base44.entities.User.filter({ email: newLocation.assigned_client_email });
+        if (clientUsers.length > 0) {
+          await base44.entities.User.update(clientUsers[0].id, { assigned_location: newLocation.site_name });
+        }
+      }
+
+      setShowDialog(false);
+      setEditingLocation(null);
+      resetForm();
+    },
+  });
+
+  const updateLocationMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Location.update(id, data),
+    onSuccess: async (updatedLocation) => {
+      queryClient.invalidateQueries({ queryKey: ['locations'] });
+
+      // If a client was assigned, update their user record
+      if (updatedLocation.assigned_client_email) {
+        const clientUsers = await base44.entities.User.filter({ email: updatedLocation.assigned_client_email });
+        if (clientUsers.length > 0) {
+          await base44.entities.User.update(clientUsers[0].id, { assigned_location: updatedLocation.site_name });
+        }
+      }
+
+      setShowDialog(false);
+      setEditingLocation(null);
+      resetForm();
+    },
+  });
+
+  const deleteLocationMutation = useMutation({
+    mutationFn: (id) => base44.entities.Location.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['locations'] });
+    },
+  });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ id, active }) => base44.entities.Location.update(id, { active }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['locations'] });
+    },
+  });
+
+  const resetForm = () => {
+    setFormData({
+      site_name: "",
+      address: "",
+      site_email: "",
+      latitude: null,
+      longitude: null,
+      division: "",
+      subdivision: "",
+      active: true,
+      contract_start_date: "",
+      contract_end_date: "",
+      notes: "",
+      assigned_client_email: "",
+      assigned_supervisors: [],
+      is_special_event: false,
+      site_bill_rate: null,
+      site_bill_rate_holiday_armed: null,
+      site_bill_rate_holiday_unarmed: null,
+      site_bill_rate_rush_armed: null,
+      site_bill_rate_rush_unarmed: null,
+      site_bill_rate_unarmed: null,
+      max_hours_per_week: null,
+      shift_start_time: "",
+      shift_end_time: "",
+      preferred_shift_length: null,
+      min_officers_per_shift: null,
+      max_officers_per_shift: null,
+      coverage_days: [],
+      coverage_notes: "",
+      exclude_from_auto_schedule: false,
+      geofence_enabled: false,
+      geofence_radius_meters: 100,
+    });
+    setMapCenter([37.5407, -77.4360]);
+  };
+
+  const geocodeAddress = async () => {
+    if (!formData.address) return;
+
+    setGeocoding(true);
+    try {
+      // Using Nominatim (OpenStreetMap) geocoding service - free and no API key needed
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.address)}`
+      );
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+
+        setFormData({
+          ...formData,
+          latitude: lat,
+          longitude: lng
+        });
+        setMapCenter([lat, lng]);
+      } else {
+        alert('Address not found. Please try a more specific address or enter coordinates manually.');
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      alert('Failed to geocode address. Please enter coordinates manually.');
+    } finally {
+      setGeocoding(false);
+    }
+  };
+
+  const handleEdit = (location) => {
+    setEditingLocation(location.id);
+    setFormData({
+      site_name: location.site_name,
+      address: location.address,
+      site_email: location.site_email || "",
+      assigned_client_email: location.assigned_client_email || "",
+      assigned_supervisors: location.assigned_supervisors || [],
+      latitude: location.latitude,
+      longitude: location.longitude,
+      division: location.division || "",
+      subdivision: location.subdivision || "",
+      active: location.active !== false,
+      contract_start_date: location.contract_start_date || "",
+      contract_end_date: location.contract_end_date || "",
+      is_special_event: location.is_special_event || false,
+      site_bill_rate: location.site_bill_rate || null,
+      site_bill_rate_holiday_armed: location.site_bill_rate_holiday_armed || null,
+      site_bill_rate_holiday_unarmed: location.site_bill_rate_holiday_unarmed || null,
+      site_bill_rate_rush_armed: location.site_bill_rate_rush_armed || null,
+      site_bill_rate_rush_unarmed: location.site_bill_rate_rush_unarmed || null,
+      site_bill_rate_unarmed: location.site_bill_rate_unarmed || null,
+      max_hours_per_week: location.max_hours_per_week || null,
+      shift_start_time: location.shift_start_time || "",
+      shift_end_time: location.shift_end_time || "",
+      preferred_shift_length: location.preferred_shift_length || null,
+      min_officers_per_shift: location.min_officers_per_shift || null,
+      max_officers_per_shift: location.max_officers_per_shift || null,
+      coverage_days: location.coverage_days || [],
+      coverage_notes: location.coverage_notes || "",
+      exclude_from_auto_schedule: location.exclude_from_auto_schedule || false,
+      day_specific_settings: location.day_specific_settings || {},
+      notes: location.notes || "",
+      geofence_enabled: location.geofence_enabled || false,
+      geofence_radius_meters: location.geofence_radius_meters || 100,
+    });
+    if (location.latitude && location.longitude) {
+      setMapCenter([location.latitude, location.longitude]);
+    }
+    setShowDialog(true);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Track site rate changes for audit
+    let siteRateHistory = formData.site_rate_history || [];
+    if (editingLocation) {
+      const existingLocation = locations.find(l => l.id === editingLocation);
+      if (existingLocation && existingLocation.site_bill_rate !== formData.site_bill_rate) {
+        siteRateHistory = [
+          ...(existingLocation.site_rate_history || []),
+          {
+            rate: formData.site_bill_rate,
+            effective_date: format(new Date(), 'yyyy-MM-dd'),
+            changed_by: user.email
+          }
+        ];
+      }
+    } else if (formData.site_bill_rate) {
+      siteRateHistory = [{
+        rate: formData.site_bill_rate,
+        effective_date: format(new Date(), 'yyyy-MM-dd'),
+        changed_by: user.email
+      }];
+    }
+    
+    const data = {
+      ...formData,
+      latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+      longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+      assigned_client_email: formData.assigned_client_email === "" ? null : formData.assigned_client_email,
+      assigned_supervisors: formData.assigned_supervisors.length > 0 ? formData.assigned_supervisors : null,
+      max_hours_per_week: formData.max_hours_per_week ? parseFloat(formData.max_hours_per_week) : null,
+      site_bill_rate: formData.site_bill_rate ? parseFloat(formData.site_bill_rate) : null,
+      site_rate_history: siteRateHistory
+    };
+
+    if (editingLocation) {
+      updateLocationMutation.mutate({ id: editingLocation, data });
+    } else {
+      createLocationMutation.mutate(data);
+    }
+  };
+
+  const handleDelete = (id) => {
+    if (confirm('Are you sure you want to delete this location?')) {
+      deleteLocationMutation.mutate(id);
+    }
+  };
+
+  const handleToggleActive = (location) => {
+    toggleActiveMutation.mutate({ id: location.id, active: !location.active });
+  };
+
+  useEffect(() => {
+    // Only update map center if both latitude and longitude are valid numbers
+    if (typeof formData.latitude === 'number' && typeof formData.longitude === 'number' && !isNaN(formData.latitude) && !isNaN(formData.longitude)) {
+      setMapCenter([formData.latitude, formData.longitude]);
+    }
+  }, [formData.latitude, formData.longitude]);
+
+  if (!hasAccess) {
+    return (
+      <div className="p-8 text-center">
+        <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">Access Required</h2>
+        <p className="text-slate-600">You don't have permission to access this page.</p>
+      </div>
+    );
+  }
+
+  const activeLocations = locations?.filter(loc => loc.active) || [];
+  const inactiveLocations = locations?.filter(loc => !loc.active) || [];
+
+  return (
+    <div className="p-4 md:p-8 min-h-screen">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <Shield className="w-8 h-8 text-amber-600" />
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">Manage Locations</h1>
+              <p className="text-slate-600">Add, edit, or remove patrol sites</p>
+            </div>
+          </div>
+          <Button
+            onClick={() => {
+              setEditingLocation(null);
+              resetForm();
+              setShowDialog(true);
+            }}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Location
+          </Button>
+        </div>
+
+        <Tabs defaultValue="active" className="space-y-6">
+          <TabsList className="bg-white border border-slate-200 p-1">
+            <TabsTrigger value="active" className="data-[state=active]:bg-green-50 data-[state=active]:text-green-900">
+              <MapPin className="w-4 h-4 mr-2" />
+              Active Sites ({activeLocations.length})
+            </TabsTrigger>
+            <TabsTrigger value="inactive" className="data-[state=active]:bg-red-50 data-[state=active]:text-red-900">
+              <MapPin className="w-4 h-4 mr-2" />
+              Inactive Sites ({inactiveLocations.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="active">
+            <Card className="border-none shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-green-600" />
+                  Active Locations ({activeLocations.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {activeLocations.map((location) => (
+                    <div key={location.id} className="p-5 bg-slate-50 rounded-lg border border-slate-200 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-bold text-slate-900 text-lg">{location.site_name}</h3>
+                            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                              Active
+                            </Badge>
+                            {location.subdivision && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                {location.division} - {location.subdivision}
+                              </Badge>
+                            )}
+                            {!location.subdivision && location.division && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                {location.division}
+                              </Badge>
+                            )}
+                            {location.assigned_client_email && (() => {
+                              const client = clientUsers?.find(c => c.email === location.assigned_client_email);
+                              const clientName = client?.first_name && client?.last_name 
+                                ? `${client.first_name} ${client.last_name}`
+                                : location.assigned_client_email;
+                              return (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                  Client Portal: {clientName}
+                                </Badge>
+                              );
+                            })()}
+                            {location.assigned_supervisors && location.assigned_supervisors.length > 0 && (
+                                <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                                  {location.assigned_supervisors.length} Supervisor{location.assigned_supervisors.length > 1 ? 's' : ''}
+                                </Badge>
+                            )}
+                            {location.is_special_event && (
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                                Special Event
+                              </Badge>
+                            )}
+                            {location.geofence_enabled && (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                <Target className="w-3 h-3 mr-1" />
+                                Geofence
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-600 mb-1">
+                            <MapPin className="w-3 h-3 inline mr-1" />
+                            {location.address}
+                          </p>
+                          {location.site_email && (
+                            <p className="text-sm text-blue-600 mb-1">
+                              <Mail className="w-3 h-3 inline mr-1" />
+                              {location.site_email}
+                            </p>
+                          )}
+                          {(location.contract_start_date || location.contract_end_date) && (
+                            <p className="text-xs text-slate-600 mt-2">
+                              <Calendar className="w-3 h-3 inline mr-1" />
+                              Contract: {location.contract_start_date ? format(new Date(location.contract_start_date), 'MMM d, yyyy') : 'N/A'} - {location.contract_end_date ? format(new Date(location.contract_end_date), 'MMM d, yyyy') : 'N/A'}
+                            </p>
+                          )}
+                          {location.latitude && location.longitude && (
+                            <p className="text-xs text-slate-500">
+                              Coordinates: {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)} • 165 ft clock-in radius
+                            </p>
+                          )}
+                          {(location.site_bill_rate || location.site_bill_rate_unarmed) && (
+                            <div className="text-sm font-semibold text-green-700 space-y-0.5 mt-2">
+                              {location.site_bill_rate && <p>Armed: ${location.site_bill_rate.toFixed(2)}/hr</p>}
+                              {location.site_bill_rate_unarmed && <p>Unarmed: ${location.site_bill_rate_unarmed.toFixed(2)}/hr</p>}
+                              {location.site_bill_rate_holiday_armed && <p className="text-orange-600">Holiday Armed: ${location.site_bill_rate_holiday_armed.toFixed(2)}/hr</p>}
+                              {location.site_bill_rate_rush_armed && <p className="text-red-600">Rush Armed: ${location.site_bill_rate_rush_armed.toFixed(2)}/hr</p>}
+                            </div>
+                          )}
+                          {location.max_hours_per_week && (
+                            <p className="text-xs text-slate-500">
+                              Max Hours/Week: {location.max_hours_per_week}
+                            </p>
+                          )}
+                          {location.notes && (
+                            <p className="text-xs text-slate-600 mt-2 italic">{location.notes}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleActive(location)}
+                            title="Deactivate"
+                          >
+                            <ToggleRight className="w-5 h-5 text-green-600" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(location)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(location.id)}
+                            className="text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {activeLocations.length === 0 && (
+                    <p className="text-center text-slate-500 py-8">No active locations. Add your first patrol site.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="inactive">
+            <Card className="border-none shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-red-600" />
+                  Inactive Locations ({inactiveLocations.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {inactiveLocations.map((location) => (
+                    <div key={location.id} className="p-5 bg-red-50 rounded-lg border border-red-200 opacity-75">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-bold text-slate-900 text-lg">{location.site_name}</h3>
+                            <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300">
+                              Inactive
+                            </Badge>
+                            {location.subdivision && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                {location.division} - {location.subdivision}
+                              </Badge>
+                            )}
+                            {!location.subdivision && location.division && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                {location.division}
+                              </Badge>
+                            )}
+                            {location.assigned_client_email && (() => {
+                              const client = clientUsers?.find(c => c.email === location.assigned_client_email);
+                              const clientName = client?.first_name && client?.last_name 
+                                ? `${client.first_name} ${client.last_name}`
+                                : location.assigned_client_email;
+                              return (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                  Client Portal: {clientName}
+                                </Badge>
+                              );
+                            })()}
+                            {location.assigned_supervisors && location.assigned_supervisors.length > 0 && (
+                                <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                                  {location.assigned_supervisors.length} Supervisor{location.assigned_supervisors.length > 1 ? 's' : ''}
+                                </Badge>
+                            )}
+                            {location.is_special_event && (
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                                Special Event
+                              </Badge>
+                            )}
+                            {location.assigned_client_email && (() => {
+                              const client = clientUsers?.find(c => c.email === location.assigned_client_email);
+                              const clientName = client?.first_name && client?.last_name 
+                                ? `${client.first_name} ${client.last_name}`
+                                : location.assigned_client_email;
+                              return (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                  Client Portal: {clientName}
+                                </Badge>
+                              );
+                            })()}
+                          </div>
+                          <p className="text-sm text-slate-600 mb-1">
+                            <MapPin className="w-3 h-3 inline mr-1" />
+                            {location.address}
+                          </p>
+                          {(location.contract_start_date || location.contract_end_date) && (
+                            <p className="text-xs text-slate-600 mt-2">
+                              <Calendar className="w-3 h-3 inline mr-1" />
+                              Contract: {location.contract_start_date ? format(new Date(location.contract_start_date), 'MMM d, yyyy') : 'N/A'} - {location.contract_end_date ? format(new Date(location.contract_end_date), 'MMM d, yyyy') : 'N/A'}
+                            </p>
+                          )}
+                          {location.max_hours_per_week && (
+                            <p className="text-xs text-slate-500">
+                              Max Hours/Week: {location.max_hours_per_week}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleActive(location)}
+                            title="Activate"
+                          >
+                            <ToggleLeft className="w-5 h-5 text-gray-400" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(location)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {inactiveLocations.length === 0 && (
+                    <p className="text-center text-slate-500 py-8">No inactive locations.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-900">
+            <strong>Note:</strong> Active locations appear in dropdowns throughout the system. Set a contract end date to automatically deactivate a location at 12pm on that date. Inactive locations are hidden from dropdowns but can be reactivated anytime.
+          </p>
+        </div>
+      </div>
+
+      <MobileResponsiveDialog open={showDialog} onOpenChange={setShowDialog}>
+        <MobileResponsiveDialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <MobileResponsiveDialogHeader>
+            <MobileResponsiveDialogTitle>
+              {editingLocation ? 'Edit Location' : 'Add New Location'}
+            </MobileResponsiveDialogTitle>
+          </MobileResponsiveDialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 py-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="site_name">Site Name *</Label>
+                <Input
+                  id="site_name"
+                  placeholder="e.g., Chippenham Place"
+                  value={formData.site_name}
+                  onChange={(e) => setFormData({...formData, site_name: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="division">Division</Label>
+                <Select
+                  value={formData.division}
+                  onValueChange={(value) => setFormData({...formData, division: value, subdivision: ""})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select division..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {divisions?.filter(d => !d.is_subdivision).map((div) => (
+                      <SelectItem key={div.id} value={div.division_name}>
+                        {div.division_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {formData.division && divisions?.filter(d => d.is_subdivision && d.parent_division === formData.division).length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="subdivision">Subdivision</Label>
+                <Select
+                  value={formData.subdivision}
+                  onValueChange={(value) => setFormData({...formData, subdivision: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select subdivision..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>None</SelectItem>
+                    {divisions
+                      ?.filter(d => d.is_subdivision && d.parent_division === formData.division)
+                      .map((div) => (
+                        <SelectItem key={div.id} value={div.subdivision || div.division_name}>
+                          {div.subdivision || div.division_name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="flex items-center gap-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="active"
+                  checked={formData.active}
+                  onCheckedChange={(checked) => setFormData({...formData, active: checked})}
+                />
+                <Label htmlFor="active" className="cursor-pointer">
+                  Active (visible to officers)
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="is_special_event"
+                  checked={formData.is_special_event}
+                  onCheckedChange={(checked) => setFormData({...formData, is_special_event: checked})}
+                />
+                <Label htmlFor="is_special_event" className="cursor-pointer">
+                  Special Event (No physical location required)
+                </Label>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="assigned_client">Assign Client User (Optional)</Label>
+              <Select
+                value={formData.assigned_client_email || ""} // Ensure value is controlled and handles null/undefined
+                onValueChange={(value) => setFormData({...formData, assigned_client_email: value === "" ? null : value})} // Set to null if empty string is selected
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select client user..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={null}>None</SelectItem> {/* Use empty string for "None" */}
+                  {clientUsers?.map((client) => (
+                    <SelectItem key={client.id} value={client.email}>
+                      {client.first_name && client.last_name
+                        ? `${client.first_name} ${client.last_name}`
+                        : client.full_name || client.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-600">
+                Assign a client user to give them portal access to this location's reports
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="assigned_supervisors">Assign Site Supervisors (Optional)</Label>
+              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <Label className="text-sm font-medium mb-3 block">Available Supervisors</Label>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {supervisorUsers && supervisorUsers.length > 0 ? (
+                    supervisorUsers.map((supervisor) => (
+                      <div key={supervisor.id} className="flex items-center space-x-2 p-2 hover:bg-slate-100 rounded">
+                        <Checkbox
+                          id={`supervisor-${supervisor.id}`}
+                          checked={formData.assigned_supervisors?.includes(supervisor.email) || false}
+                          onCheckedChange={(checked) => {
+                            const currentSupervisors = formData.assigned_supervisors || [];
+                            const newSupervisors = checked
+                              ? [...currentSupervisors, supervisor.email]
+                              : currentSupervisors.filter(s => s !== supervisor.email);
+                            setFormData({...formData, assigned_supervisors: newSupervisors});
+                          }}
+                        />
+                        <Label htmlFor={`supervisor-${supervisor.id}`} className="cursor-pointer flex items-center gap-2 flex-1">
+                          <UserCheck className="w-4 h-4 text-green-600" />
+                          <div>
+                            <p className="font-medium">
+                              {supervisor.first_name} {supervisor.last_name}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {supervisor.rank || 'Supervisor'} {supervisor.unit_number && `• Unit #${supervisor.unit_number}`} • {supervisor.email}
+                            </p>
+                          </div>
+                        </Label>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-500 italic">No users with supervisor role found. Assign the supervisor role to users in Manage Officers.</p>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-3">
+                  Supervisors can be assigned to multiple sites. They will be visible to clients in the Client Portal. Make sure users have the "supervisor" additional role in Manage Officers.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="contract_start">Contract Start Date</Label>
+                <Input
+                  id="contract_start"
+                  type="date"
+                  value={formData.contract_start_date}
+                  onChange={(e) => setFormData({...formData, contract_start_date: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="contract_end">Contract End Date</Label>
+                <Input
+                  id="contract_end"
+                  type="date"
+                  value={formData.contract_end_date}
+                  onChange={(e) => setFormData({...formData, contract_end_date: e.target.value})}
+                />
+                <p className="text-xs text-slate-600">
+                  Location will automatically deactivate at 12:00 PM on this date
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="address">Address *</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="address"
+                  placeholder="e.g., 5833 Orcutt Ln. Richmond, VA 23224"
+                  value={formData.address}
+                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  required={!formData.is_special_event} // Make required only if not special event
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  onClick={geocodeAddress}
+                  disabled={geocoding || !formData.address || formData.is_special_event}
+                  variant="outline"
+                  className="whitespace-nowrap"
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  {geocoding ? 'Finding...' : 'Find Coordinates'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="site_email">Site Contact Email (Optional)</Label>
+              <Input
+                id="site_email"
+                type="email"
+                placeholder="e.g., manager@property.com"
+                value={formData.site_email}
+                onChange={(e) => setFormData({...formData, site_email: e.target.value})}
+              />
+              <p className="text-xs text-slate-600">
+                Reports created for this site will automatically be emailed to this address
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="latitude">Latitude (Optional)</Label>
+                <Input
+                  id="latitude"
+                  type="number"
+                  step="any"
+                  placeholder="e.g., 37.5015"
+                  value={formData.latitude === null ? "" : formData.latitude}
+                  onChange={(e) => setFormData({...formData, latitude: e.target.value === "" ? null : parseFloat(e.target.value)})}
+                  disabled={formData.is_special_event}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="longitude">Longitude (Optional)</Label>
+                <Input
+                  id="longitude"
+                  type="number"
+                  step="any"
+                  placeholder="e.g., -77.4967"
+                  value={formData.longitude === null ? "" : formData.longitude}
+                  onChange={(e) => setFormData({...formData, longitude: e.target.value === "" ? null : parseFloat(e.target.value)})}
+                  disabled={formData.is_special_event}
+                />
+              </div>
+            </div>
+
+            {formData.latitude && formData.longitude && !formData.is_special_event && (
+              <div className="space-y-2">
+                <Label>Location Preview with 165 ft Clock-in Radius</Label>
+                <div className="h-64 rounded-lg overflow-hidden border border-slate-200">
+                  <MapContainer
+                    center={mapCenter}
+                    zoom={17}
+                    style={{ height: '100%', width: '100%' }}
+                  >
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    />
+                    <MapUpdater center={mapCenter} zoom={17} />
+                    <Marker position={mapCenter} />
+                    <Circle
+                      center={mapCenter}
+                      radius={50} // Leaflet's Circle radius is in meters (165ft = ~50.3m)
+                      pathOptions={{
+                        color: 'blue',
+                        fillColor: 'blue',
+                        fillOpacity: 0.2
+                      }}
+                    />
+                    {formData.geofence_enabled && (
+                      <Circle
+                        center={mapCenter}
+                        radius={formData.geofence_radius_meters || 100}
+                        pathOptions={{
+                          color: '#22c55e',
+                          fillColor: '#22c55e',
+                          fillOpacity: 0.1,
+                          dashArray: '5, 10'
+                        }}
+                      />
+                    )}
+                  </MapContainer>
+                </div>
+                <p className="text-xs text-slate-600">
+                  Officers must be within the blue circle (165 feet) to clock in at this location.
+                  {formData.geofence_enabled && ` Green dashed circle shows ${formData.geofence_radius_meters}m geofence boundary.`}
+                </p>
+              </div>
+            )}
+
+            {formData.latitude && formData.longitude && !formData.is_special_event && (
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-green-900 font-semibold flex items-center gap-2">
+                      <Target className="w-4 h-4" />
+                      Geofence Monitoring
+                    </Label>
+                    <p className="text-xs text-green-700 mt-1">Alert supervisors when officers leave the patrol zone</p>
+                  </div>
+                  <Checkbox
+                    checked={formData.geofence_enabled}
+                    onCheckedChange={(checked) => setFormData({...formData, geofence_enabled: checked})}
+                  />
+                </div>
+
+                {formData.geofence_enabled && (
+                  <div className="space-y-2">
+                    <Label htmlFor="geofence_radius">Geofence Radius (meters)</Label>
+                    <Input
+                      id="geofence_radius"
+                      type="number"
+                      min="50"
+                      max="5000"
+                      value={formData.geofence_radius_meters}
+                      onChange={(e) => setFormData({...formData, geofence_radius_meters: parseInt(e.target.value) || 100})}
+                    />
+                    <p className="text-xs text-green-700">
+                      Officers will trigger an alert when they move more than {formData.geofence_radius_meters}m from the site center while clocked in.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-4 mb-6">
+              <Label className="text-amber-900 font-semibold block">Billing Rates for This Location</Label>
+              
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="site_bill_rate">Armed Services (Standard) - $/hour</Label>
+                  <Input
+                    id="site_bill_rate"
+                    type="number"
+                    step="0.01"
+                    placeholder="e.g., 55.00"
+                    value={formData.site_bill_rate === null ? "" : formData.site_bill_rate}
+                    onChange={(e) => setFormData({...formData, site_bill_rate: e.target.value ? parseFloat(e.target.value) : null})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="site_bill_rate_unarmed">Unarmed Services (Standard) - $/hour</Label>
+                  <Input
+                    id="site_bill_rate_unarmed"
+                    type="number"
+                    step="0.01"
+                    placeholder="e.g., 45.00"
+                    value={formData.site_bill_rate_unarmed === null ? "" : formData.site_bill_rate_unarmed}
+                    onChange={(e) => setFormData({...formData, site_bill_rate_unarmed: e.target.value ? parseFloat(e.target.value) : null})}
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-amber-200 pt-4">
+                <p className="text-sm font-semibold text-amber-900 mb-3">Holiday Coverage Rates</p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="site_bill_rate_holiday_armed">Holiday Coverage - Armed - $/hour</Label>
+                    <Input
+                      id="site_bill_rate_holiday_armed"
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g., 68.75"
+                      value={formData.site_bill_rate_holiday_armed === null ? "" : formData.site_bill_rate_holiday_armed}
+                      onChange={(e) => setFormData({...formData, site_bill_rate_holiday_armed: e.target.value ? parseFloat(e.target.value) : null})}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="site_bill_rate_holiday_unarmed">Holiday Coverage - Unarmed - $/hour</Label>
+                    <Input
+                      id="site_bill_rate_holiday_unarmed"
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g., 56.25"
+                      value={formData.site_bill_rate_holiday_unarmed === null ? "" : formData.site_bill_rate_holiday_unarmed}
+                      onChange={(e) => setFormData({...formData, site_bill_rate_holiday_unarmed: e.target.value ? parseFloat(e.target.value) : null})}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-amber-200 pt-4">
+                <p className="text-sm font-semibold text-amber-900 mb-3">Rush Coverage Rates</p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="site_bill_rate_rush_armed">Rush Coverage - Armed - $/hour</Label>
+                    <Input
+                      id="site_bill_rate_rush_armed"
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g., 82.50"
+                      value={formData.site_bill_rate_rush_armed === null ? "" : formData.site_bill_rate_rush_armed}
+                      onChange={(e) => setFormData({...formData, site_bill_rate_rush_armed: e.target.value ? parseFloat(e.target.value) : null})}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="site_bill_rate_rush_unarmed">Rush Coverage - Unarmed - $/hour</Label>
+                    <Input
+                      id="site_bill_rate_rush_unarmed"
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g., 67.50"
+                      value={formData.site_bill_rate_rush_unarmed === null ? "" : formData.site_bill_rate_rush_unarmed}
+                      onChange={(e) => setFormData({...formData, site_bill_rate_rush_unarmed: e.target.value ? parseFloat(e.target.value) : null})}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="max_hours_per_week">Max Hours Per Week</Label>
+                <Input
+                  id="max_hours_per_week"
+                  type="number"
+                  step="0.5"
+                  placeholder="e.g., 168 for 24/7 coverage"
+                  value={formData.max_hours_per_week === null ? "" : formData.max_hours_per_week}
+                  onChange={(e) => setFormData({...formData, max_hours_per_week: e.target.value ? parseFloat(e.target.value) : null})}
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Optional: Set maximum hours allowed per week. Schedule hours exceeding this will show in red.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200 space-y-4">
+              <Label className="text-indigo-900 font-semibold block">AI Auto-Schedule Settings</Label>
+              
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="shift_start_time">Shift Window Start Time</Label>
+                  <Input
+                    id="shift_start_time"
+                    type="time"
+                    value={formData.shift_start_time || ""}
+                    onChange={(e) => setFormData({...formData, shift_start_time: e.target.value})}
+                  />
+                  <p className="text-xs text-slate-600">Earliest time shifts can start (e.g., 18:00 for 6 PM)</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="shift_end_time">Shift Window End Time</Label>
+                  <Input
+                    id="shift_end_time"
+                    type="time"
+                    value={formData.shift_end_time || ""}
+                    onChange={(e) => setFormData({...formData, shift_end_time: e.target.value})}
+                  />
+                  <p className="text-xs text-slate-600">Latest time shifts can end (e.g., 04:00 for 4 AM next day)</p>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="preferred_shift_length">Preferred Shift Length (hours)</Label>
+                  <Select
+                    value={formData.preferred_shift_length?.toString() || ""}
+                    onValueChange={(value) => setFormData({...formData, preferred_shift_length: value ? parseInt(value) : null})}
+                  >
+                    <SelectTrigger id="preferred_shift_length">
+                      <SelectValue placeholder="Select shift length..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="6">6 hours</SelectItem>
+                      <SelectItem value="8">8 hours</SelectItem>
+                      <SelectItem value="10">10 hours</SelectItem>
+                      <SelectItem value="12">12 hours</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="min_officers_per_shift">Min Officers Per Shift</Label>
+                  <Input
+                    id="min_officers_per_shift"
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={formData.min_officers_per_shift || ""}
+                    onChange={(e) => setFormData({...formData, min_officers_per_shift: e.target.value ? parseInt(e.target.value) : null})}
+                    placeholder="e.g., 2"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="max_officers_per_shift">Max Officers Per Shift</Label>
+                  <Input
+                    id="max_officers_per_shift"
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={formData.max_officers_per_shift || ""}
+                    onChange={(e) => setFormData({...formData, max_officers_per_shift: e.target.value ? parseInt(e.target.value) : null})}
+                    placeholder="e.g., 3"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Coverage Days Required</Label>
+                <div className="flex flex-wrap gap-2">
+                  {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => (
+                    <div key={day} className="flex items-center space-x-1">
+                      <Checkbox
+                        id={`coverage_${day}`}
+                        checked={formData.coverage_days?.includes(day) || false}
+                        onCheckedChange={(checked) => {
+                          const currentDays = formData.coverage_days || [];
+                          const newDays = checked 
+                            ? [...currentDays, day]
+                            : currentDays.filter(d => d !== day);
+                          setFormData({...formData, coverage_days: newDays});
+                        }}
+                      />
+                      <Label htmlFor={`coverage_${day}`} className="text-xs cursor-pointer capitalize">{day.slice(0,3)}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="coverage_notes">Coverage Notes</Label>
+                <Textarea
+                  id="coverage_notes"
+                  placeholder="Special coverage requirements (e.g., 'Need armed officer on weekends', 'Double coverage on Fridays')..."
+                  value={formData.coverage_notes || ""}
+                  onChange={(e) => setFormData({...formData, coverage_notes: e.target.value})}
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-indigo-200">
+                <Label className="text-indigo-900 font-semibold">Per-Day Multiple Shifts (Override Defaults)</Label>
+                <p className="text-xs text-indigo-700">Define multiple shifts for each day that AI should create</p>
+                {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => {
+                  const dayShifts = formData.day_specific_settings?.[day]?.shifts || [];
+                  
+                  return (
+                    <div key={day} className="p-3 bg-white rounded border border-indigo-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-sm font-semibold capitalize">{day}</Label>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const currentShifts = formData.day_specific_settings?.[day]?.shifts || [];
+                            setFormData({
+                              ...formData,
+                              day_specific_settings: {
+                                ...formData.day_specific_settings,
+                                [day]: {
+                                  shifts: [...currentShifts, { shift_start_time: "", shift_end_time: "", shift_length: null }]
+                                }
+                              }
+                            });
+                          }}
+                          className="text-xs"
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add Shift
+                        </Button>
+                      </div>
+                      
+                      {dayShifts.length === 0 ? (
+                        <p className="text-xs text-slate-500 italic">No specific shifts defined for {day}</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {dayShifts.map((shift, idx) => (
+                            <div key={idx} className="grid grid-cols-4 gap-2 p-2 bg-slate-50 rounded border border-slate-200">
+                              <div>
+                                <Label className="text-xs">Start</Label>
+                                <Input
+                                  type="time"
+                                  value={shift.shift_start_time || ""}
+                                  onChange={(e) => {
+                                    const updatedShifts = [...dayShifts];
+                                    updatedShifts[idx] = { ...updatedShifts[idx], shift_start_time: e.target.value };
+                                    setFormData({
+                                      ...formData,
+                                      day_specific_settings: {
+                                        ...formData.day_specific_settings,
+                                        [day]: { shifts: updatedShifts }
+                                      }
+                                    });
+                                  }}
+                                  className="text-xs h-8"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">End</Label>
+                                <Input
+                                  type="time"
+                                  value={shift.shift_end_time || ""}
+                                  onChange={(e) => {
+                                    const updatedShifts = [...dayShifts];
+                                    updatedShifts[idx] = { ...updatedShifts[idx], shift_end_time: e.target.value };
+                                    setFormData({
+                                      ...formData,
+                                      day_specific_settings: {
+                                        ...formData.day_specific_settings,
+                                        [day]: { shifts: updatedShifts }
+                                      }
+                                    });
+                                  }}
+                                  className="text-xs h-8"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Length</Label>
+                                <Input
+                                  type="number"
+                                  min="4"
+                                  max="12"
+                                  value={shift.shift_length || ""}
+                                  onChange={(e) => {
+                                    const updatedShifts = [...dayShifts];
+                                    updatedShifts[idx] = { ...updatedShifts[idx], shift_length: e.target.value ? parseInt(e.target.value) : null };
+                                    setFormData({
+                                      ...formData,
+                                      day_specific_settings: {
+                                        ...formData.day_specific_settings,
+                                        [day]: { shifts: updatedShifts }
+                                      }
+                                    });
+                                  }}
+                                  className="text-xs h-8"
+                                  placeholder="hrs"
+                                />
+                              </div>
+                              <div className="flex items-end">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    const updatedShifts = dayShifts.filter((_, i) => i !== idx);
+                                    setFormData({
+                                      ...formData,
+                                      day_specific_settings: {
+                                        ...formData.day_specific_settings,
+                                        [day]: { shifts: updatedShifts }
+                                      }
+                                    });
+                                  }}
+                                  className="text-red-600 hover:text-red-800 h-8"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center space-x-2 pt-2 border-t border-indigo-200">
+                <Checkbox
+                  id="exclude_from_auto_schedule"
+                  checked={formData.exclude_from_auto_schedule || false}
+                  onCheckedChange={(checked) => setFormData({...formData, exclude_from_auto_schedule: checked})}
+                />
+                <Label htmlFor="exclude_from_auto_schedule" className="cursor-pointer text-indigo-900">
+                  Exclude from AI Auto-Schedule
+                </Label>
+              </div>
+              <p className="text-xs text-slate-600">
+                When excluded, this location will not be assigned shifts during AI auto-scheduling.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                placeholder="Any special notes about this location..."
+                value={formData.notes}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                rows={3}
+              />
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-900">
+                <strong>Tip:</strong> Check "Special Event" if this location is not a fixed physical site. Otherwise, click "Find Coordinates" after entering the address to automatically populate latitude and longitude. Add a site email to receive automatic report notifications for this location.
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createLocationMutation.isPending || updateLocationMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {createLocationMutation.isPending || updateLocationMutation.isPending
+                  ? 'Saving...'
+                  : editingLocation
+                  ? 'Update Location'
+                  : 'Add Location'}
+              </Button>
+            </div>
+          </form>
+        </MobileResponsiveDialogContent>
+      </MobileResponsiveDialog>
+    </div>
+  );
+}

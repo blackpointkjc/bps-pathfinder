@@ -1,0 +1,78 @@
+{
+  "name": "OfficerAvailability",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the officer"
+    },
+    "day_of_week": {
+      "type": "string",
+      "enum": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+      ],
+      "description": "Day of the week"
+    },
+    "available": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether officer is available this day"
+    },
+    "preferred_start_time": {
+      "type": "string",
+      "description": "Preferred earliest start time (HH:MM)"
+    },
+    "preferred_end_time": {
+      "type": "string",
+      "description": "Preferred latest end time (HH:MM)"
+    },
+    "max_hours_per_week": {
+      "type": "number",
+      "default": 40,
+      "description": "Maximum hours officer wants to work per week"
+    },
+    "preferred_shift_length": {
+      "type": "string",
+      "enum": [
+        "6",
+        "8",
+        "10"
+      ],
+      "default": "8",
+      "description": "Preferred shift length in hours (6, 8, or 10)"
+    },
+    "can_split_sites": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether officer can work split shifts between different sites"
+    },
+    "days_off": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Specific dates the officer cannot work (YYYY-MM-DD)"
+    },
+    "preferred_locations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of preferred location names"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional availability notes"
+    }
+  },
+  "required": [
+    "officer_email",
+    "day_of_week"
+  ]
+}

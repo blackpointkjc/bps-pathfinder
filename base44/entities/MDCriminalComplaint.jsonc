@@ -1,0 +1,150 @@
+{
+  "name": "MDCriminalComplaint",
+  "type": "object",
+  "properties": {
+    "complaint_number": {
+      "type": "string",
+      "description": "System-generated complaint number"
+    },
+    "tracking_number": {
+      "type": "string",
+      "description": "Tracking number for the case"
+    },
+    "cc_number": {
+      "type": "string",
+      "description": "CC# for the complaint"
+    },
+    "district_court_city_county": {
+      "type": "string",
+      "description": "District Court of Maryland for (City/County)"
+    },
+    "court_address": {
+      "type": "string",
+      "description": "Located at (Court Address)"
+    },
+    "related_cases": {
+      "type": "string",
+      "description": "Related case numbers"
+    },
+    "complainant_printed_name": {
+      "type": "string",
+      "description": "Complainant's printed name"
+    },
+    "complainant_address": {
+      "type": "string",
+      "description": "Complainant's address"
+    },
+    "complainant_city_state_zip": {
+      "type": "string",
+      "description": "Complainant's city, state, ZIP"
+    },
+    "complainant_telephone": {
+      "type": "string",
+      "description": "Complainant's telephone"
+    },
+    "complainant_agency_sub_agency_id": {
+      "type": "string",
+      "description": "Agency, Sub-agency, and I.D. # (Officer Only)"
+    },
+    "defendant_printed_name": {
+      "type": "string",
+      "description": "Defendant's printed name"
+    },
+    "defendant_address": {
+      "type": "string",
+      "description": "Defendant's address"
+    },
+    "defendant_city_state_zip": {
+      "type": "string",
+      "description": "Defendant's city, state, ZIP"
+    },
+    "defendant_telephone": {
+      "type": "string",
+      "description": "Defendant's telephone"
+    },
+    "defendant_cc_number": {
+      "type": "string",
+      "description": "Defendant's CC#"
+    },
+    "defendant_dl_number": {
+      "type": "string",
+      "description": "Defendant's driver's license number"
+    },
+    "defendant_sex": {
+      "type": "string",
+      "description": "Defendant's sex"
+    },
+    "defendant_race": {
+      "type": "string",
+      "description": "Defendant's race"
+    },
+    "defendant_height": {
+      "type": "string",
+      "description": "Defendant's height"
+    },
+    "defendant_weight": {
+      "type": "string",
+      "description": "Defendant's weight"
+    },
+    "defendant_hair": {
+      "type": "string",
+      "description": "Defendant's hair color"
+    },
+    "defendant_eyes": {
+      "type": "string",
+      "description": "Defendant's eye color"
+    },
+    "defendant_complexion": {
+      "type": "string",
+      "description": "Defendant's complexion"
+    },
+    "defendant_other": {
+      "type": "string",
+      "description": "Other identifying information"
+    },
+    "defendant_dob": {
+      "type": "string",
+      "description": "Defendant's date of birth"
+    },
+    "defendant_id": {
+      "type": "string",
+      "description": "Defendant's ID number"
+    },
+    "offense_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of offense"
+    },
+    "offense_time": {
+      "type": "string",
+      "description": "Time of offense"
+    },
+    "offense_place": {
+      "type": "string",
+      "description": "Place of offense"
+    },
+    "statement_of_facts": {
+      "type": "string",
+      "description": "Statement of facts for probable cause"
+    },
+    "officer_ip_address": {
+      "type": "string",
+      "description": "IP address of officer when submitting complaint"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "submitted",
+        "pending",
+        "approved"
+      ],
+      "default": "submitted",
+      "description": "Status of the complaint"
+    }
+  },
+  "required": [
+    "defendant_printed_name",
+    "offense_date",
+    "statement_of_facts"
+  ]
+}

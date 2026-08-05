@@ -1,0 +1,194 @@
+{
+  "name": "CriminalComplaint",
+  "type": "object",
+  "properties": {
+    "complaint_number": {
+      "type": "string",
+      "description": "Virtus complaint number (e.g., VCC-20250101-0001)"
+    },
+    "call_number": {
+      "type": "string",
+      "description": "Call number for tracking"
+    },
+    "complaint_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date complaint was filed"
+    },
+    "offense_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date offense occurred"
+    },
+    "offense_time": {
+      "type": "string",
+      "description": "Time offense occurred"
+    },
+    "location": {
+      "type": "string",
+      "description": "City/County/Town where offense occurred"
+    },
+    "location_type": {
+      "type": "string",
+      "enum": [
+        "city",
+        "county",
+        "town"
+      ],
+      "default": "city"
+    },
+    "accused_last_name": {
+      "type": "string",
+      "description": "Last name of accused"
+    },
+    "accused_first_name": {
+      "type": "string",
+      "description": "First name of accused"
+    },
+    "accused_middle_name": {
+      "type": "string",
+      "description": "Middle name of accused"
+    },
+    "accused_address": {
+      "type": "string",
+      "description": "Address of accused"
+    },
+    "accused_race": {
+      "type": "string",
+      "description": "Race of accused"
+    },
+    "accused_sex": {
+      "type": "string",
+      "enum": [
+        "male",
+        "female"
+      ],
+      "description": "Sex of accused"
+    },
+    "accused_dob": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of birth"
+    },
+    "accused_height_ft": {
+      "type": "number",
+      "description": "Height in feet"
+    },
+    "accused_height_in": {
+      "type": "number",
+      "description": "Height in inches"
+    },
+    "accused_weight": {
+      "type": "number",
+      "description": "Weight in lbs"
+    },
+    "accused_eyes": {
+      "type": "string",
+      "description": "Eye color"
+    },
+    "accused_hair": {
+      "type": "string",
+      "description": "Hair color"
+    },
+    "accused_ssn": {
+      "type": "string",
+      "description": "Social security number"
+    },
+    "violation_code": {
+      "type": "string",
+      "description": "Virginia code violation (e.g., \u00a7 18.2-119)"
+    },
+    "violation_section": {
+      "type": "string",
+      "description": "Specific section or subsection of the violation"
+    },
+    "facts_basis": {
+      "type": "string",
+      "description": "Facts supporting the complaint"
+    },
+    "court_type": {
+      "type": "string",
+      "enum": [
+        "general_district",
+        "juvenile_domestic"
+      ],
+      "default": "general_district",
+      "description": "Type of court"
+    },
+    "complainant_name": {
+      "type": "string",
+      "description": "Name of officer filing complaint"
+    },
+    "is_law_enforcement": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether complainant is law enforcement"
+    },
+    "authorization_given_by": {
+      "type": "string",
+      "description": "Who authorized felony warrant"
+    },
+    "authorization_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When authorization was given"
+    },
+    "filed_at_court": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether complaint was filed at court"
+    },
+    "court_filing_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date filed at court"
+    },
+    "warrant_issued": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether warrant was issued"
+    },
+    "warrant_number": {
+      "type": "string",
+      "description": "Warrant number if issued"
+    },
+    "subject_arrested_on_site": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether subject was arrested on site"
+    },
+    "arrest_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date/time of arrest if arrested on site"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "submitted",
+        "filed",
+        "warrant_issued",
+        "arrested",
+        "closed"
+      ],
+      "default": "draft"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "Photo evidence"
+    },
+    "officer_ip_address": {
+      "type": "string",
+      "description": "IP address of officer when submitting complaint"
+    }
+  },
+  "required": [
+    "complaint_date",
+    "offense_date",
+    "location",
+    "accused_last_name",
+    "accused_first_name",
+    "facts_basis"
+  ]
+}

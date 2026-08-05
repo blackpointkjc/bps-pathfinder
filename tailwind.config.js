@@ -2,7 +2,6 @@
 module.exports = {
     darkMode: ["class"],
     content: ["./index.html", "./src/**/*.{ts,tsx,js,jsx}"],
-  safelist: ['bg-gold', 'text-gold', 'border-gold', 'text-black'],
   theme: {
   	extend: {
   		borderRadius: {
@@ -11,7 +10,6 @@ module.exports = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		colors: {
-  			gold: 'hsl(var(--gold))',
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {

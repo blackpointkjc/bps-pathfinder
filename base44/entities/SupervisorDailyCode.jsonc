@@ -1,0 +1,42 @@
+{
+  "name": "SupervisorDailyCode",
+  "type": "object",
+  "properties": {
+    "supervisor_email": {
+      "type": "string",
+      "description": "Email of the supervisor"
+    },
+    "supervisor_rank": {
+      "type": "string",
+      "description": "Rank of the supervisor"
+    },
+    "supervisor_last_name": {
+      "type": "string",
+      "description": "Last name of the supervisor"
+    },
+    "code": {
+      "type": "string",
+      "description": "4-digit daily code"
+    },
+    "code_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date this code is valid for"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the code expires"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether code is currently active"
+    }
+  },
+  "required": [
+    "supervisor_email",
+    "code",
+    "code_date"
+  ]
+}

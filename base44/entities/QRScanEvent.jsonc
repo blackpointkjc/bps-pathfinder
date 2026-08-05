@@ -1,0 +1,90 @@
+{
+  "name": "QRScanEvent",
+  "type": "object",
+  "properties": {
+    "shift_id": {
+      "type": "string",
+      "description": "ID of the active time entry (shift)"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the officer who scanned"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of the officer"
+    },
+    "property_site": {
+      "type": "string",
+      "description": "Property/site name"
+    },
+    "checkpoint_id": {
+      "type": "string",
+      "description": "ID of the QRCheckpoint record"
+    },
+    "qr_unique_id": {
+      "type": "string",
+      "description": "The unique QR identifier scanned"
+    },
+    "checkpoint_name_snapshot": {
+      "type": "string",
+      "description": "Checkpoint name at time of scan"
+    },
+    "location_label_snapshot": {
+      "type": "string",
+      "description": "Location label at time of scan"
+    },
+    "scanned_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO timestamp of scan"
+    },
+    "scanned_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of scan"
+    },
+    "scanned_time": {
+      "type": "string",
+      "description": "Time of scan (HH:MM)"
+    },
+    "device_timezone": {
+      "type": "string",
+      "description": "Device timezone at time of scan"
+    },
+    "gps_latitude": {
+      "type": "number",
+      "description": "GPS latitude at time of scan"
+    },
+    "gps_longitude": {
+      "type": "number",
+      "description": "GPS longitude at time of scan"
+    },
+    "scan_status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "duplicate",
+        "inactive_checkpoint",
+        "invalid_code",
+        "outside_property"
+      ],
+      "default": "success",
+      "description": "Status of the scan"
+    },
+    "duplicate_flag": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is a duplicate scan within the protection window"
+    },
+    "officer_note": {
+      "type": "string",
+      "description": "Optional officer note for this scan"
+    }
+  },
+  "required": [
+    "officer_email",
+    "scanned_at",
+    "qr_unique_id"
+  ]
+}

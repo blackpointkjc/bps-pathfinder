@@ -1,0 +1,83 @@
+{
+  "name": "OfficerPerformanceMetric",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the officer"
+    },
+    "metric_period_start": {
+      "type": "string",
+      "format": "date",
+      "description": "Start of measurement period"
+    },
+    "metric_period_end": {
+      "type": "string",
+      "format": "date",
+      "description": "End of measurement period"
+    },
+    "punctuality_score": {
+      "type": "number",
+      "description": "Percentage of on-time shifts"
+    },
+    "avg_response_time_minutes": {
+      "type": "number",
+      "description": "Average incident response time in minutes"
+    },
+    "client_feedback_score": {
+      "type": "number",
+      "description": "Average client feedback rating (1-5)"
+    },
+    "training_completion_rate": {
+      "type": "number",
+      "description": "Percentage of assigned training completed"
+    },
+    "incident_reports_count": {
+      "type": "number",
+      "description": "Number of incident reports filed"
+    },
+    "commendations_count": {
+      "type": "number",
+      "description": "Number of commendations received"
+    },
+    "complaints_count": {
+      "type": "number",
+      "description": "Number of complaints received"
+    },
+    "hours_worked": {
+      "type": "number",
+      "description": "Total hours worked during period"
+    },
+    "shifts_completed": {
+      "type": "number",
+      "description": "Number of shifts completed"
+    },
+    "ai_performance_summary": {
+      "type": "string",
+      "description": "AI-generated performance summary"
+    },
+    "improvement_areas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "AI-identified areas for improvement"
+    },
+    "strengths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "AI-identified strengths"
+    },
+    "overall_score": {
+      "type": "number",
+      "description": "Composite performance score (0-100)"
+    }
+  },
+  "required": [
+    "officer_email",
+    "metric_period_start",
+    "metric_period_end"
+  ]
+}

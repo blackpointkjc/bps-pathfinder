@@ -1,0 +1,285 @@
+import { useEffect, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+
+// Calculate distance between two GPS coordinates in meters
+function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Earth radius in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+export default function BackgroundLocationTracker({ user }) {
+  const lastSaveRef = useRef(0);
+  const lastGeofenceCheckRef = useRef(0);
+  const watchIdRef = useRef(null);
+  const activeOfficerRecordRef = useRef(null);
+  const queryClient = useQueryClient();
+
+  const { data: activeEntry } = useQuery({
+    queryKey: ['bgTrackerActiveEntry', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return null;
+      try {
+        const entries = await base44.entities.TimeEntry.filter(
+          { officer_email: user.email },
+          '-created_date',
+          10
+        );
+        return entries.find(e => !e.clock_out) || null;
+      } catch (e) {
+        console.error('Error fetching active time entry:', e);
+        return null;
+      }
+    },
+    enabled: !!user?.email,
+    refetchInterval: 30000,
+  });
+
+  // Get locations for geofencing
+  const { data: locations } = useQuery({
+    queryKey: ['locationsForGeofence'],
+    queryFn: async () => {
+      try {
+        return await base44.entities.Location.list();
+      } catch (e) {
+        console.error('Error fetching locations:', e);
+        return [];
+      }
+    },
+    enabled: !!user?.email,
+    staleTime: 60000,
+  });
+
+  // Track ALL users who are clocked in, regardless of role
+  const shouldTrack = !!activeEntry;
+
+  // Mutation to create geofence alert
+  const createGeofenceAlertMutation = useMutation({
+    mutationFn: (data) => base44.entities.GeofenceAlert.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['geofenceAlerts'] });
+    },
+  });
+
+  // Mutation to save location history
+  const saveLocationHistoryMutation = useMutation({
+    mutationFn: (data) => base44.entities.LocationHistory.create(data),
+  });
+
+  // Mutation to update or create ActiveOfficer record
+  const updateActiveOfficerMutation = useMutation({
+    mutationFn: async (data) => {
+      if (activeOfficerRecordRef.current) {
+        return await base44.entities.ActiveOfficer.update(activeOfficerRecordRef.current, data);
+      } else {
+        const newRecord = await base44.entities.ActiveOfficer.create(data);
+        activeOfficerRecordRef.current = newRecord.id;
+        return newRecord;
+      }
+    },
+  });
+
+  // Delete ActiveOfficer record when clocking out
+  const deleteActiveOfficerMutation = useMutation({
+    mutationFn: async (id) => {
+      await base44.entities.ActiveOfficer.delete(id);
+    },
+  });
+
+  // Get or create ActiveOfficer record
+  useEffect(() => {
+    if (!shouldTrack) {
+      // If officer clocked out, delete their active officer record
+      if (activeOfficerRecordRef.current) {
+        deleteActiveOfficerMutation.mutate(activeOfficerRecordRef.current);
+        activeOfficerRecordRef.current = null;
+      }
+      return;
+    }
+
+    const getActiveOfficerRecord = async () => {
+      try {
+        const records = await base44.entities.ActiveOfficer.filter({ officer_email: user.email });
+        if (records.length > 0) {
+          activeOfficerRecordRef.current = records[0].id;
+        }
+      } catch (error) {
+        console.error('Error fetching active officer record:', error);
+      }
+    };
+
+    getActiveOfficerRecord();
+  }, [shouldTrack, user?.email]);
+
+  useEffect(() => {
+    if (!shouldTrack) {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      return;
+    }
+
+    if (!('geolocation' in navigator)) {
+      console.error('Geolocation not supported');
+      return;
+    }
+
+    const saveLocation = async (position) => {
+      const now = Date.now();
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      const accuracy = position.coords.accuracy;
+
+      // Reject extremely inaccurate location readings (over 500 meters)
+      if (accuracy > 500) {
+        console.warn(`GPS accuracy too low: ${accuracy.toFixed(0)}m - waiting for better signal`);
+        return;
+      }
+
+      try {
+        // Always update ActiveOfficer immediately for real-time tracking
+        updateActiveOfficerMutation.mutate({
+          officer_email: user.email,
+          officer_name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+          current_location: activeEntry.location,
+          clock_in_time: activeEntry.clock_in,
+          last_update: new Date().toISOString(),
+          latitude: lat,
+          longitude: lng,
+        });
+        
+        // Invalidate active officers query to refresh map
+        queryClient.invalidateQueries({ queryKey: ['activeOfficers'] });
+        queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
+
+        // Check geofence every 30 seconds
+        if (now - lastGeofenceCheckRef.current >= 30000 && locations) {
+          lastGeofenceCheckRef.current = now;
+
+          // Find the location for this officer's active site - match by site name
+          const siteName = activeEntry.location?.split(' - ')[0]?.split(':')[0]?.trim();
+          const siteLocation = locations.find(loc => 
+            loc.site_name === siteName || 
+            loc.site_name.includes(siteName) || 
+            siteName?.includes(loc.site_name)
+          );
+
+          if (siteLocation?.geofence_enabled && siteLocation.latitude && siteLocation.longitude) {
+            const distance = getDistanceFromLatLonInMeters(
+              lat, lng, 
+              siteLocation.latitude, 
+              siteLocation.longitude
+            );
+
+            const radius = siteLocation.geofence_radius_meters || 100;
+
+            // Only create alert if GPS accuracy is reasonable (under 200m) and officer is outside the geofence
+            if (accuracy <= 200 && distance > radius) {
+              try {
+                await createGeofenceAlertMutation.mutateAsync({
+                  officer_email: user.email,
+                  officer_name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+                  location: siteLocation.site_name,
+                  alert_type: 'outside_zone',
+                  latitude: lat,
+                  longitude: lng,
+                  distance_from_site: Math.round(distance),
+                });
+                console.warn(`Geofence alert: Officer ${distance.toFixed(0)}m from ${siteLocation.site_name}`);
+              } catch (e) {
+                console.error('Failed to create geofence alert:', e);
+              }
+            }
+          }
+        }
+
+        // Save to LocationHistory every 60 seconds
+        if (now - lastSaveRef.current >= 60000) {
+          await saveLocationHistoryMutation.mutateAsync({
+            time_entry_id: activeEntry.id,
+            officer_email: user.email,
+            officer_name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+            location: activeEntry.location,
+            latitude: lat,
+            longitude: lng,
+            timestamp: new Date().toISOString(),
+            accuracy: position.coords.accuracy,
+          });
+          lastSaveRef.current = now;
+        }
+      } catch (error) {
+        console.error('Failed to save location:', error);
+      }
+    };
+
+    // Use watchPosition for continuous tracking with maximum accuracy settings
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      saveLocation,
+      (error) => console.error('Geolocation error:', error),
+      {
+        enableHighAccuracy: true, // Force GPS, not cell tower
+        timeout: 30000,
+        maximumAge: 0, // Always get fresh location, never use cached
+      }
+    );
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, [shouldTrack, activeEntry, user, locations]);
+
+  // Add beforeunload handler to warn users
+  useEffect(() => {
+    if (!shouldTrack) return;
+
+    const handleBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = '⚠️ WARNING: You are currently clocked in. Closing this tab will stop location tracking and may result in disciplinary action. Are you sure you want to close?';
+      return e.returnValue;
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.warn('⚠️ Tab is now hidden. Location tracking continues but may be less reliable.');
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [shouldTrack]);
+
+  // Add pagehide event for iOS/mobile browsers
+  useEffect(() => {
+    if (!shouldTrack) return;
+
+    const handlePageHide = (e) => {
+      if (e.persisted) {
+        console.warn('Page cached - location tracking may be interrupted');
+      }
+    };
+
+    window.addEventListener('pagehide', handlePageHide);
+
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, [shouldTrack]);
+
+  return null;
+}

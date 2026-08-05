@@ -1,0 +1,43 @@
+{
+  "name": "TrainingSchoolSettings",
+  "type": "object",
+  "properties": {
+    "school_name": {
+      "type": "string",
+      "description": "Official school name"
+    },
+    "dcjs_school_number": {
+      "type": "string",
+      "description": "DCJS school number in 88-XXXX format"
+    },
+    "school_address": {
+      "type": "string"
+    },
+    "school_phone": {
+      "type": "string"
+    },
+    "school_email": {
+      "type": "string"
+    },
+    "school_logo_url": {
+      "type": "string",
+      "description": "School logo image URL"
+    },
+    "default_signature_url": {
+      "type": "string",
+      "description": "Default instructor signature URL"
+    },
+    "certificate_footer_text": {
+      "type": "string",
+      "description": "Footer text for certificates"
+    },
+    "passing_score": {
+      "type": "number",
+      "default": 75,
+      "description": "Default passing score percentage"
+    }
+  },
+  "required": [
+    "school_name"
+  ]
+}

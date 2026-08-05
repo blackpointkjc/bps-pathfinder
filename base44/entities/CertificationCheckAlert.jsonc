@@ -1,0 +1,33 @@
+{
+  "name": "CertificationCheckAlert",
+  "type": "object",
+  "properties": {
+    "check_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date certifications need to be checked"
+    },
+    "alert_message": {
+      "type": "string",
+      "description": "Message reminding admin to verify certifications"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether admin has completed the certification check"
+    },
+    "completed_by": {
+      "type": "string",
+      "description": "Email of admin who completed the check"
+    },
+    "completed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the check was completed"
+    }
+  },
+  "required": [
+    "check_date",
+    "alert_message"
+  ]
+}

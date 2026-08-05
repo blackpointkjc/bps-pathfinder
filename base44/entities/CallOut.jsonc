@@ -1,0 +1,63 @@
+{
+  "name": "CallOut",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the officer"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of the officer"
+    },
+    "call_out_type": {
+      "type": "string",
+      "enum": [
+        "called_out",
+        "sent_home"
+      ],
+      "description": "Type of call out"
+    },
+    "call_out_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the call out"
+    },
+    "call_out_time": {
+      "type": "string",
+      "description": "Time when officer called out or was sent home"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for call out or being sent home"
+    },
+    "supervisor_email": {
+      "type": "string",
+      "description": "Supervisor who documented this"
+    },
+    "supervisor_name": {
+      "type": "string",
+      "description": "Name of supervisor"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location/site where this occurred"
+    },
+    "affects_pto": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this prevents PTO accrual for the day"
+    },
+    "admin_notified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether admin has been notified"
+    }
+  },
+  "required": [
+    "officer_email",
+    "call_out_type",
+    "call_out_date",
+    "reason"
+  ]
+}

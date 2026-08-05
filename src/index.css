@@ -2,135 +2,492 @@
 @tailwind components;
 @tailwind utilities;
 
+
+/* :root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+} */
+
+
+
 @layer base {
   :root {
-    color-scheme: dark;
-    --background: 216 47% 5%;
-    --foreground: 210 35% 94%;
-    --card: 214 43% 9%;
-    --card-foreground: 210 35% 94%;
-    --popover: 214 43% 9%;
-    --popover-foreground: 210 35% 94%;
-    --primary: 209 100% 63%;
-    --primary-foreground: 216 55% 7%;
-    --secondary: 214 38% 14%;
-    --secondary-foreground: 210 30% 90%;
-    --muted: 214 34% 13%;
-    --muted-foreground: 211 18% 57%;
-    --accent: 210 60% 19%;
-    --accent-foreground: 208 100% 82%;
-    --destructive: 0 72% 48%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 212 37% 20%;
-    --input: 212 37% 20%;
-    --ring: 208 100% 66%;
-    --gold: 208 100% 66%;
-    --radius: 0.25rem;
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+    --card: 222 40% 8%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 40% 8%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217 33% 12%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 12%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 15%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 18%;
+    --input: 217 33% 14%;
+    --ring: 217 91% 60%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --radius: 0.5rem;
+    --sidebar-background: 222 47% 5%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 33% 12%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 217 33% 15%;
+    --sidebar-ring: 217 91% 60%;
   }
+}
 
-  * { @apply border-border; box-sizing: border-box; }
-  html, body, #root { min-height: 100%; height: 100%; }
+/* Cinematic animated gradient mesh background — sits behind all page content */
+.cinematic-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: hsl(222 47% 6%);
+}
+.cinematic-bg::before,
+.cinematic-bg::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.5;
+  animation: cinematic-pulse 10s ease-in-out infinite;
+}
+.cinematic-bg::before {
+  top: -10%;
+  left: -5%;
+  width: 50vw;
+  height: 50vw;
+  background: hsl(217 91% 50% / 0.25);
+}
+.cinematic-bg::after {
+  bottom: -10%;
+  right: -5%;
+  width: 45vw;
+  height: 45vw;
+  background: hsl(265 83% 55% / 0.2);
+  animation-delay: 2s;
+}
+.cinematic-bg .cinematic-glow-3 {
+  position: absolute;
+  top: 40%;
+  left: 30%;
+  width: 35vw;
+  height: 35vw;
+  border-radius: 50%;
+  background: hsl(160 60% 45% / 0.12);
+  filter: blur(120px);
+  animation: cinematic-pulse 14s ease-in-out infinite;
+  animation-delay: 4s;
+}
+
+@keyframes cinematic-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.15); opacity: 0.6; }
+}
+
+/* Subtle grid overlay for depth */
+.cinematic-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* Global overrides: make ALL light backgrounds transparent so the cinematic background shows through */
+main [class*="bg-white"],
+main [class*="bg-slate-50"],
+main [class*="bg-slate-100"],
+main [class*="bg-slate-200"],
+main [class*="bg-blue-50"],
+main [class*="bg-green-50"],
+main [class*="bg-amber-50"],
+main [class*="bg-red-50"],
+main [class*="bg-cyan-50"],
+main [class*="bg-purple-50"],
+main [class*="bg-indigo-50"],
+main [class*="bg-violet-50"],
+main [class*="bg-teal-50"],
+main [class*="bg-pink-50"],
+main [class*="bg-orange-50"],
+main [class*="bg-lime-50"],
+main [class*="bg-rose-50"],
+main [class*="bg-emerald-50"],
+main [class*="bg-yellow-50"] {
+  background-color: transparent !important;
+}
+
+/* Card/content containers become glassmorphic dark surfaces */
+main .bg-white.shadow,
+main .bg-white.rounded-xl,
+main .bg-white.rounded-2xl,
+main .bg-white.rounded-lg,
+main .bg-white.rounded-md,
+main .bg-white.p-4,
+main .bg-white.p-6,
+main .bg-slate-50.shadow,
+main .bg-slate-50.rounded-xl,
+main .bg-slate-50.rounded-2xl,
+main .bg-slate-50.rounded-lg,
+main .bg-slate-50.rounded-md,
+main .bg-slate-50.p-4,
+main .bg-slate-50.p-6 {
+  background-color: hsl(222 40% 8% / 0.6) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Colored tinted boxes become subtle dark glass with a hint of the original color */
+main .bg-blue-50.rounded,
+main .bg-blue-50.rounded-lg,
+main .bg-blue-50.rounded-xl,
+main .bg-blue-50.p-2,
+main .bg-blue-50.p-3,
+main .bg-blue-50.p-4,
+main .bg-green-50.rounded,
+main .bg-green-50.rounded-lg,
+main .bg-green-50.rounded-xl,
+main .bg-green-50.p-2,
+main .bg-green-50.p-3,
+main .bg-green-50.p-4,
+main .bg-amber-50.rounded,
+main .bg-amber-50.rounded-lg,
+main .bg-amber-50.rounded-xl,
+main .bg-amber-50.p-2,
+main .bg-amber-50.p-3,
+main .bg-amber-50.p-4,
+main .bg-red-50.rounded,
+main .bg-red-50.rounded-lg,
+main .bg-red-50.rounded-xl,
+main .bg-red-50.p-2,
+main .bg-red-50.p-3,
+main .bg-red-50.p-4,
+main .bg-cyan-50.rounded,
+main .bg-cyan-50.rounded-lg,
+main .bg-cyan-50.rounded-xl,
+main .bg-cyan-50.p-2,
+main .bg-cyan-50.p-3,
+main .bg-cyan-50.p-4,
+main .bg-purple-50.rounded,
+main .bg-purple-50.rounded-lg,
+main .bg-purple-50.rounded-xl,
+main .bg-purple-50.p-2,
+main .bg-purple-50.p-3,
+main .bg-purple-50.p-4,
+main .bg-indigo-50.rounded,
+main .bg-indigo-50.rounded-lg,
+main .bg-indigo-50.rounded-xl,
+main .bg-indigo-50.p-2,
+main .bg-indigo-50.p-3,
+main .bg-indigo-50.p-4,
+main .bg-violet-50.rounded,
+main .bg-violet-50.rounded-lg,
+main .bg-violet-50.rounded-xl,
+main .bg-violet-50.p-2,
+main .bg-violet-50.p-3,
+main .bg-violet-50.p-4,
+main .bg-teal-50.rounded,
+main .bg-teal-50.rounded-lg,
+main .bg-teal-50.rounded-xl,
+main .bg-teal-50.p-2,
+main .bg-teal-50.p-3,
+main .bg-teal-50.p-4,
+main .bg-pink-50.rounded,
+main .bg-pink-50.rounded-lg,
+main .bg-pink-50.rounded-xl,
+main .bg-pink-50.p-2,
+main .bg-pink-50.p-3,
+main .bg-pink-50.p-4,
+main .bg-orange-50.rounded,
+main .bg-orange-50.rounded-lg,
+main .bg-orange-50.rounded-xl,
+main .bg-orange-50.p-2,
+main .bg-orange-50.p-3,
+main .bg-orange-50.p-4,
+main .bg-rose-50.rounded,
+main .bg-rose-50.rounded-lg,
+main .bg-rose-50.rounded-xl,
+main .bg-rose-50.p-2,
+main .bg-rose-50.p-3,
+main .bg-rose-50.p-4,
+main .bg-emerald-50.rounded,
+main .bg-emerald-50.rounded-lg,
+main .bg-emerald-50.rounded-xl,
+main .bg-emerald-50.p-2,
+main .bg-emerald-50.p-3,
+main .bg-emerald-50.p-4,
+main .bg-lime-50.rounded,
+main .bg-lime-50.rounded-lg,
+main .bg-lime-50.rounded-xl,
+main .bg-lime-50.p-2,
+main .bg-lime-50.p-3,
+main .bg-lime-50.p-4 {
+  background-color: hsl(222 40% 10% / 0.5) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Colored tinted text becomes lighter for dark theme readability */
+main .text-blue-900 { color: hsl(210 100% 85%) !important; }
+main .text-green-900 { color: hsl(160 60% 80%) !important; }
+main .text-amber-900 { color: hsl(30 80% 80%) !important; }
+main .text-red-900 { color: hsl(0 72% 80%) !important; }
+main .text-purple-900 { color: hsl(265 83% 85%) !important; }
+main .text-indigo-900 { color: hsl(217 91% 85%) !important; }
+main .text-violet-900 { color: hsl(265 83% 85%) !important; }
+main .text-teal-900 { color: hsl(160 60% 80%) !important; }
+main .text-pink-900 { color: hsl(340 75% 85%) !important; }
+main .text-cyan-900 { color: hsl(190 80% 80%) !important; }
+main .text-rose-900 { color: hsl(340 75% 85%) !important; }
+main .text-emerald-900 { color: hsl(160 60% 80%) !important; }
+main .text-orange-900 { color: hsl(30 80% 80%) !important; }
+main .text-lime-900 { color: hsl(80 70% 80%) !important; }
+
+main .text-blue-700,
+main .text-blue-600 { color: hsl(217 91% 70%) !important; }
+main .text-green-700,
+main .text-green-600 { color: hsl(160 60% 65%) !important; }
+main .text-amber-700,
+main .text-amber-600 { color: hsl(30 80% 65%) !important; }
+main .text-red-700,
+main .text-red-600 { color: hsl(0 72% 65%) !important; }
+main .text-purple-700,
+main .text-purple-600 { color: hsl(265 83% 70%) !important; }
+main .text-indigo-700,
+main .text-indigo-600 { color: hsl(217 91% 70%) !important; }
+main .text-teal-700,
+main .text-teal-600 { color: hsl(160 60% 65%) !important; }
+main .text-pink-700,
+main .text-pink-600 { color: hsl(340 75% 70%) !important; }
+main .text-cyan-700,
+main .text-cyan-600 { color: hsl(190 80% 65%) !important; }
+main .text-rose-700,
+main .text-rose-600 { color: hsl(340 75% 70%) !important; }
+main .text-emerald-700,
+main .text-emerald-600 { color: hsl(160 60% 65%) !important; }
+main .text-orange-700,
+main .text-orange-600 { color: hsl(30 80% 65%) !important; }
+
+/* Colored border overrides for dark theme */
+main .border-blue-200,
+main .border-blue-300 { border-color: hsl(217 33% 25%) !important; }
+main .border-green-200,
+main .border-green-300 { border-color: hsl(160 30% 25%) !important; }
+main .border-amber-200,
+main .border-amber-300 { border-color: hsl(30 40% 25%) !important; }
+main .border-red-200,
+main .border-red-300 { border-color: hsl(0 40% 25%) !important; }
+main .border-purple-200,
+main .border-purple-300 { border-color: hsl(265 40% 25%) !important; }
+main .border-indigo-200,
+main .border-indigo-300 { border-color: hsl(217 33% 25%) !important; }
+main .border-cyan-200,
+main .border-cyan-300 { border-color: hsl(190 40% 25%) !important; }
+main .border-teal-200,
+main .border-teal-300 { border-color: hsl(160 30% 25%) !important; }
+main .border-pink-200,
+main .border-pink-300 { border-color: hsl(340 40% 25%) !important; }
+main .border-rose-200,
+main .border-rose-300 { border-color: hsl(340 40% 25%) !important; }
+main .border-emerald-200,
+main .border-emerald-300 { border-color: hsl(160 30% 25%) !important; }
+main .border-orange-200,
+main .border-orange-300 { border-color: hsl(30 40% 25%) !important; }
+main .border-violet-200,
+main .border-violet-300 { border-color: hsl(265 40% 25%) !important; }
+main .border-lime-200,
+main .border-lime-300 { border-color: hsl(80 40% 25%) !important; }
+
+/* Gradient backgrounds to dark cinematic */
+main .bg-gradient-to-br.from-slate-50,
+main .bg-gradient-to-br.from-white,
+main .bg-gradient-to-r.from-slate-50,
+main .bg-gradient-to-br.from-slate-100,
+main .bg-gradient-to-r.from-blue-50,
+main .bg-gradient-to-r.from-green-50,
+main .bg-gradient-to-r.from-amber-50,
+main .bg-gradient-to-r.from-red-50,
+main .bg-gradient-to-r.from-purple-50,
+main .bg-gradient-to-r.from-cyan-50,
+main .bg-gradient-to-br.from-blue-50,
+main .bg-gradient-to-br.from-green-50,
+main .bg-gradient-to-br.from-amber-50,
+main .bg-gradient-to-br.from-red-50,
+main .bg-gradient-to-br.from-purple-50,
+main .bg-gradient-to-br.from-cyan-50,
+main .bg-gradient-to-br.from-emerald-50,
+main .bg-gradient-to-r.from-emerald-50,
+main .bg-gradient-to-r.from-indigo-50,
+main .bg-gradient-to-br.from-indigo-50,
+main .bg-gradient-to-r.from-violet-50,
+main .bg-gradient-to-br.from-violet-50,
+main .bg-gradient-to-r.from-teal-50,
+main .bg-gradient-to-br.from-teal-50,
+main .bg-gradient-to-r.from-pink-50,
+main .bg-gradient-to-br.from-pink-50,
+main .bg-gradient-to-r.from-rose-50,
+main .bg-gradient-to-br.from-rose-50 {
+  background: hsl(222 40% 10% / 0.4) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Gradient buttons with saturated colors should stay vibrant but slightly muted */
+main .bg-gradient-to-br.from-green-600,
+main .bg-gradient-to-br.from-blue-600,
+main .bg-gradient-to-br.from-amber-600,
+main .bg-gradient-to-br.from-red-600,
+main .bg-gradient-to-br.from-purple-600 {
+  opacity: 0.95;
+}
+
+/* Card shadows to glow-style on dark */
+main .shadow-sm,
+main .shadow {
+  box-shadow: 0 0 0 1px hsl(217 33% 18% / 0.5), 0 4px 24px hsl(222 47% 6% / 0.4) !important;
+}
+main .shadow-md,
+main .shadow-lg,
+main .shadow-xl {
+  box-shadow: 0 0 0 1px hsl(217 33% 20% / 0.6), 0 8px 32px hsl(222 47% 4% / 0.5) !important;
+}
+
+/* Input fields — dark glass */
+main input[type="text"],
+main input[type="email"],
+main input[type="password"],
+main input[type="number"],
+main input[type="tel"],
+main input[type="date"],
+main input[type="time"],
+main textarea,
+main select {
+  background-color: hsl(222 40% 10% / 0.6) !important;
+  border-color: hsl(217 33% 18%) !important;
+  color: hsl(210 40% 98%) !important;
+}
+main input::placeholder,
+main textarea::placeholder {
+  color: hsl(215 15% 45%) !important;
+}
+main input:focus,
+main textarea:focus,
+main select:focus {
+  border-color: hsl(217 91% 60% / 0.5) !important;
+}
+
+/* Badge variants on dark */
+main .badge,
+main [class*="bg-amber-100"],
+main [class*="bg-blue-100"],
+main [class*="bg-green-100"],
+main [class*="bg-red-100"],
+main [class*="bg-purple-100"],
+main [class*="bg-indigo-100"],
+main [class*="bg-violet-100"],
+main [class*="bg-teal-100"],
+main [class*="bg-pink-100"],
+main [class*="bg-cyan-100"],
+main [class*="bg-rose-100"],
+main [class*="bg-emerald-100"],
+main [class*="bg-orange-100"],
+main [class*="bg-lime-100"],
+main [class*="bg-slate-100"],
+main [class*="bg-slate-200"] {
+  background-color: hsl(217 33% 15% / 0.7) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
   body {
-    margin: 0;
-    overflow: hidden;
-    background: #050a12;
-    color: #e8f1fa;
-    font-family: Inter, "Segoe UI", Arial, sans-serif;
-    font-size: 13px;
-    -webkit-font-smoothing: antialiased;
-  }
-  button, a, [role="button"] { @apply select-none; }
-  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-    outline: 2px solid #58abff;
-    outline-offset: 1px;
+    @apply bg-background text-foreground;
   }
 }
-
-@layer components {
-  .cad-panel {
-    background: #0b1625;
-    border: 1px solid #1d324b;
-    border-radius: 4px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.18);
-  }
-  .cad-panel-header {
-    min-height: 34px;
-    background: #0e1d2f;
-    border-bottom: 1px solid #223a55;
-    color: #dcecff;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: .12em;
-  }
-  .cad-status-live { color: #55dda1; }
-  .cad-status-warning { color: #ffc857; }
-  .cad-status-critical { color: #ff6868; }
-}
-
-.cad-app .bg-slate-950 { background-color: #060c15 !important; }
-.cad-app .bg-slate-900 { background-color: #0b1625 !important; }
-.cad-app .bg-slate-800 { background-color: #112238 !important; }
-.cad-app .bg-slate-700 { background-color: #1b314a !important; }
-.cad-app .border-slate-900,
-.cad-app .border-slate-800 { border-color: #1c3049 !important; }
-.cad-app .border-slate-700 { border-color: #29425e !important; }
-.cad-app .text-slate-600 { color: #536d88 !important; }
-.cad-app .text-slate-500 { color: #6c86a1 !important; }
-.cad-app .text-slate-400 { color: #91a7bd !important; }
-.cad-app .rounded-lg,
-.cad-app .rounded-xl,
-.cad-app .rounded-2xl { border-radius: 4px !important; }
-.cad-app .shadow-lg,
-.cad-app .shadow-xl,
-.cad-app .shadow-2xl { box-shadow: 0 8px 24px rgba(0,0,0,.22) !important; }
-.cad-app input,
-.cad-app select,
-.cad-app textarea {
-  background: #0a1726 !important;
-  border-color: #29445f !important;
-  color: #eef6ff !important;
-  border-radius: 3px !important;
-}
-.cad-app input::placeholder,
-.cad-app textarea::placeholder { color: #56708b !important; }
-.cad-app table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
-.cad-app thead { background: #0d1b2d !important; }
-.cad-app th {
-  color: #7892ad !important;
-  font-size: 9px !important;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-.cad-app tbody tr { border-color: #172a40 !important; }
-.cad-app tbody tr:hover { background: #102138 !important; }
-.cad-app .font-mono { font-family: "Roboto Mono", "SFMono-Regular", Consolas, monospace; }
-.cad-app button { min-height: 28px; }
-
-.leaflet-container {
-  font-family: Inter, "Segoe UI", sans-serif;
-  background: #07101a;
-}
-.leaflet-control-zoom a {
-  background: #0b1828 !important;
-  color: #a9c7e5 !important;
-  border-color: #29445f !important;
-}
-.leaflet-popup-content-wrapper {
-  background: #0b1625;
-  color: #edf6ff;
-  border: 1px solid #2b4968;
-  border-radius: 4px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.45);
-}
-.leaflet-popup-tip { background: #0b1625; }
-
-::-webkit-scrollbar { width: 7px; height: 7px; }
-::-webkit-scrollbar-track { background: #07101b; }
-::-webkit-scrollbar-thumb { background: #29445f; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #3b5e80; }
-
-@keyframes flash-red-blue {
-  0%, 100% { opacity: 1; filter: drop-shadow(0 0 5px #ff394f); }
-  50% { opacity: .45; filter: drop-shadow(0 0 5px #3994ff); }
-}
-.emergency-lights { animation: flash-red-blue .8s infinite; }

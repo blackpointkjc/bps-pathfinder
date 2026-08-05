@@ -1,0 +1,50 @@
+{
+  "name": "TenantBranding",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant this branding belongs to"
+    },
+    "app_name": {
+      "type": "string",
+      "description": "Custom app name for this tenant"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "Custom logo URL"
+    },
+    "primary_color": {
+      "type": "string",
+      "description": "Primary brand color (hex)"
+    },
+    "secondary_color": {
+      "type": "string",
+      "description": "Secondary brand color (hex)"
+    },
+    "document_header_text": {
+      "type": "string",
+      "description": "Custom header for printed documents"
+    },
+    "document_footer_text": {
+      "type": "string",
+      "description": "Custom footer for printed documents"
+    },
+    "support_email": {
+      "type": "string",
+      "description": "Custom support contact email"
+    },
+    "support_phone": {
+      "type": "string",
+      "description": "Custom support phone number"
+    },
+    "custom_css": {
+      "type": "string",
+      "description": "Custom CSS overrides"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "app_name"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "name": "ScheduleWeekStatus",
+  "type": "object",
+  "properties": {
+    "week_start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Start date of the week (Friday)"
+    },
+    "week_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "End date of the week (Thursday)"
+    },
+    "is_ready": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this week's schedule is ready to be viewed by officers and clients"
+    },
+    "marked_ready_by": {
+      "type": "string",
+      "description": "Email of admin who marked it ready"
+    },
+    "marked_ready_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When it was marked ready"
+    }
+  },
+  "required": [
+    "week_start_date",
+    "week_end_date"
+  ]
+}

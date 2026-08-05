@@ -1,0 +1,67 @@
+{
+  "name": "SupervisorSiteCheck",
+  "type": "object",
+  "properties": {
+    "supervisor_email": {
+      "type": "string",
+      "description": "Email of the supervisor"
+    },
+    "supervisor_rank": {
+      "type": "string",
+      "description": "Rank of the supervisor"
+    },
+    "supervisor_last_name": {
+      "type": "string",
+      "description": "Last name of the supervisor"
+    },
+    "site_name": {
+      "type": "string",
+      "description": "Name of the site visited"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "arrival",
+        "departure"
+      ],
+      "description": "Arrival or Departure"
+    },
+    "check_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Exact timestamp of site check"
+    },
+    "check_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of site check"
+    },
+    "dar_entry_text": {
+      "type": "string",
+      "description": "Auto-generated DAR entry text"
+    },
+    "entered_by_officer_email": {
+      "type": "string",
+      "description": "Email of officer who entered the code"
+    },
+    "entered_by_officer_name": {
+      "type": "string",
+      "description": "Name of officer who entered the code"
+    },
+    "code_used": {
+      "type": "string",
+      "description": "The 4-digit code that was entered"
+    },
+    "note": {
+      "type": "string",
+      "description": "Optional note from officer"
+    }
+  },
+  "required": [
+    "supervisor_email",
+    "site_name",
+    "action_type",
+    "check_timestamp",
+    "check_date"
+  ]
+}

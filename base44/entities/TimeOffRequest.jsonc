@@ -1,0 +1,65 @@
+{
+  "name": "TimeOffRequest",
+  "type": "object",
+  "properties": {
+    "start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Start date of time off"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "End date of time off"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for time off request"
+    },
+    "request_type": {
+      "type": "string",
+      "enum": [
+        "paid",
+        "unpaid"
+      ],
+      "default": "paid",
+      "description": "Whether this is paid or unpaid time off"
+    },
+    "hours_requested": {
+      "type": "number",
+      "description": "Total hours of PTO being requested (calculated from dates)"
+    },
+    "pto_balance_at_request": {
+      "type": "number",
+      "description": "Officer's PTO balance when request was created"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "denied"
+      ],
+      "default": "pending",
+      "description": "Status of the request"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Notes from admin regarding the request"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Email of admin who reviewed the request"
+    },
+    "reviewed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the request was reviewed"
+    }
+  },
+  "required": [
+    "start_date",
+    "end_date",
+    "reason"
+  ]
+}

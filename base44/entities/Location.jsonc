@@ -1,0 +1,343 @@
+{
+  "name": "Location",
+  "type": "object",
+  "properties": {
+    "site_name": {
+      "type": "string",
+      "description": "Name of the site"
+    },
+    "address": {
+      "type": "string",
+      "description": "Full address of the site"
+    },
+    "site_email": {
+      "type": "string",
+      "description": "Email address for site manager/contact (reports will be sent here)"
+    },
+    "assigned_client_email": {
+      "type": "string",
+      "description": "Email of client user assigned to this location"
+    },
+    "assigned_supervisors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of supervisor emails assigned to this site"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "GPS latitude coordinate"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "GPS longitude coordinate"
+    },
+    "division": {
+      "type": "string",
+      "description": "Main division this location belongs to (e.g., Virginia, Maryland)"
+    },
+    "subdivision": {
+      "type": "string",
+      "description": "Subdivision this location belongs to (e.g., Richmond, NOVA, Tidewater)"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this location is active"
+    },
+    "contract_start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Contract start date"
+    },
+    "contract_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Contract end date - location becomes inactive at 12pm on this date"
+    },
+    "is_special_event": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is a special event location requiring scheduling"
+    },
+    "site_bill_rate": {
+      "type": "number",
+      "description": "Hourly billing rate for this site (charged to client) - standard/normal rate"
+    },
+    "site_bill_rate_holiday_armed": {
+      "type": "number",
+      "description": "Holiday Coverage rate - Armed Services"
+    },
+    "site_bill_rate_holiday_unarmed": {
+      "type": "number",
+      "description": "Holiday Coverage rate - Unarmed Services"
+    },
+    "site_bill_rate_rush_armed": {
+      "type": "number",
+      "description": "Rush Coverage rate - Armed Services"
+    },
+    "site_bill_rate_rush_unarmed": {
+      "type": "number",
+      "description": "Rush Coverage rate - Unarmed Services"
+    },
+    "site_bill_rate_unarmed": {
+      "type": "number",
+      "description": "Standard Unarmed Services rate"
+    },
+    "site_rate_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rate": {
+            "type": "number"
+          },
+          "effective_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "changed_by": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Historical site rate changes for audit purposes"
+    },
+    "max_hours_per_week": {
+      "type": "number",
+      "description": "Maximum hours allowed per week for this location"
+    },
+    "shift_start_time": {
+      "type": "string",
+      "description": "Default earliest shift start time (HH:MM format, e.g. 18:00)"
+    },
+    "shift_end_time": {
+      "type": "string",
+      "description": "Default latest shift end time (HH:MM format, e.g. 04:00)"
+    },
+    "preferred_shift_length": {
+      "type": "number",
+      "description": "Default preferred shift length in hours (e.g., 8, 10)"
+    },
+    "min_officers_per_shift": {
+      "type": "number",
+      "default": 2,
+      "description": "Minimum number of officers required per shift"
+    },
+    "max_officers_per_shift": {
+      "type": "number",
+      "default": 3,
+      "description": "Maximum number of officers allowed per shift"
+    },
+    "coverage_days": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Days of the week requiring coverage (e.g., ['monday', 'tuesday'])"
+    },
+    "coverage_notes": {
+      "type": "string",
+      "description": "Special coverage requirements or notes for scheduling"
+    },
+    "exclude_from_auto_schedule": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to exclude this location from AI auto-scheduling"
+    },
+    "geofence_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether geo-fencing is enabled for this location"
+    },
+    "geofence_radius_meters": {
+      "type": "number",
+      "default": 100,
+      "description": "Radius of the geofence in meters"
+    },
+    "geofence_polygon": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Custom polygon points for geo-fence (alternative to circular radius)"
+    },
+    "day_specific_settings": {
+      "type": "object",
+      "description": "Per-day shift windows and lengths (overrides defaults)",
+      "properties": {
+        "monday": {
+          "type": "object",
+          "properties": {
+            "shifts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shift_start_time": {
+                    "type": "string"
+                  },
+                  "shift_end_time": {
+                    "type": "string"
+                  },
+                  "shift_length": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tuesday": {
+          "type": "object",
+          "properties": {
+            "shifts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shift_start_time": {
+                    "type": "string"
+                  },
+                  "shift_end_time": {
+                    "type": "string"
+                  },
+                  "shift_length": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "wednesday": {
+          "type": "object",
+          "properties": {
+            "shifts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shift_start_time": {
+                    "type": "string"
+                  },
+                  "shift_end_time": {
+                    "type": "string"
+                  },
+                  "shift_length": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "thursday": {
+          "type": "object",
+          "properties": {
+            "shifts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shift_start_time": {
+                    "type": "string"
+                  },
+                  "shift_end_time": {
+                    "type": "string"
+                  },
+                  "shift_length": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "friday": {
+          "type": "object",
+          "properties": {
+            "shifts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shift_start_time": {
+                    "type": "string"
+                  },
+                  "shift_end_time": {
+                    "type": "string"
+                  },
+                  "shift_length": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "saturday": {
+          "type": "object",
+          "properties": {
+            "shifts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shift_start_time": {
+                    "type": "string"
+                  },
+                  "shift_end_time": {
+                    "type": "string"
+                  },
+                  "shift_length": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "sunday": {
+          "type": "object",
+          "properties": {
+            "shifts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "shift_start_time": {
+                    "type": "string"
+                  },
+                  "shift_end_time": {
+                    "type": "string"
+                  },
+                  "shift_length": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes about the location"
+    }
+  },
+  "required": [
+    "site_name",
+    "address"
+  ]
+}

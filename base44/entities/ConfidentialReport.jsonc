@@ -1,0 +1,75 @@
+{
+  "name": "ConfidentialReport",
+  "type": "object",
+  "properties": {
+    "report_type": {
+      "type": "string",
+      "enum": [
+        "workplace_concern",
+        "safety_issue",
+        "policy_concern",
+        "team_issue",
+        "management_concern",
+        "other"
+      ],
+      "description": "Type of concern being reported"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the concern"
+    },
+    "preferred_contact_method": {
+      "type": "string",
+      "enum": [
+        "email",
+        "phone",
+        "in_person",
+        "no_contact"
+      ],
+      "description": "How officer prefers to be contacted"
+    },
+    "anonymous": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the officer wants to remain anonymous"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "reviewed",
+        "investigating",
+        "resolved"
+      ],
+      "default": "new",
+      "description": "Status of the report"
+    },
+    "viewed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether admin has viewed the report"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Internal admin notes about the report"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Email of admin who reviewed"
+    },
+    "reviewed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When it was reviewed"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether report has been moved to inactive"
+    }
+  },
+  "required": [
+    "report_type",
+    "description"
+  ]
+}

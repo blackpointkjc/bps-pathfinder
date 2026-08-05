@@ -1,0 +1,53 @@
+{
+  "name": "TimeEntry",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the officer this time entry belongs to"
+    },
+    "clock_in": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the officer clocked in"
+    },
+    "clock_out": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the officer clocked out"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location where clock in/out occurred"
+    },
+    "clock_in_latitude": {
+      "type": "number",
+      "description": "GPS latitude where officer clocked in"
+    },
+    "clock_in_longitude": {
+      "type": "number",
+      "description": "GPS longitude where officer clocked in"
+    },
+    "clock_out_latitude": {
+      "type": "number",
+      "description": "GPS latitude where officer clocked out"
+    },
+    "clock_out_longitude": {
+      "type": "number",
+      "description": "GPS longitude where officer clocked out"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes about the shift"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether entry is archived"
+    }
+  },
+  "required": [
+    "officer_email",
+    "clock_in"
+  ]
+}

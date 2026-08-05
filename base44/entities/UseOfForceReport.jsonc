@@ -1,0 +1,73 @@
+{
+  "name": "UseOfForceReport",
+  "type": "object",
+  "properties": {
+    "officer_name": {
+      "type": "string",
+      "description": "Name of the officer involved in the incident"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the officer involved in the incident"
+    },
+    "incident_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the incident"
+    },
+    "incident_time": {
+      "type": "string",
+      "description": "Time of the incident (HH:MM format)"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location where the incident occurred"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the use-of-force incident"
+    },
+    "force_type": {
+      "type": "string",
+      "enum": [
+        "physical_contact",
+        "restraint",
+        "baton",
+        "pepper_spray",
+        "firearm",
+        "other"
+      ],
+      "description": "Type of force used"
+    },
+    "injury_reported": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether injuries were reported"
+    },
+    "police_notified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether police were notified"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "submitted",
+        "approved",
+        "rejected"
+      ],
+      "default": "draft",
+      "description": "Status of the report"
+    }
+  },
+  "required": [
+    "officer_name",
+    "officer_email",
+    "incident_date",
+    "incident_time",
+    "location",
+    "description",
+    "force_type"
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "name": "Schedule",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the assigned officer, or 'OPEN' for open shifts"
+    },
+    "shift_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the shift"
+    },
+    "start_time": {
+      "type": "string",
+      "description": "Shift start time"
+    },
+    "end_time": {
+      "type": "string",
+      "description": "Shift end time"
+    },
+    "location": {
+      "type": "string",
+      "description": "Assigned location/post"
+    },
+    "site_details": {
+      "type": "string",
+      "description": "Additional site-specific details or instructions"
+    },
+    "special_instructions": {
+      "type": "string",
+      "description": "Any special instructions for the shift"
+    },
+    "shift_type": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "holiday_coverage",
+        "rush_coverage"
+      ],
+      "default": "normal",
+      "description": "Type of shift for billing purposes"
+    },
+    "is_open": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is an open shift available for officers to claim"
+    },
+    "is_split_shift": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this shift spans across two days (e.g., 11pm-7am)"
+    },
+    "linked_shift_id": {
+      "type": "string",
+      "description": "ID of the shift this split shift is linked to (the shift that comes after it chronologically)"
+    }
+  },
+  "required": [
+    "officer_email",
+    "shift_date",
+    "start_time",
+    "end_time",
+    "location"
+  ]
+}

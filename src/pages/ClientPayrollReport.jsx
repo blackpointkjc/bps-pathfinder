@@ -1,0 +1,428 @@
+import React, { useState, useEffect } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DollarSign, Download, Calendar, Clock, FileText, X } from "lucide-react";
+import { format, startOfMonth, endOfMonth } from "date-fns";
+
+const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
+
+export default function ClientPayrollReport() {
+  const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [showOfficerNames, setShowOfficerNames] = useState(false);
+  const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
+
+  const { data: user } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => base44.auth.me(),
+  });
+
+  const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
+
+  const { data: timeEntries } = useQuery({
+    queryKey: ['clientTimeEntries', startDate, endDate],
+    queryFn: () => base44.entities.TimeEntry.list('-clock_in', 2000),
+    enabled: user?.additional_roles?.includes('client'),
+    initialData: [],
+  });
+
+  const { data: officers } = useQuery({
+    queryKey: ['officers'],
+    queryFn: () => base44.entities.User.list(),
+    initialData: [],
+  });
+
+  const { data: locations } = useQuery({
+    queryKey: ['locations'],
+    queryFn: () => base44.entities.Location.list(),
+    initialData: [],
+  });
+
+  const { data: clientInvoices = [] } = useQuery({
+    queryKey: ['clientInvoices', user?.email],
+    queryFn: async () => {
+      try {
+        const allInvoices = await base44.entities.Invoice.list('-created_date', 1000);
+        return allInvoices.filter(inv => inv.client_email === user?.email) || [];
+      } catch (error) {
+        console.error('Error fetching invoices:', error);
+        return [];
+      }
+    },
+    enabled: !!user && user?.additional_roles?.includes('client'),
+    initialData: [],
+  });
+
+  // Show invoice popup on first load
+  useEffect(() => {
+    if (clientInvoices.length > 0) {
+      setShowInvoiceDialog(true);
+    }
+  }, []);
+
+  // Filter to only client's locations
+  const filteredEntries = timeEntries.filter(entry => {
+    if (!entry.clock_in) return false;
+    if (!clientLocations.includes(entry.location)) return false;
+    const entryDate = new Date(entry.clock_in);
+    return entryDate >= new Date(startDate) && entryDate <= new Date(endDate);
+  });
+
+  // Calculate billing by site
+  const billingSummary = {};
+
+  filteredEntries.forEach(entry => {
+    if (!entry.clock_out) return;
+
+    const location = locations.find(l => l.site_name === entry.location);
+    if (!location || !location.site_bill_rate) return; // Skip if no bill rate set
+
+    const hours = (new Date(entry.clock_out) - new Date(entry.clock_in)) / (1000 * 60 * 60);
+    const billRate = location.site_bill_rate;
+    const billedAmount = hours * billRate;
+
+    if (!billingSummary[entry.location]) {
+      billingSummary[entry.location] = {
+        hours: 0,
+        billedAmount: 0,
+        billRate: billRate,
+        shifts: []
+      };
+    }
+
+    billingSummary[entry.location].hours += hours;
+    billingSummary[entry.location].billedAmount += billedAmount;
+    billingSummary[entry.location].shifts.push({
+      ...entry,
+      hours,
+      billedAmount
+    });
+  });
+
+  const totalHours = Object.values(billingSummary).reduce((sum, data) => sum + data.hours, 0);
+  const totalBilled = Object.values(billingSummary).reduce((sum, data) => sum + data.billedAmount, 0);
+
+  const generateInvoice = () => {
+    const printWindow = window.open('', '', 'width=850,height=1100');
+    
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Security Services Invoice</title>
+        <style>
+          @page { size: 8.5in 11in; margin: 0.5in; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; font-size: 10pt; line-height: 1.4; }
+          .invoice-header { background: #1e40af; color: white; padding: 20px; text-align: center; margin-bottom: 20px; }
+          .title { font-size: 24pt; font-weight: bold; }
+          .subtitle { font-size: 12pt; margin-top: 5px; }
+          .info-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+          .info-box { padding: 15px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; }
+          .info-label { font-size: 8pt; color: #64748b; font-weight: bold; text-transform: uppercase; }
+          .info-value { font-size: 11pt; color: #1e293b; margin-top: 4px; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th { background: #e0e7ff; color: #1e40af; font-weight: bold; text-align: left; padding: 10px; border: 1px solid #cbd5e1; }
+          td { padding: 8px; border: 1px solid #cbd5e1; }
+          .text-right { text-align: right; }
+          .total-row { background: #dbeafe; font-weight: bold; }
+          .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #1e40af; text-align: center; font-size: 9pt; color: #64748b; }
+        </style>
+      </head>
+      <body>
+        <div class="invoice-header">
+          <div class="title">SECURITY SERVICES INVOICE</div>
+          <div class="subtitle">Black Point Protection Services</div>
+        </div>
+
+        <div class="info-section">
+          <div class="info-box">
+            <div class="info-label">Bill To</div>
+            <div class="info-value">${user?.full_name || user?.email}</div>
+            <div class="info-value">${clientLocations.join(', ')}</div>
+          </div>
+          <div class="info-box">
+            <div class="info-label">Invoice Period</div>
+            <div class="info-value">${format(new Date(startDate), 'MMMM d, yyyy')} - ${format(new Date(endDate), 'MMMM d, yyyy')}</div>
+            <div class="info-label" style="margin-top: 10px;">Invoice Date</div>
+            <div class="info-value">${format(new Date(), 'MMMM d, yyyy')}</div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              ${showOfficerNames ? '<th>Officer</th>' : ''}
+              <th>Site</th>
+              <th>Clock In</th>
+              <th>Clock Out</th>
+              <th class="text-right">Hours</th>
+              <th class="text-right">Rate</th>
+              <th class="text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${Object.entries(billingSummary).map(([site, data]) => 
+              data.shifts.map(shift => {
+                const officer = officers.find(o => o.email === shift.officer_email);
+                const officerName = officer ? `${officer.first_name} ${officer.last_name}` : 'Officer';
+                
+                return `
+                  <tr>
+                    <td>${format(new Date(shift.clock_in), 'MMM d, yyyy')}</td>
+                    ${showOfficerNames ? `<td>${officerName}</td>` : ''}
+                    <td>${site}</td>
+                    <td>${format(new Date(shift.clock_in), 'HH:mm')}</td>
+                    <td>${format(new Date(shift.clock_out), 'HH:mm')}</td>
+                    <td class="text-right">${shift.hours.toFixed(2)}</td>
+                    <td class="text-right">$${data.billRate.toFixed(2)}</td>
+                    <td class="text-right">$${shift.billedAmount.toFixed(2)}</td>
+                  </tr>
+                `;
+              }).join('')
+            ).join('')}
+            <tr class="total-row">
+              <td colspan="${showOfficerNames ? '6' : '5'}" class="text-right">TOTAL:</td>
+              <td class="text-right">${totalHours.toFixed(2)}</td>
+              <td class="text-right">$${totalBilled.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <p><strong>Black Point Protection Services</strong></p>
+          <p>VA DCJS #11-6066</p>
+          <p style="margin-top: 10px;">Thank you for your business</p>
+        </div>
+
+        <script>window.print();</script>
+      </body>
+      </html>
+    `;
+    
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
+  return (
+    <div className="container mx-auto p-6 max-w-7xl">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Timesheet Report</h1>
+          <p className="text-slate-600">View timesheets and billing for your sites</p>
+        </div>
+      </div>
+
+      {/* Invoice Notification Dialog */}
+      <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>📋 New Invoices Available</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {clientInvoices.length === 0 ? (
+              <p className="text-slate-600">No invoices at this time.</p>
+            ) : (
+              clientInvoices.map(invoice => {
+                const shifts = invoice.shifts ? JSON.parse(invoice.shifts) : [];
+                return (
+                  <Card key={invoice.id} className="border border-slate-200">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-slate-600">Invoice #{invoice.invoice_number}</p>
+                          <p className="font-semibold text-slate-900">{invoice.site_name}</p>
+                        </div>
+                        <div className="text-right">
+                          <Badge className={invoice.status === 'paid' ? 'bg-green-600' : 'bg-blue-600'}>
+                            {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                          </Badge>
+                          <p className="text-sm text-slate-600 mt-2">
+                            {format(new Date(invoice.period_start), 'MMM d')} - {format(new Date(invoice.period_end), 'MMM d, yyyy')}
+                          </p>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="bg-slate-50 rounded-lg overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-slate-200 bg-slate-100">
+                              <th className="text-left p-3 font-medium text-slate-700">Employee</th>
+                              <th className="text-left p-3 font-medium text-slate-700">Date</th>
+                              <th className="text-center p-3 font-medium text-slate-700">Clock In</th>
+                              <th className="text-center p-3 font-medium text-slate-700">Clock Out</th>
+                              <th className="text-right p-3 font-medium text-slate-700">Hours</th>
+                              <th className="text-right p-3 font-medium text-slate-700">Rate</th>
+                              <th className="text-right p-3 font-medium text-slate-700">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {shifts.map((shift, idx) => (
+                              <tr key={idx} className="hover:bg-white">
+                                <td className="p-3 text-slate-900">{shift.officer}</td>
+                                <td className="p-3 text-slate-600">{shift.date}</td>
+                                <td className="p-3 text-center text-slate-600">{shift.clockIn}</td>
+                                <td className="p-3 text-center text-slate-600">{shift.clockOut}</td>
+                                <td className="p-3 text-right text-slate-900 font-medium">{shift.hours}</td>
+                                <td className="p-3 text-right text-slate-600">${shift.rate}</td>
+                                <td className="p-3 text-right text-slate-900 font-semibold">${shift.amount}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+                        <div>
+                          <p className="text-sm text-slate-600">Total Hours: <span className="font-semibold text-slate-900">{invoice.total_hours?.toFixed(2)}</span></p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-slate-600">Invoice Total</p>
+                          <p className="text-2xl font-bold text-green-600">${invoice.total_amount?.toFixed(2)}</p>
+                        </div>
+                      </div>
+                      {invoice.notes && (
+                        <div className="p-3 bg-blue-50 rounded text-sm text-slate-700">
+                          <p className="font-medium mb-1">Notes:</p>
+                          <p>{invoice.notes}</p>
+                        </div>
+                      )}
+                      <div className="text-xs text-slate-500 pt-2">
+                        Due: {format(new Date(invoice.due_date), 'MMM d, yyyy')}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <div className="space-y-6">
+
+        {/* Date Range & Options */}
+        <Card className="mb-6">
+        <CardContent className="p-6">
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div>
+              <Label>Start Date</Label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>End Date</Label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                onClick={generateInvoice}
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Generate Invoice
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="show_names"
+              checked={showOfficerNames}
+              onCheckedChange={setShowOfficerNames}
+            />
+            <Label htmlFor="show_names" className="cursor-pointer text-sm">
+              Include officer names in invoice
+            </Label>
+          </div>
+        </CardContent>
+      </Card>
+
+        {/* Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-slate-600">Total Hours</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-slate-900">{totalHours.toFixed(2)}</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-slate-600">Total Billed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold text-slate-900">
+              ${totalBilled.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+        {/* Breakdown by Site */}
+        <Card>
+        <CardHeader>
+          <CardTitle>Billing Breakdown by Site</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {Object.entries(billingSummary).map(([site, data]) => (
+              <div key={site} className="p-4 bg-slate-50 rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="font-bold text-slate-900">{site}</p>
+                    <p className="text-sm text-slate-600">Rate: ${data.billRate.toFixed(2)}/hour</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-slate-600">{data.hours.toFixed(2)} hours</p>
+                    <p className="text-xl font-bold text-green-600">${data.billedAmount.toFixed(2)}</p>
+                  </div>
+                </div>
+
+                <details>
+                  <summary className="text-xs text-blue-600 cursor-pointer hover:underline">
+                    View {data.shifts.length} shifts
+                  </summary>
+                  <div className="mt-2 space-y-1">
+                    {data.shifts.map(shift => {
+                      const officer = officers.find(o => o.email === shift.officer_email);
+                      return (
+                        <div key={shift.id} className="text-xs p-2 bg-white rounded border flex justify-between">
+                          <span>
+                            {showOfficerNames && officer && `${officer.first_name} ${officer.last_name} • `}
+                            {format(new Date(shift.clock_in), 'MMM d, HH:mm')} - {format(new Date(shift.clock_out), 'HH:mm')}
+                          </span>
+                          <span className="font-medium">
+                            {shift.hours.toFixed(2)}h × ${data.billRate.toFixed(2)} = ${shift.billedAmount.toFixed(2)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </details>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+      </div>
+    </div>
+  );
+}

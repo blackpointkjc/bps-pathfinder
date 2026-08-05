@@ -1,0 +1,183 @@
+{
+  "name": "PerformanceReview",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Email of officer being reviewed"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of officer"
+    },
+    "reviewer_email": {
+      "type": "string",
+      "description": "Email of supervisor conducting review"
+    },
+    "reviewer_name": {
+      "type": "string",
+      "description": "Name of reviewer"
+    },
+    "review_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of review"
+    },
+    "review_period_start": {
+      "type": "string",
+      "format": "date",
+      "description": "Start of review period"
+    },
+    "review_period_end": {
+      "type": "string",
+      "format": "date",
+      "description": "End of review period"
+    },
+    "professionalism_rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Rating 1-5"
+    },
+    "punctuality_rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "uniform_appearance_rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "communication_rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "initiative_rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "overall_rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Overall performance rating"
+    },
+    "strengths": {
+      "type": "string",
+      "description": "Officer's strengths"
+    },
+    "areas_for_improvement": {
+      "type": "string",
+      "description": "Areas needing improvement"
+    },
+    "goals": {
+      "type": "string",
+      "description": "Goals for next review period"
+    },
+    "supervisor_notes": {
+      "type": "string",
+      "description": "Additional supervisor notes"
+    },
+    "officer_acknowledged": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether officer has acknowledged review"
+    },
+    "officer_comments": {
+      "type": "string",
+      "description": "Officer's comments on review"
+    },
+    "commendations_count": {
+      "type": "number",
+      "description": "Number of commendations during review period"
+    },
+    "complaints_count": {
+      "type": "number",
+      "description": "Number of complaints during review period"
+    },
+    "inspections_count": {
+      "type": "number",
+      "description": "Number of inspections during review period"
+    },
+    "writeups_count": {
+      "type": "number",
+      "description": "Number of write-ups during review period"
+    },
+    "hours_worked": {
+      "type": "number",
+      "description": "Total hours worked during review period"
+    },
+    "on_time_percentage": {
+      "type": "number",
+      "description": "Percentage of on-time shifts"
+    },
+    "current_hourly_rate": {
+      "type": "number",
+      "description": "Current hourly rate at time of review"
+    },
+    "suggested_hourly_rate": {
+      "type": "number",
+      "description": "Suggested hourly rate based on performance"
+    },
+    "pay_range_min": {
+      "type": "number",
+      "description": "Minimum pay for officer's rank"
+    },
+    "pay_range_max": {
+      "type": "number",
+      "description": "Maximum pay for officer's rank"
+    },
+    "pay_adjustment_approved": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether admin approved the pay adjustment"
+    },
+    "pay_adjustment_approved_by": {
+      "type": "string",
+      "description": "Email of admin who approved pay adjustment"
+    },
+    "pay_adjustment_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When pay adjustment was approved"
+    },
+    "pay_effective_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when pay adjustment becomes effective"
+    },
+    "supervisor_review_pending": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether supervisor needs to review this with officer"
+    },
+    "supervisor_review_completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether supervisor has completed review with officer"
+    },
+    "supervisor_review_completed_by": {
+      "type": "string",
+      "description": "Email of supervisor who completed review"
+    },
+    "supervisor_review_completed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When supervisor completed review with officer"
+    },
+    "officer_signature_obtained": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether officer signature was obtained"
+    }
+  },
+  "required": [
+    "officer_email",
+    "reviewer_email",
+    "review_date",
+    "overall_rating"
+  ]
+}

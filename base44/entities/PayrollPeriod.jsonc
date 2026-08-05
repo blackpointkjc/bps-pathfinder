@@ -1,0 +1,51 @@
+{
+  "name": "PayrollPeriod",
+  "type": "object",
+  "properties": {
+    "period_name": {
+      "type": "string",
+      "description": "Name of the payroll period (e.g., 'PP 01-2025')"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Start date of the payroll period"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "End date of the payroll period"
+    },
+    "deposit_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Direct deposit date for this payroll period"
+    },
+    "year": {
+      "type": "number",
+      "description": "Year of the payroll period"
+    },
+    "period_number": {
+      "type": "number",
+      "description": "Period number within the year"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "upcoming",
+        "current",
+        "closed"
+      ],
+      "default": "upcoming",
+      "description": "Status of the payroll period"
+    }
+  },
+  "required": [
+    "period_name",
+    "start_date",
+    "end_date",
+    "deposit_date",
+    "year",
+    "period_number"
+  ]
+}

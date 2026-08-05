@@ -1,0 +1,372 @@
+{
+  "name": "Summons",
+  "type": "object",
+  "properties": {
+    "case_number": {
+      "type": "string",
+      "description": "Case number (stamped number on summons, do not include 290)"
+    },
+    "summons_number": {
+      "type": "string",
+      "description": "Virtus tracking number"
+    },
+    "summons_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date and time summons was issued"
+    },
+    "hearing_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Hearing date"
+    },
+    "hearing_time": {
+      "type": "string",
+      "description": "Hearing time"
+    },
+    "court_type": {
+      "type": "string",
+      "enum": [
+        "general_district",
+        "criminal",
+        "traffic",
+        "juvenile_domestic",
+        "other"
+      ],
+      "description": "Type of court"
+    },
+    "court_other": {
+      "type": "string",
+      "description": "Other jurisdiction description"
+    },
+    "defendant_name_last": {
+      "type": "string",
+      "description": "Defendant last name"
+    },
+    "defendant_name_first": {
+      "type": "string",
+      "description": "Defendant first name"
+    },
+    "defendant_name_middle": {
+      "type": "string",
+      "description": "Defendant middle name"
+    },
+    "defendant_address": {
+      "type": "string",
+      "description": "Defendant residential address"
+    },
+    "defendant_city_town": {
+      "type": "string",
+      "description": "City/town"
+    },
+    "defendant_state": {
+      "type": "string",
+      "description": "State"
+    },
+    "defendant_zip": {
+      "type": "string",
+      "description": "ZIP code"
+    },
+    "defendant_race": {
+      "type": "string",
+      "description": "Race"
+    },
+    "defendant_sex": {
+      "type": "string",
+      "enum": [
+        "M",
+        "F"
+      ],
+      "description": "Sex"
+    },
+    "defendant_dob": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of birth"
+    },
+    "defendant_height_ft": {
+      "type": "number",
+      "description": "Height feet"
+    },
+    "defendant_height_in": {
+      "type": "number",
+      "description": "Height inches"
+    },
+    "defendant_weight": {
+      "type": "number",
+      "description": "Weight in lbs"
+    },
+    "defendant_eyes": {
+      "type": "string",
+      "description": "Eye color"
+    },
+    "defendant_hair": {
+      "type": "string",
+      "description": "Hair color"
+    },
+    "defendant_dl_state": {
+      "type": "string",
+      "description": "DL/CDL state (if Criminal Offense or no License use SSN)"
+    },
+    "defendant_dl_holder": {
+      "type": "string",
+      "enum": [
+        "D",
+        "V",
+        "C",
+        "M",
+        "H"
+      ],
+      "description": "D=Driver, V=Vehicle, C=CDL, M=Moped, H=Holder"
+    },
+    "defendant_dl_year": {
+      "type": "string",
+      "description": "DL year"
+    },
+    "defendant_dl_make": {
+      "type": "string",
+      "description": "Vehicle make"
+    },
+    "defendant_dl_type": {
+      "type": "string",
+      "description": "License type"
+    },
+    "defendant_license_no": {
+      "type": "string",
+      "description": "License number"
+    },
+    "defendant_license_year": {
+      "type": "string",
+      "description": "License year"
+    },
+    "defendant_license_state": {
+      "type": "string",
+      "description": "License state"
+    },
+    "jurisdiction": {
+      "type": "string",
+      "description": "Jurisdiction of offense"
+    },
+    "offense_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of offense"
+    },
+    "offense_time_period": {
+      "type": "string",
+      "enum": [
+        "AM",
+        "PM"
+      ],
+      "description": "AM or PM"
+    },
+    "offense_time": {
+      "type": "string",
+      "description": "Time of offense"
+    },
+    "offense_county_city": {
+      "type": "string",
+      "description": "County/city/town"
+    },
+    "violation_code": {
+      "type": "string",
+      "description": "VCC (Virginia Crime Code)"
+    },
+    "violation_law_section": {
+      "type": "string",
+      "description": "Violation of law section"
+    },
+    "violation_charge_description": {
+      "type": "string",
+      "description": "Describe charge"
+    },
+    "violation_county_city_town": {
+      "type": "string",
+      "enum": [
+        "county",
+        "city",
+        "town"
+      ],
+      "description": "County, City, or Town"
+    },
+    "juris_off_date": {
+      "type": "string",
+      "description": "Jurisdiction officer date"
+    },
+    "date_of_offense": {
+      "type": "string",
+      "description": "Date of offense"
+    },
+    "day_of_week": {
+      "type": "string",
+      "description": "Day of week"
+    },
+    "time_offense": {
+      "type": "string",
+      "description": "Time of offense"
+    },
+    "direction": {
+      "type": "string",
+      "description": "Direction of travel"
+    },
+    "accident_yes_no": {
+      "type": "string",
+      "enum": [
+        "yes",
+        "no"
+      ],
+      "description": "Accident yes/no"
+    },
+    "weather": {
+      "type": "string",
+      "description": "Weather conditions"
+    },
+    "route_street": {
+      "type": "string",
+      "description": "Route number or street"
+    },
+    "location_of_offense": {
+      "type": "string",
+      "description": "Location of offense"
+    },
+    "arrest_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Arrest date"
+    },
+    "arrest_location": {
+      "type": "string",
+      "description": "Arrest location"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Officer name"
+    },
+    "officer_code_badge": {
+      "type": "string",
+      "description": "Officer code/badge number"
+    },
+    "mailing_address_same_above": {
+      "type": "boolean",
+      "description": "Mailing address same as above"
+    },
+    "mailing_address_change_from_dl": {
+      "type": "boolean",
+      "description": "Change from DL"
+    },
+    "mailing_address_po_box": {
+      "type": "string",
+      "description": "P.O. Box/Street"
+    },
+    "mailing_city_town": {
+      "type": "string",
+      "description": "City/town"
+    },
+    "mailing_state": {
+      "type": "string",
+      "description": "State"
+    },
+    "mailing_zip": {
+      "type": "string",
+      "description": "ZIP"
+    },
+    "cmv_yes": {
+      "type": "boolean",
+      "description": "Commercial Motor Vehicle - Yes"
+    },
+    "cmv_no": {
+      "type": "boolean",
+      "description": "Commercial Motor Vehicle - No"
+    },
+    "hazmat_resulted_fatality_yes": {
+      "type": "boolean",
+      "description": "Hazardous Materials Resulted In Fatality - Yes"
+    },
+    "hazmat_resulted_fatality_no": {
+      "type": "boolean",
+      "description": "Hazardous Materials Resulted In Fatality - No"
+    },
+    "highway_safety_corridor_yes": {
+      "type": "boolean",
+      "description": "Highway Safety Corridor - Yes"
+    },
+    "highway_safety_corridor_no": {
+      "type": "boolean",
+      "description": "Highway Safety Corridor - No"
+    },
+    "fine_110_201": {
+      "type": "number",
+      "description": "110/201 FINE amount"
+    },
+    "fine_114_129_237_civil": {
+      "type": "number",
+      "description": "114/129/237 CIVIL PENALTY amount"
+    },
+    "fine_460_fixed_traffic": {
+      "type": "number",
+      "description": "460 FIXED TRAFFIC INFRACTION FEE amount"
+    },
+    "fine_461_misdemeanor": {
+      "type": "number",
+      "description": "461 FIXED MISDEMEANOR FEE amount"
+    },
+    "fine_462_drugs": {
+      "type": "number",
+      "description": "462 FIXED MISDEMEANOR FEE-DRUGS amount"
+    },
+    "tried_in_absence_fee": {
+      "type": "number",
+      "description": "121 TRIED IN ABSENCE FEE"
+    },
+    "ch_security_fee": {
+      "type": "number",
+      "description": "244 CH SECURITY FEE"
+    },
+    "ct_appt_atty_fee": {
+      "type": "number",
+      "description": "120/217 CT APPT. ATTY"
+    },
+    "witness_fee": {
+      "type": "number",
+      "description": "113 WITNESS FEE"
+    },
+    "local_training_academy_fee": {
+      "type": "number",
+      "description": "243 LOCAL TRAINING ACADEMY FEE"
+    },
+    "total_amount": {
+      "type": "number",
+      "description": "TOTAL amount"
+    },
+    "interest_charge": {
+      "type": "number",
+      "description": "109 INTEREST CHARGE"
+    },
+    "total_with_interest": {
+      "type": "number",
+      "description": "TOTAL WITH INTEREST"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "issued",
+        "appeared",
+        "failed_to_appear",
+        "paid",
+        "dismissed"
+      ],
+      "default": "issued"
+    },
+    "officer_ip_address": {
+      "type": "string",
+      "description": "IP address of officer when issuing summons"
+    }
+  },
+  "required": [
+    "summons_date",
+    "defendant_name_last",
+    "defendant_name_first",
+    "offense_date",
+    "violation_code"
+  ]
+}

@@ -41,9 +41,29 @@ export default function FieldCallActions({ call, onStatusChange }) {
     if (!call) return;
     setSaving(true);
     try {
-      await base44.entities.DispatchCall.update(call.id, { status: newStatus });
+      let assignedUnits = call.assigned_units || [];
+      let becamePrimary = false;
+      if (newStatus === 'Enroute' && user) {
+        const alreadyAssigned = assignedUnits.includes(user.id);
+        if (!alreadyAssigned) {
+          const existing = await base44.entities.CallAssignment.filter({ call_id: call.id });
+          const role = existing?.length ? 'backup' : 'primary';
+          await base44.entities.CallAssignment.create({
+            call_id: call.id,
+            unit_id: user.id,
+            role,
+            assigned_at: new Date().toISOString(),
+            status: 'accepted',
+          });
+          assignedUnits = [...assignedUnits, user.id];
+          becamePrimary = role === 'primary';
+        }
+      }
+      const patch = { status: newStatus, assigned_units: assignedUnits };
+      if (newStatus === 'Enroute' && !call.time_enroute) patch.time_enroute = new Date().toISOString();
+      await base44.entities.DispatchCall.update(call.id, patch);
       setStatus(newStatus);
-      onStatusChange?.(newStatus);
+      onStatusChange?.(newStatus, { becamePrimary });
     } catch (e) {
       console.error('[FieldCall] status update failed:', e?.message);
     } finally { setSaving(false); }

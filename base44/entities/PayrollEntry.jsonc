@@ -1,0 +1,117 @@
+{
+  "name": "PayrollEntry",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string"
+    },
+    "pay_period_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "pay_period_end": {
+      "type": "string",
+      "format": "date"
+    },
+    "pay_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "regular_hours": {
+      "type": "number",
+      "description": "Regular hours worked"
+    },
+    "overtime_hours": {
+      "type": "number",
+      "description": "Overtime hours worked (>40 hours per week)"
+    },
+    "holiday_hours": {
+      "type": "number",
+      "description": "Holiday hours worked on federal holidays"
+    },
+    "hours_worked": {
+      "type": "number",
+      "description": "Total hours (for backwards compatibility)"
+    },
+    "hourly_rate": {
+      "type": "number"
+    },
+    "overtime_rate": {
+      "type": "number",
+      "description": "Actual overtime rate used"
+    },
+    "holiday_rate": {
+      "type": "number",
+      "description": "Actual holiday rate used"
+    },
+    "regular_pay": {
+      "type": "number",
+      "description": "Pay from regular hours"
+    },
+    "overtime_pay": {
+      "type": "number",
+      "description": "Pay from overtime hours"
+    },
+    "holiday_pay": {
+      "type": "number",
+      "description": "Pay from holiday hours"
+    },
+    "gross_pay": {
+      "type": "number"
+    },
+    "federal_tax": {
+      "type": "number"
+    },
+    "state_tax": {
+      "type": "number"
+    },
+    "social_security": {
+      "type": "number"
+    },
+    "medicare": {
+      "type": "number"
+    },
+    "other_deductions": {
+      "type": "number"
+    },
+    "net_pay": {
+      "type": "number"
+    },
+    "qualified_overtime_premium": {
+      "type": "number",
+      "description": "2026 Federal Law: Overtime premium (OT rate - regular rate) for tax deduction"
+    },
+    "holidays_worked": {
+      "type": "string",
+      "description": "JSON string of holidays worked with dates and names"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "approved",
+        "paid"
+      ],
+      "default": "draft"
+    },
+    "approved_by": {
+      "type": "string"
+    },
+    "approved_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "payment_method": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "officer_email",
+    "pay_period_start",
+    "pay_period_end",
+    "gross_pay"
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "name": "TrainingAttendee",
+  "type": "object",
+  "properties": {
+    "class_id": {
+      "type": "string",
+      "description": "ID of the associated TrainingClass"
+    },
+    "class_name": {
+      "type": "string",
+      "description": "Class name for quick reference"
+    },
+    "full_name": {
+      "type": "string",
+      "description": "Student full name"
+    },
+    "phone_number": {
+      "type": "string",
+      "description": "Student phone number"
+    },
+    "date_of_birth": {
+      "type": "string",
+      "format": "date",
+      "description": "Student date of birth"
+    },
+    "dcjs_number": {
+      "type": "string",
+      "description": "Student DCJS number"
+    },
+    "email": {
+      "type": "string",
+      "description": "Student email if available"
+    },
+    "attendance_status": {
+      "type": "string",
+      "enum": [
+        "present",
+        "absent",
+        "late",
+        "excused"
+      ],
+      "default": "present",
+      "description": "Attendance status"
+    },
+    "quiz_score": {
+      "type": "number",
+      "description": "Quiz score (numeric)"
+    },
+    "quiz_total": {
+      "type": "number",
+      "description": "Total possible quiz points"
+    },
+    "quiz_percentage": {
+      "type": "number",
+      "description": "Calculated percentage"
+    },
+    "pass_fail": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "pending"
+      ],
+      "default": "pending",
+      "description": "Pass or fail status"
+    },
+    "completion_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date student completed the course"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether student completed the class"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notes about this attendee"
+    },
+    "certificate_issued": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether a certificate has been issued"
+    },
+    "certificate_id": {
+      "type": "string",
+      "description": "ID of the issued certificate"
+    }
+  },
+  "required": [
+    "class_id",
+    "full_name"
+  ]
+}

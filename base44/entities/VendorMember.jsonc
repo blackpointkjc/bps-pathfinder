@@ -1,0 +1,46 @@
+{
+  "name": "VendorMember",
+  "type": "object",
+  "properties": {
+    "vendor_id": {
+      "type": "string",
+      "description": "Vendor this member belongs to"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "User email (links to User entity)"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "vendor_owner",
+        "vendor_admin",
+        "vendor_staff",
+        "vendor_viewer"
+      ],
+      "default": "vendor_staff",
+      "description": "Vendor-level role"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "disabled"
+      ],
+      "default": "active",
+      "description": "Member status"
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional permissions"
+    }
+  },
+  "required": [
+    "vendor_id",
+    "user_email",
+    "role"
+  ]
+}

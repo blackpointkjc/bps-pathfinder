@@ -1,3 +1,4 @@
+css
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -25,11 +26,11 @@
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
   }
- 
+
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 222.2 84% 6%;
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
@@ -52,128 +53,78 @@
 @layer base {
   * {
     @apply border-border;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Allow text selection in inputs and content areas */
+  input, textarea, [contenteditable], p, span, h1, h2, h3, h4, h5, h6, li, td, th {
+    -webkit-user-select: text;
+    user-select: text;
   }
   body {
     @apply bg-background text-foreground;
     overscroll-behavior: none;
   }
-  button, a, [role="button"], nav {
-    @apply select-none;
-  }
-  button, [role="button"] {
-    min-height: 44px;
-  }
 }
 
-/* Auto dark mode based on system preference */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-  }
-  html:not(.light) {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-  }
+/* Toast/Sonner notifications styling — dark cinematic theme */
+[data-sonner-toast] {
+  background: hsl(222 40% 8%) !important;
+  color: hsl(210 40% 98%) !important;
+  border: 1px solid hsl(217 33% 18%) !important;
+  box-shadow: 0 0 0 1px hsl(217 33% 20% / 0.6), 0 8px 32px hsl(222 47% 4% / 0.5) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
-/* Law Enforcement Tactical Map Styling */
-.leaflet-container {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #1a1a1a;
+[data-sonner-toast][data-styled] {
+  background: hsl(222 40% 8%) !important;
+  color: hsl(210 40% 98%) !important;
 }
 
-/* Night mode tactical styling */
-.map-night-mode {
-  filter: brightness(0.9) contrast(1.1);
+[data-sonner-toast] [data-title] {
+  color: hsl(210 40% 98%) !important;
+  font-weight: 600 !important;
 }
 
-/* Tactical grid overlay for night mode */
-.leaflet-container.night-mode::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    linear-gradient(0deg, rgba(0, 100, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 100, 255, 0.03) 1px, transparent 1px);
-  background-size: 50px 50px;
-  pointer-events: none;
-  z-index: 1000;
+[data-sonner-toast] [data-description] {
+  color: hsl(215 20% 70%) !important;
 }
 
-/* Custom marker styling for tactical look */
-.custom-marker {
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+[data-sonner-toast] [data-button] {
+  background: hsl(217 91% 60%) !important;
+  color: white !important;
 }
 
-/* Police/tactical blue accent color */
-.tactical-accent {
-  color: #0066FF;
+[data-sonner-toast] [data-close-button] {
+  background: hsl(217 33% 14%) !important;
+  color: hsl(210 40% 98%) !important;
+  border: 1px solid hsl(217 33% 18%) !important;
 }
 
-/* Native momentum scrolling on iOS */
-* {
-  -webkit-overflow-scrolling: touch;
+[data-sonner-toast] [data-close-button]:hover {
+  background: hsl(217 33% 18%) !important;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+[data-sonner-toast][data-type="success"] {
+  background: hsl(222 40% 8%) !important;
+  color: hsl(210 40% 98%) !important;
+  border-color: hsl(160 60% 45%) !important;
 }
 
-::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+[data-sonner-toast][data-type="error"] {
+  background: hsl(222 40% 8%) !important;
+  color: hsl(210 40% 98%) !important;
+  border-color: hsl(0 72% 51%) !important;
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
+[data-sonner-toast][data-type="warning"] {
+  background: hsl(222 40% 8%) !important;
+  color: hsl(210 40% 98%) !important;
+  border-color: hsl(30 80% 55%) !important;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.5);
-}
-
-/* Leaflet popup customization for law enforcement */
-.leaflet-popup-content-wrapper {
-  background: rgba(0, 0, 0, 0.9);
-  color: white;
-  border-radius: 12px;
-  padding: 0;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-}
-
-.leaflet-popup-tip {
-  background: rgba(0, 0, 0, 0.9);
-}
-
-/* Animation for emergency lights */
-@keyframes flash-red-blue {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-.emergency-lights {
-  animation: flash-red-blue 0.8s infinite;
+[data-sonner-toaster] {
+  z-index: 99999 !important;
 }

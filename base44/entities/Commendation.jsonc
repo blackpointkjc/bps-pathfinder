@@ -1,0 +1,76 @@
+{
+  "name": "Commendation",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the officer receiving commendation"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of the officer"
+    },
+    "commendation_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date commendation was issued"
+    },
+    "commendation_type": {
+      "type": "string",
+      "enum": [
+        "exceptional_service",
+        "life_saving",
+        "arrest",
+        "professionalism",
+        "teamwork",
+        "problem_solving",
+        "client_praise",
+        "innovation",
+        "other"
+      ],
+      "description": "Type of commendation"
+    },
+    "issued_by": {
+      "type": "string",
+      "description": "Email of person issuing commendation"
+    },
+    "issued_by_name": {
+      "type": "string",
+      "description": "Name of person issuing commendation"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the commendable action"
+    },
+    "witnesses": {
+      "type": "string",
+      "description": "Witness information if applicable"
+    },
+    "related_incident_id": {
+      "type": "string",
+      "description": "ID of related incident report if applicable"
+    },
+    "points_awarded": {
+      "type": "number",
+      "default": 1,
+      "description": "Points awarded for this commendation (for performance tracking)"
+    },
+    "visibility": {
+      "type": "string",
+      "enum": [
+        "public",
+        "supervisor_only",
+        "admin_only"
+      ],
+      "default": "public",
+      "description": "Who can view this commendation"
+    }
+  },
+  "required": [
+    "officer_email",
+    "officer_name",
+    "commendation_date",
+    "commendation_type",
+    "description"
+  ]
+}

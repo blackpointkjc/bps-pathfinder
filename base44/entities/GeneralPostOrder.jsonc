@@ -1,0 +1,31 @@
+{
+  "name": "GeneralPostOrder",
+  "type": "object",
+  "properties": {
+    "section_key": {
+      "type": "string",
+      "description": "Unique key for this section (e.g. 'scope_authority', 'shift_protocols')"
+    },
+    "section_title": {
+      "type": "string",
+      "description": "Display title for the section"
+    },
+    "content": {
+      "type": "string",
+      "description": "Full text/HTML content for this section"
+    },
+    "sort_order": {
+      "type": "number",
+      "description": "Display order"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "section_key",
+    "section_title",
+    "content"
+  ]
+}

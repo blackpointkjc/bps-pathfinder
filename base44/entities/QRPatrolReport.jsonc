@@ -1,0 +1,81 @@
+{
+  "name": "QRPatrolReport",
+  "type": "object",
+  "properties": {
+    "shift_id": {
+      "type": "string",
+      "description": "ID of the time entry (shift)"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Officer email"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Officer name"
+    },
+    "property_site": {
+      "type": "string",
+      "description": "Property/site name"
+    },
+    "report_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of patrol"
+    },
+    "shift_start": {
+      "type": "string",
+      "description": "Shift start time"
+    },
+    "shift_end": {
+      "type": "string",
+      "description": "Shift end time"
+    },
+    "total_required_checkpoints": {
+      "type": "number",
+      "default": 0
+    },
+    "total_scanned": {
+      "type": "number",
+      "default": 0
+    },
+    "total_successful_scans": {
+      "type": "number",
+      "default": 0
+    },
+    "total_duplicates": {
+      "type": "number",
+      "default": 0
+    },
+    "total_missed_required": {
+      "type": "number",
+      "default": 0
+    },
+    "scan_event_ids": {
+      "type": "string",
+      "description": "JSON array of QRScanEvent IDs"
+    },
+    "missed_checkpoint_names": {
+      "type": "string",
+      "description": "JSON array of missed checkpoint names"
+    },
+    "report_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "complete",
+        "reviewed"
+      ],
+      "default": "complete"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "officer_email",
+    "property_site",
+    "report_date"
+  ]
+}

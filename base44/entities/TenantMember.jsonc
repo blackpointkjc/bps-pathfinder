@@ -1,0 +1,51 @@
+{
+  "name": "TenantMember",
+  "type": "object",
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant this member belongs to"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "User email (links to User entity)"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "tenant_owner",
+        "tenant_admin",
+        "tenant_manager",
+        "tenant_viewer"
+      ],
+      "default": "tenant_viewer",
+      "description": "Tenant-level role"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "invited",
+        "disabled"
+      ],
+      "default": "active",
+      "description": "Member status"
+    },
+    "invited_by": {
+      "type": "string",
+      "description": "Email of user who sent invitation"
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional permissions"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "user_email",
+    "role"
+  ]
+}

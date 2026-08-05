@@ -1,0 +1,56 @@
+{
+  "name": "TrainingDocument",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Document title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Document description"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL to the document file"
+    },
+    "file_name": {
+      "type": "string",
+      "description": "Original file name"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "site_procedures",
+        "safety",
+        "emergency",
+        "training",
+        "policies",
+        "other"
+      ],
+      "default": "other",
+      "description": "Document category"
+    },
+    "locations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Locations this document applies to"
+    },
+    "uploaded_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When document was uploaded"
+    },
+    "uploaded_by": {
+      "type": "string",
+      "description": "Email of uploader"
+    }
+  },
+  "required": [
+    "title",
+    "file_url",
+    "file_name"
+  ]
+}

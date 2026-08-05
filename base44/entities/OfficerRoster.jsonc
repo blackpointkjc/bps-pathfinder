@@ -1,0 +1,60 @@
+{
+  "name": "OfficerRoster",
+  "type": "object",
+  "properties": {
+    "first_name": {
+      "type": "string",
+      "description": "Officer's first name"
+    },
+    "last_name": {
+      "type": "string",
+      "description": "Officer's last name"
+    },
+    "rank": {
+      "type": "string",
+      "description": "Officer's rank"
+    },
+    "unit_number": {
+      "type": "string",
+      "description": "Unit number"
+    },
+    "badge_number": {
+      "type": "string",
+      "description": "Badge number"
+    },
+    "mobile_phone": {
+      "type": "string",
+      "description": "Mobile phone number"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email address"
+    },
+    "division": {
+      "type": "string",
+      "description": "Division assignment"
+    },
+    "hire_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Hire date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active",
+      "description": "Employment status"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "first_name",
+    "last_name"
+  ]
+}

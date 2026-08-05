@@ -1,0 +1,114 @@
+{
+  "name": "TrainingAssignment",
+  "type": "object",
+  "properties": {
+    "requirement_id": {
+      "type": "string",
+      "description": "ID of the TrainingRequirement template"
+    },
+    "training_name": {
+      "type": "string",
+      "description": "Name of the training (cached from requirement)"
+    },
+    "category": {
+      "type": "string",
+      "description": "Training category (cached)"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the assigned officer"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of the officer (cached)"
+    },
+    "assigned_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date training was assigned"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date by which training must be completed"
+    },
+    "is_mandatory": {
+      "type": "boolean",
+      "default": true
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "normal",
+        "high",
+        "urgent"
+      ],
+      "default": "normal"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "assigned",
+        "in_progress",
+        "pending_review",
+        "approved",
+        "rejected",
+        "expired",
+        "overdue"
+      ],
+      "default": "assigned",
+      "description": "Current status of this assignment"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Instructions or notes from admin to officer"
+    },
+    "description": {
+      "type": "string",
+      "description": "Full description/instructions (cached)"
+    },
+    "required_proof_type": {
+      "type": "string",
+      "description": "What proof is required (cached)"
+    },
+    "requires_photos": {
+      "type": "boolean",
+      "default": true
+    },
+    "requires_expiration_date": {
+      "type": "boolean",
+      "default": false
+    },
+    "requires_certificate_number": {
+      "type": "boolean",
+      "default": false
+    },
+    "renewal_period_months": {
+      "type": "number",
+      "description": "Renewal period in months (0 = no renewal)"
+    },
+    "renewal_due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "When renewal is due (after approval + renewal_period)"
+    },
+    "renewal_requirement_id": {
+      "type": "string",
+      "description": "ID of the TrainingRequirement to auto-assign as renewal course"
+    },
+    "renewal_training_name": {
+      "type": "string",
+      "description": "Name of the renewal training course (cached)"
+    },
+    "assigned_by": {
+      "type": "string",
+      "description": "Email of admin who assigned"
+    }
+  },
+  "required": [
+    "training_name",
+    "officer_email",
+    "assigned_date"
+  ]
+}

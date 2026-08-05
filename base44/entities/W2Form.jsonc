@@ -1,0 +1,77 @@
+{
+  "name": "W2Form",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Officer this W-2 belongs to"
+    },
+    "tax_year": {
+      "type": "number",
+      "description": "Tax year (e.g., 2024)"
+    },
+    "wages_tips_compensation": {
+      "type": "number",
+      "description": "Box 1: Wages, tips, other compensation"
+    },
+    "federal_income_tax": {
+      "type": "number",
+      "description": "Box 2: Federal income tax withheld"
+    },
+    "social_security_wages": {
+      "type": "number",
+      "description": "Box 3: Social Security wages"
+    },
+    "social_security_tax": {
+      "type": "number",
+      "description": "Box 4: Social Security tax withheld"
+    },
+    "medicare_wages": {
+      "type": "number",
+      "description": "Box 5: Medicare wages and tips"
+    },
+    "medicare_tax": {
+      "type": "number",
+      "description": "Box 6: Medicare tax withheld"
+    },
+    "state_wages": {
+      "type": "number",
+      "description": "Box 16: State wages, tips, etc."
+    },
+    "state_income_tax": {
+      "type": "number",
+      "description": "Box 17: State income tax"
+    },
+    "state": {
+      "type": "string",
+      "description": "State abbreviation (e.g., VA, MD)"
+    },
+    "employer_ein": {
+      "type": "string",
+      "description": "Employer EIN"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "finalized",
+        "issued"
+      ],
+      "default": "draft",
+      "description": "W-2 status"
+    },
+    "issued_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date W-2 was issued to officer"
+    },
+    "pdf_url": {
+      "type": "string",
+      "description": "URL to generated W-2 PDF"
+    }
+  },
+  "required": [
+    "officer_email",
+    "tax_year"
+  ]
+}

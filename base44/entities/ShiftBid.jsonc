@@ -1,0 +1,67 @@
+{
+  "name": "ShiftBid",
+  "type": "object",
+  "properties": {
+    "shift_id": {
+      "type": "string",
+      "description": "ID of the open shift being bid on"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Email of bidding officer"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of bidding officer"
+    },
+    "bid_priority": {
+      "type": "number",
+      "default": 1,
+      "description": "Officer's priority for this shift (1=highest)"
+    },
+    "bid_notes": {
+      "type": "string",
+      "description": "Notes from officer about bid"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "accepted",
+        "rejected",
+        "withdrawn"
+      ],
+      "default": "pending",
+      "description": "Status of the bid"
+    },
+    "ai_score": {
+      "type": "number",
+      "description": "AI-calculated suitability score (0-100)"
+    },
+    "ai_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "AI-flagged potential issues"
+    },
+    "ai_recommendation": {
+      "type": "string",
+      "description": "AI recommendation notes"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Admin who reviewed the bid"
+    },
+    "reviewed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When bid was reviewed"
+    }
+  },
+  "required": [
+    "shift_id",
+    "officer_email",
+    "officer_name"
+  ]
+}

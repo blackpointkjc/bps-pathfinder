@@ -1,0 +1,107 @@
+{
+  "name": "TrainingSubmission",
+  "type": "object",
+  "properties": {
+    "assignment_id": {
+      "type": "string",
+      "description": "ID of the TrainingAssignment this submission is for"
+    },
+    "training_name": {
+      "type": "string",
+      "description": "Name of the training (cached)"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the officer"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of the officer (cached)"
+    },
+    "submission_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When officer submitted for review"
+    },
+    "photo_url_1": {
+      "type": "string",
+      "description": "First proof photo URL"
+    },
+    "photo_url_2": {
+      "type": "string",
+      "description": "Second proof photo URL"
+    },
+    "document_url": {
+      "type": "string",
+      "description": "Optional PDF or document upload URL"
+    },
+    "document_name": {
+      "type": "string",
+      "description": "File name of uploaded document"
+    },
+    "admin_cert_file_url": {
+      "type": "string",
+      "description": "Official certificate file attached by admin (PDF or image), visible to officer"
+    },
+    "certificate_number": {
+      "type": "string",
+      "description": "Certificate or card number"
+    },
+    "issue_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Issue date of certificate/card"
+    },
+    "expiration_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Expiration date of certificate/card"
+    },
+    "officer_notes": {
+      "type": "string",
+      "description": "Notes/comments from officer on submission"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending_review",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending_review"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Email of admin who reviewed"
+    },
+    "reviewed_by_name": {
+      "type": "string",
+      "description": "Name of admin who reviewed"
+    },
+    "reviewed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When admin reviewed"
+    },
+    "rejection_reason": {
+      "type": "string",
+      "description": "Reason for rejection (required when rejected)"
+    },
+    "admin_internal_notes": {
+      "type": "string",
+      "description": "Internal admin notes (not visible to officer)"
+    },
+    "version": {
+      "type": "number",
+      "default": 1,
+      "description": "Submission version number (increments on resubmission)"
+    }
+  },
+  "required": [
+    "assignment_id",
+    "training_name",
+    "officer_email",
+    "officer_name",
+    "submission_date"
+  ]
+}

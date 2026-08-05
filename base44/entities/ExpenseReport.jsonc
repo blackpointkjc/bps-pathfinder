@@ -1,0 +1,85 @@
+{
+  "name": "ExpenseReport",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Email of officer submitting expense"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of officer"
+    },
+    "expense_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of expense"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "travel",
+        "meals",
+        "fuel",
+        "parking",
+        "equipment",
+        "supplies",
+        "training",
+        "other"
+      ],
+      "description": "Expense category"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Expense amount in dollars"
+    },
+    "description": {
+      "type": "string",
+      "description": "Expense description"
+    },
+    "receipt_url": {
+      "type": "string",
+      "description": "Receipt image/document URL"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "reimbursed"
+      ],
+      "default": "pending",
+      "description": "Approval status"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Email of reviewer (supervisor/HR)"
+    },
+    "reviewed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When reviewed"
+    },
+    "reviewer_notes": {
+      "type": "string",
+      "description": "Reviewer notes/feedback"
+    },
+    "reimbursed_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date reimbursed"
+    },
+    "payroll_period_id": {
+      "type": "string",
+      "description": "Linked payroll period for reimbursement"
+    }
+  },
+  "required": [
+    "officer_email",
+    "expense_date",
+    "category",
+    "amount",
+    "description"
+  ]
+}

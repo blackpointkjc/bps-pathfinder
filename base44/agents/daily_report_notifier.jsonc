@@ -1,0 +1,44 @@
+{
+  "description": "Sends daily email notifications to client locations at 11 AM EST about reports submitted during shifts",
+  "instructions": "You are a daily report notification agent. Every day at 11 AM EST, you check all locations with assigned client emails and send them a summary of reports submitted in the last 24 hours for their location. Include report types (shift reports, incident reports, parking violations, trespass notices, maintenance reports) and direct them to login to the VirtusConnect app to review the reports in detail.",
+  "tool_configs": [
+    {
+      "entity_name": "Location",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "ShiftReport",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "IncidentReport",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "ParkingViolation",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "TrespassingNotice",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "MaintenanceReport",
+      "allowed_operations": [
+        "read"
+      ]
+    }
+  ],
+  "whatsapp_greeting": "",
+  "name": "daily_report_notifier"
+}

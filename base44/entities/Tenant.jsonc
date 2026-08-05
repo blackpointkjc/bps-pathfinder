@@ -1,0 +1,55 @@
+{
+  "name": "Tenant",
+  "type": "object",
+  "properties": {
+    "vendor_id": {
+      "type": "string",
+      "description": "Parent vendor ID"
+    },
+    "slug": {
+      "type": "string",
+      "description": "Unique URL slug for tenant portal (/c/{slug})"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Company display name"
+    },
+    "legal_name": {
+      "type": "string",
+      "description": "Legal company name (optional)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "suspended",
+        "trial"
+      ],
+      "default": "active",
+      "description": "Tenant status"
+    },
+    "subscription_tier": {
+      "type": "string",
+      "enum": [
+        "basic",
+        "professional",
+        "enterprise"
+      ],
+      "default": "basic",
+      "description": "Subscription level"
+    },
+    "max_users": {
+      "type": "number",
+      "description": "Maximum users allowed"
+    },
+    "max_officers": {
+      "type": "number",
+      "description": "Maximum officers allowed"
+    }
+  },
+  "required": [
+    "vendor_id",
+    "slug",
+    "display_name"
+  ]
+}

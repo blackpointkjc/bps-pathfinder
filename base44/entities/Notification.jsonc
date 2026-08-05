@@ -1,0 +1,66 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "recipient_email": {
+      "type": "string",
+      "description": "Email of the notification recipient"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "shift_posted",
+        "bid_accepted",
+        "bid_rejected",
+        "schedule_conflict",
+        "upcoming_shift",
+        "open_shifts_alert",
+        "training_reminder",
+        "training_assigned",
+        "training_approved",
+        "training_rejected",
+        "training_renewal_reminder"
+      ],
+      "description": "Type of notification"
+    },
+    "title": {
+      "type": "string",
+      "description": "Notification title"
+    },
+    "message": {
+      "type": "string",
+      "description": "Notification message content"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether notification has been read"
+    },
+    "related_id": {
+      "type": "string",
+      "description": "ID of related entity (shift, bid, etc)"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "normal",
+        "high",
+        "critical"
+      ],
+      "default": "normal",
+      "description": "Notification priority"
+    },
+    "scheduled_send_date": {
+      "type": "string",
+      "format": "date",
+      "description": "If set, this notification should only be shown/sent on or after this date (used for 90-day renewal reminders)"
+    }
+  },
+  "required": [
+    "recipient_email",
+    "type",
+    "title",
+    "message"
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "name": "MaintenanceReport",
+  "type": "object",
+  "properties": {
+    "report_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date and time of report"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location of issue"
+    },
+    "specific_location": {
+      "type": "string",
+      "description": "Specific location details (building, floor, room)"
+    },
+    "issue_type": {
+      "type": "string",
+      "enum": [
+        "lighting",
+        "lock_door",
+        "hvac",
+        "plumbing",
+        "electrical",
+        "structural",
+        "safety_hazard",
+        "landscaping",
+        "parking_lot",
+        "elevator",
+        "alarm_system",
+        "camera_system",
+        "other"
+      ],
+      "description": "Type of maintenance issue"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the issue"
+    },
+    "affected_area": {
+      "type": "string",
+      "description": "Size or scope of affected area"
+    },
+    "safety_concern": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is a safety concern"
+    },
+    "requires_immediate_attention": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether issue requires immediate attention"
+    },
+    "tenant_affected": {
+      "type": "string",
+      "description": "Tenant or unit affected (if applicable)"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "default": "medium",
+      "description": "Priority level"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "reported",
+        "in_progress",
+        "completed",
+        "rejected"
+      ],
+      "default": "reported"
+    },
+    "photo_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Photos of the issue"
+    },
+    "officer_ip_address": {
+      "type": "string",
+      "description": "IP address of officer when submitting report"
+    }
+  },
+  "required": [
+    "report_date",
+    "location",
+    "issue_type",
+    "description"
+  ]
+}

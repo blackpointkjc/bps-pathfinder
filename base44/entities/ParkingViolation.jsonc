@@ -1,0 +1,155 @@
+{
+  "name": "ParkingViolation",
+  "type": "object",
+  "properties": {
+    "citation_number": {
+      "type": "string",
+      "description": "Unique citation number"
+    },
+    "call_number": {
+      "type": "string",
+      "description": "Call number for tracking"
+    },
+    "violation_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of violation"
+    },
+    "violation_time": {
+      "type": "string",
+      "description": "Time of violation"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location where violation occurred"
+    },
+    "vehicle_make": {
+      "type": "string",
+      "description": "Vehicle make"
+    },
+    "vehicle_model": {
+      "type": "string",
+      "description": "Vehicle model"
+    },
+    "vehicle_color": {
+      "type": "string",
+      "description": "Vehicle color"
+    },
+    "license_plate": {
+      "type": "string",
+      "description": "License plate number"
+    },
+    "license_state": {
+      "type": "string",
+      "description": "State of registration"
+    },
+    "vehicle_owner": {
+      "type": "string",
+      "description": "Registered owner if known"
+    },
+    "violation_type": {
+      "type": "string",
+      "enum": [
+        "no_permit",
+        "expired_permit",
+        "unauthorized_area",
+        "fire_lane",
+        "handicap_violation",
+        "blocking_traffic",
+        "other"
+      ],
+      "description": "Type of violation"
+    },
+    "repeat_offender": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this vehicle has previous violations"
+    },
+    "description": {
+      "type": "string",
+      "description": "Additional details"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "Photo of the violation"
+    },
+    "signature_url": {
+      "type": "string",
+      "description": "URL of officer's handwritten signature image"
+    },
+    "warning_issued": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this was a warning only"
+    },
+    "fine_amount": {
+      "type": "number",
+      "description": "Fine amount if applicable"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "issued",
+        "rejected",
+        "approved"
+      ],
+      "default": "issued",
+      "description": "Status of the violation"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Admin feedback for revisions"
+    },
+    "was_rejected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this violation was previously rejected"
+    },
+    "officer_ip_address": {
+      "type": "string",
+      "description": "IP address of officer when submitting violation"
+    },
+    "id_scanned_in_person": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether registration was scanned with Zebra scanner"
+    },
+    "scan_type": {
+      "type": "string",
+      "description": "Type of scan (registration_barcode, etc)"
+    },
+    "scan_raw": {
+      "type": "string",
+      "description": "Raw scan data"
+    },
+    "scan_parsed_json": {
+      "type": "string",
+      "description": "Parsed scan data as JSON string"
+    },
+    "scanned_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the scan was performed"
+    },
+    "scanned_by": {
+      "type": "string",
+      "description": "Email of officer who performed scan"
+    },
+    "device_id": {
+      "type": "string",
+      "description": "Device identifier (user agent)"
+    },
+    "registration_photo": {
+      "type": "string",
+      "description": "Photo of vehicle registration"
+    }
+  },
+  "required": [
+    "violation_date",
+    "location",
+    "license_plate",
+    "license_state",
+    "violation_type"
+  ]
+}

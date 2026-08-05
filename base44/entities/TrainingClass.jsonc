@@ -1,0 +1,80 @@
+{
+  "name": "TrainingClass",
+  "type": "object",
+  "properties": {
+    "class_name": {
+      "type": "string",
+      "description": "Name of the class session"
+    },
+    "course_title": {
+      "type": "string",
+      "description": "Official course title"
+    },
+    "course_id": {
+      "type": "string",
+      "description": "Course ID or code"
+    },
+    "training_type": {
+      "type": "string",
+      "description": "Type of training (e.g., Entry-Level, In-Service, Firearms)"
+    },
+    "instructor_name": {
+      "type": "string",
+      "description": "Instructor full name"
+    },
+    "instructor_email": {
+      "type": "string",
+      "description": "Instructor email"
+    },
+    "instructor_signature_url": {
+      "type": "string",
+      "description": "URL to instructor signature image"
+    },
+    "class_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the class"
+    },
+    "start_time": {
+      "type": "string",
+      "description": "Class start time"
+    },
+    "end_time": {
+      "type": "string",
+      "description": "Class end time"
+    },
+    "location": {
+      "type": "string",
+      "description": "Class location"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "completed",
+        "cancelled"
+      ],
+      "default": "draft",
+      "description": "Class status"
+    },
+    "total_attendees": {
+      "type": "number",
+      "description": "Total number of attendees"
+    },
+    "total_passed": {
+      "type": "number",
+      "description": "Total attendees who passed"
+    }
+  },
+  "required": [
+    "class_name",
+    "course_title",
+    "instructor_name",
+    "class_date"
+  ]
+}

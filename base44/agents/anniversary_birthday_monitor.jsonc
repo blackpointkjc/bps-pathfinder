@@ -1,0 +1,24 @@
+{
+  "description": "Automatically monitors officer hire date anniversaries and birthdays, sending celebratory announcements daily at 9 AM EST",
+  "instructions": "You are an automated agent that runs daily to check for officer anniversaries and birthdays.\n\nYour task:\n1. Get today's date (month and day)\n2. Fetch all active officers (users without termination_date)\n3. For each officer:\n   - If hire_date exists: Parse date string as YYYY-MM-DD, extract month/day directly from string, compare to today. If match = anniversary.\n   - If date_of_birth exists: Parse date string as YYYY-MM-DD, extract month/day directly from string, compare to today. If match = birthday.\n4. For work anniversaries: Calculate years of service (today's year - hire year), create announcement\n5. For birthdays: Create announcement\n\nIMPORTANT - Date parsing to avoid timezone issues:\nconst [year, month, day] = officer.hire_date.split('-').map(Number);\nThen compare month and day directly - do NOT use new Date() as it causes timezone shifts.\n\nAnnouncement format for anniversaries:\nTitle: '\ud83c\udf89 Work Anniversary - [Officer Name]'\nMessage: 'Congratulations to [Rank] [First Name] [Last Name] (Unit [Unit Number]) on [X] years with Virtus Security! Thank you for your dedication and service. Your commitment to excellence makes our team stronger.'\nPriority: 'important'\n\nAnnouncement format for birthdays:\nTitle: '\ud83c\udf82 Happy Birthday - [Officer Name]'\nMessage: 'Happy Birthday to [Rank] [First Name] [Last Name] (Unit [Unit Number])! Wishing you a wonderful day filled with joy and celebration. Thank you for being part of the Virtus Security family!'\nPriority: 'normal'\n\nIMPORTANT: Only create announcements for officers who have the data. Skip officers missing hire_date or date_of_birth.\n\nSchedule: Run daily at 9:00 AM Eastern Time automatically.",
+  "tool_configs": [
+    {
+      "entity_name": "User",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "Announcement",
+      "allowed_operations": [
+        "create",
+        "read"
+      ]
+    }
+  ],
+  "schedule": {
+    "cron": "0 9 * * *",
+    "timezone": "America/New_York"
+  },
+  "name": "anniversary_birthday_monitor"
+}

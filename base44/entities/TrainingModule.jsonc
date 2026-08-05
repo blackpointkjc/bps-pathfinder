@@ -1,0 +1,171 @@
+{
+  "name": "TrainingModule",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Training module title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the training"
+    },
+    "training_category": {
+      "type": "string",
+      "enum": [
+        "dcjs",
+        "company"
+      ],
+      "default": "company",
+      "description": "Whether this is DCJS or Company training"
+    },
+    "course_id": {
+      "type": "string",
+      "description": "Course ID (e.g. 01E, 07R for DCJS)"
+    },
+    "training_items": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of topics/items covered in this training module"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "safety",
+        "security_procedures",
+        "legal_compliance",
+        "equipment",
+        "customer_service",
+        "emergency_response",
+        "other"
+      ],
+      "description": "Training sub-category"
+    },
+    "material_type": {
+      "type": "string",
+      "enum": [
+        "document",
+        "video",
+        "quiz",
+        "both",
+        "slideshow"
+      ],
+      "description": "Primary material type (legacy, use material_types instead)"
+    },
+    "material_types": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "document",
+          "video",
+          "quiz",
+          "slideshow"
+        ]
+      },
+      "description": "All material types included in this module (multi-select)"
+    },
+    "document_url": {
+      "type": "string",
+      "description": "URL to training document"
+    },
+    "video_url": {
+      "type": "string",
+      "description": "URL to training video"
+    },
+    "video_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Multiple video URLs"
+    },
+    "slideshow_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Slideshow image URLs"
+    },
+    "seconds_per_slide": {
+      "type": "number",
+      "default": 30
+    },
+    "quiz_questions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Quiz questions array"
+    },
+    "passing_score": {
+      "type": "number",
+      "default": 80,
+      "description": "Minimum score required to pass quiz (percentage)"
+    },
+    "duration_minutes": {
+      "type": "number",
+      "description": "Estimated completion time in minutes"
+    },
+    "renewal_period_months": {
+      "type": "number",
+      "default": 0,
+      "description": "Months before renewal required"
+    },
+    "requires_expiration_tracking": {
+      "type": "boolean",
+      "default": false
+    },
+    "auto_renewal": {
+      "type": "boolean",
+      "default": false
+    },
+    "assigned_to": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of officer emails assigned this training"
+    },
+    "assigned_divisions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of divisions assigned this training"
+    },
+    "assigned_ranks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of ranks assigned this training"
+    },
+    "required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this training is mandatory"
+    },
+    "due_after_days": {
+      "type": "number",
+      "description": "Days after assignment to complete"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Due date for completion"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this training is currently active"
+    }
+  },
+  "required": [
+    "title",
+    "description",
+    "category"
+  ]
+}

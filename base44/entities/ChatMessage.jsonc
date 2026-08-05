@@ -1,0 +1,22 @@
+{
+  "name": "ChatMessage",
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string",
+      "description": "The chat message content"
+    },
+    "sender_name": {
+      "type": "string",
+      "description": "Name of the person who sent the message"
+    },
+    "pinged_user": {
+      "type": "string",
+      "description": "Email of officer being pinged (optional)"
+    }
+  },
+  "required": [
+    "message",
+    "sender_name"
+  ]
+}

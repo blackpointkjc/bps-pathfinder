@@ -1,0 +1,48 @@
+{
+  "name": "CertificationAlert",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the officer with expiring certification"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of the officer"
+    },
+    "certification_type": {
+      "type": "string",
+      "enum": [
+        "dcjs",
+        "firearm"
+      ],
+      "description": "Type of certification expiring"
+    },
+    "expiration_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Expiration date of the certification"
+    },
+    "days_until_expiration": {
+      "type": "number",
+      "description": "Number of days until expiration"
+    },
+    "alert_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether alert has been sent to admin"
+    },
+    "acknowledged": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether admin has acknowledged the alert"
+    }
+  },
+  "required": [
+    "officer_email",
+    "officer_name",
+    "certification_type",
+    "expiration_date",
+    "days_until_expiration"
+  ]
+}

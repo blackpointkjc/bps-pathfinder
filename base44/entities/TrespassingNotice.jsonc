@@ -1,0 +1,147 @@
+{
+  "name": "TrespassingNotice",
+  "type": "object",
+  "properties": {
+    "notice_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date and time notice was issued"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location of trespass"
+    },
+    "subject_name": {
+      "type": "string",
+      "description": "Name of trespasser"
+    },
+    "subject_description": {
+      "type": "string",
+      "description": "Physical description"
+    },
+    "subject_id": {
+      "type": "string",
+      "description": "ID number if available"
+    },
+    "subject_dob": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of birth"
+    },
+    "subject_address": {
+      "type": "string",
+      "description": "Address"
+    },
+    "subject_city": {
+      "type": "string",
+      "description": "City"
+    },
+    "subject_state": {
+      "type": "string",
+      "description": "State"
+    },
+    "subject_zip": {
+      "type": "string",
+      "description": "ZIP code"
+    },
+    "vehicle_info": {
+      "type": "string",
+      "description": "Vehicle information if applicable"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for trespass notice"
+    },
+    "duration": {
+      "type": "string",
+      "description": "Duration description (e.g., 'Permanent', '1 Year')"
+    },
+    "expiration_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when trespass notice expires (set by client)"
+    },
+    "police_notified": {
+      "type": "boolean",
+      "default": false
+    },
+    "police_report_number": {
+      "type": "string",
+      "description": "Police department report number if police were called"
+    },
+    "photo_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Photos of the trespasser"
+    },
+    "signature_url": {
+      "type": "string",
+      "description": "URL of officer's handwritten signature image"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "rejected",
+        "approved"
+      ],
+      "default": "approved",
+      "description": "Status of the notice"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Admin feedback for revisions"
+    },
+    "was_rejected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this notice was previously rejected"
+    },
+    "officer_ip_address": {
+      "type": "string",
+      "description": "IP address of officer when submitting notice"
+    },
+    "id_scanned_in_person": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether ID was scanned with Zebra scanner"
+    },
+    "scan_type": {
+      "type": "string",
+      "description": "Type of scan (aamva_pdf417, etc)"
+    },
+    "scan_raw": {
+      "type": "string",
+      "description": "Raw scan data"
+    },
+    "scan_parsed_json": {
+      "type": "string",
+      "description": "Parsed scan data as JSON string"
+    },
+    "scanned_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the scan was performed"
+    },
+    "scanned_by": {
+      "type": "string",
+      "description": "Email of officer who performed scan"
+    },
+    "device_id": {
+      "type": "string",
+      "description": "Device identifier (user agent)"
+    },
+    "id_photo": {
+      "type": "string",
+      "description": "Photo of subject's ID"
+    }
+  },
+  "required": [
+    "notice_date",
+    "location",
+    "subject_name",
+    "reason"
+  ]
+}

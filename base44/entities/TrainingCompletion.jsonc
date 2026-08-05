@@ -1,0 +1,55 @@
+{
+  "name": "TrainingCompletion",
+  "type": "object",
+  "properties": {
+    "training_module_id": {
+      "type": "string",
+      "description": "ID of the training module"
+    },
+    "training_title": {
+      "type": "string",
+      "description": "Title of the training (cached)"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the officer"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of the officer"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether training is completed"
+    },
+    "completion_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the training was completed"
+    },
+    "quiz_score": {
+      "type": "number",
+      "description": "Score achieved on quiz (percentage)"
+    },
+    "quiz_attempts": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of quiz attempts"
+    },
+    "certificate_url": {
+      "type": "string",
+      "description": "URL to completion certificate"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Officer notes or feedback"
+    }
+  },
+  "required": [
+    "training_module_id",
+    "training_title",
+    "officer_email",
+    "officer_name"
+  ]
+}

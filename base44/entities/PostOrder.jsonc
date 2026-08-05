@@ -1,0 +1,89 @@
+{
+  "name": "PostOrder",
+  "type": "object",
+  "properties": {
+    "site_name": {
+      "type": "string",
+      "description": "Name of the site (must match Location.site_name)"
+    },
+    "site_address": {
+      "type": "string",
+      "description": "Full site address"
+    },
+    "property_manager_name": {
+      "type": "string",
+      "description": "Name of property manager"
+    },
+    "property_manager_phone": {
+      "type": "string",
+      "description": "Property manager phone number"
+    },
+    "maintenance_contact": {
+      "type": "string",
+      "description": "Maintenance contact number"
+    },
+    "access_codes": {
+      "type": "string",
+      "description": "Building access codes or key information"
+    },
+    "post_type": {
+      "type": "string",
+      "enum": [
+        "armed",
+        "unarmed",
+        "concealed_carry"
+      ],
+      "description": "Type of security post"
+    },
+    "site_overview": {
+      "type": "string",
+      "description": "General site description"
+    },
+    "patrol_schedule": {
+      "type": "string",
+      "description": "Patrol frequency and requirements"
+    },
+    "patrol_areas": {
+      "type": "string",
+      "description": "Specific areas to patrol"
+    },
+    "special_duties": {
+      "type": "string",
+      "description": "Site-specific special duties"
+    },
+    "special_instructions": {
+      "type": "string",
+      "description": "Important site-specific instructions"
+    },
+    "emergency_police": {
+      "type": "string",
+      "description": "Emergency police contact (usually 911)"
+    },
+    "non_emergency_police": {
+      "type": "string",
+      "description": "Non-emergency police number"
+    },
+    "police_precinct_address": {
+      "type": "string",
+      "description": "Police precinct address"
+    },
+    "shelter_locations": {
+      "type": "string",
+      "description": "Primary and secondary shelter locations"
+    },
+    "additional_contacts": {
+      "type": "string",
+      "description": "Other important contacts (towing, elevator, etc.)"
+    },
+    "assigned_supervisors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of supervisor emails assigned to this site"
+    }
+  },
+  "required": [
+    "site_name"
+  ]
+}

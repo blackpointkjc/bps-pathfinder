@@ -1,0 +1,42 @@
+{
+  "name": "ActiveOfficer",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the active officer"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of the officer"
+    },
+    "current_location": {
+      "type": "string",
+      "description": "Current assigned location"
+    },
+    "clock_in_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When they clocked in"
+    },
+    "last_update": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last activity update"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Current GPS latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Current GPS longitude"
+    }
+  },
+  "required": [
+    "officer_email",
+    "officer_name",
+    "current_location",
+    "clock_in_time"
+  ]
+}

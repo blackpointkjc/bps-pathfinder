@@ -1,0 +1,46 @@
+{
+  "name": "LocationHistory",
+  "type": "object",
+  "properties": {
+    "time_entry_id": {
+      "type": "string",
+      "description": "ID of the time entry this location belongs to"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Email of the officer"
+    },
+    "officer_name": {
+      "type": "string",
+      "description": "Name of the officer"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location where officer was tracked"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "GPS latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "GPS longitude"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this location was recorded"
+    },
+    "accuracy": {
+      "type": "number",
+      "description": "GPS accuracy in meters"
+    }
+  },
+  "required": [
+    "officer_email",
+    "officer_name",
+    "latitude",
+    "longitude",
+    "timestamp"
+  ]
+}

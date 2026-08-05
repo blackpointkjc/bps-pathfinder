@@ -1,0 +1,81 @@
+{
+  "name": "PlannedShift",
+  "type": "object",
+  "properties": {
+    "location": {
+      "type": "string",
+      "description": "Site name for this planned shift"
+    },
+    "day_of_week": {
+      "type": "string",
+      "enum": [
+        "sunday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday"
+      ],
+      "description": "Day of the week for recurring shifts"
+    },
+    "specific_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Specific date for one-time event shifts"
+    },
+    "shift_type": {
+      "type": "string",
+      "enum": [
+        "recurring",
+        "one_time"
+      ],
+      "default": "recurring",
+      "description": "Whether this is a recurring weekly shift or a one-time event"
+    },
+    "start_time": {
+      "type": "string",
+      "description": "Shift start time (HH:MM)"
+    },
+    "end_time": {
+      "type": "string",
+      "description": "Shift end time (HH:MM)"
+    },
+    "preferred_officers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Up to 3 preferred officer emails - AI assigns to the one with least hours"
+    },
+    "num_officers": {
+      "type": "number",
+      "default": 1,
+      "description": "Number of officers needed for this shift"
+    },
+    "priority": {
+      "type": "number",
+      "default": 1,
+      "description": "Priority level (1 = highest)"
+    },
+    "is_required": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this shift must be filled"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes for this shift"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this planned shift is active"
+    }
+  },
+  "required": [
+    "location",
+    "start_time",
+    "end_time"
+  ]
+}

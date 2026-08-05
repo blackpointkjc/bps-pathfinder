@@ -1,0 +1,70 @@
+{
+  "name": "PayrollConfig",
+  "type": "object",
+  "properties": {
+    "config_name": {
+      "type": "string",
+      "description": "Configuration name"
+    },
+    "employer_ein": {
+      "type": "string",
+      "description": "Employer Identification Number"
+    },
+    "company_legal_name": {
+      "type": "string",
+      "description": "Legal company name for tax forms"
+    },
+    "company_address": {
+      "type": "string",
+      "description": "Company address for tax forms"
+    },
+    "company_phone": {
+      "type": "string",
+      "description": "Company phone number"
+    },
+    "payroll_email": {
+      "type": "string",
+      "description": "Payroll contact email"
+    },
+    "overtime_threshold_hours": {
+      "type": "number",
+      "default": 40,
+      "description": "Hours before overtime kicks in per week"
+    },
+    "overtime_multiplier": {
+      "type": "number",
+      "default": 1.5,
+      "description": "Overtime pay multiplier (e.g., 1.5 for time-and-a-half)"
+    },
+    "holiday_multiplier": {
+      "type": "number",
+      "default": 2.0,
+      "description": "Holiday pay multiplier (e.g., 2.0 for double time)"
+    },
+    "federal_tax_id": {
+      "type": "string",
+      "description": "Federal tax payment ID"
+    },
+    "state_tax_id_va": {
+      "type": "string",
+      "description": "Virginia state tax ID"
+    },
+    "state_tax_id_md": {
+      "type": "string",
+      "description": "Maryland state tax ID"
+    },
+    "pay_schedule": {
+      "type": "string",
+      "enum": [
+        "weekly",
+        "biweekly",
+        "semimonthly",
+        "monthly"
+      ],
+      "default": "biweekly"
+    }
+  },
+  "required": [
+    "config_name"
+  ]
+}

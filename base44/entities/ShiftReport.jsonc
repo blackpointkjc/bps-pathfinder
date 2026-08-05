@@ -1,0 +1,99 @@
+{
+  "name": "ShiftReport",
+  "type": "object",
+  "properties": {
+    "shift_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the shift"
+    },
+    "start_time": {
+      "type": "string",
+      "description": "Shift start time"
+    },
+    "end_time": {
+      "type": "string",
+      "description": "Shift end time"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location/post"
+    },
+    "weather_conditions": {
+      "type": "string",
+      "description": "Weather conditions during shift"
+    },
+    "patrol_count": {
+      "type": "number",
+      "description": "Number of patrols conducted"
+    },
+    "visitors_logged": {
+      "type": "number",
+      "description": "Number of visitors logged"
+    },
+    "doors_checked": {
+      "type": "number",
+      "description": "Number of doors checked"
+    },
+    "activities": {
+      "type": "string",
+      "description": "Activities and observations during shift"
+    },
+    "incidents": {
+      "type": "string",
+      "description": "Any incidents that occurred"
+    },
+    "vehicles_noted": {
+      "type": "string",
+      "description": "Suspicious or notable vehicles"
+    },
+    "persons_of_interest": {
+      "type": "string",
+      "description": "Persons of interest encountered"
+    },
+    "equipment_check": {
+      "type": "string",
+      "description": "Equipment status check"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "submitted",
+        "rejected",
+        "approved"
+      ],
+      "default": "draft"
+    },
+    "photo_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Photos for the shift report"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Admin feedback for revisions"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether report is archived"
+    },
+    "was_rejected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this report was previously rejected"
+    },
+    "officer_ip_address": {
+      "type": "string",
+      "description": "IP address of officer when submitting report"
+    }
+  },
+  "required": [
+    "shift_date",
+    "location",
+    "activities"
+  ]
+}

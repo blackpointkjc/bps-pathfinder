@@ -1,0 +1,108 @@
+{
+  "name": "InspectionReport",
+  "type": "object",
+  "properties": {
+    "inspection_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date and time of inspection"
+    },
+    "officer_inspected": {
+      "type": "string",
+      "description": "Name of officer being inspected"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Email of officer being inspected"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location of inspection"
+    },
+    "uniform_appearance": {
+      "type": "string",
+      "enum": [
+        "excellent",
+        "satisfactory",
+        "needs_improvement",
+        "unsatisfactory"
+      ],
+      "description": "Uniform and appearance rating"
+    },
+    "equipment_condition": {
+      "type": "string",
+      "enum": [
+        "excellent",
+        "satisfactory",
+        "needs_improvement",
+        "unsatisfactory"
+      ],
+      "description": "Equipment condition rating"
+    },
+    "post_knowledge": {
+      "type": "string",
+      "enum": [
+        "excellent",
+        "satisfactory",
+        "needs_improvement",
+        "unsatisfactory"
+      ],
+      "description": "Knowledge of post duties"
+    },
+    "professionalism": {
+      "type": "string",
+      "enum": [
+        "excellent",
+        "satisfactory",
+        "needs_improvement",
+        "unsatisfactory"
+      ],
+      "description": "Professional conduct rating"
+    },
+    "observations": {
+      "type": "string",
+      "description": "Additional observations and notes"
+    },
+    "areas_of_concern": {
+      "type": "string",
+      "description": "Areas needing improvement"
+    },
+    "commendations": {
+      "type": "string",
+      "description": "Positive performance notes"
+    },
+    "follow_up_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether follow-up inspection is needed"
+    },
+    "follow_up_completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether follow-up inspection was completed"
+    },
+    "follow_up_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When follow-up was completed"
+    },
+    "inspection_result": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ],
+      "description": "Overall inspection result"
+    },
+    "exclude_from_performance_review": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to exclude this from officer's performance review"
+    }
+  },
+  "required": [
+    "inspection_date",
+    "officer_inspected",
+    "location"
+  ]
+}

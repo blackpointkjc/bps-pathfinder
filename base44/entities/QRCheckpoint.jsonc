@@ -1,0 +1,65 @@
+{
+  "name": "QRCheckpoint",
+  "type": "object",
+  "properties": {
+    "qr_unique_id": {
+      "type": "string",
+      "description": "Unique identifier encoded in the QR code"
+    },
+    "checkpoint_name": {
+      "type": "string",
+      "description": "Name of the checkpoint (e.g., Front Gate)"
+    },
+    "location_label": {
+      "type": "string",
+      "description": "Specific location label"
+    },
+    "property_site": {
+      "type": "string",
+      "description": "Property/site name this checkpoint belongs to"
+    },
+    "zone_or_building": {
+      "type": "string",
+      "description": "Optional zone or building identifier"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description or notes"
+    },
+    "is_required": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this checkpoint is required for shift patrol completion"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this checkpoint is active"
+    },
+    "created_by_admin": {
+      "type": "string",
+      "description": "Email of admin who created this checkpoint"
+    },
+    "first_printed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the QR label was first printed"
+    },
+    "last_printed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the QR label was last printed"
+    },
+    "print_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of times this label has been printed"
+    }
+  },
+  "required": [
+    "checkpoint_name",
+    "location_label",
+    "property_site",
+    "qr_unique_id"
+  ]
+}

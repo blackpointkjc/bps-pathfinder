@@ -1,0 +1,95 @@
+{
+  "name": "Equipment",
+  "type": "object",
+  "properties": {
+    "equipment_type": {
+      "type": "string",
+      "enum": [
+        "computer",
+        "laptop",
+        "tablet",
+        "phone",
+        "radio",
+        "vehicle",
+        "firearm",
+        "uniform",
+        "badge",
+        "body_camera",
+        "taser",
+        "other"
+      ],
+      "description": "Type of equipment"
+    },
+    "product_name": {
+      "type": "string",
+      "description": "Name/model of the equipment"
+    },
+    "model_number": {
+      "type": "string",
+      "description": "Model number of the device"
+    },
+    "serial_number": {
+      "type": "string",
+      "description": "Serial number or asset ID"
+    },
+    "imei_number": {
+      "type": "string",
+      "description": "IMEI number for cellular devices (phones, tablets with cellular)"
+    },
+    "date_issued": {
+      "type": "string",
+      "format": "date",
+      "description": "Date equipment was issued"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Email of officer currently assigned this equipment"
+    },
+    "condition": {
+      "type": "string",
+      "enum": [
+        "new",
+        "good",
+        "fair",
+        "poor",
+        "damaged"
+      ],
+      "default": "good",
+      "description": "Current condition of equipment"
+    },
+    "purchase_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date equipment was purchased"
+    },
+    "purchase_cost": {
+      "type": "number",
+      "description": "Purchase cost"
+    },
+    "warranty_expiration": {
+      "type": "string",
+      "format": "date",
+      "description": "Warranty expiration date"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes about the equipment"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "available",
+        "assigned",
+        "maintenance",
+        "retired"
+      ],
+      "default": "available",
+      "description": "Current status of equipment"
+    }
+  },
+  "required": [
+    "equipment_type",
+    "product_name",
+    "serial_number"
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "name": "SpecialCoverageRequest",
+  "type": "object",
+  "properties": {
+    "request_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the request was submitted"
+    },
+    "client_email": {
+      "type": "string",
+      "description": "Email of the client who requested"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location requiring special coverage"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Coverage start date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Coverage end date"
+    },
+    "shift_times": {
+      "type": "string",
+      "description": "Requested shift times (e.g., '6pm-2am')"
+    },
+    "officers_needed": {
+      "type": "number",
+      "description": "Number of officers required"
+    },
+    "special_requirements": {
+      "type": "string",
+      "description": "Special requirements (armed, specific skills, etc.)"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for special coverage"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "scheduled",
+        "rejected"
+      ],
+      "default": "pending",
+      "description": "Request status"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Admin notes on the request"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Email of admin who reviewed"
+    },
+    "reviewed_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When it was reviewed"
+    }
+  },
+  "required": [
+    "location",
+    "start_date",
+    "end_date",
+    "officers_needed",
+    "reason"
+  ]
+}

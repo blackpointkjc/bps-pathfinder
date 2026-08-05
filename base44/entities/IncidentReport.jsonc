@@ -6,95 +6,117 @@
       "type": "string",
       "description": "System-generated report number"
     },
-    "linked_call_id": {
+    "call_number": {
       "type": "string",
-      "description": "Pathfinder DispatchCall record ID"
+      "description": "Call number for tracking"
     },
-    "linked_call_number": {
+    "police_report_number": {
       "type": "string",
-      "description": "CAD call number"
-    },
-    "primary_officer_id": {
-      "type": "string",
-      "description": "Primary officer user ID"
-    },
-    "primary_officer_name": {
-      "type": "string",
-      "description": "Primary officer display name"
-    },
-    "backup_officer_ids": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "Backup officer IDs"
+      "description": "Police department report number if police were called"
     },
     "incident_date": {
       "type": "string",
-      "format": "date"
+      "format": "date",
+      "description": "Date of incident"
     },
     "incident_time": {
-      "type": "string"
+      "type": "string",
+      "description": "Time of incident (HH:MM format)"
+    },
+    "discovered_time": {
+      "type": "string",
+      "description": "Time incident was discovered (if different)"
     },
     "location": {
-      "type": "string"
+      "type": "string",
+      "description": "Location where incident occurred"
     },
     "specific_location": {
-      "type": "string"
+      "type": "string",
+      "description": "Specific location details (building, floor, unit)"
     },
     "incident_type": {
       "type": "string",
-      "description": "Incident classification"
+      "enum": [
+        "theft",
+        "vandalism",
+        "assault",
+        "trespassing",
+        "medical",
+        "fire",
+        "shooting",
+        "vehicle_pursuit",
+        "property_damage",
+        "disturbance",
+        "suspicious_activity",
+        "other"
+      ],
+      "description": "Type of incident"
     },
     "description": {
-      "type": "string"
-    },
-    "persons_involved": {
-      "type": "string"
-    },
-    "victims": {
-      "type": "string"
-    },
-    "witnesses": {
-      "type": "string"
+      "type": "string",
+      "description": "Detailed description of the incident"
     },
     "suspect_description": {
-      "type": "string"
+      "type": "string",
+      "description": "Physical description of suspect(s)"
     },
     "suspect_vehicle": {
-      "type": "string"
+      "type": "string",
+      "description": "Suspect vehicle information"
+    },
+    "persons_involved": {
+      "type": "string",
+      "description": "Names and details of persons involved"
+    },
+    "victims": {
+      "type": "string",
+      "description": "Victim information and contact"
+    },
+    "witnesses": {
+      "type": "string",
+      "description": "Witness information"
     },
     "injuries_reported": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Whether injuries were reported"
     },
     "injury_details": {
-      "type": "string"
+      "type": "string",
+      "description": "Details of injuries if any"
     },
     "property_damage": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Whether property damage occurred"
     },
     "damage_details": {
-      "type": "string"
+      "type": "string",
+      "description": "Details of property damage"
+    },
+    "estimated_value": {
+      "type": "string",
+      "description": "Estimated value of loss or damage"
     },
     "action_taken": {
-      "type": "string"
+      "type": "string",
+      "description": "Actions taken by officer"
     },
     "police_notified": {
       "type": "boolean",
-      "default": false
-    },
-    "police_report_number": {
-      "type": "string"
+      "default": false,
+      "description": "Whether police were called"
     },
     "ems_notified": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Whether EMS was called"
     },
     "fire_notified": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Whether fire department was called"
     },
     "severity": {
       "type": "string",
@@ -110,20 +132,66 @@
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "description": "Photos of the incident scene"
     },
     "status": {
       "type": "string",
       "enum": [
         "draft",
         "submitted",
-        "approved",
-        "rejected"
+        "rejected",
+        "approved"
       ],
       "default": "submitted"
     },
     "admin_notes": {
-      "type": "string"
+      "type": "string",
+      "description": "Admin feedback for revisions"
+    },
+    "was_rejected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this report was previously rejected"
+    },
+    "officer_ip_address": {
+      "type": "string",
+      "description": "IP address of officer when submitting report"
+    },
+    "linked_call_id": {
+      "type": "string",
+      "description": "ID of the call for service this report is linked to"
+    },
+    "linked_call_number": {
+      "type": "string",
+      "description": "Call number from dispatch for easy reference"
+    },
+    "suspect_id_scanned": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether suspect ID was scanned"
+    },
+    "suspect_scan_data": {
+      "type": "string",
+      "description": "Suspect scan metadata as JSON"
+    },
+    "witness_id_scanned": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether witness ID was scanned"
+    },
+    "witness_scan_data": {
+      "type": "string",
+      "description": "Witness scan metadata as JSON"
+    },
+    "victim_id_scanned": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether victim ID was scanned"
+    },
+    "victim_scan_data": {
+      "type": "string",
+      "description": "Victim scan metadata as JSON"
     }
   },
   "required": [
@@ -132,40 +200,5 @@
     "location",
     "incident_type",
     "description"
-  ],
-  "rls": {
-    "create": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "read": true,
-    "update": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "data.primary_officer_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
-    }
-  }
+  ]
 }

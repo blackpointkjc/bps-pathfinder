@@ -1,0 +1,102 @@
+{
+  "name": "CallForService",
+  "type": "object",
+  "properties": {
+    "call_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Time the call came in"
+    },
+    "incident_type": {
+      "type": "string",
+      "description": "Type of incident"
+    },
+    "address": {
+      "type": "string",
+      "description": "Address of the incident"
+    },
+    "affected_sites": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of sites within 200m"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Incident latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Incident longitude"
+    },
+    "details": {
+      "type": "string",
+      "description": "Additional call details"
+    },
+    "acknowledged": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether call has been acknowledged"
+    },
+    "attached_officers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "officer_email": {
+            "type": "string"
+          },
+          "unit_number": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "responding",
+              "on_scene",
+              "call_cleared",
+              "unfounded",
+              "off_property"
+            ]
+          },
+          "attached_time": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "description": "Officers who have attached themselves to this call"
+    },
+    "final_disposition": {
+      "type": "string",
+      "enum": [
+        "arrest",
+        "off_site",
+        "warned",
+        "unfounded"
+      ],
+      "description": "Final disposition of the call - marks call as complete"
+    },
+    "completed_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the call was marked complete with final disposition"
+    },
+    "incident_report_id": {
+      "type": "string",
+      "description": "ID of the linked incident report if one was created from this call"
+    }
+  },
+  "required": [
+    "call_time",
+    "incident_type",
+    "address"
+  ]
+}

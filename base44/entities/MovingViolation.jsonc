@@ -1,0 +1,155 @@
+{
+  "name": "MovingViolation",
+  "type": "object",
+  "properties": {
+    "summons_number": {
+      "type": "string",
+      "description": "Virtus summons number (e.g., VMS-20250101-0001)"
+    },
+    "call_number": {
+      "type": "string",
+      "description": "Call number for tracking"
+    },
+    "violation_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of violation"
+    },
+    "violation_time": {
+      "type": "string",
+      "description": "Time of violation"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location/address of violation"
+    },
+    "violator_name": {
+      "type": "string",
+      "description": "Name of violator"
+    },
+    "violator_address": {
+      "type": "string",
+      "description": "Street address"
+    },
+    "violator_city": {
+      "type": "string",
+      "description": "City"
+    },
+    "violator_state": {
+      "type": "string",
+      "description": "State"
+    },
+    "violator_zip": {
+      "type": "string",
+      "description": "ZIP code"
+    },
+    "violator_dob": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of birth"
+    },
+    "violator_dl_number": {
+      "type": "string",
+      "description": "Driver's license number"
+    },
+    "violator_dl_state": {
+      "type": "string",
+      "description": "DL issuing state"
+    },
+    "vehicle_year": {
+      "type": "string",
+      "description": "Vehicle year"
+    },
+    "vehicle_make": {
+      "type": "string",
+      "description": "Vehicle make"
+    },
+    "vehicle_model": {
+      "type": "string",
+      "description": "Vehicle model"
+    },
+    "vehicle_color": {
+      "type": "string",
+      "description": "Vehicle color"
+    },
+    "vehicle_plate": {
+      "type": "string",
+      "description": "License plate"
+    },
+    "vehicle_plate_state": {
+      "type": "string",
+      "description": "Plate state"
+    },
+    "vehicle_vin": {
+      "type": "string",
+      "description": "VIN number"
+    },
+    "violation_code": {
+      "type": "string",
+      "description": "VA code violation"
+    },
+    "violation_description": {
+      "type": "string",
+      "description": "Description of violation"
+    },
+    "speed_limit": {
+      "type": "number",
+      "description": "Posted speed limit if speeding"
+    },
+    "speed_clocked": {
+      "type": "number",
+      "description": "Speed clocked if speeding"
+    },
+    "court_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Court appearance date"
+    },
+    "court_time": {
+      "type": "string",
+      "description": "Court appearance time"
+    },
+    "court_location": {
+      "type": "string",
+      "description": "Court location"
+    },
+    "court_outcome": {
+      "type": "string",
+      "description": "Final court decision/outcome"
+    },
+    "fine_amount": {
+      "type": "number",
+      "description": "Fine amount"
+    },
+    "fine_paid": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether fine has been paid"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "Photo evidence"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "issued",
+        "rejected",
+        "approved"
+      ],
+      "default": "issued"
+    }
+  },
+  "required": [
+    "violation_date",
+    "violation_time",
+    "location",
+    "violator_name",
+    "vehicle_plate",
+    "violation_description"
+  ]
+}

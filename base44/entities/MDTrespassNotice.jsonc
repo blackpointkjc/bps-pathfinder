@@ -1,0 +1,85 @@
+{
+  "name": "MDTrespassNotice",
+  "type": "object",
+  "properties": {
+    "notice_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Date and time notice was issued"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location of trespass"
+    },
+    "subject_name": {
+      "type": "string",
+      "description": "Name of trespasser"
+    },
+    "subject_description": {
+      "type": "string",
+      "description": "Physical description"
+    },
+    "subject_id": {
+      "type": "string",
+      "description": "ID number if available"
+    },
+    "vehicle_info": {
+      "type": "string",
+      "description": "Vehicle information if applicable"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for trespass notice"
+    },
+    "duration": {
+      "type": "string",
+      "description": "Duration description"
+    },
+    "expiration_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when trespass notice expires"
+    },
+    "police_notified": {
+      "type": "boolean",
+      "default": false
+    },
+    "police_report_number": {
+      "type": "string",
+      "description": "Police report number if police were called"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "Photo of the trespasser"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "rejected",
+        "approved"
+      ],
+      "default": "approved",
+      "description": "Status of the notice"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Admin feedback for revisions"
+    },
+    "was_rejected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this notice was previously rejected"
+    },
+    "officer_ip_address": {
+      "type": "string",
+      "description": "IP address of officer when submitting notice"
+    }
+  },
+  "required": [
+    "notice_date",
+    "location",
+    "subject_name",
+    "reason"
+  ]
+}

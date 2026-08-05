@@ -1,0 +1,32 @@
+{
+  "description": "Monitors schedules and sends notifications for open shifts, conflicts, and upcoming shifts",
+  "instructions": "You monitor the Schedule and ShiftBid entities. When critical conditions arise (many open shifts, schedule conflicts, upcoming shifts), you create notifications for relevant officers and admins.",
+  "tool_configs": [
+    {
+      "entity_name": "Schedule",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "ShiftBid",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "Notification",
+      "allowed_operations": [
+        "create",
+        "read"
+      ]
+    },
+    {
+      "entity_name": "User",
+      "allowed_operations": [
+        "read"
+      ]
+    }
+  ],
+  "name": "shift_notification_monitor"
+}

@@ -1,0 +1,35 @@
+{
+  "name": "Division",
+  "type": "object",
+  "properties": {
+    "division_name": {
+      "type": "string",
+      "description": "Name of the division (e.g., Virginia, Maryland)"
+    },
+    "subdivision": {
+      "type": "string",
+      "description": "Subdivision name (e.g., Richmond, NOVA, Tidewater)"
+    },
+    "parent_division": {
+      "type": "string",
+      "description": "Parent division name if this is a subdivision"
+    },
+    "is_subdivision": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is a subdivision or a main division"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this division is active"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes about the division"
+    }
+  },
+  "required": [
+    "division_name"
+  ]
+}

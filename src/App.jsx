@@ -1,58 +1,65 @@
+import './App.css'
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
+import VisualEditAgent from '@/lib/VisualEditAgent'
 import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom'
-import PageNotFound from './lib/PageNotFound'
-import { AuthProvider, useAuth } from '@/lib/AuthContext'
-import UserNotRegisteredError from '@/components/UserNotRegisteredError'
-import BOLOAlerts from './pages/BOLOAlerts'
-import FieldUnitView from './pages/FieldUnitView'
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import PageNotFound from './lib/PageNotFound';
+import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import ClientDashboard from './pages/ClientDashboard';
+import ClientAlerts from './pages/ClientAlerts';
+import ClientSpecialRequests from './pages/ClientSpecialRequests';
+import ClientSupervisors from './pages/ClientSupervisors';
+import ClientReports from './pages/ClientReports';
+import ClientQRReports from './pages/ClientQRReports';
+import ClientPayrollReport from './pages/ClientPayrollReport';
+import ClientTrespass from './pages/ClientTrespass';
+import ClientSchedule from './pages/ClientSchedule';
+import ClientDocuments from './pages/ClientDocuments';
+import ClientFeedback from './pages/ClientFeedback';
+import ClientLocation from './pages/ClientLocation';
+import SupervisorDailyCode from './pages/SupervisorDailyCode';
+import AdminSupervisorCodes from './pages/AdminSupervisorCodes';
+import StudentPortal from './pages/StudentPortal';
+import ManageStudents from './pages/ManageStudents';
+import ManageCompanyEmployees from './pages/ManageCompanyEmployees';
+import TrainingRecords from './pages/TrainingRecords';
 
-const { Pages, Layout, mainPage } = pagesConfig
-const mainPageKey = mainPage ?? Object.keys(Pages)[0]
-const MainPage = mainPageKey ? Pages[mainPageKey] : <></>
+const { Pages, Layout, mainPage } = pagesConfig;
+const mainPageKey = mainPage ?? Object.keys(Pages)[0];
+const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 
-const LayoutWrapper = ({ children, currentPageName }) => Layout
-  ? <Layout currentPageName={currentPageName}>{children}</Layout>
-  : <>{children}</>
-
-const PAGE_ROLES = {
-  DispatchCenter: ['dispatch', 'admin'],
-  BOLOAlerts: ['admin'],
-  CallHistory: ['admin'],
-  Personnel: ['admin'],
-  Reports: ['admin'],
-  AdminPortal: ['admin'],
-  RecordsAssistant: ['admin'],
-}
-
-const RoleGuard = ({ page, user, children }) => {
-  const allowed = PAGE_ROLES[page]
-  if (!allowed || allowed.includes(user?.role || 'user')) return children
-  return <Navigate to="/CommandDashboard" replace />
-}
+const LayoutWrapper = ({ children, currentPageName }) => Layout ?
+  <Layout currentPageName={currentPageName}>{children}</Layout>
+  : <>{children}</>;
 
 const AuthenticatedApp = () => {
-  const { user, isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth()
+  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin } = useAuth();
 
+  // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-[#07101f]">
-        <div className="w-8 h-8 border-4 border-slate-700 border-t-cyan-400 rounded-full animate-spin" />
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
       </div>
-    )
+    );
   }
 
+  // Handle authentication errors
   if (authError) {
-    if (authError.type === 'user_not_registered') return <UserNotRegisteredError />
-    if (authError.type === 'auth_required') {
-      navigateToLogin()
-      return null
+    if (authError.type === 'user_not_registered') {
+      return <UserNotRegisteredError />;
+    } else if (authError.type === 'auth_required') {
+      // Redirect to login automatically
+      navigateToLogin();
+      return null;
     }
   }
 
+  // Render the main app
   return (
     <Routes>
       <Route path="/" element={
@@ -66,27 +73,38 @@ const AuthenticatedApp = () => {
           path={`/${path}`}
           element={
             <LayoutWrapper currentPageName={path}>
-              <RoleGuard page={path} user={user}><Page /></RoleGuard>
+              <Page />
             </LayoutWrapper>
           }
         />
       ))}
-      <Route path="/BOLOAlerts" element={
-        <LayoutWrapper currentPageName="BOLOAlerts">
-          <RoleGuard page="BOLOAlerts" user={user}><BOLOAlerts /></RoleGuard>
-        </LayoutWrapper>
-      } />
-      <Route path="/FieldUnitView" element={
-        <LayoutWrapper currentPageName="FieldUnitView">
-          <RoleGuard page="FieldUnitView" user={user}><FieldUnitView /></RoleGuard>
-        </LayoutWrapper>
-      } />
+      {/* Client Portal Routes */}
+      <Route path="/ClientDashboard" element={<LayoutWrapper currentPageName="ClientDashboard"><ClientDashboard /></LayoutWrapper>} />
+      <Route path="/ClientAlerts" element={<LayoutWrapper currentPageName="ClientAlerts"><ClientAlerts /></LayoutWrapper>} />
+      <Route path="/ClientSpecialRequests" element={<LayoutWrapper currentPageName="ClientSpecialRequests"><ClientSpecialRequests /></LayoutWrapper>} />
+      <Route path="/ClientSupervisors" element={<LayoutWrapper currentPageName="ClientSupervisors"><ClientSupervisors /></LayoutWrapper>} />
+      <Route path="/ClientReports" element={<LayoutWrapper currentPageName="ClientReports"><ClientReports /></LayoutWrapper>} />
+      <Route path="/ClientQRReports" element={<LayoutWrapper currentPageName="ClientQRReports"><ClientQRReports /></LayoutWrapper>} />
+      <Route path="/ClientPayrollReport" element={<LayoutWrapper currentPageName="ClientPayrollReport"><ClientPayrollReport /></LayoutWrapper>} />
+      <Route path="/ClientTrespass" element={<LayoutWrapper currentPageName="ClientTrespass"><ClientTrespass /></LayoutWrapper>} />
+      <Route path="/ClientSchedule" element={<LayoutWrapper currentPageName="ClientSchedule"><ClientSchedule /></LayoutWrapper>} />
+      <Route path="/ClientDocuments" element={<LayoutWrapper currentPageName="ClientDocuments"><ClientDocuments /></LayoutWrapper>} />
+      <Route path="/ClientFeedback" element={<LayoutWrapper currentPageName="ClientFeedback"><ClientFeedback /></LayoutWrapper>} />
+      <Route path="/ClientLocation" element={<LayoutWrapper currentPageName="ClientLocation"><ClientLocation /></LayoutWrapper>} />
+      <Route path="/SupervisorDailyCode" element={<LayoutWrapper currentPageName="SupervisorDailyCode"><SupervisorDailyCode /></LayoutWrapper>} />
+      <Route path="/AdminSupervisorCodes" element={<LayoutWrapper currentPageName="AdminSupervisorCodes"><AdminSupervisorCodes /></LayoutWrapper>} />
+      <Route path="/StudentPortal" element={<LayoutWrapper currentPageName="StudentPortal"><StudentPortal /></LayoutWrapper>} />
+      <Route path="/ManageStudents" element={<LayoutWrapper currentPageName="ManageStudents"><ManageStudents /></LayoutWrapper>} />
+      <Route path="/ManageCompanyEmployees" element={<LayoutWrapper currentPageName="ManageCompanyEmployees"><ManageCompanyEmployees /></LayoutWrapper>} />
+      <Route path="/TrainingRecords" element={<LayoutWrapper currentPageName="TrainingRecords"><TrainingRecords /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
-  )
-}
+  );
+};
+
 
 function App() {
+
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
@@ -95,6 +113,7 @@ function App() {
           <AuthenticatedApp />
         </Router>
         <Toaster />
+        <VisualEditAgent />
       </QueryClientProvider>
     </AuthProvider>
   )

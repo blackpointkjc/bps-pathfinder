@@ -1,0 +1,67 @@
+{
+  "name": "TaxRate",
+  "type": "object",
+  "properties": {
+    "jurisdiction": {
+      "type": "string",
+      "description": "Federal or state code (e.g., 'federal', 'VA', 'MD')"
+    },
+    "tax_year": {
+      "type": "number",
+      "description": "Applicable tax year"
+    },
+    "tax_type": {
+      "type": "string",
+      "enum": [
+        "income",
+        "social_security",
+        "medicare",
+        "state_income"
+      ],
+      "description": "Type of tax"
+    },
+    "brackets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "min_income": {
+            "type": "number"
+          },
+          "max_income": {
+            "type": "number"
+          },
+          "rate": {
+            "type": "number"
+          },
+          "base_tax": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Tax brackets for progressive taxation"
+    },
+    "flat_rate": {
+      "type": "number",
+      "description": "Flat tax rate (for social security, medicare, or flat-tax states)"
+    },
+    "income_limit": {
+      "type": "number",
+      "description": "Income limit for capped taxes (e.g., Social Security)"
+    },
+    "standard_deduction": {
+      "type": "number",
+      "description": "Standard deduction amount"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this rate is currently active"
+    }
+  },
+  "required": [
+    "jurisdiction",
+    "tax_year",
+    "tax_type"
+  ]
+}

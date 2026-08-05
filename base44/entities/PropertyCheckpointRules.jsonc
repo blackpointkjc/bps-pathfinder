@@ -1,0 +1,34 @@
+{
+  "name": "PropertyCheckpointRules",
+  "type": "object",
+  "properties": {
+    "property_site": {
+      "type": "string",
+      "description": "Property/site name these rules apply to"
+    },
+    "duplicate_protection_minutes": {
+      "type": "number",
+      "default": 10,
+      "description": "Minutes before same checkpoint can be scanned again without flagging as duplicate"
+    },
+    "alert_on_missed": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to send alerts when required checkpoints are missed at end of shift"
+    },
+    "alert_recipients": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Emails to notify when checkpoints are missed"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes for this site's patrol rules"
+    }
+  },
+  "required": [
+    "property_site"
+  ]
+}

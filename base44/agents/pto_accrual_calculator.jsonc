@@ -1,0 +1,5 @@
+{
+  "name": "pto_accrual_calculator",
+  "description": "Calculates and updates PTO accruals for officers based on hours worked in completed payroll periods",
+  "schedule": "0 2 * * *"
+}
