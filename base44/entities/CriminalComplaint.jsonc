@@ -4,7 +4,7 @@
   "properties": {
     "complaint_number": {
       "type": "string",
-      "description": "Virtus complaint number (e.g., VCC-20250101-0001)"
+      "description": "Black Point complaint number (e.g., VCC-20250101-0001)"
     },
     "call_number": {
       "type": "string",
