@@ -244,6 +244,12 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error('createPortalAccount failed', error);
-    return Response.json({ error: error.message || 'Unable to create portal account' }, { status: 500 });
+    // Return a readable application error instead of an opaque HTTP 500 so the
+    // management screen can show the exact failure and always stop its spinner.
+    return Response.json({
+      success: false,
+      error: error?.message || 'Unable to create portal account',
+      error_stage: 'account_provisioning',
+    });
   }
 });
