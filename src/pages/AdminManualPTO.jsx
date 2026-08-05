@@ -97,7 +97,7 @@ export default function AdminManualPTO() {
 
       // Send notification email
       await base44.integrations.Core.SendEmail({
-        Black Point Protection
+        from_name: "Black Point Protection HR",
         to: data.officer_email,
         subject: `${data.pto_type === 'pto' ? 'PTO' : 'Sick Time'} Added to Your Account`,
         body: `<!DOCTYPE html>
