@@ -254,16 +254,25 @@ export default function TimeRequests() {
                         <StatusBadge status={request.status} />
                       </div>
                       <p className="text-sm text-slate-600 mb-2">{request.reason}</p>
-                      <div className="flex gap-4 text-xs text-slate-500">
+                      <div className="flex flex-wrap gap-4 text-xs text-slate-500">
                         <span>Type: <strong className={request.request_type === 'paid' ? 'text-green-600' : 'text-orange-600'}>{request.request_type === 'paid' ? 'PAID' : 'UNPAID'}</strong></span>
                         <span>Hours: <strong>{request.hours_requested || 0}h</strong></span>
                         {request.request_type === 'paid' && (
                           <span>Balance at request: <strong>{(request.pto_balance_at_request || 0).toFixed(1)}h</strong></span>
                         )}
+                        {String(request.status || '').toLowerCase() === 'cancelled' && Number(request.hours_restored || 0) > 0 && (
+                          <span className="font-semibold text-emerald-600">Hours returned: {Number(request.hours_restored).toFixed(1)}h</span>
+                        )}
                       </div>
                     </div>
                   </div>
-                  {request.admin_notes && (
+                  {String(request.status || '').toLowerCase() === 'cancelled' && (
+                    <div className="mt-3 rounded border border-emerald-700/40 bg-emerald-950/20 p-3">
+                      <p className="text-sm font-semibold text-emerald-300">This request was cancelled by HR.</p>
+                      <p className="mt-1 text-sm text-emerald-200">{Number(request.hours_restored || 0).toFixed(1)} hours were returned to your PTO balance.</p>
+                    </div>
+                  )}
+                  {request.admin_notes && String(request.status || '').toLowerCase() !== 'cancelled' && (
                     <div className="mt-3 p-3 bg-white rounded border border-slate-200">
                       <p className="text-xs text-slate-500 mb-1">Admin Notes:</p>
                       <p className="text-sm text-slate-700">{request.admin_notes}</p>
