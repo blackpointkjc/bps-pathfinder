@@ -314,7 +314,7 @@ function canAccessPage(user, pageName) {
   return centers.some(center => available.includes(center));
 }
 
-function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, onCloseMobile }) {
+function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, onCloseMobile, onToggleCollapsed }) {
   const availableCenters = allowedCenters(user);
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
   const query = search.trim().toLowerCase();
@@ -329,15 +329,26 @@ function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, curre
   return (
     <div className="flex h-full flex-col bg-[#07111f]">
       <div className="border-b border-[#1b3048] px-3 py-3">
-        <div className="flex items-center gap-3">
+        <div className={`flex items-center ${collapsed && !mobile ? 'justify-center' : 'gap-3'}`}>
           <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#315f8e] bg-[#12315a]">
             <Shield className="h-5 w-5 text-[#8cc7ff]" />
             <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#07111f] bg-emerald-400" />
           </div>
-          {(!collapsed || mobile) && <div className="min-w-0">
+          {(!collapsed || mobile) && <div className="min-w-0 flex-1">
             <div className="text-[12px] font-black tracking-[0.16em] text-white">BPS PATHFINDER</div>
             <div className="text-[9px] tracking-[0.16em] text-[#7290ad]">BLACK POINT PROTECTION</div>
           </div>}
+          {!mobile && onToggleCollapsed && (
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#31506d] bg-[#13263a] text-[#8cc7ff] hover:bg-[#19334e] hover:text-white"
+              title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+              aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+            >
+              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </button>
+          )}
         </div>
 
         {(!collapsed || mobile) && <div className="mt-3 grid grid-cols-2 gap-1.5">
@@ -466,10 +477,7 @@ export default function Layout({ children, currentPageName }) {
 
   return <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app">
     <aside className="relative hidden flex-col border-r border-[#1c3049] md:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
-      <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} />
-      <button onClick={() => setCollapsed(value => !value)} className="absolute -right-3 top-20 z-40 flex h-8 w-6 items-center justify-center rounded border border-[#294867] bg-[#0b1726] text-[#7892ac] hover:text-white" aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}>
-        {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
-      </button>
+      <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} onToggleCollapsed={() => setCollapsed(value => !value)} />
     </aside>
 
     <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/70 md:hidden" onClick={() => setMobileOpen(false)}>
