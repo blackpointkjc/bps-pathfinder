@@ -71,15 +71,26 @@ export default function AdminPTOApproval() {
     return admin.full_name || 'Admin'; // Fallback to full_name or 'Admin'
   };
 
-  const getOfficerName = (email) => {
-    if (!email || !allUsers || allUsers.length === 0) return 'Officer';
-    const officer = allUsers.find(u => u.email === email);
-    if (!officer) return 'Officer';
-    if (officer.first_name && officer.last_name) {
-      return `${officer.first_name} ${officer.last_name}`;
-    }
-    return officer.full_name || 'Officer'; // Fallback to full_name or 'Officer'
+  const resolveOfficer = (requestOrEmail) => {
+    const request = typeof requestOrEmail === 'object' ? requestOrEmail : null;
+    const email = String(request?.requested_by_email || request?.created_by || requestOrEmail || '').trim().toLowerCase();
+    const savedName = String(request?.requested_by_name || '').trim();
+    const officer = allUsers.find(u => String(u.email || '').trim().toLowerCase() === email);
+    const fullName = officer
+      ? ([officer.first_name, officer.last_name].filter(Boolean).join(' ') || officer.full_name || savedName)
+      : savedName;
+    const rank = officer?.rank || '';
+    return {
+      officer,
+      email: email || 'Email unavailable',
+      name: fullName || 'Unknown Employee',
+      displayName: [rank, fullName].filter(Boolean).join(' ') || 'Unknown Employee',
+      photo: officer?.profile_photo_url || '',
+      unit: officer?.unit_number || officer?.badge_number || '',
+    };
   };
+
+  const getOfficerName = (requestOrEmail) => resolveOfficer(requestOrEmail).name;
 
   const updateRequestMutation = useMutation({
     mutationFn: async ({ id, status, notes }) => {
@@ -127,7 +138,7 @@ export default function AdminPTOApproval() {
     <div class="content">
       <h2 style="color: ${status === 'approved' ? '#10b981' : '#dc2626'}; margin-top: 0;">Time Off Request ${status === 'approved' ? 'Approved' : 'Denied'}</h2>
       
-      <p>Hello ${getOfficerName(request.requested_by_email || request.created_by)},</p>
+      <p>Hello ${getOfficerName(request)},</p>
       
       <p>Your time off request has been ${status}.</p>
       
@@ -255,7 +266,18 @@ export default function AdminPTOApproval() {
                 <div key={request.id} className="p-5 bg-slate-50 rounded-lg border-l-4 border-amber-500">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <p className="font-bold text-slate-900 mb-2">{getOfficerName(request.requested_by_email || request.created_by)}</p>
+                      {(() => {
+                        const identity = resolveOfficer(request);
+                        return <div className="mb-3 flex items-center gap-3">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-600 bg-slate-800 text-sm font-bold text-white">
+                            {identity.photo ? <img src={identity.photo} alt="" className="h-full w-full object-cover" /> : identity.name.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-100">{identity.displayName}</p>
+                            <p className="text-xs text-slate-400">{identity.email}{identity.unit ? ` · Unit ${identity.unit}` : ''}</p>
+                          </div>
+                        </div>;
+                      })()}
                       <p className="text-sm text-slate-600 mb-2">
                         {format(new Date(request.start_date), 'MMM d, yyyy')} - {format(new Date(request.end_date), 'MMM d, yyyy')}
                       </p>
@@ -314,7 +336,8 @@ export default function AdminPTOApproval() {
                 <div key={request.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <p className="font-semibold text-slate-900">{getOfficerName(request.requested_by_email || request.created_by)}</p>
+                      <p className="font-semibold text-slate-100">{resolveOfficer(request).displayName}</p>
+                      <p className="text-xs text-slate-400">{resolveOfficer(request).email}</p>
                       <p className="text-sm text-slate-600">
                         {format(new Date(request.start_date), 'MMM d, yyyy')} - {format(new Date(request.end_date), 'MMM d, yyyy')}
                       </p>
@@ -358,7 +381,8 @@ export default function AdminPTOApproval() {
           {selectedRequest && (
             <div className="space-y-4 py-4">
               <div className="p-4 bg-slate-50 rounded-lg">
-                <p className="font-semibold text-slate-900">{getOfficerName(selectedRequest.requested_by_email || selectedRequest.created_by)}</p>
+                <p className="font-semibold text-slate-100">{resolveOfficer(selectedRequest).displayName}</p>
+                <p className="text-xs text-slate-400">{resolveOfficer(selectedRequest).email}</p>
                 <p className="text-sm text-slate-600">
                   {format(new Date(selectedRequest.start_date), 'MMM d, yyyy')} - {format(new Date(selectedRequest.end_date), 'MMM d, yyyy')}
                 </p>
