@@ -47,7 +47,7 @@ function normalizeCall(row: any) {
     priority: normalizePriority(row.incident),
     time_received: Number.isNaN(received.getTime()) ? new Date().toISOString() : received.toISOString(),
     source: AGENCY_SOURCE[agency],
-    description: `${String(row.incident).trim()} at ${String(row.location).trim()} [GRAC:${external_call_id}]`,
+    description: `${String(row.incident).trim()} at ${String(row.location).trim()}`,
     ...(latitude !== null && longitude !== null ? { latitude, longitude, geo_confidence: 'high', geo_method: 'grac', geo_approximate: false } : {}),
   };
 }
@@ -132,18 +132,40 @@ Deno.serve(async (req) => {
     const cadNumbers = await reserveCadNumbers(base44, needingCad.length + newCalls.length);
     let cadIndex = 0;
     for (const record of needingCad) {
-      await base44.asServiceRole.entities.DispatchCall.update(record.id, { call_id: cadNumbers[cadIndex++], external_call_id: externalKey(record) });
+      const cadNumber = cadNumbers[cadIndex++];
+      const cleanDescription = String(record.description || '')
+        .replace(/\s*\[GRAC:[^\]]+\]\s*/gi, ' ')
+        .replace(/\s*\[CAD:[^\]]+\]\s*/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      await base44.asServiceRole.entities.DispatchCall.update(record.id, {
+        call_id: cadNumber,
+        external_call_id: externalKey(record),
+        description: cleanDescription ? `${cleanDescription} [CAD:${cadNumber}]` : `[CAD:${cadNumber}]`,
+      });
     }
 
     let created = 0, updated = 0, removed = 0;
     for (const callData of incoming) {
       const existing = byExternal.get(callData.external_call_id);
       if (!existing) {
-        await base44.asServiceRole.entities.DispatchCall.create({ ...callData, call_id: cadNumbers[cadIndex++] });
+        const cadNumber = cadNumbers[cadIndex++];
+        await base44.asServiceRole.entities.DispatchCall.create({
+          ...callData,
+          call_id: cadNumber,
+          description: `${callData.description} [CAD:${cadNumber}]`,
+        });
         created += 1;
-      } else if (changed(existing, callData)) {
-        await base44.asServiceRole.entities.DispatchCall.update(existing.id, callData);
-        updated += 1;
+      } else {
+        const cadNumber = /^B\d+$/i.test(String(existing.call_id || '')) ? existing.call_id : '';
+        const incomingWithCad = {
+          ...callData,
+          description: cadNumber ? `${callData.description} [CAD:${cadNumber}]` : callData.description,
+        };
+        if (changed(existing, incomingWithCad)) {
+          await base44.asServiceRole.entities.DispatchCall.update(existing.id, incomingWithCad);
+          updated += 1;
+        }
       }
     }
 
