@@ -127,23 +127,20 @@ export default function DailyActivityReports() {
 
   const parseHourlyEntries = (entries) => {
     if (!entries) return [];
-    // Handle both single-line format "HH:MM text" and multi-line format "HH:MMZ\ntext"
-    const lines = entries.split('\n').map(l => l.trim()).filter(l => l);
+    // Supports the current local 12-hour format and older 24-hour/Zulu entries.
+    const lines = entries.split('\n').map(l => l.trim()).filter(Boolean);
     const result = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const timeMatch = line.match(/^(\d{2}:\d{2})/);
-      if (timeMatch) {
-        const time = timeMatch[1];
-        // Try to get text from same line first
-        const inlineText = line.replace(/^(\d{2}:\d{2})Z?\s*/, '').replace(/^Z\s*/, '').trim();
-        if (inlineText) {
-          result.push({ time, text: inlineText });
-        } else if (i + 1 < lines.length && !lines[i + 1].match(/^\d{2}:\d{2}/)) {
-          // Text is on the next line (multi-line format)
-          result.push({ time, text: lines[i + 1] });
-          i++; // skip the next line since we consumed it
-        }
+      const timeMatch = line.match(/^(\d{1,2}:\d{2}(?:\s?[AP]M)?|\d{2}:\d{2})/i);
+      if (!timeMatch) continue;
+      const time = timeMatch[1].replace(/\s*([AP]M)$/i, ' $1').toUpperCase();
+      const inlineText = line.slice(timeMatch[0].length).replace(/^Z\s*/i, '').trim();
+      if (inlineText) {
+        result.push({ time, text: inlineText });
+      } else if (i + 1 < lines.length && !lines[i + 1].match(/^\d{1,2}:\d{2}(?:\s?[AP]M)?/i)) {
+        result.push({ time, text: lines[i + 1] });
+        i++;
       }
     }
     return result;
@@ -353,7 +350,7 @@ export default function DailyActivityReports() {
     }
 
     setSaving(true);
-    const entriesFormatted = formData.hourly_entries_array.map(e => `${e.time}Z\n${e.text}`).join('\n\n');
+    const entriesFormatted = formData.hourly_entries_array.map(e => `${e.time}\n${e.text}`).join('\n\n');
     saveReportMutation.mutate({ data: { ...formData, hourly_entries: entriesFormatted }, isDraft: false });
   };
 
@@ -850,7 +847,7 @@ export default function DailyActivityReports() {
                          type="button"
                          onClick={() => {
                            if (entryText) {
-                             const autoTime = format(new Date(), 'HH:mm');
+                             const autoTime = format(new Date(), 'h:mm a');
                              setFormData(prev => ({
                                ...prev,
                                hourly_entries_array: [...prev.hourly_entries_array, { time: autoTime, text: entryText }]
