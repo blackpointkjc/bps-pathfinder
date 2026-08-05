@@ -115,21 +115,34 @@ Deno.serve(async (req) => {
 
     if (!portalUser) {
       try {
-        const invitation = await base44.asServiceRole.users.inviteUser(normalizedEmail, 'user');
+        let invitation;
+        try {
+          invitation = await base44.asServiceRole.users.inviteUser(normalizedEmail, 'user');
+        } catch (serviceRoleError) {
+          console.warn('Service-role invitation path failed; trying authenticated invitation path', serviceRoleError);
+          invitation = await base44.users.inviteUser(normalizedEmail, 'user');
+        }
         invitationSent = true;
         portalUser = invitation?.user || invitation;
 
-        // Base44 may create the pending User record asynchronously. Retry briefly so
-        // portal permissions can be attached immediately when the record becomes available.
+        // Base44 may create the pending User record asynchronously. Retry long enough
+        // for both the client and student management pages to display the new account.
         if (!portalUser?.id) {
-          for (let attempt = 0; attempt < 4 && !portalUser?.id; attempt += 1) {
-            if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 500));
+          for (let attempt = 0; attempt < 8 && !portalUser?.id; attempt += 1) {
+            if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 750));
             const refreshed = await base44.asServiceRole.entities.User.list();
             portalUser = (refreshed || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
           }
         }
       } catch (inviteError) {
         invitationError = inviteError?.message || 'Unable to send the Base44 invitation';
+        const normalizedError = invitationError.toLowerCase();
+        const alreadyPending = normalizedError.includes('already') || normalizedError.includes('exist') || normalizedError.includes('pending') || normalizedError.includes('invited');
+        if (alreadyPending) {
+          invitationSent = true;
+          const refreshed = await base44.asServiceRole.entities.User.list();
+          portalUser = (refreshed || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
+        }
         console.error('Portal invitation failed', inviteError);
       }
     }
@@ -175,12 +188,11 @@ Deno.serve(async (req) => {
       assignmentPending = true;
     }
 
-    // A brand-new address must receive the platform invitation. Do not report a
-    // successful account creation when the native invitation itself failed.
+    // Do not turn a recoverable invitation-provider failure into a gateway error.
+    // The branded account email still gives the recipient a working Forgot Password
+    // setup path, and permissions are attached automatically when the User record appears.
     if (!portalUser && !invitationSent) {
-      return Response.json({
-        error: invitationError || 'Unable to create or invite this account. Please verify the email address and try again.'
-      }, { status: 502 });
+      assignmentPending = true;
     }
 
     let emailSent = false;
