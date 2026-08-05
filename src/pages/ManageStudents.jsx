@@ -66,9 +66,11 @@ export default function ManageStudents() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setShowCreateDialog(false);
       setCreateForm({ first_name: '', last_name: '', email: '', mobile_phone: '' });
-      const accountMessage = result?.assignment_pending
-        ? 'Invitation sent. Student Portal access will be assigned after acceptance.'
-        : 'Student invitation sent. Student Portal-only access assigned.';
+      const accountMessage = result?.invitation_pending
+        ? 'The student account setup was saved, but the platform invitation provider is still processing. The Black Point setup email was sent so the student can use Forgot Password once the account appears.'
+        : result?.assignment_pending
+          ? 'Student invitation sent. Student Portal access will attach when the pending account becomes available.'
+          : 'Student invitation sent. Student Portal-only access assigned.';
       if (result?.email_sent === false) {
         toast.error(`${accountMessage} Welcome email delivery failed: ${result?.email_error || 'verify the email address.'}`);
       } else {
@@ -278,7 +280,9 @@ export default function ManageStudents() {
             <div className="rounded border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900">This account will receive only the Student Portal. It will not receive CAD, Officer, HR, Trainer, Accounting, or Admin access.</div>
             <div className="flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
-              <Button type="submit" disabled={createStudentMutation.isPending} className="bg-violet-700 hover:bg-violet-800">{createStudentMutation.isPending ? 'Creating...' : 'Invite Student'}</Button>
+              <Button type="submit" disabled={createStudentMutation.isPending} className="bg-violet-700 hover:bg-violet-800">
+                {createStudentMutation.isPending ? 'Sending Invitation...' : 'Invite Student'}
+              </Button>
             </div>
           </form>
         </DialogContent>
