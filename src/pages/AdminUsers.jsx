@@ -94,7 +94,7 @@ export default function AdminUsers() {
 
   const { data: users, isLoading, error } = useQuery({
     queryKey: ['portalUsers', user?.role, ...(user?.additional_roles || [])],
-    queryFn: async () => await base44.entities.User.list() || [],
+    queryFn: async () => await base44.entities.User.list(undefined, 1000) || [],
     enabled: hasAccess,
     retry: 3,
     staleTime: 0,

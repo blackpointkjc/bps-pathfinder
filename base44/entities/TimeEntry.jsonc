@@ -36,6 +36,33 @@
       "type": "number",
       "description": "GPS longitude where officer clocked out"
     },
+    "on_break": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the officer is currently on an unpaid break"
+    },
+    "break_started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the current break started (null when not on break)"
+    },
+    "break_periods": {
+      "type": "array",
+      "description": "Completed break periods with start and end timestamps",
+      "items": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
     "notes": {
       "type": "string",
       "description": "Additional notes about the shift"

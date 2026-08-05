@@ -8,7 +8,7 @@ Deno.serve(async (req) => {
     const authorized = !!user && (user.role === 'admin' || roles.has('trainer') || roles.has('full_access'));
     if (!authorized) return Response.json({ error: 'Trainer access required', users: [] }, { status: 403 });
 
-    const allUsers = await base44.asServiceRole.entities.User.list();
+    const allUsers = await base44.asServiceRole.entities.User.list(undefined, 1000);
     const users = (allUsers || [])
       .filter((entry: any) => !entry.termination_date)
       .map((entry: any) => ({

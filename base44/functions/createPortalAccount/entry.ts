@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
     let users: any[] = [];
     let directoryError = '';
     try {
-      users = await base44.asServiceRole.entities.User.list();
+      users = await base44.asServiceRole.entities.User.list(undefined, 1000);
     } catch (error) {
       directoryError = error?.message || 'Unable to read the user directory';
       console.error('Unable to read user directory during portal account creation', error);
@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
 
       for (let attempt = 0; attempt < 10 && !portalUser?.id; attempt += 1) {
         if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 600));
-        const refreshed = await base44.asServiceRole.entities.User.list();
+        const refreshed = await base44.asServiceRole.entities.User.list(undefined, 1000);
         portalUser = (refreshed || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail);
       }
     }
