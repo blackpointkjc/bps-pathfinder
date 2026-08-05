@@ -109,7 +109,13 @@ export default function TrainingComplianceTracker() {
         });
         let status = 'missing';
         let expiration_date = cert?.expiration_date || assignment?.expiration_date || null;
-        if (assignment) status = getEffectiveStatus(assignment);
+        if (assignment) {
+          status = assignment.status === 'approved'
+            ? 'approved'
+            : assignment.due_date && isPast(parseISO(assignment.due_date))
+              ? 'overdue'
+              : assignment.status;
+        }
         if (completion || cert) status = 'approved';
         if (cert?.status === 'pending') status = 'pending_review';
         if (expiration_date) {
