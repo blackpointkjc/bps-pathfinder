@@ -120,16 +120,33 @@ export function DashboardDataProvider({ children }) {
         }
     }, []);
 
-    // Initial load
-    useEffect(() => {
-        loadData(true);
+    // Pull GRAC into DispatchCall with the local backend function, then refresh the CAD.
+    // This uses direct HTTP/server code and does not consume integration credits.
+    const syncGrac = useCallback(async () => {
+        try {
+            await base44.functions.invoke('ingestGractivecalls', {});
+        } catch (error) {
+            console.warn('[CAD] GRAC sync failed:', error?.message);
+        }
+        await loadData(true);
     }, [loadData]);
 
-    // Auto-poll every 2 minutes
+    // Initial sync/load
+    useEffect(() => {
+        syncGrac();
+    }, [syncGrac]);
+
+    // Refresh local entity data every 30 seconds.
     useEffect(() => {
         const id = setInterval(() => loadData(false), POLL_INTERVAL_MS);
         return () => clearInterval(id);
     }, [loadData]);
+
+    // Re-ingest GRAC every 2 minutes while the CAD is open.
+    useEffect(() => {
+        const id = setInterval(syncGrac, 120_000);
+        return () => clearInterval(id);
+    }, [syncGrac]);
 
     // Clear stale rate limit state on mount (in-memory ref resets anyway, but clear UI state)
     useEffect(() => {
