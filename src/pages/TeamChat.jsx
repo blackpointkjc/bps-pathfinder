@@ -62,6 +62,7 @@ export default function TeamChat() {
   const getUserRecord = (email) => allUsers.find(u => String(u.email).toLowerCase() === String(email || '').toLowerCase());
 
   const getMessageEmail = (msg) => msg.sender_email || msg.created_by || '';
+  const getMessageSenderKey = (msg) => msg.sender_email || msg.sender_name || msg.created_by || msg.id;
 
   const getUserPhoto = (msg) => msg.sender_photo_url || getUserRecord(getMessageEmail(msg))?.profile_photo_url;
 
@@ -69,7 +70,7 @@ export default function TeamChat() {
     const senderEmail = getMessageEmail(msg);
     const sender = getUserRecord(senderEmail);
     const directoryName = sender?.first_name && sender?.last_name ? `${sender.first_name} ${sender.last_name}` : sender?.full_name;
-    return directoryName || msg.sender_name || senderEmail || 'Unknown User';
+    return msg.sender_email ? (directoryName || msg.sender_name || senderEmail || 'Unknown User') : (msg.sender_name || directoryName || senderEmail || 'Unknown User');
   };
 
   const formatMessageDateTime = (value) => {
@@ -137,11 +138,10 @@ export default function TeamChat() {
             <div className="space-y-4">
               {reversedMessages?.map((msg, index) => {
                 const senderEmail = getMessageEmail(msg);
-                const previousSender = index > 0 ? getMessageEmail(reversedMessages[index - 1]) : null;
-                const nextSender = index < reversedMessages.length - 1 ? getMessageEmail(reversedMessages[index + 1]) : null;
-                const isOwnMessage = senderEmail.toLowerCase() === String(user?.email || '').toLowerCase();
-                const showName = index === 0 || previousSender !== senderEmail;
-                const showTime = index === reversedMessages.length - 1 || nextSender !== senderEmail;
+                const senderKey = getMessageSenderKey(msg);
+                const isOwnMessage = senderEmail.toLowerCase() === String(user?.email || '').toLowerCase() || (!msg.sender_email && msg.sender_name === senderName);
+                const showName = true;
+                const showTime = true;
                 const userPhone = getUserPhone(senderEmail);
                 
                 return (
