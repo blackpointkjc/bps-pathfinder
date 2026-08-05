@@ -120,170 +120,170 @@ body {
   color: #0f172a;
 }
 
-.cad-app main {
+.cad-app main.light-workspace {
   color: #0f172a;
 }
 
-.cad-app main a:focus-visible,
-.cad-app main button:focus-visible,
-.cad-app main input:focus-visible,
-.cad-app main textarea:focus-visible,
-.cad-app main [role="button"]:focus-visible {
+.cad-app main.light-workspace a:focus-visible,
+.cad-app main.light-workspace button:focus-visible,
+.cad-app main.light-workspace input:focus-visible,
+.cad-app main.light-workspace textarea:focus-visible,
+.cad-app main.light-workspace [role="button"]:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
 
-.cad-app main input,
-.cad-app main textarea,
-.cad-app main select {
+.cad-app main.light-workspace input,
+.cad-app main.light-workspace textarea,
+.cad-app main.light-workspace select {
   color: #0f172a;
 }
 
-.cad-app main input::placeholder,
-.cad-app main textarea::placeholder {
+.cad-app main.light-workspace input::placeholder,
+.cad-app main.light-workspace textarea::placeholder {
   color: #64748b;
   opacity: 1;
 }
 
-.cad-app main .text-slate-400 { color: #64748b !important; }
-.cad-app main .text-slate-500 { color: #475569 !important; }
-.cad-app main .text-slate-600 { color: #334155 !important; }
-.cad-app main .text-slate-700 { color: #1e293b !important; }
-.cad-app main .text-slate-800,
-.cad-app main .text-slate-900 { color: #0f172a !important; }
+.cad-app main.light-workspace .text-slate-400 { color: #64748b !important; }
+.cad-app main.light-workspace .text-slate-500 { color: #475569 !important; }
+.cad-app main.light-workspace .text-slate-600 { color: #334155 !important; }
+.cad-app main.light-workspace .text-slate-700 { color: #1e293b !important; }
+.cad-app main.light-workspace .text-slate-800,
+.cad-app main.light-workspace .text-slate-900 { color: #0f172a !important; }
 
 /* Global internal-page normalization. Older pages used many bright gradients and
    assumed a white canvas; keep the shell dark but make every workspace readable. */
-.cad-app main > * {
+.cad-app main.light-workspace > * {
   min-height: 100%;
 }
 
-.cad-app main [class*="min-h-screen"] {
+.cad-app main.light-workspace [class*="min-h-screen"] {
   background-color: #eef2f7 !important;
   background-image: none !important;
   color: #0f172a !important;
 }
 
-.cad-app main [class*="bg-gradient-to-"] {
+.cad-app main.light-workspace [class*="bg-gradient-to-"] {
   background-image: none !important;
 }
 
-.cad-app main .bg-white,
-.cad-app main [class*="from-purple-50"],
-.cad-app main [class*="from-indigo-50"],
-.cad-app main [class*="from-red-50"],
-.cad-app main [class*="from-rose-50"],
-.cad-app main [class*="from-amber-50"],
-.cad-app main [class*="from-orange-50"],
-.cad-app main [class*="from-blue-50"],
-.cad-app main [class*="from-cyan-50"],
-.cad-app main [class*="from-green-50"],
-.cad-app main [class*="from-emerald-50"],
-.cad-app main [class*="from-violet-50"],
-.cad-app main [class*="from-pink-50"] {
+.cad-app main.light-workspace .bg-white,
+.cad-app main.light-workspace [class*="from-purple-50"],
+.cad-app main.light-workspace [class*="from-indigo-50"],
+.cad-app main.light-workspace [class*="from-red-50"],
+.cad-app main.light-workspace [class*="from-rose-50"],
+.cad-app main.light-workspace [class*="from-amber-50"],
+.cad-app main.light-workspace [class*="from-orange-50"],
+.cad-app main.light-workspace [class*="from-blue-50"],
+.cad-app main.light-workspace [class*="from-cyan-50"],
+.cad-app main.light-workspace [class*="from-green-50"],
+.cad-app main.light-workspace [class*="from-emerald-50"],
+.cad-app main.light-workspace [class*="from-violet-50"],
+.cad-app main.light-workspace [class*="from-pink-50"] {
   background-color: #ffffff !important;
 }
 
-.cad-app main .bg-slate-50,
-.cad-app main .bg-slate-100,
-.cad-app main [class*="bg-blue-50"],
-.cad-app main [class*="bg-purple-50"],
-.cad-app main [class*="bg-indigo-50"],
-.cad-app main [class*="bg-red-50"],
-.cad-app main [class*="bg-rose-50"],
-.cad-app main [class*="bg-amber-50"],
-.cad-app main [class*="bg-orange-50"],
-.cad-app main [class*="bg-green-50"],
-.cad-app main [class*="bg-emerald-50"],
-.cad-app main [class*="bg-cyan-50"],
-.cad-app main [class*="bg-violet-50"] {
+.cad-app main.light-workspace .bg-slate-50,
+.cad-app main.light-workspace .bg-slate-100,
+.cad-app main.light-workspace [class*="bg-blue-50"],
+.cad-app main.light-workspace [class*="bg-purple-50"],
+.cad-app main.light-workspace [class*="bg-indigo-50"],
+.cad-app main.light-workspace [class*="bg-red-50"],
+.cad-app main.light-workspace [class*="bg-rose-50"],
+.cad-app main.light-workspace [class*="bg-amber-50"],
+.cad-app main.light-workspace [class*="bg-orange-50"],
+.cad-app main.light-workspace [class*="bg-green-50"],
+.cad-app main.light-workspace [class*="bg-emerald-50"],
+.cad-app main.light-workspace [class*="bg-cyan-50"],
+.cad-app main.light-workspace [class*="bg-violet-50"] {
   background-color: #f8fafc !important;
 }
 
-.cad-app main [class*="rounded"].shadow,
-.cad-app main [class*="rounded"].shadow-sm,
-.cad-app main [class*="rounded"].shadow-md,
-.cad-app main [class*="rounded"].shadow-lg,
-.cad-app main [class*="rounded"].shadow-xl {
+.cad-app main.light-workspace [class*="rounded"].shadow,
+.cad-app main.light-workspace [class*="rounded"].shadow-sm,
+.cad-app main.light-workspace [class*="rounded"].shadow-md,
+.cad-app main.light-workspace [class*="rounded"].shadow-lg,
+.cad-app main.light-workspace [class*="rounded"].shadow-xl {
   border-color: #cbd5e1 !important;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.08) !important;
 }
 
-.cad-app main [class*="border-purple"],
-.cad-app main [class*="border-indigo"],
-.cad-app main [class*="border-blue"],
-.cad-app main [class*="border-cyan"],
-.cad-app main [class*="border-red"],
-.cad-app main [class*="border-rose"],
-.cad-app main [class*="border-amber"],
-.cad-app main [class*="border-orange"],
-.cad-app main [class*="border-green"] {
+.cad-app main.light-workspace [class*="border-purple"],
+.cad-app main.light-workspace [class*="border-indigo"],
+.cad-app main.light-workspace [class*="border-blue"],
+.cad-app main.light-workspace [class*="border-cyan"],
+.cad-app main.light-workspace [class*="border-red"],
+.cad-app main.light-workspace [class*="border-rose"],
+.cad-app main.light-workspace [class*="border-amber"],
+.cad-app main.light-workspace [class*="border-orange"],
+.cad-app main.light-workspace [class*="border-green"] {
   border-color: #cbd5e1 !important;
 }
 
-.cad-app main button[class*="bg-purple-"],
-.cad-app main button[class*="bg-indigo-"],
-.cad-app main button[class*="bg-blue-"],
-.cad-app main button[class*="bg-cyan-"],
-.cad-app main button[class*="bg-green-"],
-.cad-app main a button[class*="bg-purple-"],
-.cad-app main a button[class*="bg-indigo-"],
-.cad-app main a button[class*="bg-blue-"],
-.cad-app main a button[class*="bg-cyan-"],
-.cad-app main a button[class*="bg-green-"] {
+.cad-app main.light-workspace button[class*="bg-purple-"],
+.cad-app main.light-workspace button[class*="bg-indigo-"],
+.cad-app main.light-workspace button[class*="bg-blue-"],
+.cad-app main.light-workspace button[class*="bg-cyan-"],
+.cad-app main.light-workspace button[class*="bg-green-"],
+.cad-app main.light-workspace a button[class*="bg-purple-"],
+.cad-app main.light-workspace a button[class*="bg-indigo-"],
+.cad-app main.light-workspace a button[class*="bg-blue-"],
+.cad-app main.light-workspace a button[class*="bg-cyan-"],
+.cad-app main.light-workspace a button[class*="bg-green-"] {
   background-color: #1e3a5f !important;
   border-color: #1e3a5f !important;
   color: #ffffff !important;
 }
 
-.cad-app main button[class*="bg-red-"],
-.cad-app main a button[class*="bg-red-"] {
+.cad-app main.light-workspace button[class*="bg-red-"],
+.cad-app main.light-workspace a button[class*="bg-red-"] {
   background-color: #b91c1c !important;
   border-color: #b91c1c !important;
   color: #ffffff !important;
 }
 
-.cad-app main button[class*="bg-amber-"],
-.cad-app main button[class*="bg-orange-"],
-.cad-app main a button[class*="bg-amber-"],
-.cad-app main a button[class*="bg-orange-"] {
+.cad-app main.light-workspace button[class*="bg-amber-"],
+.cad-app main.light-workspace button[class*="bg-orange-"],
+.cad-app main.light-workspace a button[class*="bg-amber-"],
+.cad-app main.light-workspace a button[class*="bg-orange-"] {
   background-color: #92400e !important;
   border-color: #92400e !important;
   color: #ffffff !important;
 }
 
-.cad-app main h1,
-.cad-app main h2,
-.cad-app main h3,
-.cad-app main h4,
-.cad-app main h5,
-.cad-app main h6 {
+.cad-app main.light-workspace h1,
+.cad-app main.light-workspace h2,
+.cad-app main.light-workspace h3,
+.cad-app main.light-workspace h4,
+.cad-app main.light-workspace h5,
+.cad-app main.light-workspace h6 {
   color: #0f172a;
 }
 
-.cad-app main p,
-.cad-app main label,
-.cad-app main td,
-.cad-app main th,
-.cad-app main li {
+.cad-app main.light-workspace p,
+.cad-app main.light-workspace label,
+.cad-app main.light-workspace td,
+.cad-app main.light-workspace th,
+.cad-app main.light-workspace li {
   text-shadow: none !important;
 }
 
-.cad-app main input,
-.cad-app main textarea,
-.cad-app main select,
-.cad-app main [role="combobox"] {
+.cad-app main.light-workspace input,
+.cad-app main.light-workspace textarea,
+.cad-app main.light-workspace select,
+.cad-app main.light-workspace [role="combobox"] {
   background-color: #ffffff !important;
   border-color: #94a3b8 !important;
   color: #0f172a !important;
 }
 
-.cad-app main table {
+.cad-app main.light-workspace table {
   background-color: #ffffff;
   color: #0f172a;
 }
 
-.cad-app main thead {
+.cad-app main.light-workspace thead {
   background-color: #e2e8f0 !important;
   background-image: none !important;
 }
