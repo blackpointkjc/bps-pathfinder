@@ -364,7 +364,7 @@ function CommandDashboardInner() {
 
                     <div className="hidden md:flex items-center bg-slate-900 border-b border-slate-700 px-3 py-1 text-[9px] font-mono text-slate-500 tracking-widest flex-none">
                         <div className="w-8 flex-shrink-0">PRI</div>
-                        <div className="w-16 flex-shrink-0">TIME (ET)</div>
+                        <div className="w-36 flex-shrink-0">CAD / REF · TIME (ET)</div>
                         <div className="w-20 flex-shrink-0 hidden md:block">ELAPSED</div>
                         <div className="flex-1">INCIDENT / LOCATION</div>
                         <div className="w-24 flex-shrink-0 hidden lg:block">AGENCY</div>
