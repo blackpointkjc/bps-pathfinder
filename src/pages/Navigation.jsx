@@ -482,6 +482,26 @@ export default function Navigation() {
         toast.success('Map centered on your current location');
     };
 
+    // Zoom out so every unit with GPS coordinates is visible on the map at once.
+    const fitAllUnits = () => {
+        const coords = [];
+        if (currentLocation && Number.isFinite(currentLocation[0]) && Number.isFinite(currentLocation[1])) {
+            coords.push([currentLocation[0], currentLocation[1]]);
+        }
+        for (const u of mapVisibleUnits) {
+            if (Number.isFinite(Number(u.latitude)) && Number.isFinite(Number(u.longitude))) {
+                coords.push([Number(u.latitude), Number(u.longitude)]);
+            }
+        }
+        if (coords.length === 0) {
+            toast.error('No units with GPS coordinates to display');
+            return;
+        }
+        setFitBounds(coords);
+        window.setTimeout(() => setFitBounds(null), 800);
+        toast.success(`Fitting ${coords.length} unit${coords.length === 1 ? '' : 's'} on map`);
+    };
+
     const fetchOtherUnits = async () => {
         try {
             const [activeOfficers, users] = await Promise.all([
@@ -656,6 +676,7 @@ export default function Navigation() {
                     currentUserId={currentUser?.id}
                     speed={speed}
                     mapCenter={mapCenter}
+                    fitBounds={fitBounds}
                     isNavigating={isNavigating}
                     baseMapType={jurisdictionFilters.baseMapType}
                     jurisdictionFilters={jurisdictionFilters}
@@ -1018,6 +1039,14 @@ export default function Navigation() {
             >
                 <div className="flex flex-col overflow-hidden rounded-xl border border-[#31475e] bg-[#07111f]/95 shadow-2xl backdrop-blur-md">
                     {[
+                        {
+                            key: 'fitunits',
+                            onClick: fitAllUnits,
+                            title: 'Zoom out to show ALL units on the map',
+                            icon: <Users className="h-4 w-4" />,
+                            active: false,
+                            disabled: mapVisibleUnits.length === 0,
+                        },
                         {
                             key: 'recenter',
                             onClick: recenter,
