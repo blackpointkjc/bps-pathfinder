@@ -77,6 +77,7 @@ export default function CallHistory() {
 
     const loadAll = async () => {
         try {
+            await base44.functions.invoke('archiveOldCalls', {}).catch(error => console.warn('[HISTORY] archive pass failed:', error?.message));
             const [active, archived] = await Promise.all([
                 base44.entities.DispatchCall.list('-created_date', 500),
                 base44.entities.CallHistory.list('-archived_date', 500),
