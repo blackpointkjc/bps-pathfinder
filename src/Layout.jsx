@@ -538,6 +538,16 @@ export default function Layout({ children, currentPageName }) {
   });
   const [activeCenter, setActiveCenterState] = useState(() => localStorage.getItem('bps-active-center') || 'cad');
   const [unreadCounts, setUnreadCounts] = useState({});
+  const mainScrollRef = useRef(null);
+  const scrollPositionsRef = useRef({});
+  const centerLastPagesRef = useRef(() => ({}));
+  if (typeof centerLastPagesRef.current === 'function') {
+    try {
+      centerLastPagesRef.current = JSON.parse(sessionStorage.getItem('bps-mobile-center-pages') || '{}');
+    } catch {
+      centerLastPagesRef.current = {};
+    }
+  }
   const unreadStorageKey = `bps-unread-counts:${String(user?.email || user?.id || 'guest').toLowerCase()}`;
 
   const setActiveCenter = center => {
@@ -600,6 +610,15 @@ export default function Layout({ children, currentPageName }) {
 
   useEffect(() => {
     if (!currentPageName) return;
+    const pageCenter = (PAGE_TO_CENTERS[currentPageName] || []).find(center => ['cad', 'officer'].includes(center));
+    if (pageCenter) {
+      centerLastPagesRef.current[pageCenter] = currentPageName;
+      sessionStorage.setItem('bps-mobile-center-pages', JSON.stringify(centerLastPagesRef.current));
+    }
+    window.requestAnimationFrame(() => {
+      const savedPosition = Number(scrollPositionsRef.current[currentPageName] || 0);
+      mainScrollRef.current?.scrollTo({ top: savedPosition, behavior: 'auto' });
+    });
     setUnreadCounts(current => {
       if (!current[currentPageName]) return current;
       const next = { ...current, [currentPageName]: 0 };
@@ -832,11 +851,20 @@ export default function Layout({ children, currentPageName }) {
         <button onClick={() => { stopAllAlerts(); setActiveAlert(null); }} className="rounded border border-red-500/50 px-2 py-1 text-xs font-bold hover:bg-red-900">ACKNOWLEDGE</button>
       </div>}
 
-      <main data-page={currentPageName} className={`mobile-field-content min-h-0 flex-1 overflow-auto ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : nightMode ? 'night-workspace bg-[#0b1420] text-slate-100' : 'light-workspace bg-[#eef2f7] text-slate-900'}`}>{children}</main>
+      <main ref={mainScrollRef} data-page={currentPageName} className={`mobile-field-content min-h-0 flex-1 overflow-auto ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : nightMode ? 'night-workspace bg-[#0b1420] text-slate-100' : 'light-workspace bg-[#eef2f7] text-slate-900'}`}>{children}</main>
     </section>
     <MobileFieldNav
       currentPageName={currentPageName}
       unreadCounts={unreadCounts}
+      centerDestinations={{
+        cad: centerLastPagesRef.current.cad || 'CommandDashboard',
+        officer: centerLastPagesRef.current.officer || 'Dashboard',
+      }}
+      onTabNavigate={() => {
+        if (mainScrollRef.current && currentPageName) {
+          scrollPositionsRef.current[currentPageName] = mainScrollRef.current.scrollTop;
+        }
+      }}
       onReports={() => { setActiveCenter('officer'); setMobileSection('reports'); setMobileOpen(true); }}
       onMenu={() => { setMobileSection(null); if (!['cad', 'officer', 'supervisor'].includes(activeCenter)) setActiveCenter('cad'); setMobileOpen(true); }}
     />
