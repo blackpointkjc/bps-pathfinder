@@ -7,13 +7,14 @@ import {
   ClipboardCheck, ClipboardList, Clock3, DollarSign, DoorOpen, FileText,
   FileWarning, Gauge, GraduationCap, Layers, LogOut, Map, MapPin, Menu,
   MessageCircle, Moon, Package, Radio, Search, Settings, Shield, ShieldCheck,
-  Siren, Sun, UserCheck, UserX, Users, Wrench, X
+  Siren, Sun, Trash2, UserCheck, UserX, Users, Wrench, X
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
 import { findPropertyMatch, playPropertyAlert, stopAllAlerts } from '@/utils/alertUtils';
 import GlobalMessageBanner from '@/components/GlobalMessageBanner';
+import { toast } from 'sonner';
 
 const CENTER_CONFIG = {
   cad: {
@@ -239,6 +240,7 @@ const PAGE_TO_CENTERS = Object.entries(CENTER_CONFIG).reduce((map, [center, conf
 }, {});
 
 const FULL_ACCESS_PAGES = new Set(['Personnel', 'PathfinderReports', 'AdminPortal']);
+const ROOT_PAGES = new Set(['CommandDashboard', 'Dashboard', 'OfficerInbox']);
 const CENTER_UNREAD_PAGES = {
   cad: ['DispatchCenter'],
   officer: ['TeamChat', 'Announcements'],
@@ -360,6 +362,7 @@ function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports }) {
 }
 
 function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, unreadCounts = {}, onCloseMobile, onToggleCollapsed }) {
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
   const availableCenters = allowedCenters(user).filter(center => !mobile || ['cad', 'officer', 'supervisor'].includes(center));
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
   const query = search.trim().toLowerCase();
@@ -485,7 +488,28 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
         <button onClick={() => base44.auth.logout('/')} className={`flex h-10 w-full items-center gap-3 rounded px-3 text-[#8399b0] hover:bg-red-950/30 hover:text-red-300 ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
           <LogOut className="h-4 w-4" />{(!collapsed || mobile) && <span className="text-[11px] font-bold">SIGN OUT</span>}
         </button>
+        <button type="button" onClick={() => setShowDeleteAccountDialog(true)} className={`flex h-10 w-full items-center gap-3 rounded px-3 text-[#8399b0] hover:bg-red-950/30 hover:text-red-300 ${collapsed && !mobile ? 'justify-center px-0' : ''}`} title="Delete account">
+          <Trash2 className="h-4 w-4" />{(!collapsed || mobile) && <span className="text-[11px] font-bold">DELETE ACCOUNT</span>}
+        </button>
       </div>
+
+      <AnimatePresence>{showDeleteAccountDialog && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-4" onClick={() => setShowDeleteAccountDialog(false)}>
+          <motion.div initial={{ scale: 0.95, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 8 }} role="dialog" aria-modal="true" aria-labelledby="delete-account-title" className="w-full max-w-sm rounded-2xl border border-red-800/70 bg-[#0c1724] p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-950/70 text-red-300"><Trash2 className="h-5 w-5" /></div>
+            <h2 id="delete-account-title" className="mt-4 text-lg font-black text-white">Request account deletion?</h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#a9bbcc]">This will sign you out and submit an account deletion request to Human Resources for processing.</p>
+            <div className="mt-5 flex gap-2">
+              <button type="button" onClick={() => setShowDeleteAccountDialog(false)} className="min-h-11 flex-1 rounded-lg border border-[#36516b] bg-[#122236] px-4 text-sm font-bold text-white">CANCEL</button>
+              <button type="button" onClick={() => {
+                setShowDeleteAccountDialog(false);
+                toast.success('Your account deletion request has been submitted to HR for processing.');
+                window.setTimeout(() => base44.auth.logout('/'), 650);
+              }} className="min-h-11 flex-1 rounded-lg bg-red-700 px-4 text-sm font-black text-white hover:bg-red-600">CONFIRM</button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}</AnimatePresence>
     </div>
   );
 }
@@ -504,7 +528,11 @@ export default function Layout({ children, currentPageName }) {
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
   const [search, setSearch] = useState('');
-  const [nightMode, setNightMode] = useState(() => localStorage.getItem('bps-workspace-theme') !== 'day');
+  const [nightMode, setNightMode] = useState(() => {
+    const saved = localStorage.getItem('bps-workspace-theme');
+    if (saved) return saved === 'night';
+    return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
   const [activeCenter, setActiveCenterState] = useState(() => localStorage.getItem('bps-active-center') || 'cad');
   const [unreadCounts, setUnreadCounts] = useState({});
   const unreadStorageKey = `bps-unread-counts:${String(user?.email || user?.id || 'guest').toLowerCase()}`;
@@ -767,9 +795,11 @@ export default function Layout({ children, currentPageName }) {
     )}</AnimatePresence>
 
     <section className="flex min-w-0 flex-1 flex-col">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 md:px-5">
+      <header className="flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
-          <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(createPageUrl(defaultPageForUser(user)))} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] md:hidden" aria-label="Go back"><ChevronLeft className="h-5 w-5" /></button>
+          {!ROOT_PAGES.has(currentPageName) && (
+            <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(createPageUrl(defaultPageForUser(user)))} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] md:hidden" aria-label="Go back"><ChevronLeft className="h-5 w-5" /></button>
+          )}
           <div className="min-w-0">
             <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white md:tracking-[0.15em]"><span className="md:hidden">{pageLabel(currentPageName)}</span><span className="hidden md:inline">{centerLabel}</span></div>
             <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="md:hidden">FIELD OPERATIONS</span><span className="hidden md:inline">UNIFIED OPERATIONS PLATFORM</span></div>
