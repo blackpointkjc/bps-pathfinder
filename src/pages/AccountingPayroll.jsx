@@ -296,6 +296,20 @@ export default function AccountingPayroll() {
       const payrollEntries = [];
 
       for (const [email, data] of Object.entries(officerData)) {
+        const existingEntry = payrollEntries.find(entry =>
+          entry.officer_email === email &&
+          entry.pay_period_start === selectedPeriodStart &&
+          entry.pay_period_end === selectedPeriodEnd
+        );
+        if (existingEntry) {
+          issues.push({
+            severity: 'medium',
+            officer: email,
+            message: `Payroll already exists for ${selectedPeriod.period_name}; duplicate skipped`
+          });
+          continue;
+        }
+
         const officer = data.officer;
         const baseRate = officer.hourly_rate;
         
