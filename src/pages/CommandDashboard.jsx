@@ -389,7 +389,7 @@ function CommandDashboardInner() {
                                     </div>
 
                                     <div className="cad-call-time w-24 flex-shrink-0 font-mono text-[10px] text-slate-400 pt-0.5">
-                                        <div className="truncate font-bold text-[#7ec1ff]">{/^[A-L]\d{1,8}$/i.test(String(call.call_id || '')) ? call.call_id : 'ASSIGNING…'}</div>
+                                        <div className="truncate font-bold text-[#7ec1ff]">{call.agency_cad_number || call.bps_reference || call.call_id || 'ASSIGNING…'}</div>
                                         <div>{fmtTime(call.time_received)}</div>
                                     </div>
 
