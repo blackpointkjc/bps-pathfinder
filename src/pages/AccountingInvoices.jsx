@@ -36,10 +36,19 @@ export default function AccountingInvoices() {
   const { data: clients = [], isLoading: clientsLoading, error: clientsError } = useQuery({
     queryKey: ['accountingClientDirectory'],
     queryFn: async () => {
-      const response = await base44.functions.invoke('getClientUsers', {});
-      const payload = response?.data || response || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload.clients || [];
+      // Load the directory directly so the selector still works if the helper
+      // function is unavailable or returns a wrapped response.
+      const allUsers = await base44.entities.User.list();
+      return (allUsers || [])
+        .filter(entry => {
+          const entryRoles = (entry.additional_roles || []).map(role => String(role).toLowerCase());
+          return !entry.termination_date && (
+            entryRoles.includes('client') ||
+            String(entry.rank || '').toLowerCase() === 'client' ||
+            String(entry.user_type || '').toLowerCase() === 'client'
+          );
+        })
+        .sort((a, b) => (a.last_name || '').localeCompare(b.last_name || ''));
     },
     enabled: isAccountingRole,
     staleTime: 30000,
