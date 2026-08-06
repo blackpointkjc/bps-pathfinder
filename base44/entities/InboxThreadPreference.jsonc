@@ -11,6 +11,11 @@
     "hidden": {
       "type": "boolean",
       "default": true
+    },
+    "hidden_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the user archived the conversation"
     }
   },
   "required": [
