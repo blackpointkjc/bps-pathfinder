@@ -604,10 +604,10 @@ export default function DailyActivityReports() {
               <div class="field-label">Officer Signature</div>
               ${report.signature_url
                 ? `<div class="sig-line" style="min-height:40px;"><img src="${report.signature_url}" alt="Signature" style="height:36px;object-fit:contain;" /></div>`
-                : `<div class="sig-line">${officerSig}</div>`
+                : `<div class="sig-line"></div>`
               }
               <div class="sig-details">
-                ${officerName} | ${report.officer_ip_address ? `IP: ${report.officer_ip_address} | ` : ''}Signed (Zulu): ${submittedZulu || 'N/A'}
+                Date: ____________________
               </div>
             </div>
           </div>
