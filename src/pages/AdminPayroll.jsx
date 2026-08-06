@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { calculatePaidHours } from "@/lib/payrollCalculations";
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
@@ -173,12 +174,6 @@ export default function AdminPayroll() {
     return null;
   };
 
-  const calculateHours = (clockIn, clockOut) => {
-    if (!clockIn || !clockOut) return 0;
-    const diff = parseISO(clockOut).getTime() - parseISO(clockIn).getTime(); // Use parseISO
-    return diff / 1000 / 60 / 60; // Convert to hours
-  };
-
   const getPayrollData = () => {
     const filtered = timeEntries; 
 
@@ -191,7 +186,7 @@ export default function AdminPayroll() {
         };
       }
       
-      const hours = calculateHours(entry.clock_in, entry.clock_out);
+      const hours = calculatePaidHours(entry);
       const locationName = entry.location ? entry.location.split(' - ')[0] : 'N/A';
       
       grouped[entry.officer_email].entries.push({
