@@ -112,7 +112,7 @@ const destinationIcon = new L.DivIcon({
 });
 
 // Component to handle map center updates
-function MapController({ center, routeBounds, mapCenter, isNavigating, heading }) {
+function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating, heading }) {
     const map = useMap();
     const prevCenterRef = useRef(center);
     const userInteractingRef = useRef(false);

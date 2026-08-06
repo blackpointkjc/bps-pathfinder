@@ -44,6 +44,7 @@ export default function AccountingProfit() {
     queryFn: () => base44.entities.PayrollEntry.list('-pay_date', 1000),
     enabled: isAccountingRole,
     initialData: [],
+    refetchInterval: 10000,
   });
 
   const { data: expenseReports } = useQuery({
@@ -99,9 +100,9 @@ export default function AccountingProfit() {
   });
 
   const filteredExpenses = expenseReports.filter(expense => {
-    if (!expense.date || expense.status !== 'approved') return false;
-    const expenseDate = new Date(expense.date);
-    return expenseDate >= new Date(startDate) && expenseDate <= new Date(endDate);
+    const expenseDate = expense.expense_date || expense.date || expense.reimbursed_date;
+    if (!expenseDate || !['approved', 'reimbursed'].includes(String(expense.status || '').toLowerCase())) return false;
+    return expenseDate >= startDate && expenseDate <= endDate;
   });
 
   const filteredPTO = timeOffRequests.filter(pto => {
@@ -194,19 +195,9 @@ export default function AccountingProfit() {
   // Calculate totals using invoice revenue (actual billed amount)
   const totalRevenue = invoiceRevenue > 0 ? invoiceRevenue : Object.values(revenueBySite).reduce((sum, val) => sum + val, 0);
   
-  // Only count payroll for officers who actually worked and generated revenue
-  const officersWithWork = new Set();
-  Object.keys(payrollByOfficer).forEach(officer => {
-    if (payrollByOfficer[officer] > 0) {
-      officersWithWork.add(officer);
-    }
-  });
-  
-  const totalPayroll = filteredPayroll.reduce((sum, entry) => {
-    const officer = officers.find(o => o.email === entry.officer_email);
-    const officerName = officer ? `${officer.first_name} ${officer.last_name}` : null;
-    return officersWithWork.has(officerName) ? sum + (entry.gross_pay || 0) : sum;
-  }, 0);
+  // Every paid employee is a company labor cost, including office and support staff
+  // who do not generate billable site revenue.
+  const totalPayroll = filteredPayroll.reduce((sum, entry) => sum + (Number(entry.gross_pay) || 0), 0);
   
   const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
   const employerTaxes = totalPayroll * 0.0765; // 7.65% (Social Security 6.2% + Medicare 1.45%)
