@@ -792,10 +792,16 @@ export default function AccountingPayroll() {
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Payroll Management</h1>
-          <p className="text-slate-600">Generate and manage payroll with overtime & holiday calculations</p>
+          <h1 className="text-3xl font-bold text-slate-900">Payroll Center</h1>
+          <p className="text-slate-600">Process payroll, approve payments, and access payroll and client reports in one place</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          <Link to={createPageUrl("AdminPayroll")}>
+            <Button variant="outline">
+              <FileText className="w-4 h-4 mr-2" />
+              Time & Client Reports
+            </Button>
+          </Link>
           {(approvedEntries.length > 0 || draftEntries.length > 0) && (
             <Button variant="outline" onClick={() => generatePayrollReport(approvedEntries.length > 0 ? approvedEntries : draftEntries)}>
               <Printer className="w-4 h-4 mr-2" />
