@@ -80,6 +80,7 @@ export default function DispatchCenter() {
             syncingGracRef.current = true;
             try {
                 await base44.functions.invoke('ingestGractivecalls', {});
+                await base44.functions.invoke('archiveOldCalls', {}).catch(error => console.warn('CAD archive pass failed:', error?.message));
                 await loadActiveCalls();
             } catch (error) {
                 console.warn('GRAC live sync failed:', error?.message);
@@ -169,9 +170,11 @@ export default function DispatchCenter() {
                 const candidateHasCad = /^B\d+$/i.test(String(call.call_id || ''));
                 if (!current || (!currentHasCad && candidateHasCad)) uniqueCalls.set(key, call);
             }
-            const recentCalls = [...uniqueCalls.values()].filter(call =>
-                !['Cleared', 'Cancelled'].includes(call.status)
-            );
+            const recentCalls = [...uniqueCalls.values()].filter(call => {
+                const receivedAt = new Date(call.time_received || call.created_date).getTime();
+                const isFresh = Number.isFinite(receivedAt) && Date.now() - receivedAt <= 60 * 60 * 1000;
+                return isFresh && !['Cleared', 'Cancelled'].includes(call.status);
+            });
 
             recentCalls.sort((a, b) => {
                 const timeA = new Date(a.time_received || a.created_date);
