@@ -702,7 +702,7 @@ export default function Layout({ children, currentPageName }) {
           };
           if (!existingRecord) base44.entities.PropertyAlert.create({
             callId: call.id,
-            cadNumber: /^B\d+$/i.test(String(call.call_id || '')) ? call.call_id : '',
+            cadNumber: /^[A-L]\d{1,8}$/i.test(String(call.call_id || '')) ? call.call_id : '',
             propertyId: match.property.id,
             propertyName: match.property.name,
             callIncident: call.incident,
@@ -800,7 +800,7 @@ export default function Layout({ children, currentPageName }) {
               <div className="text-xl font-black text-white">{propertyAlert.property.name}</div>
             </div>
             <div className="ml-auto rounded border border-red-500/60 bg-red-950 px-3 py-1 font-mono text-sm font-black text-red-200">
-              {/^B\d+$/i.test(String(propertyAlert.call.call_id || '')) ? propertyAlert.call.call_id : 'CAD ASSIGNING'}
+              {/^[A-L]\d{1,8}$/i.test(String(propertyAlert.call.call_id || '')) ? propertyAlert.call.call_id : 'CAD ASSIGNING'}
             </div>
           </div>
           <div className="space-y-4 p-5">
