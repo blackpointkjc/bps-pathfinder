@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
 import { findPropertyMatch, playPropertyAlert, stopAllAlerts } from '@/utils/alertUtils';
 import GlobalMessageBanner from '@/components/GlobalMessageBanner';
+import AdminClientPreviewBar from '@/components/AdminClientPreviewBar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
