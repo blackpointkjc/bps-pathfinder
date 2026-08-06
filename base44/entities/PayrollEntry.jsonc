@@ -79,7 +79,16 @@
     },
     "qualified_overtime_premium": {
       "type": "number",
-      "description": "2026 Federal Law: Overtime premium (OT rate - regular rate) for tax deduction"
+      "description": "FLSA overtime premium eligible for the federal qualified overtime deduction"
+    },
+    "qualified_tips": {
+      "type": "number",
+      "default": 0,
+      "description": "Qualified voluntary cash or charged tips tracked separately for 2026 reporting"
+    },
+    "tip_occupation_code": {
+      "type": "string",
+      "description": "IRS qualified tipped occupation code; use 000 when tips are not qualified"
     },
     "holidays_worked": {
       "type": "string",
