@@ -45,13 +45,27 @@ export default function AccountingProfit() {
     queryFn: () => base44.entities.PayrollEntry.list('-pay_date', 1000),
     enabled: isAccountingRole,
     initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
     refetchInterval: 10000,
   });
 
   const { data: expenseReports } = useQuery({
     queryKey: ['expenseReports', startDate, endDate],
     queryFn: () => base44.entities.ExpenseReport.list('-created_date', 1000),
+    enabled: isAccountingRole,
     initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+
+  const { data: companyExpenses = [] } = useQuery({
+    queryKey: ['companyExpenses', startDate, endDate],
+    queryFn: () => base44.entities.CompanyExpense.list('-expense_date', 1000),
+    enabled: isAccountingRole,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchInterval: 10000,
   });
 
   const { data: allUsers } = useQuery({
@@ -71,6 +85,9 @@ export default function AccountingProfit() {
     queryFn: () => base44.entities.Invoice.list('-created_date', 1000),
     enabled: isAccountingRole,
     initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchInterval: 10000,
   });
 
   if (!isAccountingRole) {
@@ -108,6 +125,12 @@ export default function AccountingProfit() {
     return ['approved', 'reimbursed', 'paid'].includes(status) && isDateInRange(expenseDate);
   });
 
+  const filteredCompanyExpenses = companyExpenses.filter(expense => {
+    const status = String(expense.status || '').toLowerCase();
+    const expenseDate = expense.paid_date || expense.expense_date || expense.created_date;
+    return status === 'paid' && isDateInRange(expenseDate);
+  });
+
   const filteredPTO = timeOffRequests.filter(pto =>
     pto.status === 'approved' && pto.request_type === 'paid' && isDateInRange(pto.start_date)
   );
@@ -129,6 +152,7 @@ export default function AccountingProfit() {
   }, 0);
 
   const invoiceRevenue = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0);
+  const activeInvoiceSites = new Set(filteredInvoices.map(invoice => invoice.site_name).filter(Boolean));
 
   const revenueByOfficer = {};
   const payrollByOfficer = {};
@@ -155,15 +179,17 @@ export default function AccountingProfit() {
     payrollByOfficer[officerName] = (payrollByOfficer[officerName] || 0) + payrollCost;
     hoursByOfficer[officerName] = (hoursByOfficer[officerName] || 0) + hours;
 
-    revenueBySite[siteName] = (revenueBySite[siteName] || 0) + revenue;
-    payrollBySite[siteName] = (payrollBySite[siteName] || 0) + payrollCost;
-    hoursBySite[siteName] = (hoursBySite[siteName] || 0) + hours;
+    // Site profitability is invoice-led: only sites invoiced in this period appear.
+    if (activeInvoiceSites.has(siteName)) {
+      payrollBySite[siteName] = (payrollBySite[siteName] || 0) + payrollCost;
+      hoursBySite[siteName] = (hoursBySite[siteName] || 0) + hours;
+    }
   });
 
-  // Use invoiced site revenue when available instead of an estimate from time.
+  // Use the actual invoice amounts, grouped by active site for this period.
   filteredInvoices.forEach(invoice => {
     if (invoice.site_name) {
-      revenueBySite[invoice.site_name] = (revenueBySite[invoice.site_name] || 0);
+      revenueBySite[invoice.site_name] = (revenueBySite[invoice.site_name] || 0) + (Number(invoice.total_amount) || 0);
     }
   });
 
@@ -200,12 +226,14 @@ export default function AccountingProfit() {
     }
   });
 
-  const estimatedRevenue = Object.values(revenueBySite).reduce((sum, val) => sum + val, 0);
-  const totalRevenue = invoiceRevenue > 0 ? invoiceRevenue : estimatedRevenue;
+  // Revenue is invoice-based only. No estimated or stale site revenue is substituted.
+  const totalRevenue = invoiceRevenue;
   const finalizedPayroll = filteredPayroll.reduce((sum, entry) => sum + (Number(entry.gross_pay) || 0), 0);
   const accruedPayroll = Object.values(payrollByOfficer).reduce((sum, amount) => sum + amount, 0);
   const totalPayroll = Math.max(finalizedPayroll, accruedPayroll);
-  const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+  const reimbursableExpenses = filteredExpenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+  const operatingExpenses = filteredCompanyExpenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+  const totalExpenses = reimbursableExpenses + operatingExpenses;
   const employerTaxes = totalPayroll * 0.0765;
   const totalCosts = totalPayroll + totalExpenses + ptoCost + employerTaxes;
   const netProfit = totalRevenue - totalCosts;
