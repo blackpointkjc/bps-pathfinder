@@ -869,7 +869,7 @@ export default function Layout({ children, currentPageName }) {
         }
       }}
       onReports={() => { setActiveCenter('officer'); setMobileSection('reports'); setMobileOpen(true); }}
-      onMenu={() => { setMobileSection(null); if (!['cad', 'officer', 'supervisor'].includes(activeCenter)) setActiveCenter('cad'); setMobileOpen(true); }}
+      onMenu={() => { setMobileSection(null); if (!['cad', 'officer', 'supervisor', 'admin'].includes(activeCenter)) setActiveCenter('cad'); setMobileOpen(true); }}
     />
   </div>;
 }
