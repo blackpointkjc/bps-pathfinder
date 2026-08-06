@@ -81,6 +81,82 @@
     max-width: 220px;
     margin: 0.75rem;
   }
+
+  .cad-app main[data-page^="Admin"] .items-center.justify-between {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .cad-app main[data-page^="Admin"] [class*="grid-cols-2"],
+  .cad-app main[data-page^="Admin"] [class*="grid-cols-3"],
+  .cad-app main[data-page^="Admin"] [class*="grid-cols-4"],
+  .cad-app main[data-page^="Admin"] [class*="grid-cols-5"],
+  .cad-app main[data-page^="Admin"] [class*="grid-cols-6"],
+  .cad-app main[data-page^="Admin"] [class*="grid-cols-7"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .cad-app main[data-page^="Admin"] [class*="min-w-"] {
+    min-width: 0 !important;
+  }
+
+  .cad-app main[data-page^="Admin"] [class*="w-["],
+  .cad-app main[data-page^="Admin"] [style*="width"] {
+    max-width: 100% !important;
+  }
+
+  .cad-app main[data-page^="Admin"] table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cad-app main[data-page^="Admin"] [role="dialog"] {
+    width: calc(100vw - 1rem) !important;
+    max-width: calc(100vw - 1rem) !important;
+    max-height: calc(100dvh - 1rem) !important;
+    overflow-y: auto;
+  }
+
+  .cad-app main[data-page^="Admin"] [role="tablist"] {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    height: auto !important;
+    gap: 0.35rem;
+  }
+
+  .cad-app main[data-page^="Admin"] [role="tab"] {
+    min-height: 42px;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .cad-app main[data-page^="Admin"] svg {
+    flex-shrink: 0;
+  }
+
+  .cad-app main[data-page^="Admin"] p,
+  .cad-app main[data-page^="Admin"] span,
+  .cad-app main[data-page^="Admin"] label,
+  .cad-app main[data-page^="Admin"] button,
+  .cad-app main[data-page^="Admin"] a {
+    overflow-wrap: anywhere;
+  }
+
+  .cad-app main[data-page^="Admin"] button,
+  .cad-app main[data-page^="Admin"] a[role="button"] {
+    white-space: normal;
+  }
+
+  .cad-app main[data-page^="Admin"] .text-4xl,
+  .cad-app main[data-page^="Admin"] .text-5xl,
+  .cad-app main[data-page^="Admin"] .text-6xl {
+    font-size: 1.75rem !important;
+    line-height: 1.15 !important;
+  }
 }
 
 /* Pathfinder CAD/RMS design system */
