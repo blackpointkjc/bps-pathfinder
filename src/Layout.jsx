@@ -241,6 +241,12 @@ const PAGE_TO_CENTERS = Object.entries(CENTER_CONFIG).reduce((map, [center, conf
 }, {});
 
 const FULL_ACCESS_PAGES = new Set(['Personnel', 'PathfinderReports', 'AdminPortal']);
+const CENTER_UNREAD_PAGES = {
+  cad: ['DispatchCenter'],
+  officer: ['TeamChat', 'Announcements'],
+  supervisor: ['SupervisorChat'],
+  admin: ['AdminAnnouncements'],
+};
 
 function hasFullAccess(user) {
   return user?.role === 'admin' || normalizedRoles(user).has('full_access');
@@ -365,8 +371,10 @@ function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, curre
             const item = CENTER_CONFIG[key];
             const Icon = item.icon;
             const active = activeCenter === key;
+            const centerUnread = (CENTER_UNREAD_PAGES[key] || []).reduce((sum, page) => sum + (Number(unreadCounts[page]) || 0), 0);
             return <button key={key} onClick={() => setActiveCenter(key)} className={`flex items-center gap-2 rounded-md border px-2 py-2 text-left text-[10px] font-bold transition ${active ? 'border-[#4385c6] bg-[#153b65] text-white' : 'border-[#1c3249] bg-[#0c1a2a] text-[#87a0b8] hover:bg-[#11263d] hover:text-white'}`}>
               <Icon className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{item.label.replace(' Center', '')}</span>
+              {!!centerUnread && <span className="ml-auto flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 py-0.5 text-[8px] font-black text-white">{centerUnread > 99 ? '99+' : centerUnread}</span>}
             </button>;
           })}
         </div>}
@@ -471,7 +479,16 @@ export default function Layout({ children, currentPageName }) {
     } catch {
       setUnreadCounts({});
     }
-  }, [unreadStorageKey]);
+    if (user?.id) {
+      base44.entities.Message.filter({ recipient_id: user.id, read: false }, '-created_date', 200)
+        .then(records => setUnreadCounts(current => {
+          const next = { ...current, OfficerInbox: (records || []).length };
+          localStorage.setItem(unreadStorageKey, JSON.stringify(next));
+          return next;
+        }))
+        .catch(() => null);
+    }
+  }, [unreadStorageKey, user?.id]);
 
   useEffect(() => {
     const onUnread = event => {
