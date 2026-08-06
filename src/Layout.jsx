@@ -457,7 +457,11 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
           )}
         </Link>
         {groups.map(group => <details key={group.label} open={!mobile || groups.length === 1} className="mb-3 group">
-          {(!collapsed || mobile) && <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-2 py-2 text-[9px] font-bold uppercase tracking-[0.2em] text-[#6f91b3] hover:bg-[#102239]">{group.label}<ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" /></summary>}
+          {(!collapsed || mobile) ? (
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-2 py-2 text-[9px] font-bold uppercase tracking-[0.2em] text-[#6f91b3] hover:bg-[#102239]">{group.label}<ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" /></summary>
+          ) : (
+            <summary className="hidden">{group.label}</summary>
+          )}
           <div className="space-y-0.5">
             {group.items.map(([label, page, Icon]) => {
               const active = currentPageName === page;
