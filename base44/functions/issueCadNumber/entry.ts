@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     try {
       const next = Number(counter.last_number || 0) + 1;
       if (next > 99_999_999) throw new Error(`The ${period} BPS sequence has reached its eight-digit limit.`);
-      const bpsReference = `BPS-${period}-${String(next).padStart(8, '0')}`;
+      const bpsReference = `BPS-${period}-${next}`;
       await base44.asServiceRole.entities.CadCounter.update(counter.id, {
         last_number: next,
         ingestion_lock_token: '',
