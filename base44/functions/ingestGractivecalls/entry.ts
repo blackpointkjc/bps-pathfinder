@@ -69,29 +69,46 @@ function changed(existing: any, incoming: any) {
   return fields.some(field => existing?.[field] !== incoming?.[field]);
 }
 
+const MONTH_LETTERS = 'ABCDEFGHIJKL';
+
+function easternMonthParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit' }).formatToParts(date);
+  const year = parts.find(part => part.type === 'year')?.value || String(date.getUTCFullYear());
+  const month = parts.find(part => part.type === 'month')?.value || String(date.getUTCMonth() + 1).padStart(2, '0');
+  return { year, month, monthIndex: Number(month) - 1 };
+}
+
 async function reserveCadNumbers(base44: any, count: number) {
   if (count <= 0) return [];
-  const counters = await base44.asServiceRole.entities.CadCounter.filter({ counter_key: 'dispatch_call' });
+  const { year, month, monthIndex } = easternMonthParts(new Date());
+  const letter = MONTH_LETTERS[monthIndex];
+  const counterKey = `dispatch_call:${year}-${month}`;
+  const counters = await base44.asServiceRole.entities.CadCounter.filter({ counter_key: counterKey });
   let counter = counters?.[0];
   const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
   const highest = (calls || []).reduce((max: number, call: any) => {
-    const match = String(call.call_id || '').match(/^B(\d+)$/i);
-    return Math.max(max, match ? Number(match[1]) : 0);
+    const callDate = new Date(call.time_received || call.created_date || 0);
+    if (Number.isNaN(callDate.getTime())) return max;
+    const callPeriod = easternMonthParts(callDate);
+    if (callPeriod.year !== year || callPeriod.month !== month) return max;
+    const match = String(call.call_id || '').match(/^([A-L])(\d{1,8})$/i);
+    return Math.max(max, match && match[1].toUpperCase() === letter ? Number(match[2]) : 0);
   }, Number(counter?.last_number || 0));
-  if (!counter) counter = await base44.asServiceRole.entities.CadCounter.create({ counter_key: 'dispatch_call', last_number: highest });
+  if (!counter) counter = await base44.asServiceRole.entities.CadCounter.create({ counter_key: counterKey, last_number: highest });
   const first = Math.max(highest, Number(counter.last_number || 0)) + 1;
   const last = first + count - 1;
+  if (last > 99_999_999) throw new Error(`The ${year}-${month} CAD sequence has reached its eight-digit limit.`);
   await base44.asServiceRole.entities.CadCounter.update(counter.id, { last_number: last });
-  return Array.from({ length: count }, (_, index) => `B${String(first + index).padStart(4, '0')}`);
+  return Array.from({ length: count }, (_, index) => `${letter}${String(first + index).padStart(8, '0')}`);
 }
 
 function chooseCanonical(records: any[]) {
   return [...records].sort((a, b) => {
-    const aValid = /^B\d+$/i.test(String(a.call_id || '')) ? 0 : 1;
-    const bValid = /^B\d+$/i.test(String(b.call_id || '')) ? 0 : 1;
+    const aValid = /^[A-L]\d{1,8}$/i.test(String(a.call_id || '')) ? 0 : 1;
+    const bValid = /^[A-L]\d{1,8}$/i.test(String(b.call_id || '')) ? 0 : 1;
     if (aValid !== bValid) return aValid - bValid;
-    const aNum = Number(String(a.call_id || '').replace(/^B/i, '')) || Number.MAX_SAFE_INTEGER;
-    const bNum = Number(String(b.call_id || '').replace(/^B/i, '')) || Number.MAX_SAFE_INTEGER;
+    const aNum = Number(String(a.call_id || '').replace(/^[A-L]/i, '')) || Number.MAX_SAFE_INTEGER;
+    const bNum = Number(String(b.call_id || '').replace(/^[A-L]/i, '')) || Number.MAX_SAFE_INTEGER;
     if (aNum !== bNum) return aNum - bNum;
     return new Date(a.created_date || 0).getTime() - new Date(b.created_date || 0).getTime();
   })[0];
@@ -202,7 +219,7 @@ Deno.serve(async (req) => {
 
     const uniqueExisting = [...new Map(existingCalls.map(record => [record.id, record])).values()];
     const needingCad = uniqueExisting.filter(record =>
-      recordKey(record) && !/^B\d+$/i.test(String(record.call_id || ''))
+      recordKey(record) && !/^[A-L]\d{1,8}$/i.test(String(record.call_id || ''))
     );
     const newCalls = incoming.filter(call =>
       !byExternal.has(call.external_call_id) && !byLegacy.has(legacyKey(call))
