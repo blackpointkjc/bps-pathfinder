@@ -103,8 +103,8 @@ export default function GlobalMessageBanner({ user }) {
 
     const showBanner = (source, record) => {
       if (!record?.id) return;
-      const senderEmail = normalized(record.sender_id || record.sender_email || record.created_by);
-      const isOwnRecord = myIds.includes(senderEmail);
+      const senderIdentity = normalized(record.created_by_id || record.sender_user_id || record.sender_id || record.sender_email || record.created_by);
+      const isOwnRecord = myIds.includes(senderIdentity);
       if (isOwnRecord) return;
       if (source.direct && !visibleDirectMessage(record)) return;
 
