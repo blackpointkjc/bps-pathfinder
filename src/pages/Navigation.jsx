@@ -269,14 +269,23 @@ export default function Navigation() {
         }
     };
 
-    // Credit-free GPS update: write the signed-in officer's profile directly.
+    // Credit-free GPS update: write the signed-in officer's live position to BOTH
+    // their User profile and an ActiveOfficer record. ActiveOfficer is the map's
+    // primary source, so writing it here guarantees other dispatchers/units see
+    // this officer's real-time location — not a stale last-known coordinate.
     const pushLocationUpdate = useCallback(async (coords, hdg, spd, accuracy) => {
         const now = Date.now();
         const moving = Number(spd) > 2;
-        const minimumInterval = moving ? 3000 : 7000;
+        const minimumInterval = moving ? 1500 : 4000;
         if (now - lastUpdateRef.current < minimumInterval) return;
         lastUpdateRef.current = now;
         const [latitude, longitude] = coords;
+        const stamp = new Date().toISOString();
+        const status = unitStatusRef.current;
+        const user = currentUser;
+        const email = user?.email;
+        const fullName = user?.full_name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || email;
+
         try {
             const update = {
                 latitude,
@@ -284,8 +293,8 @@ export default function Navigation() {
                 heading: Number.isFinite(hdg) ? hdg : 0,
                 speed: Number.isFinite(spd) ? spd : 0,
                 accuracy: Number.isFinite(accuracy) ? accuracy : 0,
-                status: unitStatusRef.current,
-                last_updated: new Date().toISOString(),
+                status,
+                last_updated: stamp,
                 show_on_map: true,
             };
             await base44.auth.updateMe(update);
@@ -293,7 +302,40 @@ export default function Navigation() {
         } catch (e) {
             console.warn('[NAV] direct location update failed:', e?.message);
         }
-    }, []);
+
+        // Upsert a live ActiveOfficer record so the map (and other units) see this officer in real time.
+        if (email) {
+            try {
+                if (activeOfficerEmailRef.current !== email) {
+                    activeOfficerEmailRef.current = email;
+                    activeOfficerIdRef.current = null;
+                    const existing = await base44.entities.ActiveOfficer.filter({ officer_email: email }).catch(() => []);
+                    if (existing && existing.length > 0) activeOfficerIdRef.current = existing[0].id;
+                }
+                const payload = {
+                    officer_email: email,
+                    officer_name: fullName,
+                    unit_number: user?.unit_number || '',
+                    current_location: user?.current_location || '',
+                    last_update: stamp,
+                    latitude,
+                    longitude,
+                    heading: Number.isFinite(hdg) ? hdg : 0,
+                    speed: Number.isFinite(spd) ? spd : 0,
+                    accuracy: Number.isFinite(accuracy) ? accuracy : 0,
+                    status,
+                };
+                if (activeOfficerIdRef.current) {
+                    await base44.entities.ActiveOfficer.update(activeOfficerIdRef.current, payload);
+                } else {
+                    const created = await base44.entities.ActiveOfficer.create(payload);
+                    if (created?.id) activeOfficerIdRef.current = created.id;
+                }
+            } catch (e) {
+                console.warn('[NAV] ActiveOfficer upsert failed:', e?.message);
+            }
+        }
+    }, [currentUser]);
 
     const startTracking = () => {
         if (!navigator.geolocation) { toast.error('Geolocation not supported'); return; }
@@ -319,10 +361,10 @@ export default function Navigation() {
                     toast.error('Location permission denied');
                 }
             },
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
         );
 
-        // Fallback poll every 20s (slower to avoid rate limits)
+        // Fallback poll every 5s to keep live position fresh
         forcePollRef.current = setInterval(() => {
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
@@ -336,9 +378,9 @@ export default function Navigation() {
                     pushLocationUpdate(coords, fallbackHeading, fallbackSpeed, pos.coords.accuracy);
                 },
                 () => {},
-                { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
             );
-        }, 8000);
+        }, 5000);
     };
 
     const stopTracking = () => {
