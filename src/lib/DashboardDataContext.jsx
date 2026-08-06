@@ -9,8 +9,8 @@ import { base44 } from '@/api/base44Client';
 
 const DashboardDataContext = createContext(null);
 
-const POLL_INTERVAL_MS = 15_000;        // Read local entity changes every 15 seconds
-const GRAC_SYNC_INTERVAL_MS = 20_000;   // Credit-free direct GRAC sync every 20 seconds
+const POLL_INTERVAL_MS = 5_000;         // Read local entity changes every 5 seconds
+const GRAC_SYNC_INTERVAL_MS = 5_000;    // Direct active-call sync every 5 seconds
 const RATE_LIMIT_BACKOFF_MS = 60_000;   // 60s wait after 429
 const MIN_REFRESH_MS = 1_500;           // Prevent overlapping local refreshes
 
