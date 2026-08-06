@@ -25,12 +25,13 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   };
 
   const load = async () => {
-    const [records, preferences] = await Promise.all([
+    const [records, preferenceResponse] = await Promise.all([
       base44.entities.Message.list('-created_date', 500),
-      base44.entities.InboxThreadPreference.filter({ user_email: currentUser.email }, '-created_date', 500).catch(() => []),
+      base44.functions.invoke('get-inbox-thread-preferences', {}).catch(() => ({ data: { preferences: [] } })),
     ]);
+    const preferencePayload = preferenceResponse?.data || preferenceResponse || {};
     setMessages(records || []);
-    setHiddenPreferences((preferences || []).filter(preference => preference.hidden !== false));
+    setHiddenPreferences((preferencePayload.preferences || []).filter(preference => preference.hidden !== false));
   };
 
   useEffect(() => {
@@ -150,7 +151,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
     ]);
 
     try {
-      const response = await base44.functions.invoke('archiveInboxThread', {
+      const response = await base44.functions.invoke('archive-inbox-thread', {
         thread_key: thread.key,
       });
       const payload = response?.data || response || {};
