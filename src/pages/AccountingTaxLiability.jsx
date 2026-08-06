@@ -24,6 +24,7 @@ export default function AccountingTaxLiability() {
     queryKey: ['payrollEntries'],
     queryFn: () => base44.entities.PayrollEntry.list('-created_date', 5000),
     enabled: isAccountingRole,
+    refetchInterval: 10000,
   });
 
   const { data: config } = useQuery({
@@ -66,7 +67,7 @@ export default function AccountingTaxLiability() {
     const entriesInQuarter = payrollEntries.filter(e => {
       if (!e.pay_date) return false;
       const payDate = new Date(e.pay_date);
-      return payDate >= qStart && payDate <= qEnd && e.status === 'paid';
+      return payDate >= qStart && payDate <= qEnd && String(e.status || '').toLowerCase() === 'paid';
     });
 
     quarterlyData[`Q${q}`] = {
@@ -85,7 +86,7 @@ export default function AccountingTaxLiability() {
   const yearEntries = payrollEntries.filter(e => {
     if (!e.pay_date) return false;
     const payDate = new Date(e.pay_date);
-    return payDate.getFullYear() === selectedYear && e.status === 'paid';
+    return payDate.getFullYear() === selectedYear && String(e.status || '').toLowerCase() === 'paid';
   });
 
   const yearTotals = {
