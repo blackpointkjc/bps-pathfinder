@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import './App.css';
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -6,7 +7,7 @@ import { queryClientInstance } from '@/lib/query-client';
 import VisualEditAgent from '@/lib/VisualEditAgent';
 import NavigationTracker from '@/lib/NavigationTracker';
 import { pagesConfig } from './pages.config';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -31,6 +32,7 @@ function LoadingScreen() {
 }
 
 const AuthenticatedApp = () => {
+  const location = useLocation();
   const {
     isLoadingAuth,
     isLoadingPublicSettings,
@@ -80,7 +82,16 @@ const AuthenticatedApp = () => {
   }
 
   return (
-    <Routes>
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location.pathname}
+        className="fixed inset-0 overflow-hidden"
+        initial={{ opacity: 0, x: 24 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -24 }}
+        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <Routes location={location}>
       <Route
         path="/"
         element={MainPage ? (
@@ -101,7 +112,9 @@ const AuthenticatedApp = () => {
         />
       ))}
       <Route path="*" element={<PageNotFound />} />
-    </Routes>
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
