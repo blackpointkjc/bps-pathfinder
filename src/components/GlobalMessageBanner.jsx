@@ -81,6 +81,7 @@ function BannerIcon({ kind }) {
 export default function GlobalMessageBanner({ user }) {
   const [banners, setBanners] = useState([]);
   const knownIds = useRef(new Set());
+  const recentFingerprints = useRef(new Map());
   const timers = useRef(new Map());
 
   useEffect(() => {
@@ -111,6 +112,13 @@ export default function GlobalMessageBanner({ user }) {
       const key = `${source.entity}:${record.id}`;
       if (knownIds.current.has(key)) return;
       knownIds.current.add(key);
+
+      const fingerprint = `${senderIdentity}:${normalized(record.message || record.body || record.content)}`;
+      const lastSeen = recentFingerprints.current.get(fingerprint);
+      if (fingerprint && lastSeen && Date.now() - lastSeen < 5000) return;
+      recentFingerprints.current.set(fingerprint, Date.now());
+      window.setTimeout(() => recentFingerprints.current.delete(fingerprint), 5000);
+
       playNotificationChime(source.kind === 'property');
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: source.page, key },
