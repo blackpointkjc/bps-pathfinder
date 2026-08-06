@@ -103,14 +103,18 @@ export default function GlobalMessageBanner({ user }) {
 
     const showBanner = (source, record) => {
       if (!record?.id) return;
-      const senderEmail = normalized(record.sender_email || record.created_by);
-      if (source.kind !== 'property' && senderEmail && senderEmail === normalized(user.email)) return;
+      const senderEmail = normalized(record.sender_id || record.sender_email || record.created_by);
+      const isOwnRecord = myIds.includes(senderEmail);
+      if (isOwnRecord) return;
       if (source.direct && !visibleDirectMessage(record)) return;
 
       const key = `${source.entity}:${record.id}`;
       if (knownIds.current.has(key)) return;
       knownIds.current.add(key);
       playNotificationChime(source.kind === 'property');
+      window.dispatchEvent(new CustomEvent('bps-unread-notification', {
+        detail: { page: source.page, key },
+      }));
 
       const text = bannerText(source, record);
       const banner = {
