@@ -47,8 +47,11 @@ function chooseOfficial(call: any, rows: any[]) {
   const minute = callMinute(call.time_received);
   return rows.find(row => {
     const rowMinute = callMinute(row.received);
-    const distance = Math.min(Math.abs(minute - rowMinute), 1440 - Math.abs(minute - rowMinute));
-    return cleanMatchText(row.location) === location && cleanMatchText(row.incident) === incident && distance <= 3;
+    const rawDistance = Math.abs(minute - rowMinute);
+    const distance = Math.min(rawDistance, 1440 - rawDistance);
+    const sameLocation = cleanMatchText(row.location) === location;
+    const sameIncident = cleanMatchText(row.incident) === incident;
+    return sameLocation && distance <= 3 && (sameIncident || Boolean(location));
   }) || null;
 }
 
