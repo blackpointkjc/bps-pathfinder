@@ -815,10 +815,8 @@ Provide:
             
             <div class="signature-section">
               <div class="field-label">Reporting Officer Signature</div>
-              <div class="sig-line">${e.officer_sig}</div>
-              <div class="sig-details">
-                ${e.officer_name} | ${report.officer_ip_address ? `IP: ${e.officer_ip_address} | ` : ''}Electronically Signed (Zulu): ${createdDateZulu || 'N/A'}
-              </div>
+              <div class="sig-line"></div>
+              <div class="sig-details">Date: ____________________</div>
             </div>
           </div>
           
