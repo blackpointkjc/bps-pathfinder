@@ -331,11 +331,11 @@ export default function AdminLocationTracker() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-[1400px] mx-auto space-y-8">
-        <div className="flex items-center gap-4">
+    <div className="min-h-screen p-3 pb-24 sm:p-4 md:p-8">
+      <div className="mx-auto max-w-[1400px] space-y-5 sm:space-y-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
           <img src={LOGO_URL} alt="Black Point Protection" className="w-16 h-16 object-contain" />
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
               <Activity className="w-8 h-8 text-green-600" />
               Officer Location Tracker
@@ -499,7 +499,7 @@ export default function AdminLocationTracker() {
             <CardTitle>Tracking Mode</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-4 flex-wrap">
+            <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:gap-4">
               <Button
                 variant={viewMode === 'live' ? 'default' : 'outline'}
                 onClick={() => setViewMode('live')}
@@ -603,7 +603,7 @@ export default function AdminLocationTracker() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="h-[600px] w-full">
+                  <div className="h-[360px] w-full sm:h-[500px] lg:h-[600px]">
                     <MapContainer
                       center={[37.5407, -77.4360]}
                       zoom={12}
@@ -745,7 +745,7 @@ export default function AdminLocationTracker() {
               </div>
               
               {locationHistory && locationHistory.length > 0 ? (
-                <div className="h-[600px] w-full">
+                <div className="h-[360px] w-full sm:h-[500px] lg:h-[600px]">
                   <MapContainer
                     center={[37.5407, -77.4360]}
                     zoom={12}
