@@ -291,9 +291,9 @@ export default function ClientTrespass() {
           </div>
           <div class="signature-section">
             <p class="signature-label">ISSUED BY:</p>
-            <div class="signature-line"><div class="signature-text">${issuerSignature}</div></div>
+            <div class="signature-line"></div>
             <div class="issuer-info">
-              <p><strong>Officer:</strong> ${issuerSignature}</p>
+              <p><strong>Date Signed:</strong> ____________________</p>
               <p><strong>Agency:</strong> Black Point Protection</p>
               <p><strong>Location:</strong> ${notice.location}</p>
               <p><strong>Date:</strong> ${format(new Date(notice.notice_date), 'MMM d, yyyy h:mm a')}</p>
