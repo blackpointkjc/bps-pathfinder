@@ -258,14 +258,29 @@ export default function AdminSpecialRequests() {
               </>
             )}
             {req.status === 'approved' && (
-              <Button
-                onClick={() => handleScheduled(req)}
-                className="bg-blue-600 hover:bg-blue-700 flex-1"
-                size="sm"
-              >
-                <Calendar className="w-4 h-4 mr-1" />
-                Mark as Scheduled
-              </Button>
+              <div className="w-full space-y-3">
+                <div className="space-y-2">
+                  <Label>Available Officer</Label>
+                  <Select value={selectedOfficerEmail || undefined} onValueChange={setSelectedOfficerEmail}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Select an off-duty available officer" /></SelectTrigger>
+                    <SelectContent>
+                      {getAvailableOfficers(req).map(officer => (
+                        <SelectItem key={officer.email} value={officer.email}>{getRankLastName(officer, officer.email)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500">Only officers without an overlapping shift or approved leave during this window are shown.</p>
+                </div>
+                <Button
+                  onClick={() => handleScheduled(req)}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  size="sm"
+                  disabled={!selectedOfficerEmail}
+                >
+                  <Calendar className="w-4 h-4 mr-1" />
+                  Assign Officer & Add to Schedule
+                </Button>
+              </div>
             )}
             <Button
               onClick={() => {
@@ -296,8 +311,8 @@ export default function AdminSpecialRequests() {
   );
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-slate-50">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-50 p-3 pb-24 sm:p-4 md:p-8">
+      <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">
         <div className="flex items-center gap-3">
           <Shield className="w-8 h-8 text-amber-600" />
           <div>
