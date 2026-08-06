@@ -185,7 +185,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
         if (isNavigating) {
             return mapTheme === 'night'
                 ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+                : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
         }
 
         if (useOfflineTiles) {
@@ -206,7 +206,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 return 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
             case 'street':
             default:
-                return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+                return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
         }
     };
 
