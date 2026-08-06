@@ -168,8 +168,8 @@ export default function DispatchCenter() {
                 const current = uniqueCalls.get(key);
                 const currentHasIdentifier = Boolean(current?.agency_cad_number || current?.bps_reference || current?.call_id);
                 const candidateHasIdentifier = Boolean(call?.agency_cad_number || call?.bps_reference || call?.call_id);
-                const currentHasOfficialCad = Boolean(current?.official_cad_verified && current?.agency_cad_number);
-                const candidateHasOfficialCad = Boolean(call?.official_cad_verified && call?.agency_cad_number);
+                const currentHasOfficialCad = Boolean(current?.official_cad_verified && (current?.agency_cad_number || current?.call_id));
+                const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
             const recentCalls = [...uniqueCalls.values()].filter(call => {
@@ -507,7 +507,7 @@ export default function DispatchCenter() {
                                         </span>
                                     </div>
                                     <div className="col-span-5">
-                                        <div className="text-[9px] font-mono font-bold text-[#7ec1ff] truncate">{call.agency_cad_number || call.bps_reference || call.call_id || 'ASSIGNING…'}</div>
+                                        <div className={`text-[9px] font-mono font-bold truncate ${call.official_cad_verified ? 'text-[#7ec1ff]' : 'text-[#f5c451]'}`}>{call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || 'ASSIGNING…'}</div>
                                         <div className="truncate text-[11px] font-bold leading-tight text-white group-hover:text-cyan-100">{call.incident}</div>
                                         <div className="mt-1 truncate text-[9px] text-slate-400">{call.location}</div>
                                         <div className="mt-1 text-[8px] font-semibold tracking-wide text-slate-600">{call.agency || 'AGENCY N/A'}</div>
@@ -532,7 +532,7 @@ export default function DispatchCenter() {
                                 <div className="overflow-auto" style={{maxHeight: '340px'}}>
                                     <div className="px-3 md:px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center gap-2 md:gap-3">
                                         <span className="text-[#f5a623] font-bold text-xs">
-                                            {selectedCall.agency_cad_number ? `AGENCY CAD #${selectedCall.agency_cad_number}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
+                                            {selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
                                         </span>
                                         <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(selectedCall.priority)}`}>{(selectedCall.priority || 'low').toUpperCase()}</span>
                                         <span className="text-[10px] text-slate-400">{selectedCall.status}</span>
