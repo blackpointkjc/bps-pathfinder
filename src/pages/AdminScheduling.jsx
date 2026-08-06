@@ -2311,9 +2311,9 @@ Return ONLY a JSON array of suggestion objects with this structure:
   }
 
   return (
-    <div className="scheduling-page p-4 md:p-8 min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex justify-between items-center print:hidden">
+    <div className="scheduling-page min-h-screen p-3 pb-24 sm:p-4 md:p-8">
+      <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
+        <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <Shield className="w-6 h-6 text-amber-600" />
             <div>
@@ -2468,8 +2468,9 @@ Return ONLY a JSON array of suggestion objects with this structure:
               </div>
             </div>
 
-            <div className="flex gap-2 flex-wrap justify-end">
+            <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-end">
               <Button
+                className="w-full sm:w-auto"
                 onClick={handleClearAllShifts}
                 disabled={clearAllShiftsMutation.isPending}
                 variant="destructive"
@@ -2480,7 +2481,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
               <Button
                 onClick={handlePrintCompanySchedule}
                 variant="outline"
-                className="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                className="w-full bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 sm:w-auto"
               >
                 <Printer className="w-4 h-4 mr-2" />
                 Print Company
@@ -2488,7 +2489,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
               <Button
                 onClick={() => setShowPrintDialog(true)}
                 variant="outline"
-                className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                className="w-full bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 sm:w-auto"
               >
                 <Printer className="w-4 h-4 mr-2" />
                 Print Officer
@@ -2496,7 +2497,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
               <Button
                 onClick={autoCheckSchedule}
                 variant="outline"
-                className="bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100"
+                className="w-full bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100 sm:w-auto"
               >
                 <AlertTriangle className="w-4 h-4 mr-2" />
                 Auto Check
@@ -2504,7 +2505,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
 
               <Button
                 onClick={() => setShowAddDialog(true)}
-                className="bg-green-600 hover:bg-green-700"
+                className="w-full bg-green-600 hover:bg-green-700 sm:w-auto"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Shift
@@ -2514,7 +2515,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
         </Card>
 
         {(selectedPayrollPeriod === "all" || !selectedPayrollPeriod) && (
-          <div className="flex items-center justify-between bg-gradient-to-r from-green-100 to-blue-100 p-3 rounded-lg border-2 border-green-600 print:hidden">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-lg border-2 border-green-600 bg-gradient-to-r from-green-100 to-blue-100 p-2 print:hidden sm:p-3">
             <Button
               variant="outline"
               onClick={() => setCurrentWeekOffset(currentWeekOffset - 1)}
@@ -2986,8 +2987,50 @@ Return ONLY a JSON array of suggestion objects with this structure:
 
 
 
+        <div className="space-y-3 print:hidden md:hidden">
+          {weekDays.map(day => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const dayShifts = (weekDivisionalSchedules || [])
+              .filter(shift => shift.shift_date === dateStr)
+              .sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')));
+            return (
+              <Card key={dateStr} className="overflow-hidden border-slate-300 shadow-sm">
+                <CardHeader className="border-b bg-slate-100 p-3">
+                  <CardTitle className="flex items-center justify-between gap-2 text-base">
+                    <span>{format(day, 'EEEE')}</span>
+                    <Badge variant="outline">{format(day, 'MMM d')}</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 p-3">
+                  {dayShifts.length === 0 ? (
+                    <p className="py-3 text-center text-sm text-slate-500">No shifts scheduled.</p>
+                  ) : dayShifts.map(shift => (
+                    <div key={shift.id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-slate-900">{shift.officer_email === 'OPEN' ? 'OPEN SHIFT' : getOfficerName(shift.officer_email)}</p>
+                          <p className="mt-0.5 text-sm text-slate-600">{String(shift.location || '').split(':')[0]}</p>
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                            <Badge className="bg-blue-100 text-blue-800">{shift.start_time}–{shift.end_time}</Badge>
+                            {shift.is_split_shift && <Badge className="bg-purple-100 text-purple-800">Overnight</Badge>}
+                            {shift.is_open && <Badge className="bg-cyan-100 text-cyan-800">Open</Badge>}
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <Button type="button" size="icon" variant="outline" className="h-9 w-9" onClick={() => handleEditShift(shift)} aria-label="Edit shift"><Pencil className="h-4 w-4" /></Button>
+                          <Button type="button" size="icon" variant="outline" className="h-9 w-9 text-red-600" onClick={() => handleDeleteShift(shift.id)} aria-label="Delete shift"><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="bg-white rounded-lg shadow-lg overflow-x-auto border-2 border-slate-300 print:hidden">
+          <div className="hidden rounded-lg border-2 border-slate-300 bg-white shadow-lg print:hidden md:block md:overflow-x-auto">
             <table className="w-full border-collapse text-xs">
               <thead>
                 <tr className="bg-gradient-to-r from-green-400 to-blue-400">
