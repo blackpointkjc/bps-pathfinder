@@ -232,7 +232,7 @@ export default function SupervisorWriteUps() {
   return (
     <div className="p-4 md:p-8 min-h-screen">
       <div className="max-w-6xl mx-auto space-y-8">
-        <div className="flex justify-between items-center">
+        <div className="mobile-page-header flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 mb-2">Write-Up Reports</h1>
             <p className="text-slate-600">Document disciplinary actions and policy violations</p>
