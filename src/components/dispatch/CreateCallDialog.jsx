@@ -54,11 +54,15 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
             const cadResponse = await base44.functions.invoke('issueCadNumber', {});
             const cadPayload = cadResponse?.data || cadResponse || {};
             if (!cadPayload.cad_number) throw new Error(cadPayload.error || 'Unable to issue CAD number');
-            const cadNumber = cadPayload.cad_number;
+            const bpsReference = cadPayload.bps_reference || cadPayload.cad_number;
 
             const callData = {
                 ...formData,
-                call_id: cadNumber,
+                call_id: bpsReference,
+                bps_reference: bpsReference,
+                agency_cad_number: '',
+                cad_number_source: 'bps_internal',
+                official_cad_verified: false,
                 latitude,
                 longitude,
                 assigned_units: selectedUnits,
