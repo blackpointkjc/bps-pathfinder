@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QrCode, MapPin, Clock, CheckCircle2, AlertTriangle, RefreshCw, XCircle } from "lucide-react";
 import { format } from "date-fns";
+import { getClientPortalUser } from '@/utils/clientPreview';
 
 export default function ClientQRReports() {
   const [filterSite, setFilterSite] = useState("all");
@@ -19,7 +20,7 @@ export default function ClientQRReports() {
 
   const { data: user } = useQuery({
     queryKey: ["currentUser"],
-    queryFn: () => base44.auth.me(),
+    queryFn: getClientPortalUser,
   });
 
   const { data: officers = [] } = useQuery({

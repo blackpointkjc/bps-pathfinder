@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MapPin, Mail, Calendar, Shield, Edit, Save, X } from "lucide-react";
 import { format } from "date-fns";
 import {
+import { getClientPortalUser } from '@/utils/clientPreview';
   Select,
   SelectContent,
   SelectItem,
@@ -30,7 +31,7 @@ export default function ClientLocation() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: getClientPortalUser,
   });
 
   const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);

@@ -6,13 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { BookOpen, Shield, AlertTriangle, Phone, MapPin, Users, Clock, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getClientPortalUser } from '@/utils/clientPreview';
 
 export default function ClientDocuments() {
   const [expandedOrders, setExpandedOrders] = useState({});
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: getClientPortalUser,
   });
 
   const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);

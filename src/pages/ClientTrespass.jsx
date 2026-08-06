@@ -9,6 +9,7 @@ import { UserX, Calendar, AlertTriangle, Eye, Shield, Mail, MapPin } from "lucid
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import {
+import { getClientPortalUser } from '@/utils/clientPreview';
   Dialog,
   DialogContent,
   DialogHeader,
@@ -35,7 +36,7 @@ export default function ClientTrespass() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: getClientPortalUser,
   });
 
   const { data: allUsers } = useQuery({

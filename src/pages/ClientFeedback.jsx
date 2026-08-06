@@ -9,6 +9,7 @@ import { Star, Plus, MessageSquare, Award, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getClientPortalUser } from '@/utils/clientPreview';
 
 export default function ClientFeedback() {
   const [showForm, setShowForm] = useState(false);
@@ -28,7 +29,7 @@ export default function ClientFeedback() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: getClientPortalUser,
   });
 
   const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, Plus, Shield, Clock, Users, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { getClientPortalUser } from '@/utils/clientPreview';
 
 export default function ClientSpecialRequests() {
   const [showForm, setShowForm] = useState(false);
@@ -30,7 +31,7 @@ export default function ClientSpecialRequests() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: getClientPortalUser,
   });
 
   const { data: officerDirectory = [] } = useQuery({

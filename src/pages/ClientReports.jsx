@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
+import { getClientPortalUser } from '@/utils/clientPreview';
   Select,
   SelectContent,
   SelectItem,
@@ -38,7 +39,7 @@ export default function ClientReports() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: getClientPortalUser,
   });
 
   const { data: allUsers } = useQuery({
