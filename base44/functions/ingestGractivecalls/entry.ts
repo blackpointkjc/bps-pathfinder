@@ -247,16 +247,20 @@ Deno.serve(async (req) => {
     const cadNumbers = await reserveCadNumbers(base44, needingCad.length + newCalls.length);
     let cadIndex = 0;
     for (const record of needingCad) {
-      const cadNumber = cadNumbers[cadIndex++];
+      const bpsReference = cadNumbers[cadIndex++];
+      const officialCad = String(record.agency_cad_number || '').trim();
       const cleanDescription = String(record.description || '')
         .replace(/\s*\[GRAC:[^\]]+\]\s*/gi, ' ')
         .replace(/\s*\[CAD:[^\]]+\]\s*/gi, ' ')
         .replace(/\s+/g, ' ')
         .trim();
       await base44.asServiceRole.entities.DispatchCall.update(record.id, {
-        call_id: cadNumber,
+        bps_reference: bpsReference,
+        call_id: officialCad || bpsReference,
+        cad_number_source: officialCad ? 'official_government_feed' : 'bps_internal',
+        official_cad_verified: Boolean(officialCad),
         external_call_id: externalKey(record),
-        description: cleanDescription ? `${cleanDescription} [CAD:${cadNumber}]` : `[CAD:${cadNumber}]`,
+        description: cleanDescription,
       });
     }
 
@@ -264,18 +268,27 @@ Deno.serve(async (req) => {
     for (const callData of incoming) {
       const existing = byExternal.get(callData.external_call_id) || byLegacy.get(legacyKey(callData));
       if (!existing) {
-        const cadNumber = cadNumbers[cadIndex++];
+        const bpsReference = cadNumbers[cadIndex++];
+        const officialCad = String(callData.agency_cad_number || '').trim();
         await base44.asServiceRole.entities.DispatchCall.create({
           ...callData,
-          call_id: cadNumber,
-          description: `${callData.description} [CAD:${cadNumber}]`,
+          bps_reference: bpsReference,
+          call_id: officialCad || bpsReference,
+          cad_number_source: officialCad ? 'official_government_feed' : 'bps_internal',
+          official_cad_verified: Boolean(officialCad),
+          description: callData.description,
         });
         created += 1;
       } else {
-        const cadNumber = /^B\d+$/i.test(String(existing.call_id || '')) ? existing.call_id : '';
+        const officialCad = String(callData.agency_cad_number || '').trim();
+        const bpsReference = String(existing.bps_reference || '').trim();
         const incomingWithCad = {
           ...callData,
-          description: cadNumber ? `${callData.description} [CAD:${cadNumber}]` : callData.description,
+          bps_reference: bpsReference,
+          call_id: officialCad || bpsReference || existing.call_id,
+          cad_number_source: officialCad ? 'official_government_feed' : 'bps_internal',
+          official_cad_verified: Boolean(officialCad),
+          description: callData.description,
         };
         if (changed(existing, incomingWithCad)) {
           await base44.asServiceRole.entities.DispatchCall.update(existing.id, incomingWithCad);
