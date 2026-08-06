@@ -181,20 +181,22 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
 
     // Determine tile layer URL based on base map type and theme
     const getTileLayerUrl = () => {
-        // Esri's actively maintained navigation basemap is optimized for live driving.
+        // Navigation uses the original Leaflet day/night basemaps.
         if (isNavigating) {
-            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Navigation_Maps/MapServer/tile/{z}/{y}/{x}';
+            return mapTheme === 'night'
+                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
         }
 
         if (useOfflineTiles) {
-            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Navigation_Maps/MapServer/tile/{z}/{y}/{x}';
+            return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
         }
 
         if (mapTheme === 'night') {
             if (baseMapType === 'satellite') {
                 return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
             }
-            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Navigation_Maps/MapServer/tile/{z}/{y}/{x}';
+            return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
         }
 
         switch (baseMapType) {
@@ -204,13 +206,13 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 return 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
             case 'street':
             default:
-                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Navigation_Maps/MapServer/tile/{z}/{y}/{x}';
+                return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
         }
     };
 
     const getTileAttribution = () => {
         if (mapTheme === 'night' && baseMapType !== 'satellite') {
-            return 'Tiles &copy; Esri &mdash; Sources: Esri, HERE, Garmin, USGS, OpenStreetMap contributors';
+            return '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>';
         }
         
         switch (baseMapType) {
@@ -220,7 +222,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 return '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>';
             case 'street':
             default:
-                return 'Tiles &copy; Esri &mdash; Sources: Esri, HERE, Garmin, USGS, OpenStreetMap contributors';
+                return '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
         }
     };
 
@@ -228,7 +230,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
         <MapContainer
             center={defaultCenter}
             zoom={isNavigating ? 18 : 13}
-            className={`h-full w-full map-theme-${mapTheme}`}
+            className="h-full w-full"
             zoomControl={false}
             minZoom={3}
             maxZoom={20}
@@ -238,8 +240,8 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 attribution={getTileAttribution()}
                 url={getTileLayerUrl()}
                 maxZoom={20}
-                maxNativeZoom={19}
-                className={mapTheme === 'night' && baseMapType !== 'satellite' ? 'esri-night-map' : ''}
+                maxNativeZoom={20}
+                className={mapTheme === 'night' ? 'map-night-mode' : ''}
             />
 
             {/* Jurisdiction Boundaries */}
