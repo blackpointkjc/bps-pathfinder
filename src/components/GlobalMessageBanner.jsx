@@ -10,6 +10,7 @@ const SOURCES = [
   { entity: 'Message', label: 'New Message', page: 'OfficerInbox', direct: true, kind: 'message' },
   { entity: 'Announcement', label: 'New Announcement', page: 'Announcements', kind: 'announcement' },
   { entity: 'PropertyAlert', label: 'Monitored Property Call', page: 'DispatchCenter', kind: 'property' },
+  { entity: 'ChatMention', label: 'You Were Mentioned', page: 'TeamChat', kind: 'mention', mention: true },
 ];
 
 const lowerRoles = user => new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
@@ -53,6 +54,12 @@ function playNotificationChime(urgent = false) {
 }
 
 function bannerText(source, record) {
+  if (source.kind === 'mention') {
+    return {
+      sender: record.sender_name || 'Black Point User',
+      message: record.message || 'You were mentioned in a chat.',
+    };
+  }
   if (source.kind === 'announcement') {
     return {
       sender: record.author_name || record.created_by || 'Black Point Protection',
@@ -75,6 +82,7 @@ function bannerText(source, record) {
 function BannerIcon({ kind }) {
   if (kind === 'property') return <Siren className="h-5 w-5 text-red-200" />;
   if (kind === 'announcement') return <Bell className="h-5 w-5 text-amber-200" />;
+  if (kind === 'mention') return <Bell className="h-5 w-5 animate-pulse text-fuchsia-200" />;
   return <MessageCircle className="h-5 w-5 text-blue-200" />;
 }
 
@@ -108,6 +116,7 @@ export default function GlobalMessageBanner({ user }) {
       const isOwnRecord = myIds.includes(senderIdentity);
       if (isOwnRecord) return;
       if (source.direct && !visibleDirectMessage(record)) return;
+      if (source.mention && normalized(record.recipient_email) !== normalized(user.email)) return;
 
       const key = `${source.entity}:${record.id}`;
       if (knownIds.current.has(key)) return;
@@ -115,38 +124,53 @@ export default function GlobalMessageBanner({ user }) {
 
       const fingerprint = `${senderIdentity}:${normalized(record.message || record.body || record.content)}`;
       const lastSeen = recentFingerprints.current.get(fingerprint);
-      if (fingerprint && lastSeen && Date.now() - lastSeen < 5000) return;
+      const duplicate = Boolean(fingerprint && lastSeen && Date.now() - lastSeen < 5000);
+      if (duplicate && !source.mention) return;
+      if (source.mention) {
+        setBanners(current => current.filter(entry => entry.fingerprint !== fingerprint));
+      }
       recentFingerprints.current.set(fingerprint, Date.now());
       window.setTimeout(() => recentFingerprints.current.delete(fingerprint), 5000);
 
-      playNotificationChime(source.kind === 'property');
-      window.dispatchEvent(new CustomEvent('bps-unread-notification', {
-        detail: { page: source.page, key },
-      }));
+      if (!duplicate) {
+        playNotificationChime(source.kind === 'property');
+        window.dispatchEvent(new CustomEvent('bps-unread-notification', {
+          detail: { page: record.page || source.page, key },
+        }));
+      }
 
       const text = bannerText(source, record);
       const banner = {
         id: key,
         title: source.label,
-        page: source.page,
+        page: record.page || source.page,
         kind: source.kind,
+        persistent: Boolean(source.mention),
+        recordId: source.mention ? record.id : null,
+        fingerprint,
         sender: text.sender,
         photo: record.sender_photo_url || '',
         message: text.message,
       };
 
       setBanners(current => [...current.slice(-4), banner]);
-      const timer = window.setTimeout(() => {
-        setBanners(current => current.filter(entry => entry.id !== key));
-        timers.current.delete(key);
-      }, 20000);
-      timers.current.set(key, timer);
+      if (!banner.persistent) {
+        const timer = window.setTimeout(() => {
+          setBanners(current => current.filter(entry => entry.id !== key));
+          timers.current.delete(key);
+        }, 20000);
+        timers.current.set(key, timer);
+      }
     };
 
     for (const source of SOURCES) {
       if (source.supervisorOnly && user.role !== 'admin' && !roles.has('supervisor') && !roles.has('full_access')) continue;
       try {
         const unsubscribe = base44.entities[source.entity].subscribe(event => {
+          if (source.mention && event?.type === 'update' && event.data?.read) {
+            setBanners(current => current.filter(entry => entry.id !== `${source.entity}:${event.data.id}`));
+            return;
+          }
           if (event?.type !== 'create') return;
           showBanner(source, event.data);
         });
@@ -155,6 +179,11 @@ export default function GlobalMessageBanner({ user }) {
         console.warn(`Unable to subscribe to ${source.entity}:`, error?.message);
       }
     }
+
+    const mentionSource = SOURCES.find(source => source.mention);
+    base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 20)
+      .then(records => (records || []).reverse().forEach(record => showBanner(mentionSource, record)))
+      .catch(() => null);
 
     return () => {
       unsubscribers.forEach(unsubscribe => unsubscribe());
@@ -180,7 +209,13 @@ export default function GlobalMessageBanner({ user }) {
             initial={{ opacity: 0, y: -24, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -16, scale: 0.97 }}
-            onClick={() => { dismiss(banner.id); window.location.href = createPageUrl(banner.page); }}
+            onClick={async () => {
+              if (banner.persistent && banner.recordId) {
+                await base44.entities.ChatMention.update(banner.recordId, { read: true, read_at: new Date().toISOString() }).catch(() => null);
+              }
+              dismiss(banner.id);
+              window.location.href = createPageUrl(banner.page);
+            }}
             className={`pointer-events-auto w-full overflow-hidden rounded-2xl border text-left text-white shadow-2xl backdrop-blur-xl ${banner.kind === 'property' ? 'border-red-400/40 bg-red-950/95' : banner.kind === 'announcement' ? 'border-amber-300/35 bg-[#29200d]/95' : 'border-white/15 bg-[#111827]/95'}`}
           >
             <div className="flex items-start gap-3 p-4">
@@ -195,7 +230,7 @@ export default function GlobalMessageBanner({ user }) {
                 <p className="mt-1 truncate text-sm font-bold text-white">{banner.sender}</p>
                 <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-100">{banner.message}</p>
               </div>
-              <span onClick={event => { event.stopPropagation(); dismiss(banner.id); }} className="rounded-full p-1 text-slate-300 hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></span>
+              {!banner.persistent && <span onClick={event => { event.stopPropagation(); dismiss(banner.id); }} className="rounded-full p-1 text-slate-300 hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></span>}
             </div>
             <div className={`h-1 origin-left animate-[shrink_20s_linear_forwards] ${banner.kind === 'property' ? 'bg-red-400' : banner.kind === 'announcement' ? 'bg-amber-300' : 'bg-blue-400'}`} />
           </motion.button>
