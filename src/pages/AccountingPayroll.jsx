@@ -294,7 +294,7 @@ export default function AccountingPayroll() {
 
       // Generate payroll entries
       const existingPayrollEntries = payrollEntries;
-      const payrollEntries = [];
+      const generatedPayrollEntries = [];
 
       for (const [email, data] of Object.entries(officerData)) {
         const existingEntry = existingPayrollEntries.find(entry =>
@@ -479,7 +479,7 @@ export default function AccountingPayroll() {
 
         const netPay = grossPay - federalTax - stateTax - socialSecurity - medicare;
 
-        payrollEntries.push({
+        generatedPayrollEntries.push({
           officer_email: email,
           pay_period_start: selectedPeriodStart,
           pay_period_end: selectedPeriodEnd,
@@ -508,8 +508,8 @@ export default function AccountingPayroll() {
         });
       }
 
-      if (payrollEntries.length > 0) {
-        await createPayrollMutation.mutateAsync(payrollEntries);
+      if (generatedPayrollEntries.length > 0) {
+        await createPayrollMutation.mutateAsync(generatedPayrollEntries);
       } else {
         setGenerating(false);
         alert('⚠️ No valid payroll entries to generate');
