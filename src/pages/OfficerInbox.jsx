@@ -21,7 +21,7 @@ export default function OfficerInbox() {
   }
 
   return (
-    <div className="h-[calc(100vh-5.5rem)] p-3 md:p-5">
+    <div className="h-full min-h-0 w-full p-0 md:p-5">
       <UniversalInbox currentUser={currentUser} users={units} />
     </div>
   );
