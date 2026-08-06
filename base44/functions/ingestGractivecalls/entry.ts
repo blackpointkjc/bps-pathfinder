@@ -285,8 +285,9 @@ Deno.serve(async (req) => {
     if (!response.ok) return Response.json({ success: false, error: `GRAC API returned HTTP ${response.status}` }, { status: 502 });
     const payload = await response.json();
     if (!Array.isArray(payload)) return Response.json({ success: false, error: 'Unexpected GRAC response' }, { status: 502 });
-    const incoming = payload.map(normalizeCall).filter(Boolean) as any[];
+    let incoming = payload.map(normalizeCall).filter(Boolean) as any[];
     if (!incoming.length) return Response.json({ success: false, error: 'No usable active calls; existing data preserved' }, { status: 502 });
+    incoming = await enrichOfficialIdentifiers(incoming);
 
     let existingCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
     const incomingByLegacy = new Map(incoming.map(call => [legacyKey(call), call]));
