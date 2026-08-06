@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Shield, FileWarning, ClipboardCheck, Check, X, AlertCircle, Users, Printer, BarChart3, ShieldCheck } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { getRankLastNameByEmail } from "@/utils/officerDisplay";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -89,13 +90,7 @@ export default function AdminSupervisorReports() {
     enabled: user?.role === 'admin',
   });
 
-  const getOfficerIdentifier = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
-    if (officer?.first_name && officer?.last_name) {
-      return `${officer.first_name} ${officer.last_name}`;
-    }
-    return email;
-  };
+  const getOfficerIdentifier = (email) => getRankLastNameByEmail(allUsers, email, email);
 
   const approveWriteUpMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.WriteUpReport.update(id, data),
@@ -635,7 +630,7 @@ export default function AdminSupervisorReports() {
                           <div className="flex flex-wrap gap-3 mt-1">
                             <span className="text-xs text-slate-500">Site: <strong>{check.site_name}</strong></span>
                             <span className="text-xs text-slate-500">Supervisor: <strong>{check.supervisor_rank} {check.supervisor_last_name}</strong></span>
-                            <span className="text-xs text-slate-500">Officer: <strong>{check.entered_by_officer_name || check.entered_by_officer_email}</strong></span>
+                            <span className="text-xs text-slate-500">Officer: <strong>{getOfficerIdentifier(check.entered_by_officer_email || check.officer_email)}</strong></span>
                           </div>
                           {check.note && <p className="text-xs text-slate-500 italic mt-1">{check.note}</p>}
                         </div>
