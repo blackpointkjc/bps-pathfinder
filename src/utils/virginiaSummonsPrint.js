@@ -32,15 +32,15 @@ export function buildVirginiaSummonsHtml(s, options = {}) {
   <meta charset="utf-8" />
   <title>Virginia Uniform Summons - ${esc(caseNumber)}</title>
   <style>
-    @page { size: letter landscape; margin: .18in; }
+    @page summons { size: letter landscape; margin: .24in .30in .58in; }
     * { box-sizing: border-box; }
     html, body { margin: 0; background: white; color: #000; font-family: Arial, Helvetica, sans-serif; }
-    body { font-size: 6.2pt; line-height: 1.05; }
+    body { font-size: 6.45pt; line-height: 1.08; }
     .toolbar { position: fixed; left: 10px; top: 10px; z-index: 20; }
     .toolbar button { border: 0; border-radius: 5px; background: #1d4ed8; color: #fff; font-weight: 700; padding: 8px 13px; cursor: pointer; }
-    .sheet { width: 10.55in; min-height: 7.75in; margin: 0 auto; display: grid; grid-template-columns: 1.72in 7.75in .55in; gap: .08in; }
-    .waiver, .summons, .reverse { border: 1.5px solid #000; }
-    .waiver { padding: 4px; font-size: 5.35pt; text-align: justify; }
+    .sheet { page: summons; width: 10.40in; height: 7.60in; margin: 0 auto; display: grid; grid-template-columns: 1.86in minmax(0, 1fr); gap: .10in; break-inside: avoid; overflow: hidden; }
+    .waiver, .summons { border: 1.5px solid #000; }
+    .waiver { padding: 5px; font-size: 5.55pt; text-align: justify; }
     .waiver h2 { text-align: center; font-size: 6.5pt; margin: 0 0 2px; }
     .waiver p { margin: 0 0 3px; }
     .sig { margin-top: 7px; border-top: 1px solid #000; padding-top: 2px; text-align: center; }
@@ -52,7 +52,7 @@ export function buildVirginiaSummonsHtml(s, options = {}) {
     .title span { display: block; font-size: 6pt; font-weight: 700; }
     .case { padding: 3px 4px; text-align: right; }
     .case .value { min-height: 14px; border-bottom: 1px solid #000; font-size: 8pt; }
-    .bodygrid { display: grid; grid-template-columns: 3.05in 1fr; min-height: 5.7in; }
+    .bodygrid { display: grid; grid-template-columns: 3.15in minmax(0, 1fr); min-height: 5.42in; }
     .left, .right { border-right: 1px solid #000; }
     .right { border-right: 0; }
     .notice { padding: 3px 5px; border-bottom: 1px solid #000; font-size: 6.2pt; }
@@ -82,17 +82,16 @@ export function buildVirginiaSummonsHtml(s, options = {}) {
     .commercial td { padding: 1px 2px; vertical-align: top; }
     .defsig { padding: 4px; border-top: 1px solid #000; }
     .defsig .line { height: 18px; border-bottom: 1px solid #000; }
-    .instructions { border-top: 1.5px solid #000; display: grid; grid-template-columns: 2.1in 1fr; min-height: 1.05in; }
+    .instructions { border-top: 1.5px solid #000; display: grid; grid-template-columns: 2.15in 1fr; min-height: .92in; }
     .juvenile { padding: 4px; border-right: 1px solid #000; }
     .prepay { padding: 4px 6px; }
     .prepay h3 { margin: 0 0 3px; font-size: 7.5pt; text-align: center; }
-    .prepay ol { margin: 0; padding-left: 15px; font-size: 5.2pt; }
-    .bottom { display: flex; justify-content: space-between; align-items: end; padding: 2px 4px; font-size: 5pt; font-weight: 700; }
-    .reverse { writing-mode: vertical-rl; transform: rotate(180deg); display: flex; justify-content: center; align-items: center; font-size: 10pt; font-weight: 800; letter-spacing: .2px; }
-    @media print { .toolbar { display: none !important; } .sheet { margin: 0; } }
+    .prepay ol { margin: 0; padding-left: 15px; font-size: 5.35pt; line-height: 1.18; }
+    .bottom { display: flex; justify-content: space-between; align-items: end; padding: 3px 5px; font-size: 5.2pt; font-weight: 700; }
+    @media print { .toolbar { display: none !important; } .sheet { margin: 0 auto; } body { padding-bottom: 0 !important; } }
   </style>
 </head>
-<body>
+<body class="bps-summons-print">
   <div class="toolbar"><button onclick="window.close()">← Back to App</button></div>
   <main class="sheet">
     <aside class="waiver">
@@ -109,7 +108,7 @@ export function buildVirginiaSummonsHtml(s, options = {}) {
       <div class="sig">NOTARY PUBLIC / CLERK / MAGISTRATE</div>
       <div class="sig">CITY/COUNTY &nbsp;&nbsp;&nbsp; STATE</div>
       <div class="sig">MY COMMISSION EXPIRES</div>
-      <p style="margin-top:8px;font-size:6pt;font-weight:bold;">IF PREPAYMENT IS MADE, ATTACH PAYMENT HERE.</p>
+      <p style="margin-top:8px;font-size:6pt;font-weight:bold;">FOR THE EXACT PREPAY TOTAL, CONTACT THE CLERK OF THE COURT LISTED ON THIS SUMMONS.</p>
     </aside>
 
     <section class="summons">
@@ -190,13 +189,12 @@ export function buildVirginiaSummonsHtml(s, options = {}) {
         </div>
         <div class="prepay">
           <h3>PRETRIAL WAIVER AND PREPAYMENT INSTRUCTIONS</h3>
-          <ol><li>Calculate the amount owed from the information sheet provided by the arresting officer, or verify the amount with the court.</li><li>If prepayable, payment must be received by the court before the trial date. Contact the clerk if you have questions.</li><li>Juveniles and certain offenses may require a court appearance.</li><li>Promptly mail or deliver the summons with payment. Delivery risk remains with the defendant.</li></ol>
+          <ol><li>Contact the clerk of the court listed on this summons to confirm whether the charge is prepayable and obtain the exact prepay total.</li><li>Do not estimate the amount due. Follow the court clerk's payment instructions.</li><li>If prepayable, the court must receive payment before the trial date.</li><li>Juveniles and certain offenses may require a court appearance.</li></ol>
         </div>
       </div>
-      <footer class="bottom"><span>IF PREPAYMENT IS MADE, ATTACH PAYMENT HERE.</span><span>DEFENDANT'S COPY · PAGE 2</span><span>READ NOTICE ON REVERSE</span></footer>
+      <footer class="bottom"><span>CONTACT THE COURT CLERK FOR THE EXACT PREPAY TOTAL.</span><span>DEFENDANT'S COPY</span><span>KEEP THIS SUMMONS FOR YOUR RECORDS.</span></footer>
     </section>
 
-    <aside class="reverse">IMPORTANT: READ NOTICE ON REVERSE SIDE</aside>
   </main>
   <script>window.onload = () => setTimeout(() => window.print(), 450);</script>
 </body>
