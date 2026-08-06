@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { MessageCircle, Send, Users, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import MentionInput from "@/components/chat/MentionInput";
 
 export default function TeamChat() {
   const [message, setMessage] = useState("");
+  const [mentionedUsers, setMentionedUsers] = useState([]);
   const scrollRef = useRef(null);
   const queryClient = useQueryClient();
 
@@ -45,10 +47,24 @@ export default function TeamChat() {
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: (data) => base44.entities.ChatMessage.create(data),
+    mutationFn: async ({ data, mentions }) => {
+      const created = await base44.entities.ChatMessage.create(data);
+      await Promise.all(mentions.map(mention => base44.entities.ChatMention.create({
+        message_id: created.id,
+        chat_type: 'team',
+        page: 'TeamChat',
+        recipient_email: mention.email,
+        recipient_name: mention.label,
+        sender_name: data.sender_name,
+        message: data.message,
+        read: false,
+      })));
+      return created;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
       setMessage("");
+      setMentionedUsers([]);
     },
   });
 
@@ -57,11 +73,14 @@ export default function TeamChat() {
     if (!message.trim()) return;
 
     sendMessageMutation.mutate({
-      message: message.trim(),
-      sender_name: senderName,
-      sender_email: user?.email || '',
-      sender_photo_url: user?.profile_photo_url || '',
-      pinged_user: null,
+      data: {
+        message: message.trim(),
+        sender_name: senderName,
+        sender_email: user?.email || '',
+        sender_photo_url: user?.profile_photo_url || '',
+        pinged_user: mentionedUsers[0]?.email || null,
+      },
+      mentions: mentionedUsers,
     });
   };
 
@@ -109,6 +128,19 @@ export default function TeamChat() {
       window.location.href = `tel:${phone}`;
     }
   };
+
+  useEffect(() => {
+    if (!user?.email) return undefined;
+    const markRead = async record => {
+      if (String(record?.recipient_email || '').toLowerCase() !== String(user.email).toLowerCase() || record.read || record.page !== 'TeamChat') return;
+      await base44.entities.ChatMention.update(record.id, { read: true, read_at: new Date().toISOString() }).catch(() => null);
+    };
+    base44.entities.ChatMention.filter({ recipient_email: user.email, page: 'TeamChat', read: false }).then(records => Promise.all((records || []).map(markRead))).catch(() => null);
+    const unsubscribe = base44.entities.ChatMention.subscribe(event => {
+      if (event?.type === 'create') markRead(event.data);
+    });
+    return unsubscribe;
+  }, [user?.email]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -212,11 +244,13 @@ export default function TeamChat() {
 
           <CardContent className="border-t p-4 flex-shrink-0">
             <form onSubmit={handleSendMessage} className="flex gap-3">
-              <Input
-                placeholder="Type your message... (emojis supported 😊)"
+              <MentionInput
+                placeholder="Type a message or @mention someone..."
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="flex-1"
+                onChange={setMessage}
+                users={allUsers}
+                currentEmail={user?.email}
+                onMentionsChange={setMentionedUsers}
                 disabled={sendMessageMutation.isPending}
               />
               <Button
