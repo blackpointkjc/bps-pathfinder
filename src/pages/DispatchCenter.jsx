@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Shield, Radio, Map as MapIcon, RefreshCw, Plus, Search, Clock3, MessageSquarePlus, AlertTriangle, History, Megaphone, Activity, Users, Wifi, Keyboard, Navigation } from 'lucide-react';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { createPageUrl } from '../utils';
-import { stopAllAlerts } from '@/utils/alertUtils';
+import { findPropertyMatch, stopAllAlerts } from '@/utils/alertUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
@@ -203,7 +203,8 @@ export default function DispatchCenter() {
                 const newCallIds = [...currentIds].filter(id => !knownCallIdsRef.current.has(id));
                 if (newCallIds.length > 0) {
                     const newCall = recentCalls.find(c => newCallIds.includes(c.id));
-                    setPendingAlertCall(newCall);
+                    const propertyMatch = newCall ? findPropertyMatch(newCall, monitoredProperties) : null;
+                    if (propertyMatch) setPendingAlertCall(newCall);
                 }
                 knownCallIdsRef.current = currentIds;
             }
