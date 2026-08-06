@@ -193,6 +193,7 @@ const CENTER_CONFIG = {
         ['Payroll Center', 'AccountingPayroll', DollarSign],
         ['Payroll Dates', 'PayrollDates', CalendarClock],
         ['Client Invoices', 'AccountingInvoices', FileText],
+        ['Bills & Expenses', 'AccountingExpenses', DollarSign],
         ['Company Profit', 'AccountingProfit', BarChart3],
         ['Tax Liability', 'AccountingTaxLiability', ClipboardList],
         ['Expense Approval', 'AdminExpenseApproval', ClipboardCheck],
