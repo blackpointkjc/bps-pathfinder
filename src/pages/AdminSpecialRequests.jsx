@@ -5,14 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Shield, Calendar, Clock, Users, AlertTriangle, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { eachDayOfInterval, format, parseISO } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getRankLastName } from "@/utils/officerDisplay";
 
 export default function AdminSpecialRequests() {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [adminNotes, setAdminNotes] = useState("");
+  const [selectedOfficerEmail, setSelectedOfficerEmail] = useState("");
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -29,6 +32,19 @@ export default function AdminSpecialRequests() {
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
     queryFn: () => base44.entities.User.list(),
+    enabled: user?.role === 'admin',
+  });
+
+  const { data: schedules = [] } = useQuery({
+    queryKey: ['allSchedulesSpecialCoverage'],
+    queryFn: () => base44.entities.Schedule.list('-shift_date'),
+    enabled: user?.role === 'admin',
+    refetchInterval: 15000,
+  });
+
+  const { data: timeOffRequests = [] } = useQuery({
+    queryKey: ['approvedTimeOffSpecialCoverage'],
+    queryFn: () => base44.entities.TimeOffRequest.list('-created_date'),
     enabled: user?.role === 'admin',
   });
 
@@ -69,16 +85,67 @@ export default function AdminSpecialRequests() {
     });
   };
 
-  const handleScheduled = (req) => {
-    updateRequestMutation.mutate({
-      id: req.id,
-      data: {
-        status: "scheduled",
-        admin_notes: adminNotes || "Scheduled in system",
-        reviewed_by: user?.email,
-        reviewed_date: new Date().toISOString(),
-      }
+  const timeToMinutes = (value = '') => {
+    const [hours, minutes] = String(value).split(':').map(Number);
+    return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : 0;
+  };
+
+  const overlaps = (startA, endA, startB, endB) => {
+    let aStart = timeToMinutes(startA), aEnd = timeToMinutes(endA);
+    let bStart = timeToMinutes(startB), bEnd = timeToMinutes(endB);
+    if (aEnd <= aStart) aEnd += 1440;
+    if (bEnd <= bStart) bEnd += 1440;
+    return aStart < bEnd && bStart < aEnd;
+  };
+
+  const getAvailableOfficers = (req) => {
+    if (!req?.start_date || !req?.end_date) return [];
+    const days = eachDayOfInterval({ start: parseISO(req.start_date), end: parseISO(req.end_date) }).map(day => format(day, 'yyyy-MM-dd'));
+    const startTime = req.start_time || String(req.shift_times || '').split(' - ')[0] || '';
+    const endTime = req.end_time || String(req.shift_times || '').split(' - ')[1] || '';
+    return (allUsers || []).filter(officer => {
+      if (!officer.email || officer.termination_date || officer.role === 'admin') return false;
+      const onLeave = timeOffRequests.some(item => item.officer_email === officer.email && ['approved', 'accepted'].includes(item.status) && days.some(day => day >= item.start_date && day <= item.end_date));
+      if (onLeave) return false;
+      return !schedules.some(shift => shift.officer_email === officer.email && days.includes(shift.shift_date) && overlaps(startTime, endTime, shift.start_time, shift.end_time));
     });
+  };
+
+  const handleScheduled = async (req) => {
+    if (!selectedOfficerEmail) {
+      alert('Select an available officer before scheduling.');
+      return;
+    }
+    const officer = (allUsers || []).find(item => item.email === selectedOfficerEmail);
+    const startTime = req.start_time || String(req.shift_times || '').split(' - ')[0] || '';
+    const endTime = req.end_time || String(req.shift_times || '').split(' - ')[1] || '';
+    const days = eachDayOfInterval({ start: parseISO(req.start_date), end: parseISO(req.end_date) });
+    await Promise.all(days.map(day => base44.entities.Schedule.create({
+      officer_email: selectedOfficerEmail,
+      officer_name: getRankLastName(officer, selectedOfficerEmail),
+      shift_date: format(day, 'yyyy-MM-dd'),
+      start_time: startTime,
+      end_time: endTime,
+      location: req.location,
+      status: 'scheduled',
+      source: 'special_coverage_request',
+      special_coverage_request_id: req.id,
+      notes: req.reason || req.special_requirements || '',
+    })));
+    await base44.entities.SpecialCoverageRequest.update(req.id, {
+      status: 'scheduled',
+      assigned_officer_email: selectedOfficerEmail,
+      assigned_officer_display: getRankLastName(officer, selectedOfficerEmail),
+      admin_notes: adminNotes || 'Assigned and added to Admin Scheduling',
+      reviewed_by: user?.email,
+      reviewed_date: new Date().toISOString(),
+    });
+    queryClient.invalidateQueries({ queryKey: ['allSpecialRequests'] });
+    queryClient.invalidateQueries({ queryKey: ['allSchedules'] });
+    queryClient.invalidateQueries({ queryKey: ['allSchedulesSpecialCoverage'] });
+    setSelectedRequest(null);
+    setAdminNotes('');
+    setSelectedOfficerEmail('');
   };
 
   const getClientName = (email) => {
