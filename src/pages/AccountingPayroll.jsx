@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,13 +26,20 @@ const safeFormatDate = (dateStr, formatStr = 'MMM d, yyyy') => {
   }
 };
 
-const safeCalculateHours = (clockIn, clockOut) => {
-  if (!clockIn || !clockOut) return 0;
+const safeCalculateHours = (entry) => {
+  if (!entry?.clock_in || !entry?.clock_out) return 0;
   try {
-    const start = new Date(clockIn);
-    const end = new Date(clockOut);
+    const start = new Date(entry.clock_in);
+    const end = new Date(entry.clock_out);
     if (!isValid(start) || !isValid(end)) return 0;
-    return Math.max(0, (end - start) / (1000 * 60 * 60));
+    const completedBreakMs = (Array.isArray(entry.break_periods) ? entry.break_periods : []).reduce((total, period) => {
+      if (!period?.start || !period?.end) return total;
+      return total + Math.max(0, new Date(period.end) - new Date(period.start));
+    }, 0);
+    const openBreakMs = entry.on_break && entry.break_started_at
+      ? Math.max(0, end - new Date(entry.break_started_at))
+      : 0;
+    return Math.max(0, (end - start - completedBreakMs - openBreakMs) / 3600000);
   } catch (error) {
     return 0;
   }
@@ -95,6 +102,15 @@ export default function AccountingPayroll() {
     enabled: isAccountingRole,
   });
 
+  useEffect(() => {
+    if (selectedPeriodId || payrollPeriods.length === 0) return;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const current = payrollPeriods.find(period =>
+      period.status === 'current' || (period.start_date <= today && period.end_date >= today)
+    );
+    if (current) setSelectedPeriodId(current.id);
+  }, [payrollPeriods, selectedPeriodId]);
+
   const createPayrollMutation = useMutation({
     mutationFn: (entries) => base44.entities.PayrollEntry.bulkCreate(entries),
     onSuccess: () => {
@@ -118,8 +134,14 @@ export default function AccountingPayroll() {
   });
 
   const markPaidMutation = useMutation({
-    mutationFn: (id) => base44.entities.PayrollEntry.update(id, { status: 'paid' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payrollEntries'] }),
+    mutationFn: (id) => base44.entities.PayrollEntry.update(id, {
+      status: 'paid',
+      pay_date: format(new Date(), 'yyyy-MM-dd')
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payrollEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['w2Forms'] });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -222,7 +244,7 @@ export default function AccountingPayroll() {
           return;
         }
 
-        const hours = safeCalculateHours(entry.clock_in, entry.clock_out);
+        const hours = safeCalculateHours(entry);
         
         if (hours > 16) {
           issues.push({
@@ -242,7 +264,7 @@ export default function AccountingPayroll() {
           };
         }
 
-        const minutes = (new Date(entry.clock_out) - new Date(entry.clock_in)) / (1000 * 60);
+        const minutes = hours * 60;
         officerData[entry.officer_email].totalMinutes += minutes;
         
         // Check if shift is on a federal holiday
@@ -446,7 +468,7 @@ export default function AccountingPayroll() {
           officer_email: email,
           pay_period_start: selectedPeriodStart,
           pay_period_end: selectedPeriodEnd,
-          pay_date: selectedPeriodEnd,
+          pay_date: selectedPeriod.deposit_date || selectedPeriodEnd,
           regular_hours: parseFloat(regularHours.toFixed(4)),
           overtime_hours: parseFloat(overtimeHours.toFixed(4)),
           holiday_hours: parseFloat(holidayHours.toFixed(4)),
