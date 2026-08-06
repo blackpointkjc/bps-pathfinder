@@ -3,6 +3,14 @@
   "appName": "BPS CAD",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https"
+    "url": "https://pathfinderbps.base44.app",
+    "androidScheme": "https",
+    "cleartext": false,
+    "allowNavigation": [
+      "pathfinderbps.base44.app",
+      "base44.app",
+      "*.base44.app",
+      "*.supabase.co"
+    ]
   }
 }
