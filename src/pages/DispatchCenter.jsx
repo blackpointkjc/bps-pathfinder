@@ -166,8 +166,8 @@ export default function DispatchCenter() {
                 const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
                 const key = call.external_call_id || descriptionKey || call.id;
                 const current = uniqueCalls.get(key);
-                const currentHasCad = /^B\d+$/i.test(String(current?.call_id || ''));
-                const candidateHasCad = /^B\d+$/i.test(String(call.call_id || ''));
+                const currentHasCad = /^[A-L]\d{1,8}$/i.test(String(current?.call_id || ''));
+                const candidateHasCad = /^[A-L]\d{1,8}$/i.test(String(call.call_id || ''));
                 if (!current || (!currentHasCad && candidateHasCad)) uniqueCalls.set(key, call);
             }
             const recentCalls = [...uniqueCalls.values()].filter(call => {
@@ -505,7 +505,7 @@ export default function DispatchCenter() {
                                         </span>
                                     </div>
                                     <div className="col-span-5">
-                                        <div className="text-[9px] font-mono font-bold text-[#7ec1ff] truncate">{/^B\d+$/i.test(String(call.call_id || '')) ? call.call_id : 'ASSIGNING…'}</div>
+                                        <div className="text-[9px] font-mono font-bold text-[#7ec1ff] truncate">{/^[A-L]\d{1,8}$/i.test(String(call.call_id || '')) ? call.call_id : 'ASSIGNING…'}</div>
                                         <div className="truncate text-[11px] font-bold leading-tight text-white group-hover:text-cyan-100">{call.incident}</div>
                                         <div className="mt-1 truncate text-[9px] text-slate-400">{call.location}</div>
                                         <div className="mt-1 text-[8px] font-semibold tracking-wide text-slate-600">{call.agency || 'AGENCY N/A'}</div>
@@ -529,7 +529,7 @@ export default function DispatchCenter() {
                             {selectedCall ? (
                                 <div className="overflow-auto" style={{maxHeight: '340px'}}>
                                     <div className="px-3 md:px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center gap-2 md:gap-3">
-                                        <span className="text-[#f5a623] font-bold text-xs">CAD #{/^B\d+$/i.test(String(selectedCall.call_id || '')) ? selectedCall.call_id : 'ASSIGNING…'}</span>
+                                        <span className="text-[#f5a623] font-bold text-xs">CAD #{/^[A-L]\d{1,8}$/i.test(String(selectedCall.call_id || '')) ? selectedCall.call_id : 'ASSIGNING…'}</span>
                                         <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(selectedCall.priority)}`}>{(selectedCall.priority || 'low').toUpperCase()}</span>
                                         <span className="text-[10px] text-slate-400">{selectedCall.status}</span>
                                         <span className="w-full md:w-auto md:ml-auto text-[9px] text-slate-500">
