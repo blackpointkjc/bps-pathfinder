@@ -120,23 +120,23 @@ export default function AdminQRReports() {
   const allOfficers = [...new Map(allScans.map(s => [s.officer_email, { email: s.officer_email, name: s.officer_name || s.officer_email }])).values()];
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-white max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
+    <div className="mx-auto min-h-screen w-full max-w-6xl space-y-4 bg-white p-3 pb-24 sm:space-y-6 sm:p-4 md:p-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="bg-blue-600 p-2 rounded-xl"><QrCode className="w-6 h-6 text-white" /></div>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold text-slate-900">QR Patrol Reports</h1>
           <p className="text-sm text-slate-500">
             Live scan data · {groups.length} officer session{groups.length !== 1 ? 's' : ''} · 
             last updated {dataUpdatedAt ? format(new Date(dataUpdatedAt), 'h:mm:ss a') : '—'}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['adminLiveQRScans'] })}>
+        <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => queryClient.invalidateQueries({ queryKey: ['adminLiveQRScans'] })}>
           <RefreshCw className="w-4 h-4" />
         </Button>
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Input
           type="date"
           value={filterDate}
@@ -226,7 +226,7 @@ export default function AdminQRReports() {
                     </div>
                   )}
                 </div>
-                <Button variant="outline" size="sm" className="flex-shrink-0">View Scans</Button>
+                <Button variant="outline" size="sm" className="w-full flex-shrink-0 sm:w-auto">View Scans</Button>
               </div>
             </CardContent>
           </Card>
@@ -236,7 +236,7 @@ export default function AdminQRReports() {
       {/* Detail dialog */}
       {viewGroup && (
         <Dialog open={!!viewGroup} onOpenChange={() => setViewGroup(null)}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[90dvh] w-[calc(100vw-1rem)] max-w-2xl overflow-y-auto p-3 sm:p-6">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <QrCode className="w-5 h-5 text-blue-600" />
