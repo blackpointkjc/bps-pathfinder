@@ -172,7 +172,7 @@ export default function DispatchCenter() {
             }
             const recentCalls = [...uniqueCalls.values()].filter(call => {
                 const receivedAt = new Date(call.time_received || call.created_date).getTime();
-                const isFresh = Number.isFinite(receivedAt) && Date.now() - receivedAt <= 60 * 60 * 1000;
+                const isFresh = Number.isFinite(receivedAt) && Date.now() - receivedAt < 61 * 60 * 1000;
                 return isFresh && !['Cleared', 'Cancelled'].includes(call.status);
             });
 
