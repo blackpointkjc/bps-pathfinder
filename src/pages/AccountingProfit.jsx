@@ -211,6 +211,127 @@ export default function AccountingProfit() {
   const netProfit = totalRevenue - totalCosts;
   const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
+  const openProfitReport = () => {
+    const reportWindow = window.open('', '_blank', 'width=1100,height=900');
+    if (!reportWindow) return;
+
+    const money = (value) => Number(value || 0).toLocaleString('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    });
+
+    const siteRows = Object.keys(revenueBySite)
+      .sort((a, b) => (revenueBySite[b] || 0) - (revenueBySite[a] || 0))
+      .map(site => {
+        const revenue = revenueBySite[site] || 0;
+        const payroll = payrollBySite[site] || 0;
+        const profit = revenue - payroll;
+        const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+        return `<tr>
+          <td><strong>${site}</strong></td>
+          <td>${(hoursBySite[site] || 0).toFixed(2)}</td>
+          <td>${money(revenue)}</td>
+          <td>${money(payroll)}</td>
+          <td class="${profit >= 0 ? 'positive' : 'negative'}">${money(profit)}</td>
+          <td>${revenue > 0 ? margin.toFixed(1) + '%' : 'Nonbillable'}</td>
+        </tr>`;
+      }).join('');
+
+    const officerRows = Object.keys(payrollByOfficer)
+      .sort((a, b) => (revenueByOfficer[b] || 0) - (revenueByOfficer[a] || 0))
+      .map(officerName => {
+        const revenue = revenueByOfficer[officerName] || 0;
+        const payroll = payrollByOfficer[officerName] || 0;
+        const hours = hoursByOfficer[officerName] || 0;
+        const profit = revenue - payroll;
+        const breakdown = payrollBreakdownByOfficer[officerName] || {};
+        return `<tr>
+          <td><strong>${officerName}</strong></td>
+          <td>${hours.toFixed(2)}</td>
+          <td>${money(revenue)}</td>
+          <td>${money(payroll)}</td>
+          <td class="${profit >= 0 ? 'positive' : 'negative'}">${money(profit)}</td>
+          <td>${(breakdown.overtimeHours || 0).toFixed(2)}</td>
+        </tr>`;
+      }).join('');
+
+    reportWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Company Profit Report - ${startDate} to ${endDate}</title>
+        <style>
+          @page { size: letter landscape; margin: .45in; }
+          * { box-sizing: border-box; }
+          body { margin:0; background:#eef2f7; color:#0f172a; font:13px/1.45 Arial,sans-serif; }
+          .toolbar { position:sticky; top:0; z-index:2; display:flex; justify-content:flex-end; padding:12px 24px; background:#fff; border-bottom:1px solid #dbe3ee; }
+          button { border:0; border-radius:9px; background:#0f172a; color:#fff; padding:10px 18px; font-weight:700; cursor:pointer; }
+          .report { max-width:11in; margin:24px auto; background:#fff; padding:36px; box-shadow:0 20px 50px rgba(15,23,42,.12); }
+          .header { display:flex; justify-content:space-between; gap:30px; padding-bottom:24px; border-bottom:3px solid #0f172a; }
+          .eyebrow { color:#047857; font-size:10px; font-weight:800; letter-spacing:1.4px; text-transform:uppercase; }
+          h1 { margin:5px 0 4px; font-size:30px; letter-spacing:-.7px; }
+          .subtle { color:#64748b; }
+          .period { text-align:right; }
+          .period strong { display:block; font-size:15px; margin-top:5px; }
+          .metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:24px 0; }
+          .metric { border:1px solid #dbe3ee; border-radius:12px; padding:15px; background:#f8fafc; }
+          .metric .label { color:#64748b; font-size:9px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
+          .metric .value { margin-top:5px; font-size:22px; font-weight:800; }
+          .positive { color:#047857; }
+          .negative { color:#b91c1c; }
+          .formula { border-left:4px solid #2563eb; background:#eff6ff; padding:14px 16px; margin-bottom:24px; }
+          h2 { margin:26px 0 10px; font-size:16px; }
+          table { width:100%; border-collapse:collapse; }
+          th { background:#0f172a; color:#fff; padding:10px; text-align:left; font-size:9px; letter-spacing:.8px; text-transform:uppercase; }
+          td { padding:10px; border-bottom:1px solid #e2e8f0; }
+          tr:nth-child(even) td { background:#f8fafc; }
+          .footer { margin-top:28px; padding-top:14px; border-top:1px solid #cbd5e1; display:flex; justify-content:space-between; color:#64748b; font-size:10px; }
+          @media print {
+            body { background:#fff; }
+            .toolbar { display:none; }
+            .report { margin:0; max-width:none; padding:0; box-shadow:none; }
+            .metric, th { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="toolbar"><button onclick="window.print()">Print / Save PDF</button></div>
+        <main class="report">
+          <header class="header">
+            <div>
+              <div class="eyebrow">Black Point Protection Services</div>
+              <h1>Company Profit Report</h1>
+              <div class="subtle">Revenue, labor, expenses, employer taxes, and profitability</div>
+            </div>
+            <div class="period">
+              <span class="subtle">Report period</span>
+              <strong>${format(new Date(startDate + 'T00:00:00'), 'MMM d, yyyy')} – ${format(new Date(endDate + 'T00:00:00'), 'MMM d, yyyy')}</strong>
+              <span class="subtle">Generated ${format(new Date(), 'MMM d, yyyy h:mm a')}</span>
+            </div>
+          </header>
+          <section class="metrics">
+            <div class="metric"><div class="label">Revenue</div><div class="value positive">${money(totalRevenue)}</div></div>
+            <div class="metric"><div class="label">Payroll</div><div class="value">${money(totalPayroll)}</div></div>
+            <div class="metric"><div class="label">Operating costs</div><div class="value">${money(totalExpenses + ptoCost + employerTaxes)}</div></div>
+            <div class="metric"><div class="label">Net profit</div><div class="value ${netProfit >= 0 ? 'positive' : 'negative'}">${money(netProfit)}</div></div>
+            <div class="metric"><div class="label">Employer taxes</div><div class="value">${money(employerTaxes)}</div></div>
+            <div class="metric"><div class="label">Expenses</div><div class="value">${money(totalExpenses)}</div></div>
+            <div class="metric"><div class="label">PTO cost</div><div class="value">${money(ptoCost)}</div></div>
+            <div class="metric"><div class="label">Net margin</div><div class="value">${profitMargin.toFixed(1)}%</div></div>
+          </section>
+          <div class="formula"><strong>Profit calculation:</strong> ${money(totalRevenue)} − (${money(totalPayroll)} payroll + ${money(employerTaxes)} employer taxes + ${money(totalExpenses)} expenses + ${money(ptoCost)} PTO) = <strong>${money(netProfit)}</strong></div>
+          <h2>Profitability by Site</h2>
+          <table><thead><tr><th>Site / Cost Center</th><th>Hours</th><th>Revenue</th><th>Payroll</th><th>Site Contribution</th><th>Margin</th></tr></thead><tbody>${siteRows || '<tr><td colspan="6">No site activity for this period.</td></tr>'}</tbody></table>
+          <h2>Profitability by Employee</h2>
+          <table><thead><tr><th>Employee</th><th>Hours</th><th>Revenue</th><th>Payroll</th><th>Contribution</th><th>Overtime Hours</th></tr></thead><tbody>${officerRows || '<tr><td colspan="6">No employee activity for this period.</td></tr>'}</tbody></table>
+          <footer class="footer"><span>Internal financial report • Confidential</span><span>Employer taxes estimated at 7.65% of payroll</span></footer>
+        </main>
+      </body>
+      </html>
+    `);
+    reportWindow.document.close();
+  };
+
   return (
     <>
       <style>{`
@@ -232,9 +353,9 @@ export default function AccountingProfit() {
           <p className="text-slate-300 mt-2">Live revenue, labor, expense, tax, and margin analysis</p>
           <p className="text-sm text-slate-400 mt-2">Generated {format(new Date(), 'MMM d, yyyy h:mm a')}</p>
         </div>
-        <Button onClick={() => window.print()} className="bg-white text-slate-950 hover:bg-slate-100 no-print w-full md:w-auto">
+        <Button onClick={openProfitReport} className="bg-white text-slate-950 hover:bg-slate-100 no-print w-full md:w-auto">
           <Download className="w-4 h-4 mr-2" />
-          Print Report
+          Open Professional Report
         </Button>
       </div>
 
