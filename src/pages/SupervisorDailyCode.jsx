@@ -108,11 +108,11 @@ export default function SupervisorDailyCode() {
             </div>
           ) : codeRecord ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="text-6xl font-mono font-bold tracking-[0.3em] text-green-900 bg-white px-6 py-4 rounded-xl border-2 border-green-300 shadow-inner select-all">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="w-full overflow-hidden rounded-xl border-2 border-green-300 bg-white px-3 py-4 text-center font-mono text-4xl font-bold tracking-[0.2em] text-green-900 shadow-inner select-all sm:w-auto sm:px-6 sm:text-6xl sm:tracking-[0.3em]">
                   {codeRecord.code}
                 </div>
-                <div className="flex flex-col gap-2 ml-4">
+                <div className="grid w-full grid-cols-2 gap-2 sm:ml-4 sm:w-auto sm:grid-cols-1">
                   <Button onClick={copyCode} variant="outline" className="border-green-400 text-green-700 hover:bg-green-100">
                     <Copy className="w-4 h-4 mr-2" />
                     Copy
@@ -183,7 +183,7 @@ export default function SupervisorDailyCode() {
                   )}
                   <div className="flex-1">
                     <p className="text-sm font-medium text-slate-800">{check.dar_entry_text}</p>
-                    <div className="flex items-center gap-3 mt-1">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                       <span className="text-xs text-slate-400">{check.site_name}</span>
                       <span className="text-xs text-slate-400">
                         {format(new Date(check.check_timestamp), "h:mm a")}
