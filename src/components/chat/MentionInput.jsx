@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 
 const displayName = user => (
-  [user?.rank, user?.first_name, user?.last_name].filter(Boolean).join(' ')
+  user?.label
+  || [user?.rank, user?.first_name, user?.last_name].filter(Boolean).join(' ')
   || user?.full_name
   || user?.email
   || 'User'
@@ -39,8 +40,10 @@ export default function MentionInput({ value, onChange, users = [], currentEmail
   const choose = user => {
     const label = displayName(user);
     const next = value.replace(/(?:^|\s)@[^@\s]*$/, match => `${match.startsWith(' ') ? ' ' : ''}@${label} `);
-    const item = { email: user.email, label };
-    const updated = [...mentions.filter(existing => existing.email !== item.email), item];
+    const emails = user.emails?.length ? user.emails : [user.email];
+    const items = emails.filter(Boolean).map(email => ({ email, label }));
+    const selectedEmails = new Set(items.map(item => item.email));
+    const updated = [...mentions.filter(existing => !selectedEmails.has(existing.email)), ...items];
     setMentions(updated);
     onMentionsChange(updated);
     onChange(next);
