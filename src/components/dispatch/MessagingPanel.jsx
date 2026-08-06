@@ -11,17 +11,17 @@ import MentionInput from '@/components/chat/MentionInput';
 const roleSet = (user) => new Set((user?.additional_roles || []).map(r => String(r).toLowerCase()));
 const isDispatchUser = (user) => user?.role === 'admin' || user?.role === 'dispatch' || user?.dispatch_role === true || roleSet(user).has('full_access');
 
-export default function MessagingPanel({ currentUser, units = [], isOpen = true, onClose, embedded = false }) {
-  const dispatchMode = isDispatchUser(currentUser);
+export default function MessagingPanel({ currentUser, units = [], isOpen = true, onClose, embedded = false, inboxOnly = false }) {
+  const dispatchMode = !inboxOnly && isDispatchUser(currentUser);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [mentionedUsers, setMentionedUsers] = useState([]);
-  const [selectedRecipient, setSelectedRecipient] = useState(dispatchMode ? 'team_chat' : 'dispatch');
+  const [selectedRecipient, setSelectedRecipient] = useState(inboxOnly ? '' : dispatchMode ? 'team_chat' : 'dispatch');
 
-  const officers = useMemo(() => units.filter(unit => {
-    const roles = roleSet(unit);
-    return !unit.termination_date && unit.id !== currentUser?.id && roles.has('officer');
-  }), [units, currentUser?.id]);
+  const recipients = useMemo(() => units.filter(unit => (
+    !unit.termination_date && unit.id !== currentUser?.id && unit.email !== currentUser?.email
+  )), [units, currentUser?.id, currentUser?.email]);
+  const officers = useMemo(() => recipients.filter(unit => roleSet(unit).has('officer')), [recipients]);
 
   const loadMessages = async () => {
     if (!currentUser?.id) return;
@@ -50,8 +50,9 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
     const text = newMessage.trim();
     if (!text) return;
     try {
-      const recipient = dispatchMode ? selectedRecipient : 'dispatch';
-      const unit = officers.find(u => u.id === recipient);
+      const recipient = inboxOnly ? selectedRecipient : dispatchMode ? selectedRecipient : 'dispatch';
+      if (!recipient) return;
+      const unit = recipients.find(u => u.id === recipient);
       const senderName = dispatchMode
         ? `Dispatch — ${currentUser.rank || ''} ${currentUser.last_name || currentUser.full_name || ''}`.trim()
         : `${currentUser.rank || 'Officer'} ${currentUser.last_name || currentUser.full_name || ''}`.trim();
@@ -105,9 +106,9 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
         <div>
           <h3 className="flex items-center gap-2 text-lg font-bold text-white">
             <MessageSquare className="h-5 w-5 text-blue-400" />
-            {dispatchMode ? 'Dispatch Messaging' : 'Messages with Dispatch'}
+            {inboxOnly ? 'My Inbox' : dispatchMode ? 'Dispatch Messaging' : 'Messages with Dispatch'}
           </h3>
-          <p className="mt-1 text-xs text-slate-400">Two-way operational messaging and company broadcasts</p>
+          <p className="mt-1 text-xs text-slate-400">{inboxOnly ? 'Private direct messages between Black Point users' : 'Two-way operational messaging and company broadcasts'}</p>
         </div>
         {!embedded && onClose && <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>}
       </div>
@@ -140,12 +141,21 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
       </ScrollArea>
 
       <div className="border-t border-slate-700 bg-slate-900 p-4">
-        {dispatchMode && (
+        {(dispatchMode || inboxOnly) && (
           <select value={selectedRecipient} onChange={e => setSelectedRecipient(e.target.value)} className="mb-2 h-10 w-full rounded-md border border-slate-600 bg-slate-800 px-3 text-sm text-white">
-            <option value="team_chat">Team Chat — All Personnel</option>
-            <option value="supervisor_chat">Supervisor Chat — Supervisors Only</option>
-            <option value="company">Company Wide — Team + Supervisor Chats</option>
-            {officers.map(unit => <option key={unit.id} value={unit.id}>{`Direct — ${unit.rank || 'Officer'} ${unit.last_name || unit.full_name || unit.unit_number || ''}`.trim()}</option>)}
+            {inboxOnly ? (
+              <>
+                <option value="">Select a person...</option>
+                {recipients.map(unit => <option key={unit.id} value={unit.id}>{`${unit.rank || ''} ${unit.first_name || ''} ${unit.last_name || unit.full_name || unit.email || ''}`.trim()}</option>)}
+              </>
+            ) : (
+              <>
+                <option value="team_chat">Team Chat — All Personnel</option>
+                <option value="supervisor_chat">Supervisor Chat — Supervisors Only</option>
+                <option value="company">Company Wide — Team + Supervisor Chats</option>
+                {officers.map(unit => <option key={unit.id} value={unit.id}>{`Direct — ${unit.rank || 'Officer'} ${unit.last_name || unit.full_name || unit.unit_number || ''}`.trim()}</option>)}
+              </>
+            )}
           </select>
         )}
         <div className="flex gap-2">
