@@ -59,8 +59,9 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
     }, [currentUser?.id]);
 
     const startHold = (e) => {
+        if (activated || holding) return;
         e.preventDefault();
-        if (activated) return;
+        e.currentTarget?.setPointerCapture?.(e.pointerId);
         setHolding(true);
         startTime.current = Date.now();
 
@@ -77,7 +78,10 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
         }, HOLD_MS);
     };
 
-    const cancelHold = () => {
+    const cancelHold = (e) => {
+        if (e?.currentTarget && e?.pointerId !== undefined) {
+            try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch (_) {}
+        }
         clearTimeout(holdTimer.current);
         clearInterval(progressTimer.current);
         try { audioCtxRef.current?.close(); } catch(e) {}
@@ -197,12 +201,14 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
     return (
         <div className={`relative select-none ${className}`}>
             <button
-                onMouseDown={startHold}
-                onMouseUp={cancelHold}
-                onMouseLeave={cancelHold}
-                onTouchStart={startHold}
-                onTouchEnd={cancelHold}
-                className={`relative overflow-hidden flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-mono font-bold text-xs transition-all
+                type="button"
+                onPointerDown={startHold}
+                onPointerUp={cancelHold}
+                onPointerCancel={cancelHold}
+                onLostPointerCapture={cancelHold}
+                onContextMenu={e => e.preventDefault()}
+                style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', pointerEvents: 'auto' }}
+                className={`relative z-[1000] overflow-hidden flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-mono font-bold text-xs transition-all cursor-pointer
                     ${holding
                         ? 'bg-red-700 border-red-400 text-white scale-95'
                         : 'bg-red-950/60 border-red-600/60 text-red-400 hover:bg-red-900/60 hover:border-red-500 hover:text-red-300'
