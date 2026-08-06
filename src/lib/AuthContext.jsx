@@ -130,16 +130,19 @@ export const AuthProvider = ({ children }) => {
       if (navigator.onLine) checkAppState();
     };
 
+    const handleVisibilityChange = () => {
+      if (!document.hidden) reconnect();
+    };
+
     window.addEventListener('online', reconnect);
     window.addEventListener('focus', reconnect);
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) reconnect();
-    });
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       requestSequence.current += 1;
       window.removeEventListener('online', reconnect);
       window.removeEventListener('focus', reconnect);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [checkAppState]);
 
