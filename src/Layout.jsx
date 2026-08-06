@@ -378,10 +378,6 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
     <div className="flex h-full flex-col border-r border-[#183049] bg-gradient-to-b from-[#071321] via-[#081522] to-[#050d17] shadow-[12px_0_40px_rgba(0,0,0,.25)]">
       <div className="border-b border-[#1b3048] bg-[#091827]/90 px-3 py-4 backdrop-blur-xl">
         <div className={`flex items-center ${collapsed && !mobile ? 'justify-center' : 'gap-3'}`}>
-          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-700/60 bg-gradient-to-br from-[#17416c] to-[#0b2847] shadow-[0_0_24px_rgba(56,145,215,.16)]">
-            <Shield className="h-5 w-5 text-[#8cc7ff]" />
-            <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#07111f] bg-emerald-400" />
-          </div>
           {(!collapsed || mobile) && <div className="min-w-0 flex-1">
             <div className="text-[12px] font-black tracking-[0.16em] text-white">BPS PATHFINDER</div>
             <div className="text-[9px] tracking-[0.16em] text-[#7290ad]">BLACK POINT PROTECTION</div>
