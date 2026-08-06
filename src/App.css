@@ -81,42 +81,61 @@ html.bps-night-mode .cad-app main.night-workspace [class*="to-blue-50"] {
   background-image: none !important;
 }
 
-/* Modern, low-profile scrollbars across CAD, portals, dialogs, and inboxes. */
-.cad-app,
-.cad-app *,
-[role="dialog"],
-[role="dialog"] * {
+/* Modern, low-profile scrollbars everywhere on web and mobile. */
+html,
+body,
+#root,
+* {
   scrollbar-width: thin;
   scrollbar-color: #416b91 transparent;
 }
 
-.cad-app *::-webkit-scrollbar,
-[role="dialog"] *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
 }
 
-.cad-app *::-webkit-scrollbar-track,
-[role="dialog"] *::-webkit-scrollbar-track {
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.cad-app *::-webkit-scrollbar-thumb,
-[role="dialog"] *::-webkit-scrollbar-thumb {
-  min-height: 34px;
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb {
+  min-height: 36px;
   border: 2px solid transparent;
   border-radius: 999px;
-  background: linear-gradient(180deg, #4f7fa8, #315573) padding-box;
+  background: linear-gradient(180deg, #5f8fb7, #315573) padding-box;
 }
 
-.cad-app *::-webkit-scrollbar-thumb:hover,
-[role="dialog"] *::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #72a9d5, #47779d) padding-box;
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #7db5df, #477da5) padding-box;
 }
 
-.cad-app *::-webkit-scrollbar-corner,
-[role="dialog"] *::-webkit-scrollbar-corner {
+html::-webkit-scrollbar-thumb:active,
+body::-webkit-scrollbar-thumb:active,
+*::-webkit-scrollbar-thumb:active {
+  background: #79acd2 padding-box;
+}
+
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner,
+*::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+html::-webkit-scrollbar-button,
+body::-webkit-scrollbar-button,
+*::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* Mobile field mode: keep every page reachable and usable on phones. */
