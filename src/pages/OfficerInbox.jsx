@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import MessagingPanel from '@/components/dispatch/MessagingPanel';
+import UniversalInbox from '@/components/chat/UniversalInbox';
 
 export default function OfficerInbox() {
   const { data: currentUser, isLoading: loadingUser } = useQuery({
@@ -22,7 +22,7 @@ export default function OfficerInbox() {
 
   return (
     <div className="h-[calc(100vh-5.5rem)] p-3 md:p-5">
-      <MessagingPanel currentUser={currentUser} units={units} embedded inboxOnly />
+      <UniversalInbox currentUser={currentUser} users={units} />
     </div>
   );
 }
