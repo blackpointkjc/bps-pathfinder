@@ -382,7 +382,7 @@ export default function VATrespassNotices() {
       senderName: 'Black Point Protection',
       senderAddress: siteLocation?.address || notice.location,
       officerName: officerFullName,
-      signatureName: getOfficerSignature(notice.created_by),
+      signatureName: '',
       policeDepartment: resolvePoliceDepartment(siteLocation || { site_name: notice.location, division: 'Virginia' }),
     });
     return;
@@ -564,7 +564,7 @@ export default function VATrespassNotices() {
                 <div class="sig-label">ISSUING OFFICER:</div>
                 ${notice.signature_url 
                   ? `<div style="min-height: 40px; margin: 8px 0; padding: 5px;"><img src="${notice.signature_url}" alt="Officer Signature" style="max-height: 60px; max-width: 100%;" /></div>`
-                  : `<div class="sig-line">${getOfficerSignature(notice.created_by)}</div>`
+                  : `<div class="sig-line"></div>`
                 }
                 <div style="font-size: 8pt; text-align: center;">
                   ${officerFullName}<br/>
