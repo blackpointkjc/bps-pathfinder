@@ -130,12 +130,12 @@ export default function SupervisorCallOuts() {
   return (
     <div className="p-4 md:p-8 min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
+        <div className="mobile-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Call-Out Management</h1>
             <p className="text-slate-600">Document officer call-outs and early dismissals</p>
           </div>
-          <Button onClick={() => setShowDialog(true)} className="bg-red-600 hover:bg-red-700">
+          <Button onClick={() => setShowDialog(true)} className="w-full bg-red-600 hover:bg-red-700 sm:w-auto">
             <Plus className="w-4 h-4 mr-2" />
             Document Call-Out
           </Button>
@@ -188,9 +188,9 @@ export default function SupervisorCallOuts() {
               <div className="space-y-3">
                 {recentCallOuts.map((callOut) => (
                   <div key={callOut.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                    <div className="flex items-start justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
                           <p className="font-bold text-slate-900">{callOut.officer_name}</p>
                           <Badge className={callOut.call_out_type === 'called_out' ? 'bg-red-600' : 'bg-amber-600'}>
                             {callOut.call_out_type === 'called_out' ? 'Called Out' : 'Sent Home'}
