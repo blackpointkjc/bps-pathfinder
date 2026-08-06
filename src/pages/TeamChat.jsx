@@ -41,7 +41,7 @@ export default function TeamChat() {
     queryKey: ['chatDirectory'],
     queryFn: async () => {
       const result = await base44.functions.invoke('getChatDirectory', {});
-      return result?.users || [];
+      return result?.data?.users || result?.users || [];
     },
     initialData: [],
   });
@@ -248,7 +248,18 @@ export default function TeamChat() {
                 placeholder="Type a message or @mention someone..."
                 value={message}
                 onChange={setMessage}
-                users={allUsers}
+                users={[
+                  {
+                    id: 'dispatch-group',
+                    label: 'Dispatch',
+                    email: 'dispatch',
+                    emails: allUsers.filter(person => {
+                      const roles = (person?.additional_roles || []).map(role => String(role).toLowerCase());
+                      return person?.role === 'admin' || person?.role === 'dispatch' || person?.dispatch_role === true || roles.includes('cad_access') || roles.includes('full_access');
+                    }).map(person => person.email).filter(Boolean),
+                  },
+                  ...allUsers,
+                ]}
                 currentEmail={user?.email}
                 onMentionsChange={setMentionedUsers}
                 disabled={sendMessageMutation.isPending}
