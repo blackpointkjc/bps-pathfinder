@@ -178,57 +178,57 @@ export default function AdminDashboard() {
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-6">
-          <Card className="border-none shadow-lg bg-white">
+          <Card className="border border-blue-500/30 bg-[#0d2033] text-white shadow-lg">
             <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-3">
-              <CardTitle className="flex items-center gap-2 text-black text-sm font-medium">
+              <CardTitle className="flex items-center gap-2 text-sm font-bold text-white">
                 <Users className="w-4 h-4 text-blue-600" />
                 Total Officers
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
-              <div className="text-3xl font-bold text-black sm:text-4xl">{allUsers?.length || 0}</div>
-              <p className="text-black text-sm mt-1 font-medium">
+              <div className="text-3xl font-black text-white sm:text-4xl">{allUsers?.length || 0}</div>
+              <p className="mt-1 text-sm font-medium text-blue-200">
                 {allUsers?.filter(u => u.role === 'admin').length || 0} admins
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-lg">
+          <Card className="border border-emerald-500/30 bg-[#0d2033] text-white shadow-lg">
             <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-3">
-              <CardTitle className="flex items-center gap-2 text-slate-900 text-sm font-medium">
+              <CardTitle className="flex items-center gap-2 text-sm font-bold text-white">
                 <Clock className="w-4 h-4 text-green-600" />
                 Officers On Duty
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
-              <div className="text-3xl font-bold text-slate-900 sm:text-4xl">{activeOfficers || 0}</div>
-              <p className="text-slate-600 text-sm mt-1">Currently active</p>
+              <div className="text-3xl font-black text-white sm:text-4xl">{activeOfficers || 0}</div>
+              <p className="mt-1 text-sm text-emerald-200">Currently active</p>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-lg">
+          <Card className="border border-purple-500/30 bg-[#0d2033] text-white shadow-lg">
             <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-3">
-              <CardTitle className="flex items-center gap-2 text-slate-900 text-sm font-medium">
+              <CardTitle className="flex items-center gap-2 text-sm font-bold text-white">
                 <FileText className="w-4 h-4 text-purple-600" />
                 Today's Entries
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
-              <div className="text-3xl font-bold text-slate-900 sm:text-4xl">{todayEntries?.length || 0}</div>
-              <p className="text-slate-600 text-sm mt-1">Clock in/out today</p>
+              <div className="text-3xl font-black text-white sm:text-4xl">{todayEntries?.length || 0}</div>
+              <p className="mt-1 text-sm text-purple-200">Clock in/out today</p>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-lg">
+          <Card className="border border-amber-500/30 bg-[#0d2033] text-white shadow-lg">
             <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-3">
-              <CardTitle className="flex items-center gap-2 text-slate-900 text-sm font-medium">
+              <CardTitle className="flex items-center gap-2 text-sm font-bold text-white">
                 <AlertTriangle className="w-4 h-4 text-amber-600" />
                 Pending Requests
               </CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
-              <div className="text-3xl font-bold text-slate-900 sm:text-4xl">{pendingRequests || 0}</div>
-              <p className="text-slate-600 text-sm mt-1">Awaiting approval</p>
+              <div className="text-3xl font-black text-white sm:text-4xl">{pendingRequests || 0}</div>
+              <p className="mt-1 text-sm text-amber-200">Awaiting approval</p>
             </CardContent>
           </Card>
         </div>
