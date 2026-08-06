@@ -147,6 +147,8 @@ export default function ClientPayrollReport() {
         </style>
       </head>
       <body>
+        <style media="print">.invoice-toolbar{display:none!important}</style>
+        <div class="invoice-toolbar" style="display:flex;justify-content:flex-end;padding:12px 24px;background:#fff;border-bottom:1px solid #dbe3ee;margin-bottom:20px"><button onclick="window.print()" style="border:0;border-radius:9px;background:#0f172a;color:#fff;padding:10px 18px;font-weight:700;cursor:pointer">Print / Save PDF</button></div>
         <div class="sheet">
           <div class="header">
             <div>
@@ -190,7 +192,6 @@ export default function ClientPayrollReport() {
           ${invoice.notes ? `<div class="notes"><strong>Notes</strong><br>${invoice.notes}</div>` : ''}
           <div class="footer">Payment is due by the date shown above. Please contact the company with invoice questions.</div>
         </div>
-        <script>window.print();</script>
       </body>
       </html>
     `);
@@ -225,6 +226,8 @@ export default function ClientPayrollReport() {
         </style>
       </head>
       <body>
+        <style media="print">.invoice-toolbar{display:none!important}</style>
+        <div class="invoice-toolbar" style="display:flex;justify-content:flex-end;padding:12px 24px;background:#fff;border-bottom:1px solid #dbe3ee;margin-bottom:20px"><button onclick="window.print()" style="border:0;border-radius:9px;background:#0f172a;color:#fff;padding:10px 18px;font-weight:700;cursor:pointer">Print / Save PDF</button></div>
         <div class="invoice-header">
           <div class="title">SECURITY SERVICES INVOICE</div>
         </div>
@@ -288,7 +291,6 @@ export default function ClientPayrollReport() {
           <p style="margin-top: 10px;">Thank you for your business</p>
         </div>
 
-        <script>window.print();</script>
       </body>
       </html>
     `;
