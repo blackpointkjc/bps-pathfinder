@@ -42,7 +42,7 @@ export default function SupervisorChat() {
     queryKey: ['chatDirectory'],
     queryFn: async () => {
       const result = await base44.functions.invoke('getChatDirectory', {});
-      return result?.users || [];
+      return result?.data?.users || result?.users || [];
     },
     initialData: [],
   });
