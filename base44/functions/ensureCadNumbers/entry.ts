@@ -12,7 +12,7 @@ function easternPeriod(date = new Date()) {
 }
 
 function validBpsReference(value: unknown) {
-  return /^BPS-\d{6}-\d{8}$/i.test(String(value || '').trim());
+  return /^BPS-\d{6}-\d{1,8}$/i.test(String(value || '').trim());
 }
 
 Deno.serve(async (req) => {
@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       for (const call of records) {
         next += 1;
         if (next > 99_999_999) throw new Error(`The ${period} BPS sequence has reached its eight-digit limit.`);
-        const bpsReference = `BPS-${period}-${String(next).padStart(8, '0')}`;
+        const bpsReference = `BPS-${period}-${next}`;
         const officialCad = String(call.agency_cad_number || '').trim();
         const legacyCallId = String(call.call_id || '').trim();
         const legacyLooksInternal = /^B\d+$/i.test(legacyCallId) || /^[A-L]\d{1,8}$/i.test(legacyCallId) || legacyCallId.startsWith('grac-');
