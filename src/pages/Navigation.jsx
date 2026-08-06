@@ -659,8 +659,8 @@ export default function Navigation() {
                 const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
                 const key = call.external_call_id || descriptionKey || call.id;
                 const current = uniqueCalls.get(key);
-                const currentHasCad = /^B\d+$/i.test(String(current?.call_id || ''));
-                const candidateHasCad = /^B\d+$/i.test(String(call.call_id || ''));
+                const currentHasCad = Boolean(current?.official_cad_verified && current?.agency_cad_number);
+                const candidateHasCad = Boolean(call?.official_cad_verified && call?.agency_cad_number);
                 if (!current || (!currentHasCad && candidateHasCad)) uniqueCalls.set(key, call);
             }
             const active = [...uniqueCalls.values()].filter(c => {
