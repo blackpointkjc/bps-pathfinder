@@ -46,7 +46,6 @@ const CENTER_CONFIG = {
         ['Dashboard', 'Dashboard', Gauge],
         ['My Profile', 'OfficerProfile', UserCheck],
         ['My Performance', 'MyPerformanceAnalytics', BarChart3],
-        ['Dispatch Messages', 'OfficerInbox', MessageCircle],
         ['Availability', 'OfficerAvailability', CalendarClock],
       ]},
       { label: 'Schedule', items: [
@@ -132,7 +131,6 @@ const CENTER_CONFIG = {
         ['Documents', 'AdminDocuments', FileText],
         ['Post Orders', 'AdminPostOrders', BookOpen],
         ['Announcements', 'AdminAnnouncements', Bell],
-        ['Messages', 'AdminMessages', MessageCircle],
         ['Notifications', 'AdminNotifications', Bell],
         ['Special Requests', 'AdminSpecialRequests', CalendarClock],
         ['Portal Settings', 'AdminPortalSettings', Settings],
@@ -317,6 +315,7 @@ function defaultPageForUser(user) {
 }
 
 function canAccessPage(user, pageName) {
+  if (pageName === 'OfficerInbox') return true;
   if (FULL_ACCESS_PAGES.has(pageName)) return hasFullAccess(user);
   const centers = PAGE_TO_CENTERS[pageName];
   if (!centers?.length) return true;
@@ -381,6 +380,20 @@ function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, curre
       </div>}
 
       <nav className="flex-1 overflow-y-auto px-2 py-3">
+        <Link
+          to={createPageUrl('OfficerInbox')}
+          title={collapsed && !mobile ? 'Inbox' : undefined}
+          onClick={() => onCloseMobile?.()}
+          className={`relative mb-3 flex min-h-10 items-center gap-3 rounded-md border px-3 py-2 transition ${currentPageName === 'OfficerInbox' ? 'border-[#2f6499] bg-[#14385f] text-white' : 'border-[#24415e] bg-[#0c1a2a] text-[#9bb2c9] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
+        >
+          <MessageCircle className="h-4 w-4 shrink-0 text-[#7ec1ff]" />
+          {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">INBOX</span>}
+          {!!unreadCounts.OfficerInbox && (
+            <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">
+              {unreadCounts.OfficerInbox > 99 ? '99+' : unreadCounts.OfficerInbox}
+            </span>
+          )}
+        </Link>
         {groups.map(group => <div key={group.label} className="mb-4">
           {(!collapsed || mobile) && <div className="px-2 pb-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-[#54708f]">{group.label}</div>}
           <div className="space-y-1">
