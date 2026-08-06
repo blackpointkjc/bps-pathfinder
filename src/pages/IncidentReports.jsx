@@ -161,7 +161,7 @@ export default function IncidentReports() {
       const calls = await base44.entities.DispatchCall.list('-time_received');
       return calls.filter(call => {
         const receivedAt = new Date(call.time_received || call.created_date).getTime();
-        return Number.isFinite(receivedAt) && Date.now() - receivedAt <= 60 * 60 * 1000 && !['Cleared', 'Cancelled'].includes(call.status);
+        return Number.isFinite(receivedAt) && Date.now() - receivedAt < 61 * 60 * 1000 && !['Cleared', 'Cancelled'].includes(call.status);
       });
     },
     initialData: [],
