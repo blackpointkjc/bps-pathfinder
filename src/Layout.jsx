@@ -864,9 +864,11 @@ export default function Layout({ children, currentPageName }) {
     <MobileFieldNav
       currentPageName={currentPageName}
       unreadCounts={unreadCounts}
+      activeCenter={activeCenter}
       centerDestinations={{
         cad: centerLastPagesRef.current.cad || 'CommandDashboard',
         officer: centerLastPagesRef.current.officer || 'Dashboard',
+        admin: centerLastPagesRef.current.admin || 'AdminDashboard',
       }}
       onTabNavigate={() => {
         if (mainScrollRef.current && currentPageName) {
