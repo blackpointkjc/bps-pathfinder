@@ -184,7 +184,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
         // Navigation uses a detailed, labeled street map with buildings and road hierarchy.
         if (isNavigating) {
             return mapTheme === 'night'
-                ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+                ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'
                 : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
         }
 
@@ -196,7 +196,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             if (baseMapType === 'satellite') {
                 return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
             }
-            return 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
         }
 
         switch (baseMapType) {
@@ -240,17 +240,9 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 attribution={getTileAttribution()}
                 url={getTileLayerUrl()}
                 maxZoom={20}
-                maxNativeZoom={mapTheme === 'night' && baseMapType !== 'satellite' ? 16 : 20}
+                maxNativeZoom={20}
+                className={mapTheme === 'night' && baseMapType !== 'satellite' ? 'esri-night-map' : ''}
             />
-            {mapTheme === 'night' && baseMapType !== 'satellite' && (
-                <TileLayer
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
-                    attribution="Tiles &copy; Esri"
-                    maxZoom={20}
-                    maxNativeZoom={16}
-                    pane="overlayPane"
-                />
-            )}
 
             {/* Jurisdiction Boundaries */}
             <JurisdictionBoundaries filters={jurisdictionFilters} />
