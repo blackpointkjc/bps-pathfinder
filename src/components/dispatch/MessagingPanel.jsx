@@ -6,6 +6,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { MessageSquare, Send, X, Megaphone, Radio } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import MentionInput from '@/components/chat/MentionInput';
 
 const roleSet = (user) => new Set((user?.additional_roles || []).map(r => String(r).toLowerCase()));
 const isDispatchUser = (user) => user?.role === 'admin' || user?.role === 'dispatch' || user?.dispatch_role === true || roleSet(user).has('full_access');
@@ -14,6 +15,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
   const dispatchMode = isDispatchUser(currentUser);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [mentionedUsers, setMentionedUsers] = useState([]);
   const [selectedRecipient, setSelectedRecipient] = useState(dispatchMode ? 'team_chat' : 'dispatch');
 
   const officers = useMemo(() => units.filter(unit => {
@@ -58,12 +60,25 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
         const chatPayload = { message: text, sender_name: senderName };
         const sends = [];
         if (recipient === 'team_chat' || recipient === 'company') {
-          sends.push(base44.entities.ChatMessage.create(chatPayload));
+          sends.push(base44.entities.ChatMessage.create(chatPayload).then(record => ({ record, page: 'TeamChat', chatType: 'team' })));
         }
         if (recipient === 'supervisor_chat' || recipient === 'company') {
-          sends.push(base44.entities.SupervisorChatMessage.create(chatPayload));
+          sends.push(base44.entities.SupervisorChatMessage.create(chatPayload).then(record => ({ record, page: 'SupervisorChat', chatType: 'supervisor' })));
         }
-        await Promise.all(sends);
+        const createdChats = await Promise.all(sends);
+        const mentionChat = createdChats.find(item => item.page === (recipient === 'supervisor_chat' ? 'SupervisorChat' : 'TeamChat')) || createdChats[0];
+        if (mentionChat) {
+          await Promise.all(mentionedUsers.map(mention => base44.entities.ChatMention.create({
+            message_id: mentionChat.record.id,
+            chat_type: mentionChat.chatType,
+            page: mentionChat.page,
+            recipient_email: mention.email,
+            recipient_name: mention.label,
+            sender_name: senderName,
+            message: text,
+            read: false,
+          })));
+        }
       } else {
         await base44.entities.Message.create({
           sender_id: dispatchMode ? 'dispatch' : currentUser.id,
@@ -76,6 +91,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
         });
       }
       setNewMessage('');
+      setMentionedUsers([]);
       await loadMessages();
     } catch (error) {
       console.error('Error sending dispatch message:', error);
@@ -133,7 +149,23 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
           </select>
         )}
         <div className="flex gap-2">
-          <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} placeholder={dispatchMode ? 'Enter dispatch message...' : 'Reply to dispatch...'} className="border-slate-600 bg-slate-800 text-white placeholder:text-slate-500" />
+          {dispatchMode && ['team_chat', 'supervisor_chat', 'company'].includes(selectedRecipient) ? (
+            <MentionInput
+              value={newMessage}
+              onChange={setNewMessage}
+              users={(units || []).filter(person => {
+                if (selectedRecipient !== 'supervisor_chat') return true;
+                const roles = (person?.additional_roles || []).map(role => String(role).toLowerCase());
+                return person?.role === 'admin' || roles.includes('supervisor');
+              })}
+              currentEmail={currentUser?.email}
+              onMentionsChange={setMentionedUsers}
+              placeholder="Dispatch message — type @ to mention..."
+              className="border-slate-600 bg-slate-800 text-white placeholder:text-slate-500"
+            />
+          ) : (
+            <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} placeholder={dispatchMode ? 'Direct dispatch message...' : 'Reply to dispatch...'} className="border-slate-600 bg-slate-800 text-white placeholder:text-slate-500" />
+          )}
           <Button onClick={sendMessage} disabled={!newMessage.trim()} className="bg-blue-700 hover:bg-blue-600"><Send className="h-4 w-4" /></Button>
         </div>
       </div>
