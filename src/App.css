@@ -138,6 +138,15 @@ body::-webkit-scrollbar-button,
   height: 0;
 }
 
+/* Full-detail Esri street data with a readable night treatment at every zoom. */
+.leaflet-tile.esri-night-map {
+  filter: invert(0.92) hue-rotate(180deg) brightness(0.58) contrast(1.22) saturate(0.72);
+}
+
+.leaflet-container {
+  background: #07111f;
+}
+
 /* Mobile field mode: keep every page reachable and usable on phones. */
 @media (max-width: 767px) {
   html,
