@@ -43,12 +43,14 @@ export default function ClientCallHistory() {
       const me = user || await base44.auth.me();
       if (!user) setUser(me);
       const assignedNames = me?.assigned_locations || (me?.assigned_location ? [me.assigned_location] : []);
-      const [allLocations, active, archived, notes, reports] = await Promise.all([
+      const [allLocations, active, archived, notes, reports, propertyAlerts, monitoredProperties] = await Promise.all([
         base44.entities.Location.list(),
         base44.entities.DispatchCall.list('-time_received', 500),
         base44.entities.CallHistory.list('-archived_date', 500),
         base44.entities.CallNote.list('-created_date', 1000),
         base44.entities.IncidentReport.list('-created_date', 1000),
+        base44.entities.PropertyAlert.list('-created_date', 1000).catch(() => []),
+        base44.entities.MonitoredProperty.list('-created_date', 500).catch(() => []),
       ]);
       const assignedSites = (allLocations || []).filter(site => assignedNames.includes(site.site_name) || String(site.assigned_client_email || '').toLowerCase() === String(me?.email || '').toLowerCase());
       setSites(assignedSites);
@@ -62,9 +64,25 @@ export default function ClientCallHistory() {
       }
 
       const clientRows = [...unique.values()].flatMap(call => {
-        const matchedSite = assignedSites.find(site => callMatchesSite(call, site));
+        const callIdentifiers = new Set([call.id, call.original_call_id, call.call_id, call.agency_cad_number, call.bps_reference].filter(Boolean).map(String));
+        const verifiedAlert = (propertyAlerts || []).find(alert => callIdentifiers.has(String(alert.callId || '')) && assignedSites.some(site => norm(alert.propertyName) === norm(site.site_name)));
+        const monitoredMatch = !verifiedAlert ? (monitoredProperties || []).find(property => {
+          const assignedSite = assignedSites.find(site => norm(property.name) === norm(site.site_name) || norm(property.address) === norm(site.address));
+          if (!assignedSite) return false;
+          return callMatchesSite(call, {
+            ...assignedSite,
+            latitude: property.latitude ?? assignedSite.latitude,
+            longitude: property.longitude ?? assignedSite.longitude,
+            geofence_radius_meters: property.radiusMeters ?? assignedSite.geofence_radius_meters,
+          });
+        }) : null;
+        const matchedSite = verifiedAlert
+          ? assignedSites.find(site => norm(site.site_name) === norm(verifiedAlert.propertyName))
+          : monitoredMatch
+            ? assignedSites.find(site => norm(site.site_name) === norm(monitoredMatch.name) || norm(site.address) === norm(monitoredMatch.address))
+            : assignedSites.find(site => callMatchesSite(call, site));
         if (!matchedSite) return [];
-        const identifiers = new Set([call.id, call.original_call_id, call.call_id, call.agency_cad_number, call.bps_reference].filter(Boolean).map(String));
+        const identifiers = callIdentifiers;
         const linkedNotes = (notes || []).filter(note => identifiers.has(String(note.call_id || '')));
         const linkedReports = (reports || []).filter(report => {
           if (report.status !== 'approved') return false;
@@ -73,7 +91,7 @@ export default function ClientCallHistory() {
           const callDate = new Date(call.time_received || call.created_date || 0).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
           return sameSite && report.incident_date === callDate;
         });
-        return [{ ...call, matchedSite, linkedNotes, linkedReports }];
+        return [{ ...call, matchedSite, linkedNotes, linkedReports, propertyVerified: Boolean(verifiedAlert), propertyAlert: verifiedAlert || null }];
       });
       setRows(clientRows);
       setLastRefresh(new Date());
@@ -122,13 +140,13 @@ export default function ClientCallHistory() {
             <button onClick={() => setExpanded(open ? null : row.id)} className="w-full text-left p-3 md:p-4 grid grid-cols-1 md:grid-cols-[150px_1fr_220px_90px_90px_32px] gap-2 md:items-center hover:bg-slate-800/70">
               <div><div className={`text-xs font-black ${official ? 'text-blue-300' : 'text-gold'}`}>{ref || 'REFERENCE PENDING'}</div><div className="text-[10px] text-slate-500">{fmt(row.time_received || row.created_date)}</div></div>
               <div><div className="font-black text-sm">{row.incident || 'CALL FOR SERVICE'}</div><div className="text-xs text-slate-400 flex items-start gap-1 mt-1"><MapPin className="w-3 h-3 mt-0.5 shrink-0" />{row.location}</div></div>
-              <div className="text-xs"><div className="text-slate-500">PROPERTY</div><div className="font-bold text-slate-200">{row.matchedSite?.site_name}</div></div>
+              <div className="text-xs"><div className="text-slate-500">PROPERTY</div><div className="font-bold text-slate-200">{row.matchedSite?.site_name}</div>{row.propertyVerified && <div className="text-[9px] font-bold text-green-400 mt-1">✓ VERIFIED BY MONITORING QUEUE</div>}</div>
               <div className="text-xs"><span className="px-2 py-1 rounded border border-blue-700/50 bg-blue-900/30 text-blue-300">{row.agency || 'N/A'}</span></div>
               <div className="flex gap-2"><span title="Call notes" className="flex items-center gap-1 text-[10px] text-slate-300"><MessageSquare className="w-3 h-3" />{row.linkedNotes.length}</span><span title="Incident reports" className="flex items-center gap-1 text-[10px] text-slate-300"><FileText className="w-3 h-3" />{row.linkedReports.length}</span></div>
               {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
             {open && <div className="border-t border-slate-700 p-4 grid md:grid-cols-2 gap-4 bg-slate-950/60">
-              <div><h3 className="text-[10px] tracking-widest text-slate-500 mb-2">CALL DETAILS</h3><div className="space-y-2 text-xs"><p><span className="text-slate-500">Status:</span> {row.status || 'Unknown'}</p><p><span className="text-slate-500">Source:</span> {row._source === 'active' ? 'Active Calls Feed' : 'Archived Call History'}</p>{row.description && <p className="leading-relaxed text-slate-300">{row.description}</p>}</div></div>
+              <div><h3 className="text-[10px] tracking-widest text-slate-500 mb-2">CALL DETAILS</h3><div className="space-y-2 text-xs"><p><span className="text-slate-500">Status:</span> {row.status || 'Unknown'}</p><p><span className="text-slate-500">Source:</span> {row._source === 'active' ? 'Active Calls Feed' : 'Archived Call History'}</p><p><span className="text-slate-500">Property match:</span> {row.propertyVerified ? `Verified by monitoring queue${row.propertyAlert?.relation ? ` · ${row.propertyAlert.relation}` : ''}` : 'Matched by assigned property address/GPS'}</p>{row.propertyAlert?.description && <p className="text-green-300">{row.propertyAlert.description}</p>}{row.description && <p className="leading-relaxed text-slate-300">{row.description}</p>}</div></div>
               <div><h3 className="text-[10px] tracking-widest text-slate-500 mb-2">NOTES & INCIDENT REPORTS</h3>{row.linkedNotes.length === 0 && row.linkedReports.length === 0 ? <p className="text-xs text-slate-500">No linked note or approved incident report.</p> : <div className="space-y-2">{row.linkedNotes.map(note => <div key={note.id} className="border border-slate-700 rounded p-2"><div className="text-[10px] text-slate-500">NOTE · {fmt(note.created_date)}</div><div className="text-xs mt-1">{note.note}</div></div>)}{row.linkedReports.map(report => <div key={report.id} className="border border-green-700/50 bg-green-950/20 rounded p-2"><div className="text-[10px] text-green-400">APPROVED INCIDENT REPORT · {report.report_number || report.linked_call_number || ''}</div><div className="text-xs font-bold mt-1">{String(report.incident_type || 'Incident').replace(/_/g, ' ')}</div><div className="text-xs text-slate-300 mt-1">{report.description}</div></div>)}</div>}</div>
             </div>}
           </div>;
