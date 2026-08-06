@@ -78,9 +78,14 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   }, [messages, currentUser.id]);
 
   useEffect(() => {
-    // Keep the complete conversation list visible when Inbox first opens on a phone.
-    if (!isMobile && !selectedKey && threads.length) setSelectedKey(threads[0].key);
-  }, [threads.length, selectedKey, isMobile]);
+    // Keep the complete list visible on phones. On desktop, never auto-select
+    // a thread the user removed from their Inbox.
+    if (!isMobile && !selectedKey && threads.length) {
+      const hidden = new Set(hiddenPreferences.map(item => item.thread_key));
+      const firstVisible = threads.find(thread => !hidden.has(thread.key));
+      if (firstVisible) setSelectedKey(firstVisible.key);
+    }
+  }, [threads, selectedKey, isMobile, hiddenPreferences]);
 
   const selected = threads.find(thread => thread.key === selectedKey);
   useEffect(() => {
@@ -134,15 +139,26 @@ export default function UniversalInbox({ currentUser, users = [] }) {
 
   const removeThread = async thread => {
     const existing = hiddenPreferences.find(item => item.thread_key === thread.key);
-    if (!existing) {
+    setSelectedKey(null);
+    if (existing) return;
+
+    const optimistic = {
+      id: `pending:${thread.key}`,
+      user_email: currentUser.email,
+      thread_key: thread.key,
+      hidden: true,
+    };
+    setHiddenPreferences(current => [...current, optimistic]);
+    try {
       const created = await base44.entities.InboxThreadPreference.create({
         user_email: currentUser.email,
         thread_key: thread.key,
         hidden: true,
       });
-      setHiddenPreferences(current => [...current, created]);
+      setHiddenPreferences(current => current.map(item => item.id === optimistic.id ? created : item));
+    } catch (error) {
+      console.error('[Inbox] Unable to persist removed thread:', error?.message);
     }
-    setSelectedKey(null);
   };
 
   const hiddenKeys = new Set(hiddenPreferences.map(item => item.thread_key));
