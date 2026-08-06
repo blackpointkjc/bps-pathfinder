@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity, AlertTriangle, Award, BarChart3, Bell, BookOpen, Bot, Briefcase,
@@ -252,7 +252,7 @@ function hasFullAccess(user) {
   return user?.role === 'admin' || normalizedRoles(user).has('full_access');
 }
 
-const FULLSCREEN_PAGES = new Set(['Navigation']);
+const FULLSCREEN_PAGES = new Set([]);
 const DARK_WORKSPACE_PAGES = new Set([
   'CommandDashboard', 'DispatchCenter', 'FieldUnitView', 'CallHistory',
   'BOLOAlerts', 'RecordsAssistant', 'Personnel', 'PathfinderReports', 'AdminPortal'
@@ -329,6 +329,38 @@ function canAccessPage(user, pageName) {
   return centers.some(center => available.includes(center));
 }
 
+function pageLabel(pageName) {
+  for (const config of Object.values(CENTER_CONFIG)) {
+    for (const group of config.groups) {
+      const match = group.items.find(([, page]) => page === pageName);
+      if (match) return match[0];
+    }
+  }
+  return pageName?.replace(/([a-z])([A-Z])/g, '$1 $2') || 'Pathfinder';
+}
+
+function MobileFieldNav({ currentPageName, unreadCounts, onMenu }) {
+  const tabs = [
+    ['Dashboard', 'Dashboard', Gauge],
+    ['Field', 'FieldUnitView', Shield],
+    ['Inbox', 'OfficerInbox', MessageCircle],
+    ['Reports', 'DailyActivityReports', ClipboardList],
+  ];
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-[45] flex border-t border-[#29445f] bg-[#07111f]/98 px-1 pt-1 shadow-[0_-10px_30px_rgba(0,0,0,.35)] backdrop-blur md:hidden" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
+      {tabs.map(([label, page, Icon]) => {
+        const active = currentPageName === page;
+        const count = Number(unreadCounts[page]) || 0;
+        return <Link key={page} to={createPageUrl(page)} className={`relative flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg ${active ? 'bg-[#153b65] text-white' : 'text-[#7894af]'}`}>
+          <Icon className="h-5 w-5" /><span className="text-[9px] font-black">{label}</span>
+          {!!count && <span className="absolute right-[18%] top-1 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{count > 99 ? '99+' : count}</span>}
+        </Link>;
+      })}
+      <button type="button" onClick={onMenu} className="flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[#8db1d2]"><Menu className="h-5 w-5" /><span className="text-[9px] font-black">ALL</span></button>
+    </nav>
+  );
+}
+
 function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, unreadCounts = {}, onCloseMobile, onToggleCollapsed }) {
   const availableCenters = allowedCenters(user);
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
@@ -353,6 +385,11 @@ function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, curre
             <div className="text-[12px] font-black tracking-[0.16em] text-white">BPS PATHFINDER</div>
             <div className="text-[9px] tracking-[0.16em] text-[#7290ad]">BLACK POINT PROTECTION</div>
           </div>}
+          {mobile && (
+            <button type="button" onClick={onCloseMobile} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#31506d] bg-[#13263a] text-white" aria-label="Close menu">
+              <X className="h-5 w-5" />
+            </button>
+          )}
           {!mobile && onToggleCollapsed && (
             <button
               type="button"
@@ -440,6 +477,7 @@ function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, curre
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -630,8 +668,6 @@ export default function Layout({ children, currentPageName }) {
     return <Navigate to={createPageUrl(defaultPageForUser(user))} replace />;
   }
 
-  if (FULLSCREEN_PAGES.has(currentPageName)) return <div className="h-full w-full bg-[#050a12]"><GlobalMessageBanner user={user} />{children}</div>;
-
   const criticalOutage = outages.some(item => item.severity === 'outage');
   const centerLabel = CENTER_CONFIG[activeCenter]?.label || 'CAD Center';
 
@@ -641,7 +677,7 @@ export default function Layout({ children, currentPageName }) {
     </aside>
 
     <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/70 md:hidden" onClick={() => setMobileOpen(false)}>
-      <motion.aside initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }} className="h-full w-[290px] border-r border-[#1c3049]" onClick={event => event.stopPropagation()}>
+      <motion.aside initial={{ x: -360 }} animate={{ x: 0 }} exit={{ x: -360 }} className="h-full w-[min(92vw,360px)] border-r border-[#1c3049] shadow-2xl" onClick={event => event.stopPropagation()}>
         <Sidebar mobile user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => setMobileOpen(false)} />
       </motion.aside>
     </motion.div>}</AnimatePresence>
@@ -693,15 +729,15 @@ export default function Layout({ children, currentPageName }) {
     )}</AnimatePresence>
 
     <section className="flex min-w-0 flex-1 flex-col">
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-3 md:px-5">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setMobileOpen(true)} className="rounded border border-[#294867] p-2 text-[#89a3bd] md:hidden"><Menu className="h-4 w-4" /></button>
-          <div>
-            <div className="text-[11px] font-black uppercase tracking-[0.15em] text-white">{centerLabel}</div>
-            <div className="text-[9px] tracking-widest text-[#607c98]">UNIFIED OPERATIONS PLATFORM</div>
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 md:px-5">
+        <div className="flex min-w-0 items-center gap-2 md:gap-3">
+          <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(createPageUrl(defaultPageForUser(user)))} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] md:hidden" aria-label="Go back"><ChevronLeft className="h-5 w-5" /></button>
+          <div className="min-w-0">
+            <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white md:tracking-[0.15em]"><span className="md:hidden">{pageLabel(currentPageName)}</span><span className="hidden md:inline">{centerLabel}</span></div>
+            <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="md:hidden">FIELD OPERATIONS</span><span className="hidden md:inline">UNIFIED OPERATIONS PLATFORM</span></div>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-[#7791aa]">
+        <div className="flex items-center gap-1.5 text-[10px] text-[#7791aa]">
           {!DARK_WORKSPACE_PAGES.has(currentPageName) && (
             <button
               type="button"
@@ -715,7 +751,8 @@ export default function Layout({ children, currentPageName }) {
             </button>
           )}
           {criticalOutage && <span className="hidden rounded border border-red-700/60 bg-red-950/40 px-2 py-1 font-bold text-red-300 sm:block">SYSTEM OUTAGE</span>}
-          <span className="font-mono text-[#9fb6cc]">{clock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+          <span className="hidden font-mono text-[#9fb6cc] sm:inline">{clock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+          <button onClick={() => setMobileOpen(true)} className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] md:hidden" aria-label="Open all pages"><Menu className="h-5 w-5" /></button>
         </div>
       </header>
 
@@ -724,7 +761,8 @@ export default function Layout({ children, currentPageName }) {
         <button onClick={() => { stopAllAlerts(); setActiveAlert(null); }} className="rounded border border-red-500/50 px-2 py-1 text-xs font-bold hover:bg-red-900">ACKNOWLEDGE</button>
       </div>}
 
-      <main className={`min-h-0 flex-1 overflow-auto ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : nightMode ? 'night-workspace bg-[#0b1420] text-slate-100' : 'light-workspace bg-[#eef2f7] text-slate-900'}`}>{children}</main>
+      <main className={`mobile-field-content min-h-0 flex-1 overflow-auto ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : nightMode ? 'night-workspace bg-[#0b1420] text-slate-100' : 'light-workspace bg-[#eef2f7] text-slate-900'}`}>{children}</main>
     </section>
+    <MobileFieldNav currentPageName={currentPageName} unreadCounts={unreadCounts} onMenu={() => setMobileOpen(true)} />
   </div>;
 }
