@@ -192,9 +192,9 @@ const CENTER_CONFIG = {
       { label: 'Accounting', items: [
         ['Payroll Center', 'AccountingPayroll', DollarSign],
         ['Payroll Dates', 'PayrollDates', CalendarClock],
+        ['Client Invoices', 'AccountingInvoices', FileText],
         ['Company Profit', 'AccountingProfit', BarChart3],
         ['Tax Liability', 'AccountingTaxLiability', ClipboardList],
-        ['W-2 Generator', 'AccountingW2Generator', FileText],
         ['Expense Approval', 'AdminExpenseApproval', ClipboardCheck],
       ]},
     ],
