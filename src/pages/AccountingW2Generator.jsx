@@ -28,6 +28,7 @@ export default function AccountingW2Generator() {
     queryFn: () => base44.entities.PayrollEntry.list('-pay_date', 2000),
     enabled: isAccountingRole,
     initialData: [],
+    refetchInterval: 10000,
   });
 
   const { data: officers } = useQuery({
@@ -81,7 +82,7 @@ export default function AccountingW2Generator() {
       const yearEnd = `${selectedYear}-12-31`;
       
       const yearPayroll = payrollEntries.filter(entry => {
-        return entry.pay_date >= yearStart && entry.pay_date <= yearEnd && entry.status === 'paid';
+        return entry.pay_date >= yearStart && entry.pay_date <= yearEnd && String(entry.status || '').toLowerCase() === 'paid';
       });
 
       // Group by officer

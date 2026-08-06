@@ -141,6 +141,17 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
         }
     }, [mapCenter, map]);
 
+    // Handle "fit all units" — zoom out so every unit with GPS is visible
+    useEffect(() => {
+        if (!fitBounds || fitBounds.length === 0) return;
+        const valid = fitBounds.filter(c => Number.isFinite(c[0]) && Number.isFinite(c[1]));
+        if (valid.length === 0) return;
+        const bounds = L.latLngBounds(valid.map(c => [c[0], c[1]]));
+        if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [70, 70], animate: true, duration: 0.5 });
+        }
+    }, [fitBounds, map]);
+
     useEffect(() => {
         // Don't auto-center if user is manually panning
         if (userInteractingRef.current) return;
@@ -171,7 +182,7 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
     return null;
 }
 
-const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail = () => {}, mapTheme = 'day', showHeatmap = false, children, allCalls = [] }) {
+const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, fitBounds, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail = () => {}, mapTheme = 'day', showHeatmap = false, children, allCalls = [] }) {
     const defaultCenter = currentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
     
     // Calculate route bounds if route exists
@@ -279,6 +290,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                     center={currentLocation} 
                     routeBounds={routeBounds}
                     mapCenter={mapCenter}
+                    fitBounds={fitBounds}
                     isNavigating={isNavigating}
                     heading={heading}
                 />

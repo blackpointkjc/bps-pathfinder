@@ -90,6 +90,7 @@ export default function Navigation() {
     const [addressSearching, setAddressSearching] = useState(false);
     const [showAddressSearch, setShowAddressSearch] = useState(false);
     const [lastGpsFixAt, setLastGpsFixAt] = useState(null);
+    const [fitBounds, setFitBounds] = useState(null);
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
