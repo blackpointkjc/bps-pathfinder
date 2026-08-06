@@ -413,7 +413,7 @@ export default function SupervisorInspections() {
                   </div>
                 </div>
 
-                <div className="flex gap-3 justify-end">
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                   <Button
                     type="button"
                     variant="outline"
@@ -444,7 +444,7 @@ export default function SupervisorInspections() {
               {inspectionsError && <div className="rounded-lg border border-red-800 bg-red-950/30 p-4 text-red-200">Unable to load inspections: {inspectionsError.message}</div>}
               {!inspectionsLoading && !inspectionsError && inspections.map((inspection) => (
                 <div key={inspection.id} className="rounded-lg border border-slate-700 bg-[#0d1825] p-5">
-                  <div className="flex justify-between items-start mb-3">
+                  <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="font-bold text-white text-lg">{inspection.officer_inspected || 'Officer not selected'}</p>
                       <p className="text-sm text-slate-300">
@@ -452,7 +452,7 @@ export default function SupervisorInspections() {
                       </p>
                       <p className="text-xs text-slate-500 mt-1">Inspected by: {inspection.created_by || 'Draft from site check'}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {inspection.inspection_result ? (
                         <Badge className={inspection.inspection_result === 'pass' ? 'bg-green-700 text-white' : 'bg-red-700 text-white'}>
                           {inspection.inspection_result === 'pass' ? <><CheckCircle className="w-3 h-3 mr-1" />PASS</> : <><XCircle className="w-3 h-3 mr-1" />FAIL</>}
