@@ -186,7 +186,7 @@ function CommandDashboardInner() {
     };
 
     const getCallIdentifier = (call) => {
-        const official = String(call?.agency_cad_number || '').trim();
+        const official = String(call?.agency_cad_number || (call?.official_cad_verified ? call?.call_id : '') || '').trim();
         const compactBps = (value) => String(value || '').trim().replace(/^(BPS-\d{6}-)0+(\d+)$/i, '$1$2');
         const bps = compactBps(call?.bps_reference);
         const legacy = compactBps(call?.call_id);
