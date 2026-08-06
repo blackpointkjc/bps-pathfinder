@@ -22,11 +22,16 @@ export default function ShiftHandover(){
   const {data:locations=[]}=useQuery({queryKey:['handoverLocations'],queryFn:()=>base44.entities.Location.list('site_name')});
   const {data:users=[]}=useQuery({queryKey:['handoverUsers'],queryFn:()=>base44.entities.User.list()});
   const {data:handovers=[]}=useQuery({queryKey:['shiftHandovers'],queryFn:()=>base44.entities.ShiftHandover.list('-created_date',100),refetchInterval:10000});
-  const mySites=useMemo(()=>[...new Set([
-    ...(user?.assigned_sites||[]),
-    ...schedules.filter(s=>s.officer_email===user?.email).map(s=>s.location||s.site_name),
-    ...locations.filter(l=>l.active && (user?.assigned_sites||[]).includes(l.site_name)).map(l=>l.site_name)
-  ].filter(Boolean))].sort(),[schedules,locations,user?.email,JSON.stringify(user?.assigned_sites||[])]);
+  const mySites=useMemo(()=>{
+    const assigned=[
+      ...(user?.assigned_sites||[]),
+      ...(user?.assigned_locations||[]),
+      user?.assigned_location,
+      ...schedules.filter(s=>s.officer_email===user?.email).map(s=>s.location||s.site_name),
+    ].filter(Boolean);
+    const activeLocations=locations.filter(l=>l.active!==false).map(l=>l.site_name).filter(Boolean);
+    return [...new Set(assigned.length ? assigned : activeLocations)].sort();
+  },[schedules,locations,user?.email,user?.assigned_location,JSON.stringify(user?.assigned_sites||[]),JSON.stringify(user?.assigned_locations||[])]);
   const visible=useMemo(()=>handovers.filter(h=>h.departing_officer_email===user?.email||h.incoming_officer_email===user?.email||mySites.includes(h.location)),[handovers,user?.email,mySites]);
   const incoming=useMemo(()=>{
     if(!form.location||!form.shift_date) return null;
