@@ -61,21 +61,6 @@ function elapsed(call) {
     return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
 }
 
-function LiveClock() {
-    const [t, setT] = useState(new Date());
-    useEffect(() => { const id = setInterval(() => setT(new Date()), 1000); return () => clearInterval(id); }, []);
-    return (
-        <div className="text-right">
-            <div className="text-white font-mono font-bold text-lg leading-none">
-                {t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'America/New_York' })}
-            </div>
-            <div className="text-slate-500 font-mono text-[10px] tracking-widest">
-                {t.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/New_York' }).toUpperCase()} ET
-            </div>
-        </div>
-    );
-}
-
 function PanelHeader({ children, count, accent = 'gold' }) {
     const accents = { gold: 'border-t-gold', red: 'border-t-red-500', blue: 'border-t-blue-500', green: 'border-t-green-500' };
     return (
@@ -278,7 +263,7 @@ function CommandDashboardInner() {
                     </button>
                     <OfficerDistressButton currentUser={currentUser} />
                 </div>
-                <LiveClock />
+
             </div>
 
             {/* ── RATE LIMIT BANNER ── */}
