@@ -63,7 +63,6 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
       });
       setNewMessage('');
       await loadMessages();
-      toast.success(recipient === 'company' ? 'Company-wide message sent' : 'Message sent');
     } catch (error) {
       console.error('Error sending dispatch message:', error);
       toast.error('Failed to send message');
