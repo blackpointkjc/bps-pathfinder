@@ -16,6 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import { calculatePaidHours } from "@/lib/payrollCalculations";
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
@@ -566,11 +568,17 @@ export default function AdminPayroll() {
   return (
     <div className="p-4 md:p-8 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex items-center gap-3 print:hidden">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center print:hidden">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-slate-900">Payroll & Client Reports</h1>
-            <p className="text-slate-600">Generate payroll and client hours reports</p>
+            <h1 className="text-3xl font-bold text-slate-900">Payroll Center — Reports</h1>
+            <p className="text-slate-600">Review time, payroll amounts, expenses, and client hours using the same payroll calculations</p>
           </div>
+          <Link to={createPageUrl("AccountingPayroll")}>
+            <Button variant="outline" className="w-full md:w-auto">
+              <DollarSign className="w-4 h-4 mr-2" />
+              Back to Payroll Processing
+            </Button>
+          </Link>
         </div>
 
         <Tabs value={reportMode} onValueChange={setReportMode} className="print:hidden">
