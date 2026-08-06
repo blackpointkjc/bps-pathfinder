@@ -222,23 +222,26 @@ export default function AccountingProfit() {
           @page { margin: 0.5in; }
         }
       `}</style>
-      <div className="container mx-auto p-6 max-w-7xl print-area">
-      <div className="flex items-center justify-between mb-6">
+      <div className="container mx-auto p-4 md:p-6 max-w-7xl print-area">
+      <div className="mb-8 rounded-3xl bg-slate-950 p-6 md:p-8 text-white shadow-xl flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Company Profit Report</h1>
-          <p className="text-slate-600">Revenue, expenses, and profit analysis</p>
-          <p className="text-sm text-slate-500 mt-1">Generated on {format(new Date(), 'MMM d, yyyy h:mm a')}</p>
+          <div className="inline-flex rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-300 mb-3">
+            Financial intelligence
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Company Profit Report</h1>
+          <p className="text-slate-300 mt-2">Live revenue, labor, expense, tax, and margin analysis</p>
+          <p className="text-sm text-slate-400 mt-2">Generated {format(new Date(), 'MMM d, yyyy h:mm a')}</p>
         </div>
-        <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-700 no-print">
+        <Button onClick={() => window.print()} className="bg-white text-slate-950 hover:bg-slate-100 no-print w-full md:w-auto">
           <Download className="w-4 h-4 mr-2" />
           Print Report
         </Button>
       </div>
 
       {/* Date Range Selector */}
-      <Card className="mb-6 no-print">
-        <CardContent className="p-6">
-          <div className="grid grid-cols-3 gap-4">
+      <Card className="mb-6 no-print rounded-2xl border-slate-200 shadow-sm">
+        <CardContent className="p-5 md:p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Start Date</Label>
               <Input
@@ -255,12 +258,6 @@ export default function AccountingProfit() {
                 onChange={(e) => setEndDate(e.target.value)}
               />
             </div>
-            <div className="flex items-end">
-              <Button className="w-full">
-                <Calendar className="w-4 h-4 mr-2" />
-                Apply Date Range
-              </Button>
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -273,8 +270,8 @@ export default function AccountingProfit() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 mb-6">
-        <Card className="border-l-4 border-l-green-500">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <Card className="rounded-2xl border-slate-200 border-l-4 border-l-green-500 shadow-sm">
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <DollarSign className="w-6 h-6 text-green-500" />
@@ -288,7 +285,7 @@ export default function AccountingProfit() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-red-500">
+        <Card className="rounded-2xl border-slate-200 border-l-4 border-l-red-500 shadow-sm">
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <DollarSign className="w-6 h-6 text-red-500" />
@@ -302,7 +299,7 @@ export default function AccountingProfit() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-amber-500">
+        <Card className="rounded-2xl border-slate-200 border-l-4 border-l-amber-500 shadow-sm">
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <DollarSign className="w-6 h-6 text-amber-500" />
@@ -316,7 +313,7 @@ export default function AccountingProfit() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-orange-500">
+        <Card className="rounded-2xl border-slate-200 border-l-4 border-l-orange-500 shadow-sm">
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <DollarSign className="w-6 h-6 text-orange-500" />
@@ -330,7 +327,7 @@ export default function AccountingProfit() {
           </CardContent>
         </Card>
 
-        <Card className={`border-l-4 ${netProfit >= 0 ? 'border-l-blue-500' : 'border-l-red-500'}`}>
+        <Card className={`rounded-2xl border-slate-200 border-l-4 shadow-sm ${netProfit >= 0 ? 'border-l-blue-500' : 'border-l-red-500'}`}>
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               {netProfit >= 0 ? (
@@ -348,7 +345,7 @@ export default function AccountingProfit() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-purple-500">
+        <Card className="rounded-2xl border-slate-200 border-l-4 border-l-purple-500 shadow-sm">
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               {profitMargin >= 0 ? (
@@ -366,7 +363,7 @@ export default function AccountingProfit() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-teal-500">
+        <Card className="rounded-2xl border-slate-200 border-l-4 border-l-teal-500 shadow-sm">
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <DollarSign className="w-6 h-6 text-teal-500" />
@@ -382,7 +379,7 @@ export default function AccountingProfit() {
       </div>
 
       {/* Profit Formula */}
-      <Card className="mb-6 bg-blue-50 border-blue-200">
+      <Card className="mb-6 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50 border-slate-200 shadow-sm">
         <CardContent className="p-6">
           <h3 className="font-bold text-slate-900 mb-2">Profit Calculation Formula:</h3>
           {invoiceRevenue > 0 && (
