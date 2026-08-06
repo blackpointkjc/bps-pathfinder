@@ -184,19 +184,19 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
         // Navigation uses a detailed, labeled street map with buildings and road hierarchy.
         if (isNavigating) {
             return mapTheme === 'night'
-                ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+                ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'
+                : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
         }
 
         if (useOfflineTiles) {
-            return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
         }
 
         if (mapTheme === 'night') {
             if (baseMapType === 'satellite') {
                 return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
             }
-            return 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
         }
 
         switch (baseMapType) {
@@ -206,13 +206,13 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 return 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
             case 'street':
             default:
-                return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
         }
     };
 
     const getTileAttribution = () => {
         if (mapTheme === 'night' && baseMapType !== 'satellite') {
-            return '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>';
+            return 'Tiles &copy; Esri &mdash; Sources: Esri, HERE, Garmin, USGS, OpenStreetMap contributors';
         }
         
         switch (baseMapType) {
@@ -222,7 +222,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 return '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>';
             case 'street':
             default:
-                return '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+                return 'Tiles &copy; Esri &mdash; Sources: Esri, HERE, Garmin, USGS, OpenStreetMap contributors';
         }
     };
 
