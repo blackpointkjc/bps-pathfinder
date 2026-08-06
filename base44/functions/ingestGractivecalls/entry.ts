@@ -366,10 +366,13 @@ Deno.serve(async (req) => {
         });
         created += 1;
       } else {
-        const officialCad = String(callData.agency_cad_number || '').trim();
+        const matchedOfficialCad = String(callData.agency_cad_number || '').trim();
+        const savedOfficialCad = existing.official_cad_verified ? String(existing.agency_cad_number || '').trim() : '';
+        const officialCad = matchedOfficialCad || savedOfficialCad;
         const bpsReference = String(existing.bps_reference || '').trim();
         const incomingWithCad = {
           ...callData,
+          agency_cad_number: officialCad,
           bps_reference: bpsReference,
           call_id: officialCad || bpsReference || existing.call_id,
           cad_number_source: officialCad ? 'official_government_feed' : 'bps_internal',
