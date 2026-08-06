@@ -181,22 +181,20 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
 
     // Determine tile layer URL based on base map type and theme
     const getTileLayerUrl = () => {
-        // Navigation uses a detailed, labeled street map with buildings and road hierarchy.
+        // Esri's actively maintained navigation basemap is optimized for live driving.
         if (isNavigating) {
-            return mapTheme === 'night'
-                ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'
-                : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Navigation_Maps/MapServer/tile/{z}/{y}/{x}';
         }
 
         if (useOfflineTiles) {
-            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Navigation_Maps/MapServer/tile/{z}/{y}/{x}';
         }
 
         if (mapTheme === 'night') {
             if (baseMapType === 'satellite') {
                 return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
             }
-            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+            return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Navigation_Maps/MapServer/tile/{z}/{y}/{x}';
         }
 
         switch (baseMapType) {
@@ -206,7 +204,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 return 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
             case 'street':
             default:
-                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+                return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Navigation_Maps/MapServer/tile/{z}/{y}/{x}';
         }
     };
 
@@ -240,7 +238,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 attribution={getTileAttribution()}
                 url={getTileLayerUrl()}
                 maxZoom={20}
-                maxNativeZoom={20}
+                maxNativeZoom={19}
                 className={mapTheme === 'night' && baseMapType !== 'satellite' ? 'esri-night-map' : ''}
             />
 
