@@ -90,18 +90,13 @@ export default function FieldCallActions({ call, onStatusChange }) {
           note: `🚨 ${alertText}`,
           note_type: 'hazard',
         }),
-        base44.entities.Message.create({
-          sender_id: user.id,
+        base44.entities.ChatMessage.create({
           sender_name: officerLabel,
-          recipient_id: 'dispatch',
-          recipient_name: 'Dispatch',
-          message: alertText,
-          read: false,
-          message_type: 'backup_request',
+          message: `🚨 ${alertText}`,
         }),
       ]);
       setBackupSent(true);
-      toast.success('Backup request sent to Dispatch');
+      toast.success('Urgent backup request posted to Team Chat');
       window.setTimeout(() => setBackupSent(false), 5000);
     } catch (error) {
       console.error('[FieldCall] backup request failed:', error);
