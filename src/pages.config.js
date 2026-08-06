@@ -59,6 +59,7 @@ import __Layout from './Layout.jsx';
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import AccountingInvoices from './pages/AccountingInvoices';
+import AccountingExpenses from './pages/AccountingExpenses';
 import AccountingPayroll from './pages/AccountingPayroll';
 import AccountingProfit from './pages/AccountingProfit';
 import AccountingTaxLiability from './pages/AccountingTaxLiability';
@@ -190,6 +191,7 @@ import __Layout from './Layout.jsx';
 
 export const PAGES = {
     "AccountingInvoices": AccountingInvoices,
+    "AccountingExpenses": AccountingExpenses,
     "AccountingPayroll": AccountingPayroll,
     "AccountingProfit": AccountingProfit,
     "AccountingTaxLiability": AccountingTaxLiability,
