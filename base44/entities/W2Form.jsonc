@@ -50,6 +50,21 @@
       "type": "string",
       "description": "Employer EIN"
     },
+    "qualified_tips": {
+      "type": "number",
+      "default": 0,
+      "description": "2026 Box 12 code TP: total qualified tips"
+    },
+    "qualified_overtime_compensation": {
+      "type": "number",
+      "default": 0,
+      "description": "2026 Box 12 code TT: FLSA overtime premium eligible for the qualified overtime deduction"
+    },
+    "tip_occupation_code": {
+      "type": "string",
+      "default": "000",
+      "description": "2026 Box 14b qualified tipped occupation code; 000 means not qualified"
+    },
     "status": {
       "type": "string",
       "enum": [
