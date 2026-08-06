@@ -67,7 +67,7 @@ export function openTrespassNoticePrint(notice, options = {}) {
   const senderAddress = options.senderAddress || propertyAddress || '';
   const senderPhone = options.senderPhone || '';
   const officerName = options.officerName || 'Officer';
-  const signatureName = options.signatureName || officerName;
+  const signatureName = options.signatureName || '';
   const policeDepartment = options.policeDepartment || resolvePoliceDepartment(options.locationRecord || {
     site_name: propertyName,
     address: propertyAddress,
