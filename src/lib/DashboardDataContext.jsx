@@ -88,9 +88,11 @@ export function DashboardDataProvider({ children }) {
                 const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
                 const key = call.external_call_id || descriptionKey || call.id;
                 const current = uniqueCalls.get(key);
-                const currentHasCad = Boolean(current?.official_cad_verified && current?.agency_cad_number);
-                const candidateHasCad = Boolean(call?.official_cad_verified && call?.agency_cad_number);
-                if (!current || (!currentHasCad && candidateHasCad)) uniqueCalls.set(key, call);
+                const currentHasIdentifier = Boolean(current?.agency_cad_number || current?.bps_reference || current?.call_id);
+                const candidateHasIdentifier = Boolean(call?.agency_cad_number || call?.bps_reference || call?.call_id);
+                const currentHasOfficialCad = Boolean(current?.official_cad_verified && current?.agency_cad_number);
+                const candidateHasOfficialCad = Boolean(call?.official_cad_verified && call?.agency_cad_number);
+                if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
             const active = [...uniqueCalls.values()].filter(c =>
                 !['Cleared', 'Cancelled'].includes(c.status)
