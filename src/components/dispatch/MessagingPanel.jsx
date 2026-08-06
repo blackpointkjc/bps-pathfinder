@@ -33,18 +33,23 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
         }
         return msg.sender_id === currentUser.id || msg.recipient_id === currentUser.id || msg.recipient_id === 'company';
       });
-      setMessages(visible.reverse());
+      const ordered = visible.reverse();
+      setMessages(ordered);
+      if (inboxOnly) {
+        const unreadIncoming = ordered.filter(msg => msg.recipient_id === currentUser.id && !msg.read);
+        await Promise.all(unreadIncoming.map(msg => base44.entities.Message.update(msg.id, { read: true }).catch(() => null)));
+      }
     } catch (error) {
       console.error('Error loading dispatch messages:', error);
     }
   };
 
   useEffect(() => {
-    if (!isOpen || !currentUser?.id) return;
+    if (!isOpen || !currentUser?.id) return undefined;
     loadMessages();
-    const interval = setInterval(loadMessages, 10000);
-    return () => clearInterval(interval);
-  }, [isOpen, currentUser?.id, dispatchMode]);
+    const unsubscribe = base44.entities.Message.subscribe(() => loadMessages());
+    return unsubscribe;
+  }, [isOpen, currentUser?.id, dispatchMode, inboxOnly]);
 
   const sendMessage = async () => {
     const text = newMessage.trim();
@@ -53,9 +58,8 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
       const recipient = inboxOnly ? selectedRecipient : dispatchMode ? selectedRecipient : 'dispatch';
       if (!recipient) return;
       const unit = recipients.find(u => u.id === recipient);
-      const senderName = dispatchMode
-        ? `Dispatch — ${currentUser.rank || ''} ${currentUser.last_name || currentUser.full_name || ''}`.trim()
-        : `${currentUser.rank || 'Officer'} ${currentUser.last_name || currentUser.full_name || ''}`.trim();
+      const personalName = [currentUser.rank, currentUser.first_name, currentUser.last_name].filter(Boolean).join(' ') || currentUser.full_name || currentUser.email || 'Black Point User';
+      const senderName = dispatchMode ? `Dispatch — ${personalName}` : personalName;
 
       if (dispatchMode && ['team_chat', 'supervisor_chat', 'company'].includes(recipient)) {
         const chatPayload = { message: text, sender_name: senderName };
@@ -174,9 +178,9 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
               className="border-slate-600 bg-slate-800 text-white placeholder:text-slate-500"
             />
           ) : (
-            <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} placeholder={dispatchMode ? 'Direct dispatch message...' : 'Reply to dispatch...'} className="border-slate-600 bg-slate-800 text-white placeholder:text-slate-500" />
+            <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} placeholder={inboxOnly ? 'Write a private message...' : dispatchMode ? 'Direct dispatch message...' : 'Reply to dispatch...'} className="border-slate-600 bg-slate-800 text-white placeholder:text-slate-500" />
           )}
-          <Button onClick={sendMessage} disabled={!newMessage.trim()} className="bg-blue-700 hover:bg-blue-600"><Send className="h-4 w-4" /></Button>
+          <Button onClick={sendMessage} disabled={!newMessage.trim() || (inboxOnly && !selectedRecipient)} className="bg-blue-700 hover:bg-blue-600"><Send className="h-4 w-4" /></Button>
         </div>
       </div>
     </div>
