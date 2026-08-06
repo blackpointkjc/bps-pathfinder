@@ -540,9 +540,9 @@ export default function AccountingW2Generator() {
                                     <div class="box-12-row">
                                       <div>
                                         <div class="code-label">Code</div>
-                                        <div class="code-box"></div>
+                                        <div class="code-box">${totalQualifiedTips > 0 ? 'TP' : ''}</div>
                                       </div>
-                                      <div class="box-value" style="font-size: 9px;"></div>
+                                      <div class="box-value" style="font-size: 9px;">${totalQualifiedTips > 0 ? totalQualifiedTips.toFixed(2) : ''}</div>
                                     </div>
                                   </div>
 
@@ -594,7 +594,7 @@ export default function AccountingW2Generator() {
                                       </div>
                                       <div>
                                         <div class="box-label"><strong>14b</strong> Treasury Tipped Occupation Code(s)</div>
-                                        <div class="box-value"></div>
+                                        <div class="box-value">${tipOccupationCode}</div>
                                       </div>
                                     </div>
                                   </div>
