@@ -14,6 +14,7 @@ import { DollarSign, CheckCircle, Trash2, Settings, Zap, AlertTriangle, FileText
 import { format, startOfMonth, endOfMonth, isValid, parseISO, startOfWeek, endOfWeek } from "date-fns";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { calculatePaidHours } from "@/lib/payrollCalculations";
 
 const safeFormatDate = (dateStr, formatStr = 'MMM d, yyyy') => {
   if (!dateStr) return 'N/A';
@@ -23,25 +24,6 @@ const safeFormatDate = (dateStr, formatStr = 'MMM d, yyyy') => {
     return format(date, formatStr);
   } catch (error) {
     return 'Invalid Date';
-  }
-};
-
-const safeCalculateHours = (entry) => {
-  if (!entry?.clock_in || !entry?.clock_out) return 0;
-  try {
-    const start = new Date(entry.clock_in);
-    const end = new Date(entry.clock_out);
-    if (!isValid(start) || !isValid(end)) return 0;
-    const completedBreakMs = (Array.isArray(entry.break_periods) ? entry.break_periods : []).reduce((total, period) => {
-      if (!period?.start || !period?.end) return total;
-      return total + Math.max(0, new Date(period.end) - new Date(period.start));
-    }, 0);
-    const openBreakMs = entry.on_break && entry.break_started_at
-      ? Math.max(0, end - new Date(entry.break_started_at))
-      : 0;
-    return Math.max(0, (end - start - completedBreakMs - openBreakMs) / 3600000);
-  } catch (error) {
-    return 0;
   }
 };
 
@@ -244,7 +226,7 @@ export default function AccountingPayroll() {
           return;
         }
 
-        const hours = safeCalculateHours(entry);
+        const hours = calculatePaidHours(entry);
         
         if (hours > 16) {
           issues.push({
