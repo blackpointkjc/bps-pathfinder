@@ -1,3 +1,4 @@
+import { getClientPortalUser } from '@/utils/clientPreview';
 import React, { useState } from 'react';
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -10,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, Plus, Shield, Clock, Users, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { getClientPortalUser } from '@/utils/clientPreview';
 
 export default function ClientSpecialRequests() {
   const [showForm, setShowForm] = useState(false);

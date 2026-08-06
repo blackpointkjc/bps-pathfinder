@@ -1,3 +1,4 @@
+import { getClientPortalUser } from '@/utils/clientPreview';
 import React, { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -9,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QrCode, MapPin, Clock, CheckCircle2, AlertTriangle, RefreshCw, XCircle } from "lucide-react";
 import { format } from "date-fns";
-import { getClientPortalUser } from '@/utils/clientPreview';
 
 export default function ClientQRReports() {
   const [filterSite, setFilterSite] = useState("all");

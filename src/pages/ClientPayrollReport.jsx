@@ -1,3 +1,4 @@
+import { getClientPortalUser } from '@/utils/clientPreview';
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -10,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DollarSign, Download, Calendar, Clock, FileText, X } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
-import { getClientPortalUser } from '@/utils/clientPreview';
 
 const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
 

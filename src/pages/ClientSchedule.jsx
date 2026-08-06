@@ -1,3 +1,4 @@
+import { getClientPortalUser } from '@/utils/clientPreview';
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -8,7 +9,6 @@ import { Shield, Calendar, ChevronLeft, ChevronRight, MapPin, AlertCircle } from
 import { format, addDays, startOfWeek, addWeeks, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getClientPortalUser } from '@/utils/clientPreview';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/c29aab32f_c3ff2618-4412-4498-8923-8f484a9469b8-2533645741.jpeg";
 

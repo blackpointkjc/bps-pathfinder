@@ -1,3 +1,4 @@
+import { getClientPortalUser } from '@/utils/clientPreview';
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,7 +10,6 @@ import { UserX, Calendar, AlertTriangle, Eye, Shield, Mail, MapPin } from "lucid
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import {
-import { getClientPortalUser } from '@/utils/clientPreview';
   Dialog,
   DialogContent,
   DialogHeader,

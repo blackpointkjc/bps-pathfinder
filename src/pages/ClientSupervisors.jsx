@@ -1,3 +1,4 @@
+import { getClientPortalUser } from '@/utils/clientPreview';
 import React from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -6,7 +7,6 @@ import { Shield, Users, UserCheck, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { getClientPortalUser } from '@/utils/clientPreview';
 
 export default function ClientSupervisors() {
   const [selectedLocation, setSelectedLocation] = React.useState("");

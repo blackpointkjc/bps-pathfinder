@@ -1,3 +1,4 @@
+import { getClientPortalUser } from '@/utils/clientPreview';
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -6,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { BookOpen, Shield, AlertTriangle, Phone, MapPin, Users, Clock, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getClientPortalUser } from '@/utils/clientPreview';
 
 export default function ClientDocuments() {
   const [expandedOrders, setExpandedOrders] = useState({});

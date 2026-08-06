@@ -1,8 +1,8 @@
+import { getClientPortalUser } from '@/utils/clientPreview';
 import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Search, RefreshCw, MapPin, FileText, MessageSquare, ChevronDown, ChevronUp, Radio } from 'lucide-react';
 import { calculateDistance } from '@/utils/alertUtils';
-import { getClientPortalUser } from '@/utils/clientPreview';
 
 const norm = value => String(value || '').toUpperCase().replace(/\bBLOCK\b/g, '').replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
 const fmt = value => value ? new Date(value).toLocaleString('en-US', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
