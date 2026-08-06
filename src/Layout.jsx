@@ -616,7 +616,8 @@ export default function Layout({ children, currentPageName }) {
       sessionStorage.setItem('bps-mobile-center-pages', JSON.stringify(centerLastPagesRef.current));
     }
     window.requestAnimationFrame(() => {
-      const savedPosition = Number(scrollPositionsRef.current[currentPageName] || 0);
+      const storedPosition = sessionStorage.getItem(`bps-mobile-scroll:${currentPageName}`);
+      const savedPosition = Number(storedPosition ?? scrollPositionsRef.current[currentPageName] ?? 0);
       mainScrollRef.current?.scrollTo({ top: savedPosition, behavior: 'auto' });
     });
     setUnreadCounts(current => {
@@ -862,7 +863,9 @@ export default function Layout({ children, currentPageName }) {
       }}
       onTabNavigate={() => {
         if (mainScrollRef.current && currentPageName) {
-          scrollPositionsRef.current[currentPageName] = mainScrollRef.current.scrollTop;
+          const position = mainScrollRef.current.scrollTop;
+          scrollPositionsRef.current[currentPageName] = position;
+          sessionStorage.setItem(`bps-mobile-scroll:${currentPageName}`, String(position));
         }
       }}
       onReports={() => { setActiveCenter('officer'); setMobileSection('reports'); setMobileOpen(true); }}
