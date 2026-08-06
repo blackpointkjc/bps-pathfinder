@@ -15,6 +15,43 @@ const SOURCES = [
 const lowerRoles = user => new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
 const normalized = value => String(value || '').trim().toLowerCase();
 
+let notificationAudioContext;
+
+function audioContext() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  if (!notificationAudioContext) notificationAudioContext = new AudioContextClass();
+  return notificationAudioContext;
+}
+
+function playNotificationChime(urgent = false) {
+  try {
+    const context = audioContext();
+    if (!context) return;
+    if (context.state === 'suspended') context.resume().catch(() => {});
+    const start = context.currentTime + 0.02;
+    const notes = urgent
+      ? [{ frequency: 740, at: 0 }, { frequency: 740, at: 0.18 }, { frequency: 988, at: 0.36 }]
+      : [{ frequency: 880, at: 0 }, { frequency: 1175, at: 0.16 }];
+
+    notes.forEach(({ frequency, at }) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, start + at);
+      gain.gain.setValueAtTime(0.0001, start + at);
+      gain.gain.exponentialRampToValueAtTime(0.16, start + at + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + at + 0.22);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(start + at);
+      oscillator.stop(start + at + 0.24);
+    });
+  } catch (error) {
+    console.warn('Notification chime unavailable:', error?.message);
+  }
+}
+
 function bannerText(source, record) {
   if (source.kind === 'announcement') {
     return {
@@ -73,6 +110,7 @@ export default function GlobalMessageBanner({ user }) {
       const key = `${source.entity}:${record.id}`;
       if (knownIds.current.has(key)) return;
       knownIds.current.add(key);
+      playNotificationChime(source.kind === 'property');
 
       const text = bannerText(source, record);
       const banner = {
