@@ -849,7 +849,10 @@ export default function Layout({ children, currentPageName }) {
             </button>
           )}
           {criticalOutage && <span className="hidden rounded border border-red-700/60 bg-red-950/40 px-2 py-1 font-bold text-red-300 sm:block">SYSTEM OUTAGE</span>}
-          <span className="hidden font-mono text-[#9fb6cc] sm:inline">{clock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+          <div className="text-right font-mono leading-tight text-[#9fb6cc]">
+            <div className="text-[11px] font-black tracking-wider text-white">{clock.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+            <div className="text-[8px] font-bold tracking-[0.12em] text-[#7894af]">{clock.toLocaleDateString('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()} ET</div>
+          </div>
 
         </div>
       </header>
