@@ -396,9 +396,9 @@ export default function AdminLocations() {
   const inactiveLocations = locations?.filter(loc => !loc.active) || [];
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div className="flex justify-between items-center">
+    <div className="min-h-screen p-3 pb-24 sm:p-4 md:p-8">
+      <div className="mx-auto max-w-6xl space-y-5 sm:space-y-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <Shield className="w-8 h-8 text-amber-600" />
             <div>
@@ -412,7 +412,7 @@ export default function AdminLocations() {
               resetForm();
               setShowDialog(true);
             }}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="w-full bg-blue-600 hover:bg-blue-700 sm:w-auto"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Location
@@ -420,7 +420,7 @@ export default function AdminLocations() {
         </div>
 
         <Tabs defaultValue="active" className="space-y-6">
-          <TabsList className="bg-white border border-slate-200 p-1">
+          <TabsList className="grid h-auto w-full grid-cols-1 gap-1 border border-slate-200 bg-white p-1 sm:grid-cols-2">
             <TabsTrigger value="active" className="data-[state=active]:bg-green-50 data-[state=active]:text-green-900">
               <MapPin className="w-4 h-4 mr-2" />
               Active Sites ({activeLocations.length})
@@ -442,10 +442,10 @@ export default function AdminLocations() {
               <CardContent>
                 <div className="space-y-3">
                   {activeLocations.map((location) => (
-                    <div key={location.id} className="p-5 bg-slate-50 rounded-lg border border-slate-200 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
+                    <div key={location.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 transition-shadow hover:shadow-md sm:p-5">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
                             <h3 className="font-bold text-slate-900 text-lg">{location.site_name}</h3>
                             <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
                               Active
@@ -1374,7 +1374,7 @@ export default function AdminLocations() {
               <Button
                 type="submit"
                 disabled={createLocationMutation.isPending || updateLocationMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-blue-600 hover:bg-blue-700 sm:w-auto"
               >
                 {createLocationMutation.isPending || updateLocationMutation.isPending
                   ? 'Saving...'
