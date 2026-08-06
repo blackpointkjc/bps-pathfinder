@@ -1048,7 +1048,7 @@ export default function Navigation() {
                             key: 'theme',
                             onClick: () => setMapTheme(theme => theme === 'day' ? 'night' : 'day'),
                             title: mapTheme === 'night' ? 'Use day map' : 'Use night map',
-                            icon: <span className="text-base" aria-hidden="true">{mapTheme === 'night' ? '☀️' : '🌙'}</span>,
+                            icon: <Layers className="h-4 w-4" />,
                             active: mapTheme === 'night',
                         },
                         {
