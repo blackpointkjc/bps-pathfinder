@@ -109,6 +109,94 @@ export default function ClientPayrollReport() {
   const totalHours = Object.values(billingSummary).reduce((sum, data) => sum + data.hours, 0);
   const totalBilled = Object.values(billingSummary).reduce((sum, data) => sum + data.billedAmount, 0);
 
+  const printStoredInvoice = (invoice) => {
+    const shifts = invoice.shifts ? JSON.parse(invoice.shifts) : [];
+    const printWindow = window.open('', '_blank', 'width=900,height=1100');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Invoice #${invoice.invoice_number}</title>
+        <style>
+          @page { size: letter; margin: .45in; }
+          * { box-sizing: border-box; }
+          body { margin: 0; color: #0f172a; font: 13px/1.45 Arial, sans-serif; background: #fff; }
+          .sheet { max-width: 8.5in; margin: auto; }
+          .header { display:flex; justify-content:space-between; gap:32px; padding:28px; border-radius:18px; background:#0f172a; color:white; }
+          .brand { font-size:23px; font-weight:800; letter-spacing:-.4px; }
+          .muted { color:#cbd5e1; margin-top:6px; }
+          .invoice { text-align:right; }
+          .invoice h1 { margin:0; font-size:32px; letter-spacing:2px; }
+          .invoice strong { color:#fbbf24; }
+          .meta { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin:24px 0; }
+          .panel { border:1px solid #e2e8f0; border-radius:14px; padding:18px; }
+          .label { color:#64748b; font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; }
+          .value { font-weight:700; font-size:15px; }
+          table { width:100%; border-collapse:collapse; margin-top:20px; overflow:hidden; }
+          th { background:#f1f5f9; color:#475569; text-align:left; font-size:10px; letter-spacing:.7px; text-transform:uppercase; padding:11px; }
+          td { border-bottom:1px solid #e2e8f0; padding:11px; }
+          th:last-child, td:last-child { text-align:right; }
+          .totals { margin:24px 0 0 auto; width:310px; border-radius:14px; background:#f8fafc; padding:18px; }
+          .row { display:flex; justify-content:space-between; margin:7px 0; }
+          .grand { border-top:2px solid #0f172a; padding-top:12px; margin-top:12px; font-size:20px; font-weight:800; }
+          .notes { margin-top:24px; border-left:4px solid #f59e0b; background:#fffbeb; padding:14px 16px; }
+          .footer { margin-top:30px; padding-top:16px; border-top:1px solid #e2e8f0; color:#64748b; text-align:center; font-size:11px; }
+          @media print { .header { print-color-adjust:exact; -webkit-print-color-adjust:exact; } }
+        </style>
+      </head>
+      <body>
+        <div class="sheet">
+          <div class="header">
+            <div>
+              <div class="brand">Black Point Protection</div>
+              <div class="muted">1971 University Blvd, Lynchburg, VA 24515</div>
+              <div class="muted">${DCJS_ID}</div>
+            </div>
+            <div class="invoice">
+              <h1>INVOICE</h1>
+              <div>#<strong>${invoice.invoice_number}</strong></div>
+            </div>
+          </div>
+          <div class="meta">
+            <div class="panel">
+              <div class="label">Bill to</div>
+              <div class="value">${invoice.client_email || user?.email || ''}</div>
+              <div>${invoice.site_name || ''}</div>
+            </div>
+            <div class="panel">
+              <div class="label">Service period</div>
+              <div class="value">${format(new Date(invoice.period_start), 'MMM d, yyyy')} – ${format(new Date(invoice.period_end), 'MMM d, yyyy')}</div>
+              <div style="margin-top:8px">Due ${invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : 'upon receipt'}</div>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>Date</th><th>Officer</th><th>Time</th><th>Hours</th><th>Amount</th></tr></thead>
+            <tbody>
+              ${shifts.map(shift => `<tr>
+                <td>${shift.date || ''}</td>
+                <td>${shift.officer || ''}</td>
+                <td>${shift.clockIn || ''} – ${shift.clockOut || ''}</td>
+                <td>${shift.hours || ''}</td>
+                <td>$${Number(shift.amount || 0).toFixed(2)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+          <div class="totals">
+            <div class="row"><span>Total hours</span><strong>${Number(invoice.total_hours || 0).toFixed(2)}</strong></div>
+            <div class="row grand"><span>Total due</span><span>$${Number(invoice.total_amount || 0).toFixed(2)}</span></div>
+          </div>
+          ${invoice.notes ? `<div class="notes"><strong>Notes</strong><br>${invoice.notes}</div>` : ''}
+          <div class="footer">Payment is due by the date shown above. Please contact the company with invoice questions.</div>
+        </div>
+        <script>window.print();</script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const generateInvoice = () => {
     const printWindow = window.open('', '', 'width=850,height=1100');
     
@@ -292,8 +380,14 @@ export default function ClientPayrollReport() {
                           <p>{invoice.notes}</p>
                         </div>
                       )}
-                      <div className="text-xs text-slate-500 pt-2">
-                        Due: {format(new Date(invoice.due_date), 'MMM d, yyyy')}
+                      <div className="flex flex-col gap-3 pt-3 border-t border-slate-200 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="text-xs text-slate-500">
+                          Due: {format(new Date(invoice.due_date), 'MMM d, yyyy')}
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => printStoredInvoice(invoice)}>
+                          <Download className="w-4 h-4 mr-2" />
+                          View / Print Invoice
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
