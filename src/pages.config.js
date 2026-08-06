@@ -110,6 +110,7 @@ import AdminUsers from './pages/AdminUsers';
 import Announcements from './pages/Announcements';
 import CallsForService from './pages/CallsForService';
 import ClientAlerts from './pages/ClientAlerts';
+import ClientCallHistory from './pages/ClientCallHistory';
 import ClientDashboard from './pages/ClientDashboard';
 import ClientDocuments from './pages/ClientDocuments';
 import ClientFeedback from './pages/ClientFeedback';
@@ -242,6 +243,7 @@ export const PAGES = {
     "Announcements": Announcements,
     "CallsForService": CallsForService,
     "ClientAlerts": ClientAlerts,
+    "ClientCallHistory": ClientCallHistory,
     "ClientDashboard": ClientDashboard,
     "ClientDocuments": ClientDocuments,
     "ClientFeedback": ClientFeedback,
