@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 
 export default function AccountingW2Generator() {
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear() - 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [generating, setGenerating] = useState(false);
 
   const queryClient = useQueryClient();
@@ -54,7 +54,14 @@ export default function AccountingW2Generator() {
   });
 
   const generateW2Mutation = useMutation({
-    mutationFn: (w2Data) => base44.entities.W2Form.bulkCreate(w2Data),
+    mutationFn: async (w2Data) => Promise.all(w2Data.map(data => {
+      const existing = w2Forms.find(form =>
+        Number(form.tax_year) === Number(data.tax_year) && form.officer_email === data.officer_email
+      );
+      return existing
+        ? base44.entities.W2Form.update(existing.id, data)
+        : base44.entities.W2Form.create(data);
+    })),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['w2Forms'] });
       setGenerating(false);
@@ -95,15 +102,23 @@ export default function AccountingW2Generator() {
             federalTax: 0,
             stateTax: 0,
             socialSecurity: 0,
-            medicare: 0
+            medicare: 0,
+            qualifiedTips: 0,
+            qualifiedOvertime: 0,
+            tipOccupationCode: '000'
           };
         }
 
         officerTotals[entry.officer_email].wages += entry.gross_pay || 0;
         officerTotals[entry.officer_email].federalTax += entry.federal_tax || 0;
         officerTotals[entry.officer_email].stateTax += entry.state_tax || 0;
-        officerTotals[entry.officer_email].socialSecurity += entry.social_security || 0;
-        officerTotals[entry.officer_email].medicare += entry.medicare || 0;
+        officerTotals[entry.officer_email].socialSecurity += Number(entry.social_security) || 0;
+        officerTotals[entry.officer_email].medicare += Number(entry.medicare) || 0;
+        officerTotals[entry.officer_email].qualifiedTips += Number(entry.qualified_tips) || 0;
+        officerTotals[entry.officer_email].qualifiedOvertime += Number(entry.qualified_overtime_premium) || 0;
+        if (entry.tip_occupation_code) {
+          officerTotals[entry.officer_email].tipOccupationCode = entry.tip_occupation_code;
+        }
       });
 
       // Create W-2 forms
@@ -126,6 +141,9 @@ export default function AccountingW2Generator() {
           state_income_tax: parseFloat(totals.stateTax.toFixed(2)),
           state: officer.work_state || 'VA',
           employer_ein: config?.employer_ein || 'Not Set',
+          qualified_tips: parseFloat(totals.qualifiedTips.toFixed(2)),
+          qualified_overtime_compensation: parseFloat(totals.qualifiedOvertime.toFixed(2)),
+          tip_occupation_code: totals.qualifiedTips > 0 ? totals.tipOccupationCode : '000',
           status: 'draft'
         });
       }
@@ -162,13 +180,16 @@ export default function AccountingW2Generator() {
     <div className="container mx-auto p-6 max-w-7xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">W-2 Generator</h1>
-          <p className="text-slate-600">AI-powered W-2 form generation</p>
+          <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white mb-3">
+            2026 tax reporting
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-950">W-2 Compliance Center</h1>
+          <p className="text-slate-600 mt-1">Generate accurate wage statements from finalized payroll records</p>
         </div>
       </div>
 
       {/* AI W-2 Generator */}
-      <Card className="mb-6 border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+      <Card className="mb-6 overflow-hidden border-slate-200 shadow-sm bg-gradient-to-br from-white via-slate-50 to-blue-50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-purple-900">
             <Zap className="w-5 h-5" />
@@ -213,7 +234,7 @@ export default function AccountingW2Generator() {
           </Button>
 
           <p className="text-xs text-purple-900">
-            AI will pull all paid payroll data for {selectedYear}, calculate year-end totals, and generate W-2 forms for all officers.
+            Uses paid payroll records for {selectedYear}. Existing employee W-2 drafts are updated instead of duplicated.
           </p>
         </CardContent>
       </Card>
@@ -264,9 +285,13 @@ export default function AccountingW2Generator() {
                         variant="outline" 
                         size="sm"
                         onClick={() => {
-                          const totalQualifiedOT = payrollEntries
-                            .filter(p => p.officer_email === w2.officer_email && p.pay_date?.startsWith(w2.tax_year.toString()) && p.status === 'paid')
-                            .reduce((sum, p) => sum + (p.qualified_overtime_premium || 0), 0);
+                          const employeeYearPayroll = payrollEntries
+                            .filter(p => p.officer_email === w2.officer_email && p.pay_date?.startsWith(w2.tax_year.toString()) && p.status === 'paid');
+                          const totalQualifiedOT = Number(w2.qualified_overtime_compensation) ||
+                            employeeYearPayroll.reduce((sum, p) => sum + (Number(p.qualified_overtime_premium) || 0), 0);
+                          const totalQualifiedTips = Number(w2.qualified_tips) ||
+                            employeeYearPayroll.reduce((sum, p) => sum + (Number(p.qualified_tips) || 0), 0);
+                          const tipOccupationCode = totalQualifiedTips > 0 ? (w2.tip_occupation_code || '000') : '000';
                           
                           const w2Window = window.open('', '_blank');
                           w2Window.document.write(`
