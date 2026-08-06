@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, TrendingUp, TrendingDown, Download, Calendar } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
+import { calculatePaidHours } from "@/lib/payrollCalculations";
 
 export default function AccountingProfit() {
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
@@ -86,121 +87,126 @@ export default function AccountingProfit() {
     );
   }
 
-  // Filter entries by date range
-  const filteredEntries = timeEntries.filter(entry => {
-    if (!entry.clock_in) return false;
-    const entryDate = new Date(entry.clock_in);
-    return entryDate >= new Date(startDate) && entryDate <= new Date(endDate);
-  });
+  const isDateInRange = (value) => {
+    if (!value) return false;
+    const dateKey = String(value).slice(0, 10);
+    return dateKey >= startDate && dateKey <= endDate;
+  };
 
-  const filteredPayroll = payrollEntries.filter(entry => {
-    if (!entry.pay_date || entry.status !== 'paid') return false;
-    const payDate = new Date(entry.pay_date);
-    return payDate >= new Date(startDate) && payDate <= new Date(endDate);
-  });
+  // Include the entire selected end date and only completed shifts.
+  const filteredEntries = timeEntries.filter(entry =>
+    entry.clock_in && entry.clock_out && isDateInRange(entry.clock_in)
+  );
+
+  const filteredPayroll = payrollEntries.filter(entry =>
+    entry.status === 'paid' && isDateInRange(entry.pay_date)
+  );
 
   const filteredExpenses = expenseReports.filter(expense => {
-    const expenseDate = expense.expense_date || expense.date || expense.reimbursed_date;
-    if (!expenseDate || !['approved', 'reimbursed'].includes(String(expense.status || '').toLowerCase())) return false;
-    return expenseDate >= startDate && expenseDate <= endDate;
+    const expenseDate = expense.expense_date || expense.date || expense.reimbursed_date || expense.created_date;
+    const status = String(expense.status || '').toLowerCase();
+    return ['approved', 'reimbursed', 'paid'].includes(status) && isDateInRange(expenseDate);
   });
 
-  const filteredPTO = timeOffRequests.filter(pto => {
-    if (!pto.start_date || pto.status !== 'approved' || pto.request_type !== 'paid') return false;
-    const ptoStart = new Date(pto.start_date);
-    return ptoStart >= new Date(startDate) && ptoStart <= new Date(endDate);
-  });
+  const filteredPTO = timeOffRequests.filter(pto =>
+    pto.status === 'approved' && pto.request_type === 'paid' && isDateInRange(pto.start_date)
+  );
 
+  // Sent and paid invoices are earned revenue for the selected service period.
   const filteredInvoices = invoices.filter(invoice => {
-    if (!invoice.paid_date || invoice.status !== 'paid') return false;
-    const paidDate = new Date(invoice.paid_date);
-    return paidDate >= new Date(startDate) && paidDate <= new Date(endDate);
+    const status = String(invoice.status || '').toLowerCase();
+    if (['draft', 'cancelled', 'void'].includes(status)) return false;
+    if (invoice.period_start && invoice.period_end) {
+      return invoice.period_end >= startDate && invoice.period_start <= endDate;
+    }
+    return isDateInRange(invoice.paid_date || invoice.invoice_date || invoice.created_date);
   });
 
-  // Calculate PTO cost (lost productivity)
   const ptoCost = filteredPTO.reduce((sum, pto) => {
-    const officer = allUsers.find(o => o.email === pto.created_by);
-    const hours = pto.hours_requested || 0;
-    const rate = officer?.hourly_rate || 0;
-    return sum + (hours * rate);
+    const employeeEmail = pto.requested_by_email || pto.created_by;
+    const officer = allUsers.find(o => o.email === employeeEmail);
+    return sum + ((Number(pto.hours_requested) || 0) * (Number(officer?.hourly_rate) || 0));
   }, 0);
 
-  // Calculate revenue from invoices (actual billed revenue)
-  const invoiceRevenue = filteredInvoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
+  const invoiceRevenue = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0);
 
-  // Revenue by officer and site
   const revenueByOfficer = {};
   const payrollByOfficer = {};
+  const hoursByOfficer = {};
   const revenueBySite = {};
   const payrollBySite = {};
   const hoursBySite = {};
 
+  // Labor is a cost when worked, even before payroll is finalized and even when
+  // the work is office/support time with no client bill rate.
   filteredEntries.forEach(entry => {
     const officer = officers.find(o => o.email === entry.officer_email);
+    if (!officer) return;
+
     const location = locations.find(l => l.site_name === entry.location);
-    
-    if (entry.clock_out && officer && location && location.site_bill_rate) {
-      const hours = (new Date(entry.clock_out) - new Date(entry.clock_in)) / (1000 * 60 * 60);
-      const billRate = location.site_bill_rate;
-      const revenue = hours * billRate;
-      const payrollCost = hours * (officer.hourly_rate || 0);
+    const hours = calculatePaidHours(entry);
+    const billRate = Number(location?.site_bill_rate) || 0;
+    const revenue = hours * billRate;
+    const payrollCost = hours * (Number(officer.hourly_rate) || 0);
+    const officerName = `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email;
+    const siteName = entry.location || 'Unassigned / Nonbillable';
 
-      const officerName = `${officer.first_name} ${officer.last_name}`;
-      if (!revenueByOfficer[officerName]) {
-        revenueByOfficer[officerName] = 0;
-        payrollByOfficer[officerName] = 0;
-      }
+    revenueByOfficer[officerName] = (revenueByOfficer[officerName] || 0) + revenue;
+    payrollByOfficer[officerName] = (payrollByOfficer[officerName] || 0) + payrollCost;
+    hoursByOfficer[officerName] = (hoursByOfficer[officerName] || 0) + hours;
 
-      revenueByOfficer[officerName] += revenue;
-      payrollByOfficer[officerName] += payrollCost;
+    revenueBySite[siteName] = (revenueBySite[siteName] || 0) + revenue;
+    payrollBySite[siteName] = (payrollBySite[siteName] || 0) + payrollCost;
+    hoursBySite[siteName] = (hoursBySite[siteName] || 0) + hours;
+  });
 
-      if (!revenueBySite[entry.location]) {
-        revenueBySite[entry.location] = 0;
-        payrollBySite[entry.location] = 0;
-        hoursBySite[entry.location] = 0;
-      }
-
-      revenueBySite[entry.location] += revenue;
-      payrollBySite[entry.location] += payrollCost;
-      hoursBySite[entry.location] += hours;
+  // Use invoiced site revenue when available instead of an estimate from time.
+  filteredInvoices.forEach(invoice => {
+    if (invoice.site_name) {
+      revenueBySite[invoice.site_name] = (revenueBySite[invoice.site_name] || 0);
     }
   });
 
-  // Get payroll breakdown by officer (regular, overtime, holiday)
   const payrollBreakdownByOfficer = {};
   filteredPayroll.forEach(entry => {
     const officer = officers.find(o => o.email === entry.officer_email);
-    if (officer) {
-      const officerName = `${officer.first_name} ${officer.last_name}`;
-      if (!payrollBreakdownByOfficer[officerName]) {
-        payrollBreakdownByOfficer[officerName] = {
-          regularHours: 0,
-          regularPay: 0,
-          overtimeHours: 0,
-          overtimePay: 0,
-          holidayHours: 0,
-          holidayPay: 0,
-        };
-      }
-      
-      payrollBreakdownByOfficer[officerName].regularHours += entry.regular_hours || 0;
-      payrollBreakdownByOfficer[officerName].regularPay += entry.regular_pay || 0;
-      payrollBreakdownByOfficer[officerName].overtimeHours += entry.overtime_hours || 0;
-      payrollBreakdownByOfficer[officerName].overtimePay += entry.overtime_pay || 0;
-      payrollBreakdownByOfficer[officerName].holidayHours += entry.holiday_hours || 0;
-      payrollBreakdownByOfficer[officerName].holidayPay += entry.holiday_pay || 0;
+    if (!officer) return;
+    const officerName = `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email;
+    const breakdown = payrollBreakdownByOfficer[officerName] || {
+      regularHours: 0, regularPay: 0, overtimeHours: 0,
+      overtimePay: 0, holidayHours: 0, holidayPay: 0,
+    };
+    breakdown.regularHours += Number(entry.regular_hours) || 0;
+    breakdown.regularPay += Number(entry.regular_pay) || 0;
+    breakdown.overtimeHours += Number(entry.overtime_hours) || 0;
+    breakdown.overtimePay += Number(entry.overtime_pay) || 0;
+    breakdown.holidayHours += Number(entry.holiday_hours) || 0;
+    breakdown.holidayPay += Number(entry.holiday_pay) || 0;
+    payrollBreakdownByOfficer[officerName] = breakdown;
+  });
+
+  // If payroll has not been finalized yet, show the accrued regular hours/pay
+  // from completed time entries instead of misleading zeroes.
+  Object.keys(payrollByOfficer).forEach(officerName => {
+    if (!payrollBreakdownByOfficer[officerName]) {
+      payrollBreakdownByOfficer[officerName] = {
+        regularHours: hoursByOfficer[officerName] || 0,
+        regularPay: payrollByOfficer[officerName] || 0,
+        overtimeHours: 0,
+        overtimePay: 0,
+        holidayHours: 0,
+        holidayPay: 0,
+      };
     }
   });
 
-  // Calculate totals using invoice revenue (actual billed amount)
-  const totalRevenue = invoiceRevenue > 0 ? invoiceRevenue : Object.values(revenueBySite).reduce((sum, val) => sum + val, 0);
-  
-  // Every paid employee is a company labor cost, including office and support staff
-  // who do not generate billable site revenue.
-  const totalPayroll = filteredPayroll.reduce((sum, entry) => sum + (Number(entry.gross_pay) || 0), 0);
-  
-  const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
-  const employerTaxes = totalPayroll * 0.0765; // 7.65% (Social Security 6.2% + Medicare 1.45%)
+  const estimatedRevenue = Object.values(revenueBySite).reduce((sum, val) => sum + val, 0);
+  const totalRevenue = invoiceRevenue > 0 ? invoiceRevenue : estimatedRevenue;
+  const finalizedPayroll = filteredPayroll.reduce((sum, entry) => sum + (Number(entry.gross_pay) || 0), 0);
+  const accruedPayroll = Object.values(payrollByOfficer).reduce((sum, amount) => sum + amount, 0);
+  const totalPayroll = Math.max(finalizedPayroll, accruedPayroll);
+  const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
+  const employerTaxes = totalPayroll * 0.0765;
   const totalCosts = totalPayroll + totalExpenses + ptoCost + employerTaxes;
   const netProfit = totalRevenue - totalCosts;
   const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
