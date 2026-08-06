@@ -264,4 +264,90 @@ html.bps-night-mode .cad-app main.night-workspace [class*="to-blue-50"] {
   .cad-app .mobile-field-content a[role="button"] {
     touch-action: manipulation;
   }
+
+  /* Professional phone layouts for CAD, report forms, and supervisor workflows. */
+  .cad-app .mobile-field-content:is(
+    [data-page="DispatchCenter"],
+    [data-page="OfficerAvailability"],
+    [data-page="DailyActivityReports"],
+    [data-page="IncidentReports"],
+    [data-page="ExpenseReports"],
+    [data-page="VAContactSheet"],
+    [data-page="SupervisorDailyCode"],
+    [data-page="SupervisorInspections"],
+    [data-page="SupervisorWriteUps"],
+    [data-page="SupervisorCallOuts"],
+    [data-page="MaintenanceReports"],
+    [data-page="OpenDoorReports"],
+    [data-page="ConfidentialReport"],
+    [data-page="QRPatrolScan"],
+    [data-page="VATrespassNotices"],
+    [data-page="VACriminalComplaints"],
+    [data-page="MDTrespassNotices"],
+    [data-page="MDCriminalComplaints"]
+  ) {
+    overflow-x: clip;
+  }
+
+  .cad-app .mobile-field-content:is(
+    [data-page="OfficerAvailability"],
+    [data-page="DailyActivityReports"],
+    [data-page="IncidentReports"],
+    [data-page="ExpenseReports"],
+    [data-page="VAContactSheet"],
+    [data-page="SupervisorDailyCode"],
+    [data-page="SupervisorInspections"],
+    [data-page="SupervisorWriteUps"],
+    [data-page="SupervisorCallOuts"],
+    [data-page="MaintenanceReports"],
+    [data-page="OpenDoorReports"],
+    [data-page="ConfidentialReport"],
+    [data-page="QRPatrolScan"],
+    [data-page="VATrespassNotices"],
+    [data-page="VACriminalComplaints"],
+    [data-page="MDTrespassNotices"],
+    [data-page="MDCriminalComplaints"]
+  ) > div {
+    padding: 0.75rem !important;
+  }
+
+  .cad-app .mobile-field-content .mobile-page-header > button {
+    width: 100%;
+  }
+
+  .cad-app .mobile-field-content h1 {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
+  }
+
+  .cad-app .mobile-field-content form,
+  .cad-app .mobile-field-content form > *,
+  .cad-app .mobile-field-content [role="tabpanel"] {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .cad-app .mobile-field-content [role="tablist"] {
+    width: 100%;
+    height: auto;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .cad-app .mobile-field-content [role="tab"] {
+    min-width: 0;
+    flex: 1 1 7rem;
+    white-space: normal;
+  }
+
+  .cad-app .mobile-field-content[data-page="ExpenseReports"] .text-5xl {
+    font-size: 2rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .cad-app .mobile-field-content[data-page="DispatchCenter"] .min-w-52 {
+    width: 100%;
+    min-width: 0;
+  }
 }
