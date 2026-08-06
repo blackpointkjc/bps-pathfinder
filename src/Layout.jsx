@@ -364,7 +364,7 @@ function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, cent
 
 function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, unreadCounts = {}, onCloseMobile, onToggleCollapsed }) {
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
-  const availableCenters = allowedCenters(user).filter(center => !mobile || ['cad', 'officer', 'supervisor'].includes(center));
+  const availableCenters = allowedCenters(user).filter(center => !mobile || ['cad', 'officer', 'supervisor', 'admin'].includes(center));
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
   const query = search.trim().toLowerCase();
   const groups = center.groups
@@ -745,13 +745,13 @@ export default function Layout({ children, currentPageName }) {
   }
 
   const mobilePageCenters = PAGE_TO_CENTERS[currentPageName] || [];
-  const allowedOnMobile = currentPageName === 'OfficerInbox' || mobilePageCenters.some(center => ['cad', 'officer', 'supervisor'].includes(center));
+  const allowedOnMobile = currentPageName === 'OfficerInbox' || mobilePageCenters.some(center => ['cad', 'officer', 'supervisor', 'admin'].includes(center));
   if (isMobileViewport && !allowedOnMobile) {
     return <div className="fixed inset-0 flex items-center justify-center bg-[#07111f] p-6 text-white">
       <div className="w-full max-w-sm rounded-2xl border border-[#294867] bg-[#0c1a2a] p-6 text-center shadow-2xl">
         <Shield className="mx-auto h-10 w-10 text-[#7ec1ff]" />
         <h1 className="mt-4 text-lg font-black">DESKTOP ACCESS REQUIRED</h1>
-        <p className="mt-2 text-sm leading-relaxed text-[#9fb6cc]">This area is available only in the desktop web app. Mobile access is limited to CAD, Officer, and Supervisor operations.</p>
+        <p className="mt-2 text-sm leading-relaxed text-[#9fb6cc]">This area is available only in the desktop web app for your assigned role. Mobile access includes CAD, Officer, Supervisor, and Admin Center operations when your account has permission.</p>
         {canAccessPage(user, 'CommandDashboard') && <Link to={createPageUrl('CommandDashboard')} className="mt-5 block rounded-lg bg-blue-600 px-4 py-3 text-sm font-black text-white">OPEN CAD</Link>}
       </div>
     </div>;
