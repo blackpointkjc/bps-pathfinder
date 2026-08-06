@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CollapsePanelButton from '@/components/CollapsePanelButton';
 import { base44 } from '@/api/base44Client';
 import MapView from '@/components/map/MapView';
-import VACountiesBoundaries from '@/components/map/VACountiesBoundaries';
 import {
     Layers, RefreshCw, Radio, MapPin, Users,
     Eye, EyeOff, Wifi, WifiOff, Crosshair, ArrowLeft, Flame, X, AlertTriangle, Shield, Zap, Navigation2, Square, Search, ChevronLeft, ChevronRight
@@ -466,37 +465,62 @@ export default function Navigation() {
     const fetchOtherUnits = async () => {
         try {
             const [activeOfficers, users] = await Promise.all([
-                base44.entities.ActiveOfficer.list('-last_update', 250),
-                base44.entities.User.list('-updated_date', 250),
+                base44.entities.ActiveOfficer.list('-last_update', 500),
+                base44.entities.User.list('-updated_date', 500),
             ]);
+            const currentEmail = currentUser?.email?.toLowerCase();
             const userByEmail = new Map(
                 (users || []).filter(user => user.email).map(user => [user.email.toLowerCase(), user])
             );
-            const currentEmail = currentUser?.email?.toLowerCase();
-            const visible = (activeOfficers || []).flatMap(active => {
+            const unitsByEmail = new Map();
+
+            // Primary source: active time-clock/GPS sessions.
+            for (const active of activeOfficers || []) {
                 const email = active.officer_email?.toLowerCase();
-                if (!email || email === currentEmail) return [];
+                if (!email || email === currentEmail) continue;
                 const latitude = Number(active.latitude);
                 const longitude = Number(active.longitude);
-                if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return [];
-
+                if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
                 const profile = userByEmail.get(email) || {};
-                return [{
+                unitsByEmail.set(email, {
                     ...profile,
                     id: profile.id || active.id,
                     active_officer_id: active.id,
                     email: active.officer_email,
                     full_name: active.officer_name || profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
-                    unit_number: profile.unit_number || active.current_location || 'ON DUTY',
+                    unit_number: profile.unit_number || active.unit_number || 'ON DUTY',
                     latitude,
                     longitude,
-                    status: profile.status && profile.status !== 'Out of Service' ? profile.status : 'Available',
+                    heading: Number(active.heading ?? profile.heading) || 0,
+                    status: profile.status && profile.status !== 'Out of Service' ? profile.status : (active.status || 'Available'),
                     last_updated: active.last_update || active.updated_date || active.created_date,
                     current_location: active.current_location,
                     show_on_map: true,
-                }];
-            });
-            setOtherUnits(visible);
+                });
+            }
+
+            // Fallback source: officer profiles updated directly by field GPS.
+            for (const profile of users || []) {
+                const email = profile.email?.toLowerCase();
+                if (!email || email === currentEmail || unitsByEmail.has(email)) continue;
+                const latitude = Number(profile.latitude);
+                const longitude = Number(profile.longitude);
+                const isOnDuty = profile.show_on_map === true || (profile.status && profile.status !== 'Out of Service');
+                if (!isOnDuty || !Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+                unitsByEmail.set(email, {
+                    ...profile,
+                    full_name: profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
+                    unit_number: profile.unit_number || 'ON DUTY',
+                    latitude,
+                    longitude,
+                    heading: Number(profile.heading) || 0,
+                    status: profile.status || 'Available',
+                    last_updated: profile.last_updated || profile.updated_date,
+                    show_on_map: true,
+                });
+            }
+
+            setOtherUnits([...unitsByEmail.values()]);
         } catch (e) {
             console.warn('[NAV] active officer fetch failed:', e?.message);
             setOtherUnits([]);
@@ -592,7 +616,7 @@ export default function Navigation() {
     };
 
     return (
-        <div className="h-screen w-screen relative overflow-hidden bg-[#0a0e1a]">
+        <div className="relative h-full min-h-0 w-full min-w-0 overflow-hidden bg-[#07101a]">
             <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={isDispatchOrAdmin} />
 
             {/* ══ MAP BASE LAYER ══ */}
@@ -626,7 +650,6 @@ export default function Navigation() {
                         if (call.latitude && call.longitude) lookupDistrict(call.latitude, call.longitude).then(d => setCallDistrict(d));
                     }}
                 >
-                    <VACountiesBoundaries />
                     <OfficerDistressMarker autoCenter={false} />
                 </MapView>
             </div>
@@ -1070,7 +1093,7 @@ export default function Navigation() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 320 }}
                         transition={{ duration: 0.2 }}
-                        className={`absolute top-[34px] right-0 bottom-[32px] bg-[#0a0e1a]/97 backdrop-blur-md border-l border-[#1e2d4a] z-[1006] pointer-events-auto flex flex-col transition-[width] duration-200 ${callSidebarCollapsed ? 'w-12 overflow-hidden' : 'w-80 overflow-y-auto'}`}
+                        className={`absolute bottom-[32px] right-0 top-[34px] z-[1300] flex max-w-[calc(100%-0.5rem)] flex-col border-l border-[#29445e] bg-[#07111f]/98 shadow-[-18px_0_50px_rgba(0,0,0,.45)] backdrop-blur-xl transition-[width] duration-200 pointer-events-auto ${callSidebarCollapsed ? 'w-12 overflow-hidden' : 'w-[360px] overflow-hidden'}`}
                     >
                         {/* Header / collapsed edge tab */}
                         <div className={`flex-none flex items-center border-b border-[#1e2d4a] bg-[#0d1220] ${callSidebarCollapsed ? 'flex-col gap-2 px-1 py-3' : 'justify-between px-3 py-3'}`}>
@@ -1161,7 +1184,7 @@ export default function Navigation() {
                             <span className="ml-auto text-[9px] font-mono text-slate-500">{selectedCall.status}</span>
                         </div>
 
-                        <div className="flex-1 p-4 space-y-3 font-mono overflow-y-auto bg-[#0a0e1a]">
+                        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[#07111f] p-3 font-mono">
                             {/* Incident */}
                             <div>
                                 <div className="text-[#f5a623] font-bold text-base leading-tight">{selectedCall.incident}</div>
@@ -1227,7 +1250,7 @@ export default function Navigation() {
                         </div>
 
                         {/* Field Unit Console */}
-                        <div className="flex-none border-t border-[#1e2d4a] p-3 bg-[#0a0e1a]">
+                        <div className="max-h-[42%] flex-none overflow-y-auto border-t border-[#1e2d4a] bg-[#081522] p-3">
                             <div className="text-[9px] font-mono text-[#f5a623] font-bold tracking-widest mb-2">FIELD UNIT CONSOLE</div>
                             <FieldCallActions call={selectedCall} />
                         </div>
