@@ -119,13 +119,23 @@ export default function Navigation() {
         return () => stopTracking();
     }, []);
 
-    // Credit-free unit refresh: read officer profiles directly from Base44 entities.
+    // Credit-free live officer refresh. ActiveOfficer is the source written by
+    // the time-clock/background GPS tracker while an officer is on duty.
     useEffect(() => {
-        if (!currentUser) return;
+        if (!currentUser?.id) return;
         fetchOtherUnits();
-        const i = setInterval(fetchOtherUnits, 15000);
-        return () => clearInterval(i);
-    }, [currentUser]);
+        const unsubscribe = base44.entities.ActiveOfficer.subscribe(() => fetchOtherUnits());
+        const fallback = setInterval(fetchOtherUnits, 15000);
+        const refreshWhenVisible = () => {
+            if (!document.hidden) fetchOtherUnits();
+        };
+        document.addEventListener('visibilitychange', refreshWhenVisible);
+        return () => {
+            unsubscribe?.();
+            clearInterval(fallback);
+            document.removeEventListener('visibilitychange', refreshWhenVisible);
+        };
+    }, [currentUser?.id]);
 
     useEffect(() => {
         const syncLiveCalls = async () => {
@@ -455,19 +465,40 @@ export default function Navigation() {
 
     const fetchOtherUnits = async () => {
         try {
-            const users = await base44.entities.User.list('-last_updated', 200);
-            const cutoff = Date.now() - 30 * 60 * 1000;
-            const visible = (users || []).filter(u => {
-                if (u.id === currentUser?.id) return false;
-                if (u.show_on_map === false) return false;
-                const lat = Number(u.latitude), lng = Number(u.longitude);
-                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
-                const updated = u.last_updated ? new Date(u.last_updated).getTime() : 0;
-                return updated >= cutoff;
+            const [activeOfficers, users] = await Promise.all([
+                base44.entities.ActiveOfficer.list('-last_update', 250),
+                base44.entities.User.list('-updated_date', 250),
+            ]);
+            const userByEmail = new Map(
+                (users || []).filter(user => user.email).map(user => [user.email.toLowerCase(), user])
+            );
+            const currentEmail = currentUser?.email?.toLowerCase();
+            const visible = (activeOfficers || []).flatMap(active => {
+                const email = active.officer_email?.toLowerCase();
+                if (!email || email === currentEmail) return [];
+                const latitude = Number(active.latitude);
+                const longitude = Number(active.longitude);
+                if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return [];
+
+                const profile = userByEmail.get(email) || {};
+                return [{
+                    ...profile,
+                    id: profile.id || active.id,
+                    active_officer_id: active.id,
+                    email: active.officer_email,
+                    full_name: active.officer_name || profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
+                    unit_number: profile.unit_number || active.current_location || 'ON DUTY',
+                    latitude,
+                    longitude,
+                    status: profile.status && profile.status !== 'Out of Service' ? profile.status : 'Available',
+                    last_updated: active.last_update || active.updated_date || active.created_date,
+                    current_location: active.current_location,
+                    show_on_map: true,
+                }];
             });
             setOtherUnits(visible);
         } catch (e) {
-            console.warn('[NAV] direct officer fetch failed:', e?.message);
+            console.warn('[NAV] active officer fetch failed:', e?.message);
             setOtherUnits([]);
         }
     };
