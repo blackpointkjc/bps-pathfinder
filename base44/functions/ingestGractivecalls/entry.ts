@@ -370,7 +370,10 @@ Deno.serve(async (req) => {
         created += 1;
       } else {
         const matchedOfficialCad = String(callData.agency_cad_number || '').trim();
-        const savedOfficialCad = existing.official_cad_verified ? String(existing.agency_cad_number || '').trim() : '';
+        const existingAgency = String(existing.agency || callData.agency || '').toUpperCase();
+        const existingCallId = String(existing.call_id || '').trim();
+        const chesterfieldPublicId = existingAgency === 'CCPD' && /^B\d+$/i.test(existingCallId) ? existingCallId : '';
+        const savedOfficialCad = existing.official_cad_verified ? String(existing.agency_cad_number || '').trim() : chesterfieldPublicId;
         const officialCad = matchedOfficialCad || savedOfficialCad;
         const bpsReference = String(existing.bps_reference || '').trim();
         const incomingWithCad = {
