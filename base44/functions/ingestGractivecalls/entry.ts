@@ -290,6 +290,8 @@ Deno.serve(async (req) => {
     if (!Array.isArray(payload)) return Response.json({ success: false, error: 'Unexpected GRAC response' }, { status: 502 });
     let incoming = payload.map(normalizeCall).filter(Boolean) as any[];
     if (!incoming.length) return Response.json({ success: false, error: 'No usable active calls; existing data preserved' }, { status: 502 });
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    incoming = incoming.filter(call => new Date(call.time_received || 0).getTime() >= oneHourAgo);
     incoming = await enrichOfficialIdentifiers(incoming);
 
     let existingCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
@@ -398,7 +400,10 @@ Deno.serve(async (req) => {
       const external = externalKey(record);
       const legacy = legacyKey(record);
       if (recordKey(record) && !currentExternalKeys.has(external) && !currentLegacyKeys.has(legacy)) {
-        await base44.asServiceRole.entities.DispatchCall.delete(record.id).catch(() => null);
+        await base44.asServiceRole.entities.DispatchCall.update(record.id, {
+          status: 'Cleared',
+          time_closed: record.time_closed || new Date().toISOString(),
+        }).catch(() => null);
         removed += 1;
       }
     }
