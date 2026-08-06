@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { MessageCircle, Send, Users, UserCheck, Shield } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import MentionInput from "@/components/chat/MentionInput";
 
 export default function SupervisorChat() {
   const [message, setMessage] = useState("");
+  const [mentionedUsers, setMentionedUsers] = useState([]);
   const scrollRef = useRef(null);
   const queryClient = useQueryClient();
 
@@ -46,10 +48,24 @@ export default function SupervisorChat() {
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: (data) => base44.entities.SupervisorChatMessage.create(data),
+    mutationFn: async ({ data, mentions }) => {
+      const created = await base44.entities.SupervisorChatMessage.create(data);
+      await Promise.all(mentions.map(mention => base44.entities.ChatMention.create({
+        message_id: created.id,
+        chat_type: 'supervisor',
+        page: 'SupervisorChat',
+        recipient_email: mention.email,
+        recipient_name: mention.label,
+        sender_name: data.sender_name,
+        message: data.message,
+        read: false,
+      })));
+      return created;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['supervisorChatMessages'] });
       setMessage("");
+      setMentionedUsers([]);
     },
   });
 
@@ -58,10 +74,13 @@ export default function SupervisorChat() {
     if (!message.trim()) return;
 
     sendMessageMutation.mutate({
-      message: message.trim(),
-      sender_name: senderName,
-      sender_email: user?.email || '',
-      sender_photo_url: user?.profile_photo_url || '',
+      data: {
+        message: message.trim(),
+        sender_name: senderName,
+        sender_email: user?.email || '',
+        sender_photo_url: user?.profile_photo_url || '',
+      },
+      mentions: mentionedUsers,
     });
   };
 
@@ -97,6 +116,19 @@ export default function SupervisorChat() {
     if (userData?.first_name) return userData.first_name.charAt(0).toUpperCase();
     return email?.charAt(0).toUpperCase() || 'U';
   };
+
+  useEffect(() => {
+    if (!user?.email) return undefined;
+    const markRead = async record => {
+      if (String(record?.recipient_email || '').toLowerCase() !== String(user.email).toLowerCase() || record.read || record.page !== 'SupervisorChat') return;
+      await base44.entities.ChatMention.update(record.id, { read: true, read_at: new Date().toISOString() }).catch(() => null);
+    };
+    base44.entities.ChatMention.filter({ recipient_email: user.email, page: 'SupervisorChat', read: false }).then(records => Promise.all((records || []).map(markRead))).catch(() => null);
+    const unsubscribe = base44.entities.ChatMention.subscribe(event => {
+      if (event?.type === 'create') markRead(event.data);
+    });
+    return unsubscribe;
+  }, [user?.email]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -201,11 +233,13 @@ export default function SupervisorChat() {
 
           <CardContent className="border-t p-4 flex-shrink-0">
             <form onSubmit={handleSendMessage} className="flex gap-3">
-              <Input
-                placeholder="Type your message... (supervisors only)"
+              <MentionInput
+                placeholder="Type a message or @mention a supervisor..."
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="flex-1"
+                onChange={setMessage}
+                users={(allUsers || []).filter(person => person?.role === 'admin' || (person?.additional_roles || []).map(role => String(role).toLowerCase()).includes('supervisor'))}
+                currentEmail={user?.email}
+                onMentionsChange={setMentionedUsers}
                 disabled={sendMessageMutation.isPending}
               />
               <Button
