@@ -44,7 +44,13 @@ export default function Personnel() {
     const loadPersonnel = async () => {
         try {
             const response = await base44.entities.User.list();
-            setPersonnel(response || []);
+            // CAD Personnel roster is restricted to users explicitly granted CAD access.
+            // Client- and student-only accounts must never appear here.
+            const cadPersonnel = (response || []).filter(user => {
+                const roles = Array.isArray(user.additional_roles) ? user.additional_roles : [];
+                return roles.includes('cad_access');
+            });
+            setPersonnel(cadPersonnel);
             setLastRefresh(new Date());
         } catch (error) { console.error(error); }
         finally { setRefreshing(false); }
