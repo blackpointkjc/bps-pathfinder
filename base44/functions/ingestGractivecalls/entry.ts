@@ -52,6 +52,23 @@ function chooseOfficial(call: any, rows: any[]) {
   }) || null;
 }
 
+async function fetchOfficialTable(url: string) {
+  try {
+    const response = await fetch(url, { headers: { Accept: 'text/html', 'User-Agent': 'BPS-Pathfinder/4.1' }, signal: AbortSignal.timeout(15000) });
+    if (!response.ok) return [];
+    const html = await response.text();
+    const rows: any[] = [];
+    for (const part of html.split('</tr>')) {
+      const cells = [...part.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(match => String(match[1] || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/\s+/g, ' ').trim());
+      if (cells.length >= 4 && /^\d+$/.test(cells[0])) rows.push({ official: cells[0], received: cells[1], location: cells[2], incident: cells[3] });
+    }
+    return rows;
+  } catch (error) {
+    console.warn('Official table lookup failed', error?.message || error);
+    return [];
+  }
+}
+
 function extractOfficialCadNumber(row: any) {
   const candidates = [
     row?.cadNumber,
