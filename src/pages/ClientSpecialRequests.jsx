@@ -17,6 +17,8 @@ export default function ClientSpecialRequests() {
     location: "",
     start_date: "",
     end_date: "",
+    start_time: "",
+    end_time: "",
     shift_times: "",
     officers_needed: 1,
     preferred_officer_email: "",
@@ -73,7 +75,9 @@ export default function ClientSpecialRequests() {
         location: "",
         start_date: "",
         end_date: "",
-        shift_times: "",
+        start_time: "",
+    end_time: "",
+    shift_times: "",
         officers_needed: 1,
         preferred_officer_email: "",
         preferred_officer_display: "",
@@ -86,7 +90,10 @@ export default function ClientSpecialRequests() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    createRequestMutation.mutate(formData);
+    createRequestMutation.mutate({
+      ...formData,
+      shift_times: `${formData.start_time} - ${formData.end_time}`,
+    });
   };
 
   const getStatusColor = (status) => {
@@ -202,15 +209,15 @@ export default function ClientSpecialRequests() {
                   <p className="text-xs text-slate-500">Requests are not guaranteed and remain subject to availability.</p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="shift_times">Shift Times *</Label>
-                  <Input
-                    id="shift_times"
-                    placeholder="e.g., 6:00 PM - 2:00 AM"
-                    value={formData.shift_times}
-                    onChange={(e) => setFormData({...formData, shift_times: e.target.value})}
-                    required
-                  />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="start_time">Coverage Start Time *</Label>
+                    <Input id="start_time" type="time" value={formData.start_time} onChange={(e) => setFormData({...formData, start_time: e.target.value})} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="end_time">Coverage End Time *</Label>
+                    <Input id="end_time" type="time" value={formData.end_time} onChange={(e) => setFormData({...formData, end_time: e.target.value})} required />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
