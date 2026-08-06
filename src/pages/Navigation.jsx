@@ -142,6 +142,7 @@ export default function Navigation() {
             syncingGracRef.current = true;
             try {
                 await base44.functions.invoke('ingestGractivecalls', {});
+                await base44.functions.invoke('archiveOldCalls', {}).catch(error => console.warn('[NAV] archive pass failed:', error?.message));
                 await fetchCalls();
             } catch (error) {
                 console.warn('[NAV] GRAC live sync failed:', error?.message);
@@ -579,9 +580,11 @@ export default function Navigation() {
                 const candidateHasCad = /^B\d+$/i.test(String(call.call_id || ''));
                 if (!current || (!currentHasCad && candidateHasCad)) uniqueCalls.set(key, call);
             }
-            const active = [...uniqueCalls.values()].filter(c =>
-                !['Cleared', 'Cancelled'].includes(c.status)
-            );
+            const active = [...uniqueCalls.values()].filter(c => {
+                const receivedAt = new Date(c.time_received || c.created_date).getTime();
+                const isFresh = Number.isFinite(receivedAt) && Date.now() - receivedAt <= 60 * 60 * 1000;
+                return isFresh && !['Cleared', 'Cancelled'].includes(c.status);
+            });
             const { unmapped } = splitCallsByCoords(active);
             setActiveCalls(active);
             setUnmappedCalls(unmapped);
