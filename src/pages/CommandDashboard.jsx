@@ -185,6 +185,16 @@ function CommandDashboardInner() {
         manualRefresh();
     };
 
+    const getCallIdentifier = (call) => {
+        const official = String(call?.agency_cad_number || '').trim();
+        const bps = String(call?.bps_reference || '').trim();
+        const legacy = String(call?.call_id || '').trim();
+        if (official) return { value: official, type: 'official' };
+        if (bps) return { value: bps, type: 'bps' };
+        if (legacy) return { value: legacy, type: /^BPS-/i.test(legacy) ? 'bps' : 'official' };
+        return { value: 'REFERENCE PENDING', type: 'pending' };
+    };
+
     const sortedCalls = [...calls].sort((a, b) => {
         const getRef = (c) => {
             const created = c.created_date ? new Date(c.created_date).getTime() : 0;
@@ -372,6 +382,7 @@ function CommandDashboardInner() {
                             const priority = getCallPriority(call);
                             const cfg = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG.medium;
                             const isUnassigned = (!call.assigned_units || call.assigned_units.length === 0) && !call.source;
+                            const identifier = getCallIdentifier(call);
                             return (
                                 <div key={call.id}
                                     onClick={() => setSelectedCall(call)}
@@ -388,8 +399,13 @@ function CommandDashboardInner() {
                                         )}
                                     </div>
 
-                                    <div className="cad-call-time w-24 flex-shrink-0 font-mono text-[10px] text-slate-400 pt-0.5">
-                                        <div className="truncate font-bold text-[#7ec1ff]">{call.agency_cad_number || call.bps_reference || call.call_id || 'ASSIGNING…'}</div>
+                                    <div className="cad-call-time w-36 flex-shrink-0 font-mono text-[10px] text-slate-400 pt-0.5">
+                                        <div
+                                            className={`font-bold whitespace-nowrap overflow-hidden text-ellipsis ${identifier.type === 'bps' ? 'text-[#f5c451]' : identifier.type === 'official' ? 'text-[#7ec1ff]' : 'text-slate-500'}`}
+                                            title={identifier.type === 'official' ? `Official agency CAD: ${identifier.value}` : identifier.type === 'bps' ? `BPS reference: ${identifier.value}` : identifier.value}
+                                        >
+                                            {identifier.value}
+                                        </div>
                                         <div>{fmtTime(call.time_received)}</div>
                                     </div>
 
