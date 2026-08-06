@@ -582,7 +582,7 @@ export default function Navigation() {
             }
             const active = [...uniqueCalls.values()].filter(c => {
                 const receivedAt = new Date(c.time_received || c.created_date).getTime();
-                const isFresh = Number.isFinite(receivedAt) && Date.now() - receivedAt <= 60 * 60 * 1000;
+                const isFresh = Number.isFinite(receivedAt) && Date.now() - receivedAt < 61 * 60 * 1000;
                 return isFresh && !['Cleared', 'Cancelled'].includes(c.status);
             });
             const { unmapped } = splitCallsByCoords(active);
