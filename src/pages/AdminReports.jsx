@@ -407,7 +407,7 @@ export default function AdminReports() {
         senderName: 'Black Point Protection',
         senderAddress: site?.address || report.location,
         officerName: officerFullName,
-        signatureName: getOfficerSignature(report.created_by),
+        signatureName: '',
         policeDepartment: resolvePoliceDepartment(site || { site_name: report.location, division: 'Virginia' }),
       });
       return;
@@ -422,7 +422,7 @@ export default function AdminReports() {
         displayLocation: site?.address || report.location,
         officerName,
         complainantName,
-        signatureName: getOfficerSignature(report.created_by),
+        signatureName: '',
       });
       return;
     }
@@ -924,10 +924,8 @@ export default function AdminReports() {
 
             <div class="signature-section">
               <div class="field-label">Officer Signature</div>
-              <div class="sig-line">${officerSig}</div>
-              <div class="sig-details">
-                ${officerName} | ${report.officer_ip_address ? `IP: ${report.officer_ip_address} | ` : ''}Signed (Zulu): ${report.created_date ? toZulu(report.created_date) : 'N/A'}
-              </div>
+              <div class="sig-line"></div>
+              <div class="sig-details">Date: ____________________</div>
             </div>
           </div>
 
