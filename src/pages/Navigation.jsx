@@ -82,6 +82,7 @@ export default function Navigation() {
     const [navStepIndex, setNavStepIndex] = useState(0);
     const [navDistanceMiles, setNavDistanceMiles] = useState(0);
     const [navDurationMinutes, setNavDurationMinutes] = useState(0);
+    const [navTurnDistanceFeet, setNavTurnDistanceFeet] = useState(0);
     const [isNavigating, setIsNavigating] = useState(false);
     const [routing, setRouting] = useState(false);
     const [addressQuery, setAddressQuery] = useState('');
@@ -187,6 +188,7 @@ export default function Navigation() {
         const dLng = toRad(lng - currentLocation[1]);
         const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(currentLocation[0])) * Math.cos(toRad(lat)) * Math.sin(dLng / 2) ** 2;
         const miles = 3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        setNavTurnDistanceFeet(Math.max(0, Math.round(miles * 5280)));
         if (miles < 0.035 && navStepIndex < navSteps.length - 1) setNavStepIndex(index => index + 1);
         if (navDestination?.coords) {
             const [destLat, destLng] = navDestination.coords;
@@ -419,6 +421,21 @@ export default function Navigation() {
         name: selectedCall?.location || selectedCall?.incident || 'Call location',
     });
 
+    const openExternalMap = (provider) => {
+        const lat = Number(selectedCall?.latitude);
+        const lng = Number(selectedCall?.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            toast.error('This call does not have mapped coordinates');
+            return;
+        }
+        const urls = {
+            street: `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`,
+            google: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
+            apple: `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`,
+        };
+        window.open(urls[provider], '_blank', 'noopener,noreferrer');
+    };
+
     const searchAddress = async (event) => {
         event?.preventDefault();
         const query = addressQuery.trim();
@@ -450,6 +467,7 @@ export default function Navigation() {
         setNavStepIndex(0);
         setNavDistanceMiles(0);
         setNavDurationMinutes(0);
+        setNavTurnDistanceFeet(0);
     };
 
     const recenter = async () => {
@@ -725,10 +743,11 @@ export default function Navigation() {
                     <div className="flex items-center gap-3">
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-600"><Navigation2 className="h-6 w-6 text-white" /></div>
                         <div className="min-w-0 flex-1">
-                            <div className="text-[10px] font-mono font-bold tracking-widest text-blue-300">IN-APP NAVIGATION</div>
+                            <div className="text-[10px] font-mono font-bold tracking-widest text-blue-300">TURN-BY-TURN · {navTurnDistanceFeet < 1000 ? `${navTurnDistanceFeet} FT` : `${(navTurnDistanceFeet / 5280).toFixed(1)} MI`} TO TURN</div>
                             <div className="truncate text-sm font-bold text-white">{formatInstruction(navSteps[navStepIndex])}</div>
+                            {navSteps[navStepIndex + 1] && <div className="truncate text-[10px] text-slate-400">NEXT: {formatInstruction(navSteps[navStepIndex + 1])}</div>}
                             <div className="mt-1 flex flex-wrap gap-3 text-[10px] font-mono text-slate-400">
-                                <span>{navDistanceMiles.toFixed(1)} MI</span><span>{navDurationMinutes} MIN</span><span className="truncate">TO {navDestination.name}</span>
+                                <span>{navDistanceMiles.toFixed(1)} MI</span><span>{navDurationMinutes} MIN</span><span>ETA {new Date(Date.now() + navDurationMinutes * 60000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span><span className="truncate">TO {navDestination.name}</span>
                             </div>
                         </div>
                         <button onClick={stopInAppNavigation} className="flex h-9 items-center gap-1 rounded border border-red-500/40 px-3 text-[10px] font-mono font-bold text-red-300 hover:bg-red-500/10"><Square className="h-3 w-3" />STOP</button>
@@ -1029,7 +1048,7 @@ export default function Navigation() {
                             key: 'theme',
                             onClick: () => setMapTheme(theme => theme === 'day' ? 'night' : 'day'),
                             title: mapTheme === 'night' ? 'Use day map' : 'Use night map',
-                            icon: <Layers className="h-4 w-4" />,
+                            icon: <span className="text-base" aria-hidden="true">{mapTheme === 'night' ? '☀️' : '🌙'}</span>,
                             active: mapTheme === 'night',
                         },
                         {
@@ -1139,7 +1158,7 @@ export default function Navigation() {
 
                         {!callSidebarCollapsed && <>
                         {/* Action Bar - Show on Map + Assign */}
-                        <div className="flex-none flex items-center gap-2 px-4 py-2.5 border-b border-[#1e2d4a] bg-[#0a0e1a]">
+                        <div className="flex-none flex flex-wrap items-center gap-2 px-4 py-2.5 border-b border-[#1e2d4a] bg-[#0a0e1a]">
                             <button
                                 onClick={() => {
                                     if (selectedCall.latitude && selectedCall.longitude) {
@@ -1157,6 +1176,18 @@ export default function Navigation() {
                                 className="px-3 py-1 rounded border border-green-500/40 text-green-400 text-[9px] font-mono font-bold hover:bg-green-500/10 transition-all disabled:opacity-40"
                             >
                                 {routing ? 'ROUTING...' : '🧭 START GPS'}
+                            </button>
+                            <button onClick={() => openExternalMap('street')} disabled={!selectedCall.latitude || !selectedCall.longitude}
+                                className="px-2 py-1 rounded border border-purple-500/40 text-purple-300 text-[9px] font-mono font-bold hover:bg-purple-500/10 disabled:opacity-40">
+                                STREET VIEW
+                            </button>
+                            <button onClick={() => openExternalMap('google')} disabled={!selectedCall.latitude || !selectedCall.longitude}
+                                className="px-2 py-1 rounded border border-slate-500/40 text-slate-300 text-[9px] font-mono font-bold hover:bg-slate-500/10 disabled:opacity-40">
+                                GOOGLE
+                            </button>
+                            <button onClick={() => openExternalMap('apple')} disabled={!selectedCall.latitude || !selectedCall.longitude}
+                                className="px-2 py-1 rounded border border-slate-500/40 text-slate-300 text-[9px] font-mono font-bold hover:bg-slate-500/10 disabled:opacity-40">
+                                APPLE
                             </button>
                             {selectedCall.assigned_units?.includes(currentUser?.id) ? (
                                 <>
