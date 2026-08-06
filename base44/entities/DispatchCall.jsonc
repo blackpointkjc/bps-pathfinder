@@ -4,7 +4,29 @@
   "properties": {
     "call_id": {
       "type": "string",
-      "description": "Unique call identifier"
+      "description": "Primary display identifier: official agency CAD number when published, otherwise the internal BPS reference"
+    },
+    "agency_cad_number": {
+      "type": "string",
+      "description": "Official CAD number published by the responding government agency or its public data feed"
+    },
+    "bps_reference": {
+      "type": "string",
+      "description": "Unique internal Black Point Security call reference"
+    },
+    "cad_number_source": {
+      "type": "string",
+      "enum": [
+        "official_government_feed",
+        "upstream_public_feed",
+        "bps_internal"
+      ],
+      "description": "Provenance of the primary call identifier"
+    },
+    "official_cad_verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "True only when an explicit agency CAD field was supplied by the upstream public feed"
     },
     "external_call_id": {
       "type": "string",
