@@ -10,6 +10,7 @@ import { FileText, Upload, Trash2, Shield, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AdminDocuments() {
   const [showForm, setShowForm] = useState(false);
@@ -147,20 +148,19 @@ export default function AdminDocuments() {
 
                 <div className="space-y-2">
                   <Label htmlFor="category">Category *</Label>
-                  <select
-                    id="category"
-                    value={formData.category}
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
-                    required
-                    className="w-full p-2 border rounded-lg"
-                  >
-                    <option value="site_procedures">Site Procedures</option>
-                    <option value="safety">Safety</option>
-                    <option value="emergency">Emergency</option>
-                    <option value="training">Training</option>
-                    <option value="policies">Policies</option>
-                    <option value="other">Other</option>
-                  </select>
+                  <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})} required>
+                    <SelectTrigger id="category" className="h-11 w-full">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="site_procedures">Site Procedures</SelectItem>
+                      <SelectItem value="safety">Safety</SelectItem>
+                      <SelectItem value="emergency">Emergency</SelectItem>
+                      <SelectItem value="training">Training</SelectItem>
+                      <SelectItem value="policies">Policies</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
