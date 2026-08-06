@@ -106,19 +106,19 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen p-3 pb-24 sm:p-4 md:p-8">
+      <div className="mx-auto max-w-7xl space-y-5 sm:space-y-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
             <Shield className="w-8 h-8 text-amber-600" />
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-slate-900">Admin Dashboard</h1>
-              <p className="text-slate-600">Manage officers and monitor activity</p>
+              <h1 className="text-2xl font-bold leading-tight text-slate-900 sm:text-3xl md:text-4xl">Admin Dashboard</h1>
+              <p className="text-sm text-slate-600 sm:text-base">Manage officers and monitor activity</p>
             </div>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="w-full justify-center sm:w-auto">
                 <LayoutDashboard className="w-4 h-4 mr-2" />
                 All Admin Tools
               </Button>
@@ -177,16 +177,16 @@ export default function AdminDashboard() {
           </DropdownMenu>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4 lg:gap-6">
           <Card className="border-none shadow-lg bg-white">
-            <CardHeader>
+            <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-3">
               <CardTitle className="flex items-center gap-2 text-black text-sm font-medium">
                 <Users className="w-4 h-4 text-blue-600" />
                 Total Officers
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-black">{allUsers?.length || 0}</div>
+            <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-3xl font-bold text-black sm:text-4xl">{allUsers?.length || 0}</div>
               <p className="text-black text-sm mt-1 font-medium">
                 {allUsers?.filter(u => u.role === 'admin').length || 0} admins
               </p>
@@ -194,40 +194,40 @@ export default function AdminDashboard() {
           </Card>
 
           <Card className="border-none shadow-lg">
-            <CardHeader>
+            <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-3">
               <CardTitle className="flex items-center gap-2 text-slate-900 text-sm font-medium">
                 <Clock className="w-4 h-4 text-green-600" />
                 Officers On Duty
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-slate-900">{activeOfficers || 0}</div>
+            <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-3xl font-bold text-slate-900 sm:text-4xl">{activeOfficers || 0}</div>
               <p className="text-slate-600 text-sm mt-1">Currently active</p>
             </CardContent>
           </Card>
 
           <Card className="border-none shadow-lg">
-            <CardHeader>
+            <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-3">
               <CardTitle className="flex items-center gap-2 text-slate-900 text-sm font-medium">
                 <FileText className="w-4 h-4 text-purple-600" />
                 Today's Entries
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-slate-900">{todayEntries?.length || 0}</div>
+            <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-3xl font-bold text-slate-900 sm:text-4xl">{todayEntries?.length || 0}</div>
               <p className="text-slate-600 text-sm mt-1">Clock in/out today</p>
             </CardContent>
           </Card>
 
           <Card className="border-none shadow-lg">
-            <CardHeader>
+            <CardHeader className="p-4 pb-2 sm:p-6 sm:pb-3">
               <CardTitle className="flex items-center gap-2 text-slate-900 text-sm font-medium">
                 <AlertTriangle className="w-4 h-4 text-amber-600" />
                 Pending Requests
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-slate-900">{pendingRequests || 0}</div>
+            <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-3xl font-bold text-slate-900 sm:text-4xl">{pendingRequests || 0}</div>
               <p className="text-slate-600 text-sm mt-1">Awaiting approval</p>
             </CardContent>
           </Card>
