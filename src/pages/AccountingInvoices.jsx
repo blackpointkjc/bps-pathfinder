@@ -310,12 +310,13 @@ export default function AccountingInvoices() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-7xl min-h-screen">
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-8 rounded-3xl bg-slate-950 p-6 md:p-8 text-white shadow-xl flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Client Invoices</h1>
-          <p className="text-slate-600">Generate and send invoices to clients</p>
+          <div className="inline-flex rounded-full bg-blue-400/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-blue-300 mb-3">Accounts receivable</div>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Client Invoices</h1>
+          <p className="text-slate-300 mt-2">Create, deliver, review, and print professional client invoices</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <Button
             onClick={generateAllSitesInvoices}
             disabled={generating || !selectedClient}
@@ -334,14 +335,17 @@ export default function AccountingInvoices() {
         </div>
       </div>
 
-      <Card className="mb-6 border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+      <Card className="mb-6 rounded-2xl border-slate-200 bg-white shadow-sm">
         <CardHeader>
           <CardTitle>Invoice Generator</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Select Client</Label>
+              {clientsLoading && <p className="mb-2 text-xs text-slate-500">Loading client accounts…</p>}
+              {clientsError && <p className="mb-2 text-xs text-red-600">Client accounts could not be loaded. Refresh and try again.</p>}
+              {!clientsLoading && !clientsError && clients.length === 0 && <p className="mb-2 text-xs text-amber-700">No active client accounts are assigned yet.</p>}
               <Select value={selectedClient} onValueChange={setSelectedClient}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose client..." />
@@ -428,7 +432,7 @@ export default function AccountingInvoices() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-2xl border-slate-200 shadow-sm">
         <CardHeader>
           <CardTitle>Recent Invoices ({invoices.length})</CardTitle>
         </CardHeader>
@@ -445,7 +449,7 @@ export default function AccountingInvoices() {
                 const clientName = client ? `${client.first_name} ${client.last_name}` : invoice.client_email;
                 
                 return (
-                  <div key={invoice.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                  <div key={invoice.id} className="flex flex-col gap-4 p-4 md:p-5 bg-slate-50 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors md:flex-row md:items-center md:justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-1">
                         <p className="font-bold text-blue-600">#{invoice.invoice_number}</p>
@@ -467,7 +471,7 @@ export default function AccountingInvoices() {
                         {invoice.due_date && ` • Due ${format(new Date(invoice.due_date), 'MMM d, yyyy')}`}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="flex items-center justify-between gap-4 md:block md:text-right">
                       <p className="text-2xl font-bold text-green-600">
                         ${invoice.total_amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </p>
@@ -487,21 +491,17 @@ export default function AccountingInvoices() {
                             <head>
                               <title>Invoice ${invoice.invoice_number}</title>
                               <style>
-                                body { 
-                                  font-family: Arial, sans-serif; 
-                                  margin: 0;
-                                  padding: 40px;
-                                  background: white;
-                                }
-                                .invoice-container {
-                                  max-width: 8.5in;
-                                  margin: 0 auto;
-                                }
+                                * { box-sizing: border-box; }
+                                body { font-family: Arial, sans-serif; margin: 0; background: #eef2f7; color: #0f172a; }
+                                .toolbar { position: sticky; top: 0; z-index: 2; display: flex; justify-content: flex-end; padding: 12px 24px; background: white; border-bottom: 1px solid #dbe3ee; }
+                                .toolbar button { border: 0; border-radius: 9px; background: #0f172a; color: white; padding: 10px 18px; font-weight: 700; cursor: pointer; }
+                                .invoice-container { max-width: 8.5in; margin: 24px auto; padding: 36px; background: white; box-shadow: 0 20px 50px rgba(15,23,42,.12); }
                                 .invoice-header {
                                   display: flex;
                                   justify-content: space-between;
-                                  border-bottom: 3px solid #3b82f6;
-                                  padding-bottom: 20px;
+                                  border-radius: 16px;
+                                  background: #0f172a;
+                                  padding: 24px;
                                   margin-bottom: 30px;
                                 }
                                 .company-info {
@@ -510,7 +510,7 @@ export default function AccountingInvoices() {
                                 .company-name {
                                   font-size: 24px;
                                   font-weight: bold;
-                                  color: #1e40af;
+                                  color: #ffffff;
                                   margin-bottom: 5px;
                                 }
                                 .company-details {
@@ -525,11 +525,11 @@ export default function AccountingInvoices() {
                                 .invoice-number {
                                   font-size: 32px;
                                   font-weight: bold;
-                                  color: #1e40af;
+                                  color: #fbbf24;
                                 }
                                 .invoice-date {
                                   font-size: 12px;
-                                  color: #64748b;
+                                  color: #cbd5e1;
                                   margin-top: 5px;
                                 }
                                 .bill-to {
@@ -577,7 +577,7 @@ export default function AccountingInvoices() {
                                   margin-bottom: 30px;
                                 }
                                 th {
-                                  background: #3b82f6;
+                                  background: #0f172a;
                                   color: white;
                                   padding: 12px;
                                   text-align: left;
@@ -650,12 +650,16 @@ export default function AccountingInvoices() {
                                   line-height: 1.5;
                                 }
                                 @media print {
-                                  body { padding: 0; }
+                                  body { background: white; }
+                                  .toolbar { display: none; }
+                                  .invoice-container { margin: 0; padding: 0; max-width: none; box-shadow: none; }
+                                  .invoice-header, th { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
                                   @page { margin: 0.5in; }
                                 }
                               </style>
                             </head>
                             <body>
+                              <div class="toolbar"><button onclick="window.print()">Print / Save PDF</button></div>
                               <div class="invoice-container">
                                 <div class="invoice-header">
                                   <div class="company-info">
@@ -746,14 +750,13 @@ export default function AccountingInvoices() {
                                   <p>${config?.company_legal_name || 'Black Point Protection Services'} • EIN: ${config?.employer_ein || '54-0946734'}</p>
                                 </div>
                               </div>
-                              <script>window.print();</script>
                             </body>
                             </html>
                           `);
                         }}
                       >
                         <Download className="w-4 h-4 mr-1" />
-                        Download
+                        View / Print
                       </Button>
                     </div>
                   </div>
