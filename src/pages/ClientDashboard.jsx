@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, FileText, AlertTriangle, UserX, Calendar, MapPin, ArrowRight, TrendingUp, Clock } from "lucide-react";
+import { Shield, FileText, AlertTriangle, UserX, Calendar, MapPin, ArrowRight, TrendingUp, Clock, Radio } from "lucide-react";
 import { format } from "date-fns";
 import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
@@ -177,6 +177,20 @@ export default function ClientDashboard() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Link to={createPageUrl("ClientCallHistory")}>
+            <Card className="border-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
+              <CardHeader className="bg-gradient-to-r from-slate-900 to-blue-950 text-white">
+                <CardTitle className="flex items-center gap-2">
+                  <Radio className="w-5 h-5 text-amber-400" />
+                  Calls for Service
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                <p className="text-slate-600 text-sm">View active and archived police, fire, EMS, and BPS calls verified for your property</p>
+              </CardContent>
+            </Card>
+          </Link>
+
           <Link to={createPageUrl("ClientReports")}>
             <Card className="border-none shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
