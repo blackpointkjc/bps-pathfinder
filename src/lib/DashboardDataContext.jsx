@@ -90,8 +90,8 @@ export function DashboardDataProvider({ children }) {
                 const current = uniqueCalls.get(key);
                 const currentHasIdentifier = Boolean(current?.agency_cad_number || current?.bps_reference || current?.call_id);
                 const candidateHasIdentifier = Boolean(call?.agency_cad_number || call?.bps_reference || call?.call_id);
-                const currentHasOfficialCad = Boolean(current?.official_cad_verified && current?.agency_cad_number);
-                const candidateHasOfficialCad = Boolean(call?.official_cad_verified && call?.agency_cad_number);
+                const currentHasOfficialCad = Boolean(current?.official_cad_verified && (current?.agency_cad_number || current?.call_id));
+                const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
             const active = [...uniqueCalls.values()].filter(c =>
