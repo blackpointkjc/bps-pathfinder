@@ -43,6 +43,16 @@ export default function DispatchCenter() {
     const [noteText, setNoteText] = useState('');
     const [savingNote, setSavingNote] = useState(false);
     const [systemTime, setSystemTime] = useState(() => new Date());
+
+    const rankLastName = (name) => {
+        const raw = String(name || '').trim();
+        if (!raw) return 'Dispatch';
+        const match = units.find(u => [u.full_name, u.email, u.username].filter(Boolean).some(v => String(v).toLowerCase() === raw.toLowerCase()));
+        if (!match) return raw.includes('@') ? raw.split('@')[0] : raw;
+        const last = String(match.last_name || match.full_name || '').trim().split(/\s+/).pop();
+        const rank = String(match.rank || match.title || '').trim();
+        return [rank, last].filter(Boolean).join(' ') || match.full_name || raw;
+    };
     const knownCallIdsRef = React.useRef(null);
     const syncingGracRef = React.useRef(false);
 
@@ -268,7 +278,7 @@ export default function DispatchCenter() {
             await base44.entities.CallNote.create({
                 call_id: selectedCall.id,
                 author_id: currentUser?.id || 'dispatch',
-                author_name: currentUser?.full_name || 'Dispatch',
+                author_name: rankLastName(currentUser?.full_name || currentUser?.email || 'Dispatch'),
                 note: text,
                 note_type: 'update'
             });
@@ -577,7 +587,7 @@ export default function DispatchCenter() {
                                             <div className="bg-[#111827] border border-[#263653] rounded max-h-24 overflow-y-auto">
                                                 {callNotes.length === 0 ? <div className="p-2 text-[9px] text-slate-600">No dispatcher notes recorded.</div> : callNotes.map(note => (
                                                     <div key={note.id} className="px-2 py-1.5 border-b border-[#1e2d4a] last:border-0 text-[9px]">
-                                                        <div className="flex gap-2 text-slate-500"><span className="text-blue-300">{note.author_name || 'Dispatch'}</span><span>{new Date(note.created_date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div>
+                                                        <div className="flex gap-2 text-slate-500"><span className="text-blue-300">{rankLastName(note.author_name)}</span><span>{new Date(note.created_date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div>
                                                         <div className="text-slate-200 mt-0.5">{note.note}</div>
                                                     </div>
                                                 ))}
