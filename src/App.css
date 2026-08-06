@@ -149,8 +149,69 @@ html.bps-night-mode .cad-app main.night-workspace [class*="to-blue-50"] {
 
   .cad-app .mobile-field-content .overflow-x-auto {
     width: 100%;
-    max-width: calc(100vw - 1rem);
-    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+
+  .cad-app .mobile-field-content table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed;
+  }
+
+  .cad-app .mobile-field-content th,
+  .cad-app .mobile-field-content td {
+    min-width: 0 !important;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .cad-call-row {
+    display: grid !important;
+    grid-template-columns: 2rem minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto;
+    column-gap: 0.5rem;
+    row-gap: 0.25rem;
+    align-items: start;
+  }
+
+  .cad-call-priority {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .cad-call-incident {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    width: 100%;
+    padding-right: 0 !important;
+  }
+
+  .cad-call-status {
+    grid-column: 3;
+    grid-row: 1;
+    width: auto !important;
+    max-width: 6.5rem;
+  }
+
+  .cad-call-time {
+    grid-column: 2;
+    grid-row: 3;
+    width: 100% !important;
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .cad-call-units {
+    grid-column: 3;
+    grid-row: 2;
+    width: auto !important;
+  }
+
+  .cad-call-clear {
+    grid-column: 3;
+    grid-row: 3;
+    width: auto !important;
   }
 
   [role="dialog"],
