@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
 import { findPropertyMatch, playPropertyAlert, stopAllAlerts } from '@/utils/alertUtils';
 import GlobalMessageBanner from '@/components/GlobalMessageBanner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
 const CENTER_CONFIG = {
@@ -339,10 +340,10 @@ function pageLabel(pageName) {
   return pageName?.replace(/([a-z])([A-Z])/g, '$1 $2') || 'Pathfinder';
 }
 
-function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports }) {
+function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, centerDestinations = {}, onTabNavigate }) {
   const tabs = [
-    ['CAD', 'CommandDashboard', Radio],
-    ['Officer', 'Dashboard', Shield],
+    ['CAD', centerDestinations.cad || 'CommandDashboard', Radio],
+    ['Officer', centerDestinations.officer || 'Dashboard', Shield],
     ['Inbox', 'OfficerInbox', MessageCircle],
   ];
   return (
@@ -350,7 +351,7 @@ function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports }) {
       {tabs.map(([label, page, Icon]) => {
         const active = currentPageName === page;
         const count = Number(unreadCounts[page]) || 0;
-        return <Link key={page} to={createPageUrl(page)} className={`relative flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg ${active ? 'bg-[#153b65] text-white' : 'text-[#7894af]'}`}>
+        return <Link key={`${label}-${page}`} to={createPageUrl(page)} onClick={() => onTabNavigate?.(page)} className={`relative flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg ${active ? 'bg-[#153b65] text-white' : 'text-[#7894af]'}`}>
           <Icon className="h-5 w-5" /><span className="text-[9px] font-black">{label}</span>
           {!!count && <span className="absolute right-[18%] top-1 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{count > 99 ? '99+' : count}</span>}
         </Link>;
