@@ -25,6 +25,33 @@ const normalizePriority = (incident: unknown) => {
 
 const validCoordinate = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : null;
 
+const cleanMatchText = (value: unknown) => String(value || '').toUpperCase().replace(/\bBLOCK\b/g, '').replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+function callMinute(value: unknown) {
+  const text = String(value || '');
+  const simple = text.match(/(\d{1,2}):(\d{2})\s*([AP]M)/i);
+  if (simple) {
+    let hour = Number(simple[1]) % 12;
+    if (simple[3].toUpperCase() === 'PM') hour += 12;
+    return hour * 60 + Number(simple[2]);
+  }
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return -1;
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(date);
+  return (Number(parts.find(part => part.type === 'hour')?.value || 0) % 24) * 60 + Number(parts.find(part => part.type === 'minute')?.value || 0);
+}
+
+function chooseOfficial(call: any, rows: any[]) {
+  const location = cleanMatchText(call.location);
+  const incident = cleanMatchText(call.incident);
+  const minute = callMinute(call.time_received);
+  return rows.find(row => {
+    const rowMinute = callMinute(row.received);
+    const distance = Math.min(Math.abs(minute - rowMinute), 1440 - Math.abs(minute - rowMinute));
+    return cleanMatchText(row.location) === location && cleanMatchText(row.incident) === incident && distance <= 3;
+  }) || null;
+}
+
 function extractOfficialCadNumber(row: any) {
   const candidates = [
     row?.cadNumber,
