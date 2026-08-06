@@ -440,8 +440,8 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             </span>
           )}
         </Link>
-        {groups.map(group => <div key={group.label} className="mb-4">
-          {(!collapsed || mobile) && <div className="px-2 pb-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-[#54708f]">{group.label}</div>}
+        {groups.map(group => <details key={group.label} open={!mobile || groups.length === 1} className="mb-3 group">
+          {(!collapsed || mobile) && <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-2 py-2 text-[9px] font-bold uppercase tracking-[0.2em] text-[#6f91b3] hover:bg-[#102239]">{group.label}<ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" /></summary>
           <div className="space-y-1">
             {group.items.map(([label, page, Icon]) => {
               const active = currentPageName === page;
@@ -457,7 +457,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
               </Link>;
             })}
           </div>
-        </div>)}
+        </details>)}
         {groups.length === 0 && (!collapsed || mobile) && <div className="px-3 py-8 text-center text-xs text-[#68829b]">No tools match your search.</div>}
       </nav>
 
