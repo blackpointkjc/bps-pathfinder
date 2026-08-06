@@ -372,7 +372,7 @@ export default function DispatchCenter() {
 
 
     return (
-        <div className="cad-command-workstation h-full min-h-0 overflow-hidden bg-[#060b12] font-mono text-white md:h-screen">
+        <div className="cad-command-workstation flex h-full min-h-0 flex-col overflow-hidden bg-[#060b12] font-mono text-white md:h-screen">
             <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={true} />
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
@@ -389,7 +389,7 @@ export default function DispatchCenter() {
                 <div className="flex-1" />
                 <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
                     <button onClick={() => setShowCreateDialog(true)}
-                        className="flex items-center gap-1 px-3 py-1 bg-red-700 hover:bg-red-600 border border-red-500 rounded text-[10px] text-white font-bold">
+                        className="flex h-7 items-center gap-1 rounded-md border border-red-500 bg-red-700 px-2.5 text-[9px] font-bold text-white hover:bg-red-600">
                         <Plus className="w-3 h-3" /> NEW CALL
                     </button>
 
@@ -425,7 +425,7 @@ export default function DispatchCenter() {
             <PropertyAlertsBanner />
 
             {/* ══ COMMAND STATUS STRIP ══ */}
-            <div className="grid flex-none grid-cols-2 border-b border-[#1e2d4a] bg-[#08111d] sm:grid-cols-3 lg:grid-cols-6">
+            <div className="grid flex-none grid-cols-3 border-b border-[#1e2d4a] bg-[#08111d] lg:grid-cols-6">
                 {[
                     { label: 'ACTIVE CALLS', value: activeCalls.length, tone: 'text-cyan-300', icon: Activity },
                     { label: 'UNASSIGNED', value: unassignedCalls.length, tone: unassignedCalls.length ? 'text-amber-300' : 'text-slate-300', icon: AlertTriangle },
@@ -434,9 +434,9 @@ export default function DispatchCenter() {
                     { label: 'AVAILABLE', value: availableUnits.length, tone: 'text-emerald-300', icon: Navigation },
                     { label: 'OLDEST WAIT', value: `${oldestCallMinutes}m`, tone: oldestCallMinutes >= 15 ? 'text-red-400' : 'text-slate-300', icon: Clock3 },
                 ].map(({ label, value, tone, icon: Icon }) => (
-                    <div key={label} className="flex min-w-0 items-center gap-2 border-b border-r border-[#17283b] px-3 py-2 lg:border-b-0">
-                        <div className="rounded-md border border-[#263b52] bg-[#0d1a29] p-1.5"><Icon className={`h-3.5 w-3.5 ${tone}`} /></div>
-                        <div className="min-w-0"><div className={`text-base font-black leading-none ${tone}`}>{value}</div><div className="mt-1 truncate text-[8px] font-bold tracking-[0.14em] text-slate-500">{label}</div></div>
+                    <div key={label} className="flex min-w-0 items-center gap-1.5 border-b border-r border-[#17283b] px-2 py-1.5 lg:border-b-0">
+                        <Icon className={`hidden h-3 w-3 shrink-0 sm:block ${tone}`} />
+                        <div className="min-w-0"><div className={`text-sm font-black leading-none ${tone}`}>{value}</div><div className="mt-0.5 truncate text-[7px] font-bold tracking-[0.1em] text-slate-500">{label}</div></div>
                     </div>
                 ))}
             </div>
@@ -473,7 +473,7 @@ export default function DispatchCenter() {
                 <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
 
                     {/* ═══ LEFT: ACTIVE CALLS TABLE ═══ */}
-                    <div className="flex min-h-[300px] w-full flex-col border-b border-[#1e2d4a] md:min-h-0 md:w-[390px] md:flex-none md:border-b-0 md:border-r xl:w-[430px]">
+                    <div className="flex min-h-[260px] w-full flex-col border-b border-[#1e2d4a] md:min-h-0 md:w-[350px] md:flex-none md:border-b-0 md:border-r xl:w-[380px]">
                         {/* Police Calls */}
                         <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />
@@ -623,7 +623,7 @@ export default function DispatchCenter() {
                     </div>
 
                     {/* ═══ RIGHT: UNITS ═══ */}
-                    <div className="flex min-h-[360px] w-full flex-col bg-[#08111b] md:min-h-0 md:w-72 md:flex-none xl:w-80">
+                    <div className="flex min-h-[320px] w-full flex-col bg-[#08111b] md:min-h-0 md:w-64 md:flex-none xl:w-72">
                         {/* Unit Assignment */}
                         <div className="flex-none border-b border-[#1e2d4a]">
                             <div className="px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
