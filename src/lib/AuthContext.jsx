@@ -125,7 +125,22 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkAppState();
-    return () => { requestSequence.current += 1; };
+
+    const reconnect = () => {
+      if (navigator.onLine) checkAppState();
+    };
+
+    window.addEventListener('online', reconnect);
+    window.addEventListener('focus', reconnect);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) reconnect();
+    });
+
+    return () => {
+      requestSequence.current += 1;
+      window.removeEventListener('online', reconnect);
+      window.removeEventListener('focus', reconnect);
+    };
   }, [checkAppState]);
 
   const logout = useCallback((shouldRedirect = true) => {
