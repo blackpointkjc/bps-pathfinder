@@ -123,7 +123,7 @@ export default function Navigation() {
     useEffect(() => {
         if (!currentUser) return;
         fetchOtherUnits();
-        const i = setInterval(fetchOtherUnits, 5000);
+        const i = setInterval(fetchOtherUnits, 15000);
         return () => clearInterval(i);
     }, [currentUser]);
 
@@ -143,8 +143,8 @@ export default function Navigation() {
 
         syncLiveCalls();
         loadMonitoredProperties();
-        const syncInterval = setInterval(syncLiveCalls, 3000);
-        const localInterval = setInterval(fetchCalls, 2000);
+        const syncInterval = setInterval(syncLiveCalls, 15000);
+        const localInterval = setInterval(fetchCalls, 10000);
         const propertyInterval = setInterval(loadMonitoredProperties, 60000);
         const onVisibility = () => {
             if (!document.hidden) syncLiveCalls();

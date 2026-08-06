@@ -72,7 +72,7 @@ export default function GlobalMessageBanner({ user }) {
     };
 
     poll();
-    const interval = window.setInterval(poll, 3000);
+    const interval = window.setInterval(poll, 30000);
     return () => { cancelled = true; window.clearInterval(interval); };
   }, [user?.id, user?.email, user?.role, JSON.stringify(user?.additional_roles || [])]);
 

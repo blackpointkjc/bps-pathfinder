@@ -535,7 +535,7 @@ export default function Layout({ children, currentPageName }) {
     };
 
     monitor();
-    const id = setInterval(monitor, 5000);
+    const id = setInterval(monitor, 30000);
     return () => { cancelled = true; clearInterval(id); };
   }, [user?.role, JSON.stringify(user?.additional_roles || []), propertyAlert?.key]);
 

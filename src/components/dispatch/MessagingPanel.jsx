@@ -40,7 +40,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
   useEffect(() => {
     if (!isOpen || !currentUser?.id) return;
     loadMessages();
-    const interval = setInterval(loadMessages, 4000);
+    const interval = setInterval(loadMessages, 10000);
     return () => clearInterval(interval);
   }, [isOpen, currentUser?.id, dispatchMode]);
 

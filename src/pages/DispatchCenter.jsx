@@ -63,11 +63,11 @@ export default function DispatchCenter() {
         };
 
         syncLiveFeed();
-        const syncInterval = setInterval(syncLiveFeed, 3000);
+        const syncInterval = setInterval(syncLiveFeed, 10000);
         const localInterval = setInterval(() => {
             loadActiveCalls();
             loadUnits();
-        }, 2000);
+        }, 10000);
         const secondaryInterval = setInterval(loadMonitoredProperties, 60000);
         const onVisibility = () => {
             if (!document.hidden) syncLiveFeed();
