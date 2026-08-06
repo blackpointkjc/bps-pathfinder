@@ -343,7 +343,7 @@ export default function DispatchCenter() {
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
             {/* ══ TOP SYSTEM BAR ══ */}
-            <div className="flex-none min-h-9 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center px-2 md:px-3 gap-2 md:gap-3 overflow-x-auto">
+            <div className="flex-none min-h-9 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center px-2 py-1.5 md:px-3 gap-2 md:flex-nowrap md:gap-3">
                 <div className="flex items-center gap-2">
                     <Radio className="w-4 h-4 text-[#f5a623]" />
                     <span className="text-[#f5a623] font-bold text-xs tracking-widest">BPS CAD</span>
@@ -353,7 +353,7 @@ export default function DispatchCenter() {
                     <span className="text-green-400 text-[10px]">ONLINE</span>
                 </div>
                 <div className="flex-1" />
-                <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
                     <button onClick={() => setShowCreateDialog(true)}
                         className="flex items-center gap-1 px-3 py-1 bg-red-700 hover:bg-red-600 border border-red-500 rounded text-[10px] text-white font-bold">
                         <Plus className="w-3 h-3" /> NEW CALL
@@ -391,7 +391,7 @@ export default function DispatchCenter() {
             <PropertyAlertsBanner />
 
             {/* ══ QUEUE CONTROLS ══ */}
-            <div className="flex-none flex items-center gap-2 px-2 md:px-3 py-1.5 bg-[#0a0e1a] border-b border-[#1e2d4a] overflow-x-auto">
+            <div className="flex-none flex flex-wrap items-center gap-2 border-b border-[#1e2d4a] bg-[#0a0e1a] px-2 py-1.5 md:flex-nowrap md:px-3">
                 <div className="relative min-w-52 md:w-56">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
                     <input value={queueSearch} onChange={e => setQueueSearch(e.target.value)} placeholder="Search CAD, incident, address..."
@@ -626,7 +626,7 @@ export default function DispatchCenter() {
             )}
 
             {/* ══ BOTTOM STATUS BAR ══ */}
-            <div className="flex-none min-h-6 bg-[#0d1220] border-t border-[#1e2d4a] flex items-center px-3 gap-4 text-[9px] text-slate-500 overflow-x-auto whitespace-nowrap">
+            <div className="flex-none min-h-6 bg-[#0d1220] border-t border-[#1e2d4a] flex flex-wrap items-center px-3 py-1 gap-x-4 gap-y-1 text-[9px] text-slate-500 md:flex-nowrap md:whitespace-nowrap">
                 <span>CALLS: <span className="text-white">{allCalls.length}</span></span>
                 <span>UNITS ACTIVE: <span className="text-green-400">{units.filter(u => u.status && u.status !== 'Out of Service').length}</span></span>
                 <span>UNASSIGNED: <span className="text-yellow-400">{allCalls.filter(c => !c.assigned_units?.length).length}</span></span>
