@@ -69,6 +69,19 @@ async function fetchOfficialTable(url: string) {
   }
 }
 
+async function fetchOfficialJson(url: string, headers: Record<string, string>) {
+  try {
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
+    if (!response.ok) return [];
+    const payload = await response.json();
+    const list = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.calls) ? payload.calls : [];
+    return list.map((row: any) => ({ official: String(row?.id || '').trim(), received: row?.callReceivedFormatted || row?.callReceived || '', location: row?.location || '', incident: row?.type || '' })).filter((row: any) => row.official && row.location);
+  } catch (error) {
+    console.warn('Official JSON lookup failed', error?.message || error);
+    return [];
+  }
+}
+
 function extractOfficialCadNumber(row: any) {
   const candidates = [
     row?.cadNumber,
