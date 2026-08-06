@@ -25,9 +25,16 @@ export default function SupervisorChat() {
   const { data: messages } = useQuery({
     queryKey: ['supervisorChatMessages'],
     queryFn: () => base44.entities.SupervisorChatMessage.list('-created_date', 100),
-    refetchInterval: 3000,
     enabled: user?.additional_roles?.includes('supervisor') || user?.role === 'admin',
   });
+
+  useEffect(() => {
+    if (!user?.additional_roles?.includes('supervisor') && user?.role !== 'admin') return undefined;
+    const unsubscribe = base44.entities.SupervisorChatMessage.subscribe(() => {
+      queryClient.invalidateQueries({ queryKey: ['supervisorChatMessages'] });
+    });
+    return unsubscribe;
+  }, [queryClient, user?.role, JSON.stringify(user?.additional_roles || [])]);
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['chatDirectory'],
