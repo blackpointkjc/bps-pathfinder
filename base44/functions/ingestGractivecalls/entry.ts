@@ -119,7 +119,7 @@ async function reserveCadNumbers(base44: any, count: number) {
   const last = first + count - 1;
   if (last > 99_999_999) throw new Error(`The ${period} BPS sequence has reached its eight-digit limit.`);
   await base44.asServiceRole.entities.CadCounter.update(counter.id, { last_number: last });
-  return Array.from({ length: count }, (_, index) => `BPS-${period}-${String(first + index).padStart(8, '0')}`);
+  return Array.from({ length: count }, (_, index) => `BPS-${period}-${first + index}`);
 }
 
 function chooseCanonical(records: any[]) {
@@ -239,7 +239,7 @@ Deno.serve(async (req) => {
 
     const uniqueExisting = [...new Map(existingCalls.map(record => [record.id, record])).values()];
     const needingCad = uniqueExisting.filter(record =>
-      recordKey(record) && !/^BPS-\d{6}-\d{8}$/i.test(String(record.bps_reference || ''))
+      recordKey(record) && !/^BPS-\d{6}-\d{1,8}$/i.test(String(record.bps_reference || ''))
     );
     const newCalls = incoming.filter(call =>
       !byExternal.has(call.external_call_id) && !byLegacy.has(legacyKey(call))
