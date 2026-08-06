@@ -97,13 +97,14 @@ export default function FieldUnitView() {
 
   const requestBackup = async () => {
     if (!selectedCall || !user) return;
-    await base44.entities.CallNote.create({
-      call_id: selectedCall.id,
-      author_id: user.id,
-      author_name: user.full_name || 'Field Unit',
-      note: `🚨 BACKUP REQUESTED by ${myUnit?.label || user.full_name} at ${clock.toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}`,
-      note_type: 'hazard',
-    });
+    const officer = myUnit?.label || user.full_name || 'Field Unit';
+    const location = selectedCall.location || 'Unknown location';
+    const identifier = selectedCall.agency_cad_number || selectedCall.bps_reference || 'No reference';
+    const message = `🚨 URGENT BACKUP REQUEST — ${officer} needs assistance at ${location}. ${selectedCall.incident || 'Active call'} · ${identifier}.`;
+    await Promise.all([
+      base44.entities.CallNote.create({ call_id: selectedCall.id, author_id: user.id, author_name: officer, note: message, note_type: 'hazard' }),
+      base44.entities.ChatMessage.create({ sender_name: officer, message }),
+    ]);
     await updateUnitStatus('Busy');
   };
 
