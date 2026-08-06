@@ -82,6 +82,31 @@ async function fetchOfficialJson(url: string, headers: Record<string, string>) {
   }
 }
 
+async function enrichOfficialIdentifiers(calls: any[]) {
+  const [henricoRows, chesterfieldRows] = await Promise.all([
+    fetchOfficialTable(HENRICO_ACTIVE_URL),
+    fetchOfficialJson(CHESTERFIELD_CALLS_URL, {
+      Accept: 'application/json',
+      'X-ApiKey': CHESTERFIELD_PUBLIC_API_KEY,
+      'X-UserId': 'bps-pathfinder',
+      'X-SessionId': `bps-${new Date().toISOString().slice(0, 10)}`,
+    }),
+  ]);
+
+  return calls.map(call => {
+    const agency = String(call.agency || '').toUpperCase();
+    const rows = agency === 'HPD' ? henricoRows : agency === 'CCPD' ? chesterfieldRows : [];
+    const match = rows.length ? chooseOfficial(call, rows) : null;
+    if (!match?.official) return call;
+    return {
+      ...call,
+      agency_cad_number: String(match.official),
+      cad_number_source: 'official_government_feed',
+      official_cad_verified: true,
+    };
+  });
+}
+
 function extractOfficialCadNumber(row: any) {
   const candidates = [
     row?.cadNumber,
