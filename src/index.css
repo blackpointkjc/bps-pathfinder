@@ -702,15 +702,6 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   color: #b6c5d4 !important;
 }
 .cad-app main :is(.confidential-reports-page,.scheduling-page,.client-feedback-page,.client-alerts-page)
-@media (max-width: 767px) {
-  input:not([type="checkbox"]):not([type="radio"]),
-  textarea,
-  select,
-  [role="combobox"] {
-    font-size: 16px !important;
-  }
-}
-
 :is(input,textarea,select) {
   background: #0d1825 !important;
   border-color: #39516a !important;
