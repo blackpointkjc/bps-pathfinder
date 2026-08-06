@@ -94,6 +94,53 @@
       "type": "string",
       "description": "Social security number"
     },
+    "accused_id_number": {
+      "type": "string",
+      "description": "Driver license or identification card number"
+    },
+    "accused_id_state": {
+      "type": "string",
+      "description": "State that issued the identification card"
+    },
+    "accused_id_expiration": {
+      "type": "string",
+      "format": "date",
+      "description": "Identification card expiration date"
+    },
+    "id_scanned_in_person": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether identification was scanned in person"
+    },
+    "scan_type": {
+      "type": "string",
+      "description": "ID scan method"
+    },
+    "scan_raw": {
+      "type": "string",
+      "description": "Raw AAMVA barcode payload"
+    },
+    "scan_parsed_json": {
+      "type": "string",
+      "description": "Parsed identification data"
+    },
+    "scanned_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Time identification was scanned"
+    },
+    "scanned_by": {
+      "type": "string",
+      "description": "Officer who scanned the identification"
+    },
+    "device_id": {
+      "type": "string",
+      "description": "Device used to scan identification"
+    },
+    "id_photo": {
+      "type": "string",
+      "description": "Uploaded identification image"
+    },
     "violation_code": {
       "type": "string",
       "description": "Virginia code violation (e.g., \u00a7 18.2-119)"
