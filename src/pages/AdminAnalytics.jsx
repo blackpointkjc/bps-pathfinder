@@ -23,6 +23,7 @@ export default function AdminAnalytics() {
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
     queryFn: () => base44.entities.User.list(),
+    refetchInterval: 30000,
   });
 
   const { data: divisions } = useQuery({
@@ -38,11 +39,13 @@ export default function AdminAnalytics() {
   const { data: timeEntries } = useQuery({
     queryKey: ['allTimeEntries'],
     queryFn: () => base44.entities.TimeEntry.list('-clock_in'),
+    refetchInterval: 15000,
   });
 
   const { data: schedules } = useQuery({
     queryKey: ['allSchedules'],
     queryFn: () => base44.entities.Schedule.list('-shift_date'),
+    refetchInterval: 15000,
   });
 
   const { data: trainingCompletions } = useQuery({
@@ -222,8 +225,10 @@ export default function AdminAnalytics() {
     let overnight = 0;
     let split = 0;
     let regular = 0;
+    const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+    const monthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
 
-    schedules.forEach(schedule => {
+    schedules.filter(schedule => schedule.shift_date >= monthStart && schedule.shift_date <= monthEnd).forEach(schedule => {
       if (schedule.is_split_shift) {
         split++;
         return;
