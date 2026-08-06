@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowRightLeft, CheckCircle, MapPin, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -39,7 +40,7 @@ export default function ShiftHandover(){
   return <div className="min-h-screen p-4 md:p-8"><div className="mx-auto max-w-5xl space-y-6">
     <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="flex items-center gap-2 text-3xl font-bold"><ArrowRightLeft className="h-7 w-7 text-blue-400"/>Shift Handover</h1><p className="text-slate-400">Pass site information to the next scheduled officer</p></div><Button onClick={()=>setShowForm(!showForm)}><Plus className="mr-2 h-4 w-4"/>New Handover</Button></div>
     {showForm&&<Card><CardHeader><CardTitle>Create Handover</CardTitle></CardHeader><CardContent><form onSubmit={e=>{e.preventDefault();create.mutate()}} className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2"><div><Label>Site</Label><select required className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3" value={form.location} onChange={e=>setForm({...form,location:e.target.value})}><option value="">Select site</option>{mySites.map(x=><option key={x}>{x}</option>)}</select></div><div><Label>Date</Label><Input required type="date" value={form.shift_date} onChange={e=>setForm({...form,shift_date:e.target.value})}/></div></div>
+      <div className="grid gap-4 md:grid-cols-2"><div><Label>Site</Label><Select value={form.location || undefined} onValueChange={value=>setForm({...form,location:value})} required><SelectTrigger className="mt-1 h-11"><SelectValue placeholder="Select site" /></SelectTrigger><SelectContent>{mySites.map(x=><SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent></Select></div><div><Label>Date</Label><Input required type="date" value={form.shift_date} onChange={e=>setForm({...form,shift_date:e.target.value})}/></div></div>
       <div className="grid gap-4 md:grid-cols-2"><div><Label>Your Shift Start</Label><Input type="time" value={form.shift_start} onChange={e=>setForm({...form,shift_start:e.target.value})}/></div><div><Label>Your Shift End</Label><Input required type="time" value={form.shift_end} onChange={e=>setForm({...form,shift_end:e.target.value})}/></div></div>
       <div className="rounded-lg border border-blue-700/50 bg-blue-950/20 p-3 text-sm"><strong>Passing to:</strong> {incoming?`${incoming.name} — ${incoming.shift_date} ${incoming.start_time}`:'No later scheduled officer found for this site yet. The handover will remain visible to officers assigned to the site.'}</div>
       <div><Label>Key Updates</Label><Textarea required rows={4} value={form.key_updates} onChange={e=>setForm({...form,key_updates:e.target.value})}/></div>
