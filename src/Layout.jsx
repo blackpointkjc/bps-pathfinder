@@ -339,12 +339,11 @@ function pageLabel(pageName) {
   return pageName?.replace(/([a-z])([A-Z])/g, '$1 $2') || 'Pathfinder';
 }
 
-function MobileFieldNav({ currentPageName, unreadCounts, onMenu }) {
+function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports }) {
   const tabs = [
-    ['Dashboard', 'Dashboard', Gauge],
-    ['Field', 'FieldUnitView', Shield],
+    ['CAD', 'CommandDashboard', Radio],
+    ['Officer', 'Dashboard', Shield],
     ['Inbox', 'OfficerInbox', MessageCircle],
-    ['Reports', 'DailyActivityReports', ClipboardList],
   ];
   return (
     <nav className="fixed inset-x-0 bottom-0 z-[45] flex border-t border-[#29445f] bg-[#07111f]/98 px-1 pt-1 shadow-[0_-10px_30px_rgba(0,0,0,.35)] backdrop-blur md:hidden" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
@@ -356,17 +355,19 @@ function MobileFieldNav({ currentPageName, unreadCounts, onMenu }) {
           {!!count && <span className="absolute right-[18%] top-1 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{count > 99 ? '99+' : count}</span>}
         </Link>;
       })}
+      <button type="button" onClick={onReports} className="flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[#8db1d2]"><ClipboardList className="h-5 w-5" /><span className="text-[9px] font-black">REPORTS</span></button>
       <button type="button" onClick={onMenu} className="flex min-h-[54px] flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[#8db1d2]"><Menu className="h-5 w-5" /><span className="text-[9px] font-black">ALL</span></button>
     </nav>
   );
 }
 
-function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, unreadCounts = {}, onCloseMobile, onToggleCollapsed }) {
-  const availableCenters = allowedCenters(user);
+function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, unreadCounts = {}, onCloseMobile, onToggleCollapsed }) {
+  const availableCenters = allowedCenters(user).filter(center => !mobile || ['cad', 'officer', 'supervisor'].includes(center));
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
   const query = search.trim().toLowerCase();
   const groups = center.groups
     .filter(group => !group.fullAccessOnly || hasFullAccess(user))
+    .filter(group => !mobileSection || (mobileSection === 'reports' && activeCenter === 'officer' && group.label === 'Reports'))
     .map(group => ({
       ...group,
       items: group.items.filter(([label]) => !query || label.toLowerCase().includes(query)),
@@ -481,6 +482,8 @@ export default function Layout({ children, currentPageName }) {
   const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileSection, setMobileSection] = useState(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
   const [activeAlert, setActiveAlert] = useState(null);
   const [propertyAlert, setPropertyAlert] = useState(null);
   const alertedPropertyKeys = useRef(new Set());
@@ -505,6 +508,14 @@ export default function Layout({ children, currentPageName }) {
       return next;
     });
   };
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const updateViewport = event => setIsMobileViewport(event.matches);
+    setIsMobileViewport(media.matches);
+    media.addEventListener?.('change', updateViewport);
+    return () => media.removeEventListener?.('change', updateViewport);
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('bps-night-mode', nightMode);
@@ -668,6 +679,19 @@ export default function Layout({ children, currentPageName }) {
     return <Navigate to={createPageUrl(defaultPageForUser(user))} replace />;
   }
 
+  const mobilePageCenters = PAGE_TO_CENTERS[currentPageName] || [];
+  const allowedOnMobile = currentPageName === 'OfficerInbox' || mobilePageCenters.some(center => ['cad', 'officer', 'supervisor'].includes(center));
+  if (isMobileViewport && !allowedOnMobile) {
+    return <div className="fixed inset-0 flex items-center justify-center bg-[#07111f] p-6 text-white">
+      <div className="w-full max-w-sm rounded-2xl border border-[#294867] bg-[#0c1a2a] p-6 text-center shadow-2xl">
+        <Shield className="mx-auto h-10 w-10 text-[#7ec1ff]" />
+        <h1 className="mt-4 text-lg font-black">DESKTOP ACCESS REQUIRED</h1>
+        <p className="mt-2 text-sm leading-relaxed text-[#9fb6cc]">This area is available only in the desktop web app. Mobile access is limited to CAD, Officer, and Supervisor operations.</p>
+        {canAccessPage(user, 'CommandDashboard') && <Link to={createPageUrl('CommandDashboard')} className="mt-5 block rounded-lg bg-blue-600 px-4 py-3 text-sm font-black text-white">OPEN CAD</Link>}
+      </div>
+    </div>;
+  }
+
   const criticalOutage = outages.some(item => item.severity === 'outage');
   const centerLabel = CENTER_CONFIG[activeCenter]?.label || 'CAD Center';
 
@@ -678,7 +702,7 @@ export default function Layout({ children, currentPageName }) {
 
     <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/70 md:hidden" onClick={() => setMobileOpen(false)}>
       <motion.aside initial={{ x: -360 }} animate={{ x: 0 }} exit={{ x: -360 }} className="h-full w-[min(92vw,360px)] border-r border-[#1c3049] shadow-2xl" onClick={event => event.stopPropagation()}>
-        <Sidebar mobile user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => setMobileOpen(false)} />
+        <Sidebar mobile mobileSection={mobileSection} user={user} activeCenter={activeCenter} setActiveCenter={center => { setMobileSection(null); setActiveCenter(center); }} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => { setMobileOpen(false); setMobileSection(null); }} />
       </motion.aside>
     </motion.div>}</AnimatePresence>
 
@@ -752,7 +776,7 @@ export default function Layout({ children, currentPageName }) {
           )}
           {criticalOutage && <span className="hidden rounded border border-red-700/60 bg-red-950/40 px-2 py-1 font-bold text-red-300 sm:block">SYSTEM OUTAGE</span>}
           <span className="hidden font-mono text-[#9fb6cc] sm:inline">{clock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-          <button onClick={() => setMobileOpen(true)} className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] md:hidden" aria-label="Open all pages"><Menu className="h-5 w-5" /></button>
+          <button onClick={() => { setMobileSection(null); if (!['cad', 'officer', 'supervisor'].includes(activeCenter)) setActiveCenter('cad'); setMobileOpen(true); }} className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] md:hidden" aria-label="Open mobile portals"><Menu className="h-5 w-5" /></button>
         </div>
       </header>
 
@@ -763,6 +787,11 @@ export default function Layout({ children, currentPageName }) {
 
       <main className={`mobile-field-content min-h-0 flex-1 overflow-auto ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : nightMode ? 'night-workspace bg-[#0b1420] text-slate-100' : 'light-workspace bg-[#eef2f7] text-slate-900'}`}>{children}</main>
     </section>
-    <MobileFieldNav currentPageName={currentPageName} unreadCounts={unreadCounts} onMenu={() => setMobileOpen(true)} />
+    <MobileFieldNav
+      currentPageName={currentPageName}
+      unreadCounts={unreadCounts}
+      onReports={() => { setActiveCenter('officer'); setMobileSection('reports'); setMobileOpen(true); }}
+      onMenu={() => { setMobileSection(null); if (!['cad', 'officer', 'supervisor'].includes(activeCenter)) setActiveCenter('cad'); setMobileOpen(true); }}
+    />
   </div>;
 }
