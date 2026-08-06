@@ -26,8 +26,14 @@ export default function TeamChat() {
   const { data: messages } = useQuery({
     queryKey: ['chatMessages'],
     queryFn: () => base44.entities.ChatMessage.list('-created_date', 100),
-    refetchInterval: 3000,
   });
+
+  useEffect(() => {
+    const unsubscribe = base44.entities.ChatMessage.subscribe(() => {
+      queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
+    });
+    return unsubscribe;
+  }, [queryClient]);
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['chatDirectory'],
