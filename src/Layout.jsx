@@ -617,7 +617,7 @@ export default function Layout({ children, currentPageName }) {
 
   useEffect(() => {
     if (!currentPageName) return;
-    const pageCenter = (PAGE_TO_CENTERS[currentPageName] || []).find(center => ['cad', 'officer'].includes(center));
+    const pageCenter = (PAGE_TO_CENTERS[currentPageName] || []).find(center => ['cad', 'officer', 'admin'].includes(center));
     if (pageCenter) {
       centerLastPagesRef.current[pageCenter] = currentPageName;
       sessionStorage.setItem('bps-mobile-center-pages', JSON.stringify(centerLastPagesRef.current));
