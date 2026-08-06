@@ -13,6 +13,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   const [newThread, setNewThread] = useState(false);
   const [selectedPeople, setSelectedPeople] = useState([]);
   const [hiddenPreferences, setHiddenPreferences] = useState([]);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
 
   const userMap = useMemo(() => new Map(users.map(user => [String(user.id), user])), [users]);
   const activeUsers = useMemo(() => users.filter(user => !user.termination_date && user.id !== currentUser.id && user.email !== currentUser.email), [users, currentUser.id, currentUser.email]);
@@ -31,6 +32,14 @@ export default function UniversalInbox({ currentUser, users = [] }) {
     setMessages(records || []);
     setHiddenPreferences(preferences || []);
   };
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const update = event => setIsMobile(event.matches);
+    setIsMobile(media.matches);
+    media.addEventListener?.('change', update);
+    return () => media.removeEventListener?.('change', update);
+  }, []);
 
   useEffect(() => {
     load();
@@ -69,8 +78,9 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   }, [messages, currentUser.id]);
 
   useEffect(() => {
-    if (!selectedKey && threads.length) setSelectedKey(threads[0].key);
-  }, [threads.length, selectedKey]);
+    // Keep the complete conversation list visible when Inbox first opens on a phone.
+    if (!isMobile && !selectedKey && threads.length) setSelectedKey(threads[0].key);
+  }, [threads.length, selectedKey, isMobile]);
 
   const selected = threads.find(thread => thread.key === selectedKey);
   useEffect(() => {
@@ -139,14 +149,14 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   const visibleThreads = threads.filter(thread => !hiddenKeys.has(thread.key) && threadNames(thread).toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="flex h-full overflow-hidden rounded-xl border border-slate-700 bg-slate-950 text-white shadow-2xl">
+    <div className="flex h-full min-h-0 w-full overflow-hidden border border-slate-700 bg-slate-950 text-white shadow-2xl md:rounded-xl">
       <aside className={`${selected ? 'hidden md:flex' : 'flex'} w-full flex-col border-r border-slate-700 md:w-[340px]`}>
-        <div className="border-b border-slate-700 p-4">
+        <div className="shrink-0 border-b border-slate-700 p-3 sm:p-4">
           <div className="flex items-center justify-between"><h1 className="text-xl font-black">Messages</h1><button onClick={() => setNewThread(true)} className="rounded-full bg-blue-600 p-2 hover:bg-blue-500"><Plus className="h-4 w-4" /></button></div>
           <div className="mt-3 flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2"><Search className="h-4 w-4 text-slate-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search conversations" className="w-full bg-transparent text-sm outline-none" /></div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {visibleThreads.map(thread => <button key={thread.key} onClick={() => setSelectedKey(thread.key)} className={`flex w-full items-center gap-3 border-b border-slate-800 p-4 text-left hover:bg-slate-800 ${selectedKey === thread.key ? 'bg-slate-800' : ''}`}>
+          {visibleThreads.map(thread => <button key={thread.key} onClick={() => setSelectedKey(thread.key)} className={`flex w-full min-w-0 items-center gap-3 border-b border-slate-800 p-3 sm:p-4 text-left hover:bg-slate-800 ${selectedKey === thread.key ? 'bg-slate-800' : ''}`}>
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600/30"><MessageCircle className="h-5 w-5 text-blue-300" /></div>
             <div className="min-w-0 flex-1"><div className="truncate text-sm font-black">{threadNames(thread)}</div><div className="truncate text-xs text-slate-400">{thread.last.message || 'New conversation'}</div></div>
             {!!thread.unread && <span className="rounded-full bg-blue-500 px-2 py-1 text-[10px] font-black">{thread.unread}</span>}
@@ -157,14 +167,14 @@ export default function UniversalInbox({ currentUser, users = [] }) {
 
       <section className={`${selected ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}>
         {selected ? <>
-          <header className="flex items-center gap-3 border-b border-slate-700 p-4"><button onClick={() => setSelectedKey(null)} className="md:hidden"><X className="h-5 w-5" /></button><Users className="h-5 w-5 text-blue-300" /><div className="min-w-0 flex-1"><div className="truncate font-black">{threadNames(selected)}</div><div className="text-xs text-slate-400">{Math.max(1, selected.participants.length - 1)} participant{selected.participants.length - 1 === 1 ? '' : 's'}</div></div><button onClick={() => removeThread(selected)} title="Remove conversation from my Inbox" className="rounded-full p-2 text-slate-400 hover:bg-red-950 hover:text-red-300"><Trash2 className="h-4 w-4" /></button></header>
-          <div className="flex-1 space-y-3 overflow-y-auto p-4">
+          <header className="flex shrink-0 items-center gap-3 border-b border-slate-700 p-3 sm:p-4"><button onClick={() => setSelectedKey(null)} className="md:hidden"><X className="h-5 w-5" /></button><Users className="h-5 w-5 text-blue-300" /><div className="min-w-0 flex-1"><div className="truncate font-black">{threadNames(selected)}</div><div className="text-xs text-slate-400">{Math.max(1, selected.participants.length - 1)} participant{selected.participants.length - 1 === 1 ? '' : 's'}</div></div><button onClick={() => removeThread(selected)} title="Remove conversation from my Inbox" className="rounded-full p-2 text-slate-400 hover:bg-red-950 hover:text-red-300"><Trash2 className="h-4 w-4" /></button></header>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
             {selected.messages.filter(message => !message.draft && message.message).map(message => {
               const mine = message.sender_id === currentUser.id;
-              return <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[78%]`}><div className="mb-1 px-2 text-[10px] text-slate-500">{message.sender_name}</div><div className={`rounded-2xl px-4 py-2 text-sm ${mine ? 'rounded-br-sm bg-blue-600' : 'rounded-bl-sm bg-slate-800'}`}>{message.message}</div></div></div>;
+              return <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[78%]`}><div className="mb-1 px-2 text-[10px] text-slate-500">{message.sender_name}</div><div className={`break-words rounded-2xl px-4 py-2 text-sm ${mine ? 'rounded-br-sm bg-blue-600' : 'rounded-bl-sm bg-slate-800'}`}>{message.message}</div></div></div>;
             })}
           </div>
-          <div className="flex gap-2 border-t border-slate-700 p-4"><input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') send(); }} placeholder="iMessage" className="min-w-0 flex-1 rounded-full border border-slate-600 bg-slate-800 px-4 py-2 text-sm outline-none focus:border-blue-400" /><button onClick={send} disabled={!text.trim()} className="rounded-full bg-blue-600 p-3 disabled:opacity-40"><Send className="h-4 w-4" /></button></div>
+          <div className="flex shrink-0 gap-2 border-t border-slate-700 p-2.5 sm:p-4"><input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') send(); }} placeholder="iMessage" className="min-w-0 flex-1 rounded-full border border-slate-600 bg-slate-800 px-4 py-2 text-sm outline-none focus:border-blue-400" /><button onClick={send} disabled={!text.trim()} className="rounded-full bg-blue-600 p-3 disabled:opacity-40"><Send className="h-4 w-4" /></button></div>
         </> : <div className="m-auto text-center text-slate-500"><MessageCircle className="mx-auto mb-3 h-12 w-12" /><p>Select a conversation</p></div>}
       </section>
 
