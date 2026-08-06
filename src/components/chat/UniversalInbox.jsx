@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { MessageCircle, Plus, Search, Send, Users, X } from 'lucide-react';
+import { MessageCircle, Plus, Search, Send, Trash2, Users, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 const nameOf = user => [user?.rank, user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.full_name || user?.email || 'User';
@@ -12,20 +12,38 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   const [search, setSearch] = useState('');
   const [newThread, setNewThread] = useState(false);
   const [selectedPeople, setSelectedPeople] = useState([]);
+  const [hiddenPreferences, setHiddenPreferences] = useState([]);
 
   const userMap = useMemo(() => new Map(users.map(user => [String(user.id), user])), [users]);
   const activeUsers = useMemo(() => users.filter(user => !user.termination_date && user.id !== currentUser.id && user.email !== currentUser.email), [users, currentUser.id, currentUser.email]);
 
+  const threadKeyFor = message => {
+    if (message.thread_id) return message.thread_id;
+    const partner = message.sender_id === currentUser.id ? message.recipient_id : message.sender_id;
+    return `direct:${partner}`;
+  };
+
   const load = async () => {
-    const records = await base44.entities.Message.list('-created_date', 500);
+    const [records, preferences] = await Promise.all([
+      base44.entities.Message.list('-created_date', 500),
+      base44.entities.InboxThreadPreference.filter({ user_email: currentUser.email, hidden: true }, '-created_date', 200).catch(() => []),
+    ]);
     setMessages(records || []);
+    setHiddenPreferences(preferences || []);
   };
 
   useEffect(() => {
     load();
-    const unsubscribe = base44.entities.Message.subscribe(() => load());
+    const unsubscribe = base44.entities.Message.subscribe(async event => {
+      if (event?.type === 'create') {
+        const key = threadKeyFor(event.data);
+        const hidden = hiddenPreferences.find(item => item.thread_key === key);
+        if (hidden) await base44.entities.InboxThreadPreference.delete(hidden.id).catch(() => null);
+      }
+      load();
+    });
     return unsubscribe;
-  }, [currentUser.id]);
+  }, [currentUser.id, currentUser.email, hiddenPreferences.map(item => item.id).join(',')]);
 
   const threads = useMemo(() => {
     const map = new Map();
@@ -104,7 +122,21 @@ export default function UniversalInbox({ currentUser, users = [] }) {
     setSelectedKey(key);
   };
 
-  const visibleThreads = threads.filter(thread => threadNames(thread).toLowerCase().includes(search.toLowerCase()));
+  const removeThread = async thread => {
+    const existing = hiddenPreferences.find(item => item.thread_key === thread.key);
+    if (!existing) {
+      const created = await base44.entities.InboxThreadPreference.create({
+        user_email: currentUser.email,
+        thread_key: thread.key,
+        hidden: true,
+      });
+      setHiddenPreferences(current => [...current, created]);
+    }
+    setSelectedKey(null);
+  };
+
+  const hiddenKeys = new Set(hiddenPreferences.map(item => item.thread_key));
+  const visibleThreads = threads.filter(thread => !hiddenKeys.has(thread.key) && threadNames(thread).toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="flex h-full overflow-hidden rounded-xl border border-slate-700 bg-slate-950 text-white shadow-2xl">
@@ -125,7 +157,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
 
       <section className={`${selected ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}>
         {selected ? <>
-          <header className="flex items-center gap-3 border-b border-slate-700 p-4"><button onClick={() => setSelectedKey(null)} className="md:hidden"><X className="h-5 w-5" /></button><Users className="h-5 w-5 text-blue-300" /><div><div className="font-black">{threadNames(selected)}</div><div className="text-xs text-slate-400">{Math.max(1, selected.participants.length - 1)} participant{selected.participants.length - 1 === 1 ? '' : 's'}</div></div></header>
+          <header className="flex items-center gap-3 border-b border-slate-700 p-4"><button onClick={() => setSelectedKey(null)} className="md:hidden"><X className="h-5 w-5" /></button><Users className="h-5 w-5 text-blue-300" /><div className="min-w-0 flex-1"><div className="truncate font-black">{threadNames(selected)}</div><div className="text-xs text-slate-400">{Math.max(1, selected.participants.length - 1)} participant{selected.participants.length - 1 === 1 ? '' : 's'}</div></div><button onClick={() => removeThread(selected)} title="Remove conversation from my Inbox" className="rounded-full p-2 text-slate-400 hover:bg-red-950 hover:text-red-300"><Trash2 className="h-4 w-4" /></button></header>
           <div className="flex-1 space-y-3 overflow-y-auto p-4">
             {selected.messages.filter(message => !message.draft && message.message).map(message => {
               const mine = message.sender_id === currentUser.id;
