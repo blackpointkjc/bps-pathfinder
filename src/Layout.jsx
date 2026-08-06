@@ -404,18 +404,34 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
           )}
         </div>
 
-        {(!collapsed || mobile) && <div className="mt-3 grid grid-cols-2 gap-1.5">
-          {availableCenters.map(key => {
-            const item = CENTER_CONFIG[key];
-            const Icon = item.icon;
-            const active = activeCenter === key;
-            const centerUnread = (CENTER_UNREAD_PAGES[key] || []).reduce((sum, page) => sum + (Number(unreadCounts[page]) || 0), 0);
-            return <button key={key} onClick={() => setActiveCenter(key)} className={`group flex min-h-9 items-center gap-2 rounded-md border px-2 py-1.5 text-left text-[9px] font-bold transition-all duration-150 ${active ? 'border-cyan-500/60 bg-gradient-to-br from-[#17446f] to-[#113253] text-white shadow-[0_6px_18px_rgba(0,0,0,.2)]' : 'border-[#1c3249] bg-[#0b1928] text-[#87a0b8] hover:-translate-y-px hover:border-[#315879] hover:bg-[#10263b] hover:text-white'}`}> 
-              <Icon className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{item.label.replace(' Center', '')}</span>
-              {!!centerUnread && <span className="ml-auto flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 py-0.5 text-[8px] font-black text-white">{centerUnread > 99 ? '99+' : centerUnread}</span>}
-            </button>;
-          })}
-        </div>}
+        {(!collapsed || mobile) && (
+          <div className="mt-3">
+            <label htmlFor={mobile ? 'mobile-workspace-select' : 'desktop-workspace-select'} className="mb-1.5 block text-[8px] font-bold uppercase tracking-[0.18em] text-[#6886a3]">
+              Workspace
+            </label>
+            <div className="relative flex items-center rounded-lg border border-[#315879] bg-gradient-to-r from-[#102c49] to-[#0c2238] shadow-inner transition focus-within:border-cyan-500/70 focus-within:ring-2 focus-within:ring-cyan-900/40">
+              {React.createElement(center.icon, { className: 'pointer-events-none absolute left-3 h-4 w-4 text-cyan-300' })}
+              <select
+                id={mobile ? 'mobile-workspace-select' : 'desktop-workspace-select'}
+                value={activeCenter}
+                onChange={event => setActiveCenter(event.target.value)}
+                className="h-10 w-full cursor-pointer appearance-none bg-transparent pl-10 pr-9 text-[11px] font-bold text-white outline-none"
+                aria-label="Select workspace"
+              >
+                {availableCenters.map(key => {
+                  const item = CENTER_CONFIG[key];
+                  const centerUnread = (CENTER_UNREAD_PAGES[key] || []).reduce((sum, page) => sum + (Number(unreadCounts[page]) || 0), 0);
+                  return (
+                    <option key={key} value={key} className="bg-[#0b1928] text-white">
+                      {item.label}{centerUnread ? ` — ${centerUnread > 99 ? '99+' : centerUnread} unread` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-[#8fb1cf]" />
+            </div>
+          </div>
+        )}
       </div>
 
       {(!collapsed || mobile) && <div className="px-3 pt-3">
