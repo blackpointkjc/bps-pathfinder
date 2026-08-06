@@ -375,10 +375,10 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
     .filter(group => group.items.length > 0);
 
   return (
-    <div className="flex h-full flex-col bg-[#07111f]">
-      <div className="border-b border-[#1b3048] px-3 py-3">
+    <div className="flex h-full flex-col border-r border-[#183049] bg-gradient-to-b from-[#071321] via-[#081522] to-[#050d17] shadow-[12px_0_40px_rgba(0,0,0,.25)]">
+      <div className="border-b border-[#1b3048] bg-[#091827]/90 px-3 py-4 backdrop-blur-xl">
         <div className={`flex items-center ${collapsed && !mobile ? 'justify-center' : 'gap-3'}`}>
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#315f8e] bg-[#12315a]">
+          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-700/60 bg-gradient-to-br from-[#17416c] to-[#0b2847] shadow-[0_0_24px_rgba(56,145,215,.16)]">
             <Shield className="h-5 w-5 text-[#8cc7ff]" />
             <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full border-2 border-[#07111f] bg-emerald-400" />
           </div>
@@ -410,7 +410,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             const Icon = item.icon;
             const active = activeCenter === key;
             const centerUnread = (CENTER_UNREAD_PAGES[key] || []).reduce((sum, page) => sum + (Number(unreadCounts[page]) || 0), 0);
-            return <button key={key} onClick={() => setActiveCenter(key)} className={`flex items-center gap-2 rounded-md border px-2 py-2 text-left text-[10px] font-bold transition ${active ? 'border-[#4385c6] bg-[#153b65] text-white' : 'border-[#1c3249] bg-[#0c1a2a] text-[#87a0b8] hover:bg-[#11263d] hover:text-white'}`}>
+            return <button key={key} onClick={() => setActiveCenter(key)} className={`group flex min-h-11 items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-[10px] font-bold transition-all duration-200 ${active ? 'border-cyan-500/60 bg-gradient-to-br from-[#17446f] to-[#113253] text-white shadow-[0_6px_18px_rgba(0,0,0,.2)]' : 'border-[#1c3249] bg-[#0b1928] text-[#87a0b8] hover:-translate-y-px hover:border-[#315879] hover:bg-[#10263b] hover:text-white'}`}> 
               <Icon className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{item.label.replace(' Center', '')}</span>
               {!!centerUnread && <span className="ml-auto flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 py-0.5 text-[8px] font-black text-white">{centerUnread > 99 ? '99+' : centerUnread}</span>}
             </button>;
@@ -419,7 +419,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
       </div>
 
       {(!collapsed || mobile) && <div className="px-3 pt-3">
-        <div className="flex items-center gap-2 rounded-md border border-[#1c3249] bg-[#0a1726] px-2.5 py-2">
+        <div className="flex items-center gap-2 rounded-lg border border-[#24435f] bg-[#07131f] px-3 py-2.5 shadow-inner transition focus-within:border-cyan-600/70 focus-within:ring-2 focus-within:ring-cyan-900/40">
           <Search className="h-3.5 w-3.5 text-[#65819d]" />
           <input value={search} onChange={event => setSearch(event.target.value)} placeholder={`Search ${center.label}`} className="w-full bg-transparent text-[11px] text-white outline-none placeholder:text-[#55708a]" />
         </div>
@@ -430,7 +430,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
           to={createPageUrl('OfficerInbox')}
           title={collapsed && !mobile ? 'Inbox' : undefined}
           onClick={() => onCloseMobile?.()}
-          className={`relative mb-3 flex min-h-10 items-center gap-3 rounded-md border px-3 py-2 transition ${currentPageName === 'OfficerInbox' ? 'border-[#2f6499] bg-[#14385f] text-white' : 'border-[#24415e] bg-[#0c1a2a] text-[#9bb2c9] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
+          className={`relative mb-3 flex min-h-11 items-center gap-3 rounded-lg border px-3 py-2.5 transition-all ${currentPageName === 'OfficerInbox' ? 'border-cyan-500/60 bg-gradient-to-r from-[#16466f] to-[#123554] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
         >
           <MessageCircle className="h-4 w-4 shrink-0 text-[#7ec1ff]" />
           {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">INBOX</span>}
@@ -445,8 +445,8 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
           <div className="space-y-1">
             {group.items.map(([label, page, Icon]) => {
               const active = currentPageName === page;
-              return <Link key={page} to={createPageUrl(page)} title={collapsed && !mobile ? label : undefined} onClick={() => onCloseMobile?.()} className={`relative flex min-h-10 items-center gap-3 rounded-md border px-3 py-2 transition ${active ? 'border-[#2f6499] bg-[#14385f] text-white' : 'border-transparent text-[#8ea4bc] hover:border-[#1c3650] hover:bg-[#102239] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
-                {active && <span className="absolute bottom-2 left-0 top-2 w-0.5 bg-[#55aaff]" />}
+              return <Link key={page} to={createPageUrl(page)} title={collapsed && !mobile ? label : undefined} onClick={() => onCloseMobile?.()} className={`relative flex min-h-11 items-center gap-3 rounded-lg border px-3 py-2.5 transition-all duration-150 ${active ? 'border-cyan-500/50 bg-gradient-to-r from-[#153f66] to-[#102e4a] text-white shadow-md shadow-black/20' : 'border-transparent text-[#8ea4bc] hover:translate-x-0.5 hover:border-[#274864] hover:bg-[#0f2539] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
+                {active && <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,.55)]" />}
                 <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-[#7ec1ff]' : 'text-[#6683a0]'}`} />
                 {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-bold leading-tight">{label}</span>}
                 {!!unreadCounts[page] && (
@@ -461,8 +461,8 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
         {groups.length === 0 && (!collapsed || mobile) && <div className="px-3 py-8 text-center text-xs text-[#68829b]">No tools match your search.</div>}
       </nav>
 
-      <div className="border-t border-[#1b3048] p-2">
-        {(!collapsed || mobile) && <div className="mb-2 rounded-md border border-[#1c3049] bg-[#0c1828] px-3 py-2">
+      <div className="border-t border-[#1b3048] bg-[#06101b]/90 p-2.5 backdrop-blur">
+        {(!collapsed || mobile) && <div className="mb-2 rounded-lg border border-[#25435e] bg-gradient-to-br from-[#0e2033] to-[#0a1726] px-3 py-2.5 shadow-inner">
           <div className="text-[9px] tracking-widest text-[#597491]">{roleName(user)}</div>
           <div className="text-[11px] font-bold leading-tight text-white break-words">{user?.rank || user?.full_name || user?.email || 'AUTHORIZED USER'}</div>
           {user?.rank && user?.last_name && <div className="text-[10px] leading-tight text-[#9fb6cc] break-words">{user.last_name}</div>}
