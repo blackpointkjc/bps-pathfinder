@@ -101,6 +101,20 @@ export default function CallHistory() {
         await loadAll();
     };
 
+    const openIncidentReport = (row) => {
+        const received = new Date(row.time_received || row.created_date || Date.now());
+        const params = new URLSearchParams({
+            from_call: 'true',
+            call_id: row.original_call_id || row.id || '',
+            call_number: row.call_id || row.original_call_id || row.id || '',
+            location: row.location || '',
+            incident_type: 'other',
+            incident_time: received.toTimeString().slice(0, 5),
+            description: row.description || row.incident || '',
+        });
+        navigate(`${createPageUrl('IncidentReports')}?${params.toString()}`);
+    };
+
     const handleSort = (field) => {
         if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
         else { setSortField(field); setSortDir('desc'); }
@@ -262,14 +276,20 @@ export default function CallHistory() {
                                             <span className="text-slate-300">{row.ai_summary}</span>
                                         </div>
                                     )}
-                                    {isActive && (
-                                        <div className="col-span-3 mt-1">
+                                    <div className="col-span-3 mt-2 flex flex-wrap gap-2">
+                                        {isActive && (
                                             <button onClick={() => navigate(`${createPageUrl('Navigation')}?callId=${row.id}${row.latitude ? `&lat=${row.latitude}&lng=${row.longitude}` : ''}`)}
-                                                className="px-3 py-1 bg-blue-700 hover:bg-blue-600 text-white text-[10px] rounded border border-blue-600 transition-colors">
-                                                VIEW ON MAP →
+                                                className="rounded border border-blue-600 bg-blue-700 px-3 py-1.5 text-[10px] font-bold text-white transition-colors hover:bg-blue-600">
+                                                VIEW ON MAP
                                             </button>
-                                        </div>
-                                    )}
+                                        )}
+                                        <button
+                                            onClick={(event) => { event.stopPropagation(); openIncidentReport(row); }}
+                                            className="rounded border border-amber-500/60 bg-amber-500/10 px-3 py-1.5 text-[10px] font-bold text-amber-300 transition-colors hover:bg-amber-500/20"
+                                        >
+                                            CREATE / LINK INCIDENT REPORT
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
