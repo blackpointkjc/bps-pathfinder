@@ -105,6 +105,8 @@ export default function Navigation() {
     const syncingGracRef = useRef(false);
     const lastUpdateRef = useRef(0);
     const unitStatusRef = useRef(unitStatus);
+    const activeOfficerIdRef = useRef(null);
+    const activeOfficerEmailRef = useRef(null);
 
     const [focusCenter] = useState(() => {
         const p = new URLSearchParams(window.location.search);

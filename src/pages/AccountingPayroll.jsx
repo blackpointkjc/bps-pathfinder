@@ -293,10 +293,11 @@ export default function AccountingPayroll() {
       setValidationIssues(issues);
 
       // Generate payroll entries
+      const existingPayrollEntries = payrollEntries;
       const payrollEntries = [];
 
       for (const [email, data] of Object.entries(officerData)) {
-        const existingEntry = payrollEntries.find(entry =>
+        const existingEntry = existingPayrollEntries.find(entry =>
           entry.officer_email === email &&
           entry.pay_period_start === selectedPeriodStart &&
           entry.pay_period_end === selectedPeriodEnd
