@@ -41,6 +41,9 @@ export default function VACriminalComplaints() {
     accused_eyes: "",
     accused_hair: "",
     accused_ssn: "",
+    accused_id_number: "",
+    accused_id_state: "",
+    accused_id_expiration: "",
     violation_code: "",
     violation_section: "",
     facts_basis: "",
@@ -741,6 +744,17 @@ export default function VACriminalComplaints() {
                         if (data.eyes) updates.accused_eyes = data.eyes;
                         if (data.hair) updates.accused_hair = data.hair;
                         if (data.race) updates.accused_race = data.race;
+                        if (data.id_number) updates.accused_id_number = data.id_number;
+                        if (data.state) updates.accused_id_state = data.state;
+                        if (data.expiration_date) updates.accused_id_expiration = data.expiration_date;
+                        updates.id_scanned_in_person = true;
+                        updates.scan_type = data.scan_type || data.scan_source || 'id_scan';
+                        updates.scan_raw = data.raw_scan || '';
+                        updates.scan_parsed_json = JSON.stringify(data);
+                        updates.scanned_at = data.scanned_at || new Date().toISOString();
+                        updates.scanned_by = user?.email || '';
+                        updates.device_id = data.device_id || navigator.userAgent;
+                        if (data.id_photo) updates.id_photo = data.id_photo;
                         
                         setFormData(prev => ({ ...prev, ...updates }));
                         setShowIDScanner(false);
@@ -867,6 +881,20 @@ export default function VACriminalComplaints() {
                         value={formData.accused_eyes}
                         onChange={(e) => setFormData({...formData, accused_eyes: e.target.value})}
                       />
+                    </div>
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="accused_id_number">Driver License / ID Number</Label>
+                      <Input id="accused_id_number" value={formData.accused_id_number} onChange={(e) => setFormData({...formData, accused_id_number: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="accused_id_state">Issuing State</Label>
+                      <Input id="accused_id_state" value={formData.accused_id_state} onChange={(e) => setFormData({...formData, accused_id_state: e.target.value.toUpperCase()})} maxLength={2} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="accused_id_expiration">ID Expiration</Label>
+                      <Input id="accused_id_expiration" type="date" value={formData.accused_id_expiration} onChange={(e) => setFormData({...formData, accused_id_expiration: e.target.value})} />
                     </div>
                   </div>
                   <div className="grid md:grid-cols-2 gap-4">

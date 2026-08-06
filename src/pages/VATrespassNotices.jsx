@@ -43,6 +43,11 @@ export default function VATrespassNotices() {
     subject_name: "",
     subject_description: "",
     subject_id: "",
+    subject_dob: "",
+    subject_address: "",
+    subject_city: "",
+    subject_state: "",
+    subject_zip: "",
     vehicle_info: "",
     reason: "",
     duration: "Permanent",
@@ -202,6 +207,11 @@ export default function VATrespassNotices() {
       subject_name: "",
       subject_description: "",
       subject_id: "",
+      subject_dob: "",
+      subject_address: "",
+      subject_city: "",
+      subject_state: "",
+      subject_zip: "",
       vehicle_info: "",
       reason: "",
       duration: "Permanent",
@@ -354,6 +364,11 @@ export default function VATrespassNotices() {
       subject_name: notice.subject_name,
       subject_description: notice.subject_description || "",
       subject_id: notice.subject_id || "",
+      subject_dob: notice.subject_dob || "",
+      subject_address: notice.subject_address || "",
+      subject_city: notice.subject_city || "",
+      subject_state: notice.subject_state || "",
+      subject_zip: notice.subject_zip || "",
       vehicle_info: notice.vehicle_info || "",
       reason: notice.reason,
       duration: notice.duration || "Permanent",
@@ -711,6 +726,19 @@ export default function VATrespassNotices() {
                       const updates = {};
                       if (data.full_name) updates.subject_name = data.full_name;
                       if (data.id_number) updates.subject_id = data.id_number;
+                      if (data.date_of_birth) updates.subject_dob = data.date_of_birth;
+                      if (data.address) updates.subject_address = data.address;
+                      if (data.city) updates.subject_city = data.city;
+                      if (data.state) updates.subject_state = data.state;
+                      if (data.zip_code) updates.subject_zip = data.zip_code;
+                      updates.id_scanned_in_person = true;
+                      updates.scan_type = data.scan_type || data.scan_source || 'id_scan';
+                      updates.scan_raw = data.raw_scan || '';
+                      updates.scan_parsed_json = JSON.stringify(data);
+                      updates.scanned_at = data.scanned_at || new Date().toISOString();
+                      updates.scanned_by = user?.email || '';
+                      updates.device_id = data.device_id || navigator.userAgent;
+                      if (data.id_photo) updates.id_photo = data.id_photo;
                       
                       // Build physical description from ID data
                       const descParts = [];
@@ -787,6 +815,30 @@ export default function VATrespassNotices() {
                       value={formData.vehicle_info}
                       onChange={(e) => setFormData({...formData, vehicle_info: e.target.value})}
                     />
+                  </div>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="subject_dob">Date of Birth</Label>
+                    <Input id="subject_dob" type="date" value={formData.subject_dob} onChange={(e) => setFormData({...formData, subject_dob: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="subject_address">Street Address</Label>
+                    <Input id="subject_address" value={formData.subject_address} onChange={(e) => setFormData({...formData, subject_address: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="subject_city">City</Label>
+                    <Input id="subject_city" value={formData.subject_city} onChange={(e) => setFormData({...formData, subject_city: e.target.value})} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="subject_state">State</Label>
+                      <Input id="subject_state" value={formData.subject_state} onChange={(e) => setFormData({...formData, subject_state: e.target.value.toUpperCase()})} maxLength={2} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="subject_zip">ZIP</Label>
+                      <Input id="subject_zip" value={formData.subject_zip} onChange={(e) => setFormData({...formData, subject_zip: e.target.value})} />
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-2">
