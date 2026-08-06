@@ -57,8 +57,9 @@ export default function BackgroundLocationTracker({ user }) {
     staleTime: 60000,
   });
 
-  // Track ALL users who are clocked in, regardless of role
-  const shouldTrack = !!activeEntry;
+  // Track ANY logged-in officer so live positions are always current on the map.
+  // Geofence alerts and location-history logging below remain gated on an active time entry.
+  const shouldTrack = !!user?.email;
 
   // Mutation to create geofence alert
   const createGeofenceAlertMutation = useMutation({
@@ -149,19 +150,24 @@ export default function BackgroundLocationTracker({ user }) {
         updateActiveOfficerMutation.mutate({
           officer_email: user.email,
           officer_name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
-          current_location: activeEntry.location,
-          clock_in_time: activeEntry.clock_in,
+          unit_number: user.unit_number || '',
+          current_location: activeEntry?.location || user?.current_location || '',
+          clock_in_time: activeEntry?.clock_in || null,
           last_update: new Date().toISOString(),
           latitude: lat,
           longitude: lng,
+          heading: Number.isFinite(position.coords.heading) ? position.coords.heading : 0,
+          speed: position.coords.speed ? position.coords.speed * 2.237 : 0,
+          accuracy: accuracy,
+          status: user?.status || 'Available',
         });
         
         // Invalidate active officers query to refresh map
         queryClient.invalidateQueries({ queryKey: ['activeOfficers'] });
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
 
-        // Check geofence every 30 seconds
-        if (now - lastGeofenceCheckRef.current >= 30000 && locations) {
+        // Check geofence every 30 seconds (only when clocked in at a site)
+        if (activeEntry && now - lastGeofenceCheckRef.current >= 30000 && locations) {
           lastGeofenceCheckRef.current = now;
 
           // Find the location for this officer's active site - match by site name
@@ -201,8 +207,8 @@ export default function BackgroundLocationTracker({ user }) {
           }
         }
 
-        // Save to LocationHistory every 60 seconds
-        if (now - lastSaveRef.current >= 60000) {
+        // Save to LocationHistory every 60 seconds (only while clocked in)
+        if (activeEntry && now - lastSaveRef.current >= 60000) {
           await saveLocationHistoryMutation.mutateAsync({
             time_entry_id: activeEntry.id,
             officer_email: user.email,
