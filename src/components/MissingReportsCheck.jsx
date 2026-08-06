@@ -1,130 +1,105 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Loader2, FileText, Trash2 } from "lucide-react";
-import { format, parseISO, startOfWeek, endOfWeek, addDays } from "date-fns";
+import { CheckCircle2, Clock3, FileText, AlertTriangle } from "lucide-react";
+import { format, parseISO, startOfWeek, endOfWeek } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-export default function MissingReportsCheck({ schedules, allUsers, filteredUsers, weekStart, weekEnd }) {
-  const queryClient = useQueryClient();
-  const [missingReports, setMissingReports] = useState([]);
-  const [loading, setLoading] = useState(true);
+const normalizeSite = value => String(value || '').split(':')[0].trim().toLowerCase();
+const officerLabel = officer => {
+  const rank = String(officer?.rank || '').trim();
+  const last = String(officer?.last_name || '').trim();
+  return [rank, last].filter(Boolean).join(' ') || officer?.email || 'Unknown officer';
+};
 
-  // Use provided week range or default to current week
+export default function MissingReportsCheck({ schedules, filteredUsers, weekStart, weekEnd }) {
   const currentWeekStart = weekStart || startOfWeek(new Date(), { weekStartsOn: 0 });
   const currentWeekEnd = weekEnd || endOfWeek(new Date(), { weekStartsOn: 0 });
 
-  const { data: dailyActivityReports, refetch: refetchReports } = useQuery({
-    queryKey: ['allDailyActivityReports'],
+  const { data: reports = [], isLoading } = useQuery({
+    queryKey: ['allDailyActivityReports', format(currentWeekStart, 'yyyy-MM-dd'), format(currentWeekEnd, 'yyyy-MM-dd')],
     queryFn: () => base44.entities.DailyActivityReport.list('-report_date'),
+    refetchInterval: 15000,
   });
 
-  useEffect(() => {
-    const checkMissingReports = async () => {
-      if (!schedules || !filteredUsers || !dailyActivityReports) {
-        setLoading(false);
-        return;
-      }
+  const checks = useMemo(() => {
+    if (!schedules || !filteredUsers) return [];
+    const start = format(currentWeekStart, 'yyyy-MM-dd');
+    const end = format(currentWeekEnd, 'yyyy-MM-dd');
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const usersByEmail = new Map(filteredUsers.map(user => [String(user.email || '').toLowerCase(), user]));
 
-      const missing = [];
-      const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
-      const weekEndStr = format(currentWeekEnd, 'yyyy-MM-dd');
-      const today = format(new Date(), 'yyyy-MM-dd');
+    return schedules
+      .filter(shift => shift.shift_date >= start && shift.shift_date <= end && shift.shift_date < today && shift.officer_email && shift.officer_email !== 'OPEN')
+      .map(shift => {
+        const email = String(shift.officer_email || '').toLowerCase();
+        const officer = usersByEmail.get(email);
+        const matching = reports
+          .filter(report => {
+            const creator = String(report.created_by || report.officer_email || report.created_by_email || '').toLowerCase();
+            return creator === email && report.report_date === shift.shift_date && normalizeSite(report.location) === normalizeSite(shift.location);
+          })
+          .sort((a, b) => new Date(b.updated_date || b.created_date || 0) - new Date(a.updated_date || a.created_date || 0))[0];
 
-      for (const officer of filteredUsers) {
-        const officerSchedules = schedules.filter(s => 
-          s.officer_email === officer.email && 
-          s.shift_date >= weekStartStr &&
-          s.shift_date <= weekEndStr &&
-          s.shift_date < today // Only past shifts
-        );
+        const rawStatus = String(matching?.status || '').toLowerCase();
+        const status = !matching
+          ? 'missing'
+          : ['approved', 'accepted'].includes(rawStatus)
+            ? 'accepted'
+            : ['submitted', 'pending', 'pending_approval', 'under_review'].includes(rawStatus)
+              ? 'pending'
+              : rawStatus === 'draft'
+                ? 'draft'
+                : 'pending';
 
-        for (const shift of officerSchedules) {
-          const hasReport = dailyActivityReports.some(r => 
-            r.created_by === officer.email &&
-            r.report_date === shift.shift_date &&
-            r.location?.includes(shift.location.split(':')[0])
-          );
+        return {
+          id: `${email}-${shift.shift_date}-${shift.location}-${shift.start_time}`,
+          officer: officerLabel(officer),
+          email,
+          date: shift.shift_date,
+          location: String(shift.location || '').split(':')[0],
+          time: `${shift.start_time || ''}-${shift.end_time || ''}`,
+          status,
+          reportId: matching?.id,
+        };
+      })
+      .sort((a, b) => b.date.localeCompare(a.date) || a.officer.localeCompare(b.officer));
+  }, [schedules, filteredUsers, reports, currentWeekStart, currentWeekEnd]);
 
-          if (!hasReport) {
-            missing.push({
-              id: `${officer.email}-${shift.shift_date}-${shift.location}`,
-              officer: `${officer.first_name} ${officer.last_name}`,
-              email: officer.email,
-              date: shift.shift_date,
-              location: shift.location.split(':')[0],
-              time: `${shift.start_time}-${shift.end_time}`
-            });
-          }
-        }
-      }
+  const counts = checks.reduce((acc, item) => {
+    acc[item.status] = (acc[item.status] || 0) + 1;
+    return acc;
+  }, {});
 
-      missing.sort((a, b) => b.date.localeCompare(a.date));
-      setMissingReports(missing);
-      setLoading(false);
-    };
-
-    checkMissingReports();
-  }, [schedules, filteredUsers, dailyActivityReports, currentWeekStart, currentWeekEnd]);
-
-  const clearMissingReport = (reportId) => {
-    setMissingReports(prev => prev.filter(r => r.id !== reportId));
-  };
-
-  const clearAllMissing = () => {
-    if (confirm('Clear all missing report alerts for this week? This only hides them from view - it does not create reports.')) {
-      setMissingReports([]);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-      </div>
-    );
-  }
-
-  if (missingReports.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <FileText className="w-12 h-12 mx-auto mb-3 text-green-500" />
-        <p className="text-green-700 font-semibold">✓ All officers have submitted reports</p>
-        <p className="text-sm text-slate-500">No missing reports for this week</p>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="py-8 text-center text-sm text-slate-500">Checking scheduled shifts and reports…</div>;
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-600">
-          Week of {format(currentWeekStart, 'MMM d')} - {format(currentWeekEnd, 'MMM d, yyyy')}
-        </p>
-        <Button variant="outline" size="sm" onClick={clearAllMissing} className="text-red-600 hover:bg-red-50">
-          <Trash2 className="w-3 h-3 mr-1" /> Clear All
-        </Button>
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3"><div className="flex items-center gap-2 font-bold text-red-800"><AlertTriangle className="h-4 w-4" /> Missing</div><div className="mt-1 text-2xl font-black text-red-900">{counts.missing || 0}</div></div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3"><div className="flex items-center gap-2 font-bold text-amber-800"><Clock3 className="h-4 w-4" /> Pending review</div><div className="mt-1 text-2xl font-black text-amber-900">{(counts.pending || 0) + (counts.draft || 0)}</div></div>
+        <div className="rounded-lg border border-green-200 bg-green-50 p-3"><div className="flex items-center gap-2 font-bold text-green-800"><CheckCircle2 className="h-4 w-4" /> Accepted</div><div className="mt-1 text-2xl font-black text-green-900">{counts.accepted || 0}</div></div>
       </div>
-      <ScrollArea className="h-64">
-        <div className="space-y-2 p-1">
-          {missingReports.map((item) => (
-            <div key={item.id} className="p-3 bg-red-50 rounded-lg border border-red-200">
-              <div className="flex items-center justify-between mb-1">
-                <p className="font-semibold text-red-900">{item.officer}</p>
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-red-600">{format(parseISO(item.date), 'MMM d')}</Badge>
-                  <button onClick={() => clearMissingReport(item.id)} className="text-slate-400 hover:text-red-600">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+
+      {checks.length === 0 ? (
+        <div className="py-8 text-center"><FileText className="mx-auto mb-3 h-10 w-10 text-green-500" /><p className="font-semibold text-green-700">No completed scheduled shifts require review for this week.</p></div>
+      ) : (
+        <ScrollArea className="h-80">
+          <div className="space-y-2 pr-2">
+            {checks.map(item => (
+              <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0"><p className="font-bold text-slate-900">{item.officer}</p><p className="text-sm text-slate-600">{item.location} · {item.time}</p><p className="text-xs text-slate-500">{format(parseISO(item.date), 'EEEE, MMM d, yyyy')}</p></div>
+                  <Badge className={item.status === 'accepted' ? 'bg-green-600' : item.status === 'missing' ? 'bg-red-600' : item.status === 'draft' ? 'bg-slate-600' : 'bg-amber-600'}>
+                    {item.status === 'accepted' ? 'Accepted' : item.status === 'missing' ? 'Missing' : item.status === 'draft' ? 'Draft' : 'Pending review'}
+                  </Badge>
                 </div>
               </div>
-              <p className="text-sm text-red-700">{item.location} • {item.time}</p>
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
+            ))}
+          </div>
+        </ScrollArea>
+      )}
     </div>
   );
 }
