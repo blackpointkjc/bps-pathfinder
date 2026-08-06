@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Plus, Shield, Clock, Users, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -128,18 +129,16 @@ export default function ClientSpecialRequests() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="location">Location *</Label>
-                    <select
-                      id="location"
-                      value={formData.location}
-                      onChange={(e) => setFormData({...formData, location: e.target.value})}
-                      required
-                      className="w-full p-2 border rounded-lg"
-                    >
-                      <option value="">Select location...</option>
-                      {locations?.map((loc) => (
-                        <option key={loc.id} value={loc.site_name}>{loc.site_name}</option>
-                      ))}
-                    </select>
+                    <Select value={formData.location || undefined} onValueChange={(value) => setFormData({...formData, location: value})} required>
+                      <SelectTrigger id="location" className="h-11 w-full">
+                        <SelectValue placeholder="Select location..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {locations?.map((loc) => (
+                          <SelectItem key={loc.id} value={loc.site_name}>{loc.site_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">
@@ -179,23 +178,27 @@ export default function ClientSpecialRequests() {
 
                 <div className="space-y-2">
                   <Label htmlFor="preferred_officer_email">Preferred Officer (Optional)</Label>
-                  <select
-                    id="preferred_officer_email"
-                    value={formData.preferred_officer_email}
-                    onChange={(e) => {
-                      const officer = officerDirectory.find(item => item.email === e.target.value);
+                  <Select
+                    value={formData.preferred_officer_email || 'none'}
+                    onValueChange={(value) => {
+                      const email = value === 'none' ? '' : value;
+                      const officer = officerDirectory.find(item => item.email === email);
                       const display = officer ? `${officer.rank || 'Officer'} ${officer.last_name || ''}`.trim() : '';
-                      setFormData({...formData, preferred_officer_email: e.target.value, preferred_officer_display: display});
+                      setFormData({...formData, preferred_officer_email: email, preferred_officer_display: display});
                     }}
-                    className="w-full p-2 border rounded-lg"
                   >
-                    <option value="">No preference</option>
-                    {officerDirectory.map((officer) => (
-                      <option key={officer.email} value={officer.email}>
-                        {`${officer.rank || 'Officer'} ${officer.last_name || ''}`.trim()}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger id="preferred_officer_email" className="h-11 w-full">
+                      <SelectValue placeholder="No preference" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No preference</SelectItem>
+                      {officerDirectory.map((officer) => (
+                        <SelectItem key={officer.email} value={officer.email}>
+                          {`${officer.rank || 'Officer'} ${officer.last_name || ''}`.trim()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <p className="text-xs text-slate-500">Requests are not guaranteed and remain subject to availability.</p>
                 </div>
 
