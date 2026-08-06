@@ -14,7 +14,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
   const dispatchMode = isDispatchUser(currentUser);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [selectedRecipient, setSelectedRecipient] = useState(dispatchMode ? 'company' : 'dispatch');
+  const [selectedRecipient, setSelectedRecipient] = useState(dispatchMode ? 'team_chat' : 'dispatch');
 
   const officers = useMemo(() => units.filter(unit => {
     const roles = roleSet(unit);
@@ -50,17 +50,31 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
     try {
       const recipient = dispatchMode ? selectedRecipient : 'dispatch';
       const unit = officers.find(u => u.id === recipient);
-      await base44.entities.Message.create({
-        sender_id: dispatchMode ? 'dispatch' : currentUser.id,
-        sender_name: dispatchMode
-          ? `Dispatch — ${currentUser.rank || ''} ${currentUser.last_name || currentUser.full_name || ''}`.trim()
-          : `${currentUser.rank || 'Officer'} ${currentUser.last_name || currentUser.full_name || ''}`.trim(),
-        recipient_id: recipient,
-        recipient_name: recipient === 'company' ? 'Company Wide' : recipient === 'dispatch' ? 'Dispatch' : `${unit?.rank || 'Officer'} ${unit?.last_name || unit?.unit_number || ''}`.trim(),
-        message: text,
-        read: false,
-        message_type: recipient === 'company' ? 'company_broadcast' : 'dispatch_message'
-      });
+      const senderName = dispatchMode
+        ? `Dispatch — ${currentUser.rank || ''} ${currentUser.last_name || currentUser.full_name || ''}`.trim()
+        : `${currentUser.rank || 'Officer'} ${currentUser.last_name || currentUser.full_name || ''}`.trim();
+
+      if (dispatchMode && ['team_chat', 'supervisor_chat', 'company'].includes(recipient)) {
+        const chatPayload = { message: text, sender_name: senderName };
+        const sends = [];
+        if (recipient === 'team_chat' || recipient === 'company') {
+          sends.push(base44.entities.ChatMessage.create(chatPayload));
+        }
+        if (recipient === 'supervisor_chat' || recipient === 'company') {
+          sends.push(base44.entities.SupervisorChatMessage.create(chatPayload));
+        }
+        await Promise.all(sends);
+      } else {
+        await base44.entities.Message.create({
+          sender_id: dispatchMode ? 'dispatch' : currentUser.id,
+          sender_name: senderName,
+          recipient_id: recipient,
+          recipient_name: recipient === 'dispatch' ? 'Dispatch' : `${unit?.rank || 'Officer'} ${unit?.last_name || unit?.unit_number || ''}`.trim(),
+          message: text,
+          read: false,
+          message_type: 'dispatch_message'
+        });
+      }
       setNewMessage('');
       await loadMessages();
     } catch (error) {
@@ -112,8 +126,10 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
       <div className="border-t border-slate-700 bg-slate-900 p-4">
         {dispatchMode && (
           <select value={selectedRecipient} onChange={e => setSelectedRecipient(e.target.value)} className="mb-2 h-10 w-full rounded-md border border-slate-600 bg-slate-800 px-3 text-sm text-white">
-            <option value="company">Company Wide Broadcast</option>
-            {officers.map(unit => <option key={unit.id} value={unit.id}>{`${unit.rank || 'Officer'} ${unit.last_name || unit.full_name || unit.unit_number || ''}`.trim()}</option>)}
+            <option value="team_chat">Team Chat — All Personnel</option>
+            <option value="supervisor_chat">Supervisor Chat — Supervisors Only</option>
+            <option value="company">Company Wide — Team + Supervisor Chats</option>
+            {officers.map(unit => <option key={unit.id} value={unit.id}>{`Direct — ${unit.rank || 'Officer'} ${unit.last_name || unit.full_name || unit.unit_number || ''}`.trim()}</option>)}
           </select>
         )}
         <div className="flex gap-2">
