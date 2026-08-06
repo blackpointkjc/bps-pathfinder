@@ -1061,7 +1061,7 @@ export default function Navigation() {
             </motion.div>
 
             {/* ══ BOTTOM STATUS STRIP ══ */}
-            <div className="absolute bottom-0 left-0 right-0 z-[1005] pointer-events-none">
+            <div className="absolute bottom-0 left-0 right-0 z-[1400] pointer-events-none">
                 <div className="flex items-center gap-3 px-4 py-1.5 bg-[#0a0e1a]/90 backdrop-blur-md border-t border-[#1e2d4a]">
                     <span className="text-[9px] font-mono text-slate-500">
                         CALLS: <span className="text-white">{activeCalls.length}</span>
@@ -1093,7 +1093,7 @@ export default function Navigation() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 320 }}
                         transition={{ duration: 0.2 }}
-                        className={`absolute bottom-[32px] right-0 top-[34px] z-[1300] flex max-w-[calc(100%-0.5rem)] flex-col border-l border-[#29445e] bg-[#07111f]/98 shadow-[-18px_0_50px_rgba(0,0,0,.45)] backdrop-blur-xl transition-[width] duration-200 pointer-events-auto ${callSidebarCollapsed ? 'w-12 overflow-hidden' : 'w-[360px] overflow-hidden'}`}
+                        className={`absolute bottom-[64px] right-0 top-[42px] z-[1300] flex max-w-[calc(100%-0.5rem)] flex-col border-l border-[#29445e] bg-[#07111f]/98 shadow-[-18px_0_50px_rgba(0,0,0,.45)] backdrop-blur-xl transition-[width] duration-200 pointer-events-auto ${callSidebarCollapsed ? 'w-12 overflow-hidden' : 'w-[360px] overflow-hidden'}`}
                     >
                         {/* Header / collapsed edge tab */}
                         <div className={`flex-none flex items-center border-b border-[#1e2d4a] bg-[#0d1220] ${callSidebarCollapsed ? 'flex-col gap-2 px-1 py-3' : 'justify-between px-3 py-3'}`}>
@@ -1250,7 +1250,7 @@ export default function Navigation() {
                         </div>
 
                         {/* Field Unit Console */}
-                        <div className="max-h-[42%] flex-none overflow-y-auto border-t border-[#1e2d4a] bg-[#081522] p-3">
+                        <div className="max-h-[36%] flex-none overflow-y-auto border-t border-[#1e2d4a] bg-[#081522] p-3">
                             <div className="text-[9px] font-mono text-[#f5a623] font-bold tracking-widest mb-2">FIELD UNIT CONSOLE</div>
                             <FieldCallActions call={selectedCall} />
                         </div>
