@@ -187,8 +187,9 @@ function CommandDashboardInner() {
 
     const getCallIdentifier = (call) => {
         const official = String(call?.agency_cad_number || '').trim();
-        const bps = String(call?.bps_reference || '').trim();
-        const legacy = String(call?.call_id || '').trim();
+        const compactBps = (value) => String(value || '').trim().replace(/^(BPS-\d{6}-)0+(\d+)$/i, '$1$2');
+        const bps = compactBps(call?.bps_reference);
+        const legacy = compactBps(call?.call_id);
         if (official) return { value: official, type: 'official' };
         if (bps) return { value: bps, type: 'bps' };
         if (legacy) return { value: legacy, type: /^BPS-/i.test(legacy) ? 'bps' : 'official' };
