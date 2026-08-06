@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Shield, Radio, Map as MapIcon, RefreshCw, Plus, Search, Clock3, MessageSquarePlus, AlertTriangle, History, Megaphone, Activity } from 'lucide-react';
+import { Shield, Radio, Map as MapIcon, RefreshCw, Plus, Search, Clock3, MessageSquarePlus, AlertTriangle, History, Megaphone, Activity, Users, Wifi, Keyboard, Navigation } from 'lucide-react';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { createPageUrl } from '../utils';
 import { stopAllAlerts } from '@/utils/alertUtils';
@@ -42,8 +42,34 @@ export default function DispatchCenter() {
     const [callNotes, setCallNotes] = useState([]);
     const [noteText, setNoteText] = useState('');
     const [savingNote, setSavingNote] = useState(false);
+    const [systemTime, setSystemTime] = useState(() => new Date());
     const knownCallIdsRef = React.useRef(null);
     const syncingGracRef = React.useRef(false);
+
+    useEffect(() => {
+        const clockInterval = setInterval(() => setSystemTime(new Date()), 1000);
+        return () => clearInterval(clockInterval);
+    }, []);
+
+    useEffect(() => {
+        const handleKeyboardShortcuts = (event) => {
+            const tag = event.target?.tagName?.toLowerCase();
+            const isTyping = ['input', 'textarea', 'select'].includes(tag) || event.target?.isContentEditable;
+            if (isTyping) return;
+            if (event.key === '/') {
+                event.preventDefault();
+                document.getElementById('cad-queue-search')?.focus();
+            }
+            if (event.key.toLowerCase() === 'n') setShowCreateDialog(true);
+            if (event.key.toLowerCase() === 'm') setShowMap(value => !value);
+            if (event.key === 'Escape') {
+                setSelectedCall(null);
+                setShowMessaging(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyboardShortcuts);
+        return () => window.removeEventListener('keydown', handleKeyboardShortcuts);
+    }, []);
 
     useEffect(() => {
         init();
@@ -330,6 +356,14 @@ export default function DispatchCenter() {
         return matchesFilter && haystack.includes(queueSearch.toLowerCase());
     });
 
+    const availableUnits = units.filter(unit => unit.status === 'Available');
+    const activeUnits = units.filter(unit => unit.status && unit.status !== 'Out of Service');
+    const unassignedCalls = activeCalls.filter(call => !call.assigned_units?.length);
+    const priorityCalls = activeCalls.filter(call => ['critical', 'high'].includes(call.priority));
+    const oldestCallMinutes = activeCalls.length
+        ? Math.max(...activeCalls.map(call => Math.max(0, Math.floor((systemTime - new Date(call.time_received || call.created_date)) / 60000))))
+        : 0;
+
     const handleAcknowledge = () => {
         stopAllAlerts();
         setPendingAlertCall(null);
@@ -338,17 +372,17 @@ export default function DispatchCenter() {
 
 
     return (
-        <div className="h-full md:h-screen min-h-0 flex flex-col bg-[#0a0e1a] text-white overflow-hidden font-mono">
+        <div className="cad-command-workstation h-full min-h-0 overflow-hidden bg-[#060b12] font-mono text-white md:h-screen">
             <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={true} />
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
             {/* ══ TOP SYSTEM BAR ══ */}
-            <div className="flex-none min-h-9 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center px-2 py-1.5 md:px-3 gap-2 md:flex-nowrap md:gap-3">
+            <div className="flex min-h-12 flex-none flex-wrap items-center gap-2 border-b border-cyan-950/80 bg-gradient-to-r from-[#08111d] via-[#0b1725] to-[#08111d] px-3 py-2 shadow-[0_8px_30px_rgba(0,0,0,.28)] md:flex-nowrap md:gap-3 md:px-4">
                 <div className="flex items-center gap-2">
                     <Radio className="w-4 h-4 text-[#f5a623]" />
-                    <span className="text-[#f5a623] font-bold text-xs tracking-widest">BPS CAD</span>
-                    <span className="text-slate-500 text-xs">|</span>
-                    <span className="text-slate-300 text-xs whitespace-nowrap">DISPATCH CENTER</span>
+                    <div><span className="block text-sm font-black tracking-[0.18em] text-[#f5a623]">BPS CAD</span><span className="block text-[8px] tracking-[0.22em] text-slate-500">COMPUTER-AIDED DISPATCH</span></div>
+                    <span className="hidden text-slate-600 md:inline">/</span>
+                    <span className="hidden whitespace-nowrap text-[10px] font-semibold tracking-wider text-slate-300 md:inline">PRIMARY DISPATCH</span>
                     <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse ml-1" />
                     <span className="text-green-400 text-[10px]">ONLINE</span>
                 </div>
@@ -390,11 +424,28 @@ export default function DispatchCenter() {
 
             <PropertyAlertsBanner />
 
+            {/* ══ COMMAND STATUS STRIP ══ */}
+            <div className="grid flex-none grid-cols-2 border-b border-[#1e2d4a] bg-[#08111d] sm:grid-cols-3 lg:grid-cols-6">
+                {[
+                    { label: 'ACTIVE CALLS', value: activeCalls.length, tone: 'text-cyan-300', icon: Activity },
+                    { label: 'UNASSIGNED', value: unassignedCalls.length, tone: unassignedCalls.length ? 'text-amber-300' : 'text-slate-300', icon: AlertTriangle },
+                    { label: 'HIGH PRIORITY', value: priorityCalls.length, tone: priorityCalls.length ? 'text-red-400' : 'text-slate-300', icon: Shield },
+                    { label: 'UNITS ACTIVE', value: activeUnits.length, tone: 'text-blue-300', icon: Users },
+                    { label: 'AVAILABLE', value: availableUnits.length, tone: 'text-emerald-300', icon: Navigation },
+                    { label: 'OLDEST WAIT', value: `${oldestCallMinutes}m`, tone: oldestCallMinutes >= 15 ? 'text-red-400' : 'text-slate-300', icon: Clock3 },
+                ].map(({ label, value, tone, icon: Icon }) => (
+                    <div key={label} className="flex min-w-0 items-center gap-2 border-b border-r border-[#17283b] px-3 py-2 lg:border-b-0">
+                        <div className="rounded-md border border-[#263b52] bg-[#0d1a29] p-1.5"><Icon className={`h-3.5 w-3.5 ${tone}`} /></div>
+                        <div className="min-w-0"><div className={`text-base font-black leading-none ${tone}`}>{value}</div><div className="mt-1 truncate text-[8px] font-bold tracking-[0.14em] text-slate-500">{label}</div></div>
+                    </div>
+                ))}
+            </div>
+
             {/* ══ QUEUE CONTROLS ══ */}
             <div className="flex-none flex flex-wrap items-center gap-2 border-b border-[#1e2d4a] bg-[#0a0e1a] px-2 py-1.5 md:flex-nowrap md:px-3">
                 <div className="relative min-w-52 md:w-56">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
-                    <input value={queueSearch} onChange={e => setQueueSearch(e.target.value)} placeholder="Search CAD, incident, address..."
+                    <input id="cad-queue-search" value={queueSearch} onChange={e => setQueueSearch(e.target.value)} placeholder="Search CAD, incident, address...  [/]"
                         className="w-full h-7 pl-7 pr-2 bg-[#111827] border border-[#263653] rounded text-[10px] text-white outline-none focus:border-blue-500" />
                 </div>
                 {[
@@ -422,7 +473,7 @@ export default function DispatchCenter() {
                 <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
 
                     {/* ═══ LEFT: ACTIVE CALLS TABLE ═══ */}
-                    <div className="w-full md:w-[340px] min-h-[260px] md:min-h-0 md:flex-none flex flex-col border-b md:border-b-0 md:border-r border-[#1e2d4a]">
+                    <div className="flex min-h-[300px] w-full flex-col border-b border-[#1e2d4a] md:min-h-0 md:w-[390px] md:flex-none md:border-b-0 md:border-r xl:w-[430px]">
                         {/* Police Calls */}
                         <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />
@@ -435,12 +486,12 @@ export default function DispatchCenter() {
                             <div className="col-span-5">INCIDENT</div>
                             <div className="col-span-5">TIME</div>
                         </div>
-                        <div className="flex-1 overflow-y-auto" style={{maxHeight: '45%'}}>
+                        <div className="flex-1 overflow-y-auto">
                             {allCalls.length === 0 ? (
                                 <div className="text-[10px] text-slate-600 text-center py-4">NO ACTIVE CALLS</div>
                             ) : allCalls.map(call => (
                                 <div key={call.id} onClick={() => handleSelectCall(call)}
-                                    className={`grid grid-cols-12 px-2 py-1.5 border-b border-[#1a2535] cursor-pointer transition-colors ${
+                                    className={`group grid grid-cols-12 cursor-pointer border-b border-[#172536] px-2 py-2.5 transition-all ${
                                         selectedCall?.id === call.id
                                             ? 'bg-[#1a3a5c] border-l-2 border-l-[#3b82f6]'
                                             : 'hover:bg-[#111827]'
@@ -452,11 +503,15 @@ export default function DispatchCenter() {
                                     </div>
                                     <div className="col-span-5">
                                         <div className="text-[9px] font-mono font-bold text-[#7ec1ff] truncate">{/^B\d+$/i.test(String(call.call_id || '')) ? call.call_id : 'ASSIGNING…'}</div>
-                                        <div className="text-[10px] text-white font-bold truncate leading-tight">{call.incident}</div>
-                                        <div className="text-[9px] text-slate-400 truncate">{call.location}</div>
+                                        <div className="truncate text-[11px] font-bold leading-tight text-white group-hover:text-cyan-100">{call.incident}</div>
+                                        <div className="mt-1 truncate text-[9px] text-slate-400">{call.location}</div>
+                                        <div className="mt-1 text-[8px] font-semibold tracking-wide text-slate-600">{call.agency || 'AGENCY N/A'}</div>
                                     </div>
                                     <div className="col-span-5 text-[9px] text-slate-400 text-right pr-1">
-                                        {new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })}
+                                        <div>{new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })}</div>
+                                        <div className={`mt-1 font-bold ${Math.floor((systemTime - new Date(call.time_received || call.created_date)) / 60000) >= 15 ? 'text-red-400' : 'text-slate-600'}`}>
+                                            {Math.max(0, Math.floor((systemTime - new Date(call.time_received || call.created_date)) / 60000))} MIN AGO
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -568,7 +623,7 @@ export default function DispatchCenter() {
                     </div>
 
                     {/* ═══ RIGHT: UNITS ═══ */}
-                    <div className="w-full md:w-64 min-h-[320px] md:min-h-0 md:flex-none flex flex-col">
+                    <div className="flex min-h-[360px] w-full flex-col bg-[#08111b] md:min-h-0 md:w-72 md:flex-none xl:w-80">
                         {/* Unit Assignment */}
                         <div className="flex-none border-b border-[#1e2d4a]">
                             <div className="px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
@@ -627,11 +682,13 @@ export default function DispatchCenter() {
 
             {/* ══ BOTTOM STATUS BAR ══ */}
             <div className="flex-none min-h-6 bg-[#0d1220] border-t border-[#1e2d4a] flex flex-wrap items-center px-3 py-1 gap-x-4 gap-y-1 text-[9px] text-slate-500 md:flex-nowrap md:whitespace-nowrap">
+                <span className="flex items-center gap-1.5"><Wifi className="h-3 w-3 text-emerald-400" /> CAD NETWORK: <span className="font-bold text-emerald-400">CONNECTED</span></span>
                 <span>CALLS: <span className="text-white">{allCalls.length}</span></span>
                 <span>UNITS ACTIVE: <span className="text-green-400">{units.filter(u => u.status && u.status !== 'Out of Service').length}</span></span>
                 <span>UNASSIGNED: <span className="text-yellow-400">{allCalls.filter(c => !c.assigned_units?.length).length}</span></span>
                 <div className="flex-1" />
-                <span className="text-green-400 font-bold">● ONLINE</span>
+                <span className="hidden items-center gap-1 text-slate-500 md:flex"><Keyboard className="h-3 w-3" /> N NEW CALL · / SEARCH · M MAP · ESC CLEAR</span>
+                <span className="font-bold text-green-400">{systemTime.toLocaleTimeString('en-US', { hour12: false })} EDT</span>
             </div>
 
             {/* Messaging Panel */}
