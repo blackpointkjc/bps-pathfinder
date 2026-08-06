@@ -776,7 +776,7 @@ export default function Layout({ children, currentPageName }) {
           )}
           {criticalOutage && <span className="hidden rounded border border-red-700/60 bg-red-950/40 px-2 py-1 font-bold text-red-300 sm:block">SYSTEM OUTAGE</span>}
           <span className="hidden font-mono text-[#9fb6cc] sm:inline">{clock.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-          <button onClick={() => { setMobileSection(null); if (!['cad', 'officer', 'supervisor'].includes(activeCenter)) setActiveCenter('cad'); setMobileOpen(true); }} className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] md:hidden" aria-label="Open mobile portals"><Menu className="h-5 w-5" /></button>
+
         </div>
       </header>
 
