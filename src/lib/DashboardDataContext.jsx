@@ -94,9 +94,11 @@ export function DashboardDataProvider({ children }) {
                 const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
-            const active = [...uniqueCalls.values()].filter(c =>
-                !['Cleared', 'Cancelled'].includes(c.status)
-            );
+            const oneHourAgo = Date.now() - 60 * 60 * 1000;
+            const active = [...uniqueCalls.values()].filter(c => {
+                const receivedAt = new Date(c.time_received || c.created_date || 0).getTime();
+                return !['Cleared', 'Cancelled'].includes(c.status) && receivedAt >= oneHourAgo;
+            });
 
             // Debug: newest call time
             if (active.length > 0) {
