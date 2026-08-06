@@ -150,24 +150,19 @@ export default function UniversalInbox({ currentUser, users = [] }) {
     ]);
 
     try {
-      if (existing?.id && !String(existing.id).startsWith('pending:')) {
-        await base44.entities.InboxThreadPreference.update(existing.id, {
-          hidden: true,
-          hidden_at: optimistic.hidden_at,
-        });
-      } else {
-        await base44.entities.InboxThreadPreference.create({
-          user_email: currentUser.email,
-          thread_key: thread.key,
-          hidden: true,
-          hidden_at: optimistic.hidden_at,
-        });
+      const response = await base44.functions.invoke('archiveInboxThread', {
+        thread_key: thread.key,
+      });
+      const payload = response?.data || response || {};
+      if (payload.error || payload.success === false) {
+        throw new Error(payload.error || 'Unable to archive conversation');
       }
       // Confirm the server-side preference so refresh/realtime reloads cannot
       // restore the archived conversation.
       await load();
     } catch (error) {
       console.error('[Inbox] Unable to persist archived thread:', error?.message);
+      alert('The conversation could not be removed. Please try again.');
       await load();
     }
   };
