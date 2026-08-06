@@ -7,13 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardCheck, Plus, UserCheck, CheckCircle, XCircle } from "lucide-react";
+import { ClipboardCheck, Plus, UserCheck, CheckCircle, XCircle, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export default function SupervisorInspections() {
   const [showForm, setShowForm] = useState(false);
+  const [editingInspectionId, setEditingInspectionId] = useState(null);
   const [formData, setFormData] = useState({
     inspection_date: new Date().toISOString().slice(0, 16),
     officer_inspected: "",
@@ -90,11 +91,14 @@ export default function SupervisorInspections() {
     initialData: [],
   });
 
-  const createInspectionMutation = useMutation({
-    mutationFn: (data) => base44.entities.InspectionReport.create(data),
+  const saveInspectionMutation = useMutation({
+    mutationFn: ({ id, data }) => id
+      ? base44.functions.invoke('updateInspectionDraft', { inspection_id: id, inspection: data })
+      : base44.entities.InspectionReport.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inspectionReports'] });
       setShowForm(false);
+      setEditingInspectionId(null);
       setFormData({
         inspection_date: new Date().toISOString().slice(0, 16),
         officer_inspected: "",
@@ -115,7 +119,31 @@ export default function SupervisorInspections() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    createInspectionMutation.mutate(formData);
+    saveInspectionMutation.mutate({ id: editingInspectionId, data: formData });
+  };
+
+  const startEditingDraft = (inspection) => {
+    const date = inspection.inspection_date && !Number.isNaN(new Date(inspection.inspection_date).getTime())
+      ? new Date(inspection.inspection_date).toISOString().slice(0, 16)
+      : new Date().toISOString().slice(0, 16);
+    setEditingInspectionId(inspection.id);
+    setFormData({
+      inspection_date: date,
+      officer_inspected: inspection.officer_inspected || '',
+      officer_email: inspection.officer_email || '',
+      location: inspection.location || '',
+      uniform_appearance: inspection.uniform_appearance || 'satisfactory',
+      equipment_condition: inspection.equipment_condition || 'satisfactory',
+      post_knowledge: inspection.post_knowledge || 'satisfactory',
+      professionalism: inspection.professionalism || 'satisfactory',
+      observations: inspection.observations || '',
+      areas_of_concern: inspection.areas_of_concern || '',
+      commendations: inspection.commendations || '',
+      follow_up_required: Boolean(inspection.follow_up_required),
+      inspection_result: inspection.inspection_result || '',
+    });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const normalizeRating = (rating) => String(rating || 'not_rated');
@@ -144,7 +172,7 @@ export default function SupervisorInspections() {
   return (
     <div className="p-4 md:p-8 min-h-screen bg-[#0b1420] text-slate-100">
       <div className="max-w-4xl mx-auto space-y-8">
-        <div className="flex justify-between items-center">
+        <div className="mobile-page-header flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">Officer Inspections</h1>
             <p className="text-slate-400">Conduct, complete, and track officer inspections</p>
@@ -163,7 +191,7 @@ export default function SupervisorInspections() {
             <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
               <CardTitle className="flex items-center gap-2">
                 <ClipboardCheck className="w-5 h-5 text-green-600" />
-                New Officer Inspection
+                {editingInspectionId ? 'Complete Inspection Draft' : 'New Officer Inspection'}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -389,16 +417,16 @@ export default function SupervisorInspections() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setShowForm(false)}
+                    onClick={() => { setShowForm(false); setEditingInspectionId(null); }}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    disabled={createInspectionMutation.isPending}
+                    disabled={saveInspectionMutation.isPending}
                     className="bg-green-600 hover:bg-green-700"
                   >
-                    {createInspectionMutation.isPending ? 'Submitting...' : 'Submit Inspection'}
+                    {saveInspectionMutation.isPending ? 'Saving...' : editingInspectionId ? 'Complete Draft' : 'Submit Inspection'}
                   </Button>
                 </div>
               </form>
@@ -430,7 +458,12 @@ export default function SupervisorInspections() {
                           {inspection.inspection_result === 'pass' ? <><CheckCircle className="w-3 h-3 mr-1" />PASS</> : <><XCircle className="w-3 h-3 mr-1" />FAIL</>}
                         </Badge>
                       ) : (
-                        <Badge className="border border-amber-600 bg-amber-950/40 text-amber-300">DRAFT — NEEDS COMPLETION</Badge>
+                        <>
+                          <Badge className="border border-amber-600 bg-amber-950/40 text-amber-300">DRAFT — NEEDS COMPLETION</Badge>
+                          <Button type="button" size="sm" onClick={() => startEditingDraft(inspection)} className="bg-blue-700 text-white hover:bg-blue-600">
+                            <Pencil className="mr-1 h-3.5 w-3.5" /> EDIT DRAFT
+                          </Button>
+                        </>
                       )}
                       {inspection.follow_up_required && (
                         <Badge className="bg-amber-100 text-amber-800 border-amber-200">
