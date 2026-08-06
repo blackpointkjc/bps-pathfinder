@@ -22,6 +22,23 @@ const normalizePriority = (incident: unknown) => {
 
 const validCoordinate = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : null;
 
+function extractOfficialCadNumber(row: any) {
+  const candidates = [
+    row?.cadNumber,
+    row?.cad_number,
+    row?.cad,
+    row?.CAD,
+    row?.callNumber,
+    row?.call_number,
+    row?.eventNumber,
+    row?.event_number,
+  ];
+  const value = candidates.find(candidate => candidate !== null && candidate !== undefined && String(candidate).trim());
+  if (value === undefined) return '';
+  const normalized = String(value).trim().replace(/\s+/g, ' ');
+  return normalized.length <= 40 ? normalized : '';
+}
+
 function externalKey(record: any) {
   if (record?.external_call_id) return String(record.external_call_id);
   const descriptionMatch = String(record?.description || '').match(/\[GRAC:([^\]]+)\]/);
@@ -49,8 +66,17 @@ function normalizeCall(row: any) {
   const received = new Date(row.timeReceived);
   const latitude = validCoordinate(row?.coords?.[0]);
   const longitude = validCoordinate(row?.coords?.[1]);
+  const agency_cad_number = extractOfficialCadNumber(row);
   return {
     external_call_id,
+    ...(agency_cad_number ? {
+      agency_cad_number,
+      cad_number_source: 'official_government_feed',
+      official_cad_verified: true,
+    } : {
+      cad_number_source: 'bps_internal',
+      official_cad_verified: false,
+    }),
     incident: String(row.incident).trim(),
     location: String(row.location).trim(),
     agency,
@@ -65,51 +91,45 @@ function normalizeCall(row: any) {
 }
 
 function changed(existing: any, incoming: any) {
-  const fields = ['external_call_id','incident','location','agency','zone','status','priority','time_received','source','description','latitude','longitude','geo_confidence','geo_method','geo_approximate'];
+  const fields = ['external_call_id','agency_cad_number','bps_reference','cad_number_source','official_cad_verified','call_id','incident','location','agency','zone','status','priority','time_received','source','description','latitude','longitude','geo_confidence','geo_method','geo_approximate'];
   return fields.some(field => existing?.[field] !== incoming?.[field]);
 }
-
-const MONTH_LETTERS = 'ABCDEFGHIJKL';
 
 function easternMonthParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit' }).formatToParts(date);
   const year = parts.find(part => part.type === 'year')?.value || String(date.getUTCFullYear());
   const month = parts.find(part => part.type === 'month')?.value || String(date.getUTCMonth() + 1).padStart(2, '0');
-  return { year, month, monthIndex: Number(month) - 1 };
+  return { year, month };
 }
 
 async function reserveCadNumbers(base44: any, count: number) {
   if (count <= 0) return [];
-  const { year, month, monthIndex } = easternMonthParts(new Date());
-  const letter = MONTH_LETTERS[monthIndex];
-  const counterKey = `dispatch_call:${year}-${month}`;
+  const { year, month } = easternMonthParts(new Date());
+  const period = `${year}${month}`;
+  const counterKey = `bps_dispatch_call:${period}`;
   const counters = await base44.asServiceRole.entities.CadCounter.filter({ counter_key: counterKey });
   let counter = counters?.[0];
   const calls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
   const highest = (calls || []).reduce((max: number, call: any) => {
-    const callDate = new Date(call.time_received || call.created_date || 0);
-    if (Number.isNaN(callDate.getTime())) return max;
-    const callPeriod = easternMonthParts(callDate);
-    if (callPeriod.year !== year || callPeriod.month !== month) return max;
-    const match = String(call.call_id || '').match(/^([A-L])(\d{1,8})$/i);
-    return Math.max(max, match && match[1].toUpperCase() === letter ? Number(match[2]) : 0);
+    const match = String(call.bps_reference || call.call_id || '').match(/^BPS-(\d{6})-(\d{1,8})$/i);
+    return Math.max(max, match && match[1] === period ? Number(match[2]) : 0);
   }, Number(counter?.last_number || 0));
   if (!counter) counter = await base44.asServiceRole.entities.CadCounter.create({ counter_key: counterKey, last_number: highest });
   const first = Math.max(highest, Number(counter.last_number || 0)) + 1;
   const last = first + count - 1;
-  if (last > 99_999_999) throw new Error(`The ${year}-${month} CAD sequence has reached its eight-digit limit.`);
+  if (last > 99_999_999) throw new Error(`The ${period} BPS sequence has reached its eight-digit limit.`);
   await base44.asServiceRole.entities.CadCounter.update(counter.id, { last_number: last });
-  return Array.from({ length: count }, (_, index) => `${letter}${String(first + index).padStart(8, '0')}`);
+  return Array.from({ length: count }, (_, index) => `BPS-${period}-${String(first + index).padStart(8, '0')}`);
 }
 
 function chooseCanonical(records: any[]) {
   return [...records].sort((a, b) => {
-    const aValid = /^[A-L]\d{1,8}$/i.test(String(a.call_id || '')) ? 0 : 1;
-    const bValid = /^[A-L]\d{1,8}$/i.test(String(b.call_id || '')) ? 0 : 1;
-    if (aValid !== bValid) return aValid - bValid;
-    const aNum = Number(String(a.call_id || '').replace(/^[A-L]/i, '')) || Number.MAX_SAFE_INTEGER;
-    const bNum = Number(String(b.call_id || '').replace(/^[A-L]/i, '')) || Number.MAX_SAFE_INTEGER;
-    if (aNum !== bNum) return aNum - bNum;
+    const aOfficial = a.official_cad_verified && a.agency_cad_number ? 0 : 1;
+    const bOfficial = b.official_cad_verified && b.agency_cad_number ? 0 : 1;
+    if (aOfficial !== bOfficial) return aOfficial - bOfficial;
+    const aRef = String(a.bps_reference || a.call_id || '');
+    const bRef = String(b.bps_reference || b.call_id || '');
+    if (aRef !== bRef) return aRef.localeCompare(bRef);
     return new Date(a.created_date || 0).getTime() - new Date(b.created_date || 0).getTime();
   })[0];
 }
@@ -219,7 +239,7 @@ Deno.serve(async (req) => {
 
     const uniqueExisting = [...new Map(existingCalls.map(record => [record.id, record])).values()];
     const needingCad = uniqueExisting.filter(record =>
-      recordKey(record) && !/^[A-L]\d{1,8}$/i.test(String(record.call_id || ''))
+      recordKey(record) && !/^BPS-\d{6}-\d{8}$/i.test(String(record.bps_reference || ''))
     );
     const newCalls = incoming.filter(call =>
       !byExternal.has(call.external_call_id) && !byLegacy.has(legacyKey(call))
