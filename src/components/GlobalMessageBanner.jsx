@@ -1,85 +1,127 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MessageCircle, X } from 'lucide-react';
+import { Bell, MessageCircle, Siren, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
 
 const SOURCES = [
-  { entity: 'ChatMessage', label: 'Team Chat', page: 'TeamChat' },
-  { entity: 'SupervisorChatMessage', label: 'Supervisor Chat', page: 'SupervisorChat', supervisorOnly: true },
-  { entity: 'Message', label: 'New Message', page: 'OfficerInbox', direct: true },
+  { entity: 'ChatMessage', label: 'Team Chat', page: 'TeamChat', kind: 'message' },
+  { entity: 'SupervisorChatMessage', label: 'Supervisor Chat', page: 'SupervisorChat', supervisorOnly: true, kind: 'message' },
+  { entity: 'Message', label: 'New Message', page: 'OfficerInbox', direct: true, kind: 'message' },
+  { entity: 'Announcement', label: 'New Announcement', page: 'Announcements', kind: 'announcement' },
+  { entity: 'PropertyAlert', label: 'Monitored Property Call', page: 'DispatchCenter', kind: 'property' },
 ];
 
 const lowerRoles = user => new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+const normalized = value => String(value || '').trim().toLowerCase();
+
+function bannerText(source, record) {
+  if (source.kind === 'announcement') {
+    return {
+      sender: record.author_name || record.created_by || 'Black Point Protection',
+      message: [record.title, record.message || record.body || record.content].filter(Boolean).join(' — ') || 'A new announcement was posted.',
+    };
+  }
+  if (source.kind === 'property') {
+    const location = record.callLocation || record.propertyName || '';
+    return {
+      sender: record.propertyName || 'Monitored property',
+      message: [record.callIncident || 'New call for service', location, record.description].filter(Boolean).join(' — '),
+    };
+  }
+  return {
+    sender: record.sender_name || record.created_by || 'Black Point User',
+    message: record.message || record.body || record.content || record.description || 'You received a new message.',
+  };
+}
+
+function BannerIcon({ kind }) {
+  if (kind === 'property') return <Siren className="h-5 w-5 text-red-200" />;
+  if (kind === 'announcement') return <Bell className="h-5 w-5 text-amber-200" />;
+  return <MessageCircle className="h-5 w-5 text-blue-200" />;
+}
 
 export default function GlobalMessageBanner({ user }) {
   const [banners, setBanners] = useState([]);
   const knownIds = useRef(new Set());
-  const initialized = useRef(false);
+  const timers = useRef(new Map());
 
   useEffect(() => {
     if (!user?.id && !user?.email) return undefined;
-    let cancelled = false;
+
     const roles = lowerRoles(user);
+    const myIds = [user.id, user.email].filter(Boolean).map(normalized);
+    const unsubscribers = [];
 
     const visibleDirectMessage = message => {
-      const recipient = String(message.recipient_id || '').toLowerCase();
-      const sender = String(message.sender_id || '').toLowerCase();
-      const myIds = [user.id, user.email].filter(Boolean).map(value => String(value).toLowerCase());
+      const recipient = normalized(message.recipient_id || message.recipient_email || message.to);
+      const sender = normalized(message.sender_id || message.sender_email || message.created_by);
       if (myIds.includes(sender)) return false;
-      return recipient === 'company' || recipient === 'all' || recipient === '*' || myIds.includes(recipient) || (recipient === 'dispatch' && (user.role === 'admin' || user.role === 'dispatch' || roles.has('cad_access')));
+      return recipient === 'company'
+        || recipient === 'all'
+        || recipient === '*'
+        || myIds.includes(recipient)
+        || (recipient === 'dispatch' && (user.role === 'admin' || user.role === 'dispatch' || roles.has('cad_access')));
     };
 
-    const poll = async () => {
-      const collected = [];
-      for (const source of SOURCES) {
-        if (source.supervisorOnly && user.role !== 'admin' && !roles.has('supervisor') && !roles.has('full_access')) continue;
-        try {
-          const records = await base44.entities[source.entity].list('-created_date', 20);
-          for (const record of records || []) {
-            const senderEmail = String(record.sender_email || record.created_by || '').toLowerCase();
-            if (senderEmail && senderEmail === String(user.email || '').toLowerCase()) continue;
-            if (source.direct && !visibleDirectMessage(record)) continue;
-            collected.push({ source, record });
-          }
-        } catch (error) {
-          console.warn(`Unable to monitor ${source.entity}:`, error?.message);
-        }
-      }
-      if (cancelled) return;
-      collected.sort((a, b) => new Date(a.record.created_date || 0) - new Date(b.record.created_date || 0));
-      if (!initialized.current) {
-        collected.forEach(item => knownIds.current.add(`${item.source.entity}:${item.record.id}`));
-        initialized.current = true;
-        return;
-      }
-      for (const item of collected) {
-        const key = `${item.source.entity}:${item.record.id}`;
-        if (knownIds.current.has(key)) continue;
-        knownIds.current.add(key);
-        const record = item.record;
-        const banner = {
-          id: key,
-          title: item.source.label,
-          page: item.source.page,
-          sender: record.sender_name || record.created_by || 'Black Point User',
-          photo: record.sender_photo_url || '',
-          message: record.message || record.body || record.content || record.description || 'You received a new message.',
-        };
-        setBanners(current => [...current.slice(-2), banner]);
-        window.setTimeout(() => setBanners(current => current.filter(entry => entry.id !== key)), 20000);
-      }
+    const showBanner = (source, record) => {
+      if (!record?.id) return;
+      const senderEmail = normalized(record.sender_email || record.created_by);
+      if (source.kind !== 'property' && senderEmail && senderEmail === normalized(user.email)) return;
+      if (source.direct && !visibleDirectMessage(record)) return;
+
+      const key = `${source.entity}:${record.id}`;
+      if (knownIds.current.has(key)) return;
+      knownIds.current.add(key);
+
+      const text = bannerText(source, record);
+      const banner = {
+        id: key,
+        title: source.label,
+        page: source.page,
+        kind: source.kind,
+        sender: text.sender,
+        photo: record.sender_photo_url || '',
+        message: text.message,
+      };
+
+      setBanners(current => [...current.slice(-4), banner]);
+      const timer = window.setTimeout(() => {
+        setBanners(current => current.filter(entry => entry.id !== key));
+        timers.current.delete(key);
+      }, 20000);
+      timers.current.set(key, timer);
     };
 
-    poll();
-    const interval = window.setInterval(poll, 30000);
-    return () => { cancelled = true; window.clearInterval(interval); };
+    for (const source of SOURCES) {
+      if (source.supervisorOnly && user.role !== 'admin' && !roles.has('supervisor') && !roles.has('full_access')) continue;
+      try {
+        const unsubscribe = base44.entities[source.entity].subscribe(event => {
+          if (event?.type !== 'create') return;
+          showBanner(source, event.data);
+        });
+        if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+      } catch (error) {
+        console.warn(`Unable to subscribe to ${source.entity}:`, error?.message);
+      }
+    }
+
+    return () => {
+      unsubscribers.forEach(unsubscribe => unsubscribe());
+      timers.current.forEach(timer => window.clearTimeout(timer));
+      timers.current.clear();
+    };
   }, [user?.id, user?.email, user?.role, JSON.stringify(user?.additional_roles || [])]);
 
-  const dismiss = id => setBanners(current => current.filter(entry => entry.id !== id));
+  const dismiss = id => {
+    const timer = timers.current.get(id);
+    if (timer) window.clearTimeout(timer);
+    timers.current.delete(id);
+    setBanners(current => current.filter(entry => entry.id !== id));
+  };
 
   return (
-    <div className="pointer-events-none fixed right-3 top-3 z-[140] flex w-[min(420px,calc(100vw-24px))] flex-col gap-2">
+    <div className="pointer-events-none fixed right-3 top-3 z-[140] flex w-[min(440px,calc(100vw-24px))] flex-col gap-2">
       <AnimatePresence>
         {banners.map(banner => (
           <motion.button
@@ -89,23 +131,23 @@ export default function GlobalMessageBanner({ user }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -16, scale: 0.97 }}
             onClick={() => { dismiss(banner.id); window.location.href = createPageUrl(banner.page); }}
-            className="pointer-events-auto w-full overflow-hidden rounded-2xl border border-white/15 bg-[#111827]/95 text-left text-white shadow-2xl backdrop-blur-xl"
+            className={`pointer-events-auto w-full overflow-hidden rounded-2xl border text-left text-white shadow-2xl backdrop-blur-xl ${banner.kind === 'property' ? 'border-red-400/40 bg-red-950/95' : banner.kind === 'announcement' ? 'border-amber-300/35 bg-[#29200d]/95' : 'border-white/15 bg-[#111827]/95'}`}
           >
             <div className="flex items-start gap-3 p-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-blue-600/30 ring-1 ring-blue-300/30">
-                {banner.photo ? <img src={banner.photo} alt="" className="h-full w-full object-cover" /> : <MessageCircle className="h-5 w-5 text-blue-200" />}
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl ring-1 ${banner.kind === 'property' ? 'bg-red-600/30 ring-red-300/40' : banner.kind === 'announcement' ? 'bg-amber-500/25 ring-amber-200/30' : 'bg-blue-600/30 ring-blue-300/30'}`}>
+                {banner.photo ? <img src={banner.photo} alt="" className="h-full w-full object-cover" /> : <BannerIcon kind={banner.kind} />}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="truncate text-xs font-black uppercase tracking-[0.14em] text-blue-200">{banner.title}</p>
-                  <span className="ml-auto text-[10px] text-slate-400">NOW</span>
+                  <p className="truncate text-xs font-black uppercase tracking-[0.14em] text-white">{banner.title}</p>
+                  <span className="ml-auto text-[10px] text-slate-300">NOW</span>
                 </div>
                 <p className="mt-1 truncate text-sm font-bold text-white">{banner.sender}</p>
-                <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-200">{banner.message}</p>
+                <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-100">{banner.message}</p>
               </div>
-              <span onClick={event => { event.stopPropagation(); dismiss(banner.id); }} className="rounded-full p-1 text-slate-400 hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></span>
+              <span onClick={event => { event.stopPropagation(); dismiss(banner.id); }} className="rounded-full p-1 text-slate-300 hover:bg-white/10 hover:text-white"><X className="h-4 w-4" /></span>
             </div>
-            <div className="h-1 origin-left animate-[shrink_20s_linear_forwards] bg-blue-400" />
+            <div className={`h-1 origin-left animate-[shrink_20s_linear_forwards] ${banner.kind === 'property' ? 'bg-red-400' : banner.kind === 'announcement' ? 'bg-amber-300' : 'bg-blue-400'}`} />
           </motion.button>
         ))}
       </AnimatePresence>
