@@ -190,8 +190,7 @@ const CENTER_CONFIG = {
     icon: DollarSign,
     groups: [
       { label: 'Accounting', items: [
-        ['Payroll Management', 'AccountingPayroll', DollarSign],
-        ['Payroll Processing', 'AdminPayroll', DollarSign],
+        ['Payroll Center', 'AccountingPayroll', DollarSign],
         ['Payroll Configuration', 'AdminPayrollConfig', Settings],
         ['Payroll Dates', 'PayrollDates', CalendarClock],
         ['Client Invoices', 'AccountingInvoices', FileText],
