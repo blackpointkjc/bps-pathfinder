@@ -300,7 +300,7 @@ export default function VACriminalComplaints() {
       displayLocation,
       officerName: getOfficerFullDisplay(complaint.created_by),
       complainantName: complainantPrintName,
-      signatureName: getOfficerSignature(complaint.created_by),
+      signatureName: '',
     });
     return;
 
