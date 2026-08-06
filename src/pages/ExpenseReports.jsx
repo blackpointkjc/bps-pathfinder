@@ -139,17 +139,17 @@ export default function ExpenseReports() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-slate-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="mobile-page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
               <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
                 <DollarSign className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Expense Reports</h1>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent sm:text-4xl">Expense Reports</h1>
                 <p className="text-slate-600 mt-1">Submit and track your expense reimbursements</p>
               </div>
             </div>
-            <Button onClick={() => setShowDialog(true)} className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg">
+            <Button onClick={() => setShowDialog(true)} className="w-full bg-gradient-to-r from-green-600 to-emerald-600 shadow-lg hover:from-green-700 hover:to-emerald-700 sm:w-auto">
               <Plus className="w-5 h-5 mr-2" />
               New Expense
             </Button>
