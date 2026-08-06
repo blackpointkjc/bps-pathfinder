@@ -1,4 +1,4 @@
-import { getClientPortalUser } from '@/utils/clientPreview';
+import { getClientPortalUser, getClientPreviewId } from '@/utils/clientPreview';
 import React, { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";

@@ -1,4 +1,4 @@
-import { getClientPortalUser } from '@/utils/clientPreview';
+import { getClientPortalUser, getClientPreviewId } from '@/utils/clientPreview';
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -28,8 +28,9 @@ export default function ClientFeedback() {
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
-    queryKey: ['currentUser'],
+    queryKey: ['clientPortalUser', getClientPreviewId()],
     queryFn: getClientPortalUser,
+    staleTime: 0,
   });
 
   const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);

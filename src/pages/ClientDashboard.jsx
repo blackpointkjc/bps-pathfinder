@@ -1,4 +1,4 @@
-import { getClientPortalUser } from '@/utils/clientPreview';
+import { getClientPortalUser, getClientPreviewId } from '@/utils/clientPreview';
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
@@ -18,8 +18,9 @@ export default function ClientDashboard() {
   const [selectedLocation, setSelectedLocation] = useState("");
   
   const { data: user } = useQuery({
-    queryKey: ['currentUser'],
+    queryKey: ['clientPortalUser', getClientPreviewId()],
     queryFn: getClientPortalUser,
+    staleTime: 0,
   });
 
   const isClient = user?.additional_roles?.includes('client');
