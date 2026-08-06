@@ -27,10 +27,10 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   const load = async () => {
     const [records, preferences] = await Promise.all([
       base44.entities.Message.list('-created_date', 500),
-      base44.entities.InboxThreadPreference.filter({ user_email: currentUser.email, hidden: true }, '-created_date', 200).catch(() => []),
+      base44.entities.InboxThreadPreference.filter({ user_email: currentUser.email }, '-created_date', 500).catch(() => []),
     ]);
     setMessages(records || []);
-    setHiddenPreferences(preferences || []);
+    setHiddenPreferences((preferences || []).filter(preference => preference.hidden !== false));
   };
 
   useEffect(() => {
@@ -43,16 +43,12 @@ export default function UniversalInbox({ currentUser, users = [] }) {
 
   useEffect(() => {
     load();
-    const unsubscribe = base44.entities.Message.subscribe(async event => {
-      if (event?.type === 'create') {
-        const key = threadKeyFor(event.data);
-        const hidden = hiddenPreferences.find(item => item.thread_key === key);
-        if (hidden) await base44.entities.InboxThreadPreference.delete(hidden.id).catch(() => null);
-      }
-      load();
-    });
+    // Message delivery must not remove a user's archived-thread preference.
+    // Delayed/duplicate realtime create events previously made deleted threads
+    // reappear immediately.
+    const unsubscribe = base44.entities.Message.subscribe(() => load());
     return unsubscribe;
-  }, [currentUser.id, currentUser.email, hiddenPreferences.map(item => item.id).join(',')]);
+  }, [currentUser.id, currentUser.email]);
 
   const threads = useMemo(() => {
     const map = new Map();
@@ -140,24 +136,39 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   const removeThread = async thread => {
     const existing = hiddenPreferences.find(item => item.thread_key === thread.key);
     setSelectedKey(null);
-    if (existing) return;
 
     const optimistic = {
-      id: `pending:${thread.key}`,
+      id: existing?.id || `pending:${thread.key}`,
       user_email: currentUser.email,
       thread_key: thread.key,
       hidden: true,
+      hidden_at: new Date().toISOString(),
     };
-    setHiddenPreferences(current => [...current, optimistic]);
+    setHiddenPreferences(current => [
+      ...current.filter(item => item.thread_key !== thread.key),
+      optimistic,
+    ]);
+
     try {
-      const created = await base44.entities.InboxThreadPreference.create({
-        user_email: currentUser.email,
-        thread_key: thread.key,
-        hidden: true,
-      });
-      setHiddenPreferences(current => current.map(item => item.id === optimistic.id ? created : item));
+      if (existing?.id && !String(existing.id).startsWith('pending:')) {
+        await base44.entities.InboxThreadPreference.update(existing.id, {
+          hidden: true,
+          hidden_at: optimistic.hidden_at,
+        });
+      } else {
+        await base44.entities.InboxThreadPreference.create({
+          user_email: currentUser.email,
+          thread_key: thread.key,
+          hidden: true,
+          hidden_at: optimistic.hidden_at,
+        });
+      }
+      // Confirm the server-side preference so refresh/realtime reloads cannot
+      // restore the archived conversation.
+      await load();
     } catch (error) {
-      console.error('[Inbox] Unable to persist removed thread:', error?.message);
+      console.error('[Inbox] Unable to persist archived thread:', error?.message);
+      await load();
     }
   };
 
