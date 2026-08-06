@@ -228,7 +228,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
         <MapContainer
             center={defaultCenter}
             zoom={isNavigating ? 18 : 13}
-            className="h-full w-full"
+            className={`h-full w-full map-theme-${mapTheme}`}
             zoomControl={false}
             minZoom={3}
             maxZoom={20}
