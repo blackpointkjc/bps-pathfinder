@@ -1,6 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
 const GRAC_API_URL = 'https://gractivecalls.com/api/active';
+const HENRICO_ACTIVE_URL = 'https://activecalls.henrico.gov/';
+const CHESTERFIELD_CALLS_URL = 'https://api.chesterfield.gov/api/Police/V1.1/Calls/CallsForService';
+const CHESTERFIELD_PUBLIC_API_KEY = '9f42e1e5-200a-4540-86de-74b8c2a11670';
 const ALLOWED_AGENCIES = new Set(['RPD', 'RFD', 'HPD', 'HFD', 'CCPD', 'CCFD']);
 const AGENCY_SOURCE: Record<string, string> = { RPD: 'richmond', RFD: 'richmond', HPD: 'henrico', HFD: 'henrico', CCPD: 'chesterfield', CCFD: 'chesterfield' };
 
