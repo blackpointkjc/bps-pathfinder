@@ -338,22 +338,22 @@ export default function DispatchCenter() {
 
 
     return (
-        <div className="h-screen flex flex-col bg-[#0a0e1a] text-white overflow-hidden font-mono">
+        <div className="h-full md:h-screen min-h-0 flex flex-col bg-[#0a0e1a] text-white overflow-hidden font-mono">
             <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={true} />
             <NewCallAlert call={pendingAlertCall} onAcknowledge={handleAcknowledge} />
 
             {/* ══ TOP SYSTEM BAR ══ */}
-            <div className="flex-none h-9 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center px-3 gap-3">
+            <div className="flex-none min-h-9 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center px-2 md:px-3 gap-2 md:gap-3 overflow-x-auto">
                 <div className="flex items-center gap-2">
                     <Radio className="w-4 h-4 text-[#f5a623]" />
                     <span className="text-[#f5a623] font-bold text-xs tracking-widest">BPS CAD</span>
                     <span className="text-slate-500 text-xs">|</span>
-                    <span className="text-slate-300 text-xs">DISPATCH CENTER</span>
+                    <span className="text-slate-300 text-xs whitespace-nowrap">DISPATCH CENTER</span>
                     <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse ml-1" />
                     <span className="text-green-400 text-[10px]">ONLINE</span>
                 </div>
                 <div className="flex-1" />
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 whitespace-nowrap">
                     <button onClick={() => setShowCreateDialog(true)}
                         className="flex items-center gap-1 px-3 py-1 bg-red-700 hover:bg-red-600 border border-red-500 rounded text-[10px] text-white font-bold">
                         <Plus className="w-3 h-3" /> NEW CALL
@@ -391,8 +391,8 @@ export default function DispatchCenter() {
             <PropertyAlertsBanner />
 
             {/* ══ QUEUE CONTROLS ══ */}
-            <div className="flex-none flex items-center gap-2 px-3 py-1.5 bg-[#0a0e1a] border-b border-[#1e2d4a]">
-                <div className="relative w-56">
+            <div className="flex-none flex items-center gap-2 px-2 md:px-3 py-1.5 bg-[#0a0e1a] border-b border-[#1e2d4a] overflow-x-auto">
+                <div className="relative min-w-52 md:w-56">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
                     <input value={queueSearch} onChange={e => setQueueSearch(e.target.value)} placeholder="Search CAD, incident, address..."
                         className="w-full h-7 pl-7 pr-2 bg-[#111827] border border-[#263653] rounded text-[10px] text-white outline-none focus:border-blue-500" />
@@ -419,10 +419,10 @@ export default function DispatchCenter() {
                     <PriorCallsView currentUser={currentUser} units={units} />
                 </div>
             ) : (
-                <div className="flex-1 min-h-0 flex overflow-hidden">
+                <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
 
                     {/* ═══ LEFT: ACTIVE CALLS TABLE ═══ */}
-                    <div className="w-[340px] flex-none flex flex-col border-r border-[#1e2d4a]">
+                    <div className="w-full md:w-[340px] min-h-[260px] md:min-h-0 md:flex-none flex flex-col border-b md:border-b-0 md:border-r border-[#1e2d4a]">
                         {/* Police Calls */}
                         <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />
@@ -465,20 +465,20 @@ export default function DispatchCenter() {
                     </div>
 
                     {/* ═══ CENTER: MAP + CALL DETAIL ═══ */}
-                    <div className="flex-1 min-w-0 flex flex-col border-r border-[#1e2d4a]">
+                    <div className="w-full md:flex-1 min-w-0 min-h-[520px] md:min-h-0 flex flex-col border-b md:border-b-0 md:border-r border-[#1e2d4a]">
                         {/* Call Detail */}
                         <div className="flex-none border-b border-[#1e2d4a]" style={{minHeight: 0}}>
                             {selectedCall ? (
                                 <div className="overflow-auto" style={{maxHeight: '340px'}}>
-                                    <div className="px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-3">
+                                    <div className="px-3 md:px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center gap-2 md:gap-3">
                                         <span className="text-[#f5a623] font-bold text-xs">CAD #{/^B\d+$/i.test(String(selectedCall.call_id || '')) ? selectedCall.call_id : 'ASSIGNING…'}</span>
                                         <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(selectedCall.priority)}`}>{(selectedCall.priority || 'low').toUpperCase()}</span>
                                         <span className="text-[10px] text-slate-400">{selectedCall.status}</span>
-                                        <span className="ml-auto text-[9px] text-slate-500">
+                                        <span className="w-full md:w-auto md:ml-auto text-[9px] text-slate-500">
                                             RECV: {new Date(selectedCall.time_received || selectedCall.created_date).toLocaleString('en-US', {timeZone:'America/New_York', month:'2-digit', day:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit'})}
                                         </span>
                                     </div>
-                                    <div className="px-4 py-2 grid grid-cols-2 gap-x-6 gap-y-1 text-[10px]">
+                                    <div className="px-3 md:px-4 py-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-[10px]">
                                         <div><span className="text-slate-500">INCIDENT: </span><span className="text-white font-bold">{selectedCall.incident}</span></div>
                                         <div><span className="text-slate-500">AGENCY: </span><span className="text-white">{selectedCall.agency || '—'}</span></div>
                                         <div><span className="text-slate-500">PRIORITY: </span><span className="text-white">{selectedCall.priority ? selectedCall.priority.charAt(0).toUpperCase() + selectedCall.priority.slice(1).toLowerCase() : '—'}</span></div>
@@ -509,7 +509,7 @@ export default function DispatchCenter() {
                                         ))}
                                         <button onClick={() => updateCallStatus('Cancelled')} className="px-2 py-1 rounded border border-red-700 text-[9px] text-red-400 hover:bg-red-950/50">CANCEL</button>
                                     </div>
-                                    <div className="px-4 pb-3 grid grid-cols-[1fr_260px] gap-3">
+                                    <div className="px-3 md:px-4 pb-3 grid grid-cols-1 md:grid-cols-[1fr_260px] gap-3">
                                         <div>
                                             <div className="text-[9px] text-slate-500 mb-1 flex items-center gap-1"><History className="w-3 h-3" /> CAD TIMELINE / NOTES</div>
                                             <div className="bg-[#111827] border border-[#263653] rounded max-h-24 overflow-y-auto">
@@ -568,7 +568,7 @@ export default function DispatchCenter() {
                     </div>
 
                     {/* ═══ RIGHT: UNITS ═══ */}
-                    <div className="w-64 flex-none flex flex-col">
+                    <div className="w-full md:w-64 min-h-[320px] md:min-h-0 md:flex-none flex flex-col">
                         {/* Unit Assignment */}
                         <div className="flex-none border-b border-[#1e2d4a]">
                             <div className="px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
@@ -626,7 +626,7 @@ export default function DispatchCenter() {
             )}
 
             {/* ══ BOTTOM STATUS BAR ══ */}
-            <div className="flex-none h-6 bg-[#0d1220] border-t border-[#1e2d4a] flex items-center px-3 gap-4 text-[9px] text-slate-500">
+            <div className="flex-none min-h-6 bg-[#0d1220] border-t border-[#1e2d4a] flex items-center px-3 gap-4 text-[9px] text-slate-500 overflow-x-auto whitespace-nowrap">
                 <span>CALLS: <span className="text-white">{allCalls.length}</span></span>
                 <span>UNITS ACTIVE: <span className="text-green-400">{units.filter(u => u.status && u.status !== 'Out of Service').length}</span></span>
                 <span>UNASSIGNED: <span className="text-yellow-400">{allCalls.filter(c => !c.assigned_units?.length).length}</span></span>
