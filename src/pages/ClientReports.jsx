@@ -199,7 +199,7 @@ export default function ClientReports() {
         senderName: 'Black Point Protection',
         senderAddress: site?.address || report.location,
         officerName,
-        signatureName: officerSig,
+        signatureName: '',
         policeDepartment: resolvePoliceDepartment(site || { site_name: report.location, division: 'Virginia' }),
       });
       return;
@@ -209,7 +209,7 @@ export default function ClientReports() {
         displayLocation: report.location,
         officerName,
         complainantName: report.complainant_name || officerName,
-        signatureName: officerSig,
+        signatureName: '',
       });
       return;
     }
@@ -705,10 +705,8 @@ export default function ClientReports() {
           
           <div class="signature-section">
             <div class="field-label">Officer Signature</div>
-            <div class="sig-line">${officerSig}</div>
-            <div class="sig-details">
-              ${officerName} | ${report.officer_ip_address ? `IP: ${report.officer_ip_address} | ` : ''}Electronically Signed: ${report.created_date ? format(new Date(report.created_date), 'MMM d, yyyy h:mm a') : 'N/A'}
-            </div>
+            <div class="sig-line"></div>
+            <div class="sig-details">Date: ____________________</div>
           </div>
           
           <div class="footer">
