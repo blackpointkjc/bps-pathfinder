@@ -138,35 +138,6 @@ body::-webkit-scrollbar-button,
   height: 0;
 }
 
-/* Full-detail Esri street data with a readable night treatment at every zoom. */
-.map-theme-night,
-.leaflet-container.map-theme-night {
-  background: #06101d !important;
-}
-
-.map-theme-night .leaflet-tile,
-.leaflet-tile.esri-night-map,
-.esri-night-map .leaflet-tile {
-  filter: invert(0.94) hue-rotate(178deg) brightness(0.42) contrast(1.42) saturate(0.62) !important;
-}
-
-.map-theme-night .leaflet-control-attribution {
-  background: rgba(3, 9, 18, 0.82) !important;
-  color: #8da7bf !important;
-}
-
-.map-theme-night .leaflet-control-attribution a {
-  color: #79b8ed !important;
-}
-
-.map-theme-day .leaflet-tile {
-  filter: none !important;
-}
-
-.leaflet-container {
-  background: #07111f;
-}
-
 /* Mobile field mode: keep every page reachable and usable on phones. */
 @media (max-width: 767px) {
   html,
