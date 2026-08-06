@@ -87,7 +87,7 @@ export default function OfficerAvailability() {
           </CardHeader>
           <CardContent className="space-y-4">
             {DAYS.map(day => (
-              <div key={day} className="flex items-center justify-between p-4 border rounded-lg">
+              <div key={day} className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
                 <div className="flex items-center gap-3">
                   <Checkbox
                     checked={availability[day]?.available !== false}
@@ -98,7 +98,7 @@ export default function OfficerAvailability() {
                   </Label>
                 </div>
                 {availability[day]?.available !== false && (
-                  <div className="flex gap-2 items-center">
+                  <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 sm:w-auto">
                     <input
                       type="time"
                       value={availability[day]?.preferred_start_time || '18:00'}
@@ -106,7 +106,7 @@ export default function OfficerAvailability() {
                         ...prev,
                         [day]: { ...prev[day], preferred_start_time: e.target.value }
                       }))}
-                      className="p-2 border rounded"
+                      className="min-w-0 w-full p-2 border rounded"
                     />
                     <span>to</span>
                     <input
@@ -116,7 +116,7 @@ export default function OfficerAvailability() {
                         ...prev,
                         [day]: { ...prev[day], preferred_end_time: e.target.value }
                       }))}
-                      className="p-2 border rounded"
+                      className="min-w-0 w-full p-2 border rounded"
                     />
                   </div>
                 )}
