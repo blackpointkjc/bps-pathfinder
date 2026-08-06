@@ -25,12 +25,14 @@ export default function OfficerAnalytics() {
     queryKey: ['myTimeEntries', user?.email],
     queryFn: () => base44.entities.TimeEntry.filter({ officer_email: user?.email }, '-clock_in'),
     enabled: !!user?.email,
+    refetchInterval: 15000,
   });
 
   const { data: schedules } = useQuery({
     queryKey: ['mySchedules', user?.email],
     queryFn: () => base44.entities.Schedule.filter({ officer_email: user?.email }, '-shift_date'),
     enabled: !!user?.email,
+    refetchInterval: 15000,
   });
 
   const { data: trainingCompletions } = useQuery({
@@ -89,23 +91,20 @@ export default function OfficerAnalytics() {
   }, [timeEntries, schedules, currentMonthStart, currentMonthEnd]);
 
   const hoursStats = useMemo(() => {
-    if (!timeEntries || !schedules) return { regular: 0, overtime: 0, total: 0, weeklyBreakdown: [] };
+    if (!timeEntries) return { regular: 0, overtime: 0, total: 0, weeklyBreakdown: [] };
 
     let totalHours = 0;
     const weeklyHours = {};
 
-    // Filter to current month only - use schedules instead of time entries for more accuracy
-    const monthlySchedules = schedules.filter(s => 
-      s.shift_date >= currentMonthStart && s.shift_date <= currentMonthEnd
-    );
-
-    monthlySchedules.forEach(schedule => {
-      const start = parseInt(schedule.start_time.replace(':', ''));
-      const end = parseInt(schedule.end_time.replace(':', ''));
-      const hours = end < start ? ((2400 - start) + end) / 100 : (end - start) / 100;
+    timeEntries.filter(entry => {
+      if (!entry.clock_in || !entry.clock_out) return false;
+      const date = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
+      return date >= currentMonthStart && date <= currentMonthEnd;
+    }).forEach(entry => {
+      const hours = Math.max(0, (new Date(entry.clock_out) - new Date(entry.clock_in)) / 3600000 - Number(entry.lunch_duration || entry.lunch_minutes || 0) / 60);
       totalHours += hours;
 
-      const date = parseISO(schedule.shift_date);
+      const date = parseISO(entry.clock_in);
       const dayOfWeek = date.getDay();
       const daysSinceFriday = (dayOfWeek + 2) % 7;
       const weekStart = new Date(date);
@@ -135,7 +134,7 @@ export default function OfficerAnalytics() {
     }));
 
     return { regular: Math.round(regular * 10) / 10, overtime: Math.round(overtime * 10) / 10, total: Math.round(totalHours * 10) / 10, weeklyBreakdown };
-  }, [schedules, currentMonthStart, currentMonthEnd]);
+  }, [timeEntries, currentMonthStart, currentMonthEnd]);
 
   const shiftStats = useMemo(() => {
     if (!schedules) return { splitShifts: 0, overnightShifts: 0, totalShifts: 0 };
