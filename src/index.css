@@ -2,6 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile Admin Center normalization */
+@media (max-width: 767px) {
+  .cad-app main[data-page^="Admin"] {
+    overflow-x: hidden;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+
+  .cad-app main[data-page^="Admin"] > * {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .cad-app main[data-page^="Admin"] [class*="max-w-"] {
+    max-width: 100% !important;
+  }
+
+  .cad-app main[data-page^="Admin"] [class*="p-8"] {
+    padding: 0.875rem !important;
+  }
+
+  .cad-app main[data-page^="Admin"] [class*="px-8"] {
+    padding-left: 0.875rem !important;
+    padding-right: 0.875rem !important;
+  }
+
+  .cad-app main[data-page^="Admin"] [class*="gap-8"] {
+    gap: 1rem !important;
+  }
+
+  .cad-app main[data-page^="Admin"] h1 {
+    font-size: 1.5rem !important;
+    line-height: 1.2 !important;
+    overflow-wrap: anywhere;
+  }
+
+  .cad-app main[data-page^="Admin"] h2 {
+    font-size: 1.125rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .cad-app main[data-page^="Admin"] .grid {
+    min-width: 0;
+  }
+
+  .cad-app main[data-page^="Admin"] .flex {
+    min-width: 0;
+  }
+
+  .cad-app main[data-page^="Admin"] table {
+    min-width: 700px;
+  }
+
+  .cad-app main[data-page^="Admin"] [class*="overflow-x-auto"],
+  .cad-app main[data-page^="Admin"] [class*="overflow-auto"] {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cad-app main[data-page^="Admin"] input,
+  .cad-app main[data-page^="Admin"] select,
+  .cad-app main[data-page^="Admin"] textarea,
+  .cad-app main[data-page^="Admin"] button {
+    max-width: 100%;
+  }
+
+  .cad-app main[data-page="AdminLocationTracker"] .leaflet-container {
+    height: 360px !important;
+    min-height: 360px;
+    width: 100% !important;
+  }
+
+  .cad-app main[data-page="AdminLocationTracker"] [class*="h-[600px]"] {
+    height: 360px !important;
+  }
+
+  .cad-app main[data-page="AdminLocationTracker"] .leaflet-popup-content {
+    max-width: 220px;
+    margin: 0.75rem;
+  }
+}
+
 /* Pathfinder CAD/RMS design system */
 :root {
   --bps-command-950: #050b12;
