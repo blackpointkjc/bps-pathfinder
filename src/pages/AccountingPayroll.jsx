@@ -790,7 +790,7 @@ export default function AccountingPayroll() {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Payroll Center</h1>
           <p className="text-slate-600">Process payroll, approve payments, and access payroll and client reports in one place</p>
