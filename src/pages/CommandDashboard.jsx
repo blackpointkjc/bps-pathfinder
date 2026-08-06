@@ -87,6 +87,7 @@ function CommandDashboardInner() {
     const [syncStatus, setSyncStatus]           = useState({ state: 'idle', lastSync: null, added: 0, updated: 0, total: 0, error: null });
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [selectedCall, setSelectedCall] = useState(null);
+    const [agencyFilter, setAgencyFilter] = useState('ALL');
     const [, setTick]                           = useState(0);
 
     const soundEnabledRef        = useRef(true);
@@ -192,11 +193,12 @@ function CommandDashboardInner() {
         const legacy = compactBps(call?.call_id);
         if (official) return { value: official, type: 'official' };
         if (bps) return { value: bps, type: 'bps' };
-        if (legacy) return { value: legacy, type: /^BPS-/i.test(legacy) ? 'bps' : 'official' };
+        if (legacy && !/^B\d+$/i.test(legacy)) return { value: legacy, type: /^BPS-/i.test(legacy) ? 'bps' : 'official' };
         return { value: 'REFERENCE PENDING', type: 'pending' };
     };
 
-    const sortedCalls = [...calls].sort((a, b) => {
+    const visibleCalls = agencyFilter === 'ALL' ? calls : calls.filter(call => call.agency === agencyFilter);
+    const sortedCalls = [...visibleCalls].sort((a, b) => {
         const getRef = (c) => {
             const created = c.created_date ? new Date(c.created_date).getTime() : 0;
             const received = c.time_received ? new Date(c.time_received).getTime() : 0;
@@ -361,7 +363,12 @@ function CommandDashboardInner() {
 
                 {/* ── CALL QUEUE (3 cols) ── */}
                 <div className="lg:col-span-3 flex flex-col border-r border-slate-800 min-h-0">
-                    <PanelHeader count={calls.length}>ACTIVE INCIDENT QUEUE</PanelHeader>
+                    <div className="flex items-center justify-between gap-3 bg-slate-800/80 border-b border-slate-700 border-t-2 border-t-gold px-3 py-2.5">
+                        <div className="flex items-center gap-2"><div className="w-1.5 h-5 bg-gold rounded-sm" /><span className="text-white font-mono font-bold text-xs tracking-widest">ACTIVE INCIDENT QUEUE</span><span className="text-[10px] font-mono font-bold px-1.5 py-0.5 bg-slate-700 border border-slate-600 text-slate-300 rounded">{visibleCalls.length}</span></div>
+                        <select value={agencyFilter} onChange={e => setAgencyFilter(e.target.value)} className="bg-slate-900 border border-slate-600 text-slate-200 text-[10px] font-mono rounded px-2 py-1">
+                            <option value="ALL">ALL AGENCIES</option><option value="RPD">RPD</option><option value="RFD">RFD</option><option value="HPD">HPD</option><option value="HFD">HFD</option><option value="CCPD">CCPD</option><option value="CCFD">CCFD</option>
+                        </select>
+                    </div>
 
                     <div className="hidden md:flex items-center bg-slate-900 border-b border-slate-700 px-3 py-1 text-[9px] font-mono text-slate-500 tracking-widest flex-none">
                         <div className="w-8 flex-shrink-0">PRI</div>
