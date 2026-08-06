@@ -17,12 +17,12 @@ export default function OfficerInbox() {
   });
 
   if (loadingUser || !currentUser) {
-    return <div className="flex min-h-[60vh] items-center justify-center text-slate-400">Loading dispatch messages...</div>;
+    return <div className="flex min-h-[60vh] items-center justify-center text-slate-400">Loading inbox...</div>;
   }
 
   return (
     <div className="h-[calc(100vh-5.5rem)] p-3 md:p-5">
-      <MessagingPanel currentUser={currentUser} units={units} embedded />
+      <MessagingPanel currentUser={currentUser} units={units} embedded inboxOnly />
     </div>
   );
 }
