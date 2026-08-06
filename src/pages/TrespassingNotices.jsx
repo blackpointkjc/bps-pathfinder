@@ -372,7 +372,7 @@ export default function TrespassingNotices() {
       senderName: 'Black Point Protection',
       senderAddress: siteLocation?.address || notice.location,
       officerName: officerFullName,
-      signatureName: getOfficerSignature(notice.created_by),
+      signatureName: '',
       policeDepartment: resolvePoliceDepartment(siteLocation || { site_name: notice.location, division: 'Virginia' }),
     });
     return;
@@ -543,12 +543,8 @@ export default function TrespassingNotices() {
               </div>
               <div>
                 <div class="sig-label">ISSUING OFFICER:</div>
-                <div class="sig-line">${getOfficerSignature(notice.created_by)}</div>
-                <div style="font-size: 8pt; text-align: center;">
-                  ${officerFullName}<br/>
-                  ${notice.officer_ip_address ? `IP: ${notice.officer_ip_address}<br/>` : ''}
-                  ${notice.created_date ? `Signed: ${format(new Date(notice.created_date), 'MMM d, yyyy h:mm a')}` : ''}
-                </div>
+                <div class="sig-line"></div>
+                <div style="font-size: 8pt; text-align: center;">Date: ____________________</div>
               </div>
             </div>
           </div>
