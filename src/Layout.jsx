@@ -407,26 +407,28 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             <label htmlFor={mobile ? 'mobile-workspace-select' : 'desktop-workspace-select'} className="mb-1.5 block text-[8px] font-bold uppercase tracking-[0.18em] text-[#6886a3]">
               Workspace
             </label>
-            <div className="relative flex items-center rounded-lg border border-[#315879] bg-gradient-to-r from-[#102c49] to-[#0c2238] shadow-inner transition focus-within:border-cyan-500/70 focus-within:ring-2 focus-within:ring-cyan-900/40">
-              {React.createElement(center.icon, { className: 'pointer-events-none absolute left-3 h-4 w-4 text-cyan-300' })}
-              <select
-                id={mobile ? 'mobile-workspace-select' : 'desktop-workspace-select'}
-                value={activeCenter}
-                onChange={event => setActiveCenter(event.target.value)}
-                className="h-10 w-full cursor-pointer appearance-none bg-transparent pl-10 pr-9 text-[11px] font-bold text-white outline-none"
-                aria-label="Select workspace"
-              >
-                {availableCenters.map(key => {
-                  const item = CENTER_CONFIG[key];
-                  const centerUnread = (CENTER_UNREAD_PAGES[key] || []).reduce((sum, page) => sum + (Number(unreadCounts[page]) || 0), 0);
-                  return (
-                    <option key={key} value={key} className="bg-[#0b1928] text-white">
-                      {item.label}{centerUnread ? ` — ${centerUnread > 99 ? '99+' : centerUnread} unread` : ''}
-                    </option>
-                  );
-                })}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 h-4 w-4 text-[#8fb1cf]" />
+            <div className="relative">
+              {React.createElement(center.icon, { className: 'pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-cyan-300' })}
+              <Select value={activeCenter} onValueChange={setActiveCenter}>
+                <SelectTrigger
+                  id={mobile ? 'mobile-workspace-select' : 'desktop-workspace-select'}
+                  className="h-10 w-full border-[#315879] bg-gradient-to-r from-[#102c49] to-[#0c2238] pl-10 text-[11px] font-bold text-white shadow-inner focus:ring-cyan-900/40"
+                  aria-label="Select workspace"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-[#315879] bg-[#0b1928] text-white">
+                  {availableCenters.map(key => {
+                    const item = CENTER_CONFIG[key];
+                    const centerUnread = (CENTER_UNREAD_PAGES[key] || []).reduce((sum, page) => sum + (Number(unreadCounts[page]) || 0), 0);
+                    return (
+                      <SelectItem key={key} value={key} className="focus:bg-[#15314f] focus:text-white">
+                        {item.label}{centerUnread ? ` — ${centerUnread > 99 ? '99+' : centerUnread} unread` : ''}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         )}
