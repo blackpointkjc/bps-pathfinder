@@ -34,12 +34,14 @@ export default function MyPerformanceAnalytics() {
     queryKey: ['myTimeEntries', user?.email],
     queryFn: () => base44.entities.TimeEntry.filter({ officer_email: user?.email }, '-clock_in'),
     enabled: !!user?.email,
+    refetchInterval: 15000,
   });
 
   const { data: schedules } = useQuery({
     queryKey: ['mySchedules', user?.email],
     queryFn: () => base44.entities.Schedule.filter({ officer_email: user?.email }, '-shift_date'),
     enabled: !!user?.email,
+    refetchInterval: 15000,
   });
 
   const { data: myBids } = useQuery({
@@ -170,32 +172,26 @@ export default function MyPerformanceAnalytics() {
     return { rate, onTime, late, total };
   }, [timeEntries, schedules, currentMonthStart, currentMonthEnd]);
 
-  // Calculate hours breakdown - MONTHLY RESET
+  // Calculate actual worked hours from completed time entries - MONTHLY RESET
   const hoursData = React.useMemo(() => {
-    if (!schedules) return { regular: 0, overtime: 0, total: 0, weeklyData: [] };
-
-    const calculateShiftHours = (start, end) => {
-      const s = parseInt(start.replace(':', ''));
-      const e = parseInt(end.replace(':', ''));
-      return e < s ? ((2400 - s) + e) / 100 : (e - s) / 100;
-    };
-
-    // Filter to current month only
-    const monthlySchedules = schedules.filter(s => 
-      s.shift_date >= currentMonthStart && s.shift_date <= currentMonthEnd
-    );
+    if (!timeEntries) return { regular: 0, overtime: 0, total: 0, weeklyData: [] };
 
     const weeklyHours = {};
-    monthlySchedules.forEach(s => {
-      const date = parseISO(s.shift_date);
+    timeEntries.filter(entry => {
+      if (!entry.clock_in || !entry.clock_out) return false;
+      const date = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
+      return date >= currentMonthStart && date <= currentMonthEnd;
+    }).forEach(entry => {
+      const date = parseISO(entry.clock_in);
       const dayOfWeek = date.getDay();
       const daysSinceFriday = (dayOfWeek + 2) % 7;
       const weekStart = new Date(date);
       weekStart.setDate(weekStart.getDate() - daysSinceFriday);
       const weekKey = format(weekStart, 'yyyy-MM-dd');
+      const hours = Math.max(0, (new Date(entry.clock_out) - new Date(entry.clock_in)) / 3600000 - Number(entry.lunch_duration || entry.lunch_minutes || 0) / 60);
 
       if (!weeklyHours[weekKey]) weeklyHours[weekKey] = 0;
-      weeklyHours[weekKey] += calculateShiftHours(s.start_time, s.end_time);
+      weeklyHours[weekKey] += hours;
     });
 
     let regular = 0, overtime = 0;
@@ -212,7 +208,7 @@ export default function MyPerformanceAnalytics() {
     });
 
     return { regular: Math.round(regular * 10) / 10, overtime: Math.round(overtime * 10) / 10, total: Math.round((regular + overtime) * 10) / 10, weeklyData };
-  }, [schedules, currentMonthStart, currentMonthEnd]);
+  }, [timeEntries, currentMonthStart, currentMonthEnd]);
 
   // Training completion
   const trainingStats = React.useMemo(() => {
