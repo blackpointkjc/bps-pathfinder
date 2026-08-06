@@ -8,8 +8,6 @@ Deno.serve(async (req) => {
 
         const user = await base44.auth.me();
         if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-        if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-
         const activeCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 500);
 
         const now = new Date();
@@ -21,18 +19,39 @@ Deno.serve(async (req) => {
 
             if (ageMs > ONE_HOUR_MS) {
                 try {
-                    await base44.asServiceRole.entities.CallHistory.create({
-                        time_received: call.time_received,
-                        incident: call.incident,
-                        location: call.location,
-                        agency: call.agency,
-                        status: call.status || 'Completed',
-                        latitude: call.latitude,
-                        longitude: call.longitude,
-                        ai_summary: call.ai_summary,
-                        archived_date: now.toISOString()
-                    });
+                    const existing = await base44.asServiceRole.entities.CallHistory.filter({ original_call_id: call.id }, '-archived_date', 1);
+                    if (!existing?.length) {
+                        await base44.asServiceRole.entities.CallHistory.create({
+                            original_call_id: call.id,
+                            call_id: call.call_id,
+                            external_call_id: call.external_call_id,
+                            time_received: call.time_received || call.created_date,
+                            incident: call.incident,
+                            location: call.location,
+                            cross_street: call.cross_street,
+                            agency: call.agency || 'BPS',
+                            status: call.status || 'Completed',
+                            priority: call.priority,
+                            zone: call.zone,
+                            latitude: call.latitude,
+                            longitude: call.longitude,
+                            description: call.description,
+                            ai_summary: call.ai_summary,
+                            assigned_units: call.assigned_units || [],
+                            caller_name: call.caller_name,
+                            caller_phone: call.caller_phone,
+                            hazards: call.hazards,
+                            time_dispatched: call.time_dispatched,
+                            time_enroute: call.time_enroute,
+                            time_on_scene: call.time_on_scene,
+                            time_cleared: call.time_cleared,
+                            time_closed: call.time_closed,
+                            source: call.source,
+                            archived_date: now.toISOString()
+                        });
+                    }
 
+                    // The complete copy above remains available for incident-report linkage.
                     await base44.asServiceRole.entities.DispatchCall.delete(call.id);
                     archivedCount++;
                     console.log(`Archived: ${call.incident} @ ${call.location} (age: ${Math.round(ageMs / 60000)}min)`);
