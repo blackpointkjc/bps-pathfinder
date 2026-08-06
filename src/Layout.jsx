@@ -218,6 +218,7 @@ const CENTER_CONFIG = {
       { label: 'Client Portal', items: [
         ['Dashboard', 'ClientDashboard', Gauge],
         ['Security Alerts', 'ClientAlerts', AlertTriangle],
+        ['Calls for Service', 'ClientCallHistory', Radio],
         ['Special Requests', 'ClientSpecialRequests', CalendarClock],
         ['Site Supervisors', 'ClientSupervisors', UserCheck],
         ['All Reports', 'ClientReports', FileText],
@@ -255,7 +256,7 @@ function hasFullAccess(user) {
 
 const FULLSCREEN_PAGES = new Set([]);
 const DARK_WORKSPACE_PAGES = new Set([
-  'CommandDashboard', 'DispatchCenter', 'FieldUnitView', 'CallHistory',
+  'CommandDashboard', 'DispatchCenter', 'FieldUnitView', 'CallHistory', 'ClientCallHistory',
   'BOLOAlerts', 'RecordsAssistant', 'Personnel', 'PathfinderReports', 'AdminPortal'
 ]);
 
