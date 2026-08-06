@@ -324,7 +324,7 @@ function canAccessPage(user, pageName) {
   return centers.some(center => available.includes(center));
 }
 
-function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, onCloseMobile, onToggleCollapsed }) {
+function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, unreadCounts = {}, onCloseMobile, onToggleCollapsed }) {
   const availableCenters = allowedCenters(user);
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
   const query = search.trim().toLowerCase();
@@ -389,7 +389,12 @@ function Sidebar({ collapsed, mobile, user, activeCenter, setActiveCenter, curre
               return <Link key={page} to={createPageUrl(page)} title={collapsed && !mobile ? label : undefined} onClick={() => onCloseMobile?.()} className={`relative flex min-h-10 items-center gap-3 rounded-md border px-3 py-2 transition ${active ? 'border-[#2f6499] bg-[#14385f] text-white' : 'border-transparent text-[#8ea4bc] hover:border-[#1c3650] hover:bg-[#102239] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
                 {active && <span className="absolute bottom-2 left-0 top-2 w-0.5 bg-[#55aaff]" />}
                 <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-[#7ec1ff]' : 'text-[#6683a0]'}`} />
-                {(!collapsed || mobile) && <span className="text-[11px] font-bold leading-tight">{label}</span>}
+                {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-bold leading-tight">{label}</span>}
+                {!!unreadCounts[page] && (
+                  <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white shadow-sm">
+                    {unreadCounts[page] > 99 ? '99+' : unreadCounts[page]}
+                  </span>
+                )}
               </Link>;
             })}
           </div>
@@ -425,6 +430,8 @@ export default function Layout({ children, currentPageName }) {
   const [search, setSearch] = useState('');
   const [nightMode, setNightMode] = useState(() => localStorage.getItem('bps-workspace-theme') !== 'day');
   const [activeCenter, setActiveCenterState] = useState(() => localStorage.getItem('bps-active-center') || 'cad');
+  const [unreadCounts, setUnreadCounts] = useState({});
+  const unreadStorageKey = `bps-unread-counts:${String(user?.email || user?.id || 'guest').toLowerCase()}`;
 
   const setActiveCenter = center => {
     setActiveCenterState(center);
@@ -444,6 +451,38 @@ export default function Layout({ children, currentPageName }) {
     document.documentElement.classList.toggle('bps-night-mode', nightMode);
     return () => document.documentElement.classList.remove('bps-night-mode');
   }, [nightMode]);
+
+  useEffect(() => {
+    try {
+      setUnreadCounts(JSON.parse(localStorage.getItem(unreadStorageKey) || '{}'));
+    } catch {
+      setUnreadCounts({});
+    }
+  }, [unreadStorageKey]);
+
+  useEffect(() => {
+    const onUnread = event => {
+      const page = event.detail?.page;
+      if (!page || page === currentPageName) return;
+      setUnreadCounts(current => {
+        const next = { ...current, [page]: (Number(current[page]) || 0) + 1 };
+        localStorage.setItem(unreadStorageKey, JSON.stringify(next));
+        return next;
+      });
+    };
+    window.addEventListener('bps-unread-notification', onUnread);
+    return () => window.removeEventListener('bps-unread-notification', onUnread);
+  }, [currentPageName, unreadStorageKey]);
+
+  useEffect(() => {
+    if (!currentPageName) return;
+    setUnreadCounts(current => {
+      if (!current[currentPageName]) return current;
+      const next = { ...current, [currentPageName]: 0 };
+      localStorage.setItem(unreadStorageKey, JSON.stringify(next));
+      return next;
+    });
+  }, [currentPageName, unreadStorageKey]);
 
   useEffect(() => {
     const pageCenter = (PAGE_TO_CENTERS[currentPageName] || []).find(center => allowedCenters(user).includes(center));
@@ -568,12 +607,12 @@ export default function Layout({ children, currentPageName }) {
 
   return <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><GlobalMessageBanner user={user} />
     <aside className="relative hidden flex-col border-r border-[#1c3049] md:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
-      <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} onToggleCollapsed={() => setCollapsed(value => !value)} />
+      <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onToggleCollapsed={() => setCollapsed(value => !value)} />
     </aside>
 
     <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/70 md:hidden" onClick={() => setMobileOpen(false)}>
       <motion.aside initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }} className="h-full w-[290px] border-r border-[#1c3049]" onClick={event => event.stopPropagation()}>
-        <Sidebar mobile user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} onCloseMobile={() => setMobileOpen(false)} />
+        <Sidebar mobile user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => setMobileOpen(false)} />
       </motion.aside>
     </motion.div>}</AnimatePresence>
 
