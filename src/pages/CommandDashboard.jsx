@@ -367,7 +367,7 @@ function CommandDashboardInner() {
                 <div className="lg:col-span-3 flex flex-col border-r border-slate-800 min-h-0">
                     <PanelHeader count={calls.length}>ACTIVE INCIDENT QUEUE</PanelHeader>
 
-                    <div className="flex items-center bg-slate-900 border-b border-slate-700 px-3 py-1 text-[9px] font-mono text-slate-500 tracking-widest flex-none">
+                    <div className="hidden md:flex items-center bg-slate-900 border-b border-slate-700 px-3 py-1 text-[9px] font-mono text-slate-500 tracking-widest flex-none">
                         <div className="w-8 flex-shrink-0">PRI</div>
                         <div className="w-16 flex-shrink-0">TIME (ET)</div>
                         <div className="w-20 flex-shrink-0 hidden md:block">ELAPSED</div>
@@ -390,9 +390,9 @@ function CommandDashboardInner() {
                             return (
                                 <div key={call.id}
                                     onClick={() => setSelectedCall(call)}
-                                    className={`flex items-start px-3 py-2 border-b border-slate-800/60 cursor-pointer transition-colors ${cfg.row} ${priority === 'critical' ? 'border-l-2 border-l-red-500' : priority === 'high' ? 'border-l-2 border-l-orange-500' : 'border-l-2 border-l-transparent'}`}>
+                                    className={`cad-call-row flex items-start px-3 py-2 border-b border-slate-800/60 cursor-pointer transition-colors ${cfg.row} ${priority === 'critical' ? 'border-l-2 border-l-red-500' : priority === 'high' ? 'border-l-2 border-l-orange-500' : 'border-l-2 border-l-transparent'}`}>
 
-                                    <div className="w-8 flex-shrink-0 pt-0.5">
+                                    <div className="cad-call-priority w-8 flex-shrink-0 pt-0.5">
                                         {isAdmin ? (
                                             <button onClick={(e) => handlePriorityOverride(call, e)}
                                                 className={`text-[10px] font-mono font-bold ${cfg.text} hover:ring-1 ring-current rounded px-0.5 transition-all`}>
@@ -403,7 +403,7 @@ function CommandDashboardInner() {
                                         )}
                                     </div>
 
-                                    <div className="w-24 flex-shrink-0 font-mono text-[10px] text-slate-400 pt-0.5">
+                                    <div className="cad-call-time w-24 flex-shrink-0 font-mono text-[10px] text-slate-400 pt-0.5">
                                         <div className="truncate font-bold text-[#7ec1ff]">{/^B\d+$/i.test(String(call.call_id || '')) ? call.call_id : 'ASSIGNING…'}</div>
                                         <div>{fmtTime(call.time_received)}</div>
                                     </div>
@@ -412,7 +412,7 @@ function CommandDashboardInner() {
                                         {elapsed(call)}
                                     </div>
 
-                                    <div className="flex-1 min-w-0 pr-2">
+                                    <div className="cad-call-incident flex-1 min-w-0 pr-2">
                                         <div className="text-white font-mono font-bold text-xs leading-snug flex items-start gap-1">
                                             {(!call.latitude || !call.longitude) && (
                                                 <CircleX className="w-3 h-3 flex-shrink-0 text-red-500 mt-0.5" title="Not geocoded" />
@@ -429,7 +429,7 @@ function CommandDashboardInner() {
                                         <span className="text-slate-500 font-mono text-[10px] break-words">{call.agency || '—'}</span>
                                     </div>
 
-                                    <div className="w-20 flex-shrink-0 text-center pt-0.5">
+                                    <div className="cad-call-status w-20 flex-shrink-0 text-center pt-0.5">
                                         <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${
                                             call.status === 'New' ? 'bg-red-900/40 text-red-300 border-red-700/40' :
                                             call.status === 'Dispatched' || call.status === 'Enroute' ? 'bg-yellow-900/40 text-yellow-300 border-yellow-700/40' :
@@ -438,7 +438,7 @@ function CommandDashboardInner() {
                                         }`}>{(call.status || 'NEW').toUpperCase()}</span>
                                     </div>
 
-                                    <div className="w-16 flex-shrink-0 text-center">
+                                    <div className="cad-call-units w-16 flex-shrink-0 text-center">
                                         {call.assigned_units?.length > 0 ? (
                                             <span className="text-[10px] font-mono font-bold text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded border border-green-700/30">
                                                 {call.assigned_units.length} UNIT{call.assigned_units.length > 1 ? 'S' : ''}
@@ -453,7 +453,7 @@ function CommandDashboardInner() {
                                     </div>
 
                                     {isDispatchOrAdmin && (
-                                        <div className="w-14 flex-shrink-0 flex items-center justify-center">
+                                        <div className="cad-call-clear w-14 flex-shrink-0 flex items-center justify-center">
                                             <button onClick={(e) => handleMarkCleared(call, e)}
                                                 className="flex items-center gap-1 px-1.5 py-1 rounded bg-slate-700 hover:bg-green-700/60 text-slate-400 hover:text-green-300 font-mono text-[9px] font-bold transition-all border border-slate-600 hover:border-green-600/50">
                                                 <CheckCheck className="w-3 h-3" />CLR
