@@ -51,7 +51,7 @@ export default function WelcomeBriefing({ user }) {
   const [open, setOpen] = useState(false);
   const [seconds, setSeconds] = useState(30);
   const [loading, setLoading] = useState(true);
-  const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null });
+  const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null, allUsers: [], allUnits: [], todaySchedules: [], activeTimeEntries: [], todayVehicleAssignments: [] });
   const userKey = normalized(user?.email || user?.id);
   const storageKey = userKey ? `bps-last-active:${userKey}` : '';
   const [offlineSince] = useState(() => {
@@ -67,7 +67,7 @@ export default function WelcomeBriefing({ user }) {
     const load = async () => {
       try {
         const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-        const [messages, mentions, announcements, receipts, notifications, propertyAlerts, liveUsers, units, schedules, vehicleAssignments, overrides] = await Promise.all([
+        const [messages, mentions, announcements, receipts, notifications, propertyAlerts, liveUsers, units, schedules, vehicleAssignments, overrides, allUsers, allUnits, allSchedules, timeEntries] = await Promise.all([
           base44.entities.Message.filter({ recipient_id: user.id, read: false }, '-created_date', 200).catch(() => []),
           base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200).catch(() => []),
           base44.entities.Announcement.list('-created_date', 100).catch(() => []),
@@ -79,6 +79,10 @@ export default function WelcomeBriefing({ user }) {
           base44.entities.Schedule.filter({ officer_email: user.email, shift_date: today }).catch(() => []),
           base44.entities.VehicleAssignment.filter({ assignment_date: today }).catch(() => []),
           base44.entities.OfficerStatusOverride.filter({ officer_id: user.id, active: true }).catch(() => []),
+          base44.entities.User.list().catch(() => []),
+          base44.entities.Unit.list('-last_update_at', 500).catch(() => []),
+          base44.entities.Schedule.filter({ shift_date: today }).catch(() => []),
+          base44.entities.TimeEntry.list('-clock_in', 1000).catch(() => []),
         ]);
         if (!active) return;
         const receiptIds = new Set((receipts || []).map(item => item.announcement_id));
@@ -99,7 +103,8 @@ export default function WelcomeBriefing({ user }) {
         const shift = (schedules || []).find(item => !item.is_open) || null;
         const vehicle = (vehicleAssignments || []).find(item => normalized(item.primary_officer_email) === normalized(user.email) || normalized(item.partner_officer_email) === normalized(user.email)) || null;
         const override = overrides?.[0] || null;
-        setBrief({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, propertyAlerts: offlineAlerts, liveUser, unit, shift, vehicle, override });
+        const activeTimeEntries = (timeEntries || []).filter(entry => entry.clock_in && !entry.clock_out);
+        setBrief({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, propertyAlerts: offlineAlerts, liveUser, unit, shift, vehicle, override, allUsers: allUsers || [], allUnits: allUnits || [], todaySchedules: allSchedules || [], activeTimeEntries, todayVehicleAssignments: vehicleAssignments || [] });
       } catch (error) {
         console.warn('Welcome briefing unavailable:', error?.message);
       } finally {
@@ -148,6 +153,41 @@ export default function WelcomeBriefing({ user }) {
   const vehicleLabel = brief.vehicle?.vehicle_label || '';
   const shiftDetail = brief.shift ? `${brief.shift.start_time || '--:--'}–${brief.shift.end_time || '--:--'} · ${String(brief.shift.location || '').split(':')[0] || 'Location not set'}` : '';
   const statusOverride = brief.override?.active ? (brief.override.reason || 'Administrative Out of Service override is active') : '';
+  const isAdmin = user?.role === 'admin' || (user?.additional_roles || []).map(normalized).includes('full_access');
+  const userByEmail = useMemo(() => new Map((brief.allUsers || []).map(person => [normalized(person.email), person])), [brief.allUsers]);
+  const unitByEmail = useMemo(() => new Map((brief.allUnits || []).map(unitRow => [normalized(unitRow.user_email || userByEmail.get(normalized(unitRow.user_id))?.email), unitRow])), [brief.allUnits, userByEmail]);
+  const activeEntryByEmail = useMemo(() => new Map((brief.activeTimeEntries || []).map(entry => [normalized(entry.officer_email), entry])), [brief.activeTimeEntries]);
+  const vehicleByEmail = useMemo(() => {
+    const map = new Map();
+    (brief.todayVehicleAssignments || []).forEach(item => {
+      if (item.primary_officer_email) map.set(normalized(item.primary_officer_email), item);
+      if (item.partner_officer_email) map.set(normalized(item.partner_officer_email), item);
+    });
+    return map;
+  }, [brief.todayVehicleAssignments]);
+  const onDutyRows = useMemo(() => {
+    const seen = new Set();
+    return (brief.activeTimeEntries || []).map(entry => {
+      const email = normalized(entry.officer_email);
+      if (!email || seen.has(email)) return null;
+      seen.add(email);
+      const person = userByEmail.get(email);
+      const unitRow = unitByEmail.get(email);
+      const vehicleRow = vehicleByEmail.get(email);
+      return { email, entry, person, unit: unitRow, vehicle: vehicleRow };
+    }).filter(Boolean).sort((a,b) => String(a.person?.last_name || a.email).localeCompare(String(b.person?.last_name || b.email)));
+  }, [brief.activeTimeEntries, userByEmail, unitByEmail, vehicleByEmail]);
+  const scheduledDutyRows = useMemo(() => {
+    const rows = (brief.todaySchedules || []).filter(item => item.officer_email && item.officer_email !== 'OPEN' && !item.is_open);
+    return rows.map(shiftRow => {
+      const email = normalized(shiftRow.officer_email);
+      const person = userByEmail.get(email);
+      const unitRow = unitByEmail.get(email);
+      const entry = activeEntryByEmail.get(email);
+      const vehicleRow = vehicleByEmail.get(email);
+      return { email, shift: shiftRow, person, unit: unitRow, entry, vehicle: vehicleRow };
+    }).sort((a,b) => `${a.shift.start_time || ''}${a.person?.last_name || a.email}`.localeCompare(`${b.shift.start_time || ''}${b.person?.last_name || b.email}`));
+  }, [brief.todaySchedules, userByEmail, unitByEmail, activeEntryByEmail, vehicleByEmail]);
   const offlineText = useMemo(() => {
     if (!offlineSince) return 'First briefing on this device';
     const minutes = Math.max(1, Math.floor((Date.now() - offlineSince) / 60000));
