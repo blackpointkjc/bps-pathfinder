@@ -842,70 +842,39 @@ export default function VATrespassNotices() {
                   {showIDScanner ? 'Close ID Scanner' : 'Scan ID/Driver\'s License'}
                 </Button>
 
-                <div className="space-y-2">
-                  <Label htmlFor="subject_name">Subject Name *</Label>
-                  <Input
-                    id="subject_name"
-                    placeholder="Full name of trespasser"
-                    value={formData.subject_name}
-                    onChange={(e) => setFormData({...formData, subject_name: e.target.value})}
-                    required
-                  />
+                <div className="rounded-lg border border-slate-300 bg-slate-50 p-4 space-y-4">
+                  <div><h3 className="font-semibold text-slate-900">Subject Information</h3><p className="text-xs text-slate-500">Enter the subject as individual identification fields, matching the VA complaint/summons workflow.</p></div>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="space-y-2"><Label>First Name *</Label><Input value={formData.subject_first_name} onChange={(e) => { const v=e.target.value; setFormData({...formData,subject_first_name:v,subject_name:[v,formData.subject_middle_name,formData.subject_last_name].filter(Boolean).join(' ')}) }} required /></div>
+                    <div className="space-y-2"><Label>Middle Name</Label><Input value={formData.subject_middle_name} onChange={(e) => { const v=e.target.value; setFormData({...formData,subject_middle_name:v,subject_name:[formData.subject_first_name,v,formData.subject_last_name].filter(Boolean).join(' ')}) }} /></div>
+                    <div className="space-y-2"><Label>Last Name *</Label><Input value={formData.subject_last_name} onChange={(e) => { const v=e.target.value; setFormData({...formData,subject_last_name:v,subject_name:[formData.subject_first_name,formData.subject_middle_name,v].filter(Boolean).join(' ')}) }} required /></div>
+                  </div>
+                  <div className="grid md:grid-cols-4 gap-4">
+                    <div className="space-y-2"><Label>Date of Birth</Label><Input type="date" value={formData.subject_dob} onChange={(e)=>setFormData({...formData,subject_dob:e.target.value})}/></div>
+                    <div className="space-y-2"><Label>Race</Label><Input value={formData.subject_race} onChange={(e)=>setFormData({...formData,subject_race:e.target.value})}/></div>
+                    <div className="space-y-2"><Label>Sex</Label><Select value={formData.subject_sex || 'unknown'} onValueChange={(v)=>setFormData({...formData,subject_sex:v})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="male">Male</SelectItem><SelectItem value="female">Female</SelectItem><SelectItem value="other">Other</SelectItem><SelectItem value="unknown">Unknown</SelectItem></SelectContent></Select></div>
+                    <div className="space-y-2"><Label>Phone</Label><Input value={formData.subject_phone} onChange={(e)=>setFormData({...formData,subject_phone:e.target.value})}/></div>
+                  </div>
+                  <div className="grid md:grid-cols-5 gap-4">
+                    <div className="space-y-2"><Label>Height Ft</Label><Input type="number" value={formData.subject_height_ft} onChange={(e)=>setFormData({...formData,subject_height_ft:e.target.value})}/></div>
+                    <div className="space-y-2"><Label>Height In</Label><Input type="number" value={formData.subject_height_in} onChange={(e)=>setFormData({...formData,subject_height_in:e.target.value})}/></div>
+                    <div className="space-y-2"><Label>Weight</Label><Input type="number" value={formData.subject_weight} onChange={(e)=>setFormData({...formData,subject_weight:e.target.value})}/></div>
+                    <div className="space-y-2"><Label>Eyes</Label><Input value={formData.subject_eyes} onChange={(e)=>setFormData({...formData,subject_eyes:e.target.value})}/></div>
+                    <div className="space-y-2"><Label>Hair</Label><Input value={formData.subject_hair} onChange={(e)=>setFormData({...formData,subject_hair:e.target.value})}/></div>
+                  </div>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="space-y-2"><Label>ID / Driver License #</Label><Input value={formData.subject_id} onChange={(e)=>setFormData({...formData,subject_id:e.target.value.toUpperCase()})}/></div>
+                    <div className="space-y-2"><Label>ID State</Label><Input maxLength={2} value={formData.subject_id_state} onChange={(e)=>setFormData({...formData,subject_id_state:e.target.value.toUpperCase()})}/></div>
+                    <div className="space-y-2"><Label>ID Expiration</Label><Input type="date" value={formData.subject_id_expiration} onChange={(e)=>setFormData({...formData,subject_id_expiration:e.target.value})}/></div>
+                  </div>
+                  <div className="grid md:grid-cols-4 gap-4">
+                    <div className="space-y-2 md:col-span-2"><Label>Street Address</Label><Input value={formData.subject_address} onChange={(e)=>setFormData({...formData,subject_address:e.target.value})}/></div>
+                    <div className="space-y-2"><Label>City</Label><Input value={formData.subject_city} onChange={(e)=>setFormData({...formData,subject_city:e.target.value})}/></div>
+                    <div className="grid grid-cols-2 gap-3"><div className="space-y-2"><Label>State</Label><Input maxLength={2} value={formData.subject_state} onChange={(e)=>setFormData({...formData,subject_state:e.target.value.toUpperCase()})}/></div><div className="space-y-2"><Label>ZIP</Label><Input value={formData.subject_zip} onChange={(e)=>setFormData({...formData,subject_zip:e.target.value})}/></div></div>
+                  </div>
+                  <div className="space-y-2"><Label>Physical Description / Distinguishing Features</Label><Textarea value={formData.subject_description} onChange={(e)=>setFormData({...formData,subject_description:e.target.value})} rows={3}/></div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="subject_description">Physical Description</Label>
-                  <Textarea
-                    id="subject_description"
-                    placeholder="Height, build, clothing, distinguishing features..."
-                    value={formData.subject_description}
-                    onChange={(e) => setFormData({...formData, subject_description: e.target.value})}
-                    rows={3}
-                  />
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="subject_id">ID Number</Label>
-                    <Input
-                      id="subject_id"
-                      placeholder="Driver's license or ID #"
-                      value={formData.subject_id}
-                      onChange={(e) => setFormData({...formData, subject_id: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="vehicle_info">Vehicle Info</Label>
-                    <Input
-                      id="vehicle_info"
-                      placeholder="Make, model, license plate"
-                      value={formData.vehicle_info}
-                      onChange={(e) => setFormData({...formData, vehicle_info: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="subject_dob">Date of Birth</Label>
-                    <Input id="subject_dob" type="date" value={formData.subject_dob} onChange={(e) => setFormData({...formData, subject_dob: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="subject_address">Street Address</Label>
-                    <Input id="subject_address" value={formData.subject_address} onChange={(e) => setFormData({...formData, subject_address: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="subject_city">City</Label>
-                    <Input id="subject_city" value={formData.subject_city} onChange={(e) => setFormData({...formData, subject_city: e.target.value})} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="subject_state">State</Label>
-                      <Input id="subject_state" value={formData.subject_state} onChange={(e) => setFormData({...formData, subject_state: e.target.value.toUpperCase()})} maxLength={2} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="subject_zip">ZIP</Label>
-                      <Input id="subject_zip" value={formData.subject_zip} onChange={(e) => setFormData({...formData, subject_zip: e.target.value})} />
-                    </div>
-                  </div>
-                </div>
+                <div className="space-y-2"><Label htmlFor="vehicle_info">Associated Vehicle</Label><Input id="vehicle_info" placeholder="Make, model, color, plate, state" value={formData.vehicle_info} onChange={(e)=>setFormData({...formData,vehicle_info:e.target.value})}/></div>
                 <div className="space-y-2">
                   <Label htmlFor="reason">Reason for Notice *</Label>
                   <Textarea
