@@ -21,6 +21,9 @@ export const PRIORITY_STYLE = {
 };
 
 const fmt = value => value ? new Date(value).toLocaleString('en-US', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+const titleCase = value => String(value || '').toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase());
+const primaryParty = bolo => bolo.parties?.[0] || (bolo.subject_name ? { name: bolo.subject_name } : null);
+const primaryVehicle = bolo => bolo.vehicles?.[0] || ((bolo.vehicle_plate || bolo.vehicle_make) ? { year: bolo.vehicle_year, color: bolo.vehicle_color, make: bolo.vehicle_make, model: bolo.vehicle_model, plate: bolo.vehicle_plate } : null);
 
 export default function BOLOAlerts() {
   const [bolos, setBolos] = useState([]);
@@ -71,7 +74,7 @@ export default function BOLOAlerts() {
     if (typeFilter !== 'all' && b.alert_type !== typeFilter) return false;
     if (search) {
       const q = search.toLowerCase();
-      const haystack = [b.bolo_number,b.title,b.description,b.subject_name,b.vehicle_plate,b.case_number,b.last_known_location,b.issued_by].filter(Boolean).join(' ').toLowerCase();
+      const haystack = [b.bolo_number,b.title,b.description,b.subject_name,b.vehicle_plate,b.case_number,b.last_known_location,b.issued_by,JSON.stringify(b.parties || []),JSON.stringify(b.vehicles || [])].filter(Boolean).join(' ').toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     return true;
@@ -133,11 +136,13 @@ export default function BOLOAlerts() {
         {loading ? <div className="flex h-32 items-center justify-center text-xs text-slate-500">LOADING BOLO DATABASE...</div> : filtered.length === 0 ? <div className="flex h-32 flex-col items-center justify-center text-slate-600"><AlertOctagon className="mb-2 h-7 w-7" /><span className="text-xs">NO BOLOS MATCH CURRENT VIEW</span></div> : filtered.map(bolo => {
           const cfg = TYPE_CONFIG[bolo.alert_type] || TYPE_CONFIG.watch_notice;
           const Icon = cfg.icon;
-          const subject = bolo.subject_name || [bolo.vehicle_year,bolo.vehicle_color,bolo.vehicle_make,bolo.vehicle_model].filter(Boolean).join(' ') || 'GENERAL INFORMATION';
+          const party = primaryParty(bolo);
+          const vehicle = primaryVehicle(bolo);
+          const subject = party?.name ? titleCase(party.name) : vehicle ? [vehicle.year,titleCase(vehicle.color),titleCase(vehicle.make),titleCase(vehicle.model)].filter(Boolean).join(' ') : 'GENERAL INFORMATION';
           return <div key={bolo.id} onClick={() => setModal({ mode: 'view', bolo })} className={`grid cursor-pointer grid-cols-1 gap-2 border-b border-[#18283a] px-3 py-3 hover:bg-[#0d1826] md:grid-cols-12 md:gap-0 ${bolo.priority === 'critical' && bolo.status === 'active' ? 'border-l-2 border-l-red-500 bg-red-950/10' : ''}`}>
             <div className="md:col-span-2"><div className="text-[10px] font-black text-[#f5c451]">{bolo.bolo_number || 'BOLO-PENDING'}</div><div className={`mt-1 inline-flex rounded border px-1.5 py-0.5 text-[8px] font-black ${PRIORITY_STYLE[bolo.priority] || PRIORITY_STYLE.medium}`}>{(bolo.priority || 'medium').toUpperCase()}</div></div>
-            <div className="md:col-span-3"><div className="flex items-center gap-1 text-[9px] font-bold text-slate-500"><Icon className="h-3 w-3" />{cfg.label}</div><div className="mt-1 text-[11px] font-black text-white">{subject}</div>{bolo.vehicle_plate && <div className="mt-1 inline-block rounded border border-yellow-500/50 bg-yellow-950/50 px-1.5 py-0.5 text-[9px] font-black text-yellow-300">PLATE {bolo.vehicle_plate}</div>}</div>
-            <div className="md:col-span-3"><div className="text-[11px] font-black text-white">{bolo.title}</div><div className="mt-1 line-clamp-1 text-[9px] text-slate-400">{bolo.description || 'No narrative entered'}</div><div className="mt-1 text-[9px] text-blue-300">LAST: {bolo.last_known_location || 'UNKNOWN'}</div></div>
+            <div className="md:col-span-3"><div className="flex items-center gap-1 text-[9px] font-bold text-slate-500"><Icon className="h-3 w-3" />{cfg.label}</div><div className="mt-1 text-[11px] font-black text-white">{subject}</div>{vehicle?.plate && <div className="mt-1 inline-block rounded border border-yellow-500/50 bg-yellow-950/50 px-1.5 py-0.5 text-[9px] font-black text-yellow-300">PLATE {String(vehicle.plate).toUpperCase()}</div>}{(bolo.parties?.length || 0) > 1 && <div className="mt-1 text-[8px] text-blue-400">+{bolo.parties.length - 1} additional party</div>}{(bolo.vehicles?.length || 0) > 1 && <div className="mt-1 text-[8px] text-yellow-500">+{bolo.vehicles.length - 1} additional vehicle</div>}</div>
+            <div className="md:col-span-3"><div className="text-[11px] font-black text-white">{titleCase(bolo.title)}</div><div className="mt-1 line-clamp-1 text-[9px] text-slate-400">{bolo.description || 'No narrative entered'}</div><div className="mt-1 text-[9px] text-blue-300">LAST: {titleCase(bolo.last_known_location || 'UNKNOWN')}</div>{bolo.linked_call_number && <div className="mt-1 text-[8px] text-cyan-400">CAD: {bolo.linked_call_number}</div>}</div>
             <div className="md:col-span-2"><div className="text-[9px] text-slate-300">{bolo.issued_by || 'Unknown issuer'}</div><div className="mt-1 flex items-center gap-1 text-[8px] text-slate-500"><Clock3 className="h-2.5 w-2.5" />{fmt(bolo.created_date)}</div><div className={`mt-1 text-[9px] font-black ${bolo.status === 'active' ? 'text-green-400' : bolo.status === 'resolved' ? 'text-blue-400' : 'text-slate-500'}`}>● {(bolo.status || '').toUpperCase()}</div></div>
             <div className="flex items-center justify-end gap-1 md:col-span-2">
               {canEditRecord(bolo) && bolo.status === 'active' && <button onClick={e => { e.stopPropagation(); setModal({ mode: 'edit', bolo: { ...bolo } }); }} className="rounded border border-slate-700 p-1.5 text-slate-400 hover:border-gold hover:text-gold" title="Edit BOLO"><Edit2 className="h-3.5 w-3.5" /></button>}
