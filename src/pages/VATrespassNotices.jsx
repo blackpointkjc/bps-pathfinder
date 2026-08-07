@@ -67,11 +67,18 @@ export default function VATrespassNotices() {
     police_notified: false,
     police_report_number: "",
     photo_url: "",
+    officer_signature_url: "",
+    officer_signed_at: "",
+    witness_name: "",
+    witness_signature_url: "",
+    witness_signed_at: "",
+    subject_signature_url: "",
+    subject_signed_at: "",
   });
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showIDScanner, setShowIDScanner] = useState(false);
-  const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const [signaturePadType, setSignaturePadType] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -245,6 +252,13 @@ export default function VATrespassNotices() {
       police_report_number: "",
       photo_url: "",
       signature_url: "",
+      officer_signature_url: "",
+      officer_signed_at: "",
+      witness_name: "",
+      witness_signature_url: "",
+      witness_signed_at: "",
+      subject_signature_url: "",
+      subject_signed_at: "",
     });
   };
 
@@ -426,6 +440,13 @@ export default function VATrespassNotices() {
       police_report_number: notice.police_report_number || "",
       photo_url: notice.photo_url || "",
       signature_url: notice.signature_url || "",
+      officer_signature_url: notice.officer_signature_url || notice.signature_url || "",
+      officer_signed_at: notice.officer_signed_at || "",
+      witness_name: notice.witness_name || "",
+      witness_signature_url: notice.witness_signature_url || "",
+      witness_signed_at: notice.witness_signed_at || "",
+      subject_signature_url: notice.subject_signature_url || "",
+      subject_signed_at: notice.subject_signed_at || "",
     });
     setShowForm(true);
   };
