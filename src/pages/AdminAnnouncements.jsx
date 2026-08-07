@@ -49,6 +49,13 @@ export default function AdminAnnouncements() {
     enabled: user?.role === 'admin',
   });
 
+  const { data: announcementReceipts = [] } = useQuery({
+    queryKey: ['allAnnouncementReceipts'],
+    queryFn: () => base44.entities.AnnouncementReceipt.list('-read_at', 5000),
+    enabled: user?.role === 'admin',
+    refetchInterval: 5000,
+  });
+
   const createAnnouncementMutation = useMutation({
     mutationFn: async (data) => {
       const announcement = await base44.entities.Announcement.create(data);
@@ -192,8 +199,10 @@ export default function AdminAnnouncements() {
 
   const getReadStats = (announcement) => {
     const total = activeOfficers.length;
-    const read = announcement.read_by?.length || 0;
-    return { total, read, percentage: total > 0 ? Math.round((read / total) * 100) : 0 };
+    const receiptEmails = new Set(announcementReceipts.filter(r => r.announcement_id === announcement.id).map(r => r.user_email));
+    (announcement.read_by || []).forEach(email => receiptEmails.add(email));
+    const read = receiptEmails.size;
+    return { total, read, percentage: total > 0 ? Math.round((read / total) * 100) : 0, receiptEmails };
   };
 
   // Filter announcements based on age and priority
@@ -474,7 +483,7 @@ export default function AdminAnnouncements() {
               <p className="text-sm text-slate-600 font-medium">{selectedAnnouncement.title}</p>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {activeOfficers.map(officer => {
-                  const hasRead = selectedAnnouncement.read_by?.includes(officer.email);
+                  const hasRead = getReadStats(selectedAnnouncement).receiptEmails.has(officer.email);
                   const name = officer.first_name && officer.last_name ? `${officer.first_name} ${officer.last_name}` : officer.email;
                   return (
                     <div key={officer.email} className={`p-3 rounded-lg flex items-center justify-between ${hasRead ? 'bg-green-50 border border-green-200' : 'bg-slate-50 border border-slate-200'}`}>
@@ -489,7 +498,7 @@ export default function AdminAnnouncements() {
                 })}
               </div>
               <div className="pt-2 border-t text-xs text-slate-500">
-                {selectedAnnouncement.read_by?.length || 0} of {activeOfficers.length} officers have read this announcement
+                {getReadStats(selectedAnnouncement).read} of {activeOfficers.length} officers have read this announcement
               </div>
             </div>
           )}
