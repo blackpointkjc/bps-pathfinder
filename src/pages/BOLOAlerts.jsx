@@ -38,7 +38,11 @@ export default function BOLOAlerts() {
       setUser(me);
       await load();
       const params = new URLSearchParams(window.location.search);
-      if (params.get('new') === '1' && me) setModal({ mode: 'create', bolo: { alert_type: 'wanted_person', priority: 'medium', status: 'active' } });
+      if (params.get('new') === '1' && me) setModal({ mode: 'create', bolo: {
+        alert_type: 'wanted_person', priority: 'medium', status: 'active',
+        linked_call_id: params.get('call_id') || '',
+        linked_call_number: params.get('call_number') || '',
+      } });
     };
     init();
   }, []);
