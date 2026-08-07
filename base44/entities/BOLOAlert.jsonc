@@ -121,6 +121,43 @@
     },
     "resolution_notes": {
       "type": "string"
+    },
+    "linked_call_id": {
+      "type": "string",
+      "description": "Linked DispatchCall record ID"
+    },
+    "linked_call_number": {
+      "type": "string",
+      "description": "Linked CAD / BPS call reference"
+    },
+    "linked_incident_report_id": {
+      "type": "string",
+      "description": "Linked IncidentReport record ID"
+    },
+    "linked_incident_report_number": {
+      "type": "string",
+      "description": "Linked incident report number"
+    },
+    "photo_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "BOLO image attachments"
+    },
+    "parties": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Structured persons/parties associated with the BOLO"
+    },
+    "vehicles": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Structured vehicles associated with the BOLO"
     }
   },
   "required": [
