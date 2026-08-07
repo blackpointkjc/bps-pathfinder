@@ -1,10 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 const LINKED_APP_ID = '69503da793f3e1140bbd4426';
-const API_KEY = Deno.env.get('LINKED_APP_API_KEY') || '3a8a78004a314ecbb7146b022eea5840';
+const API_KEY = Deno.env.has('LINKED_APP_API_KEY') ? Deno.env.get('LINKED_APP_API_KEY') : null;
 const BASE_URL = `https://app.base44.com/api/apps/${LINKED_APP_ID}/entities`;
 
 async function fetchEntity(entityName, query = '') {
+    if (!API_KEY) throw new Error('LINKED_APP_API_KEY is not configured');
     const url = query
         ? `${BASE_URL}/${entityName}?search=${encodeURIComponent(query)}`
         : `${BASE_URL}/${entityName}`;
