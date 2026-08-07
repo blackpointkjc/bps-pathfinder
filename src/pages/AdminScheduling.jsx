@@ -3092,6 +3092,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                         <div className="min-w-0 flex-1">
                           <p className="font-bold text-slate-900">{shift.officer_email === 'OPEN' ? 'OPEN SHIFT' : getOfficerName(shift.officer_email)}</p>
                           <p className="mt-0.5 text-sm text-slate-600">{String(shift.location || '').split(':')[0]}</p>
+                          {shift.partner_officer_email && <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-blue-700"><Users className="h-3.5 w-3.5"/>Partner: {getOfficerName(shift.partner_officer_email)}</p>}
                           <div className="mt-2 flex flex-wrap gap-2 text-xs">
                             <Badge className="bg-blue-100 text-blue-800">{shift.start_time}–{shift.end_time}</Badge>
                             {shift.is_split_shift && <Badge className="bg-purple-100 text-purple-800">Overnight</Badge>}
@@ -3231,6 +3232,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                                                     </button>
                                                   </div>
                                                 </div>
+                                                {schedule.partner_officer_email && <div className="mt-0.5 truncate text-[9px] font-medium text-blue-700">w/ {getOfficerName(schedule.partner_officer_email)}</div>}
                                               </div>
                                             )}
                                           </Draggable>
