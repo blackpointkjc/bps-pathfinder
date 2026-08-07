@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
 const PORTAL_URL = 'https://bpspf.blackpointkjc.com/';
+const LOGO_URL = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/857a5f1c1_UntitledProject3.png';
 
 const escapeHtml = (value: unknown) => String(value ?? '')
   .replaceAll('&', '&amp;')
@@ -28,11 +29,10 @@ function accountCreatedEmail(firstName: string, accountType: string) {
 <body style="margin:0;padding:0;background-color:#0b0b0b;font-family:Arial,Helvetica,sans-serif;color:#f4f4f4;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background-color:#0b0b0b;">
     <tr><td align="center" style="padding:28px 12px;">
-      <table role="presentation" width="620" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:620px;background-color:#151515;border:1px solid #2b2b2b;border-radius:10px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.35);">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:640px;background-color:#151515;border:1px solid #caa72d;border-radius:14px;overflow:hidden;">
         <tr>
-          <td align="center" style="padding:26px 24px 20px;background-color:#050505;">
-            <div style="display:inline-block;border:2px solid #d4af37;border-radius:8px;padding:12px 18px;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:2px;line-height:1.1;">BLACK POINT</div>
-            <div style="margin-top:8px;color:#d4af37;font-size:11px;font-weight:bold;letter-spacing:3px;">PROTECTION</div>
+          <td align="center" style="padding:30px 24px 20px;background-color:#050505;">
+            <img src="${LOGO_URL}" alt="Black Point" width="210" style="display:block;width:210px;max-width:75%;height:auto;border:0;">
           </td>
         </tr>
         <tr><td style="height:5px;line-height:5px;font-size:0;background-color:#d4af37;">&nbsp;</td></tr>
@@ -56,7 +56,7 @@ function accountCreatedEmail(firstName: string, accountType: string) {
         </tr>
         <tr>
           <td style="padding:24px 38px 34px;">
-            <p style="margin:0 0 6px;color:#ffffff;font-size:16px;font-weight:bold;">Black Point Protection</p>
+            <p style="margin:0 0 6px;color:#ffffff;font-size:16px;font-weight:bold;">Black Point</p>
             <p style="margin:0;color:#bdbdbd;font-size:14px;line-height:1.6;">701 E Franklin St, Suite 105 1052<br>Richmond, Virginia 23219<br><a href="mailto:info@blackpointkjc.com" style="color:#e5c75b;text-decoration:none;">info@blackpointkjc.com</a><br><a href="tel:+18558277911" style="color:#e5c75b;text-decoration:none;">(855) 8BPS911</a></p>
           </td>
         </tr>
