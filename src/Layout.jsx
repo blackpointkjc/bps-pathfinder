@@ -74,6 +74,7 @@ const CENTER_CONFIG = {
         ['Expense Reports', 'ExpenseReports', DollarSign],
       ]},
       { label: 'Resources', items: [
+        ['Rank Structure', 'RankStructure', Shield],
         ['Rank Duties', 'RankDuties', Shield],
         ['Post Orders', 'PostOrders', BookOpen],
         ['Training & Compliance', 'OfficerTraining', GraduationCap],
