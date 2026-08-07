@@ -1,192 +1,176 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TYPE_CONFIG, PRIORITY_STYLE } from '@/pages/BOLOAlerts';
+import { Plus, Trash2, Upload, Link as LinkIcon, User, Car, Image as ImageIcon } from 'lucide-react';
+
+const titleCase = (value = '') => String(value).toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase());
+const upper = (value = '') => String(value).toUpperCase();
+const sentenceCase = (value = '') => {
+  const clean = String(value).trim();
+  if (!clean) return '';
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+};
 
 function Field({ label, children }) {
-  return (
-    <div>
-      <label className="text-[10px] font-mono text-slate-400 block mb-1 tracking-widest">{label}</label>
-      {children}
-    </div>
-  );
+  return <div><label className="mb-1 block text-[10px] font-mono tracking-widest text-slate-400">{label}</label>{children}</div>;
 }
-
-function Input({ value, onChange, placeholder, className = '' }) {
-  return (
-    <input value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      className={`w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-white placeholder-slate-600 focus:outline-none focus:border-gold ${className}`} />
-  );
+function Input({ value, onChange, placeholder, normalize, className = '' }) {
+  return <input value={value || ''} onChange={e => onChange(e.target.value)} onBlur={e => normalize && onChange(normalize(e.target.value))} placeholder={placeholder}
+    className={`w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-mono text-white placeholder-slate-600 focus:border-gold focus:outline-none ${className}`} />;
 }
-
-function Textarea({ value, onChange, rows = 3 }) {
-  return (
-    <textarea value={value || ''} onChange={e => onChange(e.target.value)} rows={rows}
-      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-gold resize-none" />
-  );
+function Textarea({ value, onChange, rows = 3, normalize }) {
+  return <textarea value={value || ''} onChange={e => onChange(e.target.value)} onBlur={e => normalize && onChange(normalize(e.target.value))} rows={rows}
+    className="w-full resize-none rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-mono text-white focus:border-gold focus:outline-none" />;
 }
-
 function Select({ value, onChange, options }) {
-  return (
-    <select value={value || ''} onChange={e => onChange(e.target.value)}
-      className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-gold">
-      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
-  );
+  return <select value={value || ''} onChange={e => onChange(e.target.value)} className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-mono text-white focus:border-gold focus:outline-none">
+    {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+  </select>;
 }
+
+const legacyParty = (bolo) => bolo?.subject_name ? [{
+  role: 'Subject', name: bolo.subject_name, dob: bolo.subject_dob || '', race: bolo.subject_race || '', sex: bolo.subject_sex || '', height: bolo.subject_height || '', weight: bolo.subject_weight || '', description: bolo.subject_description || ''
+}] : [];
+const legacyVehicle = (bolo) => bolo?.vehicle_plate || bolo?.vehicle_make ? [{
+  role: 'Vehicle', year: bolo.vehicle_year || '', color: bolo.vehicle_color || '', make: bolo.vehicle_make || '', model: bolo.vehicle_model || '', plate: bolo.vehicle_plate || '', state: '', description: ''
+}] : [];
 
 function DetailView({ bolo }) {
   const cfg = TYPE_CONFIG[bolo.alert_type] || TYPE_CONFIG.watch_notice;
   const Icon = cfg.icon;
+  const parties = bolo.parties?.length ? bolo.parties : legacyParty(bolo);
+  const vehicles = bolo.vehicles?.length ? bolo.vehicles : legacyVehicle(bolo);
+  const photos = bolo.photo_urls || [];
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-mono font-bold border ${cfg.badge}`}><Icon className="w-3.5 h-3.5" />{cfg.label}</span>
-        <span className={`text-xs font-mono font-bold px-3 py-1 rounded border ${PRIORITY_STYLE[bolo.priority] || PRIORITY_STYLE.medium}`}>{(bolo.priority || 'medium').toUpperCase()} PRIORITY</span>
-        <span className={`text-xs font-mono font-bold ${bolo.status === 'active' ? 'text-green-400' : bolo.status === 'resolved' || bolo.status === 'located' ? 'text-blue-400' : 'text-slate-500'}`}>● {(bolo.status || '').toUpperCase()}</span>
-        {bolo.bolo_number && <span className="text-xs font-mono text-slate-500">#{bolo.bolo_number}</span>}
+    <div className="space-y-4 font-mono">
+      <div className="rounded border border-slate-700 bg-[#090f19] p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`inline-flex items-center gap-1 rounded border px-3 py-1 text-xs font-bold ${cfg.badge}`}><Icon className="h-3.5 w-3.5" />{cfg.label}</span>
+          <span className={`rounded border px-3 py-1 text-xs font-bold ${PRIORITY_STYLE[bolo.priority] || PRIORITY_STYLE.medium}`}>{upper(bolo.priority || 'medium')} PRIORITY</span>
+          <span className={`text-xs font-bold ${bolo.status === 'active' ? 'text-green-400' : bolo.status === 'resolved' || bolo.status === 'located' ? 'text-blue-400' : 'text-slate-500'}`}>● {upper(bolo.status)}</span>
+          {bolo.bolo_number && <span className="ml-auto text-xs text-slate-500">{bolo.bolo_number}</span>}
+        </div>
+        <h2 className="mt-3 text-xl font-black tracking-wide text-white">{titleCase(bolo.title)}</h2>
+        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[10px] text-slate-500">
+          {bolo.case_number && <span>CASE: <b className="text-slate-300">{upper(bolo.case_number)}</b></span>}
+          {bolo.jurisdiction && <span>JURISDICTION: <b className="text-slate-300">{titleCase(bolo.jurisdiction)}</b></span>}
+          {bolo.issued_by && <span>ISSUED BY: <b className="text-slate-300">{titleCase(bolo.issued_by)}</b></span>}
+        </div>
       </div>
-      <div>
-        <h2 className="text-lg font-bold font-mono text-white">{bolo.title}</h2>
-        {bolo.case_number && <p className="text-xs font-mono text-slate-500">Case: {bolo.case_number}</p>}
+
+      {photos.length > 0 && <div className="grid grid-cols-2 gap-2 md:grid-cols-3">{photos.map((url,i) => <a key={url+i} href={url} target="_blank" rel="noreferrer" className="overflow-hidden rounded border border-slate-700 bg-black"><img src={url} alt={`BOLO attachment ${i+1}`} className="h-40 w-full object-cover" /></a>)}</div>}
+
+      {bolo.description && <div className="rounded border border-slate-700 bg-slate-900/60 p-3"><div className="mb-1 text-[9px] font-black tracking-widest text-slate-500">BOLO NARRATIVE</div><p className="text-sm leading-relaxed text-slate-200">{sentenceCase(bolo.description)}</p></div>}
+
+      {parties.length > 0 && <div className="space-y-2"><div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-blue-300"><User className="h-3 w-3" />PARTIES / PERSONS</div>{parties.map((p,i) => <div key={i} className="rounded border border-blue-900/70 bg-blue-950/10 p-3">
+        <div className="flex items-center justify-between"><span className="text-[9px] font-black tracking-widest text-blue-400">{upper(p.role || `Party ${i+1}`)}</span><span className="text-sm font-black text-white">{titleCase(p.name)}</span></div>
+        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-400 md:grid-cols-5">
+          {p.dob && <span>DOB: <b className="text-white">{p.dob}</b></span>}{p.race && <span>RACE: <b className="text-white">{titleCase(p.race)}</b></span>}{p.sex && <span>SEX: <b className="text-white">{titleCase(p.sex)}</b></span>}{p.height && <span>HT: <b className="text-white">{p.height}</b></span>}{p.weight && <span>WT: <b className="text-white">{p.weight}</b></span>}
+        </div>{p.description && <p className="mt-2 text-xs text-slate-300">{sentenceCase(p.description)}</p>}
+      </div>)}</div>}
+
+      {vehicles.length > 0 && <div className="space-y-2"><div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-yellow-300"><Car className="h-3 w-3" />VEHICLES</div>{vehicles.map((v,i) => <div key={i} className="rounded border border-yellow-900/70 bg-yellow-950/10 p-3">
+        <div className="flex items-center justify-between gap-3"><span className="text-[9px] font-black tracking-widest text-yellow-500">{upper(v.role || `Vehicle ${i+1}`)}</span>{v.plate && <span className="rounded border border-yellow-500 bg-yellow-950 px-2 py-1 text-xs font-black text-yellow-200">{upper(v.plate)}{v.state ? ` · ${upper(v.state)}` : ''}</span>}</div>
+        <p className="mt-2 text-sm font-bold text-white">{[v.year, titleCase(v.color), titleCase(v.make), titleCase(v.model)].filter(Boolean).join(' ')}</p>{v.description && <p className="mt-1 text-xs text-slate-300">{sentenceCase(v.description)}</p>}
+      </div>)}</div>}
+
+      <div className="grid gap-2 text-xs md:grid-cols-2">
+        {bolo.last_known_location && <div className="rounded border border-slate-800 p-2"><span className="text-slate-500">LAST KNOWN / SEEN: </span><b className="text-slate-200">{titleCase(bolo.last_known_location)}</b></div>}
+        {bolo.contact_info && <div className="rounded border border-slate-800 p-2"><span className="text-slate-500">CONTACT: </span><b className="text-slate-200">{titleCase(bolo.contact_info)}</b></div>}
+        {bolo.linked_call_number && <div className="rounded border border-cyan-900/60 bg-cyan-950/10 p-2"><span className="text-cyan-500">LINKED CAD CALL: </span><b className="text-cyan-200">{bolo.linked_call_number}</b></div>}
+        {bolo.linked_incident_report_number && <div className="rounded border border-purple-900/60 bg-purple-950/10 p-2"><span className="text-purple-500">LINKED INCIDENT REPORT: </span><b className="text-purple-200">{bolo.linked_incident_report_number}</b></div>}
       </div>
-      {bolo.description && <p className="text-slate-300 text-sm font-mono leading-relaxed">{bolo.description}</p>}
-      {bolo.subject_name && (
-        <div className="border border-slate-700 rounded p-3 space-y-1">
-          <p className="text-[10px] font-mono text-slate-500 font-bold tracking-widest">SUBJECT</p>
-          <p className="font-mono text-white font-bold">{bolo.subject_name}</p>
-          <div className="flex flex-wrap gap-3 text-xs font-mono text-slate-400">
-            {bolo.subject_dob && <span>DOB: {bolo.subject_dob}</span>}
-            {bolo.subject_race && <span>Race: {bolo.subject_race}</span>}
-            {bolo.subject_sex && <span>Sex: {bolo.subject_sex}</span>}
-            {bolo.subject_height && <span>Ht: {bolo.subject_height}</span>}
-            {bolo.subject_weight && <span>Wt: {bolo.subject_weight}</span>}
-          </div>
-          {bolo.subject_description && <p className="text-xs font-mono text-slate-400 mt-1">{bolo.subject_description}</p>}
-        </div>
-      )}
-      {bolo.vehicle_plate && (
-        <div className="border border-yellow-700/50 rounded p-3 bg-yellow-900/10">
-          <p className="text-[10px] font-mono text-yellow-500 font-bold tracking-widest mb-1">VEHICLE</p>
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-mono text-white">{[bolo.vehicle_year, bolo.vehicle_color, bolo.vehicle_make, bolo.vehicle_model].filter(Boolean).join(' ')}</p>
-            <span className="px-2 py-0.5 bg-yellow-900/70 border border-yellow-500/70 rounded font-mono text-yellow-200 text-xs font-bold">{bolo.vehicle_plate}</span>
-          </div>
-        </div>
-      )}
-      <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-        {bolo.last_known_location && <div><span className="text-slate-500">LAST SEEN: </span><span className="text-slate-200">{bolo.last_known_location}</span></div>}
-        {bolo.jurisdiction && <div><span className="text-slate-500">JURISDICTION: </span><span className="text-slate-200">{bolo.jurisdiction}</span></div>}
-        {bolo.issued_by && <div><span className="text-slate-500">ISSUED BY: </span><span className="text-slate-200">{bolo.issued_by}</span></div>}
-        {bolo.contact_info && <div><span className="text-slate-500">CONTACT: </span><span className="text-slate-200">{bolo.contact_info}</span></div>}
-        {bolo.expires_at && <div><span className="text-slate-500">EXPIRES: </span><span className="text-slate-200">{new Date(bolo.expires_at).toLocaleString()}</span></div>}
-      </div>
-      {bolo.notes && (
-        <div className="border border-slate-700 rounded p-3">
-          <p className="text-[10px] font-mono text-slate-500 mb-1 font-bold tracking-widest">NOTES</p>
-          <p className="text-sm font-mono text-slate-300">{bolo.notes}</p>
-        </div>
-      )}
-      {bolo.status !== 'active' && (bolo.resolution_notes || bolo.resolved_at) && (
-        <div className="border border-blue-700/50 bg-blue-950/20 rounded p-3">
-          <p className="text-[10px] font-mono text-blue-400 mb-1 font-bold tracking-widest">DISPOSITION / RESOLUTION</p>
-          {bolo.resolution_notes && <p className="text-sm font-mono text-slate-200">{bolo.resolution_notes}</p>}
-          <div className="mt-2 text-[10px] font-mono text-slate-500">
-            {bolo.resolved_by && <span>Resolved by {bolo.resolved_by}</span>}
-            {bolo.resolved_at && <span> · {new Date(bolo.resolved_at).toLocaleString()}</span>}
-          </div>
-        </div>
-      )}
+
+      {bolo.notes && <div className="rounded border border-slate-700 p-3"><div className="mb-1 text-[9px] font-black tracking-widest text-slate-500">NOTES</div><p className="text-sm text-slate-300">{sentenceCase(bolo.notes)}</p></div>}
+      {bolo.status !== 'active' && (bolo.resolution_notes || bolo.resolved_at) && <div className="rounded border border-blue-700/50 bg-blue-950/20 p-3"><p className="mb-1 text-[10px] font-black tracking-widest text-blue-400">DISPOSITION / RESOLUTION</p>{bolo.resolution_notes && <p className="text-sm text-slate-200">{sentenceCase(bolo.resolution_notes)}</p>}<div className="mt-2 text-[10px] text-slate-500">{bolo.resolved_by && <span>Resolved by {titleCase(bolo.resolved_by)}</span>}{bolo.resolved_at && <span> · {new Date(bolo.resolved_at).toLocaleString()}</span>}</div></div>}
     </div>
   );
 }
 
 function FormView({ data, onChange }) {
+  const [calls, setCalls] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const set = (field, val) => onChange(prev => ({ ...prev, [field]: val }));
-  const isPerson  = ['wanted_person', 'missing_person'].includes(data.alert_type);
-  const isVehicle = data.alert_type === 'stolen_vehicle';
+  const parties = data.parties || [];
+  const vehicles = data.vehicles || [];
 
-  return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="ALERT TYPE *">
-          <Select value={data.alert_type} onChange={v => set('alert_type', v)} options={[
-            { value: 'wanted_person', label: 'Wanted Person' },
-            { value: 'missing_person', label: 'Missing Person' },
-            { value: 'stolen_vehicle', label: 'Stolen Vehicle' },
-            { value: 'officer_safety', label: 'Officer Safety' },
-            { value: 'special_instruction', label: 'Special Instruction' },
-            { value: 'property_alert', label: 'Property Alert' },
-            { value: 'watch_notice', label: 'Watch Notice' },
-          ]} />
-        </Field>
-        <Field label="PRIORITY *">
-          <Select value={data.priority} onChange={v => set('priority', v)} options={[
-            { value: 'critical', label: 'Critical' },
-            { value: 'high', label: 'High' },
-            { value: 'medium', label: 'Medium' },
-            { value: 'low', label: 'Low' },
-          ]} />
-        </Field>
-      </div>
-      <Field label="TITLE / HEADLINE *">
-        <Input value={data.title} onChange={v => set('title', v)} placeholder="Brief description..." />
-      </Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="CASE NUMBER"><Input value={data.case_number} onChange={v => set('case_number', v)} /></Field>
-        <Field label="JURISDICTION"><Input value={data.jurisdiction} onChange={v => set('jurisdiction', v)} /></Field>
-      </div>
+  useEffect(() => {
+    Promise.all([
+      base44.entities.DispatchCall.list('-created_date', 200).catch(() => []),
+      base44.entities.IncidentReport.list('-created_date', 200).catch(() => []),
+    ]).then(([c,r]) => { setCalls(c || []); setReports(r || []); });
+  }, []);
 
-      {isPerson && (
-        <div className="border border-slate-700 rounded p-3 space-y-3">
-          <p className="text-[10px] font-mono text-slate-400 font-bold tracking-widest">SUBJECT INFORMATION</p>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="FULL NAME"><Input value={data.subject_name} onChange={v => set('subject_name', v)} /></Field>
-            <Field label="DATE OF BIRTH"><Input value={data.subject_dob} onChange={v => set('subject_dob', v)} placeholder="MM/DD/YYYY" /></Field>
-          </div>
-          <div className="grid grid-cols-4 gap-3">
-            <Field label="RACE"><Input value={data.subject_race} onChange={v => set('subject_race', v)} /></Field>
-            <Field label="SEX"><Input value={data.subject_sex} onChange={v => set('subject_sex', v)} /></Field>
-            <Field label="HEIGHT"><Input value={data.subject_height} onChange={v => set('subject_height', v)} placeholder='5&apos;10"' /></Field>
-            <Field label="WEIGHT"><Input value={data.subject_weight} onChange={v => set('subject_weight', v)} placeholder="180 lbs" /></Field>
-          </div>
-          <Field label="PHYSICAL DESCRIPTION"><Textarea value={data.subject_description} onChange={v => set('subject_description', v)} rows={2} /></Field>
-        </div>
-      )}
+  const addParty = () => set('parties', [...parties, { role: 'Subject', name: '', dob: '', race: '', sex: '', height: '', weight: '', description: '' }]);
+  const updateParty = (idx, field, value) => set('parties', parties.map((p,i) => i === idx ? { ...p, [field]: value } : p));
+  const removeParty = idx => set('parties', parties.filter((_,i) => i !== idx));
+  const addVehicle = () => set('vehicles', [...vehicles, { role: 'Vehicle', year: '', color: '', make: '', model: '', plate: '', state: '', description: '' }]);
+  const updateVehicle = (idx, field, value) => set('vehicles', vehicles.map((v,i) => i === idx ? { ...v, [field]: value } : v));
+  const removeVehicle = idx => set('vehicles', vehicles.filter((_,i) => i !== idx));
 
-      {isVehicle && (
-        <div className="border border-slate-700 rounded p-3 space-y-3">
-          <p className="text-[10px] font-mono text-slate-400 font-bold tracking-widest">VEHICLE INFORMATION</p>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="MAKE"><Input value={data.vehicle_make} onChange={v => set('vehicle_make', v)} /></Field>
-            <Field label="MODEL"><Input value={data.vehicle_model} onChange={v => set('vehicle_model', v)} /></Field>
-            <Field label="YEAR"><Input value={data.vehicle_year} onChange={v => set('vehicle_year', v)} /></Field>
-            <Field label="COLOR"><Input value={data.vehicle_color} onChange={v => set('vehicle_color', v)} /></Field>
-          </div>
-          <Field label="LICENSE PLATE">
-            <Input value={data.vehicle_plate} onChange={v => set('vehicle_plate', v.toUpperCase())} placeholder="ABC-1234" className="uppercase" />
-          </Field>
-        </div>
-      )}
+  const uploadPhotos = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploading(true);
+    try {
+      const urls = [];
+      for (const file of files.slice(0, 8)) {
+        const result = await base44.integrations.Core.UploadFile({ file });
+        if (result?.file_url) urls.push(result.file_url);
+      }
+      set('photo_urls', [...(data.photo_urls || []), ...urls].slice(0, 8));
+    } finally { setUploading(false); e.target.value = ''; }
+  };
 
-      <Field label="LAST KNOWN LOCATION"><Input value={data.last_known_location} onChange={v => set('last_known_location', v)} /></Field>
-      <Field label="FULL DESCRIPTION / NARRATIVE"><Textarea value={data.description} onChange={v => set('description', v)} /></Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="CONTACT INFO"><Input value={data.contact_info} onChange={v => set('contact_info', v)} placeholder="Unit / phone" /></Field>
-        <Field label="EXPIRES AT">
-          <input type="datetime-local" value={data.expires_at ? data.expires_at.slice(0, 16) : ''}
-            onChange={e => set('expires_at', e.target.value ? new Date(e.target.value).toISOString() : '')}
-            className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-gold" />
-        </Field>
-      </div>
-      <Field label="NOTES"><Textarea value={data.notes} onChange={v => set('notes', v)} rows={2} /></Field>
+  const callLabel = c => c.agency_cad_number || c.bps_reference || c.call_id || c.id;
+  const reportLabel = r => r.report_number || r.incident_report_number || r.id;
 
+  return <div className="space-y-4 font-mono">
+    <div className="grid gap-3 md:grid-cols-2">
+      <Field label="ALERT TYPE *"><Select value={data.alert_type} onChange={v => set('alert_type', v)} options={[
+        {value:'wanted_person',label:'Wanted Person'},{value:'missing_person',label:'Missing Person'},{value:'stolen_vehicle',label:'Stolen Vehicle'},{value:'officer_safety',label:'Officer Safety'},{value:'special_instruction',label:'Special Instruction'},{value:'property_alert',label:'Property Alert'},{value:'watch_notice',label:'Watch Notice'}]} /></Field>
+      <Field label="PRIORITY *"><Select value={data.priority} onChange={v => set('priority', v)} options={[{value:'critical',label:'Critical'},{value:'high',label:'High'},{value:'medium',label:'Medium'},{value:'low',label:'Low'}]} /></Field>
     </div>
-  );
+    <Field label="TITLE / HEADLINE *"><Input value={data.title} onChange={v => set('title', v)} normalize={titleCase} placeholder="Wanted Person, Stolen Vehicle, Officer Safety Alert..." /></Field>
+    <div className="grid gap-3 md:grid-cols-2"><Field label="CASE NUMBER"><Input value={data.case_number} onChange={v => set('case_number', v)} normalize={upper} /></Field><Field label="JURISDICTION"><Input value={data.jurisdiction} onChange={v => set('jurisdiction', v)} normalize={titleCase} /></Field></div>
+
+    <div className="rounded border border-cyan-900/60 bg-cyan-950/10 p-3">
+      <div className="mb-3 flex items-center gap-2 text-[10px] font-black tracking-widest text-cyan-300"><LinkIcon className="h-3 w-3" />LINK TO CAD / REPORT</div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="DISPATCH CALL"><select value={data.linked_call_id || ''} onChange={e => { const c = calls.find(x => x.id === e.target.value); set('linked_call_id', e.target.value); set('linked_call_number', c ? callLabel(c) : ''); }} className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white"><option value="">No linked call</option>{calls.map(c => <option key={c.id} value={c.id}>{callLabel(c)} — {titleCase(c.incident || '')} — {titleCase(c.location || '')}</option>)}</select></Field>
+        <Field label="INCIDENT REPORT"><select value={data.linked_incident_report_id || ''} onChange={e => { const r = reports.find(x => x.id === e.target.value); set('linked_incident_report_id', e.target.value); set('linked_incident_report_number', r ? reportLabel(r) : ''); }} className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white"><option value="">No linked incident report</option>{reports.map(r => <option key={r.id} value={r.id}>{reportLabel(r)} — {titleCase(r.incident_type || r.report_type || r.location || '')}</option>)}</select></Field>
+      </div>
+    </div>
+
+    <div className="rounded border border-slate-700 p-3">
+      <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-slate-300"><ImageIcon className="h-3 w-3" />PHOTOS / IMAGES</div><label className="cursor-pointer rounded border border-blue-700 bg-blue-950/40 px-3 py-1.5 text-[9px] font-bold text-blue-300 hover:bg-blue-900/50"><Upload className="mr-1 inline h-3 w-3" />{uploading ? 'UPLOADING...' : 'ADD PHOTOS'}<input type="file" accept="image/*" multiple className="hidden" onChange={uploadPhotos} disabled={uploading} /></label></div>
+      {(data.photo_urls || []).length === 0 ? <div className="text-[10px] text-slate-600">No images attached. Up to 8 images can be added.</div> : <div className="grid grid-cols-3 gap-2 md:grid-cols-4">{data.photo_urls.map((url,i) => <div key={url+i} className="relative overflow-hidden rounded border border-slate-700"><img src={url} className="h-24 w-full object-cover" /><button type="button" onClick={() => set('photo_urls', data.photo_urls.filter((_,x) => x !== i))} className="absolute right-1 top-1 rounded bg-black/80 p-1 text-red-300"><Trash2 className="h-3 w-3" /></button></div>)}</div>}
+    </div>
+
+    <div className="rounded border border-blue-900/70 bg-blue-950/10 p-3">
+      <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-blue-300"><User className="h-3 w-3" />PARTIES / PERSONS</div><button type="button" onClick={addParty} className="rounded border border-blue-700 px-2 py-1 text-[9px] font-bold text-blue-300"><Plus className="mr-1 inline h-3 w-3" />ADD PARTY</button></div>
+      {parties.length === 0 && <div className="text-[10px] text-slate-600">Add each subject, missing person, victim, witness, or other party separately.</div>}
+      <div className="space-y-3">{parties.map((p,i) => <div key={i} className="rounded border border-slate-700 bg-slate-900/60 p-3"><div className="mb-2 flex items-center gap-2"><span className="text-[9px] font-black text-blue-400">PARTY {i+1}</span><button type="button" onClick={() => removeParty(i)} className="ml-auto text-red-400"><Trash2 className="h-3.5 w-3.5" /></button></div><div className="grid gap-2 md:grid-cols-3"><Input value={p.role} onChange={v => updateParty(i,'role',v)} normalize={titleCase} placeholder="Role: Subject" /><Input value={p.name} onChange={v => updateParty(i,'name',v)} normalize={titleCase} placeholder="Full Name" /><Input value={p.dob} onChange={v => updateParty(i,'dob',v)} placeholder="DOB MM/DD/YYYY" /><Input value={p.race} onChange={v => updateParty(i,'race',v)} normalize={titleCase} placeholder="Race" /><Input value={p.sex} onChange={v => updateParty(i,'sex',v)} normalize={titleCase} placeholder="Sex" /><div className="grid grid-cols-2 gap-2"><Input value={p.height} onChange={v => updateParty(i,'height',v)} placeholder="Height" /><Input value={p.weight} onChange={v => updateParty(i,'weight',v)} placeholder="Weight" /></div></div><div className="mt-2"><Textarea value={p.description} onChange={v => updateParty(i,'description',v)} normalize={sentenceCase} rows={2} /></div></div>)}</div>
+    </div>
+
+    <div className="rounded border border-yellow-900/70 bg-yellow-950/10 p-3">
+      <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-yellow-300"><Car className="h-3 w-3" />VEHICLES</div><button type="button" onClick={addVehicle} className="rounded border border-yellow-700 px-2 py-1 text-[9px] font-bold text-yellow-300"><Plus className="mr-1 inline h-3 w-3" />ADD VEHICLE</button></div>
+      {vehicles.length === 0 && <div className="text-[10px] text-slate-600">Add each associated vehicle separately.</div>}
+      <div className="space-y-3">{vehicles.map((v,i) => <div key={i} className="rounded border border-slate-700 bg-slate-900/60 p-3"><div className="mb-2 flex items-center"><span className="text-[9px] font-black text-yellow-400">VEHICLE {i+1}</span><button type="button" onClick={() => removeVehicle(i)} className="ml-auto text-red-400"><Trash2 className="h-3.5 w-3.5" /></button></div><div className="grid gap-2 md:grid-cols-4"><Input value={v.role} onChange={x => updateVehicle(i,'role',x)} normalize={titleCase} placeholder="Role" /><Input value={v.year} onChange={x => updateVehicle(i,'year',x)} placeholder="Year" /><Input value={v.color} onChange={x => updateVehicle(i,'color',x)} normalize={titleCase} placeholder="Color" /><Input value={v.make} onChange={x => updateVehicle(i,'make',x)} normalize={titleCase} placeholder="Make" /><Input value={v.model} onChange={x => updateVehicle(i,'model',x)} normalize={titleCase} placeholder="Model" /><Input value={v.plate} onChange={x => updateVehicle(i,'plate',upper(x))} placeholder="Plate" /><Input value={v.state} onChange={x => updateVehicle(i,'state',upper(x))} placeholder="State" /></div><div className="mt-2"><Textarea value={v.description} onChange={x => updateVehicle(i,'description',x)} normalize={sentenceCase} rows={2} /></div></div>)}</div>
+    </div>
+
+    <Field label="LAST KNOWN / LAST SEEN LOCATION"><Input value={data.last_known_location} onChange={v => set('last_known_location', v)} normalize={titleCase} /></Field>
+    <Field label="FULL BOLO NARRATIVE"><Textarea value={data.description} onChange={v => set('description', v)} normalize={sentenceCase} rows={4} /></Field>
+    <div className="grid gap-3 md:grid-cols-2"><Field label="CONTACT INFO"><Input value={data.contact_info} onChange={v => set('contact_info', v)} normalize={titleCase} placeholder="Unit / phone / agency" /></Field><Field label="EXPIRES AT"><input type="datetime-local" value={data.expires_at ? data.expires_at.slice(0,16) : ''} onChange={e => set('expires_at', e.target.value ? new Date(e.target.value).toISOString() : '')} className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white" /></Field></div>
+    <Field label="INTERNAL NOTES"><Textarea value={data.notes} onChange={v => set('notes', v)} normalize={sentenceCase} rows={2} /></Field>
+  </div>;
 }
 
 export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
-  const [formData, setFormData] = useState(bolo || {});
+  const initial = useMemo(() => ({ ...bolo, parties: bolo?.parties?.length ? bolo.parties : legacyParty(bolo), vehicles: bolo?.vehicles?.length ? bolo.vehicles : legacyVehicle(bolo), photo_urls: bolo?.photo_urls || [] }), [bolo]);
+  const [formData, setFormData] = useState(initial || {});
   const [saving, setSaving] = useState(false);
   const isEditing = mode === 'create' || mode === 'edit';
 
@@ -194,36 +178,22 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
     if (!formData.title || !formData.alert_type) return;
     setSaving(true);
     try {
-      if (formData.id) {
-        await base44.functions.invoke('manageBolo', { action: 'edit', id: formData.id, data: formData });
-      } else {
-        await base44.functions.invoke('manageBolo', { action: 'create', data: formData });
-      }
+      const normalized = {
+        ...formData,
+        title: titleCase(formData.title),
+        jurisdiction: titleCase(formData.jurisdiction),
+        last_known_location: titleCase(formData.last_known_location),
+        case_number: upper(formData.case_number),
+        description: sentenceCase(formData.description),
+        notes: sentenceCase(formData.notes),
+        parties: (formData.parties || []).map(p => ({ ...p, role: titleCase(p.role), name: titleCase(p.name), race: titleCase(p.race), sex: titleCase(p.sex), description: sentenceCase(p.description) })),
+        vehicles: (formData.vehicles || []).map(v => ({ ...v, role: titleCase(v.role), color: titleCase(v.color), make: titleCase(v.make), model: titleCase(v.model), plate: upper(v.plate), state: upper(v.state), description: sentenceCase(v.description) })),
+      };
+      if (formData.id) await base44.functions.invoke('manageBolo', { action: 'edit', id: formData.id, data: normalized });
+      else await base44.functions.invoke('manageBolo', { action: 'create', data: normalized });
       onSaved();
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
-  return (
-    <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-2xl max-h-[90vh] overflow-auto">
-        <DialogHeader>
-          <DialogTitle className="font-mono text-gold tracking-widest">
-            {mode === 'create' ? 'ISSUE NEW BOLO' : mode === 'edit' ? 'EDIT BOLO' : 'BOLO DETAIL'}
-          </DialogTitle>
-        </DialogHeader>
-        {isEditing ? <FormView data={formData} onChange={setFormData} /> : <DetailView bolo={bolo} />}
-        {isEditing && (
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-800 mt-2">
-            <button onClick={onClose} className="px-4 py-2 text-sm font-mono text-slate-400 hover:text-white transition-colors">CANCEL</button>
-            <button onClick={handleSave} disabled={saving}
-              className="px-6 py-2 bg-red-700 hover:bg-red-600 disabled:opacity-50 text-white text-sm font-mono font-bold rounded border border-red-500 transition-colors">
-              {saving ? 'SAVING...' : formData.id ? 'SAVE CHANGES' : 'ISSUE BOLO'}
-            </button>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
+  return <Dialog open onOpenChange={v => !v && onClose()}><DialogContent className="max-h-[94vh] max-w-4xl overflow-auto border-slate-700 bg-slate-950 text-white"><DialogHeader><DialogTitle className="font-mono tracking-widest text-gold">{mode === 'create' ? 'ISSUE NEW BOLO' : mode === 'edit' ? 'EDIT BOLO' : 'BOLO DETAIL'}</DialogTitle></DialogHeader>{isEditing ? <FormView data={formData} onChange={setFormData} /> : <DetailView bolo={bolo} />}{isEditing && <div className="mt-2 flex justify-end gap-3 border-t border-slate-800 pt-3"><button onClick={onClose} className="px-4 py-2 text-sm font-mono text-slate-400 hover:text-white">CANCEL</button><button onClick={handleSave} disabled={saving} className="rounded border border-red-500 bg-red-700 px-6 py-2 text-sm font-mono font-bold text-white hover:bg-red-600 disabled:opacity-50">{saving ? 'SAVING...' : formData.id ? 'SAVE CHANGES' : 'ISSUE BOLO'}</button></div>}</DialogContent></Dialog>;
 }
