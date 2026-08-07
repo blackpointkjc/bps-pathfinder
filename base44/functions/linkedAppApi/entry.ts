@@ -8,6 +8,9 @@ Deno.serve(async (req) => {
         const user = await base44.auth.me();
         if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+        const apiKey = Deno.env.has('LINKED_APP_API_KEY') ? Deno.env.get('LINKED_APP_API_KEY') : null;
+        if (!apiKey) return Response.json({ error: 'LINKED_APP_API_KEY is not configured' }, { status: 503 });
+
         const body = await req.json().catch(() => ({}));
         const { action, entity, entityId, data, query } = body;
 
@@ -16,7 +19,7 @@ Deno.serve(async (req) => {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'x-api-key': Deno.env.get('LINKED_APP_API_KEY')
+                    'x-api-key': apiKey
                 },
                 body: JSON.stringify({ action: 'search', query: query || '' })
             });
@@ -32,7 +35,7 @@ Deno.serve(async (req) => {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'x-api-key': Deno.env.get('LINKED_APP_API_KEY')
+                    'x-api-key': apiKey
                 },
                 body: JSON.stringify({ action: 'update', entity, entityId, data })
             });
@@ -48,7 +51,7 @@ Deno.serve(async (req) => {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'x-api-key': Deno.env.get('LINKED_APP_API_KEY')
+                    'x-api-key': apiKey
                 },
                 body: JSON.stringify({ action: 'create', entity, data })
             });
