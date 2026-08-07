@@ -53,14 +53,11 @@ export default function MandatoryReadGate({ user }) {
     if (!enabled) return [];
     const receiptIds = new Set(receipts.map(r => r.announcement_id));
     const accountCreated = user?.created_date ? new Date(user.created_date).getTime() : 0;
-    const announcementItems = announcements
-      .filter(activeAnnouncement)
-      .filter(a => !accountCreated || new Date(a.created_date || 0).getTime() >= accountCreated)
-      .filter(a => !receiptIds.has(a.id))
-      .map(a => ({ type: 'announcement', id: a.id, sort: a.created_date, record: a }));
+    // Announcements are handled by the persistent global banner. They no longer
+    // block the entire application; the banner remains until Announcements is opened.
     const messageItems = directMessages.map(m => ({ type: 'message', id: m.id, sort: m.created_date, record: m }));
     const mentionItems = mentions.map(m => ({ type: 'mention', id: m.id, sort: m.created_date, record: m }));
-    return [...announcementItems, ...messageItems, ...mentionItems].sort((a,b) => new Date(a.sort || 0) - new Date(b.sort || 0));
+    return [...messageItems, ...mentionItems].sort((a,b) => new Date(a.sort || 0) - new Date(b.sort || 0));
   }, [enabled, announcements, receipts, directMessages, mentions, user?.created_date]);
 
   const current = queue[0];
