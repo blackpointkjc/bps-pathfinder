@@ -8,6 +8,9 @@ Deno.serve(async (req) => {
         const user = await base44.auth.me();
         if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+        const apiKey = Deno.env.has('LINKED_APP_API_KEY') ? Deno.env.get('LINKED_APP_API_KEY') : null;
+        if (!apiKey) return Response.json({ error: 'LINKED_APP_API_KEY is not configured' }, { status: 503 });
+
         const reportData = await req.json();
 
         // Format array data as strings for linked app
@@ -48,7 +51,7 @@ Deno.serve(async (req) => {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'x-api-key': Deno.env.get('LINKED_APP_API_KEY')
+                'x-api-key': apiKey
             },
             body: JSON.stringify({ 
                 action: 'create',
