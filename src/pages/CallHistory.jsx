@@ -269,7 +269,7 @@ export default function CallHistory() {
                             {isExpanded && (
                                 <div className="grid grid-cols-1 gap-x-6 gap-y-2 border-b border-slate-700 bg-slate-800/40 px-3 py-3 text-[10px] sm:grid-cols-2 sm:px-6 lg:grid-cols-3">
                                     {row.description && (
-                                        <div className="col-span-3 mb-1">
+                                        <div className="mb-1 sm:col-span-2 lg:col-span-3">
                                             <span className="text-slate-500 tracking-widest">NARRATIVE: </span>
                                             <span className="text-slate-300">{row.description}</span>
                                         </div>
