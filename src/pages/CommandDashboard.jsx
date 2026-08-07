@@ -8,6 +8,8 @@ import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import FieldCallModal from '@/components/dispatch/FieldCallModal';
+import ActiveBoloBanner from '@/components/bolo/ActiveBoloBanner';
+import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
 import { Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
 
@@ -245,6 +247,7 @@ function CommandDashboardInner() {
     return (
         <div className="bg-slate-950 min-h-full flex flex-col">
             <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={isDispatchOrAdmin} />
+            <ActiveBoloBanner />
 
             {/* ── SYSTEM HEADER BAR ── */}
             <div className="flex-none bg-slate-900 border-b-2 border-gold/60 px-4 py-2 flex items-center gap-4">
@@ -500,45 +503,7 @@ function CommandDashboardInner() {
                 <div className="flex flex-col border-t border-slate-800 lg:border-t-0 min-h-0">
 
                     <div className="flex flex-col" style={{ maxHeight: '50%' }}>
-                        <PanelHeader count={statusUnits.length} accent="blue">UNIT STATUS BOARD</PanelHeader>
-                        <div className="grid grid-cols-4 border-b border-slate-800 flex-none">
-                            {[
-                                { label: 'AVAIL', val: availUnits.length, color: 'text-green-400' },
-                                { label: 'ENRT', val: enrouteUnits.length, color: 'text-yellow-400' },
-                                { label: 'SCNE', val: onSceneUnits.length, color: 'text-blue-400' },
-                                { label: 'BUSY', val: busyUnits.length, color: 'text-orange-400' },
-                            ].map(({ label, val, color }) => (
-                                <div key={label} className="flex flex-col items-center py-1.5 border-r last:border-r-0 border-slate-800">
-                                    <span className={`text-base font-mono font-bold leading-none ${color}`}>{val}</span>
-                                    <span className="text-[8px] text-slate-600 font-mono tracking-wider">{label}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="overflow-y-auto flex-1">
-                            {statusUnits.length === 0 ? (
-                                <div className="py-6 text-center text-slate-600 font-mono text-[10px] tracking-widest">NO CAD OFFICERS ONLINE</div>
-                            ) : statusUnits.map(unit => {
-                                const cfg = UNIT_STATUS_COLORS[unit.status] || UNIT_STATUS_COLORS['Out of Service'];
-                                return (
-                                    <div key={unit.id} className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-800/60 hover:bg-slate-800/30">
-                                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot}`} />
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-white font-mono text-[11px] font-bold truncate">
-                                                {unit.rank && unit.last_name
-                                                  ? `${unit.rank} ${unit.last_name}`.toUpperCase()
-                                                  : unit.unit_number
-                                                    ? `UNIT-${unit.unit_number}`
-                                                    : unit.full_name?.toUpperCase()}
-                                            </div>
-                                            {unit.current_call_info && <div className="text-slate-500 text-[9px] font-mono truncate">{unit.current_call_info}</div>}
-                                        </div>
-                                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${cfg.badge}`}>
-                                            {(unit.status || 'UNK').substring(0, 6).toUpperCase()}
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                        <CADUnitStatusBoard units={statusUnits} compact />
                     </div>
 
                     <div className="border-t border-slate-800">
