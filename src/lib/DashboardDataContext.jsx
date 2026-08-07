@@ -69,7 +69,7 @@ export function DashboardDataProvider({ children }) {
                 console.error(`[CAD ${nowET}] Calls fetch failed:`, callsErr);
                 throw callsErr; // re-throw — calls are the critical payload
             }
-            if (force || Date.now() - lastUsersRefreshTime.current >= USER_REFRESH_MS || usersCacheRef.current.length === 0) {
+            if (Date.now() - lastUsersRefreshTime.current >= USER_REFRESH_MS || usersCacheRef.current.length === 0) {
                 try {
                     const allUsers = await base44.entities.User.list('-last_updated', 200);
                     usersData = (allUsers || []).filter(u => {
