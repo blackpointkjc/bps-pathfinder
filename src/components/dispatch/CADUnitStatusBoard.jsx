@@ -46,12 +46,12 @@ export default function CADUnitStatusBoard({ units = [], compact = false }) {
         })}
       </div>
 
-      <div className="flex items-center gap-2 border-b border-[#1e2d4a] bg-[#0b1320] px-2 py-1.5">
+      <div className="flex flex-col gap-1.5 border-b border-[#1e2d4a] bg-[#0b1320] px-2 py-1.5 sm:flex-row sm:items-center sm:gap-2">
         <span className="text-[8px] font-black tracking-widest text-slate-500">FILTER STATUS:</span>
-        <select value={filter} onChange={e => setFilter(e.target.value)} className="min-w-32 rounded border border-blue-700/50 bg-[#07101c] px-2 py-1 text-[9px] font-bold text-blue-200 outline-none">
+        <select value={filter} onChange={e => setFilter(e.target.value)} className="w-full min-w-0 rounded border border-blue-700/50 bg-[#07101c] px-2 py-1.5 text-[10px] font-bold text-blue-200 outline-none sm:w-auto sm:min-w-32 sm:py-1 sm:text-[9px]">
           {STATUS_ORDER.map(status => <option key={status} value={status}>{status.toUpperCase()}</option>)}
         </select>
-        <span className="text-[8px] text-slate-600">SHOWING {filtered.length} OF {statusUnits.length}</span>
+        <span className="text-[8px] text-slate-600 sm:ml-auto">SHOWING {filtered.length} OF {statusUnits.length}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto">
