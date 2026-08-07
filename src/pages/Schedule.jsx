@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, MapPin, FileText, ChevronLeft, ChevronRight, Info, ExternalLink, RefreshCw, CalendarDays, Printer, AlertCircle } from "lucide-react";
+import { Calendar, Clock, MapPin, FileText, ChevronLeft, ChevronRight, Info, ExternalLink, RefreshCw, CalendarDays, Printer, AlertCircle, Car, Users } from "lucide-react";
 import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,7 @@ const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/pub
 
 export default function Schedule() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
-  const [selectedPayrollPeriod, setSelectedPayrollPeriod] = useState("all"); // "all", "current", or a period ID
+  const [selectedPayrollPeriod] = useState("all");
 
   const queryClient = useQueryClient(); // Initialize query client
 
@@ -50,6 +50,16 @@ export default function Schedule() {
     refetchInterval: 10000, // Refetch every 10 seconds
   });
 
+  const { data: vehicleAssignments = [] } = useQuery({
+    queryKey: ['myVehicleAssignments', user?.email],
+    queryFn: async () => {
+      const rows = await base44.entities.VehicleAssignment.list('-assignment_date');
+      return rows.filter(a => a.primary_officer_email === user?.email || a.partner_officer_email === user?.email);
+    },
+    enabled: !!user?.email,
+    refetchInterval: 10000,
+  });
+
   const { data: approvedPTO, isLoading: ptoLoading } = useQuery({
     queryKey: ['myApprovedPTO'],
     queryFn: async () => {
@@ -75,20 +85,8 @@ export default function Schedule() {
   let weekStartCalc, weekEndCalc;
   const today = new Date(); // Re-initialize today for date-fns calculations
 
-  if (selectedPayrollPeriod === "all" || !selectedPayrollPeriod) {
-    // Weekly view - 7 days
-    weekStartCalc = addWeeks(startOfWeek(today, { weekStartsOn: 5 }), currentWeekOffset);
-    weekEndCalc = addDays(weekStartCalc, 6);
-  } else if (selectedPayrollPeriod === "current") {
-    // Current payroll period - 14 days
-    weekStartCalc = currentPeriod ? parseISO(currentPeriod.start_date) : startOfWeek(today, { weekStartsOn: 5 });
-    weekEndCalc = currentPeriod ? parseISO(currentPeriod.end_date) : addDays(startOfWeek(today, { weekStartsOn: 5 }), 6);
-  } else {
-    // Specific payroll period - 14 days
-    const selectedPeriodData = payrollPeriods?.find(p => p.id === selectedPayrollPeriod);
-    weekStartCalc = selectedPeriodData ? parseISO(selectedPeriodData.start_date) : startOfWeek(today, { weekStartsOn: 5 });
-    weekEndCalc = selectedPeriodData ? parseISO(selectedPeriodData.end_date) : addDays(startOfWeek(today, { weekStartsOn: 5 }), 6);
-  }
+  weekStartCalc = addWeeks(startOfWeek(today, { weekStartsOn: 0 }), currentWeekOffset);
+  weekEndCalc = addDays(weekStartCalc, 6);
 
   const weekStart = weekStartCalc;
   const weekEnd = weekEndCalc;
@@ -390,22 +388,9 @@ export default function Schedule() {
           </div>
         )}
 
-        <div className="bg-white p-4 rounded-lg border border-slate-200">
-          <Label htmlFor="payroll-period-select" className="text-sm text-slate-600 mb-2 block">View by Payroll Period</Label>
-          <Select value={selectedPayrollPeriod} onValueChange={setSelectedPayrollPeriod}>
-            <SelectTrigger id="payroll-period-select">
-              <SelectValue placeholder="Select period..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Weekly View (7 days - Manual Navigation)</SelectItem>
-              <SelectItem value="current">Current Payroll Period (14 days)</SelectItem>
-              {payrollPeriods?.map((period) => (
-                <SelectItem key={period.id} value={period.id}>
-                  {period.period_name} ({format(parseISO(period.start_date), 'MMM d')} - {format(parseISO(period.end_date), 'MMM d, yyyy')})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <div className="text-sm font-semibold text-slate-800">Weekly Schedule View</div>
+          <div className="text-xs text-slate-500">Sunday through Saturday. Use Previous Week and Next Week to move week by week.</div>
         </div>
 
         {(selectedPayrollPeriod === "all" || !selectedPayrollPeriod) && (
@@ -435,25 +420,7 @@ export default function Schedule() {
           </div>
         )}
 
-        {(selectedPayrollPeriod && selectedPayrollPeriod !== "all") && (
-          <div className="bg-gradient-to-r from-purple-100 to-blue-100 p-4 rounded-lg border-2 border-purple-400">
-            <div className="text-center">
-              <p className="font-bold text-purple-900 text-lg">
-                {selectedPayrollPeriod === "current"
-                  ? currentPeriod?.period_name || "Current Period (Loading)"
-                  : payrollPeriods?.find(p => p.id === selectedPayrollPeriod)?.period_name || "Selected Period (Loading)"}
-              </p>
-              <p className="text-sm text-purple-700">
-                {format(weekStart, 'MMM d, yyyy')} - {format(weekEnd, 'MMM d, yyyy')} (14 Days - Full Pay Period)
-              </p>
-              {(selectedPayrollPeriod === "current" ? currentPeriod?.deposit_date : payrollPeriods?.find(p => p.id === selectedPayrollPeriod)?.deposit_date) && (
-                <p className="text-xs text-purple-600 mt-1">
-                  Direct Deposit: {format(parseISO(selectedPayrollPeriod === "current" ? currentPeriod.deposit_date : payrollPeriods.find(p => p.id === selectedPayrollPeriod).deposit_date), 'MMM d, yyyy')}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+
 
         {(currentWeekOffset !== 0 && (selectedPayrollPeriod === "all" || !selectedPayrollPeriod)) && (
           <div className="flex justify-center">
@@ -616,6 +583,23 @@ export default function Schedule() {
                                 </div>
                               </div>
                             </div>
+                            {(() => {
+                              const vehicle = vehicleAssignments.find(a =>
+                                a.assignment_date === schedule.shift_date &&
+                                (a.primary_officer_email === user?.email || a.partner_officer_email === user?.email) &&
+                                (!a.start_time || a.start_time === schedule.start_time)
+                              );
+                              if (!vehicle) return null;
+                              const isPartner = vehicle.partner_officer_email === user?.email;
+                              return (
+                                <div className="mt-4 rounded-lg border-2 border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 p-3">
+                                  <div className="flex items-center gap-2 text-sm font-bold text-amber-900"><Car className="h-4 w-4" />Assigned Fleet Vehicle</div>
+                                  <div className="mt-1 text-lg font-black text-amber-950">{vehicle.vehicle_label}</div>
+                                  {vehicle.partner_officer_name && <div className="mt-1 flex items-center gap-1 text-xs text-amber-800"><Users className="h-3 w-3" />Partner: {isPartner ? vehicle.primary_officer_name : vehicle.partner_officer_name}</div>}
+                                  {vehicle.notes && <div className="mt-1 text-xs text-amber-700">{vehicle.notes}</div>}
+                                </div>
+                              );
+                            })()}
                             {schedule.site_details && (
                               <div className="mt-4 p-3 bg-white rounded border border-blue-200">
                                 <p className="text-xs text-blue-700 font-medium mb-1 flex items-center gap-1">
