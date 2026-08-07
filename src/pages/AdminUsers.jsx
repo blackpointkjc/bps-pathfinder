@@ -233,10 +233,9 @@ export default function AdminUsers() {
 
   const getRankSeries = (rank) => {
     const seriesMap = {
-      'Colonel (Director of Company Operations)': { start: 100, end: 100 },
-      'Lt Colonel (Director of Security Operations)': { start: 200, end: 200 },
-      'Lt Colonel (Director of Training and Compliance)': { start: 200, end: 200 },
-      'Major (Supervisor of Field Operations)': { start: 300, end: 349 },
+      'Colonel': { start: 100, end: 100 },
+      'Lt Colonel': { start: 200, end: 200 },
+      'Major': { start: 300, end: 349 },
       'Captain': { start: 350, end: 399 },
       'Lieutenant': { start: 400, end: 449 },
       'First Sergeant': { start: 450, end: 499 },
@@ -363,10 +362,9 @@ export default function AdminUsers() {
       'First Sergeant': { min: 23.00, max: 25.00 },
       'Lieutenant': { min: 24.00, max: 26.00 },
       'Captain': { min: 25.00, max: 27.00 },
-      'Lt Colonel (Director of Security Operations)': { min: 27.50, max: 27.50 },
-      'Lt Colonel (Director of Training and Compliance)': { min: 27.50, max: 27.50 },
-      'Colonel (Director of Company Operations)': { min: 27.50, max: 27.50 },
-      'Major (Supervisor of Field Operations)': { min: 27.50, max: 27.50 },
+      'Lt Colonel': { min: 27.50, max: 27.50 },
+      'Colonel': { min: 27.50, max: 27.50 },
+      'Major': { min: 27.50, max: 27.50 },
     };
     return payRanges[rank] || { min: 18.00, max: 20.00 };
   };
@@ -564,10 +562,9 @@ export default function AdminUsers() {
 
   const getRankColor = (rank) => {
     switch (rank) {
-      case "Colonel (Director of Company Operations)": return "bg-amber-100 text-amber-900 border-amber-400";
-      case "Lt Colonel (Director of Security Operations)": return "bg-rose-100 text-rose-900 border-rose-400";
-      case "Lt Colonel (Director of Training and Compliance)": return "bg-rose-100 text-rose-900 border-rose-400";
-      case "Major (Supervisor of Field Operations)": return "bg-red-100 text-red-800 border-red-300";
+      case "Colonel": return "bg-amber-100 text-amber-900 border-amber-400";
+      case "Lt Colonel": return "bg-rose-100 text-rose-900 border-rose-400";
+      case "Major": return "bg-red-100 text-red-800 border-red-300";
       case "Captain": return "bg-orange-100 text-orange-800 border-orange-300";
       case "Lieutenant": return "bg-yellow-100 text-yellow-800 border-yellow-300";
       case "First Sergeant": return "bg-lime-100 text-lime-800 border-lime-300";
@@ -1077,10 +1074,9 @@ export default function AdminUsers() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Colonel (Director of Company Operations)">Colonel (Director of Company Operations) (100 series)</SelectItem>
-                    <SelectItem value="Lt Colonel (Director of Security Operations)">Lt Colonel (Director of Security Operations) (200 series)</SelectItem>
-                    <SelectItem value="Lt Colonel (Director of Training and Compliance)">Lt Colonel (Director of Training and Compliance) (200 series)</SelectItem>
-                    <SelectItem value="Major (Supervisor of Field Operations)">Major (Supervisor of Field Operations) (300 series)</SelectItem>
+                    <SelectItem value="Colonel">Colonel (100 series)</SelectItem>
+                    <SelectItem value="Lt Colonel">Lt Colonel (200 series)</SelectItem>
+                    <SelectItem value="Major">Major (300 series)</SelectItem>
                     <SelectItem value="Captain">Captain (350 series)</SelectItem>
                     <SelectItem value="Lieutenant">Lieutenant (400 series)</SelectItem>
                     <SelectItem value="First Sergeant">First Sergeant (450 series)</SelectItem>
@@ -1347,10 +1343,9 @@ export default function AdminUsers() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Colonel (Director of Company Operations)">Colonel (Director of Company Operations) (100 series)</SelectItem>
-                    <SelectItem value="Lt Colonel (Director of Security Operations)">Lt Colonel (Director of Security Operations) (200 series)</SelectItem>
-                    <SelectItem value="Lt Colonel (Director of Training and Compliance)">Lt Colonel (Director of Training and Compliance) (200 series)</SelectItem>
-                    <SelectItem value="Major (Supervisor of Field Operations)">Major (Supervisor of Field Operations) (300 series)</SelectItem>
+                    <SelectItem value="Colonel">Colonel (100 series)</SelectItem>
+                    <SelectItem value="Lt Colonel">Lt Colonel (200 series)</SelectItem>
+                    <SelectItem value="Major">Major (300 series)</SelectItem>
                     <SelectItem value="Captain">Captain (350 series)</SelectItem>
                     <SelectItem value="Lieutenant">Lieutenant (400 series)</SelectItem>
                     <SelectItem value="First Sergeant">First Sergeant (450 series)</SelectItem>
