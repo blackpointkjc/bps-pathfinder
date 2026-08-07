@@ -268,7 +268,13 @@ export default function AdminScheduling() {
   });
 
   const createShiftMutation = useMutation({
-    mutationFn: (data) => base44.entities.Schedule.create(data),
+    mutationFn: async (data) => {
+      const created = await base44.entities.Schedule.create(data);
+      if (created?.officer_email && created.officer_email !== 'OPEN') {
+        await base44.functions.invoke('notifyScheduleChange', { change_type: 'added', after: created, officer_email: created.officer_email }).catch(error => console.warn('Schedule add notification failed:', error?.message));
+      }
+      return created;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allSchedules'] });
       setShowAddDialog(false); // Updated here
@@ -287,7 +293,14 @@ export default function AdminScheduling() {
   });
 
   const bulkCreateShiftsMutation = useMutation({
-    mutationFn: (shiftsArray) => base44.entities.Schedule.bulkCreate(shiftsArray),
+    mutationFn: async (shiftsArray) => {
+      const created = await base44.entities.Schedule.bulkCreate(shiftsArray);
+      const createdRows = Array.isArray(created) ? created : [];
+      await Promise.all(createdRows.filter(row => row?.officer_email && row.officer_email !== 'OPEN').map(row =>
+        base44.functions.invoke('notifyScheduleChange', { change_type: 'added', after: row, officer_email: row.officer_email }).catch(error => console.warn('Bulk schedule notification failed:', error?.message))
+      ));
+      return created;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allSchedules'] });
       alert('Schedule copied successfully from previous week!');
@@ -295,7 +308,22 @@ export default function AdminScheduling() {
   });
 
   const updateScheduleMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Schedule.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      const before = (schedules || []).find(shift => shift.id === id) || null;
+      const updated = await base44.entities.Schedule.update(id, data);
+      const affectedEmails = new Set([before?.officer_email, updated?.officer_email].filter(email => email && email !== 'OPEN'));
+      await Promise.all(Array.from(affectedEmails).map(officerEmail => {
+        const movedAway = before?.officer_email === officerEmail && updated?.officer_email !== officerEmail;
+        const movedTo = updated?.officer_email === officerEmail && before?.officer_email !== officerEmail;
+        return base44.functions.invoke('notifyScheduleChange', {
+          change_type: movedAway ? 'removed' : movedTo ? 'added' : 'updated',
+          before: movedAway || !movedTo ? before : null,
+          after: movedTo || !movedAway ? updated : null,
+          officer_email: officerEmail
+        }).catch(error => console.warn('Schedule update notification failed:', error?.message));
+      }));
+      return updated;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allSchedules'] });
       alert('Shift updated successfully!');
@@ -307,7 +335,14 @@ export default function AdminScheduling() {
   });
 
   const deleteScheduleMutation = useMutation({
-    mutationFn: (id) => base44.entities.Schedule.delete(id),
+    mutationFn: async (id) => {
+      const before = (schedules || []).find(shift => shift.id === id) || null;
+      await base44.entities.Schedule.delete(id);
+      if (before?.officer_email && before.officer_email !== 'OPEN') {
+        await base44.functions.invoke('notifyScheduleChange', { change_type: 'removed', before, officer_email: before.officer_email }).catch(error => console.warn('Schedule delete notification failed:', error?.message));
+      }
+      return id;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allSchedules'] });
       alert('Shift deleted successfully!');
