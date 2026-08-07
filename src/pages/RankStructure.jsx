@@ -18,9 +18,9 @@ export default function RankStructure() {
   });
 
   const supervisoryRanks = [
-    "Colonel (Director of Company Operations)",
-    "Lt Colonel (Director of Security Operations)",
-    "Major (Director of Field Operations)",
+    "Colonel",
+    "Lt Colonel",
+    "Major",
     "Captain",
     "Lieutenant",
     "First Sergeant",
@@ -31,9 +31,9 @@ export default function RankStructure() {
 
   // Display label (short title) and unit range for each rank
   const rankDisplayLabel = {
-    "Colonel (Director of Company Operations)": "Colonel",
-    "Lt Colonel (Director of Security Operations)": "Lt. Colonel",
-    "Major (Director of Field Operations)": "Major",
+    "Colonel": "Colonel",
+    "Lt Colonel": "Lt. Colonel",
+    "Major": "Major",
     "Captain": "Captain",
     "Lieutenant": "Lieutenant",
     "First Sergeant": "First Sergeant",
@@ -84,9 +84,9 @@ export default function RankStructure() {
 
   const getRankColor = (rank) => {
     switch (rank) {
-      case "Colonel (Director of Company Operations)": return "bg-amber-100 text-amber-900 border-amber-400";
-      case "Lt Colonel (Director of Security Operations)": return "bg-rose-100 text-rose-900 border-rose-400";
-      case "Major (Director of Field Operations)": return "bg-red-100 text-red-800 border-red-300";
+      case "Colonel": return "bg-amber-100 text-amber-900 border-amber-400";
+      case "Lt Colonel": return "bg-rose-100 text-rose-900 border-rose-400";
+      case "Major": return "bg-red-100 text-red-800 border-red-300";
       case "Captain": return "bg-orange-100 text-orange-800 border-orange-300";
       case "Lieutenant": return "bg-yellow-100 text-yellow-800 border-yellow-300";
       case "First Sergeant": return "bg-lime-100 text-lime-800 border-lime-300";
@@ -243,7 +243,7 @@ export default function RankStructure() {
             <div className="space-y-3 text-sm text-blue-800">
               <div className="text-center">
                 <p className="font-semibold mb-2">Executive Leadership</p>
-                <p>Colonel (Director of Company Operations) → Lt Colonel (Director of Security Operations) → Major (Director of Field Operations)</p>
+                <p>Colonel → Lt Colonel → Major</p>
               </div>
               <div className="text-center pt-3 border-t border-blue-200">
                 <p className="font-semibold mb-2">Field Supervision</p>
