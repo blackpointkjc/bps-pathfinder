@@ -350,7 +350,7 @@ export default function AdminOfficerManagement() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
-                  <div className="grid grid-cols-7 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
                     {DAYS.map(day => (
                       <div key={day} className={`p-3 rounded-lg border text-center ${availability[day]?.available ? 'bg-green-50 border-green-200' : 'bg-slate-100 border-slate-200'}`}>
                         <div className="flex flex-col items-center gap-2">
