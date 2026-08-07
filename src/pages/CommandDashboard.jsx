@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
+import { normalizeRank } from '@/utils/rankDisplay';
 import { playDispatchAlert, setDispatchAlertMuted, shouldAlertForGeofence } from '@/utils/alertUtils';
 import { classifyCall } from '@/lib/cadCallTypes';
 import { cleanIncident } from '@/utils/callUtils';
@@ -349,7 +350,7 @@ function CommandDashboardInner() {
                 <div className="flex-none flex items-center gap-2 px-3 py-1.5 bg-slate-900/80 border-b border-slate-800">
                     <span className="text-slate-500 font-mono text-[10px] tracking-widest flex-shrink-0">
                         {currentUser.rank && currentUser.last_name
-                          ? `${currentUser.rank} ${currentUser.last_name}`.toUpperCase()
+                          ? `${normalizeRank(currentUser.rank)} ${currentUser.last_name}`.toUpperCase()
                           : currentUser.unit_number
                             ? `UNIT-${currentUser.unit_number}`
                             : currentUser.full_name?.toUpperCase()} STATUS:
