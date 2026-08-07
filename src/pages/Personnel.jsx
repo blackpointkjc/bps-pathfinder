@@ -168,15 +168,15 @@ export default function Personnel() {
 
             {/* Filter Bar */}
             <div className="flex-none flex flex-col gap-2 border-b border-slate-800 bg-slate-900/50 px-3 py-2 sm:flex-row sm:items-center sm:gap-3 sm:px-4">
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
                     <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                         placeholder="SEARCH NAME / UNIT / EMAIL..."
-                        className="pl-8 pr-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-white placeholder-slate-600 focus:outline-none focus:border-gold w-56" />
+                        className="w-full rounded border border-slate-700 bg-slate-800 py-2 pl-8 pr-3 text-[10px] text-white placeholder-slate-600 focus:border-gold focus:outline-none sm:w-56 sm:py-1.5" />
                 </div>
-                <div className="w-px h-5 bg-slate-700" />
+                <div className="hidden h-5 w-px bg-slate-700 sm:block" />
                 <span className="text-[9px] text-slate-500">FILTER:</span>
-                <div className="flex gap-1">
+                <div className="grid w-full grid-cols-2 gap-1 sm:flex sm:w-auto">
                     {['all', 'officer', 'admin', 'dispatch'].map(role => (
                         <button key={role} onClick={() => setFilterRole(role)}
                             className={`px-2.5 py-1 rounded border text-[9px] font-bold transition-all ${filterRole === role ? 'bg-gold/20 border-gold/50 text-gold' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}>
@@ -189,7 +189,7 @@ export default function Personnel() {
             {/* Table */}
             <div className="flex-1 overflow-auto">
                 {/* Column Headers */}
-                <div className="sticky top-0 z-10 flex items-center bg-slate-800 border-b-2 border-slate-700 px-4 py-1.5 text-[9px] text-slate-500 tracking-widest">
+                <div className="sticky top-0 z-10 hidden items-center border-b-2 border-slate-700 bg-slate-800 px-4 py-1.5 text-[9px] tracking-widest text-slate-500 md:flex">
                     <div className="w-6 flex-shrink-0" />
                     <div className="w-24 flex-shrink-0">UNIT</div>
                     <div className="w-40 flex-shrink-0">RANK / NAME</div>
@@ -206,27 +206,27 @@ export default function Personnel() {
                     const nameParts = (person.full_name || '').trim().split(' ');
                     const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0] || '—';
                     return (
-                        <div key={person.id} className={`flex flex-col gap-2 border-b border-slate-800/60 px-3 py-3 text-[10px] hover:bg-slate-800/30 sm:flex-row sm:items-center sm:px-4 sm:py-2 ${idx % 2 === 0 ? '' : 'bg-slate-900/30'}`}>
+                        <div key={person.id} className={`grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 border-b border-slate-800/60 px-3 py-3 text-[10px] hover:bg-slate-800/30 md:flex md:items-center md:px-4 md:py-2 ${idx % 2 === 0 ? '' : 'bg-slate-900/30'}`}> 
                             <div className="w-6 flex-shrink-0">
                                 <span className={`w-2 h-2 rounded-full inline-block ${cfg.dot}`} />
                             </div>
-                            <div className="w-24 flex-shrink-0 text-gold font-bold">
+                            <div className="min-w-0 font-bold text-gold md:w-24 md:flex-shrink-0">
                                 {person.unit_number ? `UNIT-${person.unit_number}` : '—'}
                             </div>
-                            <div className="w-40 flex-shrink-0">
+                            <div className="min-w-0 md:w-40 md:flex-shrink-0">
                                 <div className="text-white font-bold">{person.last_name || '—'}</div>
                                 {person.rank && <div className="text-slate-500 text-[9px]">{person.rank}</div>}
                             </div>
-                            <div className="flex-1 text-slate-400 truncate pr-2">{person.email || '—'}</div>
-                            <div className="w-28 flex-shrink-0">
+                            <div className="col-span-2 min-w-0 break-all text-slate-400 md:col-span-1 md:flex-1 md:truncate md:pr-2">{person.email || '—'}</div>
+                            <div className="min-w-0 md:w-28 md:flex-shrink-0">
                                 <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${cfg.badge}`}>{person.status || 'UNKNOWN'}</span>
                             </div>
-                            <div className="w-20 flex-shrink-0">
+                            <div className="min-w-0 md:w-20 md:flex-shrink-0">
                                 <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${person.role === 'admin' ? 'bg-purple-900/40 text-purple-300 border-purple-600/40' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
                                     {person.role === 'admin' ? 'ADMIN' : person.dispatch_role ? 'DISP' : 'USER'}
                                 </span>
                             </div>
-                            <div className="w-52 flex-shrink-0 flex gap-1.5">
+                            <div className="col-span-2 flex w-full flex-wrap gap-1.5 md:col-span-1 md:w-52 md:flex-shrink-0 md:flex-nowrap">
                                 <button onClick={() => window.location.href = createPageUrl('Navigation')}
                                     className="flex items-center gap-1 px-2 py-1 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-400 rounded text-[9px] transition-all">
                                     <MapPin className="w-2.5 h-2.5" />MAP
@@ -248,7 +248,7 @@ export default function Personnel() {
             </div>
 
             {/* Status Bar */}
-            <div className="flex-none h-6 bg-slate-900 border-t border-slate-800 flex items-center px-4 gap-4 text-[9px] text-slate-500">
+            <div className="flex-none flex min-h-8 flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-800 bg-slate-900 px-3 py-1 text-[9px] text-slate-500 sm:px-4">
                 <span>SHOWING <span className="text-white">{filteredPersonnel.length}</span> OF <span className="text-white">{personnel.length}</span> PERSONNEL</span>
                 <div className="flex-1" />
                 <span className="text-green-500">● LIVE — 10s REFRESH</span>
