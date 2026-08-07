@@ -23,7 +23,8 @@ export function buildBlackPointEmail({ subject = 'Black Point Notification', bod
     .replace(/<\/?html[^>]*>/gi, '')
     .replace(/<head[\s\S]*?<\/head>/gi, '')
     .replace(/<\/?body[^>]*>/gi, '');
-  const safeUrl = replaceLegacyBranding(actionUrl || PORTAL_URL);
+  const normalizedUrl = replaceLegacyBranding(actionUrl || PORTAL_URL);
+  const safeUrl = normalizedUrl.startsWith('/') ? `${PORTAL_URL.replace(/\/$/, '')}${normalizedUrl}` : normalizedUrl;
   const safeLabel = replaceLegacyBranding(actionLabel || 'View in Black Point Portal');
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${cleanSubject}</title></head>
@@ -48,12 +49,13 @@ export function brandEmailPayload(payload = {}) {
   const originalBody = payload.body || payload.html || '';
   const urlMatch = String(originalBody).match(/href=["']([^"']+)["']/i);
   const actionUrl = replaceLegacyBranding(payload.action_url || urlMatch?.[1] || PORTAL_URL);
-  let actionLabel = 'View in Black Point Portal';
-  if (/training/i.test(subject)) actionLabel = 'Open Training Portal';
-  else if (/invoice/i.test(subject)) actionLabel = 'View Invoice';
-  else if (/report/i.test(subject)) actionLabel = 'View Report';
-  else if (/pto|time off/i.test(subject)) actionLabel = 'View Time-Off Request';
-  else if (/schedule|shift/i.test(subject)) actionLabel = 'View Schedule';
+  let actionLabel = payload.action_label || 'View in Black Point Portal';
+  if (!payload.action_label && /trespass/i.test(subject)) actionLabel = 'Open Trespass Management';
+  else if (!payload.action_label && /training/i.test(subject)) actionLabel = 'Open Training Portal';
+  else if (!payload.action_label && /invoice/i.test(subject)) actionLabel = 'View Invoice';
+  else if (!payload.action_label && /report/i.test(subject)) actionLabel = 'View Report';
+  else if (!payload.action_label && /pto|time off/i.test(subject)) actionLabel = 'View Time-Off Request';
+  else if (!payload.action_label && /schedule|shift/i.test(subject)) actionLabel = 'View Schedule';
   return {
     ...payload,
     from_name: 'Black Point Protection',
