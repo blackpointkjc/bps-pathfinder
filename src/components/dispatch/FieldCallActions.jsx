@@ -78,17 +78,9 @@ export default function FieldCallActions({ call, onStatusChange }) {
     setSaving(true);
     try {
       const assigned = call.assigned_units || [];
-      if (assigned.includes(user.id)) {
-        await base44.entities.DispatchCall.update(call.id, { assigned_units: assigned.filter(id => id !== user.id) });
-        const records = await base44.entities.CallAssignment.filter({ call_id: call.id, unit_id: user.id });
-        for (const record of records || []) await base44.entities.CallAssignment.update(record.id, { status: 'cleared', cleared_at: new Date().toISOString() });
-        toast.success('You removed yourself from this call');
-      } else {
-        const existing = await base44.entities.CallAssignment.filter({ call_id: call.id });
-        await base44.entities.CallAssignment.create({ call_id: call.id, unit_id: user.id, role: existing?.length ? 'backup' : 'primary', assigned_at: new Date().toISOString(), status: 'accepted' });
-        await base44.entities.DispatchCall.update(call.id, { assigned_units: [...assigned, user.id], status: call.status === 'New' ? 'Dispatched' : call.status, time_dispatched: call.time_dispatched || new Date().toISOString() });
-        toast.success('You joined this call');
-      }
+      const action = assigned.includes(user.id) ? 'leave' : 'join';
+      await base44.functions.invoke('updateMyCallAssignment', { call_id: call.id, action });
+      toast.success(action === 'leave' ? 'You removed yourself from this call' : 'You joined this call');
       onStatusChange?.(call.status, { assignmentChanged: true });
     } catch (error) {
       console.error('[FieldCall] assignment change failed:', error);
