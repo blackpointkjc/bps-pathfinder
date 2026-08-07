@@ -679,7 +679,7 @@ export default function DispatchCenter() {
                                             <span className={`w-2 h-2 rounded-full ${statusColor(unit.status)}`} />
                                         </div>
                                         <div className="col-span-7">
-                                            <div className="text-[10px] text-white font-bold truncate">{unit.unit_number || unit.full_name}</div>
+                                            <div className="text-[10px] text-white font-bold truncate">{unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name || unit.unit_number || 'UNIT'}</div>
                                             {unit.current_call_info && <div className="text-[9px] text-slate-500 truncate">{unit.current_call_info}</div>}
                                         </div>
                                         <div className="col-span-4">
