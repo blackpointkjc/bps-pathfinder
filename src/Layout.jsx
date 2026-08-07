@@ -629,6 +629,47 @@ export default function Layout({ children, currentPageName }) {
   }, [currentPageName, unreadStorageKey]);
 
   useEffect(() => {
+    if (!user?.id || !user?.email) return;
+    let active = true;
+    const refreshUnreadFromServer = async () => {
+      try {
+        const [messages, mentions, announcements, receipts] = await Promise.all([
+          base44.entities.Message.filter({ recipient_id: user.id, read: false }, '-created_date', 200),
+          base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200),
+          base44.entities.Announcement.list('-created_date', 100),
+          base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500),
+        ]);
+        if (!active) return;
+        const receiptIds = new Set((receipts || []).map(r => r.announcement_id));
+        const accountCreated = user.created_date ? new Date(user.created_date).getTime() : 0;
+        const unreadAnnouncements = (announcements || []).filter(a => {
+          const created = new Date(a.created_date || 0).getTime();
+          if (!created || (accountCreated && created < accountCreated) || receiptIds.has(a.id)) return false;
+          const days = (Date.now() - created) / 86400000;
+          return a.priority === 'urgent' ? days <= 30 : a.priority === 'important' ? days <= 14 : days <= 7;
+        });
+        const teamMentions = (mentions || []).filter(m => m.page === 'TeamChat').length;
+        const supervisorMentions = (mentions || []).filter(m => m.page === 'SupervisorChat').length;
+        setUnreadCounts(current => {
+          const next = { ...current, OfficerInbox: (messages || []).length, TeamChat: teamMentions, SupervisorChat: supervisorMentions, Announcements: unreadAnnouncements.length };
+          localStorage.setItem(unreadStorageKey, JSON.stringify(next));
+          return next;
+        });
+      } catch {}
+    };
+    refreshUnreadFromServer();
+    const interval = setInterval(refreshUnreadFromServer, 5000);
+    window.addEventListener('bps-unread-refresh', refreshUnreadFromServer);
+    window.addEventListener('focus', refreshUnreadFromServer);
+    return () => {
+      active = false;
+      clearInterval(interval);
+      window.removeEventListener('bps-unread-refresh', refreshUnreadFromServer);
+      window.removeEventListener('focus', refreshUnreadFromServer);
+    };
+  }, [user?.id, user?.email, user?.created_date, unreadStorageKey]);
+
+  useEffect(() => {
     if (!currentPageName) return;
     const pageCenter = (PAGE_TO_CENTERS[currentPageName] || []).find(center => ['cad', 'officer', 'admin'].includes(center));
     if (pageCenter) {
