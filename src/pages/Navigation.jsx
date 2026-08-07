@@ -385,6 +385,12 @@ export default function Navigation() {
                     speed: Number.isFinite(spd) ? spd : 0,
                     accuracy: Number.isFinite(accuracy) ? accuracy : 0,
                     status,
+                    union_id: user?.union_id || '',
+                    partner_email: user?.partner_email || '',
+                    partner_name: user?.partner_name || '',
+                    is_union_lead: user?.is_union_lead === true,
+                    union_member_count: user?.union_member_count || 1,
+                    scheduled_shift_id: user?.scheduled_shift_id || '',
                 };
                 if (activeOfficerIdRef.current) {
                     await base44.entities.ActiveOfficer.update(activeOfficerIdRef.current, payload);
@@ -640,6 +646,14 @@ export default function Navigation() {
                     status: profile.status && profile.status !== 'Out of Service' ? profile.status : (active.status || 'Available'),
                     last_updated: active.last_update || active.updated_date || active.created_date,
                     current_location: active.current_location,
+                    union_id: active.union_id || '',
+                    partner_email: active.partner_email || '',
+                    partner_name: active.partner_name || '',
+                    is_union_lead: active.is_union_lead === true,
+                    isUnionLead: active.is_union_lead === true,
+                    union_member_count: Number(active.union_member_count) || 1,
+                    unionMembers: Number(active.union_member_count) || 1,
+                    scheduled_shift_id: active.scheduled_shift_id || '',
                     show_on_map: true,
                 });
             }
