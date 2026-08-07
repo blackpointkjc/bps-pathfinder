@@ -7,7 +7,11 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   const user = await base44.auth.me().catch(() => null);
-  if (user && user.role !== 'admin') {
+  if (!user) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+  if (user.role !== 'admin' && !roles.has('full_access')) {
     return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
 
