@@ -9,10 +9,11 @@ import { base44 } from '@/api/base44Client';
 
 const DashboardDataContext = createContext(null);
 
-const POLL_INTERVAL_MS = 5_000;         // Read local entity changes every 5 seconds
-const GRAC_SYNC_INTERVAL_MS = 5_000;    // Direct active-call sync every 5 seconds
-const RATE_LIMIT_BACKOFF_MS = 60_000;   // 60s wait after 429
-const MIN_REFRESH_MS = 1_500;           // Prevent overlapping local refreshes
+const POLL_INTERVAL_MS = 10_000;        // Local CAD fallback refresh every 10 seconds
+const GRAC_SYNC_INTERVAL_MS = 10_000;   // Priority GRAC active-call sync every 10 seconds
+const RATE_LIMIT_BACKOFF_MS = 15_000;   // Short CAD-specific backoff after 429
+const MIN_REFRESH_MS = 2_000;           // Prevent overlapping local refreshes
+const USER_REFRESH_MS = 30_000;         // Unit roster changes slower than calls
 
 function isRateLimitError(err) {
     return err?.status === 429 || String(err?.message || err).includes('429') || String(err?.message || err).toLowerCase().includes('rate limit');
@@ -30,6 +31,8 @@ export function DashboardDataProvider({ children }) {
     const syncingGracRef  = useRef(false);
     const rateLimitedUntil = useRef(0);
     const lastRefreshTime  = useRef(0);
+    const lastUsersRefreshTime = useRef(0);
+    const usersCacheRef = useRef([]);
 
     const loadData = useCallback(async (force = false) => {
         const now = Date.now();
@@ -66,16 +69,22 @@ export function DashboardDataProvider({ children }) {
                 console.error(`[CAD ${nowET}] Calls fetch failed:`, callsErr);
                 throw callsErr; // re-throw — calls are the critical payload
             }
-            try {
-                const allUsers = await base44.entities.User.list('-last_updated', 200);
-                usersData = (allUsers || []).filter(u => {
-                    const roles = Array.isArray(u.additional_roles) ? u.additional_roles.map(role => String(role).toLowerCase()) : [];
-                    const isCadOfficer = roles.includes('cad_access') && roles.includes('officer');
-                    return isCadOfficer && Boolean(u.status);
-                });
-            } catch (usersErr) {
-                console.warn(`[CAD ${nowET}] direct User fetch failed — continuing without users`, usersErr);
-                usersData = [];
+            if (force || Date.now() - lastUsersRefreshTime.current >= USER_REFRESH_MS || usersCacheRef.current.length === 0) {
+                try {
+                    const allUsers = await base44.entities.User.list('-last_updated', 200);
+                    usersData = (allUsers || []).filter(u => {
+                        const roles = Array.isArray(u.additional_roles) ? u.additional_roles.map(role => String(role).toLowerCase()) : [];
+                        const isCadOfficer = roles.includes('cad_access') && roles.includes('officer');
+                        return isCadOfficer && Boolean(u.status);
+                    });
+                    usersCacheRef.current = usersData;
+                    lastUsersRefreshTime.current = Date.now();
+                } catch (usersErr) {
+                    console.warn(`[CAD ${nowET}] direct User fetch failed — continuing with cached users`, usersErr);
+                    usersData = usersCacheRef.current;
+                }
+            } else {
+                usersData = usersCacheRef.current;
             }
 
             console.log(`[CAD ${nowET}] Calls fetched: ${callsData?.length ?? 0} | Users: ${usersData?.length ?? 0}`);
@@ -94,11 +103,9 @@ export function DashboardDataProvider({ children }) {
                 const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
-            const oneHourAgo = Date.now() - 60 * 60 * 1000;
-            const active = [...uniqueCalls.values()].filter(c => {
-                const receivedAt = new Date(c.time_received || c.created_date || 0).getTime();
-                return !['Cleared', 'Cancelled'].includes(c.status) && receivedAt >= oneHourAgo;
-            });
+            const active = [...uniqueCalls.values()].filter(c =>
+                !['Cleared', 'Cancelled'].includes(c.status)
+            );
 
             // Debug: newest call time
             if (active.length > 0) {
@@ -155,7 +162,7 @@ export function DashboardDataProvider({ children }) {
         syncGrac();
     }, [syncGrac]);
 
-    // Refresh local entity data every 2 seconds for near-real-time CAD updates.
+    // Fallback local CAD refresh. Real-time entity subscriptions handle faster updates.
     useEffect(() => {
         const id = setInterval(() => loadData(false), POLL_INTERVAL_MS);
         return () => clearInterval(id);
