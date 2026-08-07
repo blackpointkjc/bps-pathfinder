@@ -17,6 +17,8 @@ import PriorCallsView from '@/components/dispatch/PriorCallsView';
 import MessagingPanel from '@/components/dispatch/MessagingPanel';
 import UnitAssignmentPanel from '@/components/dispatch/UnitAssignmentPanel';
 import PropertyAlertsBanner from '@/components/dispatch/PropertyAlertsBanner';
+import ActiveBoloBanner from '@/components/bolo/ActiveBoloBanner';
+import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import 'leaflet/dist/leaflet.css';
 
 
@@ -425,8 +427,8 @@ export default function DispatchCenter() {
                         }`}>
                         {showPriorCalls ? 'ACTIVE' : 'PRIOR'}
                     </button>
-                    <button onClick={() => navigate(createPageUrl('BOLOAlerts'))}
-                        className="flex items-center gap-1 px-2 py-1 border border-amber-600/60 text-amber-400 hover:text-white rounded text-[10px]"><Megaphone className="w-2.5 h-2.5" /> BOLO</button>
+                    <button onClick={() => navigate(`${createPageUrl('BOLOAlerts')}?new=1`)}
+                        className="flex items-center gap-1 px-2 py-1 border border-amber-600/60 text-amber-400 hover:text-white rounded text-[10px]"><Megaphone className="w-2.5 h-2.5" /> NEW BOLO</button>
                     <button onClick={() => setShowMessaging(!showMessaging)}
                         className="flex items-center gap-1 px-2 py-1 border border-slate-600 text-slate-400 hover:text-white rounded text-[10px]"><MessageSquarePlus className="w-2.5 h-2.5" /> MSG</button>
                     {currentUser?.role === 'admin' && (
@@ -443,6 +445,7 @@ export default function DispatchCenter() {
             </div>
 
             <PropertyAlertsBanner />
+            <ActiveBoloBanner />
 
             {/* ══ COMMAND STATUS STRIP ══ */}
             <div className="grid flex-none grid-cols-3 border-b border-[#1e2d4a] bg-[#08111d] lg:grid-cols-6">
@@ -661,44 +664,9 @@ export default function DispatchCenter() {
                             </div>
                         </div>
 
-                        {/* Active Units */}
+                        {/* Shared CAD Unit Status Board */}
                         <div className="flex-1 min-h-0 flex flex-col">
-                            <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                                <span className="text-[10px] font-bold text-green-400 tracking-widest">UNIT STATUS</span>
-                                <span className="ml-auto text-[10px] bg-green-500/20 text-green-300 px-2 rounded-full border border-green-500/30">{statusUnits.length}</span>
-                            </div>
-                            {/* Units table header */}
-                            <div className="flex-none grid grid-cols-12 px-2 py-1 bg-[#111827] border-b border-[#1e2d4a] text-[9px] text-slate-500 uppercase">
-                                <div className="col-span-1"></div>
-                                <div className="col-span-7">UNIT</div>
-                                <div className="col-span-4">STATUS</div>
-                            </div>
-                            <div className="flex-1 overflow-y-auto">
-                                {statusUnits.length === 0 ? (
-                                    <div className="text-[10px] text-slate-600 text-center py-4">NO CAD OFFICERS WITH STATUS</div>
-                                ) : statusUnits.map(unit => (
-                                    <div key={unit.id} className="grid grid-cols-12 px-2 py-1.5 border-b border-[#1a2535] hover:bg-[#111827]">
-                                        <div className="col-span-1 flex items-center">
-                                            <span className={`w-2 h-2 rounded-full ${statusColor(unit.status)}`} />
-                                        </div>
-                                        <div className="col-span-7">
-                                            <div className="text-[10px] text-white font-bold truncate">{unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name || unit.unit_number || 'UNIT'}</div>
-                                            {unit.current_call_info && <div className="text-[9px] text-slate-500 truncate">{unit.current_call_info}</div>}
-                                        </div>
-                                        <div className="col-span-4">
-                                            <span className={`text-[8px] px-1 py-0.5 rounded font-bold ${
-                                                unit.status === 'Available' ? 'bg-green-700/60 text-green-300' :
-                                                unit.status === 'Enroute' ? 'bg-yellow-700/60 text-yellow-300' :
-                                                unit.status === 'On Scene' ? 'bg-blue-700/60 text-blue-300' :
-                                                unit.status === 'Busy' ? 'bg-orange-700/60 text-orange-300' :
-                                                unit.status === 'Out of Service' ? 'bg-slate-800 text-slate-400 border border-slate-600' :
-                                                'bg-slate-700 text-slate-400'
-                                            }`}>{unit.status}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            <CADUnitStatusBoard units={statusUnits} compact />
                         </div>
                     </div>
                 </div>
