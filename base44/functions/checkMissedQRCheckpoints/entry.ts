@@ -7,8 +7,12 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me().catch(() => null);
+    const roles = new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+    const authorized = user && (user.role === 'admin' || roles.has('support_staff') || roles.has('full_access'));
+    if (!authorized) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Use service role — this is a scheduled/system function
+    // Use service role only after the caller has been authenticated and authorized.
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
