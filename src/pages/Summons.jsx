@@ -1588,7 +1588,7 @@ export default function Summons() {
                   </div>
                 </div>
 
-                <div className="flex gap-3 justify-end pt-4">
+                <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
                   <Button
                     type="button"
                     variant="outline"
