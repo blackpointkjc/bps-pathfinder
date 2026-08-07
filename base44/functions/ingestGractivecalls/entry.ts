@@ -292,8 +292,8 @@ Deno.serve(async (req) => {
     if (!Array.isArray(payload)) return Response.json({ success: false, error: 'Unexpected GRAC response' }, { status: 502 });
     let incoming = payload.map(normalizeCall).filter(Boolean) as any[];
     if (!incoming.length) return Response.json({ success: false, error: 'No usable active calls; existing data preserved' }, { status: 502 });
-    const oneHourAgo = Date.now() - 60 * 60 * 1000;
-    incoming = incoming.filter(call => new Date(call.time_received || 0).getTime() >= oneHourAgo);
+    // GRAC is the source of truth for whether a call is still active. Do not discard
+    // a call merely because it has been open longer than one hour.
     incoming = await enrichOfficialIdentifiers(incoming);
 
     let existingCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 5000);
