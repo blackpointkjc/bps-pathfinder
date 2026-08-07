@@ -50,6 +50,7 @@ export default function AdminScheduling() {
   const [importingSchedule, setImportingSchedule] = useState(false); // New state for AI import status
   const [newShift, setNewShift] = useState({
     officer_email: "",
+    partner_officer_email: "",
     shift_date: "", // This will now consistently represent the START date of the shift
     start_time: "",
     end_time: "",
@@ -262,6 +263,7 @@ export default function AdminScheduling() {
       setShowAddDialog(false); // Updated here
       setNewShift({
         officer_email: "",
+        partner_officer_email: "",
         shift_date: "",
         start_time: "",
         end_time: "",
@@ -1974,6 +1976,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
       ]);
       setNewShift({
          officer_email: "",
+         partner_officer_email: "",
          shift_date: "",
          start_time: "",
          end_time: "",
@@ -2013,8 +2016,9 @@ Make sure all dates are in YYYY-MM-DD format.` ,
         }
     }
     
-    createShiftMutation.mutate({
+    const primaryShift = {
        officer_email: officerEmailToStore,
+       partner_officer_email: newShift.partner_officer_email || '',
        shift_date: actualShiftDate,
        start_time: newShift.start_time,
        end_time: newShift.end_time,
@@ -2023,7 +2027,18 @@ Make sure all dates are in YYYY-MM-DD format.` ,
        is_open: newShift.is_open,
        is_split_shift: newShift.is_split_shift,
        linked_shift_id: newShift.linked_shift_id || null,
-     });
+     };
+
+    if (!newShift.is_open && newShift.partner_officer_email && newShift.partner_officer_email !== officerEmailToStore) {
+      bulkCreateShiftsMutation.mutate([
+        primaryShift,
+        { ...primaryShift, officer_email: newShift.partner_officer_email, partner_officer_email: officerEmailToStore }
+      ]);
+      setShowAddDialog(false);
+      setNewShift({ officer_email:'', partner_officer_email:'', shift_date:'', start_time:'', end_time:'', location:'', shift_type:'normal', is_open:false, is_split_shift:false, linked_shift_id:'' });
+    } else {
+      createShiftMutation.mutate(primaryShift);
+    }
   };
 
   // Helper function to check if a time falls within a range
