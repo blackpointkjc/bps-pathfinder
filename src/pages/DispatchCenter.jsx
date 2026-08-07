@@ -563,7 +563,7 @@ export default function DispatchCenter() {
                     </div>
 
                     {/* ═══ CENTER: MAP + CALL DETAIL ═══ */}
-                    <div className={`${mobileView === 'detail' || mobileView === 'map' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 min-w-0 flex-col border-b border-[#1e2d4a] md:flex md:min-h-0 md:border-b-0 md:border-r">
+                    <div className={`${mobileView === 'detail' || mobileView === 'map' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 min-w-0 flex-col border-b border-[#1e2d4a] md:flex md:min-h-0 md:border-b-0 md:border-r`}> 
                         {/* Call Detail */}
                         <div className={`${mobileView === 'map' ? 'hidden' : 'block'} flex-none border-b border-[#1e2d4a] md:block`} style={{minHeight: 0}}>
                             {selectedCall ? (
@@ -668,7 +668,7 @@ export default function DispatchCenter() {
                     </div>
 
                     {/* ═══ RIGHT: UNITS ═══ */}
-                    <div className={`${mobileView === 'assignment' || mobileView === 'units' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 flex-col bg-[#08111b] md:flex md:min-h-0 md:w-64 md:flex-none xl:w-72">
+                    <div className={`${mobileView === 'assignment' || mobileView === 'units' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 flex-col bg-[#08111b] md:flex md:min-h-0 md:w-64 md:flex-none xl:w-72`}> 
                         {/* Unit Assignment */}
                         <div className={`${mobileView === 'units' ? 'hidden' : 'block'} flex-none border-b border-[#1e2d4a] md:block`}>
                             <div className="px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
