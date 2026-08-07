@@ -68,12 +68,10 @@ export function DashboardDataProvider({ children }) {
             }
             try {
                 const allUsers = await base44.entities.User.list('-last_updated', 200);
-                const cutoff = Date.now() - 12 * 60 * 60 * 1000;
                 usersData = (allUsers || []).filter(u => {
                     const roles = Array.isArray(u.additional_roles) ? u.additional_roles.map(role => String(role).toLowerCase()) : [];
                     const isCadOfficer = roles.includes('cad_access') && roles.includes('officer');
-                    const updated = u.last_updated ? new Date(u.last_updated).getTime() : 0;
-                    return isCadOfficer && updated >= cutoff && u.status;
+                    return isCadOfficer && Boolean(u.status);
                 });
             } catch (usersErr) {
                 console.warn(`[CAD ${nowET}] direct User fetch failed — continuing without users`, usersErr);
