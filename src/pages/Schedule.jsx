@@ -527,8 +527,8 @@ export default function Schedule() {
             <CardContent>
               <div className="grid gap-4">
                 {openShifts.map((shift) => (
-                  <div key={shift.id} className="bg-white p-4 rounded-lg border-2 border-green-200 hover:border-green-400 transition-all">
-                    <div className="flex items-center justify-between">
+                  <div key={shift.id} className="rounded-lg border border-green-800/60 bg-green-950/20 p-4 transition-all hover:border-green-600">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <Badge className="bg-green-600 text-white">OPEN SHIFT</Badge>
@@ -536,15 +536,15 @@ export default function Schedule() {
                             <Badge className="bg-purple-600 text-white">Split Shift</Badge>
                           )}
                         </div>
-                        <p className="font-bold text-slate-900">
+                        <p className="font-bold text-white">
                           {format(parseISO(shift.shift_date), 'EEEE, MMM d, yyyy')}
                         </p>
-                        <p className="text-slate-700">
-                          <Clock className="w-4 h-4 inline mr-1" />
+                        <p className="text-slate-200">
+                          <Clock className="mr-1 inline h-4 w-4" />
                           {shift.start_time} - {shift.end_time}
                         </p>
-                        <p className="text-slate-600 text-sm">
-                          <MapPin className="w-4 h-4 inline mr-1" />
+                        <p className="text-sm text-slate-400">
+                          <MapPin className="mr-1 inline h-4 w-4" />
                           {shift.location}
                         </p>
                         {shift.special_instructions && (
@@ -560,7 +560,7 @@ export default function Schedule() {
                           }
                         }}
                         disabled={claimShiftMutation.isPending}
-                        className="bg-green-600 hover:bg-green-700 ml-4"
+                        className="w-full bg-green-600 hover:bg-green-700 sm:ml-4 sm:w-auto"
                       >
                         {claimShiftMutation.isPending ? 'Claiming...' : 'Claim Shift'}
                       </Button>
