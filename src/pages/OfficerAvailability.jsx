@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Save, CheckCircle2 } from "lucide-react";
+import { Calendar, Save, CheckCircle2, Clock3 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
@@ -35,28 +35,31 @@ export default function OfficerAvailability() {
     }
   });
 
+  const { data: myRequests = [] } = useQuery({
+    queryKey: ['myAvailabilityRequests', user?.email],
+    queryFn: () => base44.entities.AvailabilityRequest.filter({ officer_email: user?.email }, '-requested_at', 20),
+    enabled: !!user?.email,
+  });
+
   const saveMutation = useMutation({
     mutationFn: async () => {
-      for (const day of DAYS) {
-        const existing = existingAvailability?.find(e => e.day_of_week === day);
-        const data = {
-          officer_email: user.email,
-          day_of_week: day,
-          available: availability[day]?.available !== false,
-          preferred_start_time: availability[day]?.preferred_start_time || '18:00',
-          preferred_end_time: availability[day]?.preferred_end_time || '06:00'
-        };
-
-        if (existing) {
-          await base44.entities.OfficerAvailability.update(existing.id, data);
-        } else {
-          await base44.entities.OfficerAvailability.create(data);
-        }
-      }
+      const snapshot = DAYS.map(day => ({
+        day_of_week: day,
+        available: availability[day]?.available !== false,
+        preferred_start_time: availability[day]?.preferred_start_time || '18:00',
+        preferred_end_time: availability[day]?.preferred_end_time || '06:00'
+      }));
+      return base44.entities.AvailabilityRequest.create({
+        officer_email: user.email,
+        officer_name: [user.first_name, user.last_name].filter(Boolean).join(' ') || user.full_name || user.email,
+        requested_at: new Date().toISOString(),
+        status: 'pending',
+        availability_snapshot: JSON.stringify(snapshot)
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['myAvailability'] });
-      alert('✅ Availability preferences saved!');
+      queryClient.invalidateQueries({ queryKey: ['myAvailabilityRequests'] });
+      alert('Availability change submitted for admin approval. Your current approved availability remains in effect until it is approved.');
     }
   });
 
@@ -129,8 +132,17 @@ export default function OfficerAvailability() {
               className="w-full bg-blue-600 hover:bg-blue-700"
             >
               <Save className="w-4 h-4 mr-2" />
-              {saveMutation.isPending ? 'Saving...' : 'Save Availability'}
+              {saveMutation.isPending ? 'Submitting...' : 'Submit Availability for Approval'}
             </Button>
+            <div className="rounded-lg border bg-slate-50 p-4">
+              <div className="mb-2 flex items-center gap-2 font-semibold"><Clock3 className="h-4 w-4" />Recent Requests</div>
+              {myRequests.length === 0 ? <p className="text-sm text-slate-500">No availability requests submitted yet.</p> : myRequests.slice(0,5).map(req => (
+                <div key={req.id} className="flex items-center justify-between border-t py-2 text-sm first:border-t-0">
+                  <span>{new Date(req.requested_at).toLocaleString()}</span>
+                  <span className={`font-semibold ${req.status === 'approved' ? 'text-green-600' : req.status === 'denied' ? 'text-red-600' : 'text-amber-600'}`}>{String(req.status).toUpperCase()}</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
