@@ -222,7 +222,7 @@ function CommandDashboardInner() {
         const roles = Array.isArray(u.additional_roles) ? u.additional_roles.map(role => String(role).toLowerCase()) : [];
         return roles.includes('cad_access') && roles.includes('officer');
     });
-    const statusUnits    = cadOfficerUnits.filter(u => u.status && u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
+    const statusUnits    = cadOfficerUnits.filter(u => Boolean(u.status));
     const activeUnits    = statusUnits.filter(u => u.status !== 'Out of Service');
     const criticalCalls  = calls.filter(c => getCallPriority(c) === 'critical');
     const highCalls      = calls.filter(c => getCallPriority(c) === 'high');
