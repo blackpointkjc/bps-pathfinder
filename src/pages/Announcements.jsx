@@ -64,18 +64,24 @@ export default function Announcements() {
     return true;
   }) || [];
 
-  // Find unread announcements and show them one at a time for acknowledgment
+  // Opening the Announcements page is the acknowledgment event for announcement
+  // banners. Record all currently visible announcements as seen so the persistent
+  // banner clears on every device after this page is opened.
   useEffect(() => {
-    if (!user?.email || !announcements || pendingToAck) return;
-
-    const unread = filteredAnnouncements.find(a =>
-      !readAnnouncementIds.has(a.id) && !markedRef.current.has(a.id)
-    );
-
-    if (unread) {
-      setPendingToAck(unread);
-    }
-  }, [announcements, user?.email, filteredAnnouncements, pendingToAck, readAnnouncementIds]);
+    if (!user?.email || !filteredAnnouncements.length) return;
+    const unseen = filteredAnnouncements.filter(a => !readAnnouncementIds.has(a.id) && !markedRef.current.has(a.id));
+    if (!unseen.length) return;
+    unseen.forEach(a => markedRef.current.add(a.id));
+    Promise.all(unseen.map(a => base44.entities.AnnouncementReceipt.create({
+      announcement_id: a.id,
+      user_email: user.email,
+      read_at: new Date().toISOString()
+    }).catch(() => null))).then(async () => {
+      setPendingToAck(null);
+      await queryClient.invalidateQueries({ queryKey: ['announcementReceipts', user?.email] });
+      window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
+    });
+  }, [user?.email, filteredAnnouncements, readAnnouncementIds, queryClient]);
 
   const handleAcknowledge = () => {
     if (!pendingToAck) return;
