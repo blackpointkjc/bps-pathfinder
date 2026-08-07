@@ -45,11 +45,23 @@ Deno.serve(async (req) => {
             updateData.current_call_info = null;
         }
 
-        // Update both session and entity so all users see the change
+        // Update both session and User entity so all users see the change.
         await Promise.all([
             base44.auth.updateMe(updateData),
             base44.asServiceRole.entities.User.update(user.id, updateData)
         ]);
+
+        // Keep any linked Unit record synchronized as well. Some CAD/map components
+        // still read Unit, so this prevents a stale second status from contradicting User.
+        const units = await base44.asServiceRole.entities.Unit.list(undefined, 500);
+        const linkedUnits = (units || []).filter((unit: any) =>
+            unit.user_id === user.id || String(unit.user_email || '').toLowerCase() === String(user.email || '').toLowerCase()
+        );
+        await Promise.all(linkedUnits.map((unit: any) => base44.asServiceRole.entities.Unit.update(unit.id, {
+            status,
+            last_updated: now,
+            last_update_at: now,
+        })));
 
         return Response.json({ success: true, status });
 
