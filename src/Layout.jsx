@@ -27,11 +27,10 @@ const CENTER_CONFIG = {
         ['Command Dashboard', 'CommandDashboard', Gauge],
         ['Dispatch Center', 'DispatchCenter', Radio],
         ['Live Map', 'Navigation', Map],
-        ['Field Unit', 'FieldUnitView', Shield],
+        ['BOLO / Alerts', 'BOLOAlerts', FileWarning],
       ]},
       { label: 'Intelligence', items: [
         ['Call History', 'CallHistory', Clock3],
-        ['BOLO / Alerts', 'BOLOAlerts', FileWarning],
         ['Records AI', 'RecordsAssistant', Bot],
       ]},
       { label: 'Administration', fullAccessOnly: true, items: [
@@ -257,7 +256,7 @@ function hasFullAccess(user) {
 
 const FULLSCREEN_PAGES = new Set([]);
 const DARK_WORKSPACE_PAGES = new Set([
-  'CommandDashboard', 'DispatchCenter', 'FieldUnitView', 'CallHistory', 'ClientCallHistory',
+  'CommandDashboard', 'DispatchCenter', 'CallHistory', 'ClientCallHistory',
   'BOLOAlerts', 'RecordsAssistant', 'Personnel', 'PathfinderReports', 'AdminPortal'
 ]);
 
