@@ -145,8 +145,8 @@ export default function GlobalMessageBanner({ user }) {
         title: source.label,
         page: record.page || source.page,
         kind: source.kind,
-        persistent: Boolean(source.mention),
-        recordId: source.mention ? record.id : null,
+        persistent: Boolean(source.mention || source.kind === 'announcement'),
+        recordId: (source.mention || source.kind === 'announcement') ? record.id : null,
         fingerprint,
         sender: text.sender,
         photo: record.sender_photo_url || '',
@@ -185,6 +185,24 @@ export default function GlobalMessageBanner({ user }) {
       .then(records => (records || []).reverse().forEach(record => showBanner(mentionSource, record)))
       .catch(() => null);
 
+    // Load announcements missed while the user was offline. A persistent banner
+    // remains until the Announcements page is opened and records the view.
+    const announcementSource = SOURCES.find(source => source.kind === 'announcement');
+    Promise.all([
+      base44.entities.Announcement.list('-created_date', 100),
+      base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500),
+    ]).then(([announcements, receipts]) => {
+      const seen = new Set((receipts || []).map(receipt => receipt.announcement_id));
+      const accountCreated = user?.created_date ? new Date(user.created_date).getTime() : 0;
+      (announcements || []).slice().reverse().forEach(record => {
+        const created = new Date(record.created_date || 0).getTime();
+        if (!created || (accountCreated && created < accountCreated) || seen.has(record.id)) return;
+        const ageDays = (Date.now() - created) / 86400000;
+        const active = record.priority === 'urgent' ? ageDays <= 30 : record.priority === 'important' ? ageDays <= 14 : ageDays <= 7;
+        if (active) showBanner(announcementSource, record);
+      });
+    }).catch(() => null);
+
     return () => {
       unsubscribers.forEach(unsubscribe => unsubscribe());
       timers.current.forEach(timer => window.clearTimeout(timer));
@@ -210,7 +228,7 @@ export default function GlobalMessageBanner({ user }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -16, scale: 0.97 }}
             onClick={async () => {
-              if (banner.persistent && banner.recordId) {
+              if (banner.kind === 'mention' && banner.recordId) {
                 await base44.entities.ChatMention.update(banner.recordId, { read: true, read_at: new Date().toISOString() }).catch(() => null);
               }
               dismiss(banner.id);
