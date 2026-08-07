@@ -162,12 +162,12 @@ export default function CallHistory() {
     return (
         <div className="bg-slate-950 min-h-full flex flex-col font-mono">
             {/* Header */}
-            <div className="flex-none bg-slate-900 border-b-2 border-gold/50 px-4 py-2 flex items-center gap-3">
+            <div className="flex-none flex flex-col gap-2 border-b-2 border-gold/50 bg-slate-900 px-3 py-3 sm:px-4 md:flex-row md:items-center md:gap-3 md:py-2">
                 <div className="w-1 h-6 bg-gold rounded-sm" />
                 <span className="text-white font-bold text-sm tracking-widest">CALL HISTORY LOG</span>
-                <span className="text-[10px] text-slate-500 ml-2">ACTIVE + ARCHIVED — {sorted.length} RECORDS</span>
-                <div className="flex-1" />
-                <span className="text-slate-600 text-[10px]">REFRESHED {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
+                <span className="text-[10px] text-slate-500 md:ml-2">ACTIVE + ARCHIVED — {sorted.length} RECORDS</span>
+                <div className="hidden flex-1 md:block" />
+                <span className="text-[10px] text-slate-600">REFRESHED {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
                 <button onClick={handleRefresh} disabled={refreshing}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded text-slate-400 hover:text-white hover:border-gold transition-all text-[10px]">
                     <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />REFRESH
@@ -175,20 +175,20 @@ export default function CallHistory() {
             </div>
 
             {/* Filter Bar */}
-            <div className="flex-none flex flex-wrap items-center gap-2 px-4 py-2 bg-slate-900/60 border-b border-slate-800">
+            <div className="flex-none flex flex-col gap-2 border-b border-slate-800 bg-slate-900/60 px-3 py-3 sm:px-4 md:flex-row md:flex-wrap md:items-center md:py-2">
                 {/* Search */}
-                <div className="relative">
+                <div className="relative w-full md:w-auto">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
                     <input value={search} onChange={e => setSearch(e.target.value)}
                         placeholder="SEARCH INCIDENT / LOCATION / AGENCY..."
-                        className="pl-8 pr-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-white placeholder-slate-600 focus:outline-none focus:border-gold w-64" />
+                        className="w-full rounded border border-slate-700 bg-slate-800 py-2 pl-8 pr-3 text-[10px] text-white placeholder-slate-600 focus:border-gold focus:outline-none md:w-64 md:py-1.5" />
                 </div>
 
                 <div className="w-px h-5 bg-slate-700" />
 
                 {/* Agency filter */}
                 <span className="text-[9px] text-slate-500 tracking-widest">AGENCY:</span>
-                <div className="flex gap-1">
+                <div className="flex max-w-full gap-1 overflow-x-auto pb-1 md:overflow-visible md:pb-0">
                     {agencies.map(a => (
                         <button key={a} onClick={() => setAgencyFilter(a)}
                             className={`px-2 py-1 rounded border text-[9px] font-bold transition-all ${agencyFilter === a ? 'bg-gold/20 border-gold/50 text-gold' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}>
@@ -215,7 +215,7 @@ export default function CallHistory() {
             {/* Table */}
             <div className="flex-1 overflow-auto">
                 {/* Column Headers */}
-                <div className="sticky top-0 z-10 flex items-center bg-slate-800 border-b-2 border-slate-700 px-3 py-1.5 text-[9px] text-slate-500 tracking-widest select-none">
+                <div className="sticky top-0 z-10 hidden items-center border-b-2 border-slate-700 bg-slate-800 px-3 py-1.5 text-[9px] tracking-widest text-slate-500 select-none md:flex">
                     <div className="w-8 flex-shrink-0">#</div>
                     <div className="w-36 flex-shrink-0 cursor-pointer hover:text-slate-300" onClick={() => handleSort('time')}>DATE/TIME <SortIcon field="time" /></div>
                     <div className="flex-1 cursor-pointer hover:text-slate-300" onClick={() => handleSort('incident')}>INCIDENT TYPE <SortIcon field="incident" /></div>
@@ -238,29 +238,29 @@ export default function CallHistory() {
                         <div key={row.id}>
                             <div
                                 onClick={() => setExpandedId(isExpanded ? null : row.id)}
-                                className={`flex items-center px-3 py-2 border-b border-slate-800/70 cursor-pointer transition-colors text-[10px]
+                                className={`flex cursor-pointer flex-col gap-2 border-b border-slate-800/70 px-3 py-3 text-[10px] transition-colors md:flex-row md:items-center md:gap-0 md:py-2
                                     ${isActive ? 'bg-blue-950/20 hover:bg-blue-950/40 border-l-2 border-l-blue-500' : 'bg-slate-900 hover:bg-slate-800/50 border-l-2 border-l-transparent'}
-                                    ${isExpanded ? 'bg-slate-800/60' : ''}`}>
-                                <div className="w-8 flex-shrink-0 text-slate-600">{sorted.length - idx}</div>
-                                <div className="w-36 flex-shrink-0 text-slate-400">{fmtDT(row.time_received || row.created_date)}</div>
-                                <div className="flex-1 min-w-0 pr-2">
+                                    ${isExpanded ? 'bg-slate-800/60' : ''}`}> 
+                                <div className="hidden w-8 flex-shrink-0 text-slate-600 md:block">{sorted.length - idx}</div>
+                                <div className="w-full text-slate-400 md:w-36 md:flex-shrink-0"><span className="mr-2 text-[8px] font-bold text-slate-600 md:hidden">DATE/TIME</span>{fmtDT(row.time_received || row.created_date)}</div>
+                                <div className="min-w-0 w-full flex-1 md:pr-2">
                                     <span className={`text-white font-bold ${isActive ? 'text-blue-200' : ''}`}>{row.incident || '—'}</span>
                                     {isActive && <span className="ml-2 text-[8px] bg-blue-500/30 text-blue-300 border border-blue-500/40 px-1 py-0.5 rounded">ACTIVE</span>}
                                     {String(row.agency || '').toUpperCase().includes('BPS') && <span className="ml-2 text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.5 rounded">PROPERTY CALL</span>}
                                 </div>
-                                <div className="w-56 flex-shrink-0 text-slate-400 truncate pr-2">
+                                <div className="w-full break-words text-slate-400 md:w-56 md:flex-shrink-0 md:truncate md:pr-2">
                                     <MapPin className="w-2.5 h-2.5 inline mr-1 text-slate-600" />{row.location || '—'}
                                 </div>
-                                <div className="w-20 flex-shrink-0">
+                                <div className="w-full md:w-20 md:flex-shrink-0">
                                     <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${agCls}`}>{row.agency || '—'}</span>
                                 </div>
-                                <div className="w-24 flex-shrink-0">
+                                <div className="w-full md:w-24 md:flex-shrink-0">
                                     <span className={`text-[9px] px-1.5 py-0.5 rounded border ${stCls}`}>{row.status || '—'}</span>
                                 </div>
-                                <div className="w-16 flex-shrink-0 text-center text-slate-500">
+                                <div className="w-full text-left text-slate-500 md:w-16 md:flex-shrink-0 md:text-center">
                                     {row.assigned_units?.length > 0 ? <span className="text-green-400">{row.assigned_units.length}U</span> : '—'}
                                 </div>
-                                <div className="w-8 flex-shrink-0 text-slate-600 text-center">
+                                <div className="absolute right-3 mt-0 w-8 flex-shrink-0 text-center text-slate-600 md:static">
                                     {isExpanded ? <ChevronUp className="w-3 h-3 inline" /> : <ChevronDown className="w-3 h-3 inline" />}
                                 </div>
                             </div>
@@ -282,12 +282,12 @@ export default function CallHistory() {
                                     {row.time_on_scene && <div><span className="text-slate-500">ON SCENE: </span><span className="text-white">{fmtDT(row.time_on_scene)}</span></div>}
                                     {row.time_cleared && <div><span className="text-slate-500">CLEARED: </span><span className="text-white">{fmtDT(row.time_cleared)}</span></div>}
                                     {row.ai_summary && (
-                                        <div className="col-span-3 mt-1 bg-slate-900 border border-slate-700 rounded px-3 py-1.5">
+                                        <div className="mt-1 rounded border border-slate-700 bg-slate-900 px-3 py-1.5 sm:col-span-2 lg:col-span-3">
                                             <span className="text-gold text-[9px] tracking-widest">AI SUMMARY: </span>
                                             <span className="text-slate-300">{row.ai_summary}</span>
                                         </div>
                                     )}
-                                    <div className="col-span-3 mt-2 flex flex-wrap gap-2">
+                                    <div className="mt-2 flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:flex-wrap lg:col-span-3">
                                         {isActive && (
                                             <button onClick={() => navigate(`${createPageUrl('Navigation')}?callId=${row.id}${row.latitude ? `&lat=${row.latitude}&lng=${row.longitude}` : ''}`)}
                                                 className="rounded border border-blue-600 bg-blue-700 px-3 py-1.5 text-[10px] font-bold text-white transition-colors hover:bg-blue-600">
@@ -309,7 +309,7 @@ export default function CallHistory() {
             </div>
 
             {/* Status Bar */}
-            <div className="flex-none h-6 bg-slate-900 border-t border-slate-800 flex items-center px-4 gap-4 text-[9px] text-slate-500">
+            <div className="flex-none flex min-h-8 flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-800 bg-slate-900 px-3 py-1 text-[9px] text-slate-500 sm:px-4">
                 <span>TOTAL: <span className="text-white">{sorted.length}</span></span>
                 <span>ACTIVE: <span className="text-blue-400">{sorted.filter(r => r._source === 'active' && !['Closed','Cleared','Cancelled'].includes(r.status)).length}</span></span>
                 <span>ARCHIVED: <span className="text-slate-400">{sorted.filter(r => r._source === 'archived').length}</span></span>
