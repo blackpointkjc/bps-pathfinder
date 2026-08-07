@@ -429,6 +429,8 @@ Provide:
       photo_url: "",
       linked_call_id: "",
       linked_call_number: "",
+      linked_bolo_id: "",
+      linked_bolo_number: "",
       primary_officer_id: "",
       primary_officer_name: "",
       backup_officer_ids: [],
@@ -513,6 +515,13 @@ Provide:
       police_report_number: report.police_report_number || "",
       severity: report.severity,
       photo_url: report.photo_url || "",
+      linked_call_id: report.linked_call_id || "",
+      linked_call_number: report.linked_call_number || "",
+      linked_bolo_id: report.linked_bolo_id || "",
+      linked_bolo_number: report.linked_bolo_number || "",
+      primary_officer_id: report.primary_officer_id || "",
+      primary_officer_name: report.primary_officer_name || "",
+      backup_officer_ids: report.backup_officer_ids || [],
     });
     setShowForm(true);
   };
