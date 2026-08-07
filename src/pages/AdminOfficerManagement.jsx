@@ -56,6 +56,41 @@ export default function AdminOfficerManagement() {
     enabled: user?.role === 'admin',
   });
 
+  const { data: availabilityRequests = [] } = useQuery({
+    queryKey: ['availabilityApprovalQueue'],
+    queryFn: () => base44.entities.AvailabilityRequest.list('-requested_at', 200),
+    enabled: user?.role === 'admin',
+  });
+
+  const pendingRequests = availabilityRequests.filter(r => r.status === 'pending');
+
+  const reviewAvailabilityRequest = async (request, approved) => {
+    try {
+      if (approved) {
+        const snapshot = JSON.parse(request.availability_snapshot || '[]');
+        const existing = (allAvailability || []).filter(a => a.officer_email === request.officer_email);
+        for (const row of snapshot) {
+          const current = existing.find(a => a.day_of_week === row.day_of_week);
+          const payload = { officer_email: request.officer_email, ...row };
+          if (current?.id) await base44.entities.OfficerAvailability.update(current.id, payload);
+          else await base44.entities.OfficerAvailability.create(payload);
+        }
+      }
+      await base44.entities.AvailabilityRequest.update(request.id, {
+        status: approved ? 'approved' : 'denied',
+        reviewed_by: user.email,
+        reviewed_at: new Date().toISOString()
+      });
+      queryClient.invalidateQueries({ queryKey: ['availabilityApprovalQueue'] });
+      queryClient.invalidateQueries({ queryKey: ['allAvailability'] });
+      queryClient.invalidateQueries({ queryKey: ['officerAvailability'] });
+      queryClient.invalidateQueries({ queryKey: ['allSchedules'] });
+      alert(approved ? 'Availability approved and synced to scheduling.' : 'Availability request denied.');
+    } catch (error) {
+      alert('Unable to review request: ' + error.message);
+    }
+  };
+
 
 
   const { data: locations } = useQuery({
@@ -193,6 +228,22 @@ export default function AdminOfficerManagement() {
             </Button>
           )}
         </div>
+
+        <Card className="border-none shadow-lg border-l-4 border-l-amber-500">
+          <CardHeader className="bg-gradient-to-r from-amber-50 to-yellow-50">
+            <CardTitle className="flex items-center gap-2"><Check className="w-5 h-5 text-amber-600" />Availability Approval Queue <Badge>{pendingRequests.length}</Badge></CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-3">
+            {pendingRequests.length === 0 ? <p className="text-sm text-slate-500">No pending officer availability requests.</p> : pendingRequests.map(req => {
+              let snapshot = [];
+              try { snapshot = JSON.parse(req.availability_snapshot || '[]'); } catch {}
+              return <div key={req.id} className="rounded-lg border p-3">
+                <div className="flex flex-wrap items-center gap-2"><strong>{req.officer_name || req.officer_email}</strong><span className="text-xs text-slate-500">{new Date(req.requested_at).toLocaleString()}</span><div className="ml-auto flex gap-2"><Button size="sm" onClick={() => reviewAvailabilityRequest(req, true)} className="bg-green-600 hover:bg-green-700">Approve</Button><Button size="sm" variant="destructive" onClick={() => reviewAvailabilityRequest(req, false)}>Deny</Button></div></div>
+                <div className="mt-2 flex flex-wrap gap-1">{snapshot.map(day => <Badge key={day.day_of_week} variant="outline" className={day.available ? 'border-green-300 text-green-700' : 'border-red-300 text-red-700'}>{DAY_LABELS[day.day_of_week]} {day.available ? `${day.preferred_start_time}-${day.preferred_end_time}` : 'Unavailable'}</Badge>)}</div>
+              </div>;
+            })}
+          </CardContent>
+        </Card>
 
         <Card className="border-none shadow-lg">
           <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50">
