@@ -1,0 +1,72 @@
+{
+  "name": "AvailabilityRequest",
+  "type": "object",
+  "properties": {
+    "officer_email": {
+      "type": "string"
+    },
+    "officer_name": {
+      "type": "string"
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "denied"
+      ],
+      "default": "pending"
+    },
+    "availability_snapshot": {
+      "type": "string",
+      "description": "JSON snapshot of requested weekly availability"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "review_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "officer_email",
+    "requested_at",
+    "status",
+    "availability_snapshot"
+  ],
+  "rls": {
+    "create": {
+      "data.officer_email": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.officer_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

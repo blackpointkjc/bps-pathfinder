@@ -1,0 +1,92 @@
+{
+  "name": "VehicleAssignment",
+  "type": "object",
+  "properties": {
+    "assignment_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "start_time": {
+      "type": "string"
+    },
+    "end_time": {
+      "type": "string"
+    },
+    "vehicle_id": {
+      "type": "string",
+      "description": "Vehicle entity record id"
+    },
+    "vehicle_label": {
+      "type": "string",
+      "description": "Fleet vehicle identifier"
+    },
+    "primary_officer_email": {
+      "type": "string"
+    },
+    "primary_officer_name": {
+      "type": "string"
+    },
+    "partner_officer_email": {
+      "type": "string"
+    },
+    "partner_officer_name": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "active",
+        "completed",
+        "cancelled"
+      ],
+      "default": "scheduled"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "created_by_email": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "assignment_date",
+    "vehicle_id",
+    "primary_officer_email"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.primary_officer_email": "{{user.email}}"
+        }
+      ]
+    },
+    "read": true,
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.primary_officer_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
