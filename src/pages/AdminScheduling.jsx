@@ -77,6 +77,7 @@ export default function AdminScheduling() {
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [showPerformanceAnalyzer, setShowPerformanceAnalyzer] = useState(false);
   const [showOpenShiftManager, setShowOpenShiftManager] = useState(false);
+  const [officerPublicationOverrides, setOfficerPublicationOverrides] = useState([]);
 
 
   const queryClient = useQueryClient();
@@ -602,25 +603,43 @@ export default function AdminScheduling() {
     return days;
   }, [weekStart, weekEnd]);
 
+  useEffect(() => {
+    setOfficerPublicationOverrides(weekStatus?.unpublished_officer_emails || []);
+  }, [weekStatus?.id, JSON.stringify(weekStatus?.unpublished_officer_emails || [])]);
+
   const setOfficerPublishedForWeek = async (officerEmail, published) => {
-    const currentWeekStart = addWeeks(startOfWeek(new Date(), { weekStartsOn: 0 }), currentWeekOffset);
-    const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
-    const weekEndStr = format(addDays(currentWeekStart, 6), 'yyyy-MM-dd');
-    const currentHidden = new Set(weekStatus?.unpublished_officer_emails || []);
-    if (published) currentHidden.delete(officerEmail);
-    else currentHidden.add(officerEmail);
-    const payload = {
-      week_start_date: weekStartStr,
-      week_end_date: weekEndStr,
-      is_ready: weekStatus?.is_ready || false,
-      unpublished_officer_emails: Array.from(currentHidden),
-      marked_ready_by: user?.email,
-      marked_ready_date: new Date().toISOString()
-    };
-    if (weekStatus?.id) await base44.entities.ScheduleWeekStatus.update(weekStatus.id, payload);
-    else await base44.entities.ScheduleWeekStatus.create(payload);
-    queryClient.invalidateQueries({ queryKey: ['scheduleWeekStatus'] });
-    queryClient.invalidateQueries({ queryKey: ['allWeekStatuses'] });
+    const targetWeekStart = startOfWeek(weekStart, { weekStartsOn: 0 });
+    const weekStartStr = format(targetWeekStart, 'yyyy-MM-dd');
+    const weekEndStr = format(addDays(targetWeekStart, 6), 'yyyy-MM-dd');
+    const previousHidden = [...officerPublicationOverrides];
+    const nextHidden = new Set(previousHidden);
+    if (published) nextHidden.delete(officerEmail);
+    else nextHidden.add(officerEmail);
+    const nextHiddenArray = Array.from(nextHidden);
+
+    // Update immediately so the control never snaps back while the server saves.
+    setOfficerPublicationOverrides(nextHiddenArray);
+
+    try {
+      const statuses = await base44.entities.ScheduleWeekStatus.list();
+      const exactWeekStatus = (statuses || []).find(status => status.week_start_date === weekStartStr);
+      const payload = {
+        week_start_date: weekStartStr,
+        week_end_date: weekEndStr,
+        is_ready: exactWeekStatus?.is_ready ?? weekStatus?.is_ready ?? false,
+        unpublished_officer_emails: nextHiddenArray,
+        marked_ready_by: user?.email,
+        marked_ready_date: new Date().toISOString()
+      };
+      if (exactWeekStatus?.id) await base44.entities.ScheduleWeekStatus.update(exactWeekStatus.id, payload);
+      else await base44.entities.ScheduleWeekStatus.create(payload);
+      await queryClient.invalidateQueries({ queryKey: ['scheduleWeekStatus'] });
+      await queryClient.invalidateQueries({ queryKey: ['allWeekStatuses'] });
+    } catch (error) {
+      setOfficerPublicationOverrides(previousHidden);
+      console.error('Unable to change officer publication status:', error);
+      alert('Unable to change this officer publication status. Please try again.');
+    }
   };
 
   const weekOfficersForPublication = useMemo(() => {
