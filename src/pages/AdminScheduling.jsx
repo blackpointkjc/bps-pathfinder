@@ -170,13 +170,80 @@ export default function AdminScheduling() {
         });
       }
 
-      // If marking as ready, send announcement
+      // If marking as ready, publish the announcement and send every scheduled
+      // officer an individualized Black Point email containing only their shifts.
       if (isReady) {
         await base44.entities.Announcement.create({
           title: `📅 Week Schedule Ready: ${format(currentWeekStart, 'MMM d')} - ${format(addDays(currentWeekStart, 6), 'MMM d, yyyy')}`,
           message: `The schedule for the week of ${format(currentWeekStart, 'MMMM d')} to ${format(addDays(currentWeekStart, 6), 'MMMM d, yyyy')} is now available. Please check your schedule in Black Point Portal and note any changes to your shifts.`,
           priority: 'important'
         });
+
+        const publishedShifts = (schedules || []).filter(shift =>
+          shift.shift_date >= weekStartStr &&
+          shift.shift_date <= weekEndStr &&
+          shift.officer_email &&
+          shift.officer_email !== 'OPEN' &&
+          shift.is_open !== true
+        );
+
+        const shiftsByOfficer = publishedShifts.reduce((groups, shift) => {
+          if (!groups[shift.officer_email]) groups[shift.officer_email] = [];
+          groups[shift.officer_email].push(shift);
+          return groups;
+        }, {});
+
+        const getShiftHours = (startTime, endTime) => {
+          const [startHour = 0, startMinute = 0] = String(startTime || '00:00').split(':').map(Number);
+          const [endHour = 0, endMinute = 0] = String(endTime || '00:00').split(':').map(Number);
+          const start = (startHour * 60) + startMinute;
+          let end = (endHour * 60) + endMinute;
+          if (end <= start) end += 24 * 60;
+          return (end - start) / 60;
+        };
+
+        for (const [officerEmail, officerShifts] of Object.entries(shiftsByOfficer)) {
+          const officer = allUsers?.find(item => item.email === officerEmail);
+          const officerName = [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || 'Officer';
+          const sortedShifts = [...officerShifts].sort((a, b) =>
+            `${a.shift_date} ${a.start_time}`.localeCompare(`${b.shift_date} ${b.start_time}`)
+          );
+          const totalHours = sortedShifts.reduce((sum, shift) => sum + getShiftHours(shift.start_time, shift.end_time), 0);
+          const shiftRows = sortedShifts.map(shift => `
+            <tr>
+              <td>${format(parseISO(shift.shift_date), 'EEE, MMM d')}</td>
+              <td>${shift.start_time} - ${shift.end_time}</td>
+              <td>${String(shift.location || '').split(':')[0].trim()}</td>
+              <td>${getShiftHours(shift.start_time, shift.end_time).toFixed(2)}h</td>
+            </tr>
+          `).join('');
+
+          await Promise.all([
+            base44.integrations.Core.SendEmail({
+              to: officerEmail,
+              subject: `Your Schedule - ${format(currentWeekStart, 'MMM d')} to ${format(addDays(currentWeekStart, 6), 'MMM d, yyyy')}`,
+              action_url: '/Schedule',
+              action_label: 'View My Schedule',
+              body: `
+                <p>Hello ${officerName},</p>
+                <p>Your work schedule has been published for <strong>${format(currentWeekStart, 'MMMM d')}</strong> through <strong>${format(addDays(currentWeekStart, 6), 'MMMM d, yyyy')}</strong>.</p>
+                <p><strong>Scheduled Shifts:</strong> ${sortedShifts.length}<br><strong>Total Scheduled Hours:</strong> ${totalHours.toFixed(2)} hours</p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                  <thead><tr><th>Date</th><th>Time</th><th>Location</th><th>Hours</th></tr></thead>
+                  <tbody>${shiftRows}</tbody>
+                </table>
+                <p>Please review your schedule in the Black Point Portal and contact your supervisor if something appears incorrect.</p>
+              `
+            }),
+            base44.entities.Notification.create({
+              recipient_email: officerEmail,
+              type: 'shift_posted',
+              title: '📅 Your Schedule Has Been Published',
+              message: `You are scheduled for ${sortedShifts.length} shift(s), totaling ${totalHours.toFixed(2)} hours, for ${format(currentWeekStart, 'MMM d')} - ${format(addDays(currentWeekStart, 6), 'MMM d, yyyy')}.`,
+              priority: 'high'
+            })
+          ]);
+        }
       }
       
       return isReady;
