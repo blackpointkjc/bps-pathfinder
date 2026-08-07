@@ -53,7 +53,6 @@ const CENTER_CONFIG = {
       { label: 'Schedule', items: [
         ['Time Clock', 'TimeClock', Clock3],
         ['My Schedule', 'Schedule', Calendar],
-        ['Fleet Vehicle Assignment', 'FleetVehicleAssignments', Car],
         ['Open Shifts', 'OpenShifts', Briefcase],
         ['Time Requests', 'TimeRequests', CalendarClock],
         ['Payroll Dates', 'OfficerPayrollDates', DollarSign],
