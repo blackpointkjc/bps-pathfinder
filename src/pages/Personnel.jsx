@@ -30,7 +30,7 @@ export default function Personnel() {
 
     useEffect(() => {
         init();
-        const interval = setInterval(() => { loadPersonnel(); loadOverrides(); }, 10000);
+        const interval = setInterval(() => loadPersonnel(), 10000);
         return () => clearInterval(interval);
     }, []);
 
