@@ -35,7 +35,8 @@ export default function DispatchCenter() {
     const [showPriorCalls, setShowPriorCalls] = useState(false);
     const [showMessaging, setShowMessaging] = useState(false);
     const [sortOrder, setSortOrder] = useState('desc');
-    const [showMap, setShowMap] = useState(true);
+    const [showMap, setShowMap] = useState(false);
+    const [mobileView, setMobileView] = useState('calls');
     const [refreshing, setRefreshing] = useState(false);
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
@@ -234,6 +235,7 @@ export default function DispatchCenter() {
 
     const handleSelectCall = (call) => {
         setSelectedCall(call);
+        if (typeof window !== 'undefined' && window.innerWidth < 768) setMobileView('detail');
         setCallDistrict(null);
         loadCallNotes(call?.id);
         if (call?.latitude && call?.longitude) {
@@ -415,11 +417,12 @@ export default function DispatchCenter() {
                         <Plus className="w-3 h-3" /> NEW CALL
                     </button>
 
-                    <button onClick={() => setShowMap(!showMap)}
-                        className={`px-2 py-1 border rounded text-[10px] ${
-                            showMap ? 'border-blue-500/40 text-blue-400 bg-blue-900/20' : 'border-slate-600 text-slate-500'
-                        }`}>
-                        <MapIcon className="w-2.5 h-2.5" />
+                    <button onClick={() => {
+                        if (typeof window !== 'undefined' && window.innerWidth < 768) setMobileView('map');
+                        else setShowMap(true);
+                    }}
+                        className={`flex items-center gap-1 rounded border px-2 py-1 text-[10px] ${showMap || mobileView === 'map' ? 'border-blue-500/40 bg-blue-900/20 text-blue-400' : 'border-slate-600 text-slate-500'}`}>
+                        <MapIcon className="w-2.5 h-2.5" /> MAP
                     </button>
                     <button onClick={() => setShowPriorCalls(!showPriorCalls)}
                         className={`px-2 py-1 border rounded text-[10px] ${
@@ -470,8 +473,19 @@ export default function DispatchCenter() {
                 ))}
             </div>
 
+            <div className="flex-none border-b border-[#1e2d4a] bg-[#08111d] p-2 md:hidden">
+                <label className="mb-1 block text-[8px] font-black tracking-[0.18em] text-slate-500">MOBILE DISPATCH VIEW</label>
+                <select value={mobileView} onChange={e => setMobileView(e.target.value)} className="h-10 w-full rounded-lg border border-blue-700/50 bg-[#07101c] px-3 text-xs font-black text-blue-100 outline-none">
+                    <option value="calls">ACTIVE CALLS</option>
+                    <option value="detail">CALL DETAIL / CAD LOG</option>
+                    <option value="assignment">UNIT ASSIGNMENT</option>
+                    <option value="units">UNIT STATUS BOARD</option>
+                    <option value="map">LIVE MAP</option>
+                </select>
+            </div>
+
             {/* ══ QUEUE CONTROLS ══ */}
-            <div className="flex-none flex flex-wrap items-center gap-2 border-b border-[#1e2d4a] bg-[#0a0e1a] px-2 py-1.5 md:flex-nowrap md:px-3">
+            <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} flex-none flex-wrap items-center gap-2 border-b border-[#1e2d4a] bg-[#0a0e1a] px-2 py-1.5 md:flex md:flex-nowrap md:px-3`}>
                 <div className="relative w-full min-w-0 sm:w-auto sm:min-w-52 md:w-56">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
                     <input id="cad-queue-search" value={queueSearch} onChange={e => setQueueSearch(e.target.value)} placeholder="Search CAD, incident, address...  [/]"
