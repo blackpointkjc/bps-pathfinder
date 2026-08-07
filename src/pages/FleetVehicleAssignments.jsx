@@ -20,6 +20,7 @@ export default function FleetVehicleAssignments() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedShiftId, setSelectedShiftId] = useState('');
   const [vehicleId, setVehicleId] = useState('');
+  const [partnerEmail, setPartnerEmail] = useState('');
   const [notes, setNotes] = useState('');
   const { data: user } = useQuery({ queryKey:['currentUser'], queryFn:()=>base44.auth.me() });
   const isAdmin = user?.role === 'admin' || (user?.additional_roles || []).includes('full_access');
@@ -40,6 +41,8 @@ export default function FleetVehicleAssignments() {
   const getName = email => { const u=users.find(x=>x.email===email); return u ? `${u.rank || 'Officer'} ${u.last_name || u.first_name}` : email; };
   const partnerForShift = shift => {
     if (!shift) return null;
+    if (partnerEmail) return weekShifts.find(s => s.officer_email === partnerEmail) || users.find(u => u.email === partnerEmail);
+    if (shift.partner_officer_email) return weekShifts.find(s => s.officer_email === shift.partner_officer_email) || users.find(u => u.email === shift.partner_officer_email);
     return weekShifts.find(s => s.id !== shift.id && s.shift_date === shift.shift_date && s.location === shift.location && s.start_time === shift.start_time && s.end_time === shift.end_time);
   };
 
@@ -47,16 +50,17 @@ export default function FleetVehicleAssignments() {
     if (!selectedShift || !vehicleId) return;
     const vehicle = vehicles.find(v=>v.id===vehicleId); if (!vehicle) return;
     const partner = partnerForShift(selectedShift);
+    const resolvedPartnerEmail = partnerEmail || selectedShift.partner_officer_email || partner?.officer_email || partner?.email || '';
     const existing = assignments.find(a => a.assignment_date===selectedShift.shift_date && a.primary_officer_email===selectedShift.officer_email && a.start_time===selectedShift.start_time);
     const payload = {
       assignment_date:selectedShift.shift_date, start_time:selectedShift.start_time, end_time:selectedShift.end_time,
       vehicle_id:vehicle.id, vehicle_label:vehicle.vehicle_id,
       primary_officer_email:selectedShift.officer_email, primary_officer_name:getName(selectedShift.officer_email),
-      partner_officer_email:partner?.officer_email || '', partner_officer_name:partner ? getName(partner.officer_email) : '',
+      partner_officer_email:resolvedPartnerEmail, partner_officer_name:resolvedPartnerEmail ? getName(resolvedPartnerEmail) : '',
       location:selectedShift.location || '', status:'scheduled', notes, created_by_email:user.email
     };
     if (existing) await base44.entities.VehicleAssignment.update(existing.id,payload); else await base44.entities.VehicleAssignment.create(payload);
-    qc.invalidateQueries({queryKey:['fleetAssignments']}); setVehicleId(''); setNotes('');
+    qc.invalidateQueries({queryKey:['fleetAssignments']}); setVehicleId(''); setPartnerEmail(''); setNotes('');
   };
 
   return <div className="min-h-screen bg-slate-950 p-4 text-white md:p-6">
@@ -69,7 +73,8 @@ export default function FleetVehicleAssignments() {
       <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
         <Card className="border-slate-800 bg-slate-900 text-white"><CardHeader><CardTitle className="text-sm">ASSIGN A VEHICLE</CardTitle></CardHeader><CardContent className="space-y-3">
           <div><label className="text-[10px] text-slate-400">SCHEDULED SHIFT</label><Select value={selectedShiftId} onValueChange={setSelectedShiftId}><SelectTrigger className="border-slate-700 bg-slate-950"><SelectValue placeholder="Choose shift"/></SelectTrigger><SelectContent>{myShifts.map(s=><SelectItem key={s.id} value={s.id}>{s.shift_date} · {s.start_time}-{s.end_time} · {getName(s.officer_email)} · {s.location}</SelectItem>)}</SelectContent></Select></div>
-          {selectedShift && <div className="rounded border border-blue-900 bg-blue-950/30 p-2 text-xs"><div><strong>Officer:</strong> {getName(selectedShift.officer_email)}</div><div><strong>Partner:</strong> {partnerForShift(selectedShift) ? getName(partnerForShift(selectedShift).officer_email) : 'No partnered officer on same shift'}</div><div><strong>Hours:</strong> {hours(selectedShift.start_time,selectedShift.end_time).toFixed(2)}</div></div>}
+          {selectedShift && <div className="rounded border border-blue-900 bg-blue-950/30 p-2 text-xs"><div><strong>Primary Officer:</strong> {getName(selectedShift.officer_email)}</div><div><strong>Scheduled Partner:</strong> {selectedShift.partner_officer_email ? getName(selectedShift.partner_officer_email) : 'None selected'}</div><div><strong>Hours:</strong> {hours(selectedShift.start_time,selectedShift.end_time).toFixed(2)}</div></div>}
+          {selectedShift && <div><label className="text-[10px] text-slate-400">PARTNER OFFICER ON THIS VEHICLE</label><Select value={partnerEmail || selectedShift.partner_officer_email || ''} onValueChange={setPartnerEmail}><SelectTrigger className="border-slate-700 bg-slate-950"><SelectValue placeholder="No partner / select officer"/></SelectTrigger><SelectContent>{eligibleUsers.filter(o=>o.email!==selectedShift.officer_email).map(o=><SelectItem key={o.email} value={o.email}>{getName(o.email)}</SelectItem>)}</SelectContent></Select><p className="mt-1 text-[10px] text-slate-500">Both officers will display under the same fleet vehicle assignment.</p></div>}
           <div><label className="text-[10px] text-slate-400">ACTIVE / IN-SERVICE FLEET VEHICLE</label><Select value={vehicleId} onValueChange={setVehicleId}><SelectTrigger className="border-slate-700 bg-slate-950"><SelectValue placeholder="Choose vehicle"/></SelectTrigger><SelectContent>{availableVehicles.map(v=><SelectItem key={v.id} value={v.id}>{v.vehicle_id} · {v.year} {v.make} {v.model} · {v.license_plate || 'No plate'}</SelectItem>)}</SelectContent></Select></div>
           <Input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Assignment notes" className="border-slate-700 bg-slate-950"/>
           <Button onClick={assignVehicle} disabled={!selectedShiftId || !vehicleId} className="w-full bg-amber-600 hover:bg-amber-500"><CheckCircle2 className="mr-2 h-4 w-4"/>SAVE VEHICLE ASSIGNMENT</Button>
