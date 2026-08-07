@@ -1,6 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
-const blackPointEmail = (subject: string, content: string, actionLabel = 'View in Black Point Portal') => `<!doctype html><html><body style="margin:0;background:#0b0b0b;font-family:Arial;color:#f4f4f4"><table width="100%" style="padding:28px 12px;background:#0b0b0b"><tr><td align="center"><table width="620" style="max-width:620px;background:#151515;border:1px solid #2b2b2b;border-radius:10px;overflow:hidden"><tr><td align="center" style="padding:26px;background:#050505;color:#fff;font-weight:800;letter-spacing:2px">BLACK POINT PROTECTION<div style="margin-top:8px;color:#d4af37;font-size:11px">BPS PATHFINDER</div></td></tr><tr><td style="height:5px;background:#d4af37"></td></tr><tr><td style="padding:32px 38px;color:#d7d7d7"><h1 style="color:#fff">${subject}</h1>${content}<p style="text-align:center;margin-top:28px"><a href="https://bpspf.blackpointkjc.com/" style="display:inline-block;padding:14px 26px;background:#d4af37;color:#090909;text-decoration:none;font-weight:bold;border-radius:6px">${actionLabel}</a></p></td></tr><tr><td align="center" style="padding:20px;background:#050505;color:#8f8f8f;font-size:12px">Black Point Protection Services · Secure Company Communication</td></tr></table></td></tr></table></body></html>`;
-
 /**
  * checkMissedQRCheckpoints
  * Runs every hour — finds active shifts where required checkpoints have not been
@@ -98,17 +96,31 @@ Deno.serve(async (req) => {
       const shiftStart = shift.clock_in ? new Date(shift.clock_in).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'Unknown';
       const hoursSinceFirst = Math.round((now - firstScanTime) / (60 * 60 * 1000));
 
+      const title = `Missed QR Checkpoints — ${officerName} @ ${siteName}`;
+      const message = [
+        `Officer ${officerName} has an active shift at ${siteName} and required checkpoints remain unscanned.`,
+        missedList,
+        `Shift started: ${shiftStart}`,
+        `First scan: ${firstScanTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`,
+        `Hours since first scan: ${hoursSinceFirst}h`,
+        `Total scans: ${scanEvents.length}`,
+      ].join('\n');
+
       for (const email of allRecipients) {
-        await base44.asServiceRole.integrations.Core.SendEmail({
-          to: email,
-          subject: `⚠️ Missed QR Checkpoints Alert — ${officerName} @ ${siteName}`,
-          body: blackPointEmail(`Missed QR Checkpoints — ${officerName}`, `<p><strong>Hourly QR Patrol Alert</strong></p><p>Officer <strong>${officerName}</strong> has an active shift at <strong>${siteName}</strong> and required checkpoints remain unscanned.</p><pre style="background:#202020;padding:12px;border-left:4px solid #d4af37;border-radius:6px;color:#f4f4f4;white-space:pre-wrap">${missedList}</pre><p><strong>Shift started:</strong> ${shiftStart}<br><strong>First scan:</strong> ${firstScanTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}<br><strong>Hours since first scan:</strong> ${hoursSinceFirst}h<br><strong>Total scans:</strong> ${scanEvents.length}</p><p>This alert repeats hourly while checkpoints remain unscanned.</p>`, 'Open QR Patrol Center'),
+        await base44.asServiceRole.entities.Notification.create({
+          recipient_email: email,
+          type: 'missed_qr_checkpoints',
+          title,
+          message,
+          is_read: false,
+          related_id: shift.id,
+          priority: 'high',
         });
         alertsSent++;
       }
     }
 
-    return Response.json({ success: true, alertsSent, shiftsChecked: openShifts.length });
+    return Response.json({ success: true, alertsSent, shiftsChecked: openShifts.length, delivery: 'in_app_only', integration_credits_used: 0 });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
