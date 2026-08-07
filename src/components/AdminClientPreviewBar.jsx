@@ -9,16 +9,37 @@ export default function AdminClientPreviewBar({ user, activeCenter }) {
 
   useEffect(() => {
     if (user?.role !== 'admin' || activeCenter !== 'client') return;
-    base44.entities.User.list('-last_updated', 500).then(users => {
-      setClients((users || []).filter(person => (person.additional_roles || []).includes('client') || person.user_type === 'client'));
+    Promise.all([
+      base44.entities.User.list('-last_updated', 500),
+      base44.entities.Location.list('site_name', 500).catch(() => []),
+    ]).then(([users, locations]) => {
+      const clientUsers = (users || [])
+        .filter(person => (person.additional_roles || []).includes('client') || person.user_type === 'client')
+        .map(person => {
+          const email = String(person.email || '').toLowerCase();
+          const assignedLocations = [...new Set([
+            ...(Array.isArray(person.assigned_locations) ? person.assigned_locations : []),
+            ...(person.assigned_location ? [person.assigned_location] : []),
+            ...(locations || []).filter(location => String(location.assigned_client_email || '').toLowerCase() === email).map(location => location.site_name),
+          ].filter(Boolean))];
+          return {
+            ...person,
+            assigned_locations: assignedLocations,
+            assigned_location: person.assigned_location || assignedLocations[0] || '',
+            __client_preview: true,
+            __auth_admin_id: user.id,
+          };
+        });
+      setClients(clientUsers);
     }).catch(() => setClients([]));
-  }, [user?.role, activeCenter]);
+  }, [user?.role, user?.id, activeCenter]);
 
   if (user?.role !== 'admin' || activeCenter !== 'client') return null;
 
   const apply = id => {
+    const profile = clients.find(client => client.id === id) || null;
     setSelected(id);
-    setClientPreviewId(id);
+    setClientPreviewId(id, profile);
     window.location.reload();
   };
 
