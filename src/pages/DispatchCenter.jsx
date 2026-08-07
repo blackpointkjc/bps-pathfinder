@@ -157,9 +157,12 @@ export default function DispatchCenter() {
     const loadUnits = async () => {
         try {
             const allUsers = await base44.entities.User.list('-last_updated', 500);
-            console.log('📋 Dispatch loaded units:', allUsers.length);
-            console.log('📋 Units data:', allUsers);
-            setUnits(allUsers || []);
+            const eligibleUnits = (allUsers || []).filter(user => {
+                const roles = Array.isArray(user.additional_roles) ? user.additional_roles.map(role => String(role).toLowerCase()) : [];
+                return roles.includes('cad_access') && roles.includes('officer');
+            });
+            console.log('📋 Dispatch loaded eligible CAD officers:', eligibleUnits.length);
+            setUnits(eligibleUnits);
         } catch (error) {
             console.error('Error loading units:', error);
             setUnits([]);
@@ -372,8 +375,9 @@ export default function DispatchCenter() {
         return matchesFilter && haystack.includes(queueSearch.toLowerCase());
     });
 
-    const availableUnits = units.filter(unit => unit.status === 'Available');
-    const activeUnits = units.filter(unit => unit.status && unit.status !== 'Out of Service');
+    const statusUnits = units.filter(unit => Boolean(unit.status));
+    const availableUnits = statusUnits.filter(unit => unit.status === 'Available');
+    const activeUnits = statusUnits.filter(unit => unit.status !== 'Out of Service');
     const unassignedCalls = activeCalls.filter(call => !call.assigned_units?.length);
     const priorityCalls = activeCalls.filter(call => ['critical', 'high'].includes(call.priority));
     const oldestCallMinutes = activeCalls.length
@@ -661,8 +665,8 @@ export default function DispatchCenter() {
                         <div className="flex-1 min-h-0 flex flex-col">
                             <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                                 <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                                <span className="text-[10px] font-bold text-green-400 tracking-widest">ACTIVE UNITS</span>
-                                <span className="ml-auto text-[10px] bg-green-500/20 text-green-300 px-2 rounded-full border border-green-500/30">{units.filter(u => u.status && u.status !== 'Out of Service').length}</span>
+                                <span className="text-[10px] font-bold text-green-400 tracking-widest">UNIT STATUS</span>
+                                <span className="ml-auto text-[10px] bg-green-500/20 text-green-300 px-2 rounded-full border border-green-500/30">{statusUnits.length}</span>
                             </div>
                             {/* Units table header */}
                             <div className="flex-none grid grid-cols-12 px-2 py-1 bg-[#111827] border-b border-[#1e2d4a] text-[9px] text-slate-500 uppercase">
@@ -671,9 +675,9 @@ export default function DispatchCenter() {
                                 <div className="col-span-4">STATUS</div>
                             </div>
                             <div className="flex-1 overflow-y-auto">
-                                {units.filter(u => u.status && u.status !== 'Out of Service').length === 0 ? (
-                                    <div className="text-[10px] text-slate-600 text-center py-4">NO ACTIVE UNITS</div>
-                                ) : units.filter(u => u.status && u.status !== 'Out of Service').map(unit => (
+                                {statusUnits.length === 0 ? (
+                                    <div className="text-[10px] text-slate-600 text-center py-4">NO CAD OFFICERS WITH STATUS</div>
+                                ) : statusUnits.map(unit => (
                                     <div key={unit.id} className="grid grid-cols-12 px-2 py-1.5 border-b border-[#1a2535] hover:bg-[#111827]">
                                         <div className="col-span-1 flex items-center">
                                             <span className={`w-2 h-2 rounded-full ${statusColor(unit.status)}`} />
@@ -687,6 +691,8 @@ export default function DispatchCenter() {
                                                 unit.status === 'Available' ? 'bg-green-700/60 text-green-300' :
                                                 unit.status === 'Enroute' ? 'bg-yellow-700/60 text-yellow-300' :
                                                 unit.status === 'On Scene' ? 'bg-blue-700/60 text-blue-300' :
+                                                unit.status === 'Busy' ? 'bg-orange-700/60 text-orange-300' :
+                                                unit.status === 'Out of Service' ? 'bg-slate-800 text-slate-400 border border-slate-600' :
                                                 'bg-slate-700 text-slate-400'
                                             }`}>{unit.status}</span>
                                         </div>
@@ -702,7 +708,7 @@ export default function DispatchCenter() {
             <div className="flex-none min-h-6 bg-[#0d1220] border-t border-[#1e2d4a] flex flex-wrap items-center px-3 py-1 gap-x-4 gap-y-1 text-[9px] text-slate-500 md:flex-nowrap md:whitespace-nowrap">
                 <span className="flex items-center gap-1.5"><Wifi className="h-3 w-3 text-emerald-400" /> CAD NETWORK: <span className="font-bold text-emerald-400">CONNECTED</span></span>
                 <span>CALLS: <span className="text-white">{allCalls.length}</span></span>
-                <span>UNITS ACTIVE: <span className="text-green-400">{units.filter(u => u.status && u.status !== 'Out of Service').length}</span></span>
+                <span>UNITS ACTIVE: <span className="text-green-400">{activeUnits.length}</span></span>
                 <span>UNASSIGNED: <span className="text-yellow-400">{allCalls.filter(c => !c.assigned_units?.length).length}</span></span>
                 <div className="flex-1" />
                 <span className="hidden items-center gap-1 text-slate-500 md:flex"><Keyboard className="h-3 w-3" /> N NEW CALL · / SEARCH · M MAP · ESC CLEAR</span>
