@@ -66,8 +66,6 @@ const CENTER_CONFIG = {
         ['QR Patrol Scan', 'QRPatrolScan', MapPin],
         ['VA Trespass Notices', 'VATrespassNotices', UserX],
         ['VA Criminal Complaint', 'VACriminalComplaints', Shield],
-        ['MD Trespass Notices', 'MDTrespassNotices', UserX],
-        ['MD Criminal Complaint', 'MDCriminalComplaints', Shield],
       ]},
       { label: 'Communication', items: [
         ['Team Chat', 'TeamChat', MessageCircle],
