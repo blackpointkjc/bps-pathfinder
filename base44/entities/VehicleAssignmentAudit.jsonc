@@ -1,0 +1,66 @@
+{
+  "name": "VehicleAssignmentAudit",
+  "type": "object",
+  "properties": {
+    "assignment_id": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "created",
+        "updated",
+        "removed"
+      ]
+    },
+    "vehicle_label": {
+      "type": "string"
+    },
+    "primary_officer_email": {
+      "type": "string"
+    },
+    "partner_officer_email": {
+      "type": "string"
+    },
+    "assignment_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "changed_by": {
+      "type": "string"
+    },
+    "changed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "before_json": {
+      "type": "string"
+    },
+    "after_json": {
+      "type": "string"
+    }
+  },
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  },
+  "required": []
+}

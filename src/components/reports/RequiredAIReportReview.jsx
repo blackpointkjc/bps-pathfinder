@@ -90,15 +90,15 @@ export default function RequiredAIReportReview({ label = 'Review & Professionali
   };
 
   return (
-    <div className={`rounded-lg border p-4 ${reviewed ? 'border-emerald-600/50 bg-emerald-950/20' : 'border-amber-600/50 bg-amber-950/20'}`}>
-      <div className="mb-3 flex items-start gap-2 text-sm">
+    <div className={`w-full min-w-0 rounded-lg border p-3 sm:p-4 ${reviewed ? 'border-emerald-600/50 bg-emerald-950/20' : 'border-amber-600/50 bg-amber-950/20'}`}>
+      <div className="mb-3 flex min-w-0 items-start gap-2 text-sm">
         {reviewed ? <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" /> : <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-400" />}
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="font-semibold text-slate-100">Required AI Review</p>
-          <p className="text-xs text-slate-400">The officer must review the rewritten wording. Any later edit requires another review.</p>
+          <p className="break-words text-xs leading-5 text-slate-400">The officer must review the rewritten wording. Any later edit requires another review.</p>
         </div>
       </div>
-      <Button ref={buttonRef} type="button" onClick={review} disabled={reviewing} className={reviewed ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-blue-700 hover:bg-blue-600'}>
+      <Button ref={buttonRef} type="button" onClick={review} disabled={reviewing} className={`h-auto w-full min-w-0 whitespace-normal px-3 py-2 text-center leading-5 sm:w-auto ${reviewed ? 'bg-emerald-700 hover:bg-emerald-600' : 'bg-blue-700 hover:bg-blue-600'}`}>
         {reviewing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : reviewed ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
         {reviewing ? 'Reviewing Report…' : reviewed ? 'AI Review Complete' : label}
       </Button>
