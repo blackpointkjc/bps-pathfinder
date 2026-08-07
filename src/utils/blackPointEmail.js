@@ -49,9 +49,9 @@ function normalizeHtmlContent(value) {
 
   // Apply the same Black Point typography and content styling to legacy HTML.
   html = html
+    .replace(/<h2([^>]*)>/gi, '<h2$1 style="margin:0 0 16px;color:#ffffff;font-size:22px;line-height:1.3;">')
     .replace(/<h1([^>]*)>/gi, '<h2$1 style="margin:0 0 16px;color:#ffffff;font-size:22px;line-height:1.3;">')
     .replace(/<\/h1>/gi, '</h2>')
-    .replace(/<h2([^>]*)>/gi, '<h2$1 style="margin:0 0 16px;color:#ffffff;font-size:22px;line-height:1.3;">')
     .replace(/<h3([^>]*)>/gi, '<h3$1 style="margin:18px 0 10px;color:#ffffff;font-size:18px;line-height:1.4;">')
     .replace(/<p([^>]*)>/gi, '<p$1 style="margin:0 0 16px;color:#d7d7d7;font-size:16px;line-height:1.65;">')
     .replace(/<a([^>]*)>/gi, '<a$1 style="color:#e5c75b;text-decoration:underline;">')
