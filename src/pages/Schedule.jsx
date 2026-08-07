@@ -655,14 +655,21 @@ export default function Schedule() {
                                 (a.primary_officer_email === user?.email || a.partner_officer_email === user?.email) &&
                                 (!a.start_time || a.start_time === schedule.start_time)
                               );
-                              if (!vehicle) return null;
-                              const isPartner = vehicle.partner_officer_email === user?.email;
+                              const isPartner = vehicle?.partner_officer_email === user?.email;
                               return (
                                 <div className="mt-4 rounded-lg border-2 border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 p-3">
-                                  <div className="flex items-center gap-2 text-sm font-bold text-amber-900"><Car className="h-4 w-4" />Assigned Fleet Vehicle</div>
-                                  <div className="mt-1 text-lg font-black text-amber-950">{vehicle.vehicle_label}</div>
-                                  {vehicle.partner_officer_name && <div className="mt-1 flex items-center gap-1 text-xs text-amber-800"><Users className="h-3 w-3" />Partner: {isPartner ? vehicle.primary_officer_name : vehicle.partner_officer_name}</div>}
-                                  {vehicle.notes && <div className="mt-1 text-xs text-amber-700">{vehicle.notes}</div>}
+                                  <div className="flex items-center gap-2 text-sm font-bold text-amber-900"><Car className="h-4 w-4" />Fleet Vehicle</div>
+                                  {vehicle ? <>
+                                    <div className="mt-1 text-lg font-black text-amber-950">{vehicle.vehicle_label}</div>
+                                    {vehicle.partner_officer_name && <div className="mt-1 flex items-center gap-1 text-xs text-amber-800"><Users className="h-3 w-3" />Partner: {isPartner ? vehicle.primary_officer_name : vehicle.partner_officer_name}</div>}
+                                    {vehicle.notes && <div className="mt-1 text-xs text-amber-700">{vehicle.notes}</div>}
+                                  </> : <div className="mt-1 text-xs text-amber-800">No fleet vehicle assigned to this shift.</div>}
+                                  {!isPartner && <div className="mt-2">
+                                    <Select value={vehicle?.vehicle_id || ''} onValueChange={(id) => assignFleetVehicleToShift(schedule, id)}>
+                                      <SelectTrigger className="h-8 border-amber-300 bg-white text-xs"><SelectValue placeholder="Assign / change fleet vehicle" /></SelectTrigger>
+                                      <SelectContent>{activeFleetVehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.vehicle_id} · {v.year} {v.make} {v.model}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                  </div>}
                                 </div>
                               );
                             })()}
