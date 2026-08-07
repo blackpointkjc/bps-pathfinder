@@ -146,6 +146,7 @@ export function buildBlackPointEmail({
 export function brandEmailPayload(payload = {}) {
   const subject = replaceLegacyBranding(payload.subject || 'Black Point Notification');
   const originalBody = payload.body || payload.html || '';
+  const alreadyBranded = String(originalBody).includes(TEMPLATE_MARKER);
   const urlMatch = String(originalBody).match(/href=["']([^"']+)["']/i);
   const actionUrl = replaceLegacyBranding(payload.action_url || urlMatch?.[1] || PORTAL_URL);
 
@@ -158,10 +159,16 @@ export function brandEmailPayload(payload = {}) {
   else if (!payload.action_label && /schedule|shift/i.test(subject)) actionLabel = 'View Schedule';
   else if (!payload.action_label && /performance review/i.test(subject)) actionLabel = 'View Performance Review';
 
+  // action_url/action_label/html are internal rendering helpers only. Do not pass
+  // unsupported fields through to Base44's SendEmail integration.
+  const { action_url, action_label, html, ...sendablePayload } = payload;
+
   return {
-    ...payload,
+    ...sendablePayload,
     from_name: 'Black Point Protection',
     subject,
-    body: buildBlackPointEmail({ subject, body: originalBody, actionUrl, actionLabel }),
+    body: alreadyBranded
+      ? originalBody
+      : buildBlackPointEmail({ subject, body: originalBody, actionUrl, actionLabel }),
   };
 }
