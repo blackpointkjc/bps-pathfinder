@@ -61,6 +61,8 @@ export default function IncidentReports() {
     photo_url: "",
     linked_call_id: "",
     linked_call_number: "",
+    linked_bolo_id: "",
+    linked_bolo_number: "",
     primary_officer_id: "",
     primary_officer_name: "",
     backup_officer_ids: [],
@@ -154,6 +156,26 @@ export default function IncidentReports() {
     queryFn: () => base44.entities.User.list(),
     initialData: [],
   });
+
+  const { data: activeBolos } = useQuery({
+    queryKey: ['activeBolosForReports'],
+    queryFn: async () => {
+      const rows = await base44.entities.BOLOAlert.list('-created_date', 200);
+      return (rows || []).filter(bolo => bolo.status === 'active');
+    },
+    initialData: [],
+    refetchInterval: 15000,
+  });
+
+  const selectBolo = (boloId) => {
+    if (boloId === 'none') {
+      setFormData(prev => ({ ...prev, linked_bolo_id: '', linked_bolo_number: '' }));
+      return;
+    }
+    const bolo = activeBolos.find(item => item.id === boloId);
+    if (!bolo) return;
+    setFormData(prev => ({ ...prev, linked_bolo_id: bolo.id, linked_bolo_number: bolo.bolo_number || bolo.id }));
+  };
 
   const { data: activeDispatchCalls } = useQuery({
     queryKey: ['activeDispatchCallsForReports'],
@@ -945,6 +967,26 @@ Provide:
                     {formData.linked_call_id && (
                       <div className="rounded-md border bg-slate-50 p-3 text-sm">
                         <strong>CAD:</strong> {formData.linked_call_number} · <strong>Primary:</strong> {formData.primary_officer_name || 'Assigned unit pending'}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Attach Active BOLO</Label>
+                    <Select value={formData.linked_bolo_id || 'none'} onValueChange={selectBolo}>
+                      <SelectTrigger><SelectValue placeholder="Select an active BOLO" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No linked BOLO</SelectItem>
+                        {activeBolos.map(bolo => (
+                          <SelectItem key={bolo.id} value={bolo.id}>
+                            {bolo.bolo_number || bolo.id.slice(-8)} — {bolo.title} {bolo.subject_name ? `— ${bolo.subject_name}` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formData.linked_bolo_id && (
+                      <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+                        <strong>BOLO:</strong> {formData.linked_bolo_number}
                       </div>
                     )}
                   </div>
