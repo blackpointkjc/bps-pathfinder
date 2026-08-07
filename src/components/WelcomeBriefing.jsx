@@ -155,7 +155,12 @@ export default function WelcomeBriefing({ user }) {
   const statusOverride = brief.override?.active ? (brief.override.reason || 'Administrative Out of Service override is active') : '';
   const isAdmin = user?.role === 'admin' || (user?.additional_roles || []).map(normalized).includes('full_access');
   const userByEmail = useMemo(() => new Map((brief.allUsers || []).map(person => [normalized(person.email), person])), [brief.allUsers]);
-  const unitByEmail = useMemo(() => new Map((brief.allUnits || []).map(unitRow => [normalized(unitRow.user_email || userByEmail.get(normalized(unitRow.user_id))?.email), unitRow])), [brief.allUnits, userByEmail]);
+  const userById = useMemo(() => new Map((brief.allUsers || []).map(person => [String(person.id || ''), person])), [brief.allUsers]);
+  const unitByEmail = useMemo(() => new Map((brief.allUnits || []).map(unitRow => [normalized(unitRow.user_email || userById.get(String(unitRow.user_id || ''))?.email), unitRow])), [brief.allUnits, userById]);
+  const isCadOfficer = person => {
+    const roles = (person?.additional_roles || []).map(normalized);
+    return roles.includes('cad_access') && roles.includes('officer');
+  };
   const activeEntryByEmail = useMemo(() => new Map((brief.activeTimeEntries || []).map(entry => [normalized(entry.officer_email), entry])), [brief.activeTimeEntries]);
   const vehicleByEmail = useMemo(() => {
     const map = new Map();
@@ -170,15 +175,20 @@ export default function WelcomeBriefing({ user }) {
     return (brief.activeTimeEntries || []).map(entry => {
       const email = normalized(entry.officer_email);
       if (!email || seen.has(email)) return null;
-      seen.add(email);
       const person = userByEmail.get(email);
+      if (person && !isCadOfficer(person)) return null;
+      seen.add(email);
       const unitRow = unitByEmail.get(email);
       const vehicleRow = vehicleByEmail.get(email);
       return { email, entry, person, unit: unitRow, vehicle: vehicleRow };
     }).filter(Boolean).sort((a,b) => String(a.person?.last_name || a.email).localeCompare(String(b.person?.last_name || b.email)));
   }, [brief.activeTimeEntries, userByEmail, unitByEmail, vehicleByEmail]);
   const scheduledDutyRows = useMemo(() => {
-    const rows = (brief.todaySchedules || []).filter(item => item.officer_email && item.officer_email !== 'OPEN' && !item.is_open);
+    const rows = (brief.todaySchedules || []).filter(item => {
+      if (!item.officer_email || item.officer_email === 'OPEN' || item.is_open) return false;
+      const person = userByEmail.get(normalized(item.officer_email));
+      return !person || isCadOfficer(person);
+    });
     return rows.map(shiftRow => {
       const email = normalized(shiftRow.officer_email);
       const person = userByEmail.get(email);
