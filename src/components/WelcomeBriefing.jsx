@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, CheckCircle2, ChevronRight, Clock3, Megaphone, MessageCircle, Radio, Shield, Sparkles, Siren, X } from 'lucide-react';
+import { AlertTriangle, Bell, CalendarClock, Car, CheckCircle2, ChevronRight, Clock3, MapPin, Megaphone, MessageCircle, Radio, Shield, Sparkles, Siren, Users, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
 
@@ -51,7 +51,7 @@ export default function WelcomeBriefing({ user }) {
   const [open, setOpen] = useState(false);
   const [seconds, setSeconds] = useState(30);
   const [loading, setLoading] = useState(true);
-  const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], propertyAlerts: [] });
+  const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null });
   const userKey = normalized(user?.email || user?.id);
   const storageKey = userKey ? `bps-last-active:${userKey}` : '';
   const [offlineSince] = useState(() => {
@@ -66,13 +66,19 @@ export default function WelcomeBriefing({ user }) {
     let active = true;
     const load = async () => {
       try {
-        const [messages, mentions, announcements, receipts, notifications, propertyAlerts] = await Promise.all([
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        const [messages, mentions, announcements, receipts, notifications, propertyAlerts, liveUsers, units, schedules, vehicleAssignments, overrides] = await Promise.all([
           base44.entities.Message.filter({ recipient_id: user.id, read: false }, '-created_date', 200).catch(() => []),
           base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200).catch(() => []),
           base44.entities.Announcement.list('-created_date', 100).catch(() => []),
           base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500).catch(() => []),
           base44.entities.Notification.filter({ recipient_email: user.email }, '-created_date', 200).catch(() => []),
           base44.entities.PropertyAlert.list('-created_date', 300).catch(() => []),
+          base44.entities.User.filter({ email: user.email }).catch(() => []),
+          base44.entities.Unit.filter({ user_id: user.id }).catch(() => []),
+          base44.entities.Schedule.filter({ officer_email: user.email, shift_date: today }).catch(() => []),
+          base44.entities.VehicleAssignment.filter({ assignment_date: today }).catch(() => []),
+          base44.entities.OfficerStatusOverride.filter({ officer_id: user.id, active: true }).catch(() => []),
         ]);
         if (!active) return;
         const receiptIds = new Set((receipts || []).map(item => item.announcement_id));
@@ -88,7 +94,12 @@ export default function WelcomeBriefing({ user }) {
           if (!offlineSince) return item.acknowledged !== true;
           return new Date(item.created_date || 0).getTime() > offlineSince;
         });
-        setBrief({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, propertyAlerts: offlineAlerts });
+        const liveUser = liveUsers?.[0] || user;
+        const unit = units?.[0] || null;
+        const shift = (schedules || []).find(item => !item.is_open) || null;
+        const vehicle = (vehicleAssignments || []).find(item => normalized(item.primary_officer_email) === normalized(user.email) || normalized(item.partner_officer_email) === normalized(user.email)) || null;
+        const override = overrides?.[0] || null;
+        setBrief({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, propertyAlerts: offlineAlerts, liveUser, unit, shift, vehicle, override });
       } catch (error) {
         console.warn('Welcome briefing unavailable:', error?.message);
       } finally {
@@ -131,7 +142,12 @@ export default function WelcomeBriefing({ user }) {
 
   const pendingMessages = brief.messages.length + brief.mentions.length;
   const totalItems = pendingMessages + brief.announcements.length + brief.updates.length + brief.appUpdates.length + brief.propertyAlerts.length;
-  const status = user?.status || 'Out of Service';
+  const status = brief.unit?.status || brief.liveUser?.status || user?.status || 'Out of Service';
+  const partnerName = brief.unit?.partner_name || (brief.shift?.partner_officer_email ? brief.shift.partner_officer_email : '');
+  const currentCall = brief.liveUser?.current_call_info || brief.unit?.current_call_info || '';
+  const vehicleLabel = brief.vehicle?.vehicle_label || '';
+  const shiftDetail = brief.shift ? `${brief.shift.start_time || '--:--'}–${brief.shift.end_time || '--:--'} · ${String(brief.shift.location || '').split(':')[0] || 'Location not set'}` : '';
+  const statusOverride = brief.override?.active ? (brief.override.reason || 'Administrative Out of Service override is active') : '';
   const offlineText = useMemo(() => {
     if (!offlineSince) return 'First briefing on this device';
     const minutes = Math.max(1, Math.floor((Date.now() - offlineSince) / 60000));
@@ -176,14 +192,35 @@ export default function WelcomeBriefing({ user }) {
                 <div className="flex min-h-52 items-center justify-center"><div className="text-center"><div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent"/><p className="mt-3 text-xs font-bold tracking-widest text-slate-500">BUILDING YOUR BRIEFING…</p></div></div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
-                    <BriefCard icon={Shield} label="Current Status" value={status === 'Out of Service' ? 'OOS' : status} detail="Your live CAD duty status" tone={status === 'Available' ? 'emerald' : 'slate'} />
+                  <div className="rounded-2xl border border-cyan-900/60 bg-gradient-to-r from-cyan-950/20 to-blue-950/20 p-3 sm:p-4">
+                    <div className="flex flex-wrap items-center gap-2"><Radio className="h-4 w-4 text-cyan-300"/><div className="text-xs font-black uppercase tracking-[.16em] text-cyan-200">Duty Status Snapshot</div><span className={`ml-auto rounded-full border px-2.5 py-1 text-[10px] font-black ${status === 'Available' ? 'border-emerald-700/60 bg-emerald-950/50 text-emerald-300' : status === 'Out of Service' ? 'border-slate-700 bg-slate-900 text-slate-300' : 'border-blue-700/60 bg-blue-950/50 text-blue-300'}`}>{String(status).toUpperCase()}</span></div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-slate-500"><Shield className="h-3.5 w-3.5"/>CAD Status</div><div className="mt-1 text-sm font-black text-white">{status}</div><div className="mt-1 text-[10px] text-slate-400">{currentCall ? `Assigned: ${currentCall}` : 'No active CAD call assignment'}</div></div>
+                      <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-slate-500"><Users className="h-3.5 w-3.5"/>Partner / Team</div><div className="mt-1 truncate text-sm font-black text-white">{partnerName || 'No partner assigned'}</div><div className="mt-1 text-[10px] text-slate-400">{brief.unit?.union_id ? 'CAD team union active' : brief.shift?.partner_officer_email ? 'Scheduled partner' : 'Operating solo'}</div></div>
+                      <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-slate-500"><Car className="h-3.5 w-3.5"/>Fleet Vehicle</div><div className="mt-1 text-sm font-black text-white">{vehicleLabel || 'Not assigned'}</div><div className="mt-1 text-[10px] text-slate-400">{brief.vehicle ? `${brief.vehicle.start_time || ''}-${brief.vehicle.end_time || ''}` : 'No vehicle assignment for today'}</div></div>
+                      <div className={`rounded-xl border p-3 ${statusOverride ? 'border-red-800/70 bg-red-950/25' : 'border-slate-800 bg-slate-950/60'}`}><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-slate-500"><AlertTriangle className="h-3.5 w-3.5"/>Status Control</div><div className={`mt-1 text-sm font-black ${statusOverride ? 'text-red-300' : 'text-white'}`}>{statusOverride ? 'Override Active' : 'Normal'}</div><div className="mt-1 text-[10px] text-slate-400">{statusOverride || 'No forced status override'}</div></div>
+                    </div>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <div className="flex items-start gap-2 rounded-xl border border-slate-800 bg-slate-950/45 p-3"><CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-blue-300"/><div><div className="text-[9px] font-black uppercase tracking-wider text-slate-500">Today's Schedule</div><div className="mt-1 text-xs font-bold text-white">{shiftDetail || 'No published shift found for today'}</div></div></div>
+                      <div className="flex items-start gap-2 rounded-xl border border-slate-800 bg-slate-950/45 p-3"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-300"/><div><div className="text-[9px] font-black uppercase tracking-wider text-slate-500">Current Assignment</div><div className="mt-1 text-xs font-bold text-white">{currentCall || (brief.shift?.location ? String(brief.shift.location).split(':')[0] : 'No current assignment')}</div></div></div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
                     <BriefCard icon={MessageCircle} label="Pending Messages" value={pendingMessages} detail={pendingMessages ? 'Unread direct messages or mentions' : 'You are caught up'} tone="blue" onClick={() => go('OfficerInbox')} />
                     <BriefCard icon={Megaphone} label="Announcements" value={brief.announcements.length} detail={brief.announcements.length ? 'Announcements you have not opened yet' : 'No unseen announcements'} tone="amber" onClick={() => go('Announcements')} />
                     <BriefCard icon={Sparkles} label="App Updates" value={brief.appUpdates.length} detail={brief.appUpdates.length ? 'Unread platform or software updates' : 'No new app updates'} tone="violet" />
                     <BriefCard icon={Bell} label="Other Updates" value={brief.updates.length} detail={brief.updates.length ? 'Unread account, schedule, or system updates' : 'No other pending updates'} tone="blue" />
                     <BriefCard icon={Siren} label="Property Calls While Away" value={brief.propertyAlerts.length} detail={brief.propertyAlerts.length ? 'Monitored-property calls since your last session' : 'No property alerts while away'} tone={brief.propertyAlerts.length ? 'red' : 'emerald'} onClick={() => go('DispatchCenter')} />
                   </div>
+
+                  {(brief.appUpdates.length > 0 || brief.updates.length > 0 || brief.announcements.length > 0) && <div className="mt-4 rounded-2xl border border-violet-900/50 bg-violet-950/10 p-3 sm:p-4">
+                    <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-violet-300"/><div className="text-xs font-black uppercase tracking-[.16em] text-violet-200">Updates Since You Were Away</div></div>
+                    <div className="mt-2 space-y-2">
+                      {[...brief.appUpdates, ...brief.updates].slice(0, 4).map(item => <div key={`update-${item.id}`} className="rounded-xl border border-slate-800 bg-slate-950/55 p-3"><div className="text-xs font-black text-white">{item.title || item.type || 'System Update'}</div><div className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-400">{item.message || item.description || 'A new update is available in Pathfinder.'}</div></div>)}
+                      {brief.announcements.slice(0, 2).map(item => <button key={`announcement-${item.id}`} type="button" onClick={() => go('Announcements')} className="w-full rounded-xl border border-amber-900/50 bg-amber-950/15 p-3 text-left"><div className="text-xs font-black text-amber-200">{item.title || 'Company Announcement'}</div><div className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-400">{item.message || 'Open Announcements to review.'}</div></button>)}
+                    </div>
+                  </div>}
 
                   <div className="mt-4 rounded-2xl border border-slate-800 bg-black/15 p-3 sm:p-4">
                     <div className="flex items-center gap-2"><Radio className="h-4 w-4 text-cyan-300"/><div className="text-xs font-black uppercase tracking-[.16em] text-slate-300">Session Summary</div></div>
