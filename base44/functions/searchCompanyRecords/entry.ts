@@ -35,11 +35,17 @@ Deno.serve(async (req) => {
     const allowed = user.role === 'admin' || user.role === 'dispatch' || roles.has('full_access') || roles.has('cad_access') || roles.has('officer') || roles.has('supervisor');
     if (!allowed) return Response.json({ error: 'Records access required' }, { status: 403 });
 
+    // Only admins/full-access users may bypass entity RLS. Everyone else must use
+    // the caller-scoped entity client so ConfidentialReport, WriteUpReport,
+    // Complaint, InspectionReport, and other protected records enforce their own RLS.
+    const canBypassRls = user.role === 'admin' || roles.has('full_access');
+    const entityClient = canBypassRls ? base44.asServiceRole.entities : base44.entities;
+
     const body = await req.json();
     if (body?.action === 'get' && body?.entity && body?.id) {
       const source = SOURCES.find(([entityName]) => entityName === body.entity);
       if (!source) return Response.json({ error: 'Unsupported record type' }, { status: 400 });
-      const entity = (base44.asServiceRole.entities as any)[body.entity];
+      const entity = (entityClient as any)[body.entity];
       const record = await entity.get(body.id);
       return Response.json({ record, source: source[1], page: source[2] });
     }
@@ -48,7 +54,7 @@ Deno.serve(async (req) => {
     const terms = query.split(/\s+/).filter(Boolean);
 
     const settled = await Promise.allSettled(SOURCES.map(async ([entityName, sourceLabel, page]) => {
-      const entity = (base44.asServiceRole.entities as any)[entityName];
+      const entity = (entityClient as any)[entityName];
       if (!entity?.list) return [];
       const rows = await entity.list('-created_date', 1000);
       return (rows || []).filter((record: any) => {
