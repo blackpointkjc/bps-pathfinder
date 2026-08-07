@@ -912,10 +912,10 @@ export default function Navigation() {
                                                                 <div className="flex items-center gap-1.5">
                                                                     {u.is_supervisor && <Shield className="w-3 h-3 text-yellow-400 flex-shrink-0" />}
                                                                     <span className="text-[11px] text-white font-mono font-bold truncate">
-                                                                        {u.unit_number ? `UNIT-${u.unit_number}` : (u.full_name || 'UNIT')}
+                                                                        {u.rank && u.last_name ? `${u.rank} ${u.last_name}` : (u.full_name || u.unit_number || 'UNIT')}
                                                                     </span>
                                                                 </div>
-                                                                {u.rank && <div className="text-[9px] text-slate-600 font-mono">{u.rank}</div>}
+                                                                {u.unit_number && <div className="text-[9px] text-slate-600 font-mono">UNIT-{u.unit_number}</div>}
                                                             </div>
                                                             {u.latitude && u.longitude && (
                                                                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" title="GPS Active" />
