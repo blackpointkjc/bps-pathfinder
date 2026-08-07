@@ -389,6 +389,17 @@ export default function VATrespassNotices() {
     setUploading(false);
   };
 
+  const handleSignatureComplete = (fileUrl) => {
+    const now = new Date().toISOString();
+    setFormData(prev => {
+      if (signaturePadType === 'officer') return { ...prev, officer_signature_url: fileUrl, signature_url: fileUrl, officer_signed_at: now };
+      if (signaturePadType === 'witness') return { ...prev, witness_signature_url: fileUrl, witness_signed_at: now };
+      if (signaturePadType === 'subject') return { ...prev, subject_signature_url: fileUrl, subject_signed_at: now };
+      return prev;
+    });
+    setSignaturePadType(null);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -961,7 +972,43 @@ export default function VATrespassNotices() {
                   </div>
                 )}
 
-                <div className="flex gap-3 justify-end">
+                <div className="rounded-lg border border-slate-300 bg-slate-50 p-4">
+                  <div className="mb-3">
+                    <h3 className="font-semibold text-slate-900">Signatures</h3>
+                    <p className="text-xs text-slate-500">Capture each signature separately on this device. Subject and witness signatures are optional when the person is unavailable or declines to sign.</p>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="rounded-lg border bg-white p-3">
+                      <div className="text-sm font-semibold text-slate-900">Issuing Officer</div>
+                      <div className="mt-1 text-xs text-slate-500">{getOfficerSignature(user?.email)}</div>
+                      {formData.officer_signature_url && <img src={formData.officer_signature_url} alt="Officer signature" className="mt-2 h-16 w-full rounded border bg-white object-contain" />}
+                      <Button type="button" variant="outline" className="mt-2 w-full" onClick={() => setSignaturePadType('officer')}>{formData.officer_signature_url ? 'Replace Signature' : 'Officer Sign'}</Button>
+                    </div>
+                    <div className="rounded-lg border bg-white p-3">
+                      <div className="text-sm font-semibold text-slate-900">Witness</div>
+                      <Input className="mt-2" placeholder="Witness name" value={formData.witness_name} onChange={(e) => setFormData({...formData, witness_name:e.target.value})} />
+                      {formData.witness_signature_url && <img src={formData.witness_signature_url} alt="Witness signature" className="mt-2 h-16 w-full rounded border bg-white object-contain" />}
+                      <Button type="button" variant="outline" className="mt-2 w-full" onClick={() => setSignaturePadType('witness')}>{formData.witness_signature_url ? 'Replace Signature' : 'Witness Sign'}</Button>
+                    </div>
+                    <div className="rounded-lg border bg-white p-3">
+                      <div className="text-sm font-semibold text-slate-900">Subject</div>
+                      <div className="mt-1 text-xs text-slate-500">{formData.subject_name || 'Subject acknowledgment'}</div>
+                      {formData.subject_signature_url && <img src={formData.subject_signature_url} alt="Subject signature" className="mt-2 h-16 w-full rounded border bg-white object-contain" />}
+                      <Button type="button" variant="outline" className="mt-2 w-full" onClick={() => setSignaturePadType('subject')}>{formData.subject_signature_url ? 'Replace Signature' : 'Subject Sign'}</Button>
+                    </div>
+                  </div>
+                  {signaturePadType && (
+                    <div className="mt-4 max-w-full overflow-hidden">
+                      <SignaturePad
+                        officerName={signaturePadType === 'officer' ? getOfficerFullName(user?.email) : signaturePadType === 'witness' ? (formData.witness_name || 'Witness') : (formData.subject_name || 'Subject')}
+                        onSignatureComplete={handleSignatureComplete}
+                        onClose={() => setSignaturePadType(null)}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
                   <Button
                     type="button"
                     variant="outline"
@@ -969,7 +1016,7 @@ export default function VATrespassNotices() {
                   >
                     Cancel
                   </Button>
-                  <RequiredAIReportReview />
+                  <div className="w-full sm:w-auto sm:min-w-[260px]"><RequiredAIReportReview /></div>
                   <Button
                     type="submit"
                     disabled={saving || saveNoticeMutation.isPending}
