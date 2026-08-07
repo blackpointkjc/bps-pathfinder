@@ -3311,105 +3311,101 @@ Return ONLY a JSON array of suggestion objects with this structure:
             })()}
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-green-200 border-b-2 border-slate-300">
-                    <th className="p-2 text-left font-bold text-xs">#</th>
-                    <th className="p-2 text-left font-bold text-xs">Unit</th>
-                    <th className="p-2 text-left font-bold text-xs">Officer Name</th>
-                    <th className="p-2 text-left font-bold text-xs">Rank</th>
-                    <th className="p-2 text-center font-bold text-xs">Regular Hrs</th>
-                    <th className="p-2 text-center font-bold text-xs">OT Hrs</th>
-                    <th className="p-2 text-center font-bold text-xs">Total Hrs</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    const getPayrollWeekKey = (dateStr) => {
-                      const date = parseISO(dateStr);
-                      const dayOfWeek = date.getDay();
-                      const daysSinceFriday = (dayOfWeek + 2) % 7;
-                      const fridayStart = new Date(date);
-                      fridayStart.setDate(fridayStart.getDate() - daysSinceFriday);
-                      return format(fridayStart, 'yyyy-MM-dd');
-                    };
-                    
-                    const payrollWeekStart = getPayrollWeekKey(format(weekStart, 'yyyy-MM-dd'));
-                    const payrollWeekEnd = format(addDays(parseISO(payrollWeekStart), 6), 'yyyy-MM-dd');
-                    
-                    const payrollWeekSchedules = schedules?.filter(s => {
-                      const shiftDate = s.shift_date;
-                      return shiftDate >= payrollWeekStart && shiftDate <= payrollWeekEnd && s.officer_email !== 'OPEN';
-                    }) || [];
-                    
-                    const officerHoursSummary = {};
-                    
-                    payrollWeekSchedules.forEach(schedule => {
-                      if (!officerHoursSummary[schedule.officer_email]) {
-                        officerHoursSummary[schedule.officer_email] = 0;
-                      }
-                      officerHoursSummary[schedule.officer_email] += calculateShiftHours(schedule.start_time, schedule.end_time);
-                    });
-                    
-                    const sortedOfficers = Object.keys(officerHoursSummary).sort((a, b) => {
-                      const unitA = getOfficerUnitNumber(a);
-                      const unitB = getOfficerUnitNumber(b);
-                      if (unitA && unitB) {
-                        const numA = parseInt(unitA);
-                        const numB = parseInt(unitB);
-                        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-                      }
-                      return getOfficerName(a).localeCompare(getOfficerName(b));
-                    });
-                    
-                    let totalRegular = 0;
-                    let totalOT = 0;
-                    let totalHours = 0;
-                    
-                    return (
-                      <>
-                        {sortedOfficers.map((email, idx) => {
-                          const hours = officerHoursSummary[email];
-                          const regular = Math.min(hours, 40);
-                          const ot = Math.max(0, hours - 40);
-                          totalRegular += regular;
-                          totalOT += ot;
-                          totalHours += hours;
-                          
-                          const officer = allUsers?.find(u => u.email === email);
-                          const name = officer ? `${officer.first_name} ${officer.last_name}` : email;
-                          const rank = getOfficerRank(email);
-                          const unit = getOfficerUnitNumber(email);
-                          
-                          return (
-                            <tr key={email} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                              <td className="p-2 text-center text-xs border-b border-slate-200">{idx + 1}</td>
-                              <td className="p-2 text-center font-bold text-xs border-b border-slate-200">
-                                {unit ? `#${unit}` : '-'}
-                              </td>
-                              <td className="p-2 text-xs border-b border-slate-200">{name}</td>
-                              <td className="p-2 text-xs border-b border-slate-200">{rank}</td>
-                              <td className="p-2 text-center text-xs border-b border-slate-200">{regular.toFixed(1)}</td>
-                              <td className={`p-2 text-center text-xs border-b border-slate-200 ${ot > 0 ? 'text-red-600 font-bold' : ''}`}>
-                                {ot.toFixed(1)}
-                              </td>
-                              <td className="p-2 text-center font-bold text-xs border-b border-slate-200">{hours.toFixed(1)}</td>
-                            </tr>
-                          );
-                        })}
-                        <tr className="bg-blue-100 font-bold border-t-2 border-slate-400">
-                          <td colSpan="4" className="p-2 text-right text-xs">TOTALS:</td>
-                          <td className="p-2 text-center text-xs">{totalRegular.toFixed(1)}</td>
-                          <td className="p-2 text-center text-xs text-red-600">{totalOT.toFixed(1)}</td>
-                          <td className="p-2 text-center text-xs">{totalHours.toFixed(1)}</td>
-                        </tr>
-                      </>
-                    );
-                  })()}
-                </tbody>
-              </table>
-            </div>
+            {(() => {
+              const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+              const applicablePeriod = payrollPeriods?.find(p => p.start_date <= weekStartStr && p.end_date >= weekStartStr);
+              if (!applicablePeriod) return <div className="p-5 text-sm text-slate-500">No payroll period is configured for this schedule.</div>;
+
+              const periodStart = applicablePeriod.start_date;
+              const periodEnd = applicablePeriod.end_date;
+              const scheduledByOfficer = {};
+              (schedules || []).filter(s => s.officer_email && s.officer_email !== 'OPEN' && s.shift_date >= periodStart && s.shift_date <= periodEnd).forEach(s => {
+                scheduledByOfficer[s.officer_email] = (scheduledByOfficer[s.officer_email] || 0) + calculateShiftHours(s.start_time, s.end_time);
+              });
+
+              const completedEntries = (timeEntries || []).filter(entry => {
+                if (!entry.clock_in || !entry.clock_out) return false;
+                const clockDate = format(new Date(entry.clock_in), 'yyyy-MM-dd');
+                return clockDate >= periodStart && clockDate <= periodEnd;
+              });
+
+              const workedByOfficerWeek = {};
+              const entryHours = entry => {
+                const start = new Date(entry.clock_in);
+                const end = new Date(entry.clock_out);
+                let minutes = Math.max(0, (end - start) / 60000);
+                (entry.break_periods || []).forEach(brk => {
+                  if (!brk?.start || !brk?.end) return;
+                  minutes -= Math.max(0, (new Date(brk.end) - new Date(brk.start)) / 60000);
+                });
+                return Math.max(0, minutes / 60);
+              };
+
+              completedEntries.forEach(entry => {
+                const email = entry.officer_email;
+                const weekKey = format(startOfWeek(new Date(entry.clock_in), { weekStartsOn: 0 }), 'yyyy-MM-dd');
+                if (!workedByOfficerWeek[email]) workedByOfficerWeek[email] = {};
+                workedByOfficerWeek[email][weekKey] = (workedByOfficerWeek[email][weekKey] || 0) + entryHours(entry);
+              });
+
+              const officerEmails = Array.from(new Set([...Object.keys(scheduledByOfficer), ...Object.keys(workedByOfficerWeek)]));
+              const rows = officerEmails.map(email => {
+                const officer = allUsers?.find(u => u.email === email);
+                const weekly = Object.values(workedByOfficerWeek[email] || {});
+                const actualRegular = weekly.reduce((sum, hrs) => sum + Math.min(40, hrs), 0);
+                const actualOT = weekly.reduce((sum, hrs) => sum + Math.max(0, hrs - 40), 0);
+                const actualTotal = actualRegular + actualOT;
+                const hourlyRate = Number(officer?.hourly_rate || 0);
+                const overtimeRate = Number(officer?.overtime_rate_override || (hourlyRate * 1.5));
+                const earned = (actualRegular * hourlyRate) + (actualOT * overtimeRate);
+                return {
+                  email,
+                  officer,
+                  unit: getOfficerUnitNumber(email),
+                  rank: getOfficerRank(email),
+                  name: officer ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() : getOfficerName(email),
+                  scheduled: scheduledByOfficer[email] || 0,
+                  actualRegular,
+                  actualOT,
+                  actualTotal,
+                  earned
+                };
+              }).sort((a,b) => {
+                const na = parseInt(a.unit, 10), nb = parseInt(b.unit, 10);
+                if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+                return a.name.localeCompare(b.name);
+              });
+
+              const totals = rows.reduce((t, r) => ({
+                scheduled: t.scheduled + r.scheduled,
+                regular: t.regular + r.actualRegular,
+                ot: t.ot + r.actualOT,
+                actual: t.actual + r.actualTotal,
+                earned: t.earned + r.earned
+              }), { scheduled:0, regular:0, ot:0, actual:0, earned:0 });
+
+              return <>
+                <div className="hidden md:block">
+                  <table className="w-full table-fixed border-collapse bg-slate-950 text-[10px] text-slate-200 lg:text-[11px]">
+                    <thead><tr className="border-b border-slate-700 bg-[#111827] text-slate-300">
+                      <th className="w-[4%] p-2 text-center">#</th><th className="w-[7%] p-2 text-center">UNIT</th><th className="w-[17%] p-2 text-left">OFFICER</th><th className="w-[12%] p-2 text-left">RANK</th><th className="w-[12%] p-2 text-center">SCHEDULED</th><th className="w-[12%] p-2 text-center">ACTUAL REG</th><th className="w-[10%] p-2 text-center">ACTUAL OT</th><th className="w-[12%] p-2 text-center">ACTUAL TOTAL</th><th className="w-[14%] p-2 text-right">EST. EARNED</th>
+                    </tr></thead>
+                    <tbody>{rows.map((r,idx)=><tr key={r.email} className="border-b border-slate-800 odd:bg-slate-950 even:bg-slate-900/60">
+                      <td className="p-2 text-center text-slate-500">{idx+1}</td><td className="p-2 text-center font-black text-blue-300">{r.unit ? `#${r.unit}` : '—'}</td><td className="truncate p-2 font-bold text-white" title={r.name}>{r.name}</td><td className="truncate p-2 text-slate-400" title={r.rank}>{r.rank || 'Officer'}</td><td className="p-2 text-center font-semibold text-blue-200">{r.scheduled.toFixed(1)}</td><td className="p-2 text-center text-emerald-300">{r.actualRegular.toFixed(1)}</td><td className={`p-2 text-center ${r.actualOT>0?'font-black text-red-300':'text-slate-500'}`}>{r.actualOT.toFixed(1)}</td><td className="p-2 text-center font-black text-white">{r.actualTotal.toFixed(1)}</td><td className="p-2 text-right font-black text-amber-300">${r.earned.toFixed(2)}</td>
+                    </tr>)}</tbody>
+                    <tfoot><tr className="border-t-2 border-blue-700 bg-blue-950/40 font-black"><td colSpan="4" className="p-2 text-right text-blue-200">PAY PERIOD TOTALS</td><td className="p-2 text-center text-blue-200">{totals.scheduled.toFixed(1)}</td><td className="p-2 text-center text-emerald-300">{totals.regular.toFixed(1)}</td><td className="p-2 text-center text-red-300">{totals.ot.toFixed(1)}</td><td className="p-2 text-center text-white">{totals.actual.toFixed(1)}</td><td className="p-2 text-right text-amber-300">${totals.earned.toFixed(2)}</td></tr></tfoot>
+                  </table>
+                </div>
+                <div className="space-y-3 p-3 md:hidden">
+                  {rows.length===0 && <div className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">No scheduled or completed hours in this payroll period.</div>}
+                  {rows.map((r,idx)=><div key={r.email} className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm">
+                    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="font-black text-white">{r.name}</div><div className="text-xs text-slate-400">{r.rank || 'Officer'} · {r.unit ? `#${r.unit}` : 'No unit'}</div></div><div className="text-right text-xs font-black text-amber-300">${r.earned.toFixed(2)}</div></div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs"><div className="rounded bg-blue-950/30 p-2"><span className="text-slate-500">Scheduled</span><div className="font-black text-blue-200">{r.scheduled.toFixed(1)}h</div></div><div className="rounded bg-slate-900 p-2"><span className="text-slate-500">Actual</span><div className="font-black text-white">{r.actualTotal.toFixed(1)}h</div></div><div className="rounded bg-emerald-950/20 p-2"><span className="text-slate-500">Regular</span><div className="font-black text-emerald-300">{r.actualRegular.toFixed(1)}h</div></div><div className="rounded bg-red-950/20 p-2"><span className="text-slate-500">OT</span><div className="font-black text-red-300">{r.actualOT.toFixed(1)}h</div></div></div>
+                  </div>)}
+                  <div className="rounded-xl border border-blue-800 bg-blue-950/30 p-3"><div className="font-black text-blue-200">PAY PERIOD TOTALS</div><div className="mt-2 grid grid-cols-2 gap-2 text-xs"><span>Scheduled: <b>{totals.scheduled.toFixed(1)}h</b></span><span>Actual: <b>{totals.actual.toFixed(1)}h</b></span><span>OT: <b>{totals.ot.toFixed(1)}h</b></span><span>Earned: <b className="text-amber-300">${totals.earned.toFixed(2)}</b></span></div></div>
+                </div>
+              </>;
+            })()}
           </CardContent>
         </Card>
       </div>
