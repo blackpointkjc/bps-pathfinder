@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, MapPin, FileText, ChevronLeft, ChevronRight, Info, ExternalLink, RefreshCw, CalendarDays, Printer, AlertCircle, Car, Users } from "lucide-react";
-import { format, addDays, startOfWeek, addWeeks, subWeeks, parseISO } from "date-fns";
+import { format, addDays, startOfDay, startOfWeek, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
@@ -104,21 +104,17 @@ export default function Schedule() {
 
   const currentPeriod = getCurrentPayrollPeriod();
 
-  // Calculate display based on selected view
-  let weekStartCalc, weekEndCalc;
-  const today = new Date(); // Re-initialize today for date-fns calculations
-
-  weekStartCalc = addWeeks(startOfWeek(today, { weekStartsOn: 0 }), currentWeekOffset);
-  weekEndCalc = addDays(weekStartCalc, 6);
-
-  const weekStart = weekStartCalc;
-  const weekEnd = weekEndCalc;
+  // Rolling five-day schedule window. Offset moves in five-day blocks.
+  const today = startOfDay(new Date());
+  const weekStart = addDays(today, currentWeekOffset * 5);
+  const weekEnd = addDays(weekStart, 4);
+  const publicationWeekStart = startOfWeek(weekStart, { weekStartsOn: 0 });
 
   const { data: weekStatus } = useQuery({
-    queryKey: ['scheduleWeekStatus', format(weekStart, 'yyyy-MM-dd')],
+    queryKey: ['scheduleWeekStatus', format(publicationWeekStart, 'yyyy-MM-dd')],
     queryFn: async () => {
       const statuses = await base44.entities.ScheduleWeekStatus.list();
-      return statuses.find(s => s.week_start_date === format(weekStart, 'yyyy-MM-dd'));
+      return statuses.find(s => s.week_start_date === format(publicationWeekStart, 'yyyy-MM-dd'));
     },
     enabled: !!user,
   });
@@ -159,15 +155,7 @@ export default function Schedule() {
     },
   });
 
-  const weekDays = React.useMemo(() => {
-    const days = [];
-    let currentDay = weekStart;
-    while (currentDay <= weekEnd) {
-      days.push(currentDay);
-      currentDay = addDays(currentDay, 1);
-    }
-    return days;
-  }, [weekStart, weekEnd]);
+  const weekDays = React.useMemo(() => Array.from({ length: 5 }, (_, index) => addDays(weekStart, index)), [weekStart]);
 
   const visibleSchedules = React.useMemo(() => {
     if (!schedules) return [];
@@ -405,15 +393,12 @@ export default function Schedule() {
     printWindow.print();
   };
 
-  // Check if we should show the warning banner (within 2 days of week start)
+  // Publication status still follows the Sunday-based admin schedule week.
   const shouldShowWarning = React.useMemo(() => {
     if (weekStatus?.is_ready) return false;
-    
-    const today = new Date();
-    const twoDaysBeforeWeekStart = addDays(weekStart, -2);
-    
-    return today >= twoDaysBeforeWeekStart;
-  }, [weekStatus, weekStart]);
+    const twoDaysBeforeWeekStart = addDays(publicationWeekStart, -2);
+    return new Date() >= twoDaysBeforeWeekStart;
+  }, [weekStatus, publicationWeekStart]);
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
@@ -422,7 +407,7 @@ export default function Schedule() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-black text-white">My Schedule</h1>
-            <p className="text-slate-400">Sunday through Saturday · weekly shifts, partners, and fleet assignments</p>
+            <p className="text-slate-400">Rolling five-day view · shifts, partners, and fleet assignments</p>
           </div>
 
         </div>
@@ -455,8 +440,8 @@ export default function Schedule() {
         )}
 
         <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-          <div className="text-sm font-semibold text-white">Weekly Schedule View</div>
-          <div className="text-xs text-slate-400">Sunday through Saturday. Use Previous Week and Next Week to move week by week.</div>
+          <div className="text-sm font-semibold text-white">Rolling 5-Day Schedule</div>
+          <div className="text-xs text-slate-400">Today starts on the far left. Use the arrows to move backward or forward five days at a time.</div>
         </div>
 
         {(selectedPayrollPeriod === "all" || !selectedPayrollPeriod) && (
@@ -466,21 +451,21 @@ export default function Schedule() {
               onClick={() => setCurrentWeekOffset(currentWeekOffset - 1)}
             >
               <ChevronLeft className="mr-1 h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Previous Week</span><span className="sm:hidden">Previous</span>
+              <span className="hidden sm:inline">Previous 5 Days</span><span className="sm:hidden">Previous</span>
             </Button>
             <div className="order-first text-center sm:order-none">
               <p className="font-bold text-white">
-                Week of {format(weekStart, 'MMM d, yyyy')}
+                {format(weekStart, 'MMM d')} – {format(weekEnd, 'MMM d, yyyy')}
               </p>
               <p className="text-xs text-slate-400 sm:text-sm">
-                {format(weekStart, 'MMM d')} to {format(weekEnd, 'MMM d, yyyy')} (7 days)
+                5-day rolling schedule
               </p>
             </div>
             <Button
               variant="outline"
               onClick={() => setCurrentWeekOffset(currentWeekOffset + 1)}
             >
-              <span className="hidden sm:inline">Next Week</span><span className="sm:hidden">Next</span>
+              <span className="hidden sm:inline">Next 5 Days</span><span className="sm:hidden">Next</span>
               <ChevronRight className="ml-1 h-4 w-4 sm:ml-2" />
             </Button>
           </div>
@@ -495,7 +480,7 @@ export default function Schedule() {
               onClick={() => setCurrentWeekOffset(0)}
               className="bg-blue-50 text-blue-700"
             >
-              Return to Current Week
+              Return to Today
             </Button>
           </div>
         )}
@@ -580,14 +565,14 @@ export default function Schedule() {
         )}
 
         <div className="pb-2">
-          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3 xl:grid-cols-7">
+          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 md:grid md:grid-cols-2 md:overflow-visible xl:grid-cols-5">
           {weekDays.map((day) => {
             const daySchedules = getScheduleForDate(day);
             const ptoEntry = checkPTOForDate(day);
             const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
 
             return (
-              <Card key={day.toString()} className={`w-[88vw] max-w-[360px] shrink-0 snap-start overflow-hidden border border-slate-800 bg-slate-900 shadow-xl sm:w-auto sm:max-w-none sm:shrink ${isToday ? 'ring-2 ring-blue-500/70' : ''}`}>
+              <Card key={day.toString()} className={`w-[88vw] max-w-[420px] shrink-0 snap-start overflow-hidden border border-slate-800 bg-slate-900 shadow-xl md:w-auto md:max-w-none md:shrink ${isToday ? 'ring-2 ring-blue-500/70' : ''}`}>
                 <CardHeader className={`${isToday ? 'bg-blue-950/40' : ptoEntry ? 'bg-green-950/30' : 'bg-slate-900'} border-b border-slate-800 px-4 py-3`}>
                   <CardTitle className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
