@@ -45,7 +45,7 @@ export default function Personnel() {
 
     const canForceStatus = (user = currentUser) => {
         const roles = Array.isArray(user?.additional_roles) ? user.additional_roles.map(role => String(role).toLowerCase()) : [];
-        return user?.role === 'admin' || user?.role === 'dispatch' || roles.includes('full_access') || roles.includes('supervisor') || roles.includes('cad_access');
+        return user?.role === 'admin' || user?.role === 'dispatch' || roles.includes('full_access') || roles.includes('supervisor') || roles.includes('dispatch');
     };
 
     const loadOverrides = async (actor = currentUser) => {
