@@ -322,7 +322,11 @@ function CommandDashboardInner() {
             {currentUser && (
                 <div className="flex-none flex items-center gap-2 px-3 py-1.5 bg-slate-900/80 border-b border-slate-800">
                     <span className="text-slate-500 font-mono text-[10px] tracking-widest flex-shrink-0">
-                        {currentUser.unit_number ? `UNIT-${currentUser.unit_number}` : currentUser.full_name?.toUpperCase()} STATUS:
+                        {currentUser.rank && currentUser.last_name
+                          ? `${currentUser.rank} ${currentUser.last_name}`.toUpperCase()
+                          : currentUser.unit_number
+                            ? `UNIT-${currentUser.unit_number}`
+                            : currentUser.full_name?.toUpperCase()} STATUS:
                     </span>
                     <div className="flex items-center gap-1 flex-wrap">
                         {MY_STATUSES.map(s => {
@@ -503,7 +507,11 @@ function CommandDashboardInner() {
                                         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot}`} />
                                         <div className="flex-1 min-w-0">
                                             <div className="text-white font-mono text-[11px] font-bold truncate">
-                                                {unit.unit_number ? `UNIT-${unit.unit_number}` : unit.full_name?.toUpperCase()}
+                                                {unit.rank && unit.last_name
+                                                  ? `${unit.rank} ${unit.last_name}`.toUpperCase()
+                                                  : unit.unit_number
+                                                    ? `UNIT-${unit.unit_number}`
+                                                    : unit.full_name?.toUpperCase()}
                                             </div>
                                             {unit.current_call_info && <div className="text-slate-500 text-[9px] font-mono truncate">{unit.current_call_info}</div>}
                                         </div>
