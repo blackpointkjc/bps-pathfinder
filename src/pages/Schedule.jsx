@@ -158,11 +158,13 @@ export default function Schedule() {
   const weekDays = React.useMemo(() => Array.from({ length: 5 }, (_, index) => addDays(weekStart, index)), [weekStart]);
 
   const isDatePublished = React.useCallback((dateStr) => {
-    if (!dateStr || !allWeekStatuses) return false;
+    if (!dateStr || !allWeekStatuses || !user?.email) return false;
     const date = parseISO(dateStr);
     const sunday = format(startOfWeek(date, { weekStartsOn: 0 }), 'yyyy-MM-dd');
-    return allWeekStatuses.some(status => status.week_start_date === sunday && status.is_ready === true);
-  }, [allWeekStatuses]);
+    const status = allWeekStatuses.find(item => item.week_start_date === sunday);
+    if (!status?.is_ready) return false;
+    return !(status.unpublished_officer_emails || []).includes(user.email);
+  }, [allWeekStatuses, user?.email]);
 
   const visibleSchedules = React.useMemo(() => {
     if (!schedules) return [];
@@ -496,12 +498,12 @@ export default function Schedule() {
         )}
 
         {shouldShowWarning && (
-          <div className="rounded-xl border border-amber-700/60 bg-amber-950/20 p-4">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-6 w-6 shrink-0 text-amber-400" />
-              <div>
+          <div className="rounded-xl border border-amber-700/60 bg-amber-950/20 p-3 sm:p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400 sm:h-6 sm:w-6" />
+              <div className="min-w-0">
                 <p className="font-bold text-amber-200">Schedule Not Yet Published</p>
-                <p className="text-sm text-amber-300/80">
+                <p className="mt-1 text-xs leading-5 text-amber-300/80 sm:text-sm">
                   One or more days in this view have not been published yet. Unpublished shifts are hidden until your supervisor publishes that schedule.
                 </p>
               </div>
