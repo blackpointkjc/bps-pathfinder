@@ -70,6 +70,18 @@ Deno.serve(async (req) => {
         current_call_info: null,
       });
 
+      // Keep the legacy/live Unit entity synchronized too so map/dispatch views
+      // cannot continue showing the officer as Available from a second status source.
+      const units = await base44.asServiceRole.entities.Unit.list(undefined, 500);
+      const officerUnits = (units || []).filter((unit: any) =>
+        unit.user_id === officer_id || String(unit.user_email || '').toLowerCase() === String(officer.email || '').toLowerCase()
+      );
+      await Promise.all(officerUnits.map((unit: any) => base44.asServiceRole.entities.Unit.update(unit.id, {
+        status: 'Out of Service',
+        last_updated: now,
+        last_update_at: now,
+      })));
+
       await base44.asServiceRole.entities.Notification.create({
         recipient_email: officer.email,
         type: 'status_override',
@@ -97,6 +109,16 @@ Deno.serve(async (req) => {
       current_call_id: null,
       current_call_info: null,
     });
+
+    const units = await base44.asServiceRole.entities.Unit.list(undefined, 500);
+    const officerUnits = (units || []).filter((unit: any) =>
+      unit.user_id === officer_id || String(unit.user_email || '').toLowerCase() === String(officer.email || '').toLowerCase()
+    );
+    await Promise.all(officerUnits.map((unit: any) => base44.asServiceRole.entities.Unit.update(unit.id, {
+      status: 'Available',
+      last_updated: now,
+      last_update_at: now,
+    })));
 
     await base44.asServiceRole.entities.Notification.create({
       recipient_email: officer.email,
