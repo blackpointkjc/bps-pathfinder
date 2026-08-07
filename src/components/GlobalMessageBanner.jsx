@@ -185,6 +185,20 @@ export default function GlobalMessageBanner({ user }) {
       .then(records => (records || []).reverse().forEach(record => showBanner(mentionSource, record)))
       .catch(() => null);
 
+    const clearAnnouncementBanners = () => setBanners(current => current.filter(entry => entry.kind !== 'announcement'));
+    window.addEventListener('bps-announcements-opened', clearAnnouncementBanners);
+
+    try {
+      const unsubscribeReceipts = base44.entities.AnnouncementReceipt.subscribe(event => {
+        if (event?.type !== 'create' || normalized(event.data?.user_email) !== normalized(user.email)) return;
+        const announcementId = event.data?.announcement_id;
+        setBanners(current => current.filter(entry => !(entry.kind === 'announcement' && entry.recordId === announcementId)));
+      });
+      if (typeof unsubscribeReceipts === 'function') unsubscribers.push(unsubscribeReceipts);
+    } catch (error) {
+      console.warn('Unable to subscribe to announcement receipts:', error?.message);
+    }
+
     // Load announcements missed while the user was offline. A persistent banner
     // remains until the Announcements page is opened and records the view.
     const announcementSource = SOURCES.find(source => source.kind === 'announcement');
@@ -204,6 +218,7 @@ export default function GlobalMessageBanner({ user }) {
     }).catch(() => null);
 
     return () => {
+      window.removeEventListener('bps-announcements-opened', clearAnnouncementBanners);
       unsubscribers.forEach(unsubscribe => unsubscribe());
       timers.current.forEach(timer => window.clearTimeout(timer));
       timers.current.clear();
