@@ -433,17 +433,17 @@ export default function Schedule() {
           </div>
 
         {currentPeriod && (
-          <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg border-2 border-green-300">
+          <div className="rounded-xl border border-emerald-800/60 bg-emerald-950/20 p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <CalendarDays className="w-5 h-5 text-green-700" />
                 <div>
-                  <p className="font-bold text-green-900">Current Payroll Period: {currentPeriod.period_name}</p>
-                  <p className="text-sm text-green-700">
+                  <p className="font-bold text-emerald-200">Current Payroll Period: {currentPeriod.period_name}</p>
+                  <p className="text-sm text-emerald-300">
                     {format(parseISO(currentPeriod.start_date), 'MMM d, yyyy')} - {format(parseISO(currentPeriod.end_date), 'MMM d, yyyy')} (14 days)
                   </p>
                   {currentPeriod.deposit_date && (
-                    <p className="text-xs text-green-600 mt-1">
+                    <p className="mt-1 text-xs text-emerald-400">
                       Direct Deposit: {format(parseISO(currentPeriod.deposit_date), 'MMM d, yyyy')}
                     </p>
                   )}
@@ -454,25 +454,25 @@ export default function Schedule() {
           </div>
         )}
 
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="text-sm font-semibold text-slate-800">Weekly Schedule View</div>
-          <div className="text-xs text-slate-500">Sunday through Saturday. Use Previous Week and Next Week to move week by week.</div>
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+          <div className="text-sm font-semibold text-white">Weekly Schedule View</div>
+          <div className="text-xs text-slate-400">Sunday through Saturday. Use Previous Week and Next Week to move week by week.</div>
         </div>
 
         {(selectedPayrollPeriod === "all" || !selectedPayrollPeriod) && (
-          <div className="flex items-center justify-between bg-slate-100 p-4 rounded-lg">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
             <Button
               variant="outline"
               onClick={() => setCurrentWeekOffset(currentWeekOffset - 1)}
             >
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              Previous Week
+              <ChevronLeft className="mr-1 h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Previous Week</span><span className="sm:hidden">Previous</span>
             </Button>
-            <div className="text-center">
-              <p className="font-bold text-slate-900">
+            <div className="order-first text-center sm:order-none">
+              <p className="font-bold text-white">
                 Week of {format(weekStart, 'MMM d, yyyy')}
               </p>
-              <p className="text-sm text-slate-600">
+              <p className="text-xs text-slate-400 sm:text-sm">
                 {format(weekStart, 'MMM d')} to {format(weekEnd, 'MMM d, yyyy')} (7 days)
               </p>
             </div>
@@ -480,8 +480,8 @@ export default function Schedule() {
               variant="outline"
               onClick={() => setCurrentWeekOffset(currentWeekOffset + 1)}
             >
-              Next Week
-              <ChevronRight className="w-4 h-4 ml-2" />
+              <span className="hidden sm:inline">Next Week</span><span className="sm:hidden">Next</span>
+              <ChevronRight className="ml-1 h-4 w-4 sm:ml-2" />
             </Button>
           </div>
         )}
@@ -501,12 +501,12 @@ export default function Schedule() {
         )}
 
         {shouldShowWarning && (
-          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4">
+          <div className="rounded-xl border border-amber-700/60 bg-amber-950/20 p-4">
             <div className="flex items-center gap-3">
-              <AlertCircle className="w-6 h-6 text-yellow-700" />
+              <AlertCircle className="h-6 w-6 shrink-0 text-amber-400" />
               <div>
-                <p className="font-bold text-yellow-900">Schedule Not Yet Published</p>
-                <p className="text-sm text-yellow-700">
+                <p className="font-bold text-amber-200">Schedule Not Yet Published</p>
+                <p className="text-sm text-amber-300/80">
                   The schedule for this week is still being finalized. Check back later or contact your supervisor.
                 </p>
               </div>
@@ -579,8 +579,8 @@ export default function Schedule() {
           </div>
         )}
 
-        <div className="overflow-x-auto pb-2">
-          <div className="grid min-w-[1260px] grid-cols-7 gap-3">
+        <div className="pb-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
           {weekDays.map((day) => {
             const daySchedules = getScheduleForDate(day);
             const ptoEntry = checkPTOForDate(day);
@@ -601,13 +601,13 @@ export default function Schedule() {
                     {ptoEntry && <Badge className="bg-green-700 text-white">PTO</Badge>}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-3">
+                <CardContent className="p-3 sm:min-h-[220px] xl:min-h-[260px]">
                   {ptoEntry ? (
-                    <div className="text-center py-6 bg-green-50 rounded-lg border-2 border-green-200">
-                      <p className="text-green-800 font-bold text-lg mb-2">✓ Time Off Approved</p>
-                      <p className="text-sm text-green-700 font-semibold">{ptoEntry.reason}</p>
+                    <div className="rounded-lg border border-green-800/60 bg-green-950/20 py-6 text-center">
+                      <p className="mb-2 text-lg font-bold text-green-300">✓ Time Off Approved</p>
+                      <p className="text-sm font-semibold text-green-400">{ptoEntry.reason}</p>
                       {ptoEntry.admin_notes && (
-                        <p className="text-xs text-green-600 mt-2">Admin Note: {ptoEntry.admin_notes}</p>
+                        <p className="mt-2 text-xs text-green-500">Admin Note: {ptoEntry.admin_notes}</p>
                       )}
                     </div>
                   ) : daySchedules.length > 0 ? (
