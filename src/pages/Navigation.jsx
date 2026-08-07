@@ -206,10 +206,71 @@ export default function Navigation() {
         }
     }, [currentLocation, isNavigating, navStepIndex, navSteps, navDestination]);
 
+    const syncScheduledCadPartnership = async (user) => {
+        if (!user?.email || !user?.id) return user;
+        try {
+            const now = new Date();
+            const today = now.toISOString().slice(0, 10);
+            const yesterday = new Date(now.getTime() - 86400000).toISOString().slice(0, 10);
+            const rows = await base44.entities.Schedule.list('-shift_date', 500);
+            const candidates = (rows || []).filter(s =>
+                String(s.officer_email || '').toLowerCase() === String(user.email).toLowerCase() &&
+                (s.shift_date === today || s.shift_date === yesterday) &&
+                s.partner_officer_email
+            );
+            const shift = candidates.find(s => s.shift_date === today) || candidates[0];
+            if (!shift?.partner_officer_email) return user;
+
+            const partnerRows = await base44.entities.User.filter({ email: shift.partner_officer_email }).catch(() => []);
+            const partner = partnerRows?.[0] || null;
+            const pairKey = [String(user.email).toLowerCase(), String(shift.partner_officer_email).toLowerCase()].sort().join('|');
+            const unionId = `TEAM-${shift.shift_date}-${pairKey}`;
+            const isLead = String(user.email).toLowerCase() === pairKey.split('|')[0];
+            const partnerName = partner
+                ? `${partner.rank || 'Officer'} ${partner.last_name || partner.first_name || ''}`.trim()
+                : shift.partner_officer_email;
+            const partnership = {
+                union_id: unionId,
+                partner_email: shift.partner_officer_email,
+                partner_name: partnerName,
+                partner_user_id: partner?.id || '',
+                is_union_lead: isLead,
+                isUnionLead: isLead,
+                union_member_count: 2,
+                unionMembers: 2,
+                scheduled_shift_id: shift.id,
+            };
+
+            const ownUnits = await base44.entities.Unit.filter({ user_id: user.id }).catch(() => []);
+            const unitPayload = {
+                unit_id: user.unit_number || user.id,
+                label: `${user.rank || 'Officer'} ${user.last_name || user.first_name || ''}`.trim(),
+                status: user.status || 'Available',
+                user_id: user.id,
+                union_id: unionId,
+                partner_user_id: partner?.id || '',
+                partner_email: shift.partner_officer_email,
+                partner_name: partnerName,
+                is_union_lead: isLead,
+                union_member_count: 2,
+                scheduled_shift_id: shift.id,
+                last_update_at: new Date().toISOString(),
+            };
+            if (ownUnits?.[0]?.id) await base44.entities.Unit.update(ownUnits[0].id, unitPayload);
+            else await base44.entities.Unit.create(unitPayload);
+
+            return { ...user, ...partnership };
+        } catch (e) {
+            console.warn('[NAV] scheduled CAD partnership sync failed:', e?.message);
+            return user;
+        }
+    };
+
     const init = async () => {
         try {
             const user = await base44.auth.me();
-            setCurrentUser(user);
+            const partneredUser = await syncScheduledCadPartnership(user);
+            setCurrentUser(partneredUser);
             if (user.status) setUnitStatus(user.status);
         } catch (e) {}
         startTracking();
