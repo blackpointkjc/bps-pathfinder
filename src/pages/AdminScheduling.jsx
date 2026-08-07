@@ -188,12 +188,14 @@ export default function AdminScheduling() {
           priority: 'important'
         });
 
+        const withheldOfficers = new Set(weekStatus?.unpublished_officer_emails || []);
         const publishedShifts = (schedules || []).filter(shift =>
           shift.shift_date >= weekStartStr &&
           shift.shift_date <= weekEndStr &&
           shift.officer_email &&
           shift.officer_email !== 'OPEN' &&
-          shift.is_open !== true
+          shift.is_open !== true &&
+          !withheldOfficers.has(shift.officer_email)
         );
 
         const shiftsByOfficer = publishedShifts.reduce((groups, shift) => {
@@ -599,6 +601,34 @@ export default function AdminScheduling() {
     }
     return days;
   }, [weekStart, weekEnd]);
+
+  const setOfficerPublishedForWeek = async (officerEmail, published) => {
+    const currentWeekStart = addWeeks(startOfWeek(new Date(), { weekStartsOn: 0 }), currentWeekOffset);
+    const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
+    const weekEndStr = format(addDays(currentWeekStart, 6), 'yyyy-MM-dd');
+    const currentHidden = new Set(weekStatus?.unpublished_officer_emails || []);
+    if (published) currentHidden.delete(officerEmail);
+    else currentHidden.add(officerEmail);
+    const payload = {
+      week_start_date: weekStartStr,
+      week_end_date: weekEndStr,
+      is_ready: weekStatus?.is_ready || false,
+      unpublished_officer_emails: Array.from(currentHidden),
+      marked_ready_by: user?.email,
+      marked_ready_date: new Date().toISOString()
+    };
+    if (weekStatus?.id) await base44.entities.ScheduleWeekStatus.update(weekStatus.id, payload);
+    else await base44.entities.ScheduleWeekStatus.create(payload);
+    queryClient.invalidateQueries({ queryKey: ['scheduleWeekStatus'] });
+    queryClient.invalidateQueries({ queryKey: ['allWeekStatuses'] });
+  };
+
+  const weekOfficersForPublication = useMemo(() => {
+    const start = format(weekStart, 'yyyy-MM-dd');
+    const end = format(addDays(weekStart, 6), 'yyyy-MM-dd');
+    const emails = new Set((schedules || []).filter(s => s.shift_date >= start && s.shift_date <= end && s.officer_email && s.officer_email !== 'OPEN').map(s => s.officer_email));
+    return Array.from(emails).sort((a,b) => getOfficerName(a).localeCompare(getOfficerName(b)));
+  }, [schedules, weekStart, getOfficerName]);
 
   const weekDivisionalSchedules = useMemo(() => {
     if (!schedules) return [];
@@ -2473,30 +2503,40 @@ Return ONLY a JSON array of suggestion objects with this structure:
             <CardTitle>Schedule Management</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className={`flex items-center gap-4 p-4 rounded-lg border-2 ${weekStatus?.is_ready ? 'bg-green-50 border-green-300' : 'bg-amber-50 border-amber-300'}`}>
+            <div className={`flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center ${weekStatus?.is_ready ? 'border-emerald-800 bg-emerald-950/30' : 'border-amber-800 bg-amber-950/30'}`}>
               <Checkbox
                 id="week-ready"
                 checked={weekStatus?.is_ready || false}
                 onCheckedChange={(checked) => markWeekReadyMutation.mutate(checked)}
                 disabled={markWeekReadyMutation.isPending}
               />
-              <div className="flex-1">
-                <Label htmlFor="week-ready" className={`cursor-pointer font-semibold ${weekStatus?.is_ready ? 'text-green-900' : 'text-amber-900'}`}>
+              <div className="min-w-0 flex-1">
+                <Label htmlFor="week-ready" className={`cursor-pointer font-black ${weekStatus?.is_ready ? 'text-emerald-200' : 'text-amber-200'}`}>
                   {weekStatus?.is_ready ? '✓ Week Schedule Published' : '⚠️ Schedule Not Yet Published'}
                 </Label>
-                <p className={`text-xs mt-1 ${weekStatus?.is_ready ? 'text-green-700' : 'text-amber-700'}`}>
+                <p className={`mt-1 text-xs ${weekStatus?.is_ready ? 'text-emerald-400' : 'text-amber-400'}`}>
                   {weekStatus?.is_ready 
-                    ? 'Officers and clients can view this week\'s schedule. Uncheck to hide it while making changes.'
-                    : 'Check this box to publish the schedule. Officers and clients cannot see it until published.'}
+                    ? 'The week is published except for any officers specifically held below.'
+                    : 'Publish the week when it is ready. You can still keep individual officers unpublished.'}
                 </p>
               </div>
-              {weekStatus?.is_ready && (
-                <Badge className="bg-green-600 text-white">Published</Badge>
-              )}
-              {!weekStatus?.is_ready && (
-                <Badge className="bg-amber-600 text-white">Not Published</Badge>
-              )}
+              <Badge className={weekStatus?.is_ready ? 'w-fit bg-emerald-700 text-white' : 'w-fit bg-amber-700 text-white'}>{weekStatus?.is_ready ? 'Published' : 'Not Published'}</Badge>
             </div>
+
+            {weekOfficersForPublication.length > 0 && (
+              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
+                <div className="mb-3"><div className="text-sm font-black text-white">OFFICER PUBLICATION CONTROL</div><div className="text-xs text-slate-400">Turn an officer off to keep only that officer's schedule unpublished while the rest of the week remains visible.</div></div>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {weekOfficersForPublication.map(email => {
+                    const individuallyPublished = !(weekStatus?.unpublished_officer_emails || []).includes(email);
+                    return <label key={email} className="flex min-w-0 items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 p-3">
+                      <Checkbox checked={individuallyPublished} onCheckedChange={checked => setOfficerPublishedForWeek(email, checked === true)} />
+                      <div className="min-w-0 flex-1"><div className="truncate text-sm font-bold text-white">{getOfficerName(email)}</div><div className={`text-[10px] font-bold ${individuallyPublished ? 'text-emerald-400' : 'text-amber-400'}`}>{individuallyPublished ? 'PUBLISH WITH WEEK' : 'KEEP UNPUBLISHED'}</div></div>
+                    </label>;
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="grid md:grid-cols-3 gap-3">
               <div className="bg-white p-3 rounded-lg border border-slate-200">
