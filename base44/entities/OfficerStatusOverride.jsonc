@@ -1,0 +1,77 @@
+{
+  "name": "OfficerStatusOverride",
+  "type": "object",
+  "properties": {
+    "officer_id": {
+      "type": "string"
+    },
+    "officer_email": {
+      "type": "string"
+    },
+    "forced_out_of_service": {
+      "type": "boolean",
+      "default": true
+    },
+    "reason": {
+      "type": "string"
+    },
+    "forced_by_email": {
+      "type": "string"
+    },
+    "forced_by_name": {
+      "type": "string"
+    },
+    "forced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "released_by_email": {
+      "type": "string"
+    },
+    "released_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "officer_id",
+    "officer_email",
+    "forced_out_of_service",
+    "forced_by_email",
+    "forced_at",
+    "active"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.officer_email": "{{user.email}}"
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
