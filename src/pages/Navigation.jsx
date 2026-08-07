@@ -990,7 +990,11 @@ export default function Navigation() {
                                                                         {u.rank && u.last_name ? `${u.rank} ${u.last_name}` : (u.full_name || u.unit_number || 'UNIT')}
                                                                     </span>
                                                                 </div>
-                                                                {u.unit_number && <div className="text-[9px] text-slate-600 font-mono">UNIT-{u.unit_number}</div>}
+                                                                {u.union_id ? (
+                                                                    <div className="mt-0.5 text-[9px] font-mono font-bold text-blue-400">TEAM · {u.partner_name ? `WITH ${u.partner_name.toUpperCase()}` : '2 OFFICERS'}</div>
+                                                                ) : u.unit_number ? (
+                                                                    <div className="text-[9px] text-slate-600 font-mono">UNIT-{u.unit_number}</div>
+                                                                ) : null}
                                                             </div>
                                                             {u.latitude && u.longitude && (
                                                                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" title="GPS Active" />
