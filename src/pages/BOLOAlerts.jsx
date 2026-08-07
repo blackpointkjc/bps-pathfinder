@@ -106,15 +106,15 @@ export default function BOLOAlerts() {
             <div><div className="text-sm font-black tracking-[0.16em]">BOLO / INTELLIGENCE BOARD</div><div className="text-[8px] tracking-[0.18em] text-slate-500">BE ON THE LOOKOUT · OFFICER SAFETY · WANTED / MISSING · VEHICLE INTELLIGENCE</div></div>
           </div>
           <div className="flex-1" />
-          <div className="relative min-w-[240px]">
+          <div className="relative w-full min-w-0 sm:w-auto sm:min-w-[240px]">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="SEARCH BOLO, SUBJECT, PLATE, CASE..." className="h-8 w-full rounded border border-[#2b405a] bg-[#0f1928] pl-8 pr-3 text-[10px] text-white outline-none focus:border-blue-500" />
           </div>
-          {canCreate && <button onClick={() => setModal({ mode: 'create', bolo: { alert_type: 'wanted_person', priority: 'medium', status: 'active' } })} className="flex h-8 items-center gap-1.5 rounded border border-red-500 bg-red-700 px-3 text-[10px] font-black hover:bg-red-600"><Plus className="h-3.5 w-3.5" />ISSUE BOLO</button>}
+          {canCreate && <button onClick={() => setModal({ mode: 'create', bolo: { alert_type: 'wanted_person', priority: 'medium', status: 'active' } })} className="flex h-9 w-full items-center justify-center gap-1.5 rounded border border-red-500 bg-red-700 px-3 text-[10px] font-black hover:bg-red-600 sm:h-8 sm:w-auto"><Plus className="h-3.5 w-3.5" />ISSUE BOLO</button>}
         </div>
       </div>
 
-      <div className="grid flex-none grid-cols-3 border-b border-[#24354c] bg-[#08111c]">
+      <div className="grid flex-none grid-cols-1 border-b border-[#24354c] bg-[#08111c] sm:grid-cols-3">
         <div className="border-r border-[#24354c] px-4 py-2"><div className="text-xl font-black text-green-400">{activeCount}</div><div className="text-[8px] tracking-widest text-slate-500">ACTIVE BOLOS</div></div>
         <div className="border-r border-[#24354c] px-4 py-2"><div className="text-xl font-black text-red-400">{criticalCount}</div><div className="text-[8px] tracking-widest text-slate-500">CRITICAL / OFFICER SAFETY</div></div>
         <div className="px-4 py-2"><div className="text-xl font-black text-blue-300">{historyCount}</div><div className="text-[8px] tracking-widest text-slate-500">PAST / RESOLVED</div></div>
