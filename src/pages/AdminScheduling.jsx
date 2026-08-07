@@ -130,6 +130,14 @@ export default function AdminScheduling() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: timeEntries = [] } = useQuery({
+    queryKey: ['adminScheduleTimeEntries'],
+    queryFn: () => base44.entities.TimeEntry.list('-clock_in'),
+    enabled: user?.role === 'admin',
+    staleTime: 10000,
+    refetchInterval: 10000,
+  });
+
   const { data: plannedShifts } = useQuery({
     queryKey: ['plannedShifts'],
     queryFn: () => base44.entities.PlannedShift.filter({ active: true }),
