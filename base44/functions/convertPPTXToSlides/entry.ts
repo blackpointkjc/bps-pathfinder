@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     const fileBlob = await fileResponse.blob();
 
     // Use CloudConvert API to convert PPTX to PNG images
-    const apiKey = Deno.env.get('CLOUDCONVERT_API_KEY');
+    const apiKey = Deno.env.has('CLOUDCONVERT_API_KEY') ? Deno.env.get('CLOUDCONVERT_API_KEY') : null;
     
     if (!apiKey) {
       return Response.json({
