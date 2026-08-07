@@ -256,6 +256,49 @@ export default function WelcomeBriefing({ user }) {
                     </div>
                   </div>
 
+                  <div className="mt-4 rounded-2xl border border-emerald-900/50 bg-emerald-950/10 p-3 sm:p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Users className="h-4 w-4 text-emerald-300"/>
+                      <div className="text-xs font-black uppercase tracking-[.16em] text-emerald-200">{isAdmin ? 'Today’s Staffing & On-Duty Status' : 'Who’s On Duty'}</div>
+                      <span className="ml-auto rounded-full border border-emerald-800/60 bg-emerald-950/50 px-2.5 py-1 text-[10px] font-black text-emerald-300">{onDutyRows.length} CLOCKED IN</span>
+                    </div>
+
+                    {isAdmin ? (
+                      <div className="mt-3 overflow-hidden rounded-xl border border-slate-800">
+                        <div className="hidden grid-cols-[1.35fr_.8fr_1fr_.8fr_.9fr_.9fr] gap-2 bg-slate-900/90 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-slate-500 md:grid">
+                          <div>Officer</div><div>Scheduled</div><div>Location</div><div>Clock</div><div>CAD Status</div><div>Vehicle / Partner</div>
+                        </div>
+                        <div className="max-h-64 divide-y divide-slate-800 overflow-y-auto">
+                          {scheduledDutyRows.length === 0 ? <div className="p-4 text-center text-xs text-slate-500">No officers are scheduled today.</div> : scheduledDutyRows.map(row => {
+                            const name = row.person ? `${row.person.rank || 'Officer'} ${row.person.last_name || row.person.first_name || ''}`.trim() : row.email;
+                            const location = String(row.shift.location || '').split(':')[0] || '—';
+                            const liveStatus = row.unit?.status || row.person?.status || 'Out of Service';
+                            return <div key={`${row.shift.id}-${row.email}`} className="grid gap-2 bg-slate-950/45 p-3 text-xs md:grid-cols-[1.35fr_.8fr_1fr_.8fr_.9fr_.9fr] md:items-center">
+                              <div className="min-w-0"><div className="truncate font-black text-white">{name}</div><div className="mt-0.5 text-[9px] text-slate-500">{row.person?.unit_number ? `UNIT-${row.person.unit_number}` : row.email}</div></div>
+                              <div><span className="mr-2 text-[8px] font-black uppercase text-slate-600 md:hidden">Scheduled</span><span className="font-bold text-slate-200">{row.shift.start_time}-{row.shift.end_time}</span></div>
+                              <div className="min-w-0"><span className="mr-2 text-[8px] font-black uppercase text-slate-600 md:hidden">Location</span><span className="break-words text-slate-300">{location}</span></div>
+                              <div><span className={`inline-flex rounded-full border px-2 py-1 text-[9px] font-black ${row.entry ? 'border-emerald-700/60 bg-emerald-950/50 text-emerald-300' : 'border-slate-700 bg-slate-900 text-slate-400'}`}>{row.entry ? 'CLOCKED IN' : 'NOT CLOCKED IN'}</span>{row.entry?.clock_in && <div className="mt-1 text-[9px] text-slate-500">Since {new Date(row.entry.clock_in).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>}</div>
+                              <div><span className="mr-2 text-[8px] font-black uppercase text-slate-600 md:hidden">CAD</span><span className="font-bold text-blue-300">{liveStatus}</span>{row.unit?.current_call_info && <div className="mt-0.5 line-clamp-1 text-[9px] text-slate-500">{row.unit.current_call_info}</div>}</div>
+                              <div className="min-w-0"><div className="truncate font-bold text-amber-300">{row.vehicle?.vehicle_label || 'No vehicle'}</div><div className="mt-0.5 truncate text-[9px] text-blue-300">{row.unit?.partner_name || (row.shift.partner_officer_email ? `Partner: ${row.shift.partner_officer_email}` : 'No partner')}</div></div>
+                            </div>;
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {onDutyRows.length === 0 ? <div className="col-span-full rounded-xl border border-dashed border-slate-800 p-4 text-center text-xs text-slate-500">No CAD officers are currently clocked in.</div> : onDutyRows.map(row => {
+                          const name = row.person ? `${row.person.rank || 'Officer'} ${row.person.last_name || row.person.first_name || ''}`.trim() : row.email;
+                          const liveStatus = row.unit?.status || row.person?.status || 'On Duty';
+                          return <div key={row.email} className="rounded-xl border border-slate-800 bg-slate-950/55 p-3">
+                            <div className="flex items-start gap-2"><span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,.45)]"/><div className="min-w-0 flex-1"><div className="truncate text-xs font-black text-white">{name}</div><div className="mt-0.5 text-[9px] font-bold text-blue-300">{liveStatus}</div></div></div>
+                            <div className="mt-2 text-[10px] text-slate-400">{row.entry?.location || row.unit?.current_call_info || 'On duty'}</div>
+                            {(row.unit?.partner_name || row.vehicle?.vehicle_label) && <div className="mt-2 flex flex-wrap gap-1.5">{row.unit?.partner_name && <span className="rounded border border-blue-800/50 bg-blue-950/30 px-1.5 py-0.5 text-[9px] text-blue-300">w/ {row.unit.partner_name}</span>}{row.vehicle?.vehicle_label && <span className="rounded border border-amber-800/50 bg-amber-950/30 px-1.5 py-0.5 text-[9px] text-amber-300">{row.vehicle.vehicle_label}</span>}</div>}
+                          </div>;
+                        })}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
                     <BriefCard icon={MessageCircle} label="Pending Messages" value={pendingMessages} detail={pendingMessages ? 'Unread direct messages or mentions' : 'You are caught up'} tone="blue" onClick={() => go('OfficerInbox')} />
                     <BriefCard icon={Megaphone} label="Announcements" value={brief.announcements.length} detail={brief.announcements.length ? 'Announcements you have not opened yet' : 'No unseen announcements'} tone="amber" onClick={() => go('Announcements')} />
