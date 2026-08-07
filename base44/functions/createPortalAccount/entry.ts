@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { blackPointEmail } from '../_shared/blackPointEmail.ts';
 
 const PORTAL_URL = 'https://bpspf.blackpointkjc.com/';
-const LOGO_URL = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/857a5f1c1_UntitledProject3.png';
 
 const escapeHtml = (value: unknown) => String(value ?? '')
   .replaceAll('&', '&amp;')
@@ -11,67 +11,19 @@ const escapeHtml = (value: unknown) => String(value ?? '')
   .replaceAll("'", '&#039;');
 
 function accountCreatedEmail(firstName: string, accountType: string) {
-  const year = new Date().getFullYear();
   const portalLabel = accountType === 'client'
     ? 'Client Portal'
     : accountType === 'student'
       ? 'Student Training Portal'
       : 'Employee Portal';
-
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="x-apple-disable-message-reformatting">
-  <title>Your Black Point Account Has Been Created</title>
-</head>
-<body style="margin:0;padding:0;background-color:#0b0b0b;font-family:Arial,Helvetica,sans-serif;color:#f4f4f4;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background-color:#0b0b0b;">
-    <tr><td align="center" style="padding:28px 12px;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:640px;background-color:#151515;border:1px solid #caa72d;border-radius:14px;overflow:hidden;">
-        <tr>
-          <td align="center" style="padding:30px 24px 20px;background-color:#050505;">
-            <img src="${LOGO_URL}" alt="Black Point" width="210" style="display:block;width:210px;max-width:75%;height:auto;border:0;">
-          </td>
-        </tr>
-        <tr><td style="height:5px;line-height:5px;font-size:0;background-color:#d4af37;">&nbsp;</td></tr>
-        <tr>
-          <td style="padding:34px 38px 12px;">
-            <h1 style="margin:0 0 16px;color:#ffffff;font-size:28px;line-height:1.25;text-align:center;">Your Account Has Been Created</h1>
-            <p style="margin:0 0 18px;color:#d7d7d7;font-size:16px;line-height:1.65;">Hello ${escapeHtml(firstName)},</p>
-            <p style="margin:0 0 18px;color:#d7d7d7;font-size:16px;line-height:1.65;">A Black Point account has been created for you with access to the <strong style="color:#ffffff;">${portalLabel}</strong>. Before signing in for the first time, you will need to create your password through the account portal.</p>
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;background-color:#202020;border-left:4px solid #d4af37;border-radius:6px;">
-              <tr><td style="padding:20px 22px;">
-                <p style="margin:0 0 10px;color:#ffffff;font-size:17px;font-weight:bold;">Set up your password</p>
-                <p style="margin:0;color:#d7d7d7;font-size:15px;line-height:1.65;">1. Open the Black Point portal.<br>2. Select <strong style="color:#ffffff;">Forgot Password</strong>.<br>3. Enter the email address connected to your account.<br>4. Follow the password-reset instructions sent to your email.</p>
-              </td></tr>
-            </table>
-            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:28px auto;">
-              <tr><td align="center" bgcolor="#d4af37" style="border-radius:6px;"><a href="${PORTAL_URL}" target="_blank" style="display:inline-block;padding:15px 30px;color:#090909;font-size:16px;font-weight:bold;text-decoration:none;border-radius:6px;">Access the Black Point Portal</a></td></tr>
-            </table>
-            <p style="margin:0 0 18px;color:#bdbdbd;font-size:14px;line-height:1.65;text-align:center;">Portal address:<br><a href="${PORTAL_URL}" style="color:#e5c75b;text-decoration:underline;">${PORTAL_URL}</a></p>
-            <p style="margin:22px 0 0;color:#d7d7d7;font-size:16px;line-height:1.65;">For your security, do not share your password or password-reset link with anyone. Black Point staff will never ask you to send your password by email.</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:24px 38px 34px;">
-            <p style="margin:0 0 6px;color:#ffffff;font-size:16px;font-weight:bold;">Black Point</p>
-            <p style="margin:0;color:#bdbdbd;font-size:14px;line-height:1.6;">701 E Franklin St, Suite 105 1052<br>Richmond, Virginia 23219<br><a href="mailto:info@blackpointkjc.com" style="color:#e5c75b;text-decoration:none;">info@blackpointkjc.com</a><br><a href="tel:+18558277911" style="color:#e5c75b;text-decoration:none;">(855) 8BPS911</a></p>
-          </td>
-        </tr>
-        <tr>
-          <td align="center" style="padding:22px 24px;background-color:#050505;border-top:1px solid #292929;">
-            <p style="margin:0 0 8px;color:#8f8f8f;font-size:12px;line-height:1.5;">Need more information? Visit our main website.</p>
-            <p style="margin:0;"><a href="https://home.blackpointkjc.com/" target="_blank" style="color:#d4af37;font-size:13px;text-decoration:underline;">home.blackpointkjc.com</a></p>
-            <p style="margin:14px 0 0;color:#666666;font-size:11px;">© ${year} Black Point. All rights reserved.</p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  const content = `
+    <p>Hello ${escapeHtml(firstName)},</p>
+    <p>A Black Point account has been created for you with access to the <strong>${portalLabel}</strong>. Before signing in for the first time, you will need to create your password through the account portal.</p>
+    <h3>Set up your password</h3>
+    <p>1. Open the Black Point portal.<br>2. Select <strong>Forgot Password</strong>.<br>3. Enter the email address connected to your account.<br>4. Follow the password-reset instructions sent to your email.</p>
+    <p>For your security, do not share your password or password-reset link with anyone. Black Point staff will never ask you to send your password by email.</p>
+  `;
+  return blackPointEmail('Your Black Point Account Has Been Created', content, 'Access the Black Point Portal', PORTAL_URL);
 }
 
 Deno.serve(async (req) => {
