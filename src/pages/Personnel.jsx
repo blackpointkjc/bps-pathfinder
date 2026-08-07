@@ -140,7 +140,7 @@ export default function Personnel() {
     return (
         <div className="bg-slate-950 min-h-full flex flex-col font-mono">
             {/* Header */}
-            <div className="flex-none bg-slate-900 border-b-2 border-gold/50 px-4 py-2 flex items-center gap-3">
+            <div className="flex-none border-b-2 border-gold/50 bg-slate-900 px-3 py-2.5 sm:px-4 sm:py-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <div className="w-1 h-6 bg-gold rounded-sm" />
                 <span className="text-white font-bold text-sm tracking-widest">PERSONNEL ROSTER</span>
                 <div className="flex-1" />
@@ -152,7 +152,7 @@ export default function Personnel() {
             </div>
 
             {/* Stats Bar */}
-            <div className="flex-none grid grid-cols-4 border-b border-slate-800">
+            <div className="flex-none grid grid-cols-2 border-b border-slate-800 sm:grid-cols-4">
                 {[
                     { label: 'TOTAL PERSONNEL', val: filteredPersonnel.length, color: 'text-gold' },
                     { label: 'ON DUTY', val: onDuty, color: 'text-green-400' },
@@ -167,7 +167,7 @@ export default function Personnel() {
             </div>
 
             {/* Filter Bar */}
-            <div className="flex-none flex items-center gap-3 px-4 py-2 bg-slate-900/50 border-b border-slate-800">
+            <div className="flex-none flex flex-col gap-2 border-b border-slate-800 bg-slate-900/50 px-3 py-2 sm:flex-row sm:items-center sm:gap-3 sm:px-4">
                 <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
                     <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
@@ -206,7 +206,7 @@ export default function Personnel() {
                     const nameParts = (person.full_name || '').trim().split(' ');
                     const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0] || '—';
                     return (
-                        <div key={person.id} className={`flex items-center px-4 py-2 border-b border-slate-800/60 hover:bg-slate-800/30 text-[10px] ${idx % 2 === 0 ? '' : 'bg-slate-900/30'}`}>
+                        <div key={person.id} className={`flex flex-col gap-2 border-b border-slate-800/60 px-3 py-3 text-[10px] hover:bg-slate-800/30 sm:flex-row sm:items-center sm:px-4 sm:py-2 ${idx % 2 === 0 ? '' : 'bg-slate-900/30'}`}>
                             <div className="w-6 flex-shrink-0">
                                 <span className={`w-2 h-2 rounded-full inline-block ${cfg.dot}`} />
                             </div>
@@ -256,7 +256,7 @@ export default function Personnel() {
 
             {/* Edit Dialog */}
             <Dialog open={editDialog} onOpenChange={setEditDialog}>
-                <DialogContent className="bg-slate-900 border-slate-700 text-white font-mono max-w-md">
+                <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] max-w-md overflow-y-auto border-slate-700 bg-slate-900 p-3 font-mono text-white sm:p-6">
                     <DialogHeader>
                         <DialogTitle className="font-mono text-sm tracking-widest text-gold">EDIT PERSONNEL RECORD</DialogTitle>
                     </DialogHeader>
