@@ -1176,8 +1176,8 @@ export default function VATrespassNotices() {
       </div>
 
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="flex flex-row items-center justify-between">
+        <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] max-w-4xl overflow-x-hidden overflow-y-auto p-3 sm:p-6">
+          <DialogHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <DialogTitle>Official VA Trespass Notice</DialogTitle>
             {selectedNotice && (
               <Button
