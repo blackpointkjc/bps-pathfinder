@@ -579,6 +579,13 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   useEffect(() => {
+    if (user && hasFullAccess(user) && !sessionStorage.getItem('bps-ranks-normalized')) {
+      sessionStorage.setItem('bps-ranks-normalized', '1');
+      base44.functions.invoke('normalizeLegacyRanks', {}).catch(() => sessionStorage.removeItem('bps-ranks-normalized'));
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
     document.documentElement.classList.toggle('bps-night-mode', nightMode);
     return () => document.documentElement.classList.remove('bps-night-mode');
   }, [nightMode]);
