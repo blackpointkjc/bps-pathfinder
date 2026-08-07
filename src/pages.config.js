@@ -36,7 +36,6 @@ import RecordsAssistant from './pages/RecordsAssistant';
 import RecordViewer from './pages/RecordViewer';
 import DispatchCenter from './pages/DispatchCenter';
 import CommandDashboard from './pages/CommandDashboard';
-import FieldUnitView from './pages/FieldUnitView';
 import Personnel from './pages/Personnel';
 import AdminPortal from './pages/AdminPortal';
 import __Layout from './Layout.jsx';
@@ -184,7 +183,6 @@ import RecordsAssistant from './pages/RecordsAssistant';
 import RecordViewer from './pages/RecordViewer';
 import DispatchCenter from './pages/DispatchCenter';
 import CommandDashboard from './pages/CommandDashboard';
-import FieldUnitView from './pages/FieldUnitView';
 import Personnel from './pages/Personnel';
 import AdminPortal from './pages/AdminPortal';
 import __Layout from './Layout.jsx';
@@ -317,7 +315,6 @@ export const PAGES = {
     "RecordViewer": RecordViewer,
     "DispatchCenter": DispatchCenter,
     "CommandDashboard": CommandDashboard,
-    "FieldUnitView": FieldUnitView,
     "Personnel": Personnel,
     "AdminPortal": AdminPortal,
 }
