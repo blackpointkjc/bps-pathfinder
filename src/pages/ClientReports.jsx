@@ -137,37 +137,17 @@ export default function ClientReports() {
           to: admin.email,
           subject: `Report Request from ${user?.full_name || user?.email}`,
           body: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
-                <h1 style="margin: 0; font-size: 24px;">📧 Report Request</h1>
-              </div>
-              
-              <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; border: 2px solid #e5e7eb;">
-                <p style="font-size: 16px; margin-bottom: 20px;">A client has requested a copy of a report be emailed to them.</p>
-                
-                <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #7c3aed; margin: 20px 0;">
-                  <h3 style="color: #7c3aed; margin-top: 0;">Client Information</h3>
-                  <p><strong>Name:</strong> ${user?.full_name || 'N/A'}</p>
-                  <p><strong>Email:</strong> ${user?.email}</p>
-                  <p><strong>Location:</strong> ${effectiveLocation}</p>
-                </div>
-
-                <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 20px 0;">
-                  <h3 style="color: #3b82f6; margin-top: 0;">Requested Report</h3>
-                  <p><strong>Type:</strong> ${reportTypeName}</p>
-                  <p><strong>Date:</strong> ${reportDate ? format(new Date(reportDate), 'MMMM d, yyyy') : 'N/A'}</p>
-                  <p><strong>Officer:</strong> ${getOfficerName(report.created_by)}</p>
-                  <p><strong>Report ID:</strong> ${report.id}</p>
-                </div>
-
-                <div style="background: #dbeafe; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 4px;">
-                  <p style="margin: 0; color: #1e40af; font-weight: bold;">📝 Action Required:</p>
-                  <p style="margin: 5px 0 0 0; color: #1e3a8a;">
-                    Please email the requested ${reportTypeName} to ${user?.email} at your earliest convenience.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <p>A client has requested a copy of a report be emailed to them.</p>
+            <h3>Client Information</h3>
+            <p><strong>Name:</strong> ${user?.full_name || 'N/A'}<br>
+            <strong>Email:</strong> ${user?.email}<br>
+            <strong>Location:</strong> ${effectiveLocation}</p>
+            <h3>Requested Report</h3>
+            <p><strong>Type:</strong> ${reportTypeName}<br>
+            <strong>Date:</strong> ${reportDate ? format(new Date(reportDate), 'MMMM d, yyyy') : 'N/A'}<br>
+            <strong>Officer:</strong> ${getOfficerName(report.created_by)}<br>
+            <strong>Report ID:</strong> ${report.id}</p>
+            <p><strong>Action Required:</strong> Please email the requested ${reportTypeName} to ${user?.email} at your earliest convenience.</p>
           `
         });
       }

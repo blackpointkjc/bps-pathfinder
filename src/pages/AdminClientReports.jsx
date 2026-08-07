@@ -104,99 +104,28 @@ export default function AdminClientReports() {
 
       const reportData = getClientReportData();
       const grandTotal = Object.values(reportData).reduce((sum, d) => sum + d.totalHours, 0);
-
-      // Create styled HTML that looks like the printed version
+      // Email content only. The shared Black Point email renderer supplies the one
+      // approved black-and-gold layout for every app-controlled email.
       const reportHTML = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
-            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px; }
-            .logo { width: 100px; margin-bottom: 10px; }
-            .header h1 { margin: 10px 0; font-size: 28px; }
-            .header .site { font-size: 20px; font-weight: bold; color: #2563eb; margin: 10px 0; }
-            .summary { background: #dbeafe; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; }
-            .summary .total { font-size: 36px; font-weight: bold; color: #1e40af; }
-            .officer-section { margin: 30px 0; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; }
-            .officer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb; }
-            .officer-name { font-size: 20px; font-weight: bold; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th { background: #f3f4f6; padding: 10px; text-align: left; border-bottom: 2px solid #e5e7eb; }
-            td { padding: 10px; border-bottom: 1px solid #f3f4f6; }
-            tfoot { background: #f3f4f6; font-weight: bold; }
-            .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #000; text-align: center; color: #6b7280; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <p>Richmond, VA</p>
-            <h2 style="margin-top: 20px;">HOURS REPORT</h2>
-            <p class="site">${selectedLocation}</p>
-            ${selectedLocationData?.address ? `<p>${selectedLocationData.address}</p>` : ''}
-            ${selectedPeriodData ? `<p style="color: #7c3aed; font-weight: bold;">${selectedPeriodData.period_name}</p>` : ''}
-            <p>${format(new Date(startDate), 'MMM d, yyyy')} - ${format(new Date(endDate), 'MMM d, yyyy')}</p>
-            <p>Generated: ${format(new Date(), 'MMM d, yyyy h:mm a')}</p>
-          </div>
-
-          <div class="summary">
-            <p style="font-size: 14px; color: #1e40af; margin-bottom: 10px;">Total Hours for Period</p>
-            <div class="total">${grandTotal.toFixed(2)} hours</div>
-            <p style="font-size: 12px; color: #1e40af; margin-top: 10px;">${Object.keys(reportData).length} officer(s)</p>
-          </div>
-
-          ${Object.entries(reportData).map(([officerEmail, data]) => `
-            <div class="officer-section">
-              <div class="officer-header">
-                <div class="officer-name">${getOfficerName(officerEmail)}</div>
-                <div style="text-align: right;">
-                  <div style="font-size: 24px; font-weight: bold; color: #2563eb;">${data.totalHours.toFixed(2)} hrs</div>
-                  ${data.overtimeHours > 0 ? `<div style="font-size: 14px; color: #ea580c; font-weight: bold;">+${data.overtimeHours.toFixed(2)} OT hrs</div>` : ''}
-                </div>
-              </div>
-              
-              <table>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Clock In</th>
-                    <th>Clock Out</th>
-                    <th style="text-align: right;">Hours</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${data.entries.map(entry => `
-                    <tr>
-                      <td>${format(new Date(entry.clock_in), 'MMM d, yyyy')}</td>
-                      <td>${format(new Date(entry.clock_in), 'h:mm a')}</td>
-                      <td>${format(new Date(entry.clock_out), 'h:mm a')}</td>
-                      <td style="text-align: right; font-weight: 500;">${entry.hours.toFixed(2)}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colspan="3" style="text-align: right;">Subtotal:</td>
-                    <td style="text-align: right;">${data.totalHours.toFixed(2)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          `).join('')}
-
-          <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin-top: 30px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 20px; font-weight: bold;">GRAND TOTAL:</span>
-              <span style="font-size: 28px; font-weight: bold;">${grandTotal.toFixed(2)} hours</span>
-            </div>
-          </div>
-
-          <div class="footer">
-            <p>Richmond, VA | This report is for billing purposes</p>
-            ${selectedLocationData?.site_email ? `<p>Site Contact: ${selectedLocationData.site_email}</p>` : ''}
-          </div>
-        </body>
-        </html>
+        <p><strong>Site:</strong> ${selectedLocation}</p>
+        ${selectedLocationData?.address ? `<p><strong>Address:</strong> ${selectedLocationData.address}</p>` : ''}
+        ${selectedPeriodData ? `<p><strong>Payroll Period:</strong> ${selectedPeriodData.period_name}</p>` : ''}
+        <p><strong>Report Dates:</strong> ${format(new Date(startDate), 'MMM d, yyyy')} - ${format(new Date(endDate), 'MMM d, yyyy')}</p>
+        <p><strong>Total Hours:</strong> ${grandTotal.toFixed(2)} hours</p>
+        <p><strong>Officers:</strong> ${Object.keys(reportData).length}</p>
+        ${Object.entries(reportData).map(([officerEmail, data]) => `
+          <h3>${getOfficerName(officerEmail)}</h3>
+          <p><strong>Officer Total:</strong> ${data.totalHours.toFixed(2)} hours${data.overtimeHours > 0 ? ` | <strong>Overtime:</strong> ${data.overtimeHours.toFixed(2)} hours` : ''}</p>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+            <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Hours</th></tr></thead>
+            <tbody>
+              ${data.entries.map(entry => `<tr><td>${format(new Date(entry.clock_in), 'MMM d, yyyy')}</td><td>${format(new Date(entry.clock_in), 'h:mm a')}</td><td>${format(new Date(entry.clock_out), 'h:mm a')}</td><td>${entry.hours.toFixed(2)}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        `).join('')}
+        <p><strong>Grand Total:</strong> ${grandTotal.toFixed(2)} hours</p>
+        <p>This report is for billing purposes.</p>
+        ${selectedLocationData?.site_email ? `<p><strong>Site Contact:</strong> ${selectedLocationData.site_email}</p>` : ''}
       `;
 
       await base44.integrations.Core.SendEmail({
