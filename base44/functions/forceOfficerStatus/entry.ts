@@ -11,8 +11,23 @@ Deno.serve(async (req) => {
     if (!authorized) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     const { officer_id, action = 'force_oos', reason = '' } = await req.json();
+    if (!['force_oos', 'release', 'list'].includes(action)) return Response.json({ error: 'Invalid action' }, { status: 400 });
+
+    if (action === 'list') {
+      const overrides = await base44.asServiceRole.entities.OfficerStatusOverride.filter({ active: true }, '-forced_at', 500);
+      return Response.json({
+        success: true,
+        overrides: (overrides || []).map((entry: any) => ({
+          officer_id: entry.officer_id,
+          officer_email: entry.officer_email,
+          reason: entry.reason || '',
+          forced_by_name: entry.forced_by_name || entry.forced_by_email || '',
+          forced_at: entry.forced_at,
+        })),
+      });
+    }
+
     if (!officer_id) return Response.json({ error: 'officer_id required' }, { status: 400 });
-    if (!['force_oos', 'release'].includes(action)) return Response.json({ error: 'Invalid action' }, { status: 400 });
 
     const users = await base44.asServiceRole.entities.User.list(undefined, 1000);
     const officer = (users || []).find((entry: any) => entry.id === officer_id);
