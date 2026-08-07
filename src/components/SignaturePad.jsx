@@ -94,14 +94,14 @@ export default function SignaturePad({ onSignatureComplete, onClose, officerName
   };
 
   return (
-    <Card className="border-2 border-blue-500">
+    <Card className="w-full max-w-full overflow-hidden border-2 border-blue-500">
       <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
         <CardTitle className="flex items-center gap-2">
           <PenTool className="w-5 h-5 text-blue-600" />
           Sign Report - {officerName}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6 space-y-4">
+      <CardContent className="space-y-4 p-3 sm:p-6">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <p className="text-sm text-blue-900 font-medium text-center">
             Use your finger to sign on the pad below
@@ -118,12 +118,12 @@ export default function SignaturePad({ onSignatureComplete, onClose, officerName
             onTouchStart={startDrawing}
             onTouchMove={draw}
             onTouchEnd={stopDrawing}
-            className="w-full h-64 touch-none cursor-crosshair"
+            className="h-44 w-full touch-none cursor-crosshair sm:h-64"
             style={{ touchAction: 'none' }}
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
           <Button
             type="button"
             onClick={clearSignature}
