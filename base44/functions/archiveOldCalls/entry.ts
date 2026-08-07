@@ -6,8 +6,12 @@ Deno.serve(async (req) => {
     try {
         const base44 = createClientFromRequest(req);
 
-        const user = await base44.auth.me();
+        const user = await base44.auth.me().catch(() => null);
         if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+        const authorized = user.role === 'admin' || user.role === 'dispatch' || roles.has('full_access') || roles.has('cad_access') || roles.has('dispatch');
+        if (!authorized) return Response.json({ error: 'Forbidden' }, { status: 403 });
+
         const activeCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 500);
 
         const now = new Date();
