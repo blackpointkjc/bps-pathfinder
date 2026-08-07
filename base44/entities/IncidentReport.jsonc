@@ -166,6 +166,14 @@
       "type": "string",
       "description": "Linked CAD call number"
     },
+    "linked_bolo_id": {
+      "type": "string",
+      "description": "Linked BOLOAlert record ID"
+    },
+    "linked_bolo_number": {
+      "type": "string",
+      "description": "Linked BOLO number"
+    },
     "suspect_id_scanned": {
       "type": "boolean",
       "default": false,
