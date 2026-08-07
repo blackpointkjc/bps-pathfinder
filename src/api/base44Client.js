@@ -17,5 +17,12 @@ export const base44 = createClient({
 // HTML design before it reaches the Base44 email integration.
 const rawSendEmail = base44.integrations?.Core?.SendEmail?.bind(base44.integrations.Core);
 if (rawSendEmail) {
-  base44.integrations.Core.SendEmail = payload => rawSendEmail(brandEmailPayload(payload));
+  // Email-to-SMS carrier gateways must remain plain text or the carrier will expose
+  // HTML markup in the text message. Every actual email recipient is forced through
+  // the one approved Black Point black-and-gold HTML renderer.
+  const smsGatewayPattern = /@(txt\.att\.net|vtext\.com|tmomail\.net|messaging\.sprintpcs\.com|vmobl\.com|mmst5\.tracfone\.com)$/i;
+  base44.integrations.Core.SendEmail = payload => {
+    const recipient = String(payload?.to || '').trim();
+    return rawSendEmail(smsGatewayPattern.test(recipient) ? payload : brandEmailPayload(payload));
+  };
 }
