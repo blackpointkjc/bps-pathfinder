@@ -1,12 +1,13 @@
 const LOGO_URL = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/857a5f1c1_UntitledProject3.png';
-const PORTAL_URL = 'https://pathfinderbps.base44.app';
+const PORTAL_URL = 'https://bpspf.blackpointkjc.com/';
 
 const replaceLegacyBranding = value => String(value || '')
   .replace(/Black Point Portal/gi, 'Black Point Portal')
   .replace(/Black Point Protection Services/gi, 'Black Point Protection Services')
   .replace(/Black Point Protection/gi, 'Black Point Protection')
   .replace(/Black Point Portal/gi, 'Black Point Portal')
-  .replace(/virtusconnect\.base44\.app/gi, 'pathfinderbps.base44.app');
+  .replace(/virtusconnect\.base44\.app/gi, 'bpspf.blackpointkjc.com')
+  .replace(/pathfinderbps\.base44\.app/gi, 'bpspf.blackpointkjc.com');
 
 const plainToHtml = text => replaceLegacyBranding(text)
   .split(/\n{2,}/)
@@ -28,15 +29,15 @@ export function buildBlackPointEmail({ subject = 'Black Point Notification', bod
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${cleanSubject}</title></head>
   <body style="margin:0;padding:0;background:#0b0b0b;font-family:Arial,Helvetica,sans-serif;color:#f4f4f4;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0b0b;padding:28px 12px;"><tr><td align="center">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#111827;border:1px solid #374151;border-radius:18px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.45);">
-        <tr><td style="padding:30px 34px 22px;text-align:center;background:#080d16;border-bottom:3px solid #c9a227;">
-          <img src="${LOGO_URL}" alt="Black Point Protection" width="92" style="display:block;margin:0 auto 14px;max-width:92px;height:auto;">
-          <div style="font-size:21px;font-weight:800;letter-spacing:2px;color:#ffffff;">BLACK POINT PROTECTION</div>
-          <div style="margin-top:6px;font-size:11px;letter-spacing:2px;color:#c9a227;">BPS PATHFINDER · UNIFIED OPERATIONS PLATFORM</div>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;background-color:#151515;border:1px solid #caa72d;border-radius:14px;overflow:hidden;">
+        <tr><td align="center" style="padding:30px 24px 20px;background-color:#050505;">
+          <img src="${LOGO_URL}" alt="Black Point" width="210" style="display:block;width:210px;max-width:75%;height:auto;border:0;">
         </td></tr>
-        <tr><td style="padding:32px 34px 10px;"><h1 style="margin:0 0 20px;font-size:25px;line-height:1.25;color:#ffffff;">${cleanSubject}</h1><div style="font-size:15px;color:#e5e7eb;">${inner}</div></td></tr>
-        ${safeUrl ? `<tr><td style="padding:12px 34px 34px;text-align:center;"><a href="${safeUrl}" style="display:inline-block;background:#c9a227;color:#090909;text-decoration:none;font-weight:800;padding:14px 24px;border-radius:9px;">${safeLabel}</a></td></tr>` : ''}
-        <tr><td style="padding:20px 34px;background:#080d16;border-top:1px solid #374151;text-align:center;color:#9ca3af;font-size:12px;line-height:1.6;">Black Point Protection Services<br>BPS Pathfinder · Secure Company Communication</td></tr>
+        <tr><td style="height:5px;line-height:5px;font-size:0;background-color:#d4af37;">&nbsp;</td></tr>
+        <tr><td style="padding:34px 38px 12px;"><h1 style="margin:0 0 16px;color:#ffffff;font-size:28px;line-height:1.25;text-align:center;">${cleanSubject}</h1><div style="font-size:16px;color:#d7d7d7;line-height:1.65;">${inner}</div></td></tr>
+        ${safeUrl ? `<tr><td style="padding:10px 38px 8px;text-align:center;"><table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:18px auto 22px;"><tr><td align="center" bgcolor="#d4af37" style="border-radius:6px;"><a href="${safeUrl}" target="_blank" style="display:inline-block;padding:15px 30px;color:#090909;font-size:16px;font-weight:bold;text-decoration:none;border-radius:6px;">${safeLabel}</a></td></tr></table><p style="margin:0 0 18px;color:#bdbdbd;font-size:14px;line-height:1.65;text-align:center;">Portal address:<br><a href="${safeUrl}" style="color:#e5c75b;text-decoration:underline;">${safeUrl}</a></p></td></tr>` : ''}
+        <tr><td style="padding:24px 38px 34px;"><p style="margin:0 0 6px;color:#ffffff;font-size:16px;font-weight:bold;">Black Point</p><p style="margin:0;color:#bdbdbd;font-size:14px;line-height:1.6;">701 E Franklin St, Suite 105 1052<br>Richmond, Virginia 23219<br><a href="mailto:info@blackpointkjc.com" style="color:#e5c75b;text-decoration:none;">info@blackpointkjc.com</a><br><a href="tel:+18558277911" style="color:#e5c75b;text-decoration:none;">(855) 8BPS911</a></p></td></tr>
+        <tr><td align="center" style="padding:22px 24px;background-color:#050505;border-top:1px solid #292929;"><p style="margin:0 0 8px;color:#8f8f8f;font-size:12px;line-height:1.5;">Need more information? Visit our main website.</p><p style="margin:0;"><a href="https://home.blackpointkjc.com/" target="_blank" style="color:#d4af37;font-size:13px;text-decoration:underline;">home.blackpointkjc.com</a></p><p style="margin:14px 0 0;color:#666666;font-size:11px;">© ${new Date().getFullYear()} Black Point. All rights reserved.</p></td></tr>
       </table>
     </td></tr></table>
   </body></html>`;
