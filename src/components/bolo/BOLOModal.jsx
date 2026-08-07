@@ -43,7 +43,7 @@ function DetailView({ bolo }) {
       <div className="flex items-center gap-2 flex-wrap">
         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded text-xs font-mono font-bold border ${cfg.badge}`}><Icon className="w-3.5 h-3.5" />{cfg.label}</span>
         <span className={`text-xs font-mono font-bold px-3 py-1 rounded border ${PRIORITY_STYLE[bolo.priority] || PRIORITY_STYLE.medium}`}>{(bolo.priority || 'medium').toUpperCase()} PRIORITY</span>
-        <span className={`text-xs font-mono font-bold ${bolo.status === 'active' ? 'text-green-400' : bolo.status === 'located' ? 'text-blue-400' : 'text-slate-500'}`}>● {(bolo.status || '').toUpperCase()}</span>
+        <span className={`text-xs font-mono font-bold ${bolo.status === 'active' ? 'text-green-400' : bolo.status === 'resolved' || bolo.status === 'located' ? 'text-blue-400' : 'text-slate-500'}`}>● {(bolo.status || '').toUpperCase()}</span>
         {bolo.bolo_number && <span className="text-xs font-mono text-slate-500">#{bolo.bolo_number}</span>}
       </div>
       <div>
@@ -85,6 +85,16 @@ function DetailView({ bolo }) {
         <div className="border border-slate-700 rounded p-3">
           <p className="text-[10px] font-mono text-slate-500 mb-1 font-bold tracking-widest">NOTES</p>
           <p className="text-sm font-mono text-slate-300">{bolo.notes}</p>
+        </div>
+      )}
+      {bolo.status !== 'active' && (bolo.resolution_notes || bolo.resolved_at) && (
+        <div className="border border-blue-700/50 bg-blue-950/20 rounded p-3">
+          <p className="text-[10px] font-mono text-blue-400 mb-1 font-bold tracking-widest">DISPOSITION / RESOLUTION</p>
+          {bolo.resolution_notes && <p className="text-sm font-mono text-slate-200">{bolo.resolution_notes}</p>}
+          <div className="mt-2 text-[10px] font-mono text-slate-500">
+            {bolo.resolved_by && <span>Resolved by {bolo.resolved_by}</span>}
+            {bolo.resolved_at && <span> · {new Date(bolo.resolved_at).toLocaleString()}</span>}
+          </div>
         </div>
       )}
     </div>
@@ -170,16 +180,7 @@ function FormView({ data, onChange }) {
         </Field>
       </div>
       <Field label="NOTES"><Textarea value={data.notes} onChange={v => set('notes', v)} rows={2} /></Field>
-      {data.id && (
-        <Field label="STATUS">
-          <Select value={data.status} onChange={v => set('status', v)} options={[
-            { value: 'active', label: 'Active' },
-            { value: 'located', label: 'Located' },
-            { value: 'cancelled', label: 'Cancelled' },
-            { value: 'expired', label: 'Expired' },
-          ]} />
-        </Field>
-      )}
+
     </div>
   );
 }
@@ -192,18 +193,16 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
   const handleSave = async () => {
     if (!formData.title || !formData.alert_type) return;
     setSaving(true);
-    if (formData.id) {
-      await base44.entities.BOLOAlert.update(formData.id, formData);
-    } else {
-      await base44.entities.BOLOAlert.create({
-        ...formData,
-        bolo_number: `BOLO-${Date.now().toString().slice(-6)}`,
-        issued_by: user?.full_name || 'Dispatch',
-        issued_by_id: user?.id,
-      });
+    try {
+      if (formData.id) {
+        await base44.functions.invoke('manageBolo', { action: 'edit', id: formData.id, data: formData });
+      } else {
+        await base44.functions.invoke('manageBolo', { action: 'create', data: formData });
+      }
+      onSaved();
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    onSaved();
   };
 
   return (
