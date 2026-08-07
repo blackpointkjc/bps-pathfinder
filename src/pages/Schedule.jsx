@@ -157,17 +157,31 @@ export default function Schedule() {
 
   const weekDays = React.useMemo(() => Array.from({ length: 5 }, (_, index) => addDays(weekStart, index)), [weekStart]);
 
+  const isDatePublished = React.useCallback((dateStr) => {
+    if (!dateStr || !allWeekStatuses) return false;
+    const date = parseISO(dateStr);
+    const sunday = format(startOfWeek(date, { weekStartsOn: 0 }), 'yyyy-MM-dd');
+    return allWeekStatuses.some(status => status.week_start_date === sunday && status.is_ready === true);
+  }, [allWeekStatuses]);
+
   const visibleSchedules = React.useMemo(() => {
     if (!schedules) return [];
-    
-    const weekStartStr = format(weekStart, 'yyyy-MM-dd');
-    const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
-    
-    // Always show schedules - the ready flag is just for announcement
-    return schedules.filter(s => {
-      return s.shift_date >= weekStartStr && s.shift_date <= weekEndStr;
-    });
-  }, [schedules, weekStart, weekEnd]);
+    const windowStartStr = format(weekStart, 'yyyy-MM-dd');
+    const windowEndStr = format(weekEnd, 'yyyy-MM-dd');
+    return schedules.filter(s =>
+      s.shift_date >= windowStartStr &&
+      s.shift_date <= windowEndStr &&
+      isDatePublished(s.shift_date)
+    );
+  }, [schedules, weekStart, weekEnd, isDatePublished]);
+
+  const publishedOpenShifts = React.useMemo(() => {
+    return (openShifts || []).filter(shift => isDatePublished(shift.shift_date));
+  }, [openShifts, isDatePublished]);
+
+  const unpublishedWindowDays = React.useMemo(() => {
+    return weekDays.filter(day => !isDatePublished(format(day, 'yyyy-MM-dd')));
+  }, [weekDays, isDatePublished]);
 
   const getScheduleForDate = React.useCallback((date) => {
     if (!visibleSchedules) return [];
@@ -394,11 +408,7 @@ export default function Schedule() {
   };
 
   // Publication status still follows the Sunday-based admin schedule week.
-  const shouldShowWarning = React.useMemo(() => {
-    if (weekStatus?.is_ready) return false;
-    const twoDaysBeforeWeekStart = addDays(publicationWeekStart, -2);
-    return new Date() >= twoDaysBeforeWeekStart;
-  }, [weekStatus, publicationWeekStart]);
+  const shouldShowWarning = unpublishedWindowDays.length > 0;
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
@@ -492,7 +502,7 @@ export default function Schedule() {
               <div>
                 <p className="font-bold text-amber-200">Schedule Not Yet Published</p>
                 <p className="text-sm text-amber-300/80">
-                  The schedule for this week is still being finalized. Check back later or contact your supervisor.
+                  One or more days in this view have not been published yet. Unpublished shifts are hidden until your supervisor publishes that schedule.
                 </p>
               </div>
             </div>
@@ -500,7 +510,7 @@ export default function Schedule() {
         )}
 
         {/* Open Shifts Section */}
-        {openShifts && openShifts.length > 0 && weekStatus?.is_ready && (
+        {publishedOpenShifts.length > 0 && (
           <Card className="border-none shadow-lg bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -511,7 +521,7 @@ export default function Schedule() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4">
-                {openShifts.map((shift) => (
+                {publishedOpenShifts.map((shift) => (
                   <div key={shift.id} className="rounded-lg border border-green-800/60 bg-green-950/20 p-4 transition-all hover:border-green-600">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex-1">
@@ -572,7 +582,7 @@ export default function Schedule() {
             const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
 
             return (
-              <Card key={day.toString()} className={`w-[88vw] max-w-[420px] shrink-0 snap-start overflow-hidden border border-slate-800 bg-slate-900 shadow-xl md:w-auto md:max-w-none md:shrink ${isToday ? 'ring-2 ring-blue-500/70' : ''}`}>
+              <Card key={day.toString()} className={`w-[calc(100vw-2.5rem)] max-w-[430px] shrink-0 snap-start overflow-hidden border border-slate-800 bg-slate-900 shadow-xl sm:w-[82vw] md:w-auto md:max-w-none md:shrink ${isToday ? 'ring-2 ring-blue-500/70' : ''}`}>
                 <CardHeader className={`${isToday ? 'bg-blue-950/40' : ptoEntry ? 'bg-green-950/30' : 'bg-slate-900'} border-b border-slate-800 px-4 py-3`}>
                   <CardTitle className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
