@@ -370,3 +370,42 @@ body::-webkit-scrollbar-button,
     min-width: 0;
   }
 }
+
+/* Officer weekly schedule — high-contrast CAD theme */
+.schedule-dark .bg-white,
+.schedule-dark .bg-slate-50,
+.schedule-dark .bg-slate-100 {
+  background-color: #0f172a !important;
+}
+.schedule-dark .text-slate-900,
+.schedule-dark .text-slate-800,
+.schedule-dark .text-slate-700,
+.schedule-dark .text-blue-900,
+.schedule-dark .text-purple-900,
+.schedule-dark .text-green-900 {
+  color: #f8fafc !important;
+}
+.schedule-dark .text-slate-600,
+.schedule-dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+.schedule-dark .border-slate-200,
+.schedule-dark .border-blue-200,
+.schedule-dark .border-purple-300,
+.schedule-dark .border-green-200 {
+  border-color: #334155 !important;
+}
+.schedule-dark .from-blue-50,
+.schedule-dark .to-blue-100,
+.schedule-dark .from-purple-50,
+.schedule-dark .to-purple-100,
+.schedule-dark .from-green-50,
+.schedule-dark .to-blue-50 {
+  --tw-gradient-from: #111827 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: #172033 var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+.schedule-dark button,
+.schedule-dark [role="combobox"] {
+  color: #f8fafc;
+}
