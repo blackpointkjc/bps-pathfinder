@@ -181,10 +181,6 @@ export default function Schedule() {
     return (openShifts || []).filter(shift => isDatePublished(shift.shift_date));
   }, [openShifts, isDatePublished]);
 
-  const unpublishedWindowDays = React.useMemo(() => {
-    return weekDays.filter(day => !isDatePublished(format(day, 'yyyy-MM-dd')));
-  }, [weekDays, isDatePublished]);
-
   const getScheduleForDate = React.useCallback((date) => {
     if (!visibleSchedules) return [];
     const dateStr = format(date, 'yyyy-MM-dd');
@@ -408,9 +404,6 @@ export default function Schedule() {
     printWindow.document.close();
     printWindow.print();
   };
-
-  // Publication status still follows the Sunday-based admin schedule week.
-  const shouldShowWarning = unpublishedWindowDays.length > 0;
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
