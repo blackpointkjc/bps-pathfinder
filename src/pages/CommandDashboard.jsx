@@ -159,8 +159,16 @@ function CommandDashboardInner() {
     };
 
     const handleStatusChange = async (newStatus) => {
-        setCurrentUser(prev => ({ ...prev, status: newStatus }));
-        try { await base44.functions.invoke('updateOfficerStatus', { status: newStatus }); } catch (e) { console.warn('[CAD] status persist failed:', e?.message); }
+        const previousStatus = currentUser?.status;
+        try {
+            await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
+            setCurrentUser(prev => ({ ...prev, status: newStatus }));
+        } catch (e) {
+            console.warn('[CAD] status persist failed:', e?.message);
+            setCurrentUser(prev => ({ ...prev, status: previousStatus || 'Out of Service' }));
+            const message = e?.response?.data?.error || e?.message || 'Unable to change status';
+            window.alert(message);
+        }
     };
 
     const toggleSound = () => {
@@ -208,7 +216,12 @@ function CommandDashboardInner() {
         return getRef(b) - getRef(a);
     });
 
-    const activeUnits    = users.filter(u => u.status && u.status !== 'Out of Service' && u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
+    const cadOfficerUnits = users.filter(u => {
+        const roles = Array.isArray(u.additional_roles) ? u.additional_roles.map(role => String(role).toLowerCase()) : [];
+        return roles.includes('cad_access') && roles.includes('officer');
+    });
+    const statusUnits    = cadOfficerUnits.filter(u => u.status && u.last_updated && Date.now() - new Date(u.last_updated) < 12 * 3600000);
+    const activeUnits    = statusUnits.filter(u => u.status !== 'Out of Service');
     const criticalCalls  = calls.filter(c => getCallPriority(c) === 'critical');
     const highCalls      = calls.filter(c => getCallPriority(c) === 'high');
     const unassigned     = calls.filter(c => (!c.assigned_units || c.assigned_units.length === 0) && !c.source);
@@ -483,7 +496,7 @@ function CommandDashboardInner() {
                 <div className="flex flex-col border-t border-slate-800 lg:border-t-0 min-h-0">
 
                     <div className="flex flex-col" style={{ maxHeight: '50%' }}>
-                        <PanelHeader count={activeUnits.length} accent="blue">UNIT STATUS BOARD</PanelHeader>
+                        <PanelHeader count={statusUnits.length} accent="blue">UNIT STATUS BOARD</PanelHeader>
                         <div className="grid grid-cols-4 border-b border-slate-800 flex-none">
                             {[
                                 { label: 'AVAIL', val: availUnits.length, color: 'text-green-400' },
@@ -498,9 +511,9 @@ function CommandDashboardInner() {
                             ))}
                         </div>
                         <div className="overflow-y-auto flex-1">
-                            {activeUnits.length === 0 ? (
-                                <div className="py-6 text-center text-slate-600 font-mono text-[10px] tracking-widest">NO UNITS ONLINE</div>
-                            ) : activeUnits.map(unit => {
+                            {statusUnits.length === 0 ? (
+                                <div className="py-6 text-center text-slate-600 font-mono text-[10px] tracking-widest">NO CAD OFFICERS ONLINE</div>
+                            ) : statusUnits.map(unit => {
                                 const cfg = UNIT_STATUS_COLORS[unit.status] || UNIT_STATUS_COLORS['Out of Service'];
                                 return (
                                     <div key={unit.id} className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-800/60 hover:bg-slate-800/30">
