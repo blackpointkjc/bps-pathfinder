@@ -27,17 +27,24 @@ export default function Announcements() {
     enabled: !!user,
   });
 
+  const { data: announcementReceipts = [] } = useQuery({
+    queryKey: ['announcementReceipts', user?.email],
+    queryFn: () => base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500),
+    enabled: !!user?.email,
+    refetchInterval: 5000,
+  });
+
+  const readAnnouncementIds = React.useMemo(() => new Set(announcementReceipts.map(r => r.announcement_id)), [announcementReceipts]);
+
   const markAsReadMutation = useMutation({
     mutationFn: async (announcement) => {
-      const currentReadBy = announcement.read_by || [];
-      if (!currentReadBy.includes(user.email)) {
-        await base44.entities.Announcement.update(announcement.id, {
-          read_by: [...currentReadBy, user.email]
-        });
+      if (!readAnnouncementIds.has(announcement.id)) {
+        await base44.entities.AnnouncementReceipt.create({ announcement_id: announcement.id, user_email: user.email, read_at: new Date().toISOString() });
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      queryClient.invalidateQueries({ queryKey: ['announcementReceipts', user?.email] });
+      window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
     },
   });
 
@@ -62,13 +69,13 @@ export default function Announcements() {
     if (!user?.email || !announcements || pendingToAck) return;
 
     const unread = filteredAnnouncements.find(a =>
-      !a.read_by?.includes(user.email) && !markedRef.current.has(a.id)
+      !readAnnouncementIds.has(a.id) && !markedRef.current.has(a.id)
     );
 
     if (unread) {
       setPendingToAck(unread);
     }
-  }, [announcements, user?.email, filteredAnnouncements, pendingToAck]);
+  }, [announcements, user?.email, filteredAnnouncements, pendingToAck, readAnnouncementIds]);
 
   const handleAcknowledge = () => {
     if (!pendingToAck) return;
@@ -90,7 +97,7 @@ export default function Announcements() {
       {/* Acknowledgment Modal */}
       <Dialog open={!!pendingToAck} onOpenChange={() => {}}>
         <DialogContent
-          className="max-w-lg"
+          className="max-h-[92dvh] w-[calc(100vw-1rem)] max-w-lg overflow-y-auto p-3 sm:p-6"
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
@@ -150,7 +157,7 @@ export default function Announcements() {
               {filteredAnnouncements.map((announcement) => {
                 const config = priorityConfig[announcement.priority] || priorityConfig.normal;
                 const isPinged = isPingedForMe(announcement);
-                const isRead = announcement.read_by?.includes(user?.email);
+                const isRead = readAnnouncementIds.has(announcement.id);
 
                 return (
                   <Card
