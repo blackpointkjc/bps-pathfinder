@@ -71,6 +71,31 @@ export default function FieldCallActions({ call, onStatusChange }) {
     } finally { setSaving(false); }
   };
 
+  const isAssignedToCall = Boolean(user && (call?.assigned_units || []).includes(user.id));
+
+  const toggleMyAssignment = async () => {
+    if (!call || !user || saving) return;
+    setSaving(true);
+    try {
+      const assigned = call.assigned_units || [];
+      if (assigned.includes(user.id)) {
+        await base44.entities.DispatchCall.update(call.id, { assigned_units: assigned.filter(id => id !== user.id) });
+        const records = await base44.entities.CallAssignment.filter({ call_id: call.id, unit_id: user.id });
+        for (const record of records || []) await base44.entities.CallAssignment.update(record.id, { status: 'cleared', cleared_at: new Date().toISOString() });
+        toast.success('You removed yourself from this call');
+      } else {
+        const existing = await base44.entities.CallAssignment.filter({ call_id: call.id });
+        await base44.entities.CallAssignment.create({ call_id: call.id, unit_id: user.id, role: existing?.length ? 'backup' : 'primary', assigned_at: new Date().toISOString(), status: 'accepted' });
+        await base44.entities.DispatchCall.update(call.id, { assigned_units: [...assigned, user.id], status: call.status === 'New' ? 'Dispatched' : call.status, time_dispatched: call.time_dispatched || new Date().toISOString() });
+        toast.success('You joined this call');
+      }
+      onStatusChange?.(call.status, { assignmentChanged: true });
+    } catch (error) {
+      console.error('[FieldCall] assignment change failed:', error);
+      toast.error('Unable to change your call assignment');
+    } finally { setSaving(false); }
+  };
+
   const requestBackup = async () => {
     if (!call || !user || saving) return;
     setSaving(true);
@@ -142,6 +167,11 @@ export default function FieldCallActions({ call, onStatusChange }) {
           {call.agency && <span>AGENCY: <span className="text-slate-300">{call.agency}</span></span>}
         </div>
       </div>
+
+      <button onClick={toggleMyAssignment} disabled={saving}
+        className={`w-full py-2 border rounded font-mono text-[10px] font-black tracking-widest transition-colors ${isAssignedToCall ? 'border-red-700 bg-red-950/40 text-red-300 hover:bg-red-900/50' : 'border-green-700 bg-green-950/40 text-green-300 hover:bg-green-900/50'}`}>
+        {isAssignedToCall ? 'REMOVE MYSELF FROM CALL' : 'JOIN / ASSIGN MYSELF TO CALL'}
+      </button>
 
       <div>
         <div className="text-[9px] font-mono text-slate-400 tracking-widest mb-1.5">UPDATE CALL STATUS</div>
