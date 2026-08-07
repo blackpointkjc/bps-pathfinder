@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Shield, Printer, FileText, Clock, MapPin, Phone, Mail } from "lucide-react";
 import { format, startOfWeek, endOfWeek, parseISO } from "date-fns";
+import { brandEmailPayload } from "@/utils/blackPointEmail";
 import {
   Select,
   SelectContent,
@@ -128,12 +129,16 @@ export default function AdminClientReports() {
         ${selectedLocationData?.site_email ? `<p><strong>Site Contact:</strong> ${selectedLocationData.site_email}</p>` : ''}
       `;
 
-      await base44.integrations.Core.SendEmail({
+      const emailPayload = brandEmailPayload({
         from_name: "Black Point Protection",
         to: selectedLocationData.assigned_client_email,
         subject: `Hours Report - ${selectedLocation} - ${format(new Date(startDate), 'MMM d')} to ${format(new Date(endDate), 'MMM d, yyyy')}`,
+        action_url: '/AdminClientReports',
+        action_label: 'View Hours Report',
         body: reportHTML
       });
+
+      await base44.integrations.Core.SendEmail(emailPayload);
     },
     onSuccess: () => {
       alert('Report successfully sent to client!');
