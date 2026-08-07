@@ -109,9 +109,11 @@ export function openTrespassNoticePrint(notice, options = {}) {
     .sender .line { text-align: center; }
     .service { margin-top: 38px; font-size: 9pt; }
     .service-choice { display: inline-block; min-width: 56px; border-bottom: 1px solid #000; text-align: center; margin: 0 4px; }
-    .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 38px; margin-top: 30px; }
-    .signature-line { min-height: 25px; border-bottom: 1px solid #000; text-align: center; padding: 2px 4px; font-family: "Brush Script MT", cursive; font-size: 16pt; }
+    .signature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 28px; }
+    .signature-line { min-height: 44px; border-bottom: 1px solid #000; text-align: center; padding: 2px 4px; font-family: "Brush Script MT", cursive; font-size: 16pt; }
+    .signature-line img { display: block; max-width: 100%; max-height: 42px; margin: 0 auto; object-fit: contain; }
     .signature-grid .caption { font-size: 7pt; }
+    .signature-meta { margin-top: 3px; text-align: center; font-size: 6.5pt; color: #333; }
     .meta { margin-top: 16px; font-size: 7pt; color: #333; text-align: center; }
     @media print { .no-print { display: none !important; } .sheet { margin: 0; width: auto; min-height: 0; } }
   </style>
@@ -159,11 +161,23 @@ export function openTrespassNoticePrint(notice, options = {}) {
     </div>
 
     <div class="signature-grid">
-      <div><div class="signature-line">${esc(officerName)}</div><div class="caption">(Name of Officer)</div></div>
-      <div><div class="signature-line">${esc(servedDate)}</div><div class="caption">(Date & Time)</div></div>
-      <div><div class="signature-line">${esc(signatureName)}</div><div class="caption">(Signature)</div></div>
-      <div><div class="signature-line">${esc(notice.police_report_number || '')}</div><div class="caption">(Badge / Report Number)</div></div>
+      <div>
+        <div class="signature-line">${notice.officer_signature_url || notice.signature_url ? `<img src="${esc(notice.officer_signature_url || notice.signature_url)}" alt="Officer signature" />` : esc(signatureName || officerName)}</div>
+        <div class="caption">Issuing Officer Signature</div>
+        <div class="signature-meta">${esc(officerName)}${notice.officer_signed_at ? ` • ${esc(fmtDate(notice.officer_signed_at, true))}` : ''}</div>
+      </div>
+      <div>
+        <div class="signature-line">${notice.witness_signature_url ? `<img src="${esc(notice.witness_signature_url)}" alt="Witness signature" />` : ''}</div>
+        <div class="caption">Witness Signature</div>
+        <div class="signature-meta">${esc(notice.witness_name || '')}${notice.witness_signed_at ? ` • ${esc(fmtDate(notice.witness_signed_at, true))}` : ''}</div>
+      </div>
+      <div>
+        <div class="signature-line">${notice.subject_signature_url ? `<img src="${esc(notice.subject_signature_url)}" alt="Subject signature" />` : ''}</div>
+        <div class="caption">Subject Signature / Acknowledgment</div>
+        <div class="signature-meta">${esc(notice.subject_name || '')}${notice.subject_signed_at ? ` • ${esc(fmtDate(notice.subject_signed_at, true))}` : ''}</div>
+      </div>
     </div>
+    <div class="signature-meta" style="margin-top:12px;">Served: ${esc(servedDate)}${notice.police_report_number ? ` • Police Report: ${esc(notice.police_report_number)}` : ''}</div>
 
     <div class="meta">${esc(jurisdiction)} TRESPASS NOTICE • ${esc(propertyName)} • Official copy</div>
   </main>
