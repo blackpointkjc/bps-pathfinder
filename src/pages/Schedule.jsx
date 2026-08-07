@@ -580,14 +580,14 @@ export default function Schedule() {
         )}
 
         <div className="pb-2">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
+          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3 xl:grid-cols-7">
           {weekDays.map((day) => {
             const daySchedules = getScheduleForDate(day);
             const ptoEntry = checkPTOForDate(day);
             const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
 
             return (
-              <Card key={day.toString()} className={`min-w-0 overflow-hidden border border-slate-800 bg-slate-900 shadow-xl ${isToday ? 'ring-2 ring-blue-500/70' : ''}`}>
+              <Card key={day.toString()} className={`w-[88vw] max-w-[360px] shrink-0 snap-start overflow-hidden border border-slate-800 bg-slate-900 shadow-xl sm:w-auto sm:max-w-none sm:shrink ${isToday ? 'ring-2 ring-blue-500/70' : ''}`}>
                 <CardHeader className={`${isToday ? 'bg-blue-950/40' : ptoEntry ? 'bg-green-950/30' : 'bg-slate-900'} border-b border-slate-800 px-4 py-3`}>
                   <CardTitle className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
