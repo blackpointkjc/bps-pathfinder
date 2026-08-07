@@ -15,6 +15,7 @@ import { createPageUrl } from './utils';
 import { findPropertyMatch, playPropertyAlert, stopAllAlerts } from '@/utils/alertUtils';
 import GlobalMessageBanner from '@/components/GlobalMessageBanner';
 import MandatoryReadGate from '@/components/MandatoryReadGate';
+import WelcomeBriefing from '@/components/WelcomeBriefing';
 import AdminClientPreviewBar from '@/components/AdminClientPreviewBar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -821,7 +822,7 @@ export default function Layout({ children, currentPageName }) {
   const criticalOutage = outages.some(item => item.severity === 'outage');
   const centerLabel = CENTER_CONFIG[activeCenter]?.label || 'CAD Center';
 
-  return <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><GlobalMessageBanner user={user} /><MandatoryReadGate user={user} />
+  return <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} />
     <aside className="relative hidden flex-col border-r border-[#1c3049] md:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
       <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onToggleCollapsed={() => setCollapsed(value => !value)} />
     </aside>
