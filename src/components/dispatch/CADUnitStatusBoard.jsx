@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { normalizeRank } from '@/utils/rankDisplay';
 
 const STATUS_ORDER = ['All','Available','Enroute','On Scene','Busy','Out of Service'];
 const STATUS_META = {
@@ -10,7 +11,7 @@ const STATUS_META = {
 };
 
 const displayName = (unit) => {
-  const rank = String(unit?.rank || '').trim();
+  const rank = normalizeRank(unit?.rank);
   const last = String(unit?.last_name || '').trim();
   if (rank && last) return `${rank} ${last}`.toUpperCase();
   if (last) return last.toUpperCase();
@@ -45,13 +46,12 @@ export default function CADUnitStatusBoard({ units = [], compact = false }) {
         })}
       </div>
 
-      <div className="flex items-center gap-1.5 border-b border-[#1e2d4a] bg-[#0b1320] px-2 py-1.5 overflow-x-auto">
-        {STATUS_ORDER.map(status => (
-          <button key={status} onClick={() => setFilter(status)}
-            className={`whitespace-nowrap rounded border px-2 py-1 text-[8px] font-bold tracking-wide ${filter === status ? 'border-blue-500 bg-blue-900/30 text-blue-200' : 'border-slate-700 text-slate-500 hover:text-white'}`}>
-            {status.toUpperCase()}
-          </button>
-        ))}
+      <div className="flex items-center gap-2 border-b border-[#1e2d4a] bg-[#0b1320] px-2 py-1.5">
+        <span className="text-[8px] font-black tracking-widest text-slate-500">FILTER STATUS:</span>
+        <select value={filter} onChange={e => setFilter(e.target.value)} className="min-w-32 rounded border border-blue-700/50 bg-[#07101c] px-2 py-1 text-[9px] font-bold text-blue-200 outline-none">
+          {STATUS_ORDER.map(status => <option key={status} value={status}>{status.toUpperCase()}</option>)}
+        </select>
+        <span className="text-[8px] text-slate-600">SHOWING {filtered.length} OF {statusUnits.length}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto">
