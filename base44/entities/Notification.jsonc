@@ -19,7 +19,9 @@
         "training_assigned",
         "training_approved",
         "training_rejected",
-        "training_renewal_reminder"
+        "training_renewal_reminder",
+        "missed_qr_checkpoints",
+        "qr_patrol_report"
       ],
       "description": "Type of notification"
     },
