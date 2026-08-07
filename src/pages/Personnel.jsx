@@ -25,10 +25,12 @@ export default function Personnel() {
     const [editDialog, setEditDialog] = useState(false);
     const [editForm, setEditForm] = useState({});
     const [lastRefresh, setLastRefresh] = useState(new Date());
+    const [forcedOverrides, setForcedOverrides] = useState([]);
+    const [statusUpdatingId, setStatusUpdatingId] = useState(null);
 
     useEffect(() => {
         init();
-        const interval = setInterval(() => loadPersonnel(), 10000);
+        const interval = setInterval(() => { loadPersonnel(); loadOverrides(); }, 10000);
         return () => clearInterval(interval);
     }, []);
 
@@ -36,9 +38,25 @@ export default function Personnel() {
         try {
             const user = await base44.auth.me();
             setCurrentUser(user);
-            await loadPersonnel();
+            await Promise.all([loadPersonnel(), loadOverrides(user)]);
         } catch (error) { console.error(error); }
         finally { setLoading(false); }
+    };
+
+    const canForceStatus = (user = currentUser) => {
+        const roles = Array.isArray(user?.additional_roles) ? user.additional_roles.map(role => String(role).toLowerCase()) : [];
+        return user?.role === 'admin' || user?.role === 'dispatch' || roles.includes('full_access') || roles.includes('supervisor') || roles.includes('cad_access');
+    };
+
+    const loadOverrides = async (actor = currentUser) => {
+        if (!canForceStatus(actor)) return setForcedOverrides([]);
+        try {
+            const response = await base44.functions.invoke('forceOfficerStatus', { action: 'list' });
+            const payload = response?.data || response || {};
+            setForcedOverrides(payload.overrides || []);
+        } catch (error) {
+            console.warn('Unable to load forced status overrides:', error?.message);
+        }
     };
 
     const loadPersonnel = async () => {
@@ -72,6 +90,30 @@ export default function Personnel() {
             await loadPersonnel();
         } catch (error) {
             toast.error('Update failed: ' + (error?.message || 'Unknown error'));
+        }
+    };
+
+    const handleForceStatus = async (person) => {
+        const existingOverride = forcedOverrides.find(entry => entry.officer_id === person.id);
+        const action = existingOverride ? 'release' : 'force_oos';
+        let reason = '';
+        if (action === 'force_oos') {
+            reason = window.prompt(`Reason for forcing ${person.rank || 'Officer'} ${person.last_name || person.full_name || person.email} Out of Service:`, '') ?? '';
+            if (reason === '' && !window.confirm('No reason was entered. Force this officer Out of Service anyway?')) return;
+        } else if (!window.confirm(`Release the forced Out of Service status for ${person.rank || 'Officer'} ${person.last_name || person.full_name || person.email}?`)) {
+            return;
+        }
+
+        setStatusUpdatingId(person.id);
+        try {
+            await base44.functions.invoke('forceOfficerStatus', { officer_id: person.id, action, reason });
+            toast.success(action === 'force_oos' ? 'Officer forced Out of Service' : 'Out of Service override released');
+            await Promise.all([loadPersonnel(), loadOverrides()]);
+        } catch (error) {
+            const message = error?.response?.data?.error || error?.message || 'Status update failed';
+            toast.error(message);
+        } finally {
+            setStatusUpdatingId(null);
         }
     };
 
@@ -153,7 +195,7 @@ export default function Personnel() {
                     <div className="flex-1">EMAIL</div>
                     <div className="w-28 flex-shrink-0">STATUS</div>
                     <div className="w-20 flex-shrink-0">ROLE</div>
-                    <div className="w-28 flex-shrink-0">ACTIONS</div>
+                    <div className="w-52 flex-shrink-0">ACTIONS</div>
                 </div>
 
                 {filteredPersonnel.length === 0 ? (
@@ -183,12 +225,21 @@ export default function Personnel() {
                                     {person.role === 'admin' ? 'ADMIN' : person.dispatch_role ? 'DISP' : 'USER'}
                                 </span>
                             </div>
-                            <div className="w-28 flex-shrink-0 flex gap-1.5">
-
+                            <div className="w-52 flex-shrink-0 flex gap-1.5">
                                 <button onClick={() => window.location.href = createPageUrl('Navigation')}
                                     className="flex items-center gap-1 px-2 py-1 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-400 rounded text-[9px] transition-all">
                                     <MapPin className="w-2.5 h-2.5" />MAP
                                 </button>
+                                {canForceStatus() && (() => {
+                                    const forced = forcedOverrides.some(entry => entry.officer_id === person.id);
+                                    return (
+                                        <button onClick={() => handleForceStatus(person)} disabled={statusUpdatingId === person.id}
+                                            title={forced ? 'Release forced Out of Service override' : 'Force this officer Out of Service'}
+                                            className={`flex items-center gap-1 px-2 py-1 rounded border text-[9px] font-bold transition-all disabled:opacity-50 ${forced ? 'bg-emerald-950/60 border-emerald-700 text-emerald-300 hover:bg-emerald-900' : 'bg-red-950/60 border-red-700 text-red-300 hover:bg-red-900'}`}>
+                                            {statusUpdatingId === person.id ? 'WORKING…' : forced ? 'RELEASE OOS' : 'FORCE OOS'}
+                                        </button>
+                                    );
+                                })()}
                             </div>
                         </div>
                     );
