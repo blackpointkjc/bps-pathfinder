@@ -21,7 +21,9 @@ Deno.serve(async (req) => {
     const { shift_id: specificShiftId, officer_email: specificOfficer } = body;
     const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
     const elevated = user.role === 'admin' || roles.has('support_staff') || roles.has('full_access');
-    if (specificOfficer && !elevated && String(specificOfficer).toLowerCase() !== String(user.email || '').toLowerCase()) {
+    if (!specificShiftId || !specificOfficer) {
+      if (!elevated) return Response.json({ error: 'Forbidden' }, { status: 403 });
+    } else if (!elevated && String(specificOfficer).toLowerCase() !== String(user.email || '').toLowerCase()) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
