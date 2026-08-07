@@ -251,7 +251,7 @@ export default function AdminScheduling() {
     onSuccess: (isReady) => {
       queryClient.invalidateQueries({ queryKey: ['scheduleWeekStatus'] });
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
-      alert(isReady ? 'Week schedule published and announcement sent!' : 'Week schedule hidden from officers and clients');
+      alert(isReady ? 'Week schedule published. Each scheduled officer was sent an in-app alert and a Black Point schedule email.' : 'Week schedule hidden from officers and clients');
     },
   });
 
