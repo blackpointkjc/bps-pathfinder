@@ -51,6 +51,7 @@ export default function CallHistory() {
     const [search, setSearch] = useState('');
     const [agencyFilter, setAgencyFilter] = useState('ALL');
     const [statusFilter, setStatusFilter] = useState('ALL');
+    const [propertyFilter, setPropertyFilter] = useState('ALL');
     const [sortField, setSortField] = useState('time');
     const [sortDir, setSortDir] = useState('desc');
     const [expandedId, setExpandedId] = useState(null);
@@ -129,6 +130,9 @@ export default function CallHistory() {
         if (q && !r.incident?.toLowerCase().includes(q) && !r.location?.toLowerCase().includes(q) && !r.agency?.toLowerCase().includes(q)) return false;
         if (agencyFilter !== 'ALL' && !r.agency?.includes(agencyFilter)) return false;
         if (statusFilter !== 'ALL' && r.status !== statusFilter) return false;
+        const isPropertyCall = String(r.agency || '').toUpperCase().includes('BPS');
+        if (propertyFilter === 'PROPERTY' && !isPropertyCall) return false;
+        if (propertyFilter === 'PUBLIC' && isPropertyCall) return false;
         return true;
     });
 
@@ -195,6 +199,11 @@ export default function CallHistory() {
 
                 <div className="w-px h-5 bg-slate-700" />
 
+                <span className="text-[9px] text-slate-500 tracking-widest">CALL CLASS:</span>
+                <select value={propertyFilter} onChange={e => setPropertyFilter(e.target.value)} className="bg-slate-800 border border-slate-700 text-[10px] text-white px-2 py-1.5 rounded focus:outline-none focus:border-gold">
+                    <option value="ALL">ALL CALLS</option><option value="PROPERTY">PROPERTY CALLS</option><option value="PUBLIC">PUBLIC SAFETY CALLS</option>
+                </select>
+
                 {/* Status filter */}
                 <span className="text-[9px] text-slate-500 tracking-widest">STATUS:</span>
                 <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
@@ -237,6 +246,7 @@ export default function CallHistory() {
                                 <div className="flex-1 min-w-0 pr-2">
                                     <span className={`text-white font-bold ${isActive ? 'text-blue-200' : ''}`}>{row.incident || '—'}</span>
                                     {isActive && <span className="ml-2 text-[8px] bg-blue-500/30 text-blue-300 border border-blue-500/40 px-1 py-0.5 rounded">ACTIVE</span>}
+                                    {String(row.agency || '').toUpperCase().includes('BPS') && <span className="ml-2 text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.5 rounded">PROPERTY CALL</span>}
                                 </div>
                                 <div className="w-56 flex-shrink-0 text-slate-400 truncate pr-2">
                                     <MapPin className="w-2.5 h-2.5 inline mr-1 text-slate-600" />{row.location || '—'}
