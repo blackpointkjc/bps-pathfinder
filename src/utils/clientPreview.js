@@ -1,43 +1,54 @@
 import { base44 } from '@/api/base44Client';
 
 const KEY = 'bps-client-preview-user-id';
+const PROFILE_KEY = 'bps-client-preview-profile';
 
 export async function getClientPortalUser() {
   const authUser = await base44.auth.me();
-  const selectedId = authUser?.role === 'admin' ? localStorage.getItem(KEY) : '';
-  const users = selectedId ? await base44.entities.User.list('-last_updated', 500) : [];
-  const selectedUser = selectedId ? users.find(user => user.id === selectedId) : null;
-  const portalUser = selectedUser || authUser;
+  if (authUser?.role !== 'admin') return authUser;
 
-  // Client assignments may live on the User record, the Location record, or both.
-  // Merge all sources so Admin Preview sees the same properties the client owns.
+  const selectedId = localStorage.getItem(KEY) || '';
+  if (!selectedId) return authUser;
+
+  try {
+    const stored = JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null');
+    if (stored?.id === selectedId) return stored;
+  } catch (_) {}
+
+  const users = await base44.entities.User.list('-last_updated', 500);
+  const selectedUser = users.find(user => user.id === selectedId);
+  if (!selectedUser) return authUser;
+
   const locations = await base44.entities.Location.list('site_name', 500).catch(() => []);
-  const email = String(portalUser?.email || '').toLowerCase();
-  const userAssigned = [
-    ...(Array.isArray(portalUser?.assigned_locations) ? portalUser.assigned_locations : []),
-    ...(portalUser?.assigned_location ? [portalUser.assigned_location] : []),
-  ];
-  const locationAssigned = (locations || [])
-    .filter(location => String(location.assigned_client_email || '').toLowerCase() === email)
-    .map(location => location.site_name)
-    .filter(Boolean);
-  const assignedLocations = [...new Set([...userAssigned, ...locationAssigned].filter(Boolean))];
+  const email = String(selectedUser.email || '').toLowerCase();
+  const assignedLocations = [...new Set([
+    ...(Array.isArray(selectedUser.assigned_locations) ? selectedUser.assigned_locations : []),
+    ...(selectedUser.assigned_location ? [selectedUser.assigned_location] : []),
+    ...(locations || []).filter(location => String(location.assigned_client_email || '').toLowerCase() === email).map(location => location.site_name),
+  ].filter(Boolean))];
 
-  return {
-    ...portalUser,
+  const profile = {
+    ...selectedUser,
     assigned_locations: assignedLocations,
-    assigned_location: portalUser?.assigned_location || assignedLocations[0] || '',
-    __client_preview: Boolean(selectedUser),
-    __auth_admin_id: selectedUser ? authUser.id : undefined,
+    assigned_location: selectedUser.assigned_location || assignedLocations[0] || '',
+    __client_preview: true,
+    __auth_admin_id: authUser.id,
   };
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  return profile;
 }
 
 export function getClientPreviewId() {
   return localStorage.getItem(KEY) || '';
 }
 
-export function setClientPreviewId(id) {
-  if (id) localStorage.setItem(KEY, id);
-  else localStorage.removeItem(KEY);
+export function setClientPreviewId(id, profile = null) {
+  if (id) {
+    localStorage.setItem(KEY, id);
+    if (profile) localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  } else {
+    localStorage.removeItem(KEY);
+    localStorage.removeItem(PROFILE_KEY);
+  }
   window.dispatchEvent(new CustomEvent('bps-client-preview-change', { detail: { id: id || '' } }));
 }
