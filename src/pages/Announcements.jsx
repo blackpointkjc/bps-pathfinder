@@ -45,6 +45,7 @@ export default function Announcements() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['announcementReceipts', user?.email] });
       window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
+      window.dispatchEvent(new CustomEvent('bps-announcements-opened'));
     },
   });
 
@@ -80,6 +81,7 @@ export default function Announcements() {
       setPendingToAck(null);
       await queryClient.invalidateQueries({ queryKey: ['announcementReceipts', user?.email] });
       window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
+      window.dispatchEvent(new CustomEvent('bps-announcements-opened'));
     });
   }, [user?.email, filteredAnnouncements, readAnnouncementIds, queryClient]);
 
