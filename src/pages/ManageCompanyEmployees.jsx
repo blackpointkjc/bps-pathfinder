@@ -185,10 +185,9 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       'First Sergeant': { min: 23.00, max: 25.00 },
       'Lieutenant': { min: 24.00, max: 26.00 },
       'Captain': { min: 25.00, max: 27.00 },
-      'Lt Colonel (Director of Security Operations)': { min: 27.50, max: 27.50 },
-      'Lt Colonel (Director of Training and Compliance)': { min: 27.50, max: 27.50 },
-      'Colonel (Director of Company Operations)': { min: 27.50, max: 27.50 },
-      'Major (Supervisor of Field Operations)': { min: 27.50, max: 27.50 },
+      'Lt Colonel': { min: 27.50, max: 27.50 },
+      'Colonel': { min: 27.50, max: 27.50 },
+      'Major': { min: 27.50, max: 27.50 },
     };
     return payRanges[rank] || { min: 18.00, max: 20.00 };
   };
@@ -294,10 +293,9 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   const getRankColor = (rank) => {
     const colors = {
-      'Colonel (Director of Company Operations)': "bg-amber-100 text-amber-900 border-amber-400",
-      'Lt Colonel (Director of Security Operations)': "bg-rose-100 text-rose-900 border-rose-400",
-      'Lt Colonel (Director of Training and Compliance)': "bg-rose-100 text-rose-900 border-rose-400",
-      'Major (Supervisor of Field Operations)': "bg-red-100 text-red-800 border-red-300",
+      'Colonel': "bg-amber-100 text-amber-900 border-amber-400",
+      'Lt Colonel': "bg-rose-100 text-rose-900 border-rose-400",
+      'Major': "bg-red-100 text-red-800 border-red-300",
       'Captain': "bg-orange-100 text-orange-800 border-orange-300",
       'Lieutenant': "bg-yellow-100 text-yellow-800 border-yellow-300",
       'First Sergeant': "bg-lime-100 text-lime-800 border-lime-300",
@@ -481,7 +479,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                     <Select value={editFormData.rank || "Officer"} onValueChange={(v) => setEditFormData({...editFormData, rank: v})}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {['Colonel (Director of Company Operations)','Lt Colonel (Director of Security Operations)','Lt Colonel (Director of Training and Compliance)','Major (Supervisor of Field Operations)','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer','Human Resources','Support Staff'].map(r => (
+                        {['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer','Human Resources','Support Staff'].map(r => (
                           <SelectItem key={r} value={r}>{r}</SelectItem>
                         ))}
                       </SelectContent>
