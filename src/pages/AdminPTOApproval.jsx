@@ -116,56 +116,15 @@ export default function AdminPTOApproval() {
           from_name: "Black Point Protection HR",
           to: request.requested_by_email || request.created_by,
           subject: `Time Off Request ${status === 'approved' ? 'Approved ✅' : 'Denied ❌'}`,
-          body: `<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: ${status === 'approved' ? 'linear-gradient(135deg, #10b981 0%, #34d399 100%)' : 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)'}; color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-    .info-box { background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border: 2px solid ${status === 'approved' ? '#10b981' : '#dc2626'}; }
-    .info-item { padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
-    .info-item:last-child { border-bottom: none; }
-    .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }
-    .button { background: ${status === 'approved' ? '#10b981' : '#dc2626'}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>${status === 'approved' ? '✅ Request Approved!' : '❌ Request Denied'}</h1>
-      <p style="margin: 10px 0 0 0;">Black Point Protection Services</p>
-    </div>
-    
-    <div class="content">
-      <h2 style="color: ${status === 'approved' ? '#10b981' : '#dc2626'}; margin-top: 0;">Time Off Request ${status === 'approved' ? 'Approved' : 'Denied'}</h2>
-      
-      <p>Hello ${getOfficerName(request)},</p>
-      
-      <p>Your time off request has been ${status}.</p>
-      
-      <div class="info-box">
-        <div class="info-item"><strong>Dates:</strong> ${format(new Date(request.start_date), 'MMM d, yyyy')} - ${format(new Date(request.end_date), 'MMM d, yyyy')}</div>
-        <div class="info-item"><strong>Reason:</strong> ${request.reason}</div>
-        <div class="info-item"><strong>Status:</strong> <span style="color: ${status === 'approved' ? '#10b981' : '#dc2626'}; font-weight: bold;">${status.toUpperCase()}</span></div>
-        ${notes ? `<div class="info-item"><strong>Admin Notes:</strong> ${notes}</div>` : ''}
-      </div>
-      
-      ${status === 'approved' ? '<p style="color: #10b981; font-weight: bold;">&#10003; Your time off has been approved. Enjoy your time away!</p>' : '<p style="color: #dc2626; font-weight: bold;">Your request was not approved at this time. Please contact your supervisor if you have questions.</p>'}
-      
-      <center>
-        <a href="https://pathfinderbps.base44.app" class="button">View in Black Point Portal</a>
-      </center>
-      
-      <div class="footer">
-        <p><strong>Black Point Protection Services</strong><br/>
-        Richmond, Virginia</p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>`
+          body: `
+            <p>Hello ${getOfficerName(request)},</p>
+            <p>Your time off request has been <strong>${status}</strong>.</p>
+            <p><strong>Dates:</strong> ${format(new Date(request.start_date), 'MMM d, yyyy')} - ${format(new Date(request.end_date), 'MMM d, yyyy')}<br>
+            <strong>Reason:</strong> ${request.reason}<br>
+            <strong>Status:</strong> ${status.toUpperCase()}
+            ${notes ? `<br><strong>Admin Notes:</strong> ${notes}` : ''}</p>
+            ${status === 'approved' ? '<p>Your time off has been approved.</p>' : '<p>Your request was not approved at this time. Please contact your supervisor if you have questions.</p>'}
+          `
         });
         
         // Send SMS notification if phone number is available and request is approved

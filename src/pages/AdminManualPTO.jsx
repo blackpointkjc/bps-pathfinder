@@ -63,51 +63,15 @@ export default function AdminManualPTO() {
         from_name: "Black Point Protection HR",
         to: data.officer_email,
         subject: `${data.pto_type === 'pto' ? 'PTO' : 'Sick Time'} Added to Your Account`,
-        body: `<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-    .info-box { background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border: 2px solid #3b82f6; }
-    .info-item { padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
-    .info-item:last-child { border-bottom: none; }
-    .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 12px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>${data.pto_type === 'pto' ? '🎉 PTO Added' : '🏥 Sick Time Added'}</h1>
-      <p style="margin: 10px 0 0 0;">Black Point Protection Services</p>
-    </div>
-    
-    <div class="content">
-      <h2 style="color: #3b82f6; margin-top: 0;">${data.pto_type === 'pto' ? 'PTO' : 'Sick Time'} Added to Your Account</h2>
-      
-      <p>Hello ${officer?.first_name || 'Officer'},</p>
-      
-      <p>${data.pto_type === 'pto' ? 'PTO time' : 'Sick time'} has been added to your account from an outside source.</p>
-      
-      <div class="info-box">
-        <div class="info-item"><strong>Type:</strong> ${data.pto_type === 'pto' ? 'Paid Time Off' : 'Sick Time'}</div>
-        <div class="info-item"><strong>Hours Added:</strong> ${data.hours}h</div>
-        <div class="info-item"><strong>Dates:</strong> ${format(new Date(data.start_date), 'MMM d, yyyy')} - ${format(new Date(data.end_date), 'MMM d, yyyy')}</div>
-        ${data.reason ? `<div class="info-item"><strong>Reason:</strong> ${data.reason}</div>` : ''}
-      </div>
-      
-      <p>You can view your updated balance in Black Point Portal.</p>
-      
-      <div class="footer">
-        <p><strong>Black Point Protection Services</strong><br/>
-        Richmond, Virginia</p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>`
+        body: `
+          <p>Hello ${officer?.first_name || 'Officer'},</p>
+          <p>${data.pto_type === 'pto' ? 'PTO time' : 'Sick time'} has been added to your account from an outside source.</p>
+          <p><strong>Type:</strong> ${data.pto_type === 'pto' ? 'Paid Time Off' : 'Sick Time'}<br>
+          <strong>Hours Added:</strong> ${data.hours}h<br>
+          <strong>Dates:</strong> ${format(new Date(data.start_date), 'MMM d, yyyy')} - ${format(new Date(data.end_date), 'MMM d, yyyy')}
+          ${data.reason ? `<br><strong>Reason:</strong> ${data.reason}` : ''}</p>
+          <p>You can view your updated balance in the Black Point Portal.</p>
+        `
       });
       return payload;
     },
