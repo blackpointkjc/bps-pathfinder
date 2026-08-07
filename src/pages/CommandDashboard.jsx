@@ -286,8 +286,14 @@ function CommandDashboardInner() {
                             <><span className="w-1.5 h-1.5 rounded-full bg-slate-500" />AWAITING SYNC</>
                         )}
                     </div>
-                    <button onClick={() => navigate(`${createPageUrl('BOLOAlerts')}?new=1`)}
-                        className="h-7 flex items-center gap-1 px-2 bg-red-800 border border-red-600 text-white font-mono font-bold text-[10px] rounded hover:bg-red-700 transition-colors flex-shrink-0">
+                    <button onClick={() => {
+                        const params = new URLSearchParams({ new: '1' });
+                        if (selectedCall?.id) {
+                            params.set('call_id', selectedCall.id);
+                            params.set('call_number', selectedCall.agency_cad_number || selectedCall.bps_reference || selectedCall.call_id || selectedCall.id);
+                        }
+                        navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);
+                    }} className="h-7 flex items-center gap-1 px-2 bg-red-800 border border-red-600 text-white font-mono font-bold text-[10px] rounded hover:bg-red-700 transition-colors flex-shrink-0">
                         <FileWarning className="w-3 h-3" />NEW BOLO
                     </button>
                     <button onClick={() => navigate(createPageUrl('DispatchCenter'))}
