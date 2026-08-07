@@ -10,15 +10,20 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me().catch(() => null);
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // For scheduled runs, use service role directly
-    // For manual calls, verify the caller is authenticated
     let body = {};
     try {
       body = await req.json();
     } catch (_) {}
 
     const { shift_id: specificShiftId, officer_email: specificOfficer } = body;
+    const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+    const elevated = user.role === 'admin' || roles.has('support_staff') || roles.has('full_access');
+    if (specificOfficer && !elevated && String(specificOfficer).toLowerCase() !== String(user.email || '').toLowerCase()) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Determine date range to process
     const now = new Date();
