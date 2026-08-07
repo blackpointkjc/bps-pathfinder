@@ -580,36 +580,28 @@ export default function Schedule() {
         )}
 
         <div className="overflow-x-auto pb-2">
-          <div className="grid min-w-[1540px] grid-cols-7 gap-3">
+          <div className="grid min-w-[1260px] grid-cols-7 gap-3">
           {weekDays.map((day) => {
             const daySchedules = getScheduleForDate(day);
             const ptoEntry = checkPTOForDate(day);
             const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
 
             return (
-              <Card key={day.toString()} className={`min-w-0 border-none shadow-lg ${isToday ? 'ring-2 ring-blue-400' : ''}`}>
-                <CardHeader className={`${isToday ? 'bg-gradient-to-r from-blue-50 to-purple-50' : ptoEntry ? 'bg-green-50' : 'bg-slate-50'}`}>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Calendar className="w-5 h-5 text-blue-600" />
-                      <div>
-                        <span className="text-slate-900">{format(day, 'EEEE')}</span>
-                        {isToday && (
-                          <span className="ml-2 text-sm font-normal text-blue-600">(Today)</span>
-                        )}
-                        {ptoEntry && (
-                          <Badge className="ml-2 bg-green-600 text-white">
-                            ✓ PTO Approved: {ptoEntry.reason}
-                          </Badge>
-                        )}
+              <Card key={day.toString()} className={`min-w-0 overflow-hidden border border-slate-800 bg-slate-900 shadow-xl ${isToday ? 'ring-2 ring-blue-500/70' : ''}`}>
+                <CardHeader className={`${isToday ? 'bg-blue-950/40' : ptoEntry ? 'bg-green-950/30' : 'bg-slate-900'} border-b border-slate-800 px-4 py-3`}>
+                  <CardTitle className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Calendar className={`h-4 w-4 ${isToday ? 'text-blue-400' : 'text-slate-500'}`} />
+                        <span className="truncate text-sm font-black text-white">{format(day, 'EEE')}</span>
+                        {isToday && <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold text-blue-300">TODAY</span>}
                       </div>
+                      <div className="mt-1 text-[11px] font-medium text-slate-400">{format(day, 'MMM d, yyyy')}</div>
                     </div>
-                    <span className="text-sm font-normal text-slate-600">
-                      {format(day, 'MMM d, yyyy')}
-                    </span>
+                    {ptoEntry && <Badge className="bg-green-700 text-white">PTO</Badge>}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-6">
+                <CardContent className="p-3">
                   {ptoEntry ? (
                     <div className="text-center py-6 bg-green-50 rounded-lg border-2 border-green-200">
                       <p className="text-green-800 font-bold text-lg mb-2">✓ Time Off Approved</p>
@@ -624,36 +616,25 @@ export default function Schedule() {
                         const isSplitShift = schedule.is_split_shift === true;
                         
                         return (
-                          <div key={schedule.id} className={`p-4 rounded-lg border ${isSplitShift ? 'bg-gradient-to-r from-purple-50 to-purple-100 border-purple-300' : 'bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200'}`}>
-                            <div className="grid gap-3">
-                              <div className="flex items-center gap-3">
-                                <Clock className={`w-5 h-5 ${isSplitShift ? 'text-purple-700' : 'text-blue-700'}`} />
-                                <div>
-                                  <p className={`text-sm font-medium ${isSplitShift ? 'text-purple-700' : 'text-blue-700'}`}>Shift Time</p>
-                                  <p className={`text-lg font-bold ${isSplitShift ? 'text-purple-900' : 'text-blue-900'}`}>
-                                    {schedule.start_time} to {schedule.end_time}
-                                    {isSplitShift && <span className="ml-2 text-xs font-bold text-purple-700">(Split Shift)</span>}
-                                  </p>
+                          <div key={schedule.id} className={`rounded-xl border p-3 ${isSplitShift ? 'border-purple-700/60 bg-purple-950/20' : 'border-blue-700/50 bg-blue-950/20'}`}>
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <Clock className={`h-4 w-4 ${isSplitShift ? 'text-purple-400' : 'text-blue-400'}`} />
+                                  <span className="text-base font-black text-white">{schedule.start_time}–{schedule.end_time}</span>
                                 </div>
+                                {isSplitShift && <span className="rounded bg-purple-500/15 px-1.5 py-0.5 text-[9px] font-bold text-purple-300">SPLIT</span>}
                               </div>
-                              <div className="flex items-center gap-3">
-                                <MapPin className={`w-5 h-5 ${isSplitShift ? 'text-purple-700' : 'text-blue-700'}`} />
-                                <div className="flex-1">
-                                  <p className={`text-sm font-medium ${isSplitShift ? 'text-purple-700' : 'text-blue-700'}`}>Location</p>
-                                  <button
-                                    onClick={() => openInMaps(schedule.location)}
-                                    className={`text-lg font-bold ${isSplitShift ? 'text-purple-900 hover:text-purple-700' : 'text-blue-900 hover:text-blue-700'} underline decoration-dotted flex items-center gap-1 group`}
-                                  >
-                                    {schedule.location}
-                                    <ExternalLink className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                  </button>
-                                </div>
-                              </div>
+                              <button onClick={() => openInMaps(schedule.location)} className="group flex w-full items-start gap-2 text-left">
+                                <MapPin className={`mt-0.5 h-4 w-4 shrink-0 ${isSplitShift ? 'text-purple-400' : 'text-blue-400'}`} />
+                                <span className="min-w-0 text-[12px] font-semibold leading-5 text-slate-200 group-hover:text-white">{schedule.location}</span>
+                                <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-slate-600 group-hover:text-slate-300" />
+                              </button>
                             </div>
                             {schedule.partner_officer_email && (
-                              <div className="mt-3 rounded border border-blue-700/50 bg-blue-950/30 p-2">
-                                <div className="flex items-center gap-1 text-xs font-bold text-blue-300"><Users className="h-3.5 w-3.5" />Partner Officer</div>
-                                <div className="mt-1 text-sm font-semibold text-white">{getUserName(schedule.partner_officer_email)}</div>
+                              <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2">
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500"><Users className="h-3.5 w-3.5" />Partner</div>
+                                <div className="mt-1 truncate text-[12px] font-semibold text-white">{getUserName(schedule.partner_officer_email)}</div>
                               </div>
                             )}
                             {(() => {
@@ -664,16 +645,16 @@ export default function Schedule() {
                               );
                               const isPartner = vehicle?.partner_officer_email === user?.email;
                               return (
-                                <div className="mt-4 rounded-lg border-2 border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 p-3">
-                                  <div className="flex items-center gap-2 text-sm font-bold text-amber-900"><Car className="h-4 w-4" />Fleet Vehicle</div>
+                                <div className="mt-3 rounded-lg border border-amber-700/50 bg-amber-950/20 px-3 py-2">
+                                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-400"><Car className="h-3.5 w-3.5" />Fleet Vehicle</div>
                                   {vehicle ? <>
-                                    <div className="mt-1 text-lg font-black text-amber-950">{vehicle.vehicle_label}</div>
-                                    {vehicle.partner_officer_name && <div className="mt-1 flex items-center gap-1 text-xs text-amber-800"><Users className="h-3 w-3" />Partner: {isPartner ? vehicle.primary_officer_name : vehicle.partner_officer_name}</div>}
-                                    {vehicle.notes && <div className="mt-1 text-xs text-amber-700">{vehicle.notes}</div>}
-                                  </> : <div className="mt-1 text-xs text-amber-800">No fleet vehicle assigned to this shift.</div>}
+                                    <div className="mt-1 text-[13px] font-black text-amber-200">{vehicle.vehicle_label}</div>
+                                    {vehicle.partner_officer_name && <div className="mt-1 truncate text-[10px] text-amber-300/80">With {isPartner ? vehicle.primary_officer_name : vehicle.partner_officer_name}</div>}
+                                    {vehicle.notes && <div className="mt-1 text-[10px] text-amber-300/70">{vehicle.notes}</div>}
+                                  </> : <div className="mt-1 text-[10px] text-slate-500">No vehicle assigned</div>}
                                   {!isPartner && <div className="mt-2">
                                     <Select value={vehicle?.vehicle_id || ''} onValueChange={(id) => assignFleetVehicleToShift(schedule, id)}>
-                                      <SelectTrigger className="h-8 border-amber-300 bg-white text-xs"><SelectValue placeholder="Assign / change fleet vehicle" /></SelectTrigger>
+                                      <SelectTrigger className="h-8 border-amber-800/60 bg-slate-950 text-[11px] text-slate-200"><SelectValue placeholder="Assign vehicle" /></SelectTrigger>
                                       <SelectContent>{activeFleetVehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.vehicle_id} · {v.year} {v.make} {v.model}</SelectItem>)}</SelectContent>
                                     </Select>
                                   </div>}
@@ -703,7 +684,9 @@ export default function Schedule() {
                       })}
                     </div>
                   ) : (
-                    <p className="text-center text-slate-500 py-6">No shifts scheduled</p>
+                    <div className="rounded-lg border border-dashed border-slate-800 bg-slate-950/40 px-3 py-10 text-center">
+                      <div className="text-[11px] font-medium text-slate-600">NO SHIFT</div>
+                    </div>
                   )}
                 </CardContent>
               </Card>
