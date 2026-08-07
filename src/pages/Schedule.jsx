@@ -497,19 +497,6 @@ export default function Schedule() {
           </div>
         )}
 
-        {shouldShowWarning && (
-          <div className="rounded-xl border border-amber-700/60 bg-amber-950/20 p-3 sm:p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400 sm:h-6 sm:w-6" />
-              <div className="min-w-0">
-                <p className="font-bold text-amber-200">Schedule Not Yet Published</p>
-                <p className="mt-1 text-xs leading-5 text-amber-300/80 sm:text-sm">
-                  One or more days in this view have not been published yet. Unpublished shifts are hidden until your supervisor publishes that schedule.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Open Shifts Section */}
         {publishedOpenShifts.length > 0 && (
