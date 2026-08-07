@@ -28,11 +28,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Call has no location data' }, { status: 400 });
     }
 
-    // Fetch all monitored properties and location logs for geofence context
-    const [properties, locationLogs] = await Promise.all([
-      base44.asServiceRole.entities.MonitoredProperty.list(),
-      base44.asServiceRole.entities.LocationLog.list('-created_date', 1000)
-    ]);
+    // Live geofence decisions use current unit coordinates. Historical LocationLog records are not required.
+    await base44.asServiceRole.entities.MonitoredProperty.list();
 
     const callLat = dispatchCall.latitude;
     const callLng = dispatchCall.longitude;
