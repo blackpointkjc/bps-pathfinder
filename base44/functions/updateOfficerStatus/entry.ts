@@ -15,6 +15,20 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Status is required' }, { status: 400 });
         }
 
+        const activeOverrides = await base44.asServiceRole.entities.OfficerStatusOverride.filter({
+            officer_id: user.id,
+            active: true,
+            forced_out_of_service: true,
+        }, '-forced_at', 1);
+        if (activeOverrides?.length && status !== 'Out of Service') {
+            const override = activeOverrides[0];
+            return Response.json({
+                error: 'Your status has been forced Out of Service by an authorized supervisor and cannot be changed until the override is released.',
+                forced_out_of_service: true,
+                reason: override.reason || '',
+            }, { status: 403 });
+        }
+
         const now = new Date().toISOString();
 
         const updateData = {
