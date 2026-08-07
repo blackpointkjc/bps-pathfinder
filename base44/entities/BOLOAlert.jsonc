@@ -35,7 +35,8 @@
         "active",
         "cancelled",
         "expired",
-        "located"
+        "located",
+        "resolved"
       ],
       "default": "active"
     },
@@ -106,6 +107,19 @@
       "type": "string"
     },
     "case_number": {
+      "type": "string"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resolved_by": {
+      "type": "string"
+    },
+    "resolved_by_id": {
+      "type": "string"
+    },
+    "resolution_notes": {
       "type": "string"
     }
   },
