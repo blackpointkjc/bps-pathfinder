@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
+import StructuredPeopleEditor from '@/components/reports/StructuredPeopleEditor';
 import { toast } from 'sonner';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/c29aab328_c3ff2618-4412-4498-8923-8f484a9469b8-2533645741.jpeg";
@@ -47,6 +48,7 @@ export default function IncidentReports() {
     persons_involved: "",
     victims: "",
     witnesses: "",
+    persons: [],
     injuries_reported: false,
     injury_details: "",
     property_damage: false,
@@ -415,6 +417,7 @@ Provide:
       persons_involved: "",
       victims: "",
       witnesses: "",
+      persons: [],
       injuries_reported: false,
       injury_details: "",
       property_damage: false,
@@ -503,6 +506,7 @@ Provide:
       persons_involved: report.persons_involved || "",
       victims: report.victims || "",
       witnesses: report.witnesses || "",
+      persons: report.persons || [],
       injuries_reported: report.injuries_reported || false,
       injury_details: report.injury_details || "",
       property_damage: report.property_damage || false,
@@ -1092,57 +1096,31 @@ Provide:
                     rows={6}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="suspect_description">Suspect Description</Label>
-                  <Textarea
-                    id="suspect_description"
-                    placeholder="Physical description: height, build, clothing, distinguishing features..."
-                    value={formData.suspect_description}
-                    onChange={(e) => setFormData({...formData, suspect_description: e.target.value})}
-                    rows={2}
-                  />
-                </div>
+                <StructuredPeopleEditor
+                  title="Persons Involved"
+                  value={formData.persons || []}
+                  defaultRole="Suspect"
+                  allowedRoles={['Suspect','Victim','Witness','Complainant','Reporting Party','Other']}
+                  onChange={(persons) => {
+                    const describe = (p) => [p.first_name, p.middle_name, p.last_name].filter(Boolean).join(' ') + (p.description ? ` — ${p.description}` : '');
+                    setFormData({
+                      ...formData,
+                      persons,
+                      suspect_description: persons.filter(p => p.role === 'Suspect').map(describe).join('\n'),
+                      victims: persons.filter(p => p.role === 'Victim').map(describe).join('\n'),
+                      witnesses: persons.filter(p => p.role === 'Witness').map(describe).join('\n'),
+                      persons_involved: persons.filter(p => !['Suspect','Victim','Witness'].includes(p.role)).map(describe).join('\n'),
+                    });
+                  }}
+                />
 
                 <div className="space-y-2">
-                  <Label htmlFor="suspect_vehicle">Suspect Vehicle</Label>
+                  <Label htmlFor="suspect_vehicle">Suspect / Involved Vehicle</Label>
                   <Input
                     id="suspect_vehicle"
                     placeholder="Make, model, color, license plate..."
                     value={formData.suspect_vehicle}
                     onChange={(e) => setFormData({...formData, suspect_vehicle: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="victims">Victim Information</Label>
-                  <Textarea
-                    id="victims"
-                    placeholder="Name, contact info, description..."
-                    value={formData.victims}
-                    onChange={(e) => setFormData({...formData, victims: e.target.value})}
-                    rows={2}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="persons_involved">Other Persons Involved</Label>
-                  <Textarea
-                    id="persons_involved"
-                    placeholder="Names and details of other persons involved..."
-                    value={formData.persons_involved}
-                    onChange={(e) => setFormData({...formData, persons_involved: e.target.value})}
-                    rows={2}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="witnesses">Witnesses</Label>
-                  <Textarea
-                    id="witnesses"
-                    placeholder="Witness names and contact information..."
-                    value={formData.witnesses}
-                    onChange={(e) => setFormData({...formData, witnesses: e.target.value})}
-                    rows={2}
                   />
                 </div>
 
