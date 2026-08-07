@@ -417,12 +417,12 @@ export default function Schedule() {
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="schedule-dark min-h-screen bg-slate-950 p-4 text-slate-100 md:p-6">
+      <div className="mx-auto max-w-[1600px] space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">My Schedule</h1>
-            <p className="text-slate-600">Your upcoming shifts and assignments</p>
+            <h1 className="text-3xl font-black text-white">My Schedule</h1>
+            <p className="text-slate-400">Sunday through Saturday · weekly shifts, partners, and fleet assignments</p>
           </div>
 
         </div>
@@ -579,7 +579,8 @@ export default function Schedule() {
           </div>
         )}
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
+        <div className="overflow-x-auto pb-2">
+          <div className="grid min-w-[1540px] grid-cols-7 gap-3">
           {weekDays.map((day) => {
             const daySchedules = getScheduleForDate(day);
             const ptoEntry = checkPTOForDate(day);
@@ -624,7 +625,7 @@ export default function Schedule() {
                         
                         return (
                           <div key={schedule.id} className={`p-4 rounded-lg border ${isSplitShift ? 'bg-gradient-to-r from-purple-50 to-purple-100 border-purple-300' : 'bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200'}`}>
-                            <div className="grid md:grid-cols-2 gap-4">
+                            <div className="grid gap-3">
                               <div className="flex items-center gap-3">
                                 <Clock className={`w-5 h-5 ${isSplitShift ? 'text-purple-700' : 'text-blue-700'}`} />
                                 <div>
@@ -702,6 +703,7 @@ export default function Schedule() {
               </Card>
             );
           })}
+          </div>
         </div>
       </div>
     </div>
