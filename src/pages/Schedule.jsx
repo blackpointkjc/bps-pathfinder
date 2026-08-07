@@ -601,7 +601,7 @@ export default function Schedule() {
                     {ptoEntry && <Badge className="bg-green-700 text-white">PTO</Badge>}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-3 sm:min-h-[220px] xl:min-h-[260px]">
+                <CardContent className="p-2.5 sm:min-h-[170px] xl:min-h-[190px]">
                   {ptoEntry ? (
                     <div className="rounded-lg border border-green-800/60 bg-green-950/20 py-6 text-center">
                       <p className="mb-2 text-lg font-bold text-green-300">✓ Time Off Approved</p>
@@ -616,25 +616,25 @@ export default function Schedule() {
                         const isSplitShift = schedule.is_split_shift === true;
                         
                         return (
-                          <div key={schedule.id} className={`rounded-xl border p-3 ${isSplitShift ? 'border-purple-700/60 bg-purple-950/20' : 'border-blue-700/50 bg-blue-950/20'}`}>
+                          <div key={schedule.id} className={`rounded-xl border p-2.5 ${isSplitShift ? 'border-purple-700/60 bg-purple-950/20' : 'border-blue-700/50 bg-blue-950/20'}`}>
                             <div className="space-y-3">
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2">
                                   <Clock className={`h-4 w-4 ${isSplitShift ? 'text-purple-400' : 'text-blue-400'}`} />
-                                  <span className="text-base font-black text-white">{schedule.start_time}–{schedule.end_time}</span>
+                                  <span className="text-sm font-black text-white xl:text-[13px]">{schedule.start_time}–{schedule.end_time}</span>
                                 </div>
                                 {isSplitShift && <span className="rounded bg-purple-500/15 px-1.5 py-0.5 text-[9px] font-bold text-purple-300">SPLIT</span>}
                               </div>
                               <button onClick={() => openInMaps(schedule.location)} className="group flex w-full items-start gap-2 text-left">
                                 <MapPin className={`mt-0.5 h-4 w-4 shrink-0 ${isSplitShift ? 'text-purple-400' : 'text-blue-400'}`} />
-                                <span className="min-w-0 text-[12px] font-semibold leading-5 text-slate-200 group-hover:text-white">{schedule.location}</span>
+                                <span className="min-w-0 break-words text-[11px] font-semibold leading-4 text-slate-200 group-hover:text-white">{schedule.location}</span>
                                 <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-slate-600 group-hover:text-slate-300" />
                               </button>
                             </div>
                             {schedule.partner_officer_email && (
-                              <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2">
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500"><Users className="h-3.5 w-3.5" />Partner</div>
-                                <div className="mt-1 truncate text-[12px] font-semibold text-white">{getUserName(schedule.partner_officer_email)}</div>
+                              <div className="mt-2 flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/60 px-2.5 py-2">
+                                <Users className="h-3.5 w-3.5 shrink-0 text-blue-400" />
+                                <div className="min-w-0"><div className="text-[9px] font-bold uppercase tracking-wide text-slate-500">Partner</div><div className="truncate text-[11px] font-semibold text-white">{getUserName(schedule.partner_officer_email)}</div></div>
                               </div>
                             )}
                             {(() => {
@@ -644,20 +644,15 @@ export default function Schedule() {
                                 (!a.start_time || a.start_time === schedule.start_time)
                               );
                               const isPartner = vehicle?.partner_officer_email === user?.email;
+                              if (!vehicle) return null;
                               return (
-                                <div className="mt-3 rounded-lg border border-amber-700/50 bg-amber-950/20 px-3 py-2">
-                                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-400"><Car className="h-3.5 w-3.5" />Fleet Vehicle</div>
-                                  {vehicle ? <>
-                                    <div className="mt-1 text-[13px] font-black text-amber-200">{vehicle.vehicle_label}</div>
-                                    {vehicle.partner_officer_name && <div className="mt-1 truncate text-[10px] text-amber-300/80">With {isPartner ? vehicle.primary_officer_name : vehicle.partner_officer_name}</div>}
-                                    {vehicle.notes && <div className="mt-1 text-[10px] text-amber-300/70">{vehicle.notes}</div>}
-                                  </> : <div className="mt-1 text-[10px] text-slate-500">No vehicle assigned</div>}
-                                  {!isPartner && <div className="mt-2">
-                                    <Select value={vehicle?.vehicle_id || ''} onValueChange={(id) => assignFleetVehicleToShift(schedule, id)}>
-                                      <SelectTrigger className="h-8 border-amber-800/60 bg-slate-950 text-[11px] text-slate-200"><SelectValue placeholder="Assign vehicle" /></SelectTrigger>
-                                      <SelectContent>{activeFleetVehicles.map(v => <SelectItem key={v.id} value={v.id}>{v.vehicle_id} · {v.year} {v.make} {v.model}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                  </div>}
+                                <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-700/50 bg-amber-950/20 px-2.5 py-2">
+                                  <Car className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-[9px] font-bold uppercase tracking-wide text-amber-400">Fleet Vehicle</div>
+                                    <div className="truncate text-[12px] font-black text-amber-200">{vehicle.vehicle_label}</div>
+                                    {vehicle.partner_officer_name && <div className="mt-0.5 truncate text-[9px] text-amber-300/80">Assigned with {isPartner ? vehicle.primary_officer_name : vehicle.partner_officer_name}</div>}
+                                  </div>
                                 </div>
                               );
                             })()}
@@ -684,7 +679,7 @@ export default function Schedule() {
                       })}
                     </div>
                   ) : (
-                    <div className="rounded-lg border border-dashed border-slate-800 bg-slate-950/40 px-3 py-10 text-center">
+                    <div className="rounded-lg border border-dashed border-slate-800 bg-slate-950/40 px-3 py-7 text-center">
                       <div className="text-[11px] font-medium text-slate-600">NO SHIFT</div>
                     </div>
                   )}
