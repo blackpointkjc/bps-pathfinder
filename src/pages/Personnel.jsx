@@ -62,11 +62,12 @@ export default function Personnel() {
     const loadPersonnel = async () => {
         try {
             const response = await base44.entities.User.list();
-            // CAD Personnel roster is restricted to users explicitly granted CAD access.
-            // Client- and student-only accounts must never appear here.
+            // CAD Personnel roster only shows operational officers who have BOTH
+            // required roles. Client, student, admin-only, and full-access-only users
+            // must not appear on the CAD personnel/status roster.
             const cadPersonnel = (response || []).filter(user => {
-                const roles = Array.isArray(user.additional_roles) ? user.additional_roles : [];
-                return roles.includes('cad_access');
+                const roles = Array.isArray(user.additional_roles) ? user.additional_roles.map(role => String(role).toLowerCase()) : [];
+                return roles.includes('cad_access') && roles.includes('officer');
             });
             setPersonnel(cadPersonnel);
             setLastRefresh(new Date());
