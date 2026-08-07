@@ -3076,32 +3076,32 @@ Return ONLY a JSON array of suggestion objects with this structure:
               .filter(shift => shift.shift_date === dateStr)
               .sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')));
             return (
-              <Card key={dateStr} className="overflow-hidden border-slate-300 shadow-sm">
-                <CardHeader className="border-b bg-slate-100 p-3">
-                  <CardTitle className="flex items-center justify-between gap-2 text-base">
+              <Card key={dateStr} className="overflow-hidden border-slate-800 bg-slate-900 text-white shadow-none">
+                <CardHeader className="border-b border-slate-800 bg-[#111827] p-3">
+                  <CardTitle className="flex items-center justify-between gap-2 text-base text-white">
                     <span>{format(day, 'EEEE')}</span>
-                    <Badge variant="outline">{format(day, 'MMM d')}</Badge>
+                    <Badge variant="outline" className="border-blue-700/60 bg-blue-950/30 text-blue-200">{format(day, 'MMM d')}</Badge>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2 p-3">
+                <CardContent className="space-y-2 bg-slate-950/30 p-3">
                   {dayShifts.length === 0 ? (
-                    <p className="py-3 text-center text-sm text-slate-500">No shifts scheduled.</p>
+                    <p className="rounded-lg border border-dashed border-slate-800 py-5 text-center text-sm text-slate-500">No shifts scheduled.</p>
                   ) : dayShifts.map(shift => (
-                    <div key={shift.id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-                      <div className="flex items-start justify-between gap-2">
+                    <div key={shift.id} className="rounded-xl border border-slate-700 bg-[#101826] p-3">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-slate-900">{shift.officer_email === 'OPEN' ? 'OPEN SHIFT' : getOfficerName(shift.officer_email)}</p>
-                          <p className="mt-0.5 text-sm text-slate-600">{String(shift.location || '').split(':')[0]}</p>
-                          {shift.partner_officer_email && <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-blue-700"><Users className="h-3.5 w-3.5"/>Partner: {getOfficerName(shift.partner_officer_email)}</p>}
+                          <p className="font-bold text-white">{shift.officer_email === 'OPEN' ? 'OPEN SHIFT' : getOfficerName(shift.officer_email)}</p>
+                          <p className="mt-1 text-sm text-slate-300">{String(shift.location || '').split(':')[0]}</p>
+                          {shift.partner_officer_email && <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-blue-300"><Users className="h-3.5 w-3.5"/>Partner: {getOfficerName(shift.partner_officer_email)}</p>}
                           <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                            <Badge className="bg-blue-100 text-blue-800">{shift.start_time}–{shift.end_time}</Badge>
-                            {shift.is_split_shift && <Badge className="bg-purple-100 text-purple-800">Overnight</Badge>}
-                            {shift.is_open && <Badge className="bg-cyan-100 text-cyan-800">Open</Badge>}
+                            <Badge className="border border-blue-700/50 bg-blue-950/40 text-blue-200">{shift.start_time}–{shift.end_time}</Badge>
+                            {shift.is_split_shift && <Badge className="border border-purple-700/50 bg-purple-950/40 text-purple-200">Overnight</Badge>}
+                            {shift.is_open && <Badge className="border border-cyan-700/50 bg-cyan-950/40 text-cyan-200">Open</Badge>}
                           </div>
                         </div>
                         <div className="flex shrink-0 gap-1">
-                          <Button type="button" size="icon" variant="outline" className="h-9 w-9" onClick={() => handleEditShift(shift)} aria-label="Edit shift"><Pencil className="h-4 w-4" /></Button>
-                          <Button type="button" size="icon" variant="outline" className="h-9 w-9 text-red-600" onClick={() => handleDeleteShift(shift.id)} aria-label="Delete shift"><Trash2 className="h-4 w-4" /></Button>
+                          <Button type="button" size="icon" variant="outline" className="h-9 w-9 border-slate-700 bg-slate-950 text-blue-300 hover:bg-slate-800" onClick={() => handleEditShift(shift)} aria-label="Edit shift"><Pencil className="h-4 w-4" /></Button>
+                          <Button type="button" size="icon" variant="outline" className="h-9 w-9 border-slate-700 bg-slate-950 text-red-300 hover:bg-slate-800" onClick={() => handleDeleteShift(shift.id)} aria-label="Delete shift"><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </div>
                     </div>
@@ -3113,21 +3113,21 @@ Return ONLY a JSON array of suggestion objects with this structure:
         </div>
 
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="hidden rounded-lg border-2 border-slate-300 bg-white shadow-lg print:hidden md:block md:overflow-x-auto">
-            <table className="w-full border-collapse text-xs">
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1220] shadow-none print:hidden md:block">
+            <table className="w-full min-w-[1420px] border-collapse text-xs">
               <thead>
-                <tr className="bg-gradient-to-r from-green-400 to-blue-400">
-                  <th className="border border-slate-400 p-2 text-left min-w-[180px] sticky left-0 bg-green-400 z-10">
-                    <div className="font-bold text-slate-900 text-xs">Property / Officer</div>
+                <tr className="bg-[#111827]">
+                  <th className="sticky left-0 z-20 min-w-[250px] border border-slate-700 bg-[#111827] p-3 text-left">
+                    <div className="text-xs font-black uppercase tracking-wider text-slate-200">Property / Officer</div>
                   </th>
                   {weekDays.map((day) => (
-                    <th key={day.toString()} className="border border-slate-400 p-2 text-center min-w-[100px]">
-                      <div className="text-slate-900 font-bold text-xs">{format(day, 'EEE')}</div>
-                      <div className="text-slate-900 text-[10px]">{format(day, 'M/d')}</div>
+                    <th key={day.toString()} className="min-w-[150px] border border-slate-700 p-3 text-center">
+                      <div className="text-sm font-black text-white">{format(day, 'EEE')}</div>
+                      <div className="mt-0.5 text-[10px] font-medium text-slate-400">{format(day, 'M/d')}</div>
                     </th>
                   ))}
-                  <th className="border border-slate-400 p-2 text-center min-w-[60px] bg-green-400">
-                    <div className="font-bold text-slate-900 text-xs">Total</div>
+                  <th className="min-w-[80px] border border-slate-700 bg-[#111827] p-3 text-center">
+                    <div className="text-xs font-black uppercase tracking-wider text-slate-200">Total</div>
                   </th>
                 </tr>
               </thead>
@@ -3149,8 +3149,8 @@ Return ONLY a JSON array of suggestion objects with this structure:
 
                   return (
                     <React.Fragment key={locationSiteName}>
-                      <tr className="bg-blue-100">
-                        <td colSpan={weekDays.length + 2} className="border border-slate-400 p-2 font-bold text-slate-900 text-xs sticky left-0 bg-blue-100 z-10">
+                      <tr className="bg-[#0f1b2d]">
+                        <td colSpan={weekDays.length + 2} className="sticky left-0 z-10 border border-slate-700 bg-[#0f1b2d] px-3 py-2.5 text-xs font-black uppercase tracking-wide text-blue-200">
                           {locationSiteName}
                         </td>
                       </tr>
@@ -3166,17 +3166,17 @@ Return ONLY a JSON array of suggestion objects with this structure:
                         const officerUnit = getOfficerUnitNumber(officerEmail);
 
                         return (
-                          <tr key={`${locationSiteName}-${officerEmail}`} className={officerIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                            <td className="border border-slate-400 p-2 font-semibold text-slate-900 text-xs sticky left-0 z-10" style={{backgroundColor: officerIdx % 2 === 0 ? 'white' : '#f8fafc'}}>
-                              <div className="flex items-center gap-2">
+                          <tr key={`${locationSiteName}-${officerEmail}`} className={officerIdx % 2 === 0 ? 'bg-[#0b1220]' : 'bg-[#0d1625]'}>
+                            <td className={`sticky left-0 z-10 border border-slate-700 p-3 text-xs font-semibold ${officerIdx % 2 === 0 ? 'bg-[#0b1220]' : 'bg-[#0d1625]'}`}>
+                              <div className="flex items-center gap-2.5">
                                 {officerUnit && (
-                                  <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[10px] font-bold">
+                                  <span className="rounded border border-blue-700/50 bg-blue-950/40 px-2 py-1 text-[10px] font-black text-blue-200">
                                     #{officerUnit}
                                   </span>
                                 )}
-                                <div>
-                                  <div>{getOfficerName(officerEmail)}</div>
-                                  {officerRank && <div className="text-[10px] text-slate-500">{officerRank}</div>}
+                                <div className="min-w-0">
+                                  <div className="truncate font-bold text-white">{getOfficerName(officerEmail)}</div>
+                                  {officerRank && <div className="mt-0.5 text-[10px] text-slate-400">{officerRank}</div>}
                                 </div>
                               </div>
                             </td>
@@ -3186,13 +3186,13 @@ Return ONLY a JSON array of suggestion objects with this structure:
                               const droppableId = `schedule-${locationSiteName}-${officerEmail}-${dateStr}`;
 
                               return (
-                                <td key={day.toString()} className="border border-slate-400 p-1">
+                                <td key={day.toString()} className="border border-slate-700 p-2 align-top">
                                   <Droppable droppableId={droppableId}>
                                     {(provided, snapshot) => (
                                       <div
                                         ref={provided.innerRef}
                                         {...provided.droppableProps}
-                                        className={`min-h-[40px] p-1 rounded ${snapshot.isDraggingOver ? 'bg-blue-100' : ''}`}
+                                        className={`min-h-[56px] rounded-lg p-1 ${snapshot.isDraggingOver ? 'bg-blue-950/40 ring-1 ring-blue-600/50' : ''}`}
                                       >
                                         {daySchedules.map((schedule, index) => (
                                           <Draggable
@@ -3205,34 +3205,34 @@ Return ONLY a JSON array of suggestion objects with this structure:
                                                 ref={provided.innerRef}
                                                 {...provided.dragHandleProps}
                                                 {...provided.draggableProps}
-                                                className={`p-1 mb-1 text-[10px] font-semibold text-center rounded cursor-move ${
-                                                  snapshot.isDragging ? 'bg-blue-200 shadow-lg' : 'bg-slate-200 hover:bg-slate-300'
-                                                } ${schedule.is_split_shift ? 'bg-purple-200 hover:bg-purple-300' : ''}`}
+                                                className={`mb-1.5 cursor-move rounded-lg border px-2.5 py-2 text-left text-[11px] font-semibold transition-colors ${
+                                                  snapshot.isDragging ? 'border-blue-400 bg-blue-900/70 shadow-lg' : 'border-blue-800/60 bg-blue-950/35 hover:border-blue-600 hover:bg-blue-950/55'
+                                                } ${schedule.is_split_shift ? 'border-purple-700/60 bg-purple-950/35 hover:bg-purple-950/55' : ''}`}
                                               >
-                                                <div className="flex items-center justify-between">
-                                                  <span>{schedule.start_time}-{schedule.end_time}</span>
+                                                <div className="flex items-center justify-between gap-2">
+                                                  <span className="font-black text-white">{schedule.start_time}-{schedule.end_time}</span>
                                                   <div className="flex items-center gap-1">
                                                     <button
                                                       onClick={(e) => {
                                                         e.stopPropagation();
                                                         handleEditShift(schedule);
                                                       }}
-                                                      className="text-blue-600 hover:text-blue-800"
+                                                      className="rounded p-1 text-blue-300 hover:bg-blue-900/50 hover:text-blue-100"
                                                     >
-                                                      <Pencil className="w-3 h-3" />
+                                                      <Pencil className="h-3.5 w-3.5" />
                                                     </button>
                                                     <button
                                                       onClick={(e) => {
                                                         e.stopPropagation();
                                                         handleDeleteShift(schedule.id);
                                                       }}
-                                                      className="text-red-600 hover:text-red-800"
+                                                      className="rounded p-1 text-red-300 hover:bg-red-900/40 hover:text-red-100"
                                                     >
-                                                      <Trash2 className="w-3 h-3" />
+                                                      <Trash2 className="h-3.5 w-3.5" />
                                                     </button>
                                                   </div>
                                                 </div>
-                                                {schedule.partner_officer_email && <div className="mt-0.5 truncate text-[9px] font-medium text-blue-700">w/ {getOfficerName(schedule.partner_officer_email)}</div>}
+                                                {schedule.partner_officer_email && <div className="mt-1 truncate text-[10px] font-semibold text-blue-300">w/ {getOfficerName(schedule.partner_officer_email)}</div>}
                                               </div>
                                             )}
                                           </Draggable>
@@ -3244,17 +3244,17 @@ Return ONLY a JSON array of suggestion objects with this structure:
                                 </td>
                               );
                             })}
-                            <td className="border border-slate-400 p-2 text-center font-bold text-slate-900 text-xs">
+                            <td className="border border-slate-700 p-2 text-center text-xs font-black text-emerald-300">
                               {totalOfficerHours.toFixed(1)}
                             </td>
                           </tr>
                         );
                       })}
-                      <tr className="bg-blue-50">
-                        <td colSpan={weekDays.length + 1} className="border border-slate-400 p-2 text-right font-bold text-slate-900 text-xs sticky left-0 bg-blue-50 z-10">
+                      <tr className="bg-[#101826]">
+                        <td colSpan={weekDays.length + 1} className="sticky left-0 z-10 border border-slate-700 bg-[#101826] p-2.5 text-right text-xs font-bold text-slate-300">
                           Location Total:
                         </td>
-                        <td className="border border-slate-400 p-2 text-center font-bold text-slate-900 text-xs">
+                        <td className="border border-slate-700 p-2.5 text-center text-xs font-black text-emerald-300">
                           {totalLocationHours.toFixed(1)}
                         </td>
                       </tr>
