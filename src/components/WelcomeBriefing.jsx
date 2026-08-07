@@ -152,7 +152,7 @@ export default function WelcomeBriefing({ user }) {
   return (
     <AnimatePresence>
       {open && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9000] flex items-center justify-center bg-black/72 p-2 backdrop-blur-md sm:p-5">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/72 p-2 backdrop-blur-md sm:p-5">
           <motion.div initial={{ opacity: 0, scale: .96, y: 24 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: .98, y: 12 }} transition={{ type: 'spring', damping: 24, stiffness: 260 }} className="flex max-h-[94dvh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border border-[#274764] bg-gradient-to-br from-[#0b1725] via-[#09131f] to-[#060c14] text-white shadow-[0_40px_120px_rgba(0,0,0,.65)]">
             <div className="relative overflow-hidden border-b border-[#21384f] px-4 py-5 sm:px-6 sm:py-6">
               <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
