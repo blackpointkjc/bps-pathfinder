@@ -3,7 +3,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 const EDITABLE_FIELDS = [
   'alert_type','priority','title','description','subject_name','subject_dob','subject_race','subject_sex',
   'subject_height','subject_weight','subject_description','vehicle_make','vehicle_model','vehicle_year',
-  'vehicle_color','vehicle_plate','last_known_location','jurisdiction','expires_at','notes','contact_info','case_number'
+  'vehicle_color','vehicle_plate','last_known_location','jurisdiction','expires_at','notes','contact_info','case_number',
+  'linked_call_id','linked_call_number','linked_incident_report_id','linked_incident_report_number','photo_urls','parties','vehicles'
 ];
 
 function cleanPayload(input: any) {
