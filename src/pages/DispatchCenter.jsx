@@ -692,6 +692,25 @@ export default function DispatchCenter() {
                 </div>
             )}
 
+            {showMap && (
+                <div className="fixed inset-0 z-[120] hidden items-center justify-center bg-black/75 p-6 backdrop-blur-sm md:flex" onClick={() => setShowMap(false)}>
+                    <div className="flex h-[82vh] w-[88vw] max-w-[1400px] flex-col overflow-hidden rounded-2xl border border-blue-800/60 bg-[#07101c] shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-3 border-b border-[#1e2d4a] bg-[#0d1220] px-4 py-3">
+                            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                            <span className="text-xs font-black tracking-widest text-emerald-300">LIVE TACTICAL MAP</span>
+                            <button onClick={() => setShowMap(false)} className="ml-auto rounded border border-slate-700 px-3 py-1 text-[10px] font-bold text-slate-300 hover:bg-slate-800">CLOSE</button>
+                        </div>
+                        <div className="min-h-0 flex-1">
+                            <MapContainer center={[37.5407, -77.4360]} zoom={11} className="h-full w-full" zoomControl={true}>
+                                <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://carto.com/">CARTO</a>' />
+                                <ActiveCallMarkers calls={activeCalls} onCallClick={handleSelectCall} />
+                                <OfficerDistressMarker autoCenter={true} />
+                            </MapContainer>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ══ BOTTOM STATUS BAR ══ */}
             <div className="flex-none min-h-6 bg-[#0d1220] border-t border-[#1e2d4a] flex flex-wrap items-center px-3 py-1 gap-x-4 gap-y-1 text-[9px] text-slate-500 md:flex-nowrap md:whitespace-nowrap">
                 <span className="flex items-center gap-1.5"><Wifi className="h-3 w-3 text-emerald-400" /> CAD NETWORK: <span className="font-bold text-emerald-400">CONNECTED</span></span>
