@@ -19,8 +19,11 @@ function addMonths(dateStr, months) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+    const authorized = user.role === 'admin' || roles.has('full_access') || roles.has('trainer') || roles.has('hr') || roles.has('supervisor');
+    if (!authorized) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     const { certificate_id } = await req.json();
     if (!certificate_id) return Response.json({ error: 'certificate_id required' }, { status: 400 });
