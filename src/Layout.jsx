@@ -583,6 +583,9 @@ export default function Layout({ children, currentPageName }) {
       sessionStorage.setItem('bps-ranks-normalized', '1');
       base44.functions.invoke('normalizeLegacyRanks', {}).catch(() => sessionStorage.removeItem('bps-ranks-normalized'));
     }
+    if (user && hasFullAccess(user) && !localStorage.getItem('bps-location-log-purge-complete')) {
+      base44.functions.invoke('purgeLegacyLocationLogs', {}).then(() => localStorage.setItem('bps-location-log-purge-complete', '1')).catch(() => null);
+    }
   }, [user?.id]);
 
   useEffect(() => {
