@@ -513,14 +513,14 @@ export default function Schedule() {
           </div>
         )}
 
-        <div className="grid gap-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
           {weekDays.map((day) => {
             const daySchedules = getScheduleForDate(day);
             const ptoEntry = checkPTOForDate(day);
             const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
 
             return (
-              <Card key={day.toString()} className={`border-none shadow-lg ${isToday ? 'ring-2 ring-blue-400' : ''}`}>
+              <Card key={day.toString()} className={`min-w-0 border-none shadow-lg ${isToday ? 'ring-2 ring-blue-400' : ''}`}>
                 <CardHeader className={`${isToday ? 'bg-gradient-to-r from-blue-50 to-purple-50' : ptoEntry ? 'bg-green-50' : 'bg-slate-50'}`}>
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
