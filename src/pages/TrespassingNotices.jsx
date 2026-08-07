@@ -259,21 +259,32 @@ export default function TrespassingNotices() {
             const officerName = officer
               ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email
               : user?.email || 'Unknown Officer';
+            const emailSubjectName = String(notice.subject_name || '')
+              .replace(/^subject(?:\s+name)?\s*:\s*/i, '')
+              .trim();
+            const emailDuration = String(
+              notice.expiration_date
+                ? `Until ${format(new Date(notice.expiration_date), 'MMMM d, yyyy')}`
+                : (notice.duration || 'Permanent')
+            ).replace(/^duration\s*:\s*/i, '').trim();
+            const emailReason = String(notice.reason || '')
+              .replace(/^reason(?:\s+for\s+action)?\s*:\s*/i, '')
+              .trim();
 
             try {
               await base44.integrations.Core.SendEmail({
                 from_name: "Black Point Protection",
                 to: location.assigned_client_email,
-                subject: `🚫 New Trespass Notice - ${notice.subject_name} - ${location.site_name}`,
-                body: `NEW TRESPASS NOTICE ISSUED\n\n` +
+                subject: `🚫 New Trespass Notice - ${emailSubjectName} - ${location.site_name}`,
+                body: `A new trespass notice has been issued for your location.\n\n` +
                      `Site: ${location.site_name}\n` +
                      `Date: ${format(new Date(notice.notice_date), 'MMMM d, yyyy h:mm a')}\n` +
                      `Officer: ${officerName}\n` +
-                     `Subject: ${notice.subject_name}\n` +
-                     `Duration: ${notice.expiration_date ? `Until ${format(new Date(notice.expiration_date), 'MMMM d, yyyy')}` : (notice.duration || 'Permanent')}\n\n` +
-                     `REASON:\n${notice.reason}\n\n` +
-                     `View and manage this notice in your Black Point Portal Client Portal.\n` +
-                     `You can update the expiration date from the Trespass Management page.`
+                     `Subject: ${emailSubjectName}\n` +
+                     `Duration: ${emailDuration}\n\n` +
+                     `Reason for action:\n${emailReason}\n\n` +
+                     `View and manage this notice in the Black Point Client Portal. ` +
+                     `The expiration date can be updated from Trespass Management.`
               });
             } catch (error) {
               console.error('Error sending email to client:', error);
