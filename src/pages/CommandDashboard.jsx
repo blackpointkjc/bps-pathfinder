@@ -9,7 +9,7 @@ import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import FieldCallModal from '@/components/dispatch/FieldCallModal';
 import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
-import { Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX } from 'lucide-react';
+import { Volume2, VolumeX, Zap, MapPin, Users, TrendingUp, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
 
 const PRIORITY_CONFIG = {
     critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
@@ -283,6 +283,10 @@ function CommandDashboardInner() {
                             <><span className="w-1.5 h-1.5 rounded-full bg-slate-500" />AWAITING SYNC</>
                         )}
                     </div>
+                    <button onClick={() => navigate(`${createPageUrl('BOLOAlerts')}?new=1`)}
+                        className="h-7 flex items-center gap-1 px-2 bg-red-800 border border-red-600 text-white font-mono font-bold text-[10px] rounded hover:bg-red-700 transition-colors flex-shrink-0">
+                        <FileWarning className="w-3 h-3" />NEW BOLO
+                    </button>
                     <button onClick={() => navigate(createPageUrl('DispatchCenter'))}
                         className="h-7 flex items-center gap-1 px-2 bg-gold text-black font-mono font-bold text-[10px] rounded hover:bg-yellow-400 transition-colors flex-shrink-0">
                         <Zap className="w-3 h-3" />DISPATCH CTR
@@ -542,6 +546,7 @@ function CommandDashboardInner() {
                         <div className="p-2 grid grid-cols-2 gap-1.5">
                             {[
                                 { label: 'DISPATCH CTR', icon: Zap, page: 'DispatchCenter', color: 'border-gold/40 text-gold hover:bg-gold/10' },
+                                { label: 'BOLO / ALERTS', icon: FileWarning, page: 'BOLOAlerts', color: 'border-red-500/40 text-red-400 hover:bg-red-500/10' },
                                 { label: 'LIVE MAP', icon: MapPin, page: 'Navigation', color: 'border-blue-500/40 text-blue-400 hover:bg-blue-500/10' },
                                 ...(isAdmin ? [
                                     { label: 'PERSONNEL', icon: Users, page: 'Personnel', color: 'border-green-500/40 text-green-400 hover:bg-green-500/10' },
