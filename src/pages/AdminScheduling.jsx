@@ -3585,25 +3585,30 @@ Return ONLY a JSON array of suggestion objects with this structure:
             </div>
 
             {!newShift.is_open && (
-              <div className="space-y-2">
-                <Label htmlFor="officer">Officer *</Label>
-                <Select
-                  value={newShift.officer_email}
-                  onValueChange={(value) => setNewShift({ ...newShift, officer_email: value })}
-                >
-                  <SelectTrigger id="officer">
-                    <SelectValue placeholder="Select officer..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeOfficers.map((officer) => (
-                      <SelectItem key={officer.email} value={officer.email}>
-                        {officer.first_name && officer.last_name 
-                          ? `${officer.first_name} ${officer.last_name}` 
-                          : officer.full_name || officer.email}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="officer">Primary Officer *</Label>
+                  <Select value={newShift.officer_email} onValueChange={(value) => setNewShift({ ...newShift, officer_email: value, partner_officer_email: newShift.partner_officer_email === value ? '' : newShift.partner_officer_email })}>
+                    <SelectTrigger id="officer"><SelectValue placeholder="Select primary officer..." /></SelectTrigger>
+                    <SelectContent>
+                      {activeOfficers.map((officer) => (
+                        <SelectItem key={officer.email} value={officer.email}>{officer.first_name && officer.last_name ? `${officer.first_name} ${officer.last_name}` : officer.full_name || officer.email}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="partner_officer">Partner Officer (Optional)</Label>
+                  <Select value={newShift.partner_officer_email || ''} onValueChange={(value) => setNewShift({ ...newShift, partner_officer_email: value })}>
+                    <SelectTrigger id="partner_officer"><SelectValue placeholder="Select partner officer..." /></SelectTrigger>
+                    <SelectContent>
+                      {activeOfficers.filter(o => o.email !== newShift.officer_email).map((officer) => (
+                        <SelectItem key={officer.email} value={officer.email}>{officer.first_name && officer.last_name ? `${officer.first_name} ${officer.last_name}` : officer.full_name || officer.email}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500">The partner receives the same shift and can be assigned to the same fleet vehicle.</p>
+                </div>
               </div>
             )}
 
