@@ -650,6 +650,12 @@ export default function Schedule() {
                                 </div>
                               </div>
                             </div>
+                            {schedule.partner_officer_email && (
+                              <div className="mt-3 rounded border border-blue-700/50 bg-blue-950/30 p-2">
+                                <div className="flex items-center gap-1 text-xs font-bold text-blue-300"><Users className="h-3.5 w-3.5" />Partner Officer</div>
+                                <div className="mt-1 text-sm font-semibold text-white">{getUserName(schedule.partner_officer_email)}</div>
+                              </div>
+                            )}
                             {(() => {
                               const vehicle = vehicleAssignments.find(a =>
                                 a.assignment_date === schedule.shift_date &&
