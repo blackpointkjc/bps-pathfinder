@@ -41,9 +41,22 @@ export default function VATrespassNotices() {
     notice_date: new Date().toISOString().slice(0, 16),
     location: "",
     subject_name: "",
+    subject_first_name: "",
+    subject_middle_name: "",
+    subject_last_name: "",
     subject_description: "",
     subject_id: "",
+    subject_id_state: "",
+    subject_id_expiration: "",
     subject_dob: "",
+    subject_race: "",
+    subject_sex: "unknown",
+    subject_height_ft: "",
+    subject_height_in: "",
+    subject_weight: "",
+    subject_eyes: "",
+    subject_hair: "",
+    subject_phone: "",
     subject_address: "",
     subject_city: "",
     subject_state: "",
@@ -205,9 +218,22 @@ export default function VATrespassNotices() {
       notice_date: new Date().toISOString().slice(0, 16),
       location: currentSiteName || "",
       subject_name: "",
+      subject_first_name: "",
+      subject_middle_name: "",
+      subject_last_name: "",
       subject_description: "",
       subject_id: "",
+      subject_id_state: "",
+      subject_id_expiration: "",
       subject_dob: "",
+      subject_race: "",
+      subject_sex: "unknown",
+      subject_height_ft: "",
+      subject_height_in: "",
+      subject_weight: "",
+      subject_eyes: "",
+      subject_hair: "",
+      subject_phone: "",
       subject_address: "",
       subject_city: "",
       subject_state: "",
@@ -373,9 +399,22 @@ export default function VATrespassNotices() {
       notice_date: new Date(notice.notice_date).toISOString().slice(0, 16),
       location: notice.location,
       subject_name: notice.subject_name,
+      subject_first_name: notice.subject_first_name || String(notice.subject_name || '').split(' ')[0] || '',
+      subject_middle_name: notice.subject_middle_name || '',
+      subject_last_name: notice.subject_last_name || String(notice.subject_name || '').split(' ').slice(1).join(' ') || '',
       subject_description: notice.subject_description || "",
       subject_id: notice.subject_id || "",
+      subject_id_state: notice.subject_id_state || "",
+      subject_id_expiration: notice.subject_id_expiration || "",
       subject_dob: notice.subject_dob || "",
+      subject_race: notice.subject_race || "",
+      subject_sex: notice.subject_sex || "unknown",
+      subject_height_ft: notice.subject_height_ft || "",
+      subject_height_in: notice.subject_height_in || "",
+      subject_weight: notice.subject_weight || "",
+      subject_eyes: notice.subject_eyes || "",
+      subject_hair: notice.subject_hair || "",
+      subject_phone: notice.subject_phone || "",
       subject_address: notice.subject_address || "",
       subject_city: notice.subject_city || "",
       subject_state: notice.subject_state || "",
@@ -735,9 +774,24 @@ export default function VATrespassNotices() {
                   <IDScanner
                     onDataExtracted={(data) => {
                       const updates = {};
+                      if (data.first_name) updates.subject_first_name = data.first_name;
+                      if (data.middle_name) updates.subject_middle_name = data.middle_name;
+                      if (data.last_name) updates.subject_last_name = data.last_name;
                       if (data.full_name) updates.subject_name = data.full_name;
+                      else if (data.first_name || data.last_name) updates.subject_name = [data.first_name, data.middle_name, data.last_name].filter(Boolean).join(' ');
                       if (data.id_number) updates.subject_id = data.id_number;
+                      if (data.state) updates.subject_id_state = data.state;
+                      if (data.expiration_date) updates.subject_id_expiration = data.expiration_date;
                       if (data.date_of_birth) updates.subject_dob = data.date_of_birth;
+                      if (data.race) updates.subject_race = data.race;
+                      if (data.sex) updates.subject_sex = String(data.sex).toLowerCase();
+                      if (data.weight) updates.subject_weight = String(data.weight).replace(/[^\d]/g, '');
+                      if (data.eyes) updates.subject_eyes = data.eyes;
+                      if (data.hair) updates.subject_hair = data.hair;
+                      if (data.height) {
+                        const heightMatch = String(data.height).match(/(\d+)['\-]?(\d+)?/);
+                        if (heightMatch) { updates.subject_height_ft = heightMatch[1]; updates.subject_height_in = heightMatch[2] || ''; }
+                      }
                       if (data.address) updates.subject_address = data.address;
                       if (data.city) updates.subject_city = data.city;
                       if (data.state) updates.subject_state = data.state;
