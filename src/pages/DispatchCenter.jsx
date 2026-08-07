@@ -516,7 +516,7 @@ export default function DispatchCenter() {
                 <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
 
                     {/* ═══ LEFT: ACTIVE CALLS TABLE ═══ */}
-                    <div className="flex min-h-[260px] w-full flex-col border-b border-[#1e2d4a] md:min-h-0 md:w-[350px] md:flex-none md:border-b-0 md:border-r xl:w-[380px]">
+                    <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 flex-col border-b border-[#1e2d4a] md:flex md:min-h-0 md:w-[350px] md:flex-none md:border-b-0 md:border-r xl:w-[380px]`}> 
                         {/* Police Calls */}
                         <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />
@@ -563,9 +563,9 @@ export default function DispatchCenter() {
                     </div>
 
                     {/* ═══ CENTER: MAP + CALL DETAIL ═══ */}
-                    <div className="w-full md:flex-1 min-w-0 min-h-[520px] md:min-h-0 flex flex-col border-b md:border-b-0 md:border-r border-[#1e2d4a]">
+                    <div className={`${mobileView === 'detail' || mobileView === 'map' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 min-w-0 flex-col border-b border-[#1e2d4a] md:flex md:min-h-0 md:border-b-0 md:border-r">
                         {/* Call Detail */}
-                        <div className="flex-none border-b border-[#1e2d4a]" style={{minHeight: 0}}>
+                        <div className={`${mobileView === 'map' ? 'hidden' : 'block'} flex-none border-b border-[#1e2d4a] md:block`} style={{minHeight: 0}}>
                             {selectedCall ? (
                                 <div className="overflow-auto" style={{maxHeight: '340px'}}>
                                     <div className="px-3 md:px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center gap-2 md:gap-3">
@@ -639,8 +639,8 @@ export default function DispatchCenter() {
                         </div>
 
                         {/* MAP */}
-                        {showMap && (
-                            <div className="flex-1 min-h-0 flex flex-col">
+                        {mobileView === 'map' && (
+                            <div className="flex min-h-0 flex-1 flex-col md:hidden">
                                 <div className="flex-none px-3 py-1 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                     <span className="text-[10px] font-bold text-emerald-400 tracking-widest">LIVE TACTICAL MAP</span>
@@ -668,9 +668,9 @@ export default function DispatchCenter() {
                     </div>
 
                     {/* ═══ RIGHT: UNITS ═══ */}
-                    <div className="flex min-h-[320px] w-full flex-col bg-[#08111b] md:min-h-0 md:w-64 md:flex-none xl:w-72">
+                    <div className={`${mobileView === 'assignment' || mobileView === 'units' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 flex-col bg-[#08111b] md:flex md:min-h-0 md:w-64 md:flex-none xl:w-72">
                         {/* Unit Assignment */}
-                        <div className="flex-none border-b border-[#1e2d4a]">
+                        <div className={`${mobileView === 'units' ? 'hidden' : 'block'} flex-none border-b border-[#1e2d4a] md:block`}>
                             <div className="px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                                 <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
                                 <span className="text-[10px] font-bold text-blue-400 tracking-widest">UNIT ASSIGNMENT</span>
@@ -685,7 +685,7 @@ export default function DispatchCenter() {
                         </div>
 
                         {/* Shared CAD Unit Status Board */}
-                        <div className="flex-1 min-h-0 flex flex-col">
+                        <div className={`${mobileView === 'assignment' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col md:flex`}>
                             <CADUnitStatusBoard units={statusUnits} compact />
                         </div>
                     </div>
