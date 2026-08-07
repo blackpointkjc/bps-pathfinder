@@ -50,6 +50,29 @@ export default function Schedule() {
     refetchInterval: 10000, // Refetch every 10 seconds
   });
 
+  const { data: activeFleetVehicles = [] } = useQuery({
+    queryKey: ['activeFleetVehicles'],
+    queryFn: async () => {
+      const rows = await base44.entities.Vehicle.list('vehicle_id');
+      return rows.filter(v => v.status === 'Active');
+    },
+    enabled: !!user,
+  });
+
+  const { data: companySchedules = [] } = useQuery({
+    queryKey: ['companySchedulesForFleet'],
+    queryFn: () => base44.entities.Schedule.list('-shift_date'),
+    enabled: !!user,
+    refetchInterval: 10000,
+  });
+
+  const { data: companyUsers = [] } = useQuery({
+    queryKey: ['companyUsersForFleet'],
+    queryFn: () => base44.entities.User.list(),
+    enabled: !!user,
+    staleTime: 60000,
+  });
+
   const { data: vehicleAssignments = [] } = useQuery({
     queryKey: ['myVehicleAssignments', user?.email],
     queryFn: async () => {
@@ -200,6 +223,49 @@ export default function Schedule() {
     await queryClient.invalidateQueries({ queryKey: ['schedules'] });
     await queryClient.invalidateQueries({ queryKey: ['myApprovedPTO'] });
     await queryClient.invalidateQueries({ queryKey: ['openShifts'] });
+    await queryClient.invalidateQueries({ queryKey: ['myVehicleAssignments'] });
+  };
+
+  const getUserName = (email) => {
+    const person = companyUsers.find(u => u.email === email);
+    return person ? `${person.rank || 'Officer'} ${person.last_name || person.first_name || ''}`.trim() : email;
+  };
+
+  const assignFleetVehicleToShift = async (schedule, selectedVehicleId) => {
+    if (!selectedVehicleId) return;
+    const vehicle = activeFleetVehicles.find(v => v.id === selectedVehicleId);
+    if (!vehicle) return;
+    const partner = companySchedules.find(s =>
+      s.id !== schedule.id &&
+      s.shift_date === schedule.shift_date &&
+      s.location === schedule.location &&
+      s.start_time === schedule.start_time &&
+      s.end_time === schedule.end_time &&
+      s.officer_email && s.officer_email !== 'OPEN'
+    );
+    const existing = vehicleAssignments.find(a =>
+      a.assignment_date === schedule.shift_date &&
+      a.primary_officer_email === user?.email &&
+      a.start_time === schedule.start_time
+    );
+    const payload = {
+      assignment_date: schedule.shift_date,
+      start_time: schedule.start_time,
+      end_time: schedule.end_time,
+      vehicle_id: vehicle.id,
+      vehicle_label: vehicle.vehicle_id,
+      primary_officer_email: user.email,
+      primary_officer_name: getUserName(user.email),
+      partner_officer_email: partner?.officer_email || '',
+      partner_officer_name: partner ? getUserName(partner.officer_email) : '',
+      location: schedule.location || '',
+      status: 'scheduled',
+      notes: existing?.notes || '',
+      created_by_email: user.email
+    };
+    if (existing?.id) await base44.entities.VehicleAssignment.update(existing.id, payload);
+    else await base44.entities.VehicleAssignment.create(payload);
+    await queryClient.invalidateQueries({ queryKey: ['myVehicleAssignments'] });
   };
 
   const printSchedule = () => {
