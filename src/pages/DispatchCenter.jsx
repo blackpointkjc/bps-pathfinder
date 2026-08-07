@@ -427,8 +427,14 @@ export default function DispatchCenter() {
                         }`}>
                         {showPriorCalls ? 'ACTIVE' : 'PRIOR'}
                     </button>
-                    <button onClick={() => navigate(`${createPageUrl('BOLOAlerts')}?new=1`)}
-                        className="flex items-center gap-1 px-2 py-1 border border-amber-600/60 text-amber-400 hover:text-white rounded text-[10px]"><Megaphone className="w-2.5 h-2.5" /> NEW BOLO</button>
+                    <button onClick={() => {
+                        const params = new URLSearchParams({ new: '1' });
+                        if (selectedCall?.id) {
+                            params.set('call_id', selectedCall.id);
+                            params.set('call_number', selectedCall.agency_cad_number || selectedCall.bps_reference || selectedCall.call_id || selectedCall.id);
+                        }
+                        navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);
+                    }} className="flex items-center gap-1 px-2 py-1 border border-amber-600/60 text-amber-400 hover:text-white rounded text-[10px]"><Megaphone className="w-2.5 h-2.5" /> NEW BOLO</button>
                     <button onClick={() => setShowMessaging(!showMessaging)}
                         className="flex items-center gap-1 px-2 py-1 border border-slate-600 text-slate-400 hover:text-white rounded text-[10px]"><MessageSquarePlus className="w-2.5 h-2.5" /> MSG</button>
                     {currentUser?.role === 'admin' && (
