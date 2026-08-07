@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { addDays, format, startOfWeek } from 'date-fns';
+import { addDays, format, startOfDay } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,7 @@ const hours = (start, end) => {
 
 export default function FleetVehicleAssignments() {
   const qc = useQueryClient();
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [dayOffset, setDayOffset] = useState(0);
   const [selectedShiftId, setSelectedShiftId] = useState('');
   const [vehicleId, setVehicleId] = useState('');
   const [notes, setNotes] = useState('');
@@ -29,12 +29,12 @@ export default function FleetVehicleAssignments() {
   const { data: schedules=[] } = useQuery({ queryKey:['fleetSchedules'], queryFn:()=>base44.entities.Schedule.list('-shift_date') });
   const { data: assignments=[] } = useQuery({ queryKey:['fleetAssignments'], queryFn:()=>base44.entities.VehicleAssignment.list('-assignment_date') });
 
-  const weekStart = addDays(startOfWeek(new Date(), {weekStartsOn:0}), weekOffset*7);
-  const dates = Array.from({length:7},(_,i)=>format(addDays(weekStart,i),'yyyy-MM-dd'));
+  const windowStart = addDays(startOfDay(new Date()), dayOffset);
+  const dates = Array.from({length:3},(_,i)=>format(addDays(windowStart,i),'yyyy-MM-dd')); 
   const eligibleUsers = users.filter(u => !u.termination_date && (u.additional_roles || []).includes('cad_access') && (u.additional_roles || []).includes('officer'));
-  const weekShifts = schedules.filter(s => dates.includes(s.shift_date) && s.officer_email && s.officer_email !== 'OPEN' && !s.is_open);
-  const teamShifts = weekShifts.filter(s => !s.partner_officer_email || String(s.officer_email).localeCompare(String(s.partner_officer_email)) <= 0);
-  const myShifts = isAdmin ? teamShifts : weekShifts.filter(s=>s.officer_email===user?.email);
+  const windowShifts = schedules.filter(s => dates.includes(s.shift_date) && s.officer_email && s.officer_email !== 'OPEN' && !s.is_open);
+  const teamShifts = windowShifts.filter(s => !s.partner_officer_email || String(s.officer_email).localeCompare(String(s.partner_officer_email)) <= 0);
+  const myShifts = isAdmin ? teamShifts : windowShifts.filter(s=>s.officer_email===user?.email);
   const availableVehicles = vehicles.filter(v => v.status === 'Active');
   const maintenanceVehicles = vehicles.filter(v => v.status === 'Maintenance' || v.status === 'Out of Service');
   const selectedShift = schedules.find(s=>s.id===selectedShiftId);
@@ -42,8 +42,8 @@ export default function FleetVehicleAssignments() {
   const getName = email => { const u=users.find(x=>x.email===email); return u ? `${u.rank || 'Officer'} ${u.last_name || u.first_name}` : email; };
   const partnerForShift = shift => {
     if (!shift) return null;
-    if (shift.partner_officer_email) return weekShifts.find(s => s.officer_email === shift.partner_officer_email) || users.find(u => u.email === shift.partner_officer_email);
-    return weekShifts.find(s => s.id !== shift.id && s.shift_date === shift.shift_date && s.location === shift.location && s.start_time === shift.start_time && s.end_time === shift.end_time);
+    if (shift.partner_officer_email) return windowShifts.find(s => s.officer_email === shift.partner_officer_email) || users.find(u => u.email === shift.partner_officer_email);
+    return windowShifts.find(s => s.id !== shift.id && s.shift_date === shift.shift_date && s.location === shift.location && s.start_time === shift.start_time && s.end_time === shift.end_time);
   };
 
   const editAssignment = (assignment) => {
@@ -86,7 +86,7 @@ export default function FleetVehicleAssignments() {
     <div className="mx-auto max-w-[1500px] space-y-4">
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 pb-3">
         <Car className="h-7 w-7 text-amber-400"/><div><h1 className="text-xl font-black tracking-wide">FLEET VEHICLE ASSIGNMENT</h1><p className="text-xs text-slate-500">Vehicle assignments are separate from officer unit numbers.</p></div>
-        <div className="ml-auto flex items-center gap-2"><Button variant="outline" size="sm" onClick={()=>setWeekOffset(v=>v-1)}><ChevronLeft className="h-4 w-4"/></Button><Badge variant="outline">{format(weekStart,'MMM d')} - {format(addDays(weekStart,6),'MMM d, yyyy')}</Badge><Button variant="outline" size="sm" onClick={()=>setWeekOffset(v=>v+1)}><ChevronRight className="h-4 w-4"/></Button></div>
+        <div className="ml-auto flex flex-wrap items-center gap-2"><Button variant="outline" size="sm" onClick={()=>setDayOffset(v=>v-3)}><ChevronLeft className="h-4 w-4"/></Button><Badge variant="outline">{format(windowStart,'MMM d')} - {format(addDays(windowStart,2),'MMM d, yyyy')}</Badge><Button variant="outline" size="sm" onClick={()=>setDayOffset(0)}>TODAY</Button><Button variant="outline" size="sm" onClick={()=>setDayOffset(v=>v+3)}><ChevronRight className="h-4 w-4"/></Button></div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
@@ -100,9 +100,9 @@ export default function FleetVehicleAssignments() {
           {maintenanceVehicles.length>0 && <div className="rounded border border-red-900 bg-red-950/20 p-2"><div className="mb-1 flex items-center gap-1 text-[10px] font-bold text-red-300"><Wrench className="h-3 w-3"/>UNAVAILABLE - MAINTENANCE / OOS</div>{maintenanceVehicles.map(v=><div key={v.id} className="text-[10px] text-slate-400">{v.vehicle_id} · {v.status}</div>)}</div>}
         </CardContent></Card>
 
-        <div className="overflow-x-auto rounded border border-slate-800 bg-slate-900">
-          <div className="grid min-w-[980px] grid-cols-7 border-b border-slate-800">{dates.map(d=><div key={d} className="border-r border-slate-800 p-2 text-center last:border-r-0"><div className="text-xs font-black">{format(new Date(d+'T12:00:00'),'EEE')}</div><div className="text-[10px] text-slate-500">{format(new Date(d+'T12:00:00'),'MMM d')}</div></div>)}</div>
-          <div className="grid min-w-[980px] grid-cols-7 min-h-[520px]">{dates.map(d=><div key={d} className="space-y-2 border-r border-slate-800 p-2 last:border-r-0">{assignments.filter(a=>a.assignment_date===d && (isAdmin || a.primary_officer_email===user?.email || a.partner_officer_email===user?.email)).map(a=><div key={a.id} onClick={()=>isAdmin&&editAssignment(a)} className={`rounded border border-amber-700/50 bg-amber-950/20 p-2 text-[10px] ${isAdmin?'cursor-pointer hover:border-amber-400 hover:bg-amber-950/40':''}`}><div className="flex items-start gap-1"><div className="min-w-0 flex-1"><div className="font-black text-amber-300">{a.vehicle_label}</div><div>{a.start_time}-{a.end_time}</div><div>{a.primary_officer_name}</div>{a.partner_officer_name && <div className="flex items-center gap-1 text-blue-300"><Users className="h-3 w-3"/>{a.partner_officer_name}</div>}<div className="truncate text-slate-500">{a.location}</div></div>{isAdmin&&<div className="flex gap-1"><button title="Edit assignment" onClick={e=>{e.stopPropagation();editAssignment(a)}} className="rounded p-1 text-blue-300 hover:bg-blue-900/40"><Pencil className="h-3 w-3"/></button><button title="Remove vehicle assignment" onClick={e=>{e.stopPropagation();removeAssignment(a)}} className="rounded p-1 text-red-300 hover:bg-red-900/40"><Trash2 className="h-3 w-3"/></button></div>}</div></div>)}</div>)}</div>
+        <div className="rounded border border-slate-800 bg-slate-900 overflow-hidden">
+          <div className="grid grid-cols-1 border-b border-slate-800 sm:grid-cols-3">{dates.map((d,index)=><div key={d} className={`border-b border-slate-800 p-3 text-center sm:border-b-0 sm:border-r last:border-r-0 ${index===0?'bg-blue-950/20':''}`}><div className="text-sm font-black">{format(new Date(d+'T12:00:00'),'EEE')}</div><div className="text-xs text-slate-400">{format(new Date(d+'T12:00:00'),'MMM d')}</div>{index===0&&dayOffset===0&&<div className="mt-1 text-[9px] font-bold text-blue-300">TODAY</div>}</div>)}</div>
+          <div className="grid min-h-[460px] grid-cols-1 sm:grid-cols-3">{dates.map((d,index)=><div key={d} className={`space-y-3 border-b border-slate-800 p-3 sm:border-b-0 sm:border-r last:border-r-0 ${index===0?'bg-slate-950/25':''}`}>{assignments.filter(a=>a.assignment_date===d && (isAdmin || a.primary_officer_email===user?.email || a.partner_officer_email===user?.email)).map(a=><div key={a.id} onClick={()=>isAdmin&&editAssignment(a)} className={`rounded-lg border border-amber-700/50 bg-amber-950/20 p-3 text-xs ${isAdmin?'cursor-pointer hover:border-amber-400 hover:bg-amber-950/40':''}`}><div className="flex items-start gap-2"><div className="min-w-0 flex-1"><div className="text-sm font-black text-amber-300">{a.vehicle_label}</div><div className="mt-1 text-slate-200">{a.start_time}-{a.end_time}</div><div className="mt-1 font-semibold text-white">{a.primary_officer_name}</div>{a.partner_officer_name && <div className="mt-1 flex items-center gap-1 text-blue-300"><Users className="h-3 w-3"/>{a.partner_officer_name}</div>}<div className="mt-1 break-words text-slate-500">{a.location}</div></div>{isAdmin&&<div className="flex gap-1"><button title="Edit assignment" onClick={e=>{e.stopPropagation();editAssignment(a)}} className="rounded p-1 text-blue-300 hover:bg-blue-900/40"><Pencil className="h-3 w-3"/></button><button title="Remove vehicle assignment" onClick={e=>{e.stopPropagation();removeAssignment(a)}} className="rounded p-1 text-red-300 hover:bg-red-900/40"><Trash2 className="h-3 w-3"/></button></div>}</div></div>)}{assignments.filter(a=>a.assignment_date===d && (isAdmin || a.primary_officer_email===user?.email || a.partner_officer_email===user?.email)).length===0&&<div className="rounded border border-dashed border-slate-800 py-12 text-center text-xs text-slate-600">NO VEHICLE ASSIGNMENTS</div>}</div>)}</div>
         </div>
       </div>
     </div>
