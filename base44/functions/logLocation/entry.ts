@@ -35,34 +35,9 @@ Deno.serve(async (req) => {
             base44.auth.updateMe(locationFields)
         ]);
 
-        // Fire-and-forget: create location log + geocode asynchronously (does NOT block the response)
-        (async () => {
-            let address = '';
-            try {
-                const geoResponse = await fetch(
-                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
-                    { headers: { 'User-Agent': 'BPS-Dispatch-CAD/1.0' }, signal: AbortSignal.timeout(3000) }
-                );
-                const geoData = await geoResponse.json();
-                address = geoData.display_name || '';
-            } catch (_) {}
-
-            try {
-                await base44.asServiceRole.entities.LocationLog.create({
-                    user_id: user.id,
-                    user_name: user.full_name,
-                    unit_number: user.unit_number || '',
-                    latitude,
-                    longitude,
-                    address,
-                    shift_date: new Date().toISOString().split('T')[0],
-                    status: status || 'Active',
-                    speed: speed || 0
-                });
-            } catch (_) {}
-        })();
-
-        console.log(`[logLocation] DB updated for user=${user.id}`);
+        // Live CAD location is stored on the User record only. Historical LocationLog writes were intentionally removed
+        // because they created an extremely large duplicate location-history table without being needed by live CAD.
+        console.log(`[logLocation] live location updated for user=${user.id}`);
         return Response.json({ success: true, message: 'Location logged', latitude, longitude, last_updated: now });
     } catch (error) {
         console.error('Error logging location:', error);
