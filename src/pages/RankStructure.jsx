@@ -74,6 +74,5 @@ export default function RankStructure(){
     <div className="relative py-3"><div className="mx-auto h-8 w-px bg-amber-500/50"/><div className="mx-auto h-px w-1/2 bg-amber-500/40"/><div className="grid grid-cols-2"><div className="mx-auto h-7 w-px bg-amber-500/40"/><div className="mx-auto h-7 w-px bg-amber-500/40"/></div></div>
 
     <div className="grid gap-5 xl:grid-cols-2"><PlatoonBranch letter="A" users={active} allUsers={active}/><PlatoonBranch letter="B" users={active} allUsers={active}/></div>
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 text-xs text-slate-400"><Users className="mr-2 inline h-4 w-4"/>The reporting chain is maintained from Admin → Platoon & Chain Assignments. Colonel, Lt Colonel, and Major remain above both platoons rather than belonging to only one branch.</div>
   </div></div>;
 }
