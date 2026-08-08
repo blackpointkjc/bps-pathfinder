@@ -30,12 +30,6 @@ export default function AdminOfficerManagement() {
   const [preferredLocations, setPreferredLocations] = useState([]);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
-  const [showAddAssignment, setShowAddAssignment] = useState(false);
-  const [editingAssignment, setEditingAssignment] = useState(null);
-  const [assignmentForm, setAssignmentForm] = useState({
-    site_name: "", shift_type: "evening", default_start_time: "18:00",
-    default_end_time: "04:00", is_primary: true, active: true,
-  });
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
