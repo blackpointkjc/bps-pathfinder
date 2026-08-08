@@ -54,7 +54,7 @@ export default function AdminPTOApproval() {
     },
     enabled: hasHRAccess,
     initialData: [],
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const pendingRequests = allPTORequests.filter(request => String(request.status || '').toLowerCase() === 'pending');
