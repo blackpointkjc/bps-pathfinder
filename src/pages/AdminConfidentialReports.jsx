@@ -19,8 +19,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
-
 export default function AdminConfidentialReports() {
   const [selectedReport, setSelectedReport] = useState(null);
   const [showDialog, setShowDialog] = useState(false);
@@ -116,9 +114,9 @@ export default function AdminConfidentialReports() {
     return admin.full_name || 'Admin';
   };
 
-  const getOfficerName = (email) => {
-    if (!email || !allUsers || allUsers.length === 0) return 'Officer';
-    const officer = allUsers.find(u => u.email === email);
+  const getOfficerName = (officerRef) => {
+    if (!officerRef || !allUsers || allUsers.length === 0) return 'Officer';
+    const officer = allUsers.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
     if (!officer) return 'Officer';
     if (officer.first_name && officer.last_name) {
       return `${officer.first_name} ${officer.last_name}`;
@@ -150,7 +148,7 @@ export default function AdminConfidentialReports() {
   };
 
   const printReport = (report) => {
-    const officerName = report.anonymous ? "ANONYMOUS SUBMISSION" : getOfficerName(report.created_by);
+    const officerName = report.anonymous ? "ANONYMOUS SUBMISSION" : getOfficerName(report.created_by_id || report.created_by);
     const reportTypeLabels = {
       workplace_concern: "Workplace Concern",
       safety_issue: "Safety Issue",
@@ -612,7 +610,7 @@ export default function AdminConfidentialReports() {
                             ) : (
                               <Badge variant="outline" className="bg-green-50 text-green-800">
                                 <User className="w-3 h-3 mr-1" />
-                                {getOfficerName(report.created_by)}
+                                {getOfficerName(report.created_by_id || report.created_by)}
                               </Badge>
                             )}
                           </div>
@@ -687,7 +685,7 @@ export default function AdminConfidentialReports() {
                             ) : (
                               <Badge variant="outline" className="bg-green-50 text-green-800">
                                 <User className="w-3 h-3 mr-1" />
-                                {getOfficerName(report.created_by)}
+                                {getOfficerName(report.created_by_id || report.created_by)}
                               </Badge>
                             )}
                           </div>
@@ -750,7 +748,7 @@ export default function AdminConfidentialReports() {
                         Anonymous
                       </span>
                     ) : (
-                      getOfficerName(selectedReport.created_by)
+                      getOfficerName(selectedReport.created_by_id || selectedReport.created_by)
                     )}
                   </p>
                 </div>
