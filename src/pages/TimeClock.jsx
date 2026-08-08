@@ -786,8 +786,6 @@ export default function TimeClock() {
                     onValueChange={(value) => {
                       setSelectedLocation(value);
                       setGeoError(null);
-                                      if (!isAdmin) {
-                                        }
                     }}
                     required
                   >
