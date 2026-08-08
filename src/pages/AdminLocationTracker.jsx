@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, MapPin, Clock, Activity, Users, History, Calendar as CalendarIcon, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -703,8 +703,28 @@ export default function AdminLocationTracker() {
                       weight={4}
                       opacity={0.8}
                     />
+
+                    {/* Every one-minute historical ping is visible and individually inspectable. */}
+                    {locationHistory.map((ping, index) => (
+                      <CircleMarker
+                        key={`${ping.id || ping.timestamp}-${index}`}
+                        center={[ping.latitude, ping.longitude]}
+                        radius={5}
+                        pathOptions={{ color: '#fbbf24', fillColor: '#fbbf24', fillOpacity: 0.9, weight: 2 }}
+                      >
+                        <Popup>
+                          <div className="p-2">
+                            <p className="font-bold text-slate-900">PING #{index + 1}</p>
+                            <p className="text-sm font-semibold">{format(new Date(ping.timestamp), 'h:mm:ss a')}</p>
+                            <p className="text-xs text-slate-600 mt-1">{ping.location || 'Signed In'}</p>
+                            <p className="text-xs text-slate-500">GPS ±{Math.round(Number(ping.accuracy || 0))}m</p>
+                            <p className="text-xs text-slate-500 font-mono">{Number(ping.latitude).toFixed(6)}, {Number(ping.longitude).toFixed(6)}</p>
+                          </div>
+                        </Popup>
+                      </CircleMarker>
+                    ))}
                     
-                    {/* Clock In marker (green) */}
+                    {/* First ping marker (green) */}
                     <Marker 
                       position={[locationHistory[0].latitude, locationHistory[0].longitude]}
                       icon={clockInIcon}
