@@ -100,10 +100,15 @@ Deno.serve(async (req) => {
     // corrected even when command staff are not logged in.
     const users = await base44.asServiceRole.entities.User.list(undefined, 2000);
     const now = Date.now();
-    const stale = (users || []).filter((officer: any) => {
-      if (!isCadOfficer(officer) || lower(officer.status) !== 'available') return false;
-      const sinceRaw = officer.status_since || officer.last_updated || officer.updated_date;
-      const since = sinceRaw ? new Date(sinceRaw).getTime() : NaN;
+    const availableOfficers = (users || []).filter((officer: any) => isCadOfficer(officer) && lower(officer.status) === 'available');
+    for (const officer of availableOfficers) {
+      if (!officer.status_since) {
+        await base44.asServiceRole.entities.User.update(officer.id, { status_since: new Date().toISOString() }).catch(() => null);
+      }
+    }
+    const stale = availableOfficers.filter((officer: any) => {
+      if (!officer.status_since) return false;
+      const since = new Date(officer.status_since).getTime();
       return Number.isFinite(since) && now - since >= AVAILABLE_LIMIT_MS;
     });
 
