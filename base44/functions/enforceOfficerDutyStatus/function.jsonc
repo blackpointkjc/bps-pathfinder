@@ -1,0 +1,17 @@
+{
+  "name": "enforceOfficerDutyStatus",
+  "entrypoint": "entry.ts",
+  "automations": [
+    {
+      "name": "Enforce stale officer CAD status",
+      "description": "Every minute, force CAD officers Out of Service after 12 hours and 1 minute continuously Available and alert Supervisor Chat.",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "simple",
+      "repeat_unit": "minutes",
+      "repeat_interval": 1,
+      "is_active": true,
+      "function_args": { "action": "sweep" }
+    }
+  ]
+}
