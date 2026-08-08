@@ -615,15 +615,15 @@ export default function TimeClock() {
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-6 h-6 text-red-600 mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-sm font-bold text-red-900 mb-2">CRITICAL: Do NOT Close This App While Clocked In</p>
+                <p className="text-sm font-bold text-red-900 mb-2">Keep Pathfinder Available While Clocked In</p>
                 <p className="text-sm text-red-800 font-semibold">
-                  Closing or minimizing this app while on duty WILL AUTOMATICALLY CLOCK YOU OUT and may result in disciplinary action.
+                  Closing the app or disabling location permission can interrupt live GPS updates and create gaps in your location history.
                 </p>
                 <p className="text-sm text-red-800 mt-2">
-                  You must keep the app open and running in your browser at all times during your shift. Your location is being tracked continuously for safety and accountability purposes.
+                  Pathfinder will warn you before closing while you are clocked in. Your time entry remains active until you clock out or an authorized workflow closes it.
                 </p>
                 <p className="text-sm text-red-700 mt-2 font-semibold">
-                  If you need to use other applications, open them in a new tab or window, but keep this tab active in your browser.
+                  Keep location services enabled so geofence, safety, and historical tracking remain accurate.
                 </p>
               </div>
             </div>
@@ -685,7 +685,7 @@ export default function TimeClock() {
                       <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
                         <p className="flex items-start gap-2 text-xs font-semibold leading-5 text-red-200">
                           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                          WARNING: Closing this app will automatically clock you out.
+                          Closing the app can interrupt live GPS updates. Clock out normally before ending your shift.
                         </p>
                       </div>
                     </>
