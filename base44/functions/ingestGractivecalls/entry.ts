@@ -185,6 +185,114 @@ function changed(existing: any, incoming: any) {
   return fields.some(field => existing?.[field] !== incoming?.[field]);
 }
 
+function pointInPolygon(lat: number, lng: number, polygon: any[] = []) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i];
+    const b = polygon[j];
+    const latI = Number(Array.isArray(a) ? a[0] : a?.lat);
+    const lngI = Number(Array.isArray(a) ? a[1] : a?.lng);
+    const latJ = Number(Array.isArray(b) ? b[0] : b?.lat);
+    const lngJ = Number(Array.isArray(b) ? b[1] : b?.lng);
+    if (![latI, lngI, latJ, lngJ].every(Number.isFinite)) continue;
+    const intersects = ((lngI > lng) !== (lngJ > lng)) &&
+      (lat < ((latJ - latI) * (lng - lngI)) / ((lngJ - lngI) || Number.EPSILON) + latI);
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371000;
+  const toRad = (v: number) => v * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function pointToSegmentMeters(lat: number, lng: number, a: any, b: any) {
+  const aLat = Number(Array.isArray(a) ? a[0] : a?.lat);
+  const aLng = Number(Array.isArray(a) ? a[1] : a?.lng);
+  const bLat = Number(Array.isArray(b) ? b[0] : b?.lat);
+  const bLng = Number(Array.isArray(b) ? b[1] : b?.lng);
+  if (![aLat, aLng, bLat, bLng].every(Number.isFinite)) return Infinity;
+  const metersPerLat = 111320;
+  const metersPerLng = 111320 * Math.cos(lat * Math.PI / 180);
+  const ax = (aLng - lng) * metersPerLng;
+  const ay = (aLat - lat) * metersPerLat;
+  const bx = (bLng - lng) * metersPerLng;
+  const by = (bLat - lat) * metersPerLat;
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lengthSq = dx * dx + dy * dy;
+  const t = lengthSq ? Math.max(0, Math.min(1, ((-ax) * dx + (-ay) * dy) / lengthSq)) : 0;
+  const x = ax + t * dx;
+  const y = ay + t * dy;
+  return Math.sqrt(x * x + y * y);
+}
+
+function propertyMatch(call: any, location: any) {
+  const lat = Number(call?.latitude);
+  const lng = Number(call?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || location?.active === false || location?.property_monitoring_enabled !== true) return null;
+
+  const polygon = Array.isArray(location.property_monitoring_polygon) ? location.property_monitoring_polygon : [];
+  if (String(location.property_monitoring_boundary_type || '').toLowerCase() === 'polygon' && polygon.length >= 3) {
+    if (pointInPolygon(lat, lng, polygon)) return { relation: 'inside', distanceMeters: 0 };
+    let edgeDistance = Infinity;
+    for (let i = 0; i < polygon.length; i += 1) {
+      edgeDistance = Math.min(edgeDistance, pointToSegmentMeters(lat, lng, polygon[i], polygon[(i + 1) % polygon.length]));
+    }
+    return edgeDistance <= 30.48 ? { relation: 'nearby', distanceMeters: edgeDistance } : null;
+  }
+
+  const centerLat = Number(location.latitude);
+  const centerLng = Number(location.longitude);
+  if (!Number.isFinite(centerLat) || !Number.isFinite(centerLng)) return null;
+  const radius = Number(location.property_monitoring_radius_meters || 500);
+  const centerDistance = distanceMeters(lat, lng, centerLat, centerLng);
+  if (centerDistance <= radius) return { relation: 'inside', distanceMeters: centerDistance };
+  const edgeDistance = centerDistance - radius;
+  return edgeDistance <= 30.48 ? { relation: 'nearby', distanceMeters: edgeDistance } : null;
+}
+
+async function reconcilePropertyAlerts(base44: any) {
+  const [calls, locations, existingAlerts] = await Promise.all([
+    base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000),
+    base44.asServiceRole.entities.Location.list('site_name', 500),
+    base44.asServiceRole.entities.PropertyAlert.list('-created_date', 5000).catch(() => []),
+  ]);
+  const activeCalls = (calls || []).filter((call: any) => !['Cleared', 'Cancelled'].includes(call.status));
+  const monitored = (locations || []).filter((location: any) => location.active !== false && location.property_monitoring_enabled === true);
+  const existingKeys = new Set((existingAlerts || []).map((alert: any) => `${alert.callId}:${alert.propertyId}`));
+  let propertyAlertsCreated = 0;
+
+  for (const call of activeCalls) {
+    for (const location of monitored) {
+      const match = propertyMatch(call, location);
+      if (!match) continue;
+      const key = `${call.id}:${location.id}`;
+      if (existingKeys.has(key)) continue;
+      await base44.asServiceRole.entities.PropertyAlert.create({
+        callId: call.id,
+        propertyId: location.id,
+        propertyName: location.site_name || 'Monitored Property',
+        callIncident: call.incident || 'Unknown incident',
+        callLocation: call.location || '',
+        distanceMeters: Number(match.distanceMeters || 0),
+        acknowledged: false,
+        description: match.relation === 'inside'
+          ? `Call is inside the ${location.site_name || 'monitored'} property boundary.`
+          : `Call is within ${Math.round(Number(match.distanceMeters || 0) / 0.3048)} feet of the ${location.site_name || 'monitored'} property boundary.`,
+      });
+      existingKeys.add(key);
+      propertyAlertsCreated += 1;
+    }
+  }
+  return propertyAlertsCreated;
+}
+
 function easternMonthParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit' }).formatToParts(date);
   const year = parts.find(part => part.type === 'year')?.value || String(date.getUTCFullYear());
