@@ -20,9 +20,6 @@ import SignaturePad from "../components/SignaturePad";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { getLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/142cfda7e_VirtusSecurity.jpeg";
-const DCJS_ID = "VA DCJS #11-6066 | Maryland #106-4738";
-
 export default function DailyActivityReports() {
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
@@ -45,7 +42,6 @@ export default function DailyActivityReports() {
     incidents: "",
     photo_urls: [],
   });
-  const [entryTime, setEntryTime] = useState("");
   const [entryText, setEntryText] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -62,28 +58,26 @@ export default function DailyActivityReports() {
   const isAdmin = user?.role === 'admin';
 
   const { data: activeEntry } = useQuery({
-    queryKey: ['activeTimeEntry'],
+    queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
       const entries = await base44.entities.TimeEntry.filter(
-        { created_by: user.email },
-        '-created_date',
-        1
+        { officer_email: user.email },
+        '-clock_in',
+        100
       );
       return entries.find(e => !e.clock_out) || null;
     },
-    enabled: !!user,
+    enabled: !!user?.email,
   });
 
-  const canSubmit = true; // Officers can always submit DARs
-
   const { data: reports } = useQuery({
-    queryKey: ['myDailyActivityReports', user?.email],
+    queryKey: ['myDailyActivityReports', user?.id],
     queryFn: () => base44.entities.DailyActivityReport.filter(
-      { created_by: user?.email },
+      { created_by_id: user.id },
       '-created_date'
     ),
-    enabled: !!user,
+    enabled: !!user?.id,
   });
 
   const { data: reportTodos } = useQuery({
@@ -146,7 +140,9 @@ export default function DailyActivityReports() {
     return result;
   };
 
-  const getOfficerSignature = (email) => {
+  const getOfficerSignature = (officerRef) => {
+    const officerFromUsers = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    const email = officerFromUsers?.email || officerRef;
     const rosterEntry = rosterEntries?.find(r => r.email === email && r.status === 'active');
     if (rosterEntry) {
       const rank = rosterEntry.rank || '';
@@ -162,7 +158,7 @@ export default function DailyActivityReports() {
       return `${rosterEntry.first_name || ''} ${rosterEntry.last_name || ''}`.trim() || email;
     }
 
-    const officer = allUsers?.find(u => u.email === email);
+    const officer = officerFromUsers || allUsers?.find(u => u.email === email);
     if (!officer) return email;
     
     const rank = officer.rank || '';
@@ -178,7 +174,9 @@ export default function DailyActivityReports() {
     return `${officer?.first_name || ''} ${officer?.last_name || ''}`.trim() || email;
   };
 
-  const getOfficerName = (email) => {
+  const getOfficerName = (officerRef) => {
+    const officerFromUsers = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    const email = officerFromUsers?.email || officerRef;
     const rosterEntry = rosterEntries?.find(r => r.email === email && r.status === 'active');
     if (rosterEntry) {
       const lastName = rosterEntry.last_name || '';
@@ -189,7 +187,7 @@ export default function DailyActivityReports() {
       return `${rosterEntry.first_name || ''} ${rosterEntry.last_name || ''}`.trim() || email;
     }
 
-    const officer = allUsers?.find(u => u.email === email);
+    const officer = officerFromUsers || allUsers?.find(u => u.email === email);
     if (officer?.last_name && officer?.unit_number) {
       return `${officer.last_name} Unit ${officer.unit_number}`;
     }
@@ -244,7 +242,7 @@ export default function DailyActivityReports() {
       }
 
       // Strip client-only fields before saving, convert numeric strings to numbers
-      const { hourly_entries_array, patrol_count, visitors_logged, doors_checked, ...restData } = data;
+      const { hourly_entries_array: _hourlyEntriesArray, patrol_count, visitors_logged, doors_checked, ...restData } = data;
       const saveData = { ...restData };
       if (patrol_count !== '' && patrol_count != null) saveData.patrol_count = Number(patrol_count);
       if (visitors_logged !== '' && visitors_logged != null) saveData.visitors_logged = Number(visitors_logged);
@@ -370,7 +368,7 @@ export default function DailyActivityReports() {
       return;
     }
     
-    if (report.status !== 'draft' && report.created_by !== user?.email) {
+    if (report.status !== 'draft' && String(report.created_by_id || '') !== String(user?.id || '')) {
       alert("You can only edit your own reports.");
       return;
     }
@@ -395,7 +393,7 @@ export default function DailyActivityReports() {
       persons_of_interest: report.persons_of_interest || "",
       equipment_check: report.equipment_check || "",
       incidents: report.incidents || "",
-      photo_urls: report.photo_urls || report.photo_url ? [report.photo_url] : [],
+      photo_urls: Array.isArray(report.photo_urls) ? report.photo_urls : (report.photo_url ? [report.photo_url] : []),
     });
     setShowForm(true);
   };
@@ -408,8 +406,7 @@ export default function DailyActivityReports() {
   const printReport = (report) => {
     const printWindow = window.open('', '', 'width=850,height=1100');
 
-    const officerName = getOfficerName(report.created_by);
-    const officerSig = getOfficerSignature(report.created_by);
+    const officerName = getOfficerName(report.created_by_id);
     const displayReportDate = report.report_date ? format(new Date(report.report_date), 'MMMM d, yyyy') : '';
 
     // Convert to Zulu time
@@ -1267,7 +1264,7 @@ export default function DailyActivityReports() {
                             <img src={report.signature_url} alt="Officer Signature" className="h-12 object-contain" />
                           ) : (
                             <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                              {getOfficerSignature(report.created_by)}
+                              {getOfficerSignature(report.created_by_id)}
                             </p>
                           )}
                           {report.officer_ip_address && report.created_date && (
@@ -1330,7 +1327,7 @@ export default function DailyActivityReports() {
                              <img src={report.signature_url} alt="Officer Signature" className="h-12 object-contain" />
                            ) : (
                              <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                               {getOfficerSignature(report.created_by)}
+                               {getOfficerSignature(report.created_by_id)}
                              </p>
                            )}
                            {report.officer_ip_address && report.created_date && (
