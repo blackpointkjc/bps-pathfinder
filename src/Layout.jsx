@@ -679,7 +679,7 @@ export default function Layout({ children, currentPageName }) {
       } catch {}
     };
     refreshUnreadFromServer();
-    const interval = setInterval(refreshUnreadFromServer, 5000);
+    const interval = setInterval(refreshUnreadFromServer, 30000);
     window.addEventListener('bps-unread-refresh', refreshUnreadFromServer);
     window.addEventListener('focus', refreshUnreadFromServer);
     return () => {
