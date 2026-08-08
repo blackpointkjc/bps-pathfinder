@@ -124,8 +124,6 @@ export default function AdminLocations() {
     geofence_polygon: [],
     property_monitoring_enabled: false,
     property_monitoring_boundary_type: 'circle',
-    property_monitoring_radius_meters: 500,
-    property_monitoring_polygon: [],
     property_monitoring_description: '',
   });
   const [geocoding, setGeocoding] = useState(false);
@@ -281,8 +279,6 @@ export default function AdminLocations() {
       geofence_polygon: [],
       property_monitoring_enabled: false,
       property_monitoring_boundary_type: 'circle',
-      property_monitoring_radius_meters: 500,
-      property_monitoring_polygon: [],
       property_monitoring_description: '',
     });
     setDrawingBoundary(false);
@@ -359,8 +355,6 @@ export default function AdminLocations() {
       geofence_polygon: location.geofence_polygon || [],
       property_monitoring_enabled: location.property_monitoring_enabled || false,
       property_monitoring_boundary_type: location.property_monitoring_boundary_type || 'circle',
-      property_monitoring_radius_meters: location.property_monitoring_radius_meters || 500,
-      property_monitoring_polygon: location.property_monitoring_polygon || [],
       property_monitoring_description: location.property_monitoring_description || '',
     });
     if (location.latitude && location.longitude) {
