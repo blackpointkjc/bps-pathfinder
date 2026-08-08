@@ -1,19 +1,17 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Megaphone, Download, Eye, AtSign, CheckCircle } from "lucide-react";
 import PullToRefresh from "../components/PullToRefresh";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
 export default function Announcements() {
   const queryClient = useQueryClient();
-  const [pendingToAck, setPendingToAck] = useState(null); // announcement currently shown in modal
   const markedRef = useRef(new Set());
 
   const { data: user } = useQuery({
@@ -35,19 +33,6 @@ export default function Announcements() {
   });
 
   const readAnnouncementIds = React.useMemo(() => new Set(announcementReceipts.map(r => r.announcement_id)), [announcementReceipts]);
-
-  const markAsReadMutation = useMutation({
-    mutationFn: async (announcement) => {
-      if (!readAnnouncementIds.has(announcement.id)) {
-        await base44.entities.AnnouncementReceipt.create({ announcement_id: announcement.id, user_email: user.email, read_at: new Date().toISOString() });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['announcementReceipts', user?.email] });
-      window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
-      window.dispatchEvent(new CustomEvent('bps-announcements-opened'));
-    },
-  });
 
   const priorityConfig = {
     urgent: { color: "bg-red-100 text-red-800 border-red-300", icon: "🚨" },
@@ -78,19 +63,11 @@ export default function Announcements() {
       user_email: user.email,
       read_at: new Date().toISOString()
     }).catch(() => null))).then(async () => {
-      setPendingToAck(null);
       await queryClient.invalidateQueries({ queryKey: ['announcementReceipts', user?.email] });
       window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
       window.dispatchEvent(new CustomEvent('bps-announcements-opened'));
     });
   }, [user?.email, filteredAnnouncements, readAnnouncementIds, queryClient]);
-
-  const handleAcknowledge = () => {
-    if (!pendingToAck) return;
-    markedRef.current.add(pendingToAck.id);
-    markAsReadMutation.mutate(pendingToAck);
-    setPendingToAck(null);
-  };
 
   const isPingedForMe = (announcement) => {
     return announcement.pinged_users && announcement.pinged_users.includes(user?.email);
@@ -102,54 +79,6 @@ export default function Announcements() {
 
   return (
     <>
-      {/* Acknowledgment Modal */}
-      <Dialog open={!!pendingToAck} onOpenChange={() => {}}>
-        <DialogContent
-          className="max-h-[92dvh] w-[calc(100vw-1rem)] max-w-lg overflow-y-auto p-3 sm:p-6"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-        >
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <Megaphone className="w-6 h-6 text-blue-600" />
-              New Announcement
-            </DialogTitle>
-          </DialogHeader>
-          {pendingToAck && (
-            <div className="space-y-4 py-2">
-              <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold border ${priorityConfig[pendingToAck.priority]?.color || ''}`}>
-                {priorityConfig[pendingToAck.priority]?.icon} {pendingToAck.priority?.toUpperCase()}
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">{pendingToAck.title}</h3>
-              <p className="text-slate-700 whitespace-pre-wrap text-sm">{pendingToAck.message}</p>
-              {pendingToAck.photo_url && (
-                <img src={pendingToAck.photo_url} alt="Announcement" className="w-full rounded-lg border border-slate-200 max-h-48 object-cover" />
-              )}
-              {pendingToAck.attachment_url && (
-                <a
-                  href={pendingToAck.attachment_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 border border-blue-200 text-sm"
-                >
-                  <Eye className="w-4 h-4" />
-                  View Attachment
-                </a>
-              )}
-              <p className="text-xs text-slate-500">Posted {format(new Date(pendingToAck.created_date), 'MMM d, yyyy h:mm a')}</p>
-              <Button
-                onClick={handleAcknowledge}
-                disabled={markAsReadMutation.isPending}
-                className="w-full bg-blue-600 hover:bg-blue-700"
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                I've Read This Announcement
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
       <PullToRefresh onRefresh={handleRefresh}>
         <div className="p-4 md:p-8 min-h-screen">
           <div className="max-w-4xl mx-auto space-y-8">
