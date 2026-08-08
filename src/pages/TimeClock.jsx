@@ -994,7 +994,7 @@ export default function TimeClock() {
                       <MapPin className="w-3 h-3" />
                       {entry.location}
                     </p>
-                    {entry.created_by !== user?.email && (
+                    {entry.created_by_id && user?.id && entry.created_by_id !== user.id && (
                       <p className="text-xs text-amber-600 mt-1">
                         Added by support
                       </p>
