@@ -104,7 +104,7 @@ export default function AdminScheduling() {
     staleTime: 60000,
   });
 
-  const { data: schedules = [], error: schedulesError } = useQuery({
+  const { data: schedules = [] } = useQuery({
     queryKey: ['allSchedules'],
     queryFn: async () => {
       const rows = await base44.entities.Schedule.list('-shift_date');
