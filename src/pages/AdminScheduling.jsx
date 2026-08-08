@@ -1827,11 +1827,25 @@ Make sure all dates are in YYYY-MM-DD format.` ,
     if (!result.destination) return;
 
     const { destination, draggableId } = result;
-    
-    const parts = destination.droppableId.split('-');
-    const destLocationSiteName = parts[1];
-    const destOfficer = parts[2];
-    const destDateStr = parts[3]; // This is the *display date* (the day the column represents)
+
+    let dropTarget;
+    try {
+      dropTarget = JSON.parse(destination.droppableId);
+    } catch (error) {
+      console.error('Invalid scheduling drop target:', destination.droppableId, error);
+      alert('Unable to move this shift because the destination could not be read. Please refresh and try again.');
+      return;
+    }
+
+    const destLocationSiteName = dropTarget?.locationSiteName;
+    const destOfficer = dropTarget?.officerEmail;
+    const destDateStr = dropTarget?.dateStr; // This is the display/start date for the destination cell.
+
+    if (!destLocationSiteName || !destOfficer || !/^\d{4}-\d{2}-\d{2}$/.test(String(destDateStr || ''))) {
+      console.error('Malformed scheduling drop target:', dropTarget);
+      alert('Unable to move this shift because the destination is incomplete. Please refresh and try again.');
+      return;
+    }
 
     const schedule = schedules?.find(s => s.id === draggableId);
     
@@ -3114,7 +3128,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                             {weekDays.map((day) => {
                               const dateStr = format(day, 'yyyy-MM-dd');
                               const daySchedules = getScheduleForDateOfficerAndLocation(day, officerEmail, locationSiteName);
-                              const droppableId = `schedule-${locationSiteName}-${officerEmail}-${dateStr}`;
+                              const droppableId = JSON.stringify({ locationSiteName, officerEmail, dateStr });
 
                               return (
                                 <td key={day.toString()} className="border border-slate-700 p-1 align-top">
