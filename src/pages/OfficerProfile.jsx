@@ -80,6 +80,7 @@ export default function OfficerProfile() {
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== "DELETE") return;
     try {
+      await base44.functions.invoke('enforceOfficerDutyStatus', { action: 'logout' }).catch(() => null);
       await base44.auth.deleteMe();
     } catch (error) {
       alert("Failed to delete account. Please try again or contact support.");
