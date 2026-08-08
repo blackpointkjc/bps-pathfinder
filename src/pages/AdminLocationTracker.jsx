@@ -274,12 +274,12 @@ export default function AdminLocationTracker() {
           <div className="min-w-0 flex-1">
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
               <Activity className="w-8 h-8 text-green-600" />
-              Officer Location Tracker
+              User Location Tracker
             </h1>
-            <p className="text-slate-600">Real-time and historical GPS location tracking</p>
+            <p className="text-slate-600">Live GPS and one-minute movement history for every signed-in user</p>
             {lastAutoCheck && (
               <p className="text-xs text-slate-500 mt-1">
-                Last auto-check: {format(lastAutoCheck, 'h:mm:ss a')} • Next check in ~30 seconds
+                Last session check: {format(lastAutoCheck, 'h:mm:ss a')} • User heartbeat: every 60 seconds
               </p>
             )}
           </div>
@@ -457,10 +457,10 @@ export default function AdminLocationTracker() {
             {viewMode === 'history' && (
               <div className="mt-6 grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="officer_select">Select Officer</Label>
+                  <Label htmlFor="officer_select">Select User</Label>
                   <Select value={selectedOfficerEmail} onValueChange={setSelectedOfficerEmail}>
                     <SelectTrigger id="officer_select">
-                      <SelectValue placeholder="Choose an officer..." />
+                      <SelectValue placeholder="Choose a user..." />
                     </SelectTrigger>
                     <SelectContent position="popper" className="max-h-60 overflow-y-auto z-50">
                       {filteredOfficersForDropdown.map((officer) => (
@@ -494,12 +494,12 @@ export default function AdminLocationTracker() {
                 <CardHeader>
                   <CardTitle className="text-slate-900 text-sm font-medium flex items-center gap-2">
                     <Users className="w-4 h-4 text-slate-900" />
-                    Officers Currently On Duty
+                    Users Signed In Now
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-5xl font-bold text-slate-900">{currentlyActiveOfficers?.length || 0}</div>
-                  <p className="text-xs text-slate-900 mt-1">Clocked in right now</p>
+                  <p className="text-xs text-slate-900 mt-1">Active app sessions</p>
                 </CardContent>
               </Card>
 
@@ -524,8 +524,8 @@ export default function AdminLocationTracker() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">30 sec</div>
-                   <p className="text-xs text-slate-500 mt-1">Auto-check rate</p>
+                  <div className="text-3xl font-bold text-slate-900">60 sec</div>
+                   <p className="text-xs text-slate-500 mt-1">History + session heartbeat</p>
                 </CardContent>
               </Card>
             </div>
@@ -535,7 +535,7 @@ export default function AdminLocationTracker() {
                 <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
                   <CardTitle className="flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-green-600" />
-                    Live Map - All Active Officers
+                    Live Map - All Signed-In Users
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -560,7 +560,7 @@ export default function AdminLocationTracker() {
                               <p className="font-bold text-slate-900">{getOfficerName(officer.officer_email)}</p>
                               <p className="text-sm text-slate-600">{officer.current_location}</p>
                               <p className="text-xs text-slate-500">
-                                Clocked in: {officer.clock_in_time ? format(new Date(officer.clock_in_time), 'h:mm a') : 'N/A'}
+                                Session/shift started: {officer.clock_in_time ? format(new Date(officer.clock_in_time), 'h:mm a') : 'N/A'}
                               </p>
                               <p className="text-xs text-green-600">
                                 Last update: {officer.last_update ? format(new Date(officer.last_update), 'h:mm:ss a') : 'No GPS data'}
@@ -602,7 +602,7 @@ export default function AdminLocationTracker() {
                     <div className="flex items-start gap-2">
                       <Clock className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="text-xs text-slate-500">Clocked In</p>
+                        <p className="text-xs text-slate-500">Session / Shift Started</p>
                         <p className="text-sm font-semibold text-slate-900">
                           {officer.clock_in_time ? format(new Date(officer.clock_in_time), 'h:mm a') : 'N/A'}
                         </p>
@@ -641,14 +641,14 @@ export default function AdminLocationTracker() {
               <Card className="border-none shadow-lg">
                 <CardContent className="p-12 text-center">
                   <Activity className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                  <p className="text-slate-500">No officers currently clocked in</p>
+                  <p className="text-slate-500">No signed-in users are currently reporting a session heartbeat</p>
                 </CardContent>
               </Card>
             )}
           </>
         )}
 
-        {viewMode === 'history' && selectedOfficerEmail && selectedTimeEntry && (
+        {viewMode === 'history' && selectedOfficerEmail && locationHistory?.length > 0 && selectedSessionSummary && (
           <Card className="border-none shadow-xl">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
               <CardTitle className="flex items-center gap-2">
@@ -660,15 +660,15 @@ export default function AdminLocationTracker() {
               <div className="p-4 bg-blue-50 border-b">
                 <div className="grid md:grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm text-blue-700 font-semibold">Clock In</p>
+                    <p className="text-sm text-blue-700 font-semibold">First Ping</p>
                     <p className="text-lg font-bold text-blue-900">
-                      {format(new Date(selectedTimeEntry.clock_in), 'h:mm a')}
+                      {format(new Date(selectedSessionSummary.firstTime), 'h:mm a')}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-blue-700 font-semibold">Clock Out</p>
+                    <p className="text-sm text-blue-700 font-semibold">Last Ping</p>
                     <p className="text-lg font-bold text-blue-900">
-                      {format(new Date(selectedTimeEntry.clock_out), 'h:mm a')}
+                      {format(new Date(selectedSessionSummary.lastTime), 'h:mm a')}
                     </p>
                   </div>
                   <div>
@@ -713,9 +713,9 @@ export default function AdminLocationTracker() {
                     >
                       <Popup>
                         <div className="p-2">
-                          <p className="font-bold text-green-700 text-lg">🟢 CLOCK IN</p>
-                          <p className="text-sm font-semibold">{format(new Date(selectedTimeEntry.clock_in), 'h:mm:ss a')}</p>
-                          <p className="text-xs text-slate-600 mt-1">{selectedTimeEntry.location}</p>
+                          <p className="font-bold text-green-700 text-lg">🟢 FIRST PING</p>
+                          <p className="text-sm font-semibold">{format(new Date(selectedSessionSummary.firstTime), 'h:mm:ss a')}</p>
+                          <p className="text-xs text-slate-600 mt-1">{selectedSessionSummary.first?.location || 'Signed In'}</p>
                           <p className="text-xs text-slate-500">
                             {locationHistory[0].latitude.toFixed(6)}, {locationHistory[0].longitude.toFixed(6)}
                           </p>
@@ -734,9 +734,9 @@ export default function AdminLocationTracker() {
                       >
                         <Popup>
                           <div className="p-2">
-                            <p className="font-bold text-red-700 text-lg">🔴 CLOCK OUT</p>
-                            <p className="text-sm font-semibold">{format(new Date(selectedTimeEntry.clock_out), 'h:mm:ss a')}</p>
-                            <p className="text-xs text-slate-600 mt-1">{selectedTimeEntry.location}</p>
+                            <p className="font-bold text-red-700 text-lg">🔴 LATEST PING</p>
+                            <p className="text-sm font-semibold">{format(new Date(selectedSessionSummary.lastTime), 'h:mm:ss a')}</p>
+                            <p className="text-xs text-slate-600 mt-1">{selectedSessionSummary.last?.location || 'Signed In'}</p>
                             <p className="text-xs text-slate-500">
                               {locationHistory[locationHistory.length - 1].latitude.toFixed(6)}, 
                               {locationHistory[locationHistory.length - 1].longitude.toFixed(6)}
@@ -750,37 +750,36 @@ export default function AdminLocationTracker() {
               ) : (
                 <div className="p-12 text-center">
                   <History className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                  <p className="text-slate-500">No location tracking data for this shift</p>
-                  <p className="text-xs text-slate-400 mt-2">The officer may have had location tracking disabled or the app closed during their shift.</p>
+                  <p className="text-slate-500">No location points recorded for this user on this date</p>
+                  <p className="text-xs text-slate-400 mt-2">The user may not have signed in, may have denied location permission, or may have had the app fully closed.</p>
                 </div>
               )}
             </CardContent>
           </Card>
         )}
 
-        {viewMode === 'history' && selectedOfficerEmail && !selectedTimeEntry && (
+        {viewMode === 'history' && selectedOfficerEmail && (!locationHistory || locationHistory.length === 0) && (
           <Card className="border-none shadow-lg">
             <CardContent className="p-12 text-center">
               <History className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-              <p className="text-slate-500">No completed shifts found for {getOfficerName(selectedOfficerEmail)} on {format(new Date(selectedDate + 'T00:00:00'), 'MMMM d, yyyy')}</p>
-              <p className="text-xs text-slate-400 mt-2">Only completed shifts (clocked out) can be viewed in historical tracking.</p>
+              <p className="text-slate-500">No GPS history found for {getOfficerName(selectedOfficerEmail)} on {format(new Date(selectedDate + 'T00:00:00'), 'MMMM d, yyyy')}</p>
+              <p className="text-xs text-slate-400 mt-2">History is recorded once per minute while the user is signed into Pathfinder and location permission is available.</p>
             </CardContent>
           </Card>
         )}
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-900">
-            <strong>Live Tracking:</strong> Shows only officers who are currently clocked in. Officer locations are automatically updated every 10 seconds while on duty. 
-            The system auto-checks all officer locations every 10 seconds showing real-time movement. GPS coordinates are accurate to within 30-50 feet depending on signal strength.
+            <strong>Live Tracking:</strong> Shows every user with an active Pathfinder session heartbeat, including admins, supervisors, dispatchers, support staff, clients, and officers. GPS uses the single app-wide location service.
           </p>
           <p className="text-sm text-blue-900 mt-2">
-            <strong>Check All Locations Now:</strong> Runs a comprehensive check of all clocked-in officers to verify their GPS is working properly. Shows which officers have active tracking, stale data, or no GPS signal. This check also runs automatically every 10 seconds.
+            <strong>Check All Locations Now:</strong> Checks all recent signed-in session records and separates users with current GPS, users signed in with GPS unavailable, and recently stale sessions.
           </p>
           <p className="text-sm text-blue-900 mt-2">
-            <strong>Historical Tracking:</strong> View an officer's complete movement path for any completed shift. The map shows a green pin where they clocked in, a blue line following their tracked path, and a red pin where they clocked out. Select an officer and date to see their tracked locations throughout their shift.
+            <strong>Historical Tracking:</strong> Select any user and date to view the one-minute movement trail recorded while they were signed in. The green marker is the first recorded ping and the red marker is the latest recorded ping for that date.
           </p>
           <p className="text-sm text-blue-900 mt-2">
-            <strong>Privacy Note:</strong> Location tracking is only active during on-duty hours and automatically stops when officers clock out. Admins can disable their own location tracking using the toggle in the background tracker.
+            <strong>Tracking Scope:</strong> Location tracking is active for every authenticated app session, regardless of duty role or clock-in status, and ends when the app session is no longer active. Location history is recorded at one-minute intervals when GPS permission is available.
           </p>
         </div>
       </div>
