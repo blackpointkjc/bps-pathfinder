@@ -43,6 +43,16 @@ function pointInsidePolygon(lat, lng, rawPolygon = []) {
   return inside;
 }
 
+function distanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const p1 = lat1 * Math.PI / 180;
+  const p2 = lat2 * Math.PI / 180;
+  const dp = (lat2 - lat1) * Math.PI / 180;
+  const dl = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function verifyAgainstLocationBoundary(location, lat, lng) {
   if (!location) return { ok: false, message: 'Location not found.' };
   if (location.is_special_event) return { ok: true };
@@ -50,7 +60,7 @@ function verifyAgainstLocationBoundary(location, lat, lng) {
   const inside = pointInsidePolygon(lat, lng, polygon);
   if (inside !== null) return { ok: inside, message: inside ? '' : `You are outside the approved property boundary for ${location.site_name}.` };
   if (!Number.isFinite(Number(location.latitude)) || !Number.isFinite(Number(location.longitude))) return { ok: false, message: `${location.site_name} does not have a valid geofence configured. Contact an administrator.` };
-  const distance = calculateDistance(lat, lng, Number(location.latitude), Number(location.longitude));
+  const distance = distanceMeters(lat, lng, Number(location.latitude), Number(location.longitude));
   const radius = Number(location.geofence_radius_meters || 100);
   return { ok: distance <= radius, distance, message: distance <= radius ? '' : `You are outside the approved ${radius} meter geofence for ${location.site_name}.` };
 }
