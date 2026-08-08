@@ -77,8 +77,8 @@ export default function MDTrespassNotices() {
       if (!user?.email) return null;
       const entries = await base44.entities.TimeEntry.filter(
         { officer_email: user.email },
-        '-created_date',
-        1
+        '-clock_in',
+        100
       );
       return entries.find(e => !e.clock_out) || null;
     },
