@@ -9,10 +9,10 @@ import { base44 } from '@/api/base44Client';
 
 const DashboardDataContext = createContext(null);
 
-const POLL_INTERVAL_MS = 10_000;        // Local CAD fallback refresh every 10 seconds
-const GRAC_SYNC_INTERVAL_MS = 10_000;   // Priority GRAC active-call sync every 10 seconds
-const RATE_LIMIT_BACKOFF_MS = 15_000;   // Short CAD-specific backoff after 429
-const MIN_REFRESH_MS = 2_000;           // Prevent overlapping local refreshes
+const POLL_INTERVAL_MS = 20_000;        // Realtime subscriptions handle most updates; this is only a fallback
+const GRAC_SYNC_INTERVAL_MS = 20_000;   // One app-wide GRAC sync owner; do not duplicate this on pages
+const RATE_LIMIT_BACKOFF_MS = 60_000;   // Give Base44 room to recover after a 429 instead of retry-storming
+const MIN_REFRESH_MS = 5_000;           // Prevent subscription bursts from causing repeated list calls
 const USER_REFRESH_MS = 30_000;         // Unit roster changes slower than calls
 
 function isRateLimitError(err) {
@@ -198,16 +198,9 @@ export function DashboardDataProvider({ children }) {
         return unsubscribe;
     }, [loadData]);
 
-    // Real-time subscription — reload on User changes (unit status/location updates)
-    useEffect(() => {
-        const unsubscribe = base44.entities.User.subscribe(() => {
-            const now = Date.now();
-            if (now - lastRefreshTime.current >= MIN_REFRESH_MS && now >= rateLimitedUntil.current) {
-                loadData(false);
-            }
-        });
-        return unsubscribe;
-    }, [loadData]);
+    // Do not reload the full CAD call list for every User update. Officer GPS/status
+    // changes can occur every few seconds and were causing a request storm. The
+    // periodic user refresh above is sufficient for the dashboard roster.
 
     const manualRefresh = useCallback(async () => { await loadData(true); }, [loadData]);
 
