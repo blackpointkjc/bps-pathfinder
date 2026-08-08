@@ -106,6 +106,7 @@ import TrainingComplianceTracker from './pages/TrainingComplianceTracker';
 import TrainingRecords from './pages/TrainingRecords';
 import StudentPortal from './pages/StudentPortal';
 import AdminUsers from './pages/AdminUsers';
+import AdminPlatoonAssignments from './pages/AdminPlatoonAssignments';
 import Announcements from './pages/Announcements';
 import CallsForService from './pages/CallsForService';
 import ClientAlerts from './pages/ClientAlerts';
@@ -239,6 +240,7 @@ export const PAGES = {
     "TrainingRecords": TrainingRecords,
     "StudentPortal": StudentPortal,
     "AdminUsers": AdminUsers,
+    "AdminPlatoonAssignments": AdminPlatoonAssignments,
     "Announcements": Announcements,
     "CallsForService": CallsForService,
     "ClientAlerts": ClientAlerts,
