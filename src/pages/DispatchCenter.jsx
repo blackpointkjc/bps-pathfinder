@@ -37,7 +37,6 @@ export default function DispatchCenter() {
     const [sortOrder, setSortOrder] = useState('desc');
     const [showMap, setShowMap] = useState(false);
     const [mobileView, setMobileView] = useState('calls');
-    const [refreshing, setRefreshing] = useState(false);
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [pendingAlertCall, setPendingAlertCall] = useState(null);
     const [queueFilter, setQueueFilter] = useState('all');
@@ -307,13 +306,6 @@ export default function DispatchCenter() {
         toast.success('Call created and dispatched');
     };
 
-    const [quickCallType, setQuickCallType] = useState(null);
-    
-    const handleQuickDispatch = (callType) => {
-        setQuickCallType(callType);
-        setShowCreateDialog(true);
-    };
-
     // Re-sort calls when sortOrder changes
     useEffect(() => {
         const sorted = [...activeCalls].sort((a, b) => {
@@ -334,19 +326,6 @@ export default function DispatchCenter() {
         }
     };
 
-    const handleRefresh = async () => {
-        setRefreshing(true);
-        try {
-            const result = await base44.functions.invoke('ingestGractivecalls', {});
-            await Promise.all([loadActiveCalls(), loadUnits()]);
-            toast.success(`GRAC feed synchronized: ${result?.data?.active ?? activeCalls.length} active`, { id: 'refresh', duration: 3000 });
-        } catch (error) {
-            toast.error('Refresh failed', { id: 'refresh' });
-        } finally {
-            setRefreshing(false);
-        }
-    };
-
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -360,14 +339,6 @@ export default function DispatchCenter() {
         if (priority === 'high') return 'bg-orange-600 text-white';
         if (priority === 'medium') return 'bg-yellow-600 text-black';
         return 'bg-slate-600 text-slate-200';
-    };
-
-    const statusColor = (status) => {
-        if (status === 'Available') return 'bg-green-500';
-        if (status === 'Enroute') return 'bg-yellow-400';
-        if (status === 'On Scene') return 'bg-blue-500';
-        if (status === 'Busy') return 'bg-orange-500';
-        return 'bg-slate-500';
     };
 
     const allCalls = activeCalls.filter(call => {
@@ -735,13 +706,8 @@ export default function DispatchCenter() {
                 <CreateCallDialog
                     units={units}
                     currentUser={currentUser}
-                    onClose={() => {
-                        setShowCreateDialog(false);
-                        setQuickCallType(null);
-                    }}
+                    onClose={() => setShowCreateDialog(false)}
                     onCreated={handleCallCreated}
-                    initialCallType={quickCallType?.type}
-                    initialPriority={quickCallType?.priority}
                 />
             )}
         </div>
