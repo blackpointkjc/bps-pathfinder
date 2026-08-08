@@ -72,6 +72,29 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, changed: true, officer: result });
     }
 
+    if (action === 'self_check') {
+      if (!isCadOfficer(caller) || lower(caller.status) !== 'available') {
+        return Response.json({ success: true, changed: false, status: caller.status || 'Out of Service' });
+      }
+      const sinceRaw = caller.status_since || caller.last_updated || caller.updated_date;
+      const since = sinceRaw ? new Date(sinceRaw).getTime() : NaN;
+      if (!caller.status_since) {
+        const seeded = new Date().toISOString();
+        await base44.asServiceRole.entities.User.update(caller.id, { status_since: seeded });
+        return Response.json({ success: true, changed: false, seeded_status_since: seeded });
+      }
+      if (!Number.isFinite(since) || Date.now() - since < AVAILABLE_LIMIT_MS) {
+        return Response.json({ success: true, changed: false, status: 'Available' });
+      }
+      const result = await setOutOfService(
+        base44,
+        caller,
+        'remained Available for at least 12 hours and 1 minute without going Out of Service.',
+        true,
+      );
+      return Response.json({ success: true, changed: true, officer: result });
+    }
+
     // Fixed server-side sweep: callers cannot choose a target officer. This can safely
     // be invoked by any authenticated app session so stale Available statuses are
     // corrected even when command staff are not logged in.
