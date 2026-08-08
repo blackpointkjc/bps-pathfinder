@@ -40,24 +40,17 @@ export default function SupervisorPerformanceReview() {
 
   const completeReviewMutation = useMutation({
     mutationFn: async (reviewId) => {
-      await base44.entities.PerformanceReview.update(reviewId, {
-        supervisor_review_completed: true,
-        supervisor_review_completed_by: user.email,
-        supervisor_review_completed_date: new Date().toISOString(),
-        officer_signature_obtained: signatureObtained,
-        supervisor_notes: supervisorNotes,
+      const response = await base44.functions.invoke('completeSupervisorPerformanceReview', {
+        reviewId,
+        signatureObtained,
+        supervisorNotes,
       });
-
-      // Notify admin that supervisor completed the review
-      await base44.entities.Notification.create({
-        recipient_email: selectedReview.reviewer_email,
-        type: 'training_reminder',
-        title: '✅ Performance Review Completed',
-        message: `${user.first_name} ${user.last_name} completed review with ${selectedReview.officer_name}`,
-        priority: 'normal',
-      });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['supervisorScopedTasks'] });
       queryClient.invalidateQueries({ queryKey: ['pendingPerformanceReviews'] });
       setSelectedReview(null);
       setSignatureObtained(false);
