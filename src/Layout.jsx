@@ -801,7 +801,6 @@ export default function Layout({ children, currentPageName }) {
           const key = `${call.id}:${match.property.id}`;
           matches.push(key);
           if (alertedPropertyKeys.current.has(key)) continue;
-          alertedPropertyKeys.current.add(key);
           const existingRecord = existingAlertMap.get(key);
           // Once this call/property pair has been acknowledged, do not recreate or
           // re-sound it while the same CAD call remains active.
@@ -813,18 +812,28 @@ export default function Layout({ children, currentPageName }) {
             distanceFeet: Math.round(existingRecord ? Number(existingRecord.distanceMeters || 0) / 0.3048 : (match.distanceFeet || 0)),
             key,
           };
-          if (!existingRecord) base44.entities.PropertyAlert.create({
-            callId: call.id,
-            cadNumber: call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || '',
-            propertyId: match.property.id,
-            propertyName: match.property.name,
-            callIncident: call.incident,
-            callLocation: call.location,
-            distanceMeters: Number(match.distanceMeters || 0),
-            relation: match.relation,
-            acknowledged: false,
-            description: match.relation === 'inside' ? 'Call is inside the monitored property boundary.' : `Call is within ${Math.round(match.distanceFeet || 0)} feet of the property boundary.`,
-          }).catch(() => null);
+          if (!existingRecord) {
+            try {
+              await base44.entities.PropertyAlert.create({
+                callId: call.id,
+                cadNumber: call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || '',
+                propertyId: match.property.id,
+                propertyName: match.property.name,
+                callIncident: call.incident,
+                callLocation: call.location,
+                distanceMeters: Number(match.distanceMeters || 0),
+                relation: match.relation,
+                acknowledged: false,
+                description: match.relation === 'inside' ? 'Call is inside the monitored property boundary.' : `Call is within ${Math.round(match.distanceFeet || 0)} feet of the property boundary.`,
+              });
+            } catch (error) {
+              // Do not mark the pair handled if persistence failed. The next realtime
+              // event/poll must retry until the active-property alert exists.
+              console.warn('Unable to create property alert; will retry:', error?.message);
+              continue;
+            }
+          }
+          alertedPropertyKeys.current.add(key);
           if (!propertyAlert) {
             setPropertyAlert(alert);
             playPropertyAlert();
@@ -838,8 +847,20 @@ export default function Layout({ children, currentPageName }) {
     };
 
     monitor();
-    const id = setInterval(monitor, 30000);
-    return () => { cancelled = true; clearInterval(id); };
+    const id = setInterval(monitor, 10000);
+    const unsubscribeCalls = base44.entities.DispatchCall.subscribe(event => {
+      if (event?.type === 'create' || event?.type === 'update') monitor();
+    });
+    const refreshOnFocus = () => monitor();
+    window.addEventListener('focus', refreshOnFocus);
+    document.addEventListener('visibilitychange', refreshOnFocus);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      unsubscribeCalls?.();
+      window.removeEventListener('focus', refreshOnFocus);
+      document.removeEventListener('visibilitychange', refreshOnFocus);
+    };
   }, [user?.role, JSON.stringify(user?.additional_roles || []), propertyAlert?.key]);
 
   const acknowledgePropertyAlert = async () => {
