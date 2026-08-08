@@ -87,7 +87,7 @@ export const locationToMonitoredProperty = (location) => {
     longitude: Number(location.longitude),
     enabled: location.active !== false && location.property_monitoring_enabled === true,
     boundary_type: location.property_monitoring_boundary_type || (polygon.length >= 3 ? 'polygon' : 'circle'),
-    radiusMeters: Number(location.property_monitoring_radius_meters || 500),
+    radiusMeters: Number(location.geofence_radius_meters || 100),
     polygon,
     description: location.property_monitoring_description || '',
   };
