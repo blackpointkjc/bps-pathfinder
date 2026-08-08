@@ -203,9 +203,12 @@ export default function NotificationMonitor({ user }) {
     if (latestAnnouncement) setLastAnnouncementId(latestAnnouncement.id);
   }, [latestAnnouncement, lastAnnouncementId, toast]);
 
-  // Monitor schedule published
+  // Monitor schedule publication changes. Track the version/state of the week record,
+  // not just its ID, because publishing updates the existing record in place.
   useEffect(() => {
-    if (weekStatus && weekStatus.schedule_ready && lastScheduleCheck !== null && lastScheduleCheck !== weekStatus.id) {
+    if (!weekStatus) return;
+    const statusKey = `${weekStatus.id}:${weekStatus.updated_date || weekStatus.marked_ready_date || ''}:${weekStatus.is_ready ? 'ready' : 'hidden'}`;
+    if (weekStatus.is_ready && lastScheduleCheck !== null && lastScheduleCheck !== statusKey) {
       toast({
         title: '📅 New Schedule Published',
         description: `The schedule for week of ${weekStatus.week_start_date} is now available`,
@@ -229,7 +232,7 @@ export default function NotificationMonitor({ user }) {
         '📅'
       );
     }
-    if (weekStatus) setLastScheduleCheck(weekStatus.id);
+    setLastScheduleCheck(statusKey);
   }, [weekStatus, lastScheduleCheck, toast]);
 
   // Monitor PTO status changes
