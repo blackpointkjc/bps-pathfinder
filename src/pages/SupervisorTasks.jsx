@@ -17,7 +17,7 @@ export default function SupervisorTasks() {
   const { data: pendingComplaints } = useQuery({
     queryKey: ['supervisorComplaints'],
     queryFn: async () => {
-      const all = await base44.entities.Complaint.filter({ created_by: user.email });
+      const all = await base44.entities.Complaint.filter({ created_by_id: user.id });
       return all.filter(c => c.investigation_status === 'pending' || c.investigation_status === 'under_investigation');
     },
     enabled: user?.additional_roles?.includes('supervisor'),
@@ -26,7 +26,7 @@ export default function SupervisorTasks() {
   const { data: pendingWriteUps } = useQuery({
     queryKey: ['supervisorWriteUps'],
     queryFn: async () => {
-      const all = await base44.entities.WriteUpReport.filter({ created_by: user.email });
+      const all = await base44.entities.WriteUpReport.filter({ created_by_id: user.id });
       return all.filter(w => w.status === 'pending_approval');
     },
     enabled: user?.additional_roles?.includes('supervisor'),
@@ -44,7 +44,7 @@ export default function SupervisorTasks() {
   const { data: followUpInspections } = useQuery({
     queryKey: ['followUpInspections'],
     queryFn: async () => {
-      const all = await base44.entities.InspectionReport.filter({ created_by: user.email });
+      const all = await base44.entities.InspectionReport.filter({ created_by_id: user.id });
       return all.filter(i => i.follow_up_required && !i.follow_up_completed);
     },
     enabled: user?.additional_roles?.includes('supervisor'),
