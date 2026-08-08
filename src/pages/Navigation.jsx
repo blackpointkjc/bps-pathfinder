@@ -547,27 +547,6 @@ export default function Navigation() {
                 });
             }
 
-            // Fallback source: officer profiles updated directly by field GPS.
-            for (const profile of users || []) {
-                const email = profile.email?.toLowerCase();
-                if (!email || email === currentEmail || unitsByEmail.has(email)) continue;
-                const latitude = Number(profile.latitude);
-                const longitude = Number(profile.longitude);
-                const isOnDuty = profile.show_on_map === true || (profile.status && profile.status !== 'Out of Service');
-                if (!isOnDuty || !Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
-                unitsByEmail.set(email, {
-                    ...profile,
-                    full_name: profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
-                    unit_number: profile.unit_number || 'ON DUTY',
-                    latitude,
-                    longitude,
-                    heading: Number(profile.heading) || 0,
-                    status: profile.status || 'Available',
-                    last_updated: profile.last_updated || profile.updated_date,
-                    show_on_map: true,
-                });
-            }
-
             setOtherUnits([...unitsByEmail.values()]);
         } catch (e) {
             console.warn('[NAV] active officer fetch failed:', e?.message);
