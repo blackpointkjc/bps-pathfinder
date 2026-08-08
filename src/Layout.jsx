@@ -373,7 +373,7 @@ function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, acti
   );
 }
 
-function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, unreadCounts = {}, onCloseMobile, onToggleCollapsed }) {
+function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, unreadCounts = {}, onCloseMobile, onToggleCollapsed, onLogout }) {
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
   const availableCenters = allowedCenters(user).filter(center => !mobile || ['cad', 'officer', 'supervisor', 'admin'].includes(center));
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
@@ -499,7 +499,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
           {user?.rank && user?.last_name && <div className="text-[10px] leading-tight text-[#9fb6cc] break-words">{user.last_name}</div>}
           <div className="mt-1 text-[9px] text-emerald-400">● SECURE SESSION</div>
         </div>}
-        <button onClick={() => base44.auth.logout('/')} className={`flex h-10 w-full items-center gap-3 rounded px-3 text-[#8399b0] hover:bg-red-950/30 hover:text-red-300 ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
+        <button onClick={() => onLogout?.()} className={`flex h-10 w-full items-center gap-3 rounded px-3 text-[#8399b0] hover:bg-red-950/30 hover:text-red-300 ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
           <LogOut className="h-4 w-4" />{(!collapsed || mobile) && <span className="text-[11px] font-bold">SIGN OUT</span>}
         </button>
         <button type="button" onClick={() => setShowDeleteAccountDialog(true)} className={`flex h-10 w-full items-center gap-3 rounded px-3 text-[#8399b0] hover:bg-red-950/30 hover:text-red-300 ${collapsed && !mobile ? 'justify-center px-0' : ''}`} title="Delete account">
@@ -518,7 +518,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
               <button type="button" onClick={() => {
                 setShowDeleteAccountDialog(false);
                 toast.success('Your account deletion request has been submitted to HR for processing.');
-                window.setTimeout(() => base44.auth.logout('/'), 650);
+                window.setTimeout(() => onLogout?.(), 650);
               }} className="min-h-11 flex-1 rounded-lg bg-red-700 px-4 text-sm font-black text-white hover:bg-red-600">CONFIRM</button>
             </div>
           </motion.div>
@@ -531,7 +531,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSection, setMobileSection] = useState(null);
@@ -832,12 +832,12 @@ export default function Layout({ children, currentPageName }) {
 
   return <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} />
     <aside className="relative hidden flex-col border-r border-[#1c3049] md:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
-      <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onToggleCollapsed={() => setCollapsed(value => !value)} />
+      <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onToggleCollapsed={() => setCollapsed(value => !value)} onLogout={() => logout(true)} />
     </aside>
 
     <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/70 md:hidden" onClick={() => setMobileOpen(false)}>
       <motion.aside initial={{ x: -360 }} animate={{ x: 0 }} exit={{ x: -360 }} className="h-full w-[min(92vw,360px)] border-r border-[#1c3049] shadow-2xl" onClick={event => event.stopPropagation()}>
-        <Sidebar mobile mobileSection={mobileSection} user={user} activeCenter={activeCenter} setActiveCenter={center => { setMobileSection(null); setActiveCenter(center); }} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => { setMobileOpen(false); setMobileSection(null); }} />
+        <Sidebar mobile mobileSection={mobileSection} user={user} activeCenter={activeCenter} setActiveCenter={center => { setMobileSection(null); setActiveCenter(center); }} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => { setMobileOpen(false); setMobileSection(null); }} onLogout={() => logout(true)} />
       </motion.aside>
     </motion.div>}</AnimatePresence>
 
