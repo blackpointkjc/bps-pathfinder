@@ -56,7 +56,6 @@ export default function DispatchCenter() {
         return [rank, last].filter(Boolean).join(' ') || match.full_name || raw;
     };
     const knownCallIdsRef = React.useRef(null);
-    const syncingGracRef = React.useRef(false);
 
     useEffect(() => {
         const clockInterval = setInterval(() => setSystemTime(new Date()), 1000);
@@ -86,36 +85,27 @@ export default function DispatchCenter() {
     useEffect(() => {
         init();
         loadMonitoredProperties();
-        
-        const syncLiveFeed = async () => {
-            if (syncingGracRef.current || document.hidden) return;
-            syncingGracRef.current = true;
-            try {
-                await base44.functions.invoke('ingestGractivecalls', {});
-                await base44.functions.invoke('archiveOldCalls', {}).catch(error => console.warn('CAD archive pass failed:', error?.message));
-                await loadActiveCalls();
-            } catch (error) {
-                console.warn('GRAC live sync failed:', error?.message);
-            } finally {
-                syncingGracRef.current = false;
-            }
-        };
 
-        syncLiveFeed();
-        const syncInterval = setInterval(syncLiveFeed, 10000);
+        // GRAC ingestion is owned app-wide by DashboardDataProvider. Dispatch Center
+        // listens for persisted call changes instead of launching a second sync loop.
+        const unsubscribeCalls = base44.entities.DispatchCall.subscribe(() => loadActiveCalls());
         const localInterval = setInterval(() => {
             loadActiveCalls();
-            loadUnits();
-        }, 10000);
-        const secondaryInterval = setInterval(loadMonitoredProperties, 60000);
+        }, 20000);
+        const unitsInterval = setInterval(loadUnits, 60000);
+        const secondaryInterval = setInterval(loadMonitoredProperties, 120000);
         const onVisibility = () => {
-            if (!document.hidden) syncLiveFeed();
+            if (!document.hidden) {
+                loadActiveCalls();
+                loadUnits();
+            }
         };
         document.addEventListener('visibilitychange', onVisibility);
 
         return () => {
-            clearInterval(syncInterval);
+            unsubscribeCalls?.();
             clearInterval(localInterval);
+            clearInterval(unitsInterval);
             clearInterval(secondaryInterval);
             document.removeEventListener('visibilitychange', onVisibility);
         };
