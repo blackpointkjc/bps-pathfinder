@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, MapPin, Save, X, RefreshCw } from 'lucide-react';
+import { Search, MapPin, RefreshCw } from 'lucide-react';
 import { createPageUrl } from '../utils';
 
 const STATUS_CFG = {
@@ -22,8 +21,6 @@ export default function Personnel() {
     const [filterRole, setFilterRole] = useState('all');
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [editDialog, setEditDialog] = useState(false);
-    const [editForm, setEditForm] = useState({});
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [forcedOverrides, setForcedOverrides] = useState([]);
     const [statusUpdatingId, setStatusUpdatingId] = useState(null);
@@ -75,24 +72,6 @@ export default function Personnel() {
         finally { setRefreshing(false); }
     };
 
-    const handleEdit = (person) => {
-        const parts = (person.full_name || '').trim().split(' ');
-        const lastName = parts.length > 1 ? parts[parts.length - 1] : parts[0];
-        const firstName = parts.length > 1 ? parts.slice(0, parts.length - 1).join(' ') : '';
-        setEditForm({ id: person.id, first_name: firstName, last_name: lastName, unit_number: person.unit_number || '', rank: person.rank || '', status: person.status || 'Available' });
-        setEditDialog(true);
-    };
-
-    const handleSave = async () => {
-        try {
-            await base44.functions.invoke('updateUser', { userId: editForm.id, updates: { last_name: editForm.last_name, unit_number: editForm.unit_number, rank: editForm.rank, status: editForm.status } });
-            toast.success('Personnel record updated');
-            setEditDialog(false);
-            await loadPersonnel();
-        } catch (error) {
-            toast.error('Update failed: ' + (error?.message || 'Unknown error'));
-        }
-    };
 
     const handleForceStatus = async (person) => {
         const existingOverride = forcedOverrides.find(entry => entry.officer_id === person.id);
@@ -203,8 +182,6 @@ export default function Personnel() {
                     <div className="flex items-center justify-center h-24 text-slate-600 text-xs tracking-widest">— NO PERSONNEL MATCH FILTERS —</div>
                 ) : filteredPersonnel.map((person, idx) => {
                     const cfg = STATUS_CFG[person.status] || STATUS_CFG['Out of Service'];
-                    const nameParts = (person.full_name || '').trim().split(' ');
-                    const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0] || '—';
                     return (
                         <div key={person.id} className={`grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 border-b border-slate-800/60 px-3 py-3 text-[10px] hover:bg-slate-800/30 md:flex md:items-center md:px-4 md:py-2 ${idx % 2 === 0 ? '' : 'bg-slate-900/30'}`}> 
                             <div className="w-6 flex-shrink-0">
