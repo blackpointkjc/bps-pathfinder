@@ -183,7 +183,9 @@ export default function TrespassingNotices() {
   const canSubmit = isAdmin || !!activeEntry;
 
   const saveNoticeMutation = useMutation({
-    mutationFn: async ({ data, isDraft }) => { // Updated: mutationFn accepts { data, isDraft }
+    mutationFn: async (variables) => {
+      const { data, isDraft } = variables || {};
+      if (!data) throw new Error('Trespass notice data is required');
       // Get officer's IP address
       let ipAddress = 'Unknown';
       try {
