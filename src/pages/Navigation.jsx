@@ -626,8 +626,18 @@ export default function Navigation() {
             );
             const unitsByEmail = new Map();
 
-            // Primary source: active time-clock/GPS sessions.
+            // Primary source: newest ActiveOfficer GPS record per officer. Older duplicate
+            // rows must never overwrite a newer fix from another page/device.
+            const newestActiveByEmail = new Map();
             for (const active of activeOfficers || []) {
+                const email = active.officer_email?.toLowerCase();
+                if (!email) continue;
+                const stamp = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
+                const existing = newestActiveByEmail.get(email);
+                const existingStamp = existing ? new Date(existing.last_update || existing.updated_date || existing.created_date || 0).getTime() : -Infinity;
+                if (!existing || stamp > existingStamp) newestActiveByEmail.set(email, active);
+            }
+            for (const active of newestActiveByEmail.values()) {
                 const email = active.officer_email?.toLowerCase();
                 if (!email || email === currentEmail) continue;
                 const latitude = Number(active.latitude);
@@ -644,7 +654,7 @@ export default function Navigation() {
                     latitude,
                     longitude,
                     heading: Number(active.heading ?? profile.heading) || 0,
-                    status: profile.status && profile.status !== 'Out of Service' ? profile.status : (active.status || 'Available'),
+                    status: profile.status || active.status || 'Out of Service',
                     last_updated: active.last_update || active.updated_date || active.created_date,
                     current_location: active.current_location,
                     union_id: active.union_id || '',
