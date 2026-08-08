@@ -68,6 +68,7 @@ export default function AdminScheduling() {
     { day: 'Saturday', date: '', start_time: '', end_time: '', location: '' },
   ]);
   const [officerPublicationOverrides, setOfficerPublicationOverrides] = useState([]);
+  const [confirmation, setConfirmation] = useState(null);
 
 
   const queryClient = useQueryClient();
@@ -869,13 +870,8 @@ Make sure all dates are in YYYY-MM-DD format.` ,
 
   const handleCopyPreviousWeek = () => {
     if (!schedules) return;
-    
-    const confirmCopy = confirm(
-      `This will copy all shifts from the previous week (${format(addDays(weekStart, -7), 'MMM d')} - ${format(addDays(weekEnd, -7), 'MMM d')}) to the current week (${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}). Continue?`
-    );
-    
-    if (!confirmCopy) return;
 
+    const runCopy = () => {
     const prevWeekStart = addDays(weekStart, -7);
     const prevWeekEnd = addDays(weekEnd, -7);
     const prevWeekStartStr = format(prevWeekStart, 'yyyy-MM-dd');
@@ -914,6 +910,15 @@ Make sure all dates are in YYYY-MM-DD format.` ,
     });
 
     bulkCreateShiftsMutation.mutate(newShifts);
+    };
+
+    setConfirmation({
+      title: 'Copy Previous Week',
+      message: `Copy all shifts from ${format(addDays(weekStart, -7), 'MMM d')} - ${format(addDays(weekEnd, -7), 'MMM d')} into ${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}?`,
+      confirmLabel: 'Copy Schedule',
+      tone: 'primary',
+      onConfirm: runCopy,
+    });
   };
 
   const handleCopySelectedOfficers = () => {
@@ -1825,15 +1830,23 @@ Make sure all dates are in YYYY-MM-DD format.` ,
   };
 
   const handleClearAllShifts = () => {
-    if (confirm(`⚠️ WARNING: This will permanently delete ALL shifts for the week of ${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}.\n\nThis action cannot be undone. Are you sure you want to continue?`)) {
-      clearAllShiftsMutation.mutate();
-    }
+    setConfirmation({
+      title: 'Clear Entire Week?',
+      message: `This will permanently delete every shift for ${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}. This action cannot be undone.`,
+      confirmLabel: 'Clear Week',
+      tone: 'danger',
+      onConfirm: () => clearAllShiftsMutation.mutate(),
+    });
   };
 
   const handleDeleteShift = (scheduleId) => {
-    if (confirm('Delete this shift?')) {
-      deleteScheduleMutation.mutate(scheduleId);
-    }
+    setConfirmation({
+      title: 'Delete Shift?',
+      message: 'This shift will be removed from the schedule.',
+      confirmLabel: 'Delete Shift',
+      tone: 'danger',
+      onConfirm: () => deleteScheduleMutation.mutate(scheduleId),
+    });
   };
 
   const handleDragEnd = (result) => {
