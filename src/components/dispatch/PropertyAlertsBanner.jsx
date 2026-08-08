@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, MapPin, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { stopAllAlerts } from '@/utils/alertUtils';
 
 export default function PropertyAlertsBanner() {
     const [alerts, setAlerts] = useState([]);
@@ -34,15 +35,19 @@ export default function PropertyAlertsBanner() {
     };
 
     const handleAcknowledge = async (alert) => {
+        // Silence immediately before waiting on the server write.
+        stopAllAlerts();
+        setAlerts(current => current.filter(item => item.id !== alert.id));
         try {
             await base44.entities.PropertyAlert.update(alert.id, {
-                acknowledged: true
+                acknowledged: true,
+                acknowledgedAt: new Date().toISOString(),
             });
             toast.success('Alert acknowledged');
-            await loadAlerts();
         } catch (error) {
             console.error('Error acknowledging alert:', error);
             toast.error('Failed to acknowledge alert');
+            await loadAlerts();
         }
     };
 
