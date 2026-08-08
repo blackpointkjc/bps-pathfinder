@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
         if (!isSystemManager && (updates.role !== undefined || updates.additional_roles !== undefined)) return Response.json({ error: 'Only Admin or Full Access can change account roles' }, { status: 403 });
 
         const updatePayload: Record<string, unknown> = {};
-        const fields = ['first_name','last_name','full_name','email','mobile_phone','rank','unit_number','badge_number','division','assigned_location','assigned_locations','assigned_sites','dispatch_role','is_supervisor','show_on_map','role','status','additional_roles'];
+        const fields = ['first_name','last_name','full_name','email','mobile_phone','rank','unit_number','badge_number','division','assigned_location','assigned_locations','assigned_sites','dispatch_role','is_supervisor','show_on_map','role','status','additional_roles','platoon','supervisor_id','supervisor_email','supervisor_name','next_level_supervisor_id','next_level_supervisor_email','next_level_supervisor_name'];
         for (const f of fields) {
             if (updates[f] !== undefined) updatePayload[f] = updates[f];
         }
