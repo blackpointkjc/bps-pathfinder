@@ -134,6 +134,14 @@ export default function AdminLocationTracker() {
     enabled: hasAccess && !!allUsers,
   });
 
+  useEffect(() => {
+    if (!hasAccess) return undefined;
+    const unsubscribe = base44.entities.ActiveOfficer.subscribe(() => {
+      queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
+    });
+    return unsubscribe;
+  }, [hasAccess, queryClient]);
+
   const newestLocationByEmail = React.useMemo(() => {
     const map = new Map();
     for (const row of activeOfficerLocations || []) {
