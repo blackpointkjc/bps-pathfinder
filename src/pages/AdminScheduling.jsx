@@ -104,11 +104,28 @@ export default function AdminScheduling() {
     staleTime: 60000,
   });
 
-  const { data: schedules } = useQuery({
+  const { data: schedules = [], error: schedulesError } = useQuery({
     queryKey: ['allSchedules'],
-    queryFn: () => base44.entities.Schedule.list('-shift_date'),
+    queryFn: async () => {
+      const rows = await base44.entities.Schedule.list('-shift_date');
+      const validRows = (rows || []).filter((shift) => {
+        const validDate = /^\d{4}-\d{2}-\d{2}$/.test(String(shift?.shift_date || '')) &&
+          !Number.isNaN(new Date(`${shift.shift_date}T00:00:00`).getTime());
+        const validTimes = /^\d{2}:\d{2}$/.test(String(shift?.start_time || '')) &&
+          /^\d{2}:\d{2}$/.test(String(shift?.end_time || ''));
+        const validLocation = typeof shift?.location === 'string' && shift.location.trim().length > 0;
+        const validOfficer = typeof shift?.officer_email === 'string' && shift.officer_email.trim().length > 0;
+        return validDate && validTimes && validLocation && validOfficer;
+      });
+      const ignoredCount = (rows || []).length - validRows.length;
+      if (ignoredCount > 0) {
+        console.warn(`AdminScheduling ignored ${ignoredCount} malformed Schedule record(s) so the page can continue rendering.`);
+      }
+      return validRows;
+    },
     enabled: user?.role === 'admin',
     staleTime: 30000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: payrollPeriods } = useQuery({
