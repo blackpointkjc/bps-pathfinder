@@ -26,9 +26,6 @@ import SignaturePad from "../components/SignaturePad";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { openTrespassNoticePrint, resolvePoliceDepartment } from '@/utils/trespassNoticePrint';
 
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/c29aab328_c3ff2618-4412-4498-8923-8f484a9469b8-2533645741.jpeg";
-const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
-
 export default function VATrespassNotices() {
   // Same implementation as TrespassingNotices.js but with VA-specific title
   const [showForm, setShowForm] = useState(false);
@@ -94,9 +91,9 @@ export default function VATrespassNotices() {
     initialData: [],
   });
 
-  const getOfficerSignature = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
-    if (!officer) return email;
+  const getOfficerSignature = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    if (!officer) return String(officerRef || 'Unknown Officer');
     
     const rank = officer.rank || '';
     const lastName = officer.last_name || '';
@@ -108,11 +105,11 @@ export default function VATrespassNotices() {
     if (rank && lastName) {
       return `${rank} ${lastName}`;
     }
-    return email;
+    return officer.email || String(officerRef || 'Unknown Officer');
   };
 
-  const getOfficerFullName = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
+  const getOfficerFullName = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
     if (officer) {
       if (officer.first_name && officer.last_name) {
         return `${officer.first_name} ${officer.last_name}`;
@@ -121,7 +118,7 @@ export default function VATrespassNotices() {
         return `${officer.rank} ${officer.last_name}`;
       }
     }
-    return email;
+    return officer?.email || String(officerRef || 'Unknown Officer');
   };
 
   const { data: activeEntry } = useQuery({
@@ -130,8 +127,8 @@ export default function VATrespassNotices() {
       if (!user?.email) return null;
       const entries = await base44.entities.TimeEntry.filter(
         { officer_email: user.email },
-        '-created_date',
-        1
+        '-clock_in',
+        100
       );
       return entries.find(e => !e.clock_out) || null;
     },
@@ -149,7 +146,7 @@ export default function VATrespassNotices() {
   // Real-time sync across devices
   useEffect(() => {
     if (!user) return;
-    const unsubscribe = base44.entities.TrespassingNotice.subscribe((event) => {
+    const unsubscribe = base44.entities.TrespassingNotice.subscribe(() => {
       queryClient.invalidateQueries({ queryKey: ['allTrespassingNotices'] });
     });
     return unsubscribe;
@@ -199,12 +196,12 @@ export default function VATrespassNotices() {
     initialData: [],
   });
 
-  const getOfficerIdentifier = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
+  const getOfficerIdentifier = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
     if (officer?.last_name && officer?.unit_number) {
       return `${officer.last_name} - Unit ${officer.unit_number}`;
     }
-    return email;
+    return officer?.email || String(officerRef || 'Unknown Officer');
   };
 
   useEffect(() => {
@@ -413,7 +410,7 @@ export default function VATrespassNotices() {
   };
 
   const startEdit = (notice, todoId = null) => {
-    if (notice.created_by !== user?.email && !isAdmin) {
+    if (String(notice.created_by_id || '') !== String(user?.id || '') && !isAdmin) {
       alert("You can only edit your own notices.");
       return;
     }
@@ -469,7 +466,7 @@ export default function VATrespassNotices() {
 
   const printNotice = (notice) => {
     const siteLocation = locations?.find(loc => loc.site_name === notice.location);
-    const officer = allUsers?.find(u => u.email === notice.created_by);
+    const officer = allUsers?.find(u => String(u.id) === String(notice.created_by_id));
     const officerFullName = officer ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() : 'Officer';
     openTrespassNoticePrint(notice, {
       jurisdiction: 'VA',
@@ -694,7 +691,7 @@ export default function VATrespassNotices() {
       notice.subject_id?.toLowerCase().includes(query) ||
       notice.vehicle_info?.toLowerCase().includes(query) ||
       notice.police_report_number?.toLowerCase().includes(query) ||
-      getOfficerIdentifier(notice.created_by).toLowerCase().includes(query)
+      getOfficerIdentifier(notice.created_by_id).toLowerCase().includes(query)
     );
   }) || [];
 
@@ -707,7 +704,7 @@ export default function VATrespassNotices() {
       notice.subject_id?.toLowerCase().includes(query) ||
       notice.vehicle_info?.toLowerCase().includes(query) ||
       notice.police_report_number?.toLowerCase().includes(query) ||
-      getOfficerIdentifier(notice.created_by).toLowerCase().includes(query)
+      getOfficerIdentifier(notice.created_by_id).toLowerCase().includes(query)
     );
   }) || [];
 
@@ -1128,7 +1125,7 @@ export default function VATrespassNotices() {
                             <div className="mt-4 pt-4 border-t-2 border-slate-300">
                               <p className="text-xs text-slate-500 mb-2">Officer Signature:</p>
                               <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                                {getOfficerSignature(notice.created_by)}
+                                {getOfficerSignature(notice.created_by_id)}
                               </p>
                               {notice.officer_ip_address && notice.created_date && (
                                 <p className="text-xs text-slate-400 mt-1">
@@ -1232,7 +1229,7 @@ export default function VATrespassNotices() {
                   <div className="mt-8 pt-6 border-t-2 border-gray-300">
                     <p className="font-bold text-base mb-2">Issued by:</p>
                     <p className="text-2xl italic text-gray-800" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                      {getOfficerSignature(selectedNotice.created_by)}
+                      {getOfficerSignature(selectedNotice.created_by_id)}
                     </p>
                   </div>
                 </div>
