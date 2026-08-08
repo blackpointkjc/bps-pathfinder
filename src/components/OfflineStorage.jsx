@@ -221,7 +221,7 @@ export const syncOfflineDataToServer = async (base44) => {
       const user = await base44.auth.me();
       cloudUnsyncedData = await base44.entities.OfflineSync.filter({
         sync_type: 'pending_submission',
-        created_by: user.email,
+        created_by_id: user.id,
         synced: false
       });
     }
