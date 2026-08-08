@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,7 +35,7 @@ export default function Schedule() {
       return allSchedules.filter(s => s.officer_email === user?.email);
     },
     enabled: !!user,
-    refetchInterval: 10000, // Refetch every 10 seconds to catch schedule updates
+    refetchInterval: 60000,
   });
 
   // Query all week statuses to check which weeks are ready
@@ -43,7 +43,7 @@ export default function Schedule() {
     queryKey: ['allWeekStatuses'],
     queryFn: () => base44.entities.ScheduleWeekStatus.list(),
     enabled: !!user,
-    refetchInterval: 10000, // Refetch every 10 seconds
+    refetchInterval: 60000,
   });
 
   const { data: companyUsers = [] } = useQuery({
@@ -60,8 +60,34 @@ export default function Schedule() {
       return rows.filter(a => a.primary_officer_email === user?.email || a.partner_officer_email === user?.email);
     },
     enabled: !!user?.email,
-    refetchInterval: 10000,
+    refetchInterval: 60000,
   });
+
+  useEffect(() => {
+    if (!user?.email) return undefined;
+    const unsubscribers = [];
+    const subscribe = (entity, handler) => {
+      try {
+        const unsubscribe = entity.subscribe(handler);
+        if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+      } catch (error) {
+        console.warn('Schedule realtime subscription unavailable:', error?.message);
+      }
+    };
+
+    subscribe(base44.entities.Schedule, () => {
+      queryClient.invalidateQueries({ queryKey: ['schedules', user.email] });
+      queryClient.invalidateQueries({ queryKey: ['openShifts'] });
+    });
+    subscribe(base44.entities.ScheduleWeekStatus, () => {
+      queryClient.invalidateQueries({ queryKey: ['allWeekStatuses'] });
+    });
+    subscribe(base44.entities.VehicleAssignment, () => {
+      queryClient.invalidateQueries({ queryKey: ['myVehicleAssignments', user.email] });
+    });
+
+    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
+  }, [user?.email, queryClient]);
 
   const { data: approvedPTO, isLoading: ptoLoading } = useQuery({
     queryKey: ['myApprovedPTO', user?.id],
