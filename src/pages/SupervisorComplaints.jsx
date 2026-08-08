@@ -41,9 +41,9 @@ export default function SupervisorComplaints() {
   });
 
   const { data: myComplaints } = useQuery({
-    queryKey: ['myComplaints', user?.email],
-    queryFn: () => base44.entities.Complaint.filter({ created_by: user.email }),
-    enabled: user?.additional_roles?.includes('supervisor'),
+    queryKey: ['myComplaints', user?.id],
+    queryFn: () => base44.entities.Complaint.filter({ created_by_id: user.id }),
+    enabled: !!user?.id && user?.additional_roles?.includes('supervisor'),
   });
 
   const createComplaintMutation = useMutation({
