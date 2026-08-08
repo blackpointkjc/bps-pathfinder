@@ -311,7 +311,7 @@ export default function TimeClock() {
     setGeoError(null);
 
     try {
-      const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 10000 });
+      const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 12000, maxAccuracyMeters: 200 });
       const userLat = fix.latitude;
       const userLng = fix.longitude;
       const position = { coords: { latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy }, timestamp: fix.timestamp };
@@ -497,7 +497,7 @@ export default function TimeClock() {
     setGeoError(null);
 
     try {
-      const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 10000 });
+      const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 12000, maxAccuracyMeters: 200 });
       const currentPosition = { coords: { latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy }, timestamp: fix.timestamp };
       const destination = locations?.find(loc => loc.site_name === selectedNewSite);
       const boundaryCheck = verifyAgainstLocationBoundary(destination, fix.latitude, fix.longitude);
@@ -511,7 +511,7 @@ export default function TimeClock() {
       setGeoError(null);
     } catch (error) {
       console.error("Error getting location for site switch:", error);
-      let errorMessage = error?.message || "Unable to get your current location for site switch.";
+      let errorMessage = "Unable to get your current location for site switch.";
       if (error.code === 1) {
         errorMessage = "LOCATION PERMISSION DENIED - Cannot switch sites without location access. Please enable location services in your browser.";
       } else if (error.code === 3 || error.message === 'TIMEOUT') {
