@@ -208,30 +208,21 @@ export default function TimeClock() {
       const newLocation = locations.find(loc => loc.site_name === newSite);
       if (!newLocation) throw new Error('Location not found');
 
-      // Admins bypass geofence check
-      if (!isAdmin) {
-        if (!currentPosition) {
-          throw new Error('GPS location required. Please enable location access and try again.');
-        }
-
-        const distance = calculateDistance(
-          currentPosition.coords.latitude,
-          currentPosition.coords.longitude,
-          newLocation.latitude,
-          newLocation.longitude
-        );
-
-        // Allow up to 300 meters for site switching
-        if (distance > 300) {
-          throw new Error(`You must be within 300 meters of ${newSite} to switch sites. Current distance: ${Math.round(distance)} meters.`);
-        }
+      if (!currentPosition) {
+        throw new Error('GPS location required. Please enable location access and try again.');
       }
+      const boundaryCheck = verifyAgainstLocationBoundary(
+        newLocation,
+        currentPosition.coords.latitude,
+        currentPosition.coords.longitude
+      );
+      if (!boundaryCheck.ok) throw new Error(boundaryCheck.message);
 
       // Clock out from old site
       const clockOutData = {
         clock_out: new Date().toISOString(),
-        clock_out_latitude: isAdmin ? null : currentPosition?.coords.latitude,
-        clock_out_longitude: isAdmin ? null : currentPosition?.coords.longitude,
+        clock_out_latitude: currentPosition?.coords.latitude,
+        clock_out_longitude: currentPosition?.coords.longitude,
       };
       await base44.entities.TimeEntry.update(activeEntry.id, clockOutData);
 
@@ -241,8 +232,8 @@ export default function TimeClock() {
         officer_name: user?.full_name || user?.email,
         clock_in: new Date().toISOString(),
         location: `${newSite} - ${newLocation.address}`,
-        clock_in_latitude: isAdmin ? null : currentPosition?.coords.latitude,
-        clock_in_longitude: isAdmin ? null : currentPosition?.coords.longitude,
+        clock_in_latitude: currentPosition?.coords.latitude,
+        clock_in_longitude: currentPosition?.coords.longitude,
         notes: `Switched from ${activeEntry.location.split(' - ')[0]}`,
       };
       return await base44.entities.TimeEntry.create(clockInData);
@@ -317,24 +308,12 @@ export default function TimeClock() {
 
       const location = locations?.find(loc => loc.site_name === selectedLocation);
 
-      if (location?.latitude && location?.longitude) {
-        // Here distance is in meters, convert to feet for display if needed
-        const distanceMeters = calculateDistance(userLat, userLng, location.latitude, location.longitude);
-        const distanceFeet = distanceMeters * 3.28084;
-
-
-        // Special event locations do not have a geofence limit on clock-in
-        if (location.is_special_event || distanceFeet <= 200) {
-          return { verified: true, coords: { lat: userLat, lng: userLng }, distance: distanceMeters, position };
-        } else {
-          setGeoError(`You are ${Math.round(distanceFeet)} feet away from ${location.site_name}. You must be within 200 feet to clock in.`);
-          return { verified: false, distance: distanceMeters };
-        }
-      } else {
-        // If location has no lat/lng, still allow clock-in but without geofence check
-        // This implies it's either an old location or a non-physical one where geo-verification isn't strict
-        return { verified: true, coords: { lat: userLat, lng: userLng }, position };
+      const boundaryCheck = verifyAgainstLocationBoundary(location, userLat, userLng);
+      if (boundaryCheck.ok) {
+        return { verified: true, coords: { lat: userLat, lng: userLng }, distance: boundaryCheck.distance, position };
       }
+      setGeoError(boundaryCheck.message);
+      return { verified: false, distance: boundaryCheck.distance };
     } catch (error) {
       if (error.code === 1) {
         setGeoError("LOCATION PERMISSION DENIED - You cannot clock in without enabling location services. Click your browser's address bar and allow location access, then try again.");
@@ -380,19 +359,7 @@ export default function TimeClock() {
       }
     }
 
-    // Admin clock-in - no validation needed
-    if (isAdmin) {
-      clockInMutation.mutate({
-        officer_email: user?.email,
-        clock_in: new Date().toISOString(),
-        location: `${locationDetails.site_name} - ${locationDetails.address}`,
-        clock_in_latitude: null,
-        clock_in_longitude: null,
-      });
-      return;
-    }
-
-    // For non-admins, request location permission and verify
+    // Every user, including admins, must provide a current GPS fix and pass the site's canonical geofence.
     setVerifyingLocation(true);
     setGeoError(null);
 
