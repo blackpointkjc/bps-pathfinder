@@ -249,6 +249,11 @@ export default function AdminLocations() {
       exclude_from_auto_schedule: false,
       geofence_enabled: false,
       geofence_radius_meters: 100,
+      property_monitoring_enabled: false,
+      property_monitoring_boundary_type: 'circle',
+      property_monitoring_radius_meters: 500,
+      property_monitoring_polygon: [],
+      property_monitoring_description: '',
     });
     setMapCenter([37.5407, -77.4360]);
   };
