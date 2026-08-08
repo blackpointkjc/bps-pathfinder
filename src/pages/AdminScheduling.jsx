@@ -254,20 +254,11 @@ export default function AdminScheduling() {
               type: 'shift_posted',
               title: '📅 Your Schedule Has Been Published',
               message: publishedSummary,
-              priority: 'high'
-            }),
-            officer?.id ? base44.entities.Message.create({
-              sender_id: user?.id || 'scheduling',
-              sender_name: [user?.rank, user?.last_name].filter(Boolean).join(' ') || user?.full_name || user?.email || 'Scheduling',
-              recipient_id: officer.id,
-              recipient_name: [officer?.rank, officer?.last_name].filter(Boolean).join(' ') || officerName,
-              message: `SCHEDULE PUBLISHED\n\n${publishedSummary}`,
-              read: false,
-              message_type: 'schedule_update',
-              thread_id: `schedule:${officer.id}`,
-              participant_ids: [user?.id || 'scheduling', officer.id],
-              participant_names: [[user?.rank, user?.last_name].filter(Boolean).join(' ') || user?.full_name || 'Scheduling', [officer?.rank, officer?.last_name].filter(Boolean).join(' ') || officerName]
-            }) : Promise.resolve()
+              priority: 'high',
+              requires_acknowledgment: true,
+              source_name: 'System Scheduling',
+              is_read: false
+            })
           ]);
         }
       }
