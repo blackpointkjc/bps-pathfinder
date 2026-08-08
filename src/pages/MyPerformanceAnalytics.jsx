@@ -24,11 +24,6 @@ export default function MyPerformanceAnalytics() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: payrollPeriods } = useQuery({
-    queryKey: ['payrollPeriods'],
-    queryFn: () => base44.entities.PayrollPeriod.list('-start_date'),
-  });
-
   const { data: timeEntries } = useQuery({
     queryKey: ['myTimeEntries', user?.email],
     queryFn: () => base44.entities.TimeEntry.filter({ officer_email: user?.email }, '-clock_in'),
@@ -89,11 +84,6 @@ export default function MyPerformanceAnalytics() {
     queryKey: ['allQRCheckpoints'],
     queryFn: () => base44.entities.QRCheckpoint.filter({ is_active: true, is_required: true }),
     staleTime: 300000,
-  });
-
-  const currentPeriod = payrollPeriods?.find(p => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    return today >= p.start_date && today <= p.end_date;
   });
 
   const thisWeekSchedule = React.useMemo(() => {
@@ -323,8 +313,6 @@ export default function MyPerformanceAnalytics() {
 
     return { totalScans, successScans, completedRounds, missedRounds };
   }, [qrScanEvents, allCheckpoints, timeEntries, currentMonthStart, currentMonthEnd]);
-
-  const COLORS = ['#22c55e', '#ef4444', '#f59e0b'];
 
   const getNotificationIcon = (type) => {
     switch (type) {
