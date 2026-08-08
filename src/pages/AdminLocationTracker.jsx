@@ -214,6 +214,7 @@ export default function AdminLocationTracker() {
         const stamp = new Date(locationData.last_update || locationData.updated_date || locationData.created_date || 0).getTime();
         const ageMs = now - stamp;
         const profile = freshUsers.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
+        if (!isOperationallyVisibleUser(profile)) continue;
         const name = profile?.first_name && profile?.last_name ? `${profile.first_name} ${profile.last_name}` : (locationData.officer_name || locationData.officer_email);
         const item = {
           name,
