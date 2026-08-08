@@ -14,24 +14,8 @@ const isOperational = user => {
   return !user?.termination_date && RANKS.includes(user?.rank) && roles.has('officer') && roles.has('cad_access');
 };
 
-function buildChainAbove(person, users) {
-  const byId = new Map(users.map(user => [user.id, user]));
-  const chain = [];
-  const seen = new Set([person.id]);
-  let supervisorId = person.supervisor_id;
-  while (supervisorId && !seen.has(supervisorId)) {
-    const supervisor = byId.get(supervisorId);
-    if (!supervisor) break;
-    chain.push(supervisor);
-    seen.add(supervisorId);
-    supervisorId = supervisor.supervisor_id;
-  }
-  return chain;
-}
-
 function PersonCard({ person, users }) {
   const supervisor = users.find(u=>u.id===person.supervisor_id);
-  const chainAbove = buildChainAbove(person, users);
   return <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-3">
     <div className="flex items-start gap-3">
       {person.profile_photo_url ? <img src={person.profile_photo_url} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover"/> : <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-black">{person.first_name?.[0]}{person.last_name?.[0]}</div>}
@@ -49,12 +33,21 @@ function PersonCard({ person, users }) {
   </div>;
 }
 
+function TreeNode({ person, branch, allUsers, depth = 0 }) {
+  const children = branch.filter(user => user.supervisor_id === person.id).sort((a,b)=>rankIndex(a.rank)-rankIndex(b.rank)||(Number(a.unit_number)||9999)-(Number(b.unit_number)||9999));
+  return <div className={depth ? 'ml-4 border-l border-slate-700 pl-4 sm:ml-6 sm:pl-5' : ''}>
+    <PersonCard person={person} users={allUsers}/>
+    {children.length > 0 && <div className="mt-2 space-y-2">{children.map(child=><TreeNode key={child.id} person={child} branch={branch} allUsers={allUsers} depth={depth+1}/>)}</div>}
+  </div>;
+}
+
 function PlatoonBranch({ letter, users, allUsers }) {
   const branch = users.filter(u=>u.platoon===letter).sort((a,b)=>rankIndex(a.rank)-rankIndex(b.rank)||(Number(a.unit_number)||9999)-(Number(b.unit_number)||9999));
-  const ranks = RANKS.filter(r=>!COMMAND_RANKS.has(r));
+  const branchIds = new Set(branch.map(user=>user.id));
+  const roots = branch.filter(user => !user.supervisor_id || !branchIds.has(user.supervisor_id));
   return <section className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900">
     <div className="border-b border-slate-700 bg-gradient-to-r from-blue-950/70 to-slate-950 p-4"><div className="flex items-center gap-2"><GitBranch className="h-5 w-5 text-blue-400"/><h2 className="text-xl font-black">PLATOON {letter}</h2><Badge variant="outline" className="ml-auto border-blue-700 text-blue-300">{branch.length} PERSONNEL</Badge></div></div>
-    <div className="space-y-4 p-4">{ranks.map(rank=>{const people=branch.filter(u=>u.rank===rank);if(!people.length)return null;return <div key={rank}><div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-300"><ArrowDown className="h-3.5 w-3.5"/>{rank}</div><div className="space-y-2">{people.map(person=><PersonCard key={person.id} person={person} users={allUsers}/>)}</div></div>})}{branch.length===0&&<div className="py-10 text-center text-sm text-slate-600">No personnel assigned to Platoon {letter}.</div>}</div>
+    <div className="space-y-4 p-4">{roots.map(person=><TreeNode key={person.id} person={person} branch={branch} allUsers={allUsers}/>)}{branch.length===0&&<div className="py-10 text-center text-sm text-slate-600">No personnel assigned to Platoon {letter}.</div>}</div>
   </section>;
 }
 
