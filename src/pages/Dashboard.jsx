@@ -105,12 +105,12 @@ export default function Dashboard() {
     queryFn: async () => {
       if (!user?.email) return null;
       const requests = await base44.entities.TimeOffRequest.filter({
-        created_by: user.email,
+        created_by_id: user.id,
         status: 'pending'
       });
       return requests.length;
     },
-    enabled: !!user?.email,
+    enabled: !!user?.id,
   });
 
   const { data: payrollPeriods } = useQuery({
