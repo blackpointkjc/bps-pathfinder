@@ -970,7 +970,7 @@ export default function TimeClock() {
 
         <Card className="border border-[#29445f] bg-[#0d1825] text-slate-100 shadow-xl">
           <CardHeader className="border-b border-[#29445f]">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle className="flex items-center gap-2">
                 <CalendarIcon className="w-5 h-5 text-blue-600" />
                 My Time Entries
@@ -980,14 +980,14 @@ export default function TimeClock() {
                   variant="outline"
                   size="sm"
                   onClick={handlePrintTimeEntries}
-                  className="text-blue-700 border-blue-300 hover:bg-blue-50"
+                  className="border-[#36516b] bg-[#091522] text-blue-200 hover:bg-[#10263b]"
                 >
                   <Printer className="w-4 h-4 mr-2" />
                   Print
                 </Button>
-                <div className="text-right">
-                  <p className="text-sm text-slate-600">Total Hours</p>
-                  <p className="text-2xl font-bold text-blue-900">{calculateTotalHours()}</p>
+                <div className="text-left sm:text-right">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Total Hours</p>
+                  <p className="text-2xl font-black text-white">{calculateTotalHours()}</p>
                 </div>
               </div>
             </div>
@@ -1026,7 +1026,7 @@ export default function TimeClock() {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="text-sm"
+                    className="border-[#36516b] bg-[#091522] text-sm text-white"
                   />
                 </div>
                 <div className="space-y-1">
@@ -1036,7 +1036,7 @@ export default function TimeClock() {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="text-sm"
+                    className="border-[#36516b] bg-[#091522] text-sm text-white"
                   />
                 </div>
               </div>
@@ -1045,15 +1045,15 @@ export default function TimeClock() {
           <CardContent className="pt-6">
             <div className="space-y-3">
               {recentEntries?.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-slate-900">
+                <div key={entry.id} className="flex flex-col gap-3 rounded-xl border border-[#2b4158] bg-[#0a1521] p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-bold text-white">
                       {format(new Date(entry.clock_in), 'MMM d, yyyy')}
                     </p>
-                    <p className="text-sm text-slate-600">
+                    <p className="text-sm text-slate-300">
                       {format(new Date(entry.clock_in), 'h:mm a')} - {entry.clock_out ? format(new Date(entry.clock_out), 'h:mm a') : 'Active'}
                     </p>
-                    <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                    <p className="mt-1 flex min-w-0 items-start gap-1 text-xs text-slate-400">
                       <MapPin className="w-3 h-3" />
                       {entry.location}
                     </p>
@@ -1063,8 +1063,8 @@ export default function TimeClock() {
                       </p>
                     )}
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-slate-900">
+                  <div className="text-left sm:text-right">
+                    <p className="text-lg font-black text-white">
                       {calculateHours(entry.clock_in, entry.clock_out)}
                     </p>
                   </div>
@@ -1078,8 +1078,8 @@ export default function TimeClock() {
         </Card>
 
         {!isAdmin && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-900">
+          <div className="rounded-xl border border-blue-500/25 bg-blue-500/10 p-4">
+            <p className="text-sm leading-6 text-blue-200">
               <strong>Live Tracking:</strong> Your location is automatically tracked every 10 seconds while clocked in. GPS coordinates are accurate to within 30-50 feet depending on signal strength. Location tracking automatically stops when you clock out.
             </p>
           </div>
