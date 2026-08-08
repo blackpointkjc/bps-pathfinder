@@ -48,8 +48,16 @@ export default function AdminMessages() {
     refetchInterval: 30000,
   });
 
-  const activeUsers = allUsers?.filter(u => !u.termination_date && u.email !== user?.email).sort((a, b) => 
-    `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
+  const activeUsers = allUsers?.filter(u => {
+    if (u.termination_date || u.email === user?.email) return false;
+    const roles = new Set([u.role, ...(u.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+    const userType = String(u.user_type || u.account_type || u.portal_type || '').toLowerCase();
+    const accountStatus = String(u.account_status || '').toLowerCase();
+    return !roles.has('client') && !roles.has('student') && !roles.has('pending')
+      && !['client', 'student', 'pending'].includes(userType)
+      && accountStatus !== 'pending';
+  }).sort((a, b) => 
+    `${a.first_name || ''} ${a.last_name || ''}`.localeCompare(`${b.first_name || ''} ${b.last_name || ''}`)
   ) || [];
 
   // Group messages by conversation partner
