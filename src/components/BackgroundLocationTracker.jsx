@@ -49,8 +49,8 @@ export default function BackgroundLocationTracker({ user }) {
       try {
         const entries = await base44.entities.TimeEntry.filter(
           { officer_email: user.email },
-          '-created_date',
-          10
+          '-clock_in',
+          100
         );
         return entries.find(e => !e.clock_out) || null;
       } catch (e) {
