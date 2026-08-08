@@ -179,7 +179,7 @@ export default function QRPatrolScan() {
     queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
-      const entries = await base44.entities.TimeEntry.filter({ officer_email: user.email }, '-created_date', 10);
+      const entries = await base44.entities.TimeEntry.filter({ officer_email: user.email }, '-clock_in', 100);
       return entries.find(e => !e.clock_out) || null;
     },
     enabled: !!user?.email,
