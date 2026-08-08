@@ -135,6 +135,9 @@ export default function BackgroundLocationTracker({ user }) {
           status: user?.status || 'Signed In',
           user_role: user?.role || 'user',
           session_active: true,
+          latitude: null,
+          longitude: null,
+          accuracy: null,
         };
         if (newest) {
           activeOfficerRecordRef.current = newest.id;
