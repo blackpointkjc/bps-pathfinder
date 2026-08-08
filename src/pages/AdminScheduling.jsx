@@ -501,13 +501,6 @@ export default function AdminScheduling() {
     };
   }, [schedules, calculateShiftHours]);
 
-  // Helper function to determine if a shift is an overnight shift
-  const isOvernightShift = (startTime, endTime) => {
-    const startMinutes = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1]);
-    const endMinutes = parseInt(endTime.split(':')[0]) * 60 + parseInt(endTime.split(':')[1]);
-    return endMinutes <= startMinutes;
-  };
-
   const getCurrentPayrollPeriod = useCallback(() => {
     if (!payrollPeriods) return null;
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -1570,7 +1563,6 @@ Make sure all dates are in YYYY-MM-DD format.` ,
                   const hours = locationHoursSummary[siteName];
                   totalHours += hours;
                   const loc = locations?.find(l => l.site_name === siteName);
-                  const division = loc?.division || 'Unassigned';
                   const maxHours = loc?.max_hours_per_week || null;
                   const isOver = maxHours && hours > maxHours;
                   
@@ -1801,7 +1793,7 @@ Make sure all dates are in YYYY-MM-DD format.` ,
   const handleDragEnd = (result) => {
     if (!result.destination) return;
 
-    const { source, destination, draggableId } = result;
+    const { destination, draggableId } = result;
     
     const parts = destination.droppableId.split('-');
     const destLocationSiteName = parts[1];
@@ -1957,26 +1949,6 @@ Make sure all dates are in YYYY-MM-DD format.` ,
     } else {
       createShiftMutation.mutate(primaryShift);
     }
-  };
-
-  // Helper function to check if a time falls within a range
-  const timeInRange = (time, startTime, endTime) => {
-    const timeNum = parseInt(time.replace(':', ''));
-    const startNum = parseInt(startTime.replace(':', ''));
-    let endNum = parseInt(endTime.replace(':', ''));
-    
-    // Handle overnight shifts where end time is numerically smaller than start time
-    if (endNum <= startNum) { // Changed to <= for cases like 22:00-06:00
-      endNum += 2400; // Adjust end time for next day
-    }
-    
-    // Convert current time to numerical equivalent, adjusting for potential next day
-    let adjustedTimeNum = timeNum;
-    if (timeNum < startNum && endNum > 2400) { // If time is on the "next day" numerically
-      adjustedTimeNum += 2400;
-    }
-    
-    return adjustedTimeNum >= startNum && adjustedTimeNum < endNum;
   };
 
   // Check if two shifts overlap
@@ -2173,7 +2145,6 @@ Make sure all dates are in YYYY-MM-DD format.` ,
       try {
         // Get availability data for AI context
         const allAvailability = await base44.entities.OfficerAvailability.list();
-        const siteAssignments = await base44.entities.SiteAssignment.list();
 
         const conflictContext = {
           overlaps: results.overlaps.map(o => ({
@@ -2804,7 +2775,6 @@ Return ONLY a JSON array of suggestion objects with this structure:
                                       )}
                                     </td>
                                     {weekDays.map((day) => {
-                                      const dateStr = format(day, 'yyyy-MM-dd');
                                       const daySchedules = getScheduleForDateOfficerAndLocation(day, officerEmail, locationSiteName);
                                       
                                       return (
@@ -3067,7 +3037,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                     </td>
                   </tr>
                 )}
-                {Object.entries(locationGroups).map(([locationSiteName, officers], locationIdx) => {
+                {Object.entries(locationGroups).map(([locationSiteName, officers]) => {
                   const locationSchedules = weekDivisionalSchedules?.filter(s => s.location.split(':')[0].trim() === locationSiteName) || [];
                   const totalLocationHours = locationSchedules.reduce((sum, s) => {
                     return sum + calculateShiftHours(s.start_time, s.end_time);
@@ -3318,7 +3288,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                 </div>
                 <div className="space-y-3 p-3 md:hidden">
                   {rows.length===0 && <div className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">No scheduled or completed hours in this payroll period.</div>}
-                  {rows.map((r,idx)=><div key={r.email} className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm">
+                  {rows.map((r)=><div key={r.email} className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm">
                     <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="font-black text-white">{r.name}</div><div className="text-xs text-slate-400">{r.rank || 'Officer'} · {r.unit ? `#${r.unit}` : 'No unit'}</div></div><div className="text-right text-xs font-black text-amber-300">${r.earned.toFixed(2)}</div></div>
                     <div className="mt-3 grid grid-cols-2 gap-2 text-xs"><div className="rounded bg-blue-950/30 p-2"><span className="text-slate-500">Scheduled</span><div className="font-black text-blue-200">{r.scheduled.toFixed(1)}h</div></div><div className="rounded bg-slate-900 p-2"><span className="text-slate-500">Actual</span><div className="font-black text-white">{r.actualTotal.toFixed(1)}h</div></div><div className="rounded bg-emerald-950/20 p-2"><span className="text-slate-500">Regular</span><div className="font-black text-emerald-300">{r.actualRegular.toFixed(1)}h</div></div><div className="rounded bg-red-950/20 p-2"><span className="text-slate-500">OT</span><div className="font-black text-red-300">{r.actualOT.toFixed(1)}h</div></div></div>
                   </div>)}
