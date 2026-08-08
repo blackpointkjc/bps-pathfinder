@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Users, Shield, Edit2, Wrench, Car, MapPin, Server, TrendingUp, Clock, AlertTriangle, BarChart3, XCircle } from 'lucide-react';
 import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import VehicleManagement from '@/components/admin/VehicleManagement';
-import PropertyMonitoring from '@/components/admin/PropertyMonitoring';
 
 import SystemIssuesPanel from '@/components/admin/SystemIssuesPanel';
 
@@ -199,7 +198,6 @@ export default function AdminPortal() {
                     { key: 'dashboard', label: 'DASHBOARD', icon: BarChart3 },
                     { key: 'assets', label: 'FLEET', icon: Car },
                     { key: 'maintenance', label: 'MAINTENANCE', icon: Wrench },
-                    { key: 'properties', label: 'PROPERTIES', icon: MapPin },
                     { key: 'sysissues', label: 'SYSTEM ISSUES', icon: XCircle },
                 ].map(({ key, label, icon: Icon }) => (
                     <button key={key} onClick={() => setActiveTab(key)}
@@ -338,8 +336,6 @@ export default function AdminPortal() {
                 {activeTab === 'assets' && <VehicleManagement />}
 
                 {activeTab === 'maintenance' && <MaintenanceTracking units={users} />}
-
-                {activeTab === 'properties' && <PropertyMonitoring />}
 
 
 
