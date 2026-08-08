@@ -35,8 +35,8 @@ export default function ConfidentialReport() {
     enabled: !!user, // Only fetch reports if user data is available
   });
 
-  // IMPORTANT: Confidential reports are PRIVATE - only show officer's own reports
-  const myReports = reports?.filter(r => r.created_by === user?.email && !r.archived) || [];
+  // Confidential reports are private to their creator through entity RLS.
+  const myReports = reports?.filter(r => String(r.created_by_id || '') === String(user?.id || '') && !r.archived) || [];
 
   const submitReportMutation = useMutation({
     mutationFn: (data) => base44.entities.ConfidentialReport.create(data),
@@ -63,18 +63,9 @@ export default function ConfidentialReport() {
   const handleSubmit = (e) => {
     e.preventDefault();
     const dataToSubmit = { ...formData };
-    
-    // Attach created_by to the report if not anonymous
-    if (!formData.anonymous && user?.email) {
-      dataToSubmit.created_by = user.email;
-    } else {
-        // If anonymous, ensure created_by is explicitly null or undefined,
-        // or ensure backend handles its absence correctly.
-        // For simplicity, we'll just not send it if anonymous.
-    }
-    
-    // Set a default status for new reports, assuming backend supports it
-    dataToSubmit.status = 'pending'; // New reports default to 'pending'
+    // Ownership is recorded by Base44 as created_by_id. The anonymous flag controls
+    // whether management displays the submitter's identity; it does not weaken RLS.
+    dataToSubmit.status = 'new';
 
     submitReportMutation.mutate(dataToSubmit);
   };
