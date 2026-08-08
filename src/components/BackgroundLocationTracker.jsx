@@ -90,11 +90,6 @@ export default function BackgroundLocationTracker({ user }) {
     },
   });
 
-  // Mutation to save location history
-  const saveLocationHistoryMutation = useMutation({
-    mutationFn: (data) => base44.entities.LocationHistory.create(data),
-  });
-
   // Mutation to update or create ActiveOfficer record
   const updateActiveOfficerMutation = useMutation({
     mutationFn: async (data) => {
@@ -105,13 +100,6 @@ export default function BackgroundLocationTracker({ user }) {
         activeOfficerRecordRef.current = newRecord.id;
         return newRecord;
       }
-    },
-  });
-
-  // Delete ActiveOfficer record when clocking out
-  const deleteActiveOfficerMutation = useMutation({
-    mutationFn: async (id) => {
-      await base44.entities.ActiveOfficer.delete(id);
     },
   });
 
