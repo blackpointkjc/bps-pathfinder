@@ -21,7 +21,8 @@
         "training_rejected",
         "training_renewal_reminder",
         "missed_qr_checkpoints",
-        "qr_patrol_report"
+        "qr_patrol_report",
+        "schedule_changed"
       ],
       "description": "Type of notification"
     },
@@ -57,6 +58,20 @@
       "type": "string",
       "format": "date",
       "description": "If set, this notification should only be shown/sent on or after this date (used for 90-day renewal reminders)"
+    },
+    "requires_acknowledgment": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the recipient must explicitly acknowledge this notification"
+    },
+    "acknowledged_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the recipient acknowledged this notification"
+    },
+    "source_name": {
+      "type": "string",
+      "description": "System source displayed to the recipient"
     }
   },
   "required": [
