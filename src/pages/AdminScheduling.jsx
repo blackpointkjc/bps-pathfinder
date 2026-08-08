@@ -41,10 +41,6 @@ export default function AdminScheduling() {
   const [showEditDialog, setShowEditDialog] = useState(false); // NEW
   const [selectedPayrollPeriod, setSelectedPayrollPeriod] = useState("all");
   const [generatingPeriods, setGeneratingPeriods] = useState(false);
-  const [showAIImportDialog, setShowAIImportDialog] = useState(false); // New state for AI import dialog
-  const [uploadedFileUrl, setUploadedFileUrl] = useState(null); // New state for uploaded document URL
-  const [uploadingDocument, setUploadingDocument] = useState(false); // New state for document upload status
-  const [importingSchedule, setImportingSchedule] = useState(false); // New state for AI import status
   const [newShift, setNewShift] = useState({
     officer_email: "",
     partner_officer_email: "",
@@ -71,9 +67,6 @@ export default function AdminScheduling() {
     { day: 'Friday', date: '', start_time: '', end_time: '', location: '' },
     { day: 'Saturday', date: '', start_time: '', end_time: '', location: '' },
   ]);
-  const [showAIAssistant, setShowAIAssistant] = useState(false);
-  const [showPerformanceAnalyzer, setShowPerformanceAnalyzer] = useState(false);
-  const [showOpenShiftManager, setShowOpenShiftManager] = useState(false);
   const [officerPublicationOverrides, setOfficerPublicationOverrides] = useState([]);
 
 
@@ -134,13 +127,6 @@ export default function AdminScheduling() {
     enabled: user?.role === 'admin',
     staleTime: 10000,
     refetchInterval: 10000,
-  });
-
-  const { data: plannedShifts } = useQuery({
-    queryKey: ['plannedShifts'],
-    queryFn: () => base44.entities.PlannedShift.filter({ active: true }),
-    enabled: user?.role === 'admin',
-    staleTime: 5 * 60 * 1000,
   });
 
   const { data: weekStatus } = useQuery({
@@ -1762,148 +1748,6 @@ Make sure all dates are in YYYY-MM-DD format.` ,
       }
     } else {
       setTimeout(() => printWindow.print(), 100);
-    }
-  };
-
-  const handleDocumentUpload = async (file) => {
-    if (!file) return;
-    
-    setUploadingDocument(true);
-    try {
-      const result = await base44.integrations.Core.UploadFile({ file });
-      setUploadedFileUrl(result.file_url);
-      alert('Document uploaded! Click "Import Schedule" to analyze and import shifts.');
-    } catch (error) {
-      alert('Error uploading document: ' + error.message);
-    }
-    setUploadingDocument(false);
-  };
-
-  const handleAIImport = async () => {
-    if (!uploadedFileUrl) {
-      alert("Please upload a document first.");
-      return;
-    }
-
-    setImportingSchedule(true);
-    try {
-      const officerList = activeOfficers?.map(u => `${u.first_name} ${u.last_name} (${u.email})`).join('\n- ');
-      const locationList = locations?.map(l => `${l.site_name}: ${l.address}`).join('\n- ');
-
-      const promptText = `Parse the schedule from the provided document URL. Extract all shifts and provide them in a structured JSON format.
-        
-        Document URL: ${uploadedFileUrl}
-
-        Here are the currently registered officers and their emails in our system. Please use their emails for the 'officer_email' field if their name matches. If an officer's name is in the document but not in this list, assume it's an unrecognized officer and still extract the shift, but the 'officer_email' for such a shift could be null or a generic placeholder like "unknown@example.com" if you cannot find a match, though prioritize matching to the list below:
-        - ${officerList}
-
-        Here are the currently active locations in our system. Please use the exact 'site_name: address' format for the 'location' field if the site name matches. If a location name from the document is not in this list, use "UNKNOWN LOCATION: Unknown Address" or the closest possible match based on the document's context, but prioritize matching to the list below:
-        - ${locationList}
-
-        Crucial instructions for parsing:
-        1.  **Officer Identification**: Match officer names in the document to existing officers. If an officer's full name (first and last) matches an existing user's full name or email in our system, use their email as \`officer_email\`. If the document refers to a shift as 'OPEN', 'UNASSIGNED', or similar, set \`officer_email\` to "OPEN" and \`is_open\` to true.
-        2.  **Location Identification**: Match location names in the document to existing site names. Use the exact \`site_name: address\` format for the \`location\`.
-        3.  **Date Parsing**: Dates can be in various formats (e.g., "Mon 1/1", "Jan 1", "January 1st, 2025"). Normalize all dates to 'YYYY-MM-DD' format. Ensure the correct year is used if not explicitly stated (assume current or upcoming year based on context).
-        4.  **Time Parsing**: Extract start and end times. Times can be 12-hour or 24-hour format (e.g., "0800", "8am", "8:00 PM"). Normalize to 'HH:MM' (24-hour) format.
-        5.  **Split Shifts**: If a shift starts on one day and ends on the next (e.g., "22:00 - 06:00"), this indicates a split shift. For split shifts, the \`shift_date\` should be the START date of the shift. The \`is_split_shift\` flag should be set to \`true\`. For instance, a shift on Jan 1 from 22:00 to 06:00 Jan 2 should have \`shift_date: "YYYY-01-01"\` and \`is_split_shift: true\`.
-        6.  **Linked Shift ID**: For split shifts, the \`linked_shift_id\` should typically be null when importing, as linking is usually a manual process post-creation or through advanced rules not covered here.
-        7.  **Output Structure**: Return a JSON object with a "shifts" array containing shift objects with the following keys: \`officer_email\`, \`shift_date\`, \`start_time\`, \`end_time\`, \`location\`, \`is_open\`, \`is_split_shift\`, \`linked_shift_id\`.
-        
-        Example Output Format:
-        {
-          "shifts": [
-            {
-              "officer_email": "john.doe@example.com",
-              "shift_date": "2024-01-15",
-              "start_time": "08:00",
-              "end_time": "16:00",
-              "location": "Main Office: 123 Main St",
-              "is_open": false,
-              "is_split_shift": false,
-              "linked_shift_id": null
-            },
-            {
-              "officer_email": "OPEN",
-              "shift_date": "2024-01-15",
-              "start_time": "16:00",
-              "end_time": "23:00",
-              "location": "Warehouse: 456 Industrial Rd",
-              "is_open": true,
-              "is_split_shift": false,
-              "linked_shift_id": null
-            },
-            {
-              "officer_email": "jane.smith@example.com",
-              "shift_date": "2024-01-15",
-              "start_time": "22:00",
-              "end_time": "06:00",
-              "location": "Downtown Bank: 789 Financial Ave",
-              "is_open": false,
-              "is_split_shift": true,
-              "linked_shift_id": null
-            }
-          ]
-        }
-        
-        Return the JSON object with shifts array. If no shifts are found, return {"shifts": []}.`;
-
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: promptText,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            shifts: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  officer_email: { type: "string" },
-                  shift_date: { type: "string", format: "date" },
-                  start_time: { type: "string", pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$" },
-                  end_time: { type: "string", pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$" },
-                  location: { type: "string" },
-                  is_open: { type: "boolean" },
-                  is_split_shift: { type: "boolean" },
-                  linked_shift_id: { type: ["string", "null"] }
-                },
-                required: ["officer_email", "shift_date", "start_time", "end_time", "location", "is_open", "is_split_shift", "linked_shift_id"]
-              }
-            }
-          }
-        }
-      });
-
-      if (response && response.shifts && response.shifts.length > 0) {
-        // Filter out any shifts that might have an invalid location (e.g., LLM couldn't match)
-        // Or shifts with officers not found and not marked as OPEN.
-        const validShifts = response.shifts.filter(s => {
-          const locationSiteName = s.location.split(':')[0].trim();
-          const locationExists = locations?.some(loc => loc.site_name === locationSiteName);
-          
-          const officerExists = s.officer_email === "OPEN" || activeOfficers?.some(o => o.email === s.officer_email);
-
-          return locationExists && officerExists;
-        }).map(s => ({
-          ...s,
-          linked_shift_id: s.linked_shift_id || null // Ensure null if not provided
-        }));
-
-        if (validShifts.length > 0) {
-          await bulkCreateShiftsMutation.mutateAsync(validShifts);
-          alert(`Successfully imported ${validShifts.length} shifts.`);
-        } else {
-          alert('No valid shifts were extracted from the document or matched to existing officers/locations. Please check the document format or ensure officers/locations exist.');
-        }
-      } else {
-        alert('No shifts were extracted from the document. Please check the document content.');
-      }
-      setUploadedFileUrl(null); // Clear URL after import
-      setShowAIImportDialog(false);
-    } catch (error) {
-      console.error("Error importing schedule with AI:", error);
-      alert('Failed to import schedule using AI. Please check the document and try again. Ensure officer names and location site names are consistent with system data.');
-    } finally {
-      setImportingSchedule(false);
     }
   };
 
