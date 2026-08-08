@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { publishLiveLocation } from '@/lib/liveLocationService';
 
 // Calculate distance between two GPS coordinates in meters
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
@@ -145,6 +146,14 @@ export default function BackgroundLocationTracker({ user }) {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
       const accuracy = position.coords.accuracy;
+      publishLiveLocation({
+        latitude: lat,
+        longitude: lng,
+        accuracy,
+        heading: position.coords.heading,
+        speed: position.coords.speed ? position.coords.speed * 2.237 : 0,
+        timestamp: position.timestamp || Date.now(),
+      });
 
       // Reject extremely inaccurate location readings (over 500 meters)
       if (accuracy > 500) {
