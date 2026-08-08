@@ -278,21 +278,12 @@ export default function TimeClock() {
   // Removed auto-trigger of location permission - will request on clock in button click
 
   useEffect(() => {
-    if (isAdmin) return undefined;
     return subscribeLiveLocation((fix) => {
       setCurrentLocationCoords({ lat: fix.latitude, lng: fix.longitude });
     });
-  }, [isAdmin]);
+  }, []);
 
   const requestLocationPermission = async () => {
-    // Admin bypasses location check entirely IF NOT a special event
-    if (isAdmin) {
-      const location = locations?.find(loc => loc.site_name === selectedLocation);
-      if (!location?.is_special_event) {
-        setLocationPermissionGranted(true);
-        return { verified: true, coords: null };
-      }
-    }
 
     setVerifyingLocation(true);
     setGeoError(null);
