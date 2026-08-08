@@ -4122,9 +4122,31 @@ Return ONLY a JSON array of suggestion objects with this structure:
         </DialogContent>
       </Dialog>
 
-
-
-
+      <Dialog open={!!confirmation} onOpenChange={(open) => { if (!open) setConfirmation(null); }}>
+        <DialogContent className="max-w-md border-slate-700 bg-slate-950 text-white shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black tracking-wide text-white">{confirmation?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4 text-sm leading-6 text-slate-300">
+            {confirmation?.message}
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setConfirmation(null)} className="border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const action = confirmation?.onConfirm;
+                setConfirmation(null);
+                action?.();
+              }}
+              className={confirmation?.tone === 'danger' ? 'bg-red-700 text-white hover:bg-red-600' : 'bg-amber-500 text-black hover:bg-amber-400'}
+            >
+              {confirmation?.confirmLabel || 'Continue'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <style>{`
         @media print {
