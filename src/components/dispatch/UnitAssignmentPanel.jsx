@@ -5,13 +5,20 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Plus, X, Search } from 'lucide-react';
 
+const isOperationalUnit = (user) => {
+    const roles = new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+    const userType = String(user?.user_type || user?.account_type || user?.portal_type || '').toLowerCase();
+    return !roles.has('client') && !roles.has('student') && !roles.has('pending') && !['client', 'student', 'pending'].includes(userType);
+};
+
 export default function UnitAssignmentPanel({ call, units, onUpdate }) {
     const [searchTerm, setSearchTerm] = useState('');
     
     const assignedUnitIds = call?.assigned_units || [];
-    const assignedUnits = units.filter(u => assignedUnitIds.includes(u.id));
+    const assignedUnits = units.filter(u => assignedUnitIds.includes(u.id) && isOperationalUnit(u));
     
     const availableUnits = units.filter(u => 
+        isOperationalUnit(u) &&
         !assignedUnitIds.includes(u.id) &&
         (u.status === 'Available' || u.status === 'On Patrol') &&
         u.show_on_map !== false &&
