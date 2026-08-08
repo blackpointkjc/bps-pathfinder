@@ -499,13 +499,16 @@ export default function TimeClock() {
     try {
       const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 10000 });
       const currentPosition = { coords: { latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy }, timestamp: fix.timestamp };
+      const destination = locations?.find(loc => loc.site_name === selectedNewSite);
+      const boundaryCheck = verifyAgainstLocationBoundary(destination, fix.latitude, fix.longitude);
+      if (!boundaryCheck.ok) throw new Error(boundaryCheck.message);
 
-      if (confirm(`Switch from ${activeEntry.location.split(' - ')[0]} to ${selectedNewSite}?\n\nThis will clock you out of your current site and clock you in to the new site.`)) {
-        switchSiteMutation.mutate({ newSite: selectedNewSite, currentPosition });
-      } else {
-        setSwitchingSite(false); // User cancelled confirmation
-      }
+      const fromSite = activeEntry.location?.split(' - ')[0] || 'current site';
+      if (!window.confirm(`Switch from ${fromSite} to ${selectedNewSite}?\n\nThis will clock you out of your current site and immediately clock you in to ${selectedNewSite}.`)) return;
 
+      await switchSiteMutation.mutateAsync({ newSite: selectedNewSite, currentPosition });
+      setSelectedNewSite('');
+      setGeoError(null);
     } catch (error) {
       console.error("Error getting location for site switch:", error);
       let errorMessage = "Unable to get your current location for site switch.";
@@ -520,42 +523,6 @@ export default function TimeClock() {
     }
   };
 
-  useEffect(() => {
-    let intervalId;
-
-    const trackLocation = async () => {
-      if (!activeEntry || !user?.email || isAdmin) return;
-
-      try {
-        const fix = await waitForLiveLocation({ maxAgeMs: 30000, timeoutMs: 10000 });
-
-        saveLocationHistoryMutation.mutate({
-          time_entry_id: activeEntry.id,
-          officer_email: user.email,
-          latitude: fix.latitude,
-          longitude: fix.longitude,
-          timestamp: new Date(fix.timestamp).toISOString(),
-          accuracy: fix.accuracy,
-        });
-
-      } catch (error) {
-        if (error.code !== 3) {
-          console.error("Error tracking location:", error);
-        }
-      }
-    };
-
-    if (activeEntry && !isAdmin) {
-      trackLocation();
-      intervalId = setInterval(trackLocation, 10000);
-    }
-
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [activeEntry, user?.email, isAdmin, saveLocationHistoryMutation]);
 
   const calculateHours = (clockIn, clockOut) => {
     if (!clockOut) return "Active";
