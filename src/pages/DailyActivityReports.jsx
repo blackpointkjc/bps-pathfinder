@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import SignaturePad from "../components/SignaturePad";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
+import { getLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/142cfda7e_VirtusSecurity.jpeg";
 const DCJS_ID = "VA DCJS #11-6066 | Maryland #106-4738";
@@ -224,16 +225,14 @@ export default function DailyActivityReports() {
         console.error('Failed to get IP address:', error);
       }
 
-      // Capture device timezone and GPS
+      // Capture device timezone and GPS from the one app-wide location service.
       const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       let gpsLat = null;
       let gpsLng = null;
       try {
-        const pos = await new Promise((resolve, reject) => {
-          navigator.geolocation?.getCurrentPosition(resolve, reject, { timeout: 3000 });
-        });
-        gpsLat = pos.coords.latitude;
-        gpsLng = pos.coords.longitude;
+        const fix = getLiveLocation(15000) || await waitForLiveLocation({ maxAgeMs: 15000, timeoutMs: 3000 });
+        gpsLat = fix.latitude;
+        gpsLng = fix.longitude;
       } catch {}
 
       let locationToSubmit = data.location;
