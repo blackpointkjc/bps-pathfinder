@@ -28,9 +28,13 @@ export function subscribeLiveLocation(listener) {
   return () => listeners.delete(listener);
 }
 
-export function waitForLiveLocation({ maxAgeMs = 15000, timeoutMs = 10000 } = {}) {
+export function waitForLiveLocation({ maxAgeMs = 15000, timeoutMs = 10000, maxAccuracyMeters = Infinity } = {}) {
+  const acceptable = fix => !!fix
+    && Date.now() - fix.timestamp <= maxAgeMs
+    && Number.isFinite(Number(fix.accuracy))
+    && Number(fix.accuracy) <= maxAccuracyMeters;
   const current = getLiveLocation(maxAgeMs);
-  if (current) return Promise.resolve(current);
+  if (acceptable(current)) return Promise.resolve(current);
   return new Promise((resolve, reject) => {
     let done = false;
     const finish = (value, error) => {
@@ -41,7 +45,7 @@ export function waitForLiveLocation({ maxAgeMs = 15000, timeoutMs = 10000 } = {}
       if (error) reject(error); else resolve(value);
     };
     const unsubscribe = subscribeLiveLocation(fix => {
-      if (Date.now() - fix.timestamp <= maxAgeMs) finish(fix);
+      if (acceptable(fix)) finish(fix);
     });
     const timer = setTimeout(() => finish(null, new Error('LIVE_LOCATION_TIMEOUT')), timeoutMs);
   });
