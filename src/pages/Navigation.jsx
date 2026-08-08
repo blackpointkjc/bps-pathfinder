@@ -12,7 +12,6 @@ import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { isCriticalCall } from '@/lib/cadCallUtils';
 import { splitCallsByCoords } from '@/lib/geocodingPipeline';
-import { monitoredPropertiesFromLocations } from '@/utils/alertUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
@@ -57,7 +56,7 @@ export default function Navigation() {
     const [locationHistory, setLocationHistory] = useState([]);
     const [unitStatus, setUnitStatus] = useState('Available');
     const [showLights, setShowLights] = useState(false);
-    const [unitName, setUnitName] = useState(localStorage.getItem('unitName') || '');
+    const [unitName] = useState(localStorage.getItem('unitName') || '');
     const [mapTheme, setMapTheme] = useState(() => {
         const saved = localStorage.getItem('mapTheme');
         if (saved) return saved;
@@ -70,12 +69,10 @@ export default function Navigation() {
     const [callDistrict, setCallDistrict] = useState(null);
     const [showHeatmap, setShowHeatmap] = useState(false);
     const [assigning, setAssigning] = useState(false);
-    const [isLoadingCalls, setIsLoadingCalls] = useState(false);
     const [unmappedCalls, setUnmappedCalls] = useState([]);
     const [showUnmapped, setShowUnmapped] = useState(false);
     const [leftPanelOpen, setLeftPanelOpen] = useState(true);
     const [leftTab, setLeftTab] = useState('units'); // 'units' | 'calls'
-    const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [showOnlyCriticalCalls, setShowOnlyCriticalCalls] = useState(false);
     const [isGeocoding, setIsGeocoding] = useState(false);
     const [navDestination, setNavDestination] = useState(null);
@@ -91,7 +88,6 @@ export default function Navigation() {
     const [addressResults, setAddressResults] = useState([]);
     const [addressSearching, setAddressSearching] = useState(false);
     const [showAddressSearch, setShowAddressSearch] = useState(false);
-    const [lastGpsFixAt, setLastGpsFixAt] = useState(null);
     const [fitBounds, setFitBounds] = useState(null);
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
@@ -119,7 +115,6 @@ export default function Navigation() {
         const unsubscribe = subscribeLiveLocation((fix) => {
             const coords = [fix.latitude, fix.longitude];
             setCurrentLocation(coords);
-            setLastGpsFixAt(fix.timestamp);
             if (fix.heading !== null) setHeading(fix.heading);
             setSpeed(Math.round(fix.speed || 0));
             setLocationHistory(prev => [...prev, coords].slice(-30));
@@ -162,10 +157,8 @@ export default function Navigation() {
         };
 
         syncLiveCalls();
-        loadMonitoredProperties();
         const syncInterval = setInterval(syncLiveCalls, 15000);
         const localInterval = setInterval(fetchCalls, 10000);
-        const propertyInterval = setInterval(loadMonitoredProperties, 60000);
         const onVisibility = () => {
             if (!document.hidden) syncLiveCalls();
         };
@@ -173,7 +166,6 @@ export default function Navigation() {
         return () => {
             clearInterval(syncInterval);
             clearInterval(localInterval);
-            clearInterval(propertyInterval);
             document.removeEventListener('visibilitychange', onVisibility);
         };
     }, []);
@@ -282,7 +274,6 @@ export default function Navigation() {
         const fix = getLiveLocation(30000);
         if (fix) {
             setCurrentLocation([fix.latitude, fix.longitude]);
-            setLastGpsFixAt(fix.timestamp);
             if (fix.heading !== null) setHeading(fix.heading);
             setSpeed(Math.round(fix.speed || 0));
             setIsLiveTracking(true);
@@ -360,7 +351,6 @@ export default function Navigation() {
             const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 10000 });
             const fresh = [fix.latitude, fix.longitude];
             setCurrentLocation(fresh);
-            setLastGpsFixAt(fix.timestamp);
             if (fix.heading !== null) setHeading(fix.heading);
             setSpeed(Math.round(fix.speed || 0));
             return fresh;
