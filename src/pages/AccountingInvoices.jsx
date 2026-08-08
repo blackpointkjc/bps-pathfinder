@@ -11,10 +11,7 @@ import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 
-const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
-
 export default function AccountingInvoices() {
-  const [showDialog, setShowDialog] = useState(false);
   const [selectedClient, setSelectedClient] = useState("");
   const [selectedSite, setSelectedSite] = useState("");
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
@@ -117,7 +114,6 @@ export default function AccountingInvoices() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      setShowDialog(false);
       alert('✅ Invoice created and sent to client!');
     },
   });
@@ -325,7 +321,7 @@ export default function AccountingInvoices() {
             All Sites
           </Button>
           <Button
-            onClick={() => setShowDialog(true)}
+            onClick={() => document.getElementById('invoice-generator')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             className="bg-green-600 hover:bg-green-700"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -334,7 +330,7 @@ export default function AccountingInvoices() {
         </div>
       </div>
 
-      <Card className="mb-6 rounded-2xl border-slate-200 bg-white shadow-sm">
+      <Card id="invoice-generator" className="mb-6 scroll-mt-6 rounded-2xl border-slate-200 bg-white shadow-sm">
         <CardHeader>
           <CardTitle>Invoice Generator</CardTitle>
         </CardHeader>
