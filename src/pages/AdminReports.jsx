@@ -967,8 +967,9 @@ export default function AdminReports() {
       return;
     }
 
-    const officer = allUsers?.find(u => u.email === report.created_by);
-    const officerName = officer ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email : report.created_by;
+    const creatorRef = report.created_by_id || report.created_by;
+    const officer = allUsers?.find(u => String(u.id) === String(creatorRef) || String(u.email || '').toLowerCase() === String(creatorRef || '').toLowerCase());
+    const officerName = officer ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email : 'Unknown Officer';
     
     let subject = '';
     let body = '';
