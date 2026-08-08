@@ -290,6 +290,54 @@ export default function BackgroundLocationTracker({ user }) {
     };
   }, [shouldTrack, shouldPublish, activeEntry, user, locations]);
 
+  // Independent one-minute heartbeat. This runs even when the device is stationary
+  // and watchPosition does not emit a new event. It keeps the signed-in session fresh
+  // and writes one historical breadcrumb per minute from the latest valid GPS fix.
+  useEffect(() => {
+    if (!shouldTrack || !user?.email) return undefined;
+
+    const heartbeat = async () => {
+      const nowIso = new Date().toISOString();
+      const fix = lastPositionRef.current;
+      try {
+        if (activeOfficerRecordRef.current) {
+          await base44.entities.ActiveOfficer.update(activeOfficerRecordRef.current, {
+            officer_email: user.email,
+            officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+            current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
+            clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
+            last_update: nowIso,
+            ...(fix ? { latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy } : {}),
+            status: user?.status || 'Signed In',
+            user_role: user?.role || 'user',
+            session_active: true,
+          });
+        }
+        if (fix && Date.now() - lastSaveRef.current >= 55000) {
+          await base44.entities.LocationHistory.create({
+            time_entry_id: activeEntry?.id || '',
+            officer_email: user.email,
+            officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+            location: activeEntry?.location || user?.current_location || user?.assigned_location || `Signed In · ${user?.role || 'user'}`,
+            latitude: fix.latitude,
+            longitude: fix.longitude,
+            timestamp: nowIso,
+            accuracy: fix.accuracy,
+          });
+          lastSaveRef.current = Date.now();
+          queryClient.invalidateQueries({ queryKey: ['locationHistory'] });
+        }
+        queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
+      } catch (error) {
+        console.warn('Location heartbeat failed:', error?.message);
+      }
+    };
+
+    heartbeat();
+    const heartbeatId = window.setInterval(heartbeat, 60000);
+    return () => window.clearInterval(heartbeatId);
+  }, [shouldTrack, user?.email, user?.role, user?.status, user?.assigned_location, activeEntry?.id, activeEntry?.location, activeEntry?.clock_in]);
+
   // All signed-in users are tracked, but only clocked-in users get a close warning.
   useEffect(() => {
     if (!shouldTrack || !activeEntry) return;
@@ -313,7 +361,7 @@ export default function BackgroundLocationTracker({ user }) {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [shouldTrack]);
+  }, [shouldTrack, activeEntry]);
 
   // Add pagehide event for iOS/mobile browsers
   useEffect(() => {
