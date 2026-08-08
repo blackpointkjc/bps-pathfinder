@@ -28,7 +28,6 @@ import {
   MobileResponsiveDialogTitle,
 } from "../components/MobileResponsiveDialog";
 
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/857a5f1c1_UntitledProject3.png";
 
 export default function AdminReports() {
   const [startDate, setStartDate] = useState(format(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
@@ -149,96 +148,8 @@ export default function AdminReports() {
       const updated = await entityMap[type].update(id, updateData);
 
       const location = locations?.find(loc => loc.site_name === report.location);
-      const creatorRef = report.created_by_id || report.created_by;
-      const officer = allUsers?.find(u => String(u.id) === String(creatorRef) || String(u.email || '').toLowerCase() === String(creatorRef || '').toLowerCase());
-      const officerName = officer
-        ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email
-        : 'Unknown Officer';
 
       if (location?.assigned_client_email) {
-        let subjectClient = '';
-        let bodyClient = '';
-
-        if (type === 'shift') {
-          const shiftDate = report.shift_date ? format(new Date(report.shift_date), 'EEEE, MMMM d, yyyy') : 'Unknown Date';
-          subjectClient = `✅ Shift Report Approved - ${location.site_name} - ${shiftDate}`;
-          bodyClient = `APPROVED SHIFT REPORT\n\n` +
-                       `Site: ${location.site_name}\n` +
-                       `Date: ${shiftDate}\n` +
-                       `Shift Time: ${report.start_time} - ${report.end_time}\n` +
-                       `Officer: ${officerName}\n\n` +
-                       `ACTIVITIES:\n${report.activities}\n\n` +
-                       (report.incidents ? `INCIDENTS:\n${report.incidents}\n\n` : '') +
-                       `View full report in your Black Point Portal Client Portal.`;
-        } else if (type === 'daily_activity') {
-          const reportDate = report.report_date ? format(new Date(report.report_date), 'EEEE, MMMM d, yyyy') : 'Unknown Date';
-          subjectClient = `✅ Daily Activity Report Approved - ${location.site_name} - ${reportDate}`;
-          bodyClient = `APPROVED DAILY ACTIVITY REPORT\n\n` +
-                       `Site: ${location.site_name}\n` +
-                       `Date: ${reportDate}\n` +
-                       `Shift Time: ${report.start_time} - ${report.end_time}\n` +
-                       `Officer: ${officerName}\n\n` +
-                       `HOURLY ACTIVITIES:\n${report.hourly_entries}\n\n` +
-                       `View full report in your Black Point Portal Client Portal.`;
-        } else if (type === 'incident') {
-          const incidentDate = report.incident_date ? format(new Date(report.incident_date), 'MMMM d, yyyy') : 'Unknown Date';
-          subjectClient = `⚠️ Incident Report Approved - ${report.incident_type.toUpperCase().replace(/_/g, ' ')} - ${location.site_name}`;
-          bodyClient = `APPROVED INCIDENT REPORT\n\n` +
-                       `Report #: ${report.report_number || 'N/A'}\n` +
-                       `Site: ${location.site_name}\n` +
-                       `Date/Time: ${incidentDate} at ${report.incident_time}\n` +
-                       `Officer: ${officerName}\n` +
-                       `Type: ${report.incident_type.replace(/_/g, ' ').toUpperCase()}\n` +
-                       `Severity: ${report.severity.toUpperCase()}\n\n` +
-                       `DESCRIPTION:\n${report.description}\n\n` +
-                       `View full report in your Black Point Portal Client Portal.`;
-        } else if (type === 'trespass') {
-          const noticeDate = report.notice_date ? format(new Date(report.notice_date), 'MMMM d, yyyy h:mm a') : 'Unknown Date';
-          subjectClient = `🚫 Trespass Notice Approved - ${report.subject_name} - ${location.site_name}`;
-          bodyClient = `APPROVED TRESPASS NOTICE\n\n` +
-                       `Site: ${location.site_name}\n` +
-                       `Date: ${noticeDate}\n` +
-                       `Officer: ${officerName}\n` +
-                       `Subject: ${report.subject_name}\n` +
-                       `Duration: ${report.duration || 'Not specified'}\n\n` +
-                       `REASON:\n${report.reason}\n\n` +
-                       `View full notice in your Black Point Portal Client Portal.`;
-        } else if (type === 'parking') {
-          const violationDate = report.violation_date ? format(new Date(report.violation_date), 'MMMM d, yyyy') : 'Unknown Date';
-          subjectClient = `🚗 Parking Violation Approved - ${report.license_plate} - ${location.site_name}`;
-          bodyClient = `APPROVED PARKING VIOLATION\n\n` +
-                       `Citation #: ${report.citation_number || 'N/A'}\n` +
-                       `Site: ${location.site_name}\n` +
-                       `Date/Time: ${violationDate} at ${report.violation_time}\n` +
-                       `Officer: ${officerName}\n` +
-                       `Vehicle: ${report.vehicle_make} ${report.vehicle_model} (${report.vehicle_color})\n` +
-                       `License Plate: ${report.license_plate} (${report.license_state})\n` +
-                       `Violation: ${report.violation_type.replace(/_/g, ' ').toUpperCase()}\n\n` +
-                       `View full violation in your Black Point Portal Client Portal.`;
-        } else if (type === 'criminal') {
-          const complaintDate = report.complaint_date ? format(new Date(report.complaint_date), 'MMMM d, yyyy') : 'Unknown Date';
-          subjectClient = `⚖️ Criminal Complaint Approved - ${location.site_name}`;
-          bodyClient = `APPROVED CRIMINAL COMPLAINT\n\n` +
-                       `Complaint #: ${report.complaint_number || 'N/A'}\n` +
-                       `Site: ${location.site_name}\n` +
-                       `Date: ${complaintDate}\n` +
-                       `Officer: ${officerName}\n` +
-                       `Accused: ${report.accused_first_name} ${report.accused_last_name}\n` +
-                       `Violation: ${report.violation_code || 'Not specified'}\n\n` +
-                       `View full complaint in your Black Point Portal Client Portal.`;
-        } else if (type === 'summons') {
-          const offenseDate = report.offense_date ? format(new Date(report.offense_date), 'MMMM d, yyyy') : 'Unknown Date';
-          subjectClient = `📋 VA Summons Approved - ${report.violator_first_name} ${report.violator_last_name} - ${location.site_name}`;
-          bodyClient = `APPROVED VA UNIFORM SUMMONS\n\n` +
-                       `Summons #: ${report.summons_number || 'N/A'}\n` +
-                       `Site: ${location.site_name}\n` +
-                       `Offense Date: ${offenseDate}\n` +
-                       `Officer: ${officerName}\n` +
-                       `Defendant: ${report.violator_first_name} ${report.violator_last_name}\n` +
-                       `Violation: ${report.violation_code}\n\n` +
-                       `View full summons in your Black Point Portal Client Portal.`;
-        }
-
         // Create announcement for client users at this location
         const clientUsers = allUsers?.filter(u => 
           u.additional_roles?.includes('client') && 
@@ -431,8 +342,6 @@ export default function AdminReports() {
     }
 
     const printWindow = window.open('', '', 'width=850,height=1100');
-    const officerSig = getOfficerSignature(report.created_by_id || report.created_by);
-
     // Convert to Zulu time
     const toZulu = (dateString) => {
       if (!dateString) return '';
@@ -719,7 +628,6 @@ export default function AdminReports() {
     } else if (type === 'criminal') {
       reportTitle = 'CRIMINAL COMPLAINT';
       reportSubtitle = 'Warrant Application';
-      const complaintDate = report.complaint_date ? format(new Date(report.complaint_date), 'MMMM d, yyyy') : '';
       const offenseDate = report.offense_date ? format(new Date(report.offense_date), 'MMMM d, yyyy') : '';
       metaInfo = `
         <div class="meta-item"><span class="meta-label">Complaint #:</span> <span class="meta-value">${report.complaint_number || 'N/A'}</span></div>
