@@ -17,9 +17,13 @@ Deno.serve(async (req) => {
       const requests = await base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000);
       const visibleRequests = (requests || []).filter((entry: any) => entry.reason !== 'PTO workflow verification record');
       if (hasHR) return Response.json({ success: true, requests: visibleRequests });
-      const mine = visibleRequests.filter((entry: any) =>
-        String(entry.requested_by_email || entry.created_by || '').toLowerCase() === String(user.email || '').toLowerCase()
-      );
+      const myEmail = String(user.email || '').toLowerCase();
+      const myId = String(user.id || '');
+      const mine = visibleRequests.filter((entry: any) => {
+        const requestEmail = String(entry.requested_by_email || entry.created_by || '').toLowerCase();
+        const creatorId = String(entry.created_by_id || '');
+        return requestEmail === myEmail || (!!myId && creatorId === myId);
+      });
       return Response.json({ success: true, requests: mine });
     }
 
@@ -60,9 +64,10 @@ Deno.serve(async (req) => {
         reviewed_date: new Date().toISOString(),
       });
 
-      const officerEmail = request.requested_by_email || request.created_by;
+      const users = await base44.asServiceRole.entities.User.list();
+      const creatorOfficer = (users || []).find((entry: any) => String(entry.id || '') === String(request.created_by_id || ''));
+      const officerEmail = request.requested_by_email || request.created_by || creatorOfficer?.email;
       if (status === 'approved' && request.request_type === 'paid' && officerEmail) {
-        const users = await base44.asServiceRole.entities.User.list();
         const officer = (users || []).find((entry: any) => String(entry.email).toLowerCase() === String(officerEmail).toLowerCase());
         if (officer?.id) {
           const hours = Number(request.hours_requested || 0);
@@ -85,9 +90,10 @@ Deno.serve(async (req) => {
       if (String(request.admin_notes || '').startsWith('Manual ')) return Response.json({ error: 'Manual balance entries must be corrected from Manual PTO' }, { status: 400 });
 
       const hours = Number(request.hours_requested || 0);
-      const officerEmail = request.requested_by_email || request.created_by;
+      const users = await base44.asServiceRole.entities.User.list();
+      const creatorOfficer = (users || []).find((entry: any) => String(entry.id || '') === String(request.created_by_id || ''));
+      const officerEmail = request.requested_by_email || request.created_by || creatorOfficer?.email;
       if (request.request_type === 'paid' && officerEmail && hours > 0) {
-        const users = await base44.asServiceRole.entities.User.list();
         const officer = (users || []).find((entry: any) => String(entry.email || '').toLowerCase() === String(officerEmail).toLowerCase());
         if (!officer?.id) return Response.json({ error: 'Officer account not found; hours were not changed' }, { status: 404 });
         await base44.asServiceRole.entities.User.update(officer.id, {
