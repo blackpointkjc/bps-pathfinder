@@ -63,7 +63,8 @@ export default function BackgroundLocationTracker({ user }) {
   // officer is on the Navigation page. Do not publish an Out-of-Service officer.
   const roles = new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
   const isCadOfficer = roles.has('officer') || roles.has('cad_access') || roles.has('cad') || roles.has('full_access');
-  const shouldTrack = !!user?.email && isCadOfficer && (activeEntry || (user?.status && user.status !== 'Out of Service')); 
+  const shouldTrack = !!user?.email && isCadOfficer;
+  const shouldPublish = !!activeEntry || (!!user?.status && user.status !== 'Out of Service');
 
   // Mutation to create geofence alert
   const createGeofenceAlertMutation = useMutation({
@@ -100,8 +101,9 @@ export default function BackgroundLocationTracker({ user }) {
 
   // Get or create ActiveOfficer record
   useEffect(() => {
-    if (!shouldTrack) {
-      // If officer clocked out, delete their active officer record
+    if (!shouldPublish) {
+      // Keep device GPS available for clock-in/verification, but remove OOS officers
+      // from the operational live-location feed.
       if (activeOfficerRecordRef.current) {
         deleteActiveOfficerMutation.mutate(activeOfficerRecordRef.current);
         activeOfficerRecordRef.current = null;
@@ -125,7 +127,7 @@ export default function BackgroundLocationTracker({ user }) {
     };
 
     getActiveOfficerRecord();
-  }, [shouldTrack, user?.email]);
+  }, [shouldPublish, user?.email]);
 
   useEffect(() => {
     if (!shouldTrack) {
@@ -160,6 +162,8 @@ export default function BackgroundLocationTracker({ user }) {
         console.warn(`GPS accuracy too low: ${accuracy.toFixed(0)}m - waiting for better signal`);
         return;
       }
+
+      if (!shouldPublish) return;
 
       try {
         // Limit server writes to one live GPS update every 5 seconds. Browser GPS can
@@ -264,7 +268,7 @@ export default function BackgroundLocationTracker({ user }) {
         watchIdRef.current = null;
       }
     };
-  }, [shouldTrack, activeEntry, user, locations]);
+  }, [shouldTrack, shouldPublish, activeEntry, user, locations]);
 
   // Add beforeunload handler to warn users
   useEffect(() => {
