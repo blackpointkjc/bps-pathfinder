@@ -149,10 +149,11 @@ export default function AdminReports() {
       const updated = await entityMap[type].update(id, updateData);
 
       const location = locations?.find(loc => loc.site_name === report.location);
-      const officer = allUsers?.find(u => u.email === report.created_by);
+      const creatorRef = report.created_by_id || report.created_by;
+      const officer = allUsers?.find(u => String(u.id) === String(creatorRef) || String(u.email || '').toLowerCase() === String(creatorRef || '').toLowerCase());
       const officerName = officer
         ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email
-        : report.created_by;
+        : 'Unknown Officer';
 
       if (location?.assigned_client_email) {
         let subjectClient = '';
@@ -318,8 +319,8 @@ export default function AdminReports() {
 
       // Create a todo for the officer
       await base44.entities.ReportTodo.create({
-        officer_email: report.created_by,
-        officer_name: getOfficerName(report.created_by),
+        officer_email: getOfficerEmail(report.created_by_id || report.created_by),
+        officer_name: getOfficerName(report.created_by_id || report.created_by),
         report_type: type === 'shift' ? 'shift_report' : 
                      type === 'daily_activity' ? 'daily_activity_report' :
                      type === 'incident' ? 'incident_report' :
@@ -365,24 +366,29 @@ export default function AdminReports() {
     });
   };
 
-  const getOfficerName = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
-    return officer ? `${officer.first_name} ${officer.last_name}` : email;
+  const getOfficerEmail = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    return officer?.email || '';
   };
 
-  const getOfficerSignature = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
+  const getOfficerName = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    return officer ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email : 'Unknown Officer';
+  };
+
+  const getOfficerSignature = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
     if (officer?.rank && officer?.last_name && officer?.unit_number) {
       return `${officer.rank} ${officer.last_name} Unit ${officer.unit_number}`;
     }
     if (officer?.rank && officer?.last_name) {
       return `${officer.rank} ${officer.last_name}`;
     }
-    return `${officer?.first_name || ''} ${officer?.last_name || ''}`.trim() || email;
+    return `${officer?.first_name || ''} ${officer?.last_name || ''}`.trim() || officer?.email || 'Unknown Officer';
   };
 
   const printReport = (report, type) => {
-    const officerName = getOfficerName(report.created_by);
+    const officerName = getOfficerName(report.created_by_id || report.created_by);
     if (type === 'summons') {
       openVirginiaSummonsPrint(report, {
         officerName: report.officer_name || officerName,
@@ -391,7 +397,8 @@ export default function AdminReports() {
       return;
     }
     if (type === 'trespass') {
-      const officer = allUsers?.find(u => u.email === report.created_by);
+      const creatorRef = report.created_by_id || report.created_by;
+      const officer = allUsers?.find(u => String(u.id) === String(creatorRef) || String(u.email || '').toLowerCase() === String(creatorRef || '').toLowerCase());
       const site = locations?.find(loc => loc.site_name === report.location);
       const officerFullName = officer ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() : officerName;
       openTrespassNoticePrint(report, {
@@ -408,7 +415,8 @@ export default function AdminReports() {
       return;
     }
     if (type === 'criminal') {
-      const officer = allUsers?.find(u => u.email === report.created_by);
+      const creatorRef = report.created_by_id || report.created_by;
+      const officer = allUsers?.find(u => String(u.id) === String(creatorRef) || String(u.email || '').toLowerCase() === String(creatorRef || '').toLowerCase());
       const complainantName = officer?.last_name && officer?.first_name
         ? `${officer.last_name.toUpperCase()}, ${officer.first_name}${officer.middle_name ? ` ${officer.middle_name}` : ''}`
         : (report.complainant_name || officerName);
@@ -423,7 +431,7 @@ export default function AdminReports() {
     }
 
     const printWindow = window.open('', '', 'width=850,height=1100');
-    const officerSig = getOfficerSignature(report.created_by);
+    const officerSig = getOfficerSignature(report.created_by_id || report.created_by);
 
     // Convert to Zulu time
     const toZulu = (dateString) => {
@@ -1071,7 +1079,7 @@ export default function AdminReports() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-slate-600 mb-2">
-            <strong>Officer:</strong> {getOfficerName(report.created_by)}
+            <strong>Officer:</strong> {getOfficerName(report.created_by_id || report.created_by)}
           </p>
           <p className="text-sm text-slate-600 mb-2">
             <strong>Location:</strong> {report.location}
@@ -1276,7 +1284,7 @@ export default function AdminReports() {
                   <div key={report.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900">{getOfficerName(report.created_by)}</h4>
+                        <h4 className="font-semibold text-slate-900">{getOfficerName(report.created_by_id || report.created_by)}</h4>
                         <p className="text-sm text-slate-600">
                          {format(new Date(
                            report.shift_date || report.report_date || report.incident_date || report.notice_date || 
@@ -1326,7 +1334,7 @@ export default function AdminReports() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-slate-500">Officer</p>
-                  <p className="font-medium">{getOfficerName(viewingReport.created_by)}</p>
+                  <p className="font-medium">{getOfficerName(viewingReport.created_by_id || viewingReport.created_by)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">Location</p>
@@ -1486,7 +1494,7 @@ export default function AdminReports() {
                 {viewingReport.signature_url ? (
                   <img src={viewingReport.signature_url} alt="Officer Signature" className="h-16 object-contain" />
                 ) : (
-                  <p className="text-2xl font-serif italic">{getOfficerSignature(viewingReport.created_by)}</p>
+                  <p className="text-2xl font-serif italic">{getOfficerSignature(viewingReport.created_by_id || viewingReport.created_by)}</p>
                 )}
                 {viewingReport.officer_ip_address && viewingReport.created_date && (
                   <p className="text-xs text-slate-400 mt-1">
