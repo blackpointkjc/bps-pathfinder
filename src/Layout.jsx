@@ -7,7 +7,7 @@ import {
   ClipboardCheck, ClipboardList, Clock3, DollarSign, DoorOpen, FileText,
   FileWarning, Gauge, GraduationCap, Layers, LogOut, Map, MapPin, Menu,
   MessageCircle, Package, Radio, Search, Settings, Shield, ShieldCheck,
-  Siren, Trash2, UserCheck, UserX, Users, Wrench, X
+  Siren, Trash2, UserCheck, UserX, Users, Wrench, X, GitBranch
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -132,6 +132,7 @@ const CENTER_CONFIG = {
       ]},
       { label: 'Operations Management', items: [
         ['Pending Users & Account Assignment', 'AdminUsers', Users],
+        ['Platoon & Chain Assignments', 'AdminPlatoonAssignments', GitBranch],
         ['Locations', 'AdminLocations', Building2],
         ['Equipment', 'AdminEquipment', Package],
         ['Documents', 'AdminDocuments', FileText],
