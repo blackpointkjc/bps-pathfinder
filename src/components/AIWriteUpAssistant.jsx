@@ -1,8 +1,7 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 export default function AIWriteUpAssistant({ description, onSuggest }) {
   const [loading, setLoading] = useState(false);

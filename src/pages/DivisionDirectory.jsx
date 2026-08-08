@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Users, Search, Phone, Mail, MapPin, Shield } from "lucide-react";
+import { Users, Search, Phone, Mail, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,

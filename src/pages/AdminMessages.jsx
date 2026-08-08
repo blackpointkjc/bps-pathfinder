@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   MessageSquare, Send, ArrowLeft, Plus, Search, CheckCheck, Check, 
-  Shield, Users, Eye
+  Shield, Eye
 } from "lucide-react";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
 

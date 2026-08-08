@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertOctagon, Plus, Search, Edit2, CheckCircle2, User, Car, Shield, Bell, Eye, FileWarning, History, Radio, Clock3 } from 'lucide-react';
 import BOLOModal from '@/components/bolo/BOLOModal';

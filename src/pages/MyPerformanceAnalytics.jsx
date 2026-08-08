@@ -6,11 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { 
-  BarChart3, Clock, CheckCircle2, Award, 
-  TrendingUp, Calendar, Star, AlertTriangle,
+  BarChart3, Clock, CheckCircle2, Award, Calendar, Star, AlertTriangle,
   Bell, MapPin, ChevronRight, GraduationCap, UserX
 } from "lucide-react";
-import { format, parseISO, addDays, startOfWeek, isPast, isFuture, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
+import { format, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 

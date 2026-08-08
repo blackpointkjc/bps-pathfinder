@@ -2,7 +2,6 @@
  * ActiveCallMarkers — PURE RENDER ONLY.
  * Consumes pre-geocoded calls. Never fetches, geocodes, or modifies state.
  */
-import React from 'react';
 import { Marker } from 'react-leaflet';
 import L from 'leaflet';
 

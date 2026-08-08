@@ -1,5 +1,5 @@
 import { getClientPortalUser } from '@/utils/clientPreview';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Search, RefreshCw, MapPin, FileText, MessageSquare, ChevronDown, ChevronUp, Radio } from 'lucide-react';
 import { calculateDistance } from '@/utils/alertUtils';

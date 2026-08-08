@@ -1,4 +1,3 @@
-import React from "react";
 
 export default function LocationHourCard({ location, hours }) {
   const maxHours = location.max_hours_per_week || null;

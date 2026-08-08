@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MessageCircle, Plus, Search, Send, Trash2, Users, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 

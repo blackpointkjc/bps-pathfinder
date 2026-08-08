@@ -1,5 +1,5 @@
-import { getClientPortalUser, getClientPreviewId } from '@/utils/clientPreview';
-import React, { useState, useEffect, useMemo } from "react";
+import { getClientPortalUser } from '@/utils/clientPreview';
+import { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";

@@ -1,15 +1,15 @@
-import React, { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Shield, GraduationCap, Search, FileText, CheckCircle, Clock, AlertTriangle, XCircle, Users, TrendingUp, Download, BookOpen } from "lucide-react";
-import { format, parseISO, isPast, isAfter, isBefore, startOfDay } from "date-fns";
+import { Shield, GraduationCap, Search, FileText, CheckCircle, Clock, AlertTriangle, Users, TrendingUp, BookOpen } from "lucide-react";
+import { format, parseISO, isPast, isAfter, isBefore } from "date-fns";
 import { toast } from "sonner";
 
 const STATUS_COLORS = {

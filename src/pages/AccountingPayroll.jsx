@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,13 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DollarSign, CheckCircle, Trash2, Settings, Zap, AlertTriangle, FileText, Download, Printer } from "lucide-react";
-import { format, startOfMonth, endOfMonth, isValid, parseISO, startOfWeek, endOfWeek } from "date-fns";
-import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
+import { DollarSign, CheckCircle, Trash2, Zap, AlertTriangle, Printer } from "lucide-react";
+import { format, isValid, parseISO, startOfWeek } from "date-fns";
 import { calculatePaidHours } from "@/lib/payrollCalculations";
 
 const safeFormatDate = (dateStr, formatStr = 'MMM d, yyyy') => {

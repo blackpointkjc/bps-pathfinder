@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Download, Calendar, FileText } from "lucide-react";
-import { format, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from "date-fns";
+import { DollarSign, Download, FileText } from "lucide-react";
+import { format, startOfQuarter, endOfQuarter } from "date-fns";
 
 export default function AccountingTaxLiability() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());

@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { MapContainer, TileLayer, Circle, Marker, Popup, useMapEvents, Polygon } from "react-leaflet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin, Target, Trash2, Save } from "lucide-react";
+import { Target, Trash2, Save } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 

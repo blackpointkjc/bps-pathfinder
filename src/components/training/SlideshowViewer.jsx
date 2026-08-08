@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, CheckCircle, Lock, Eye, EyeOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, Lock, Eye } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 export default function SlideshowViewer({ slides, secondsPerSlide, onComplete }) {

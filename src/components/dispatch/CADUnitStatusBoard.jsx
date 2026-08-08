@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { normalizeRank } from '@/utils/rankDisplay';
 
 const STATUS_ORDER = ['All','Available','Enroute','On Scene','Busy','Out of Service'];

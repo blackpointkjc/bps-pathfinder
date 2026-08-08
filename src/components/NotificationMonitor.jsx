@@ -1,12 +1,10 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { Toast } from "@/components/ui/toast";
 import { useToast } from "@/components/ui/use-toast";
-import { MessageCircle, Radio, Megaphone, Bell } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
-import { format, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
 
 export default function NotificationMonitor({ user }) {
   const { toast } = useToast();

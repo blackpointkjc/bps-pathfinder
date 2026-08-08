@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { FileText, Download, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";

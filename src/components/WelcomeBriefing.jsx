@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle, Bell, CalendarClock, Car, CheckCircle2, ChevronRight, Clock3, MapPin, Megaphone, MessageCircle, Radio, Shield, Sparkles, Siren, Users, X } from 'lucide-react';
+import { AlertTriangle, Bell, CalendarClock, Car, CheckCircle2, ChevronRight, MapPin, Megaphone, MessageCircle, Radio, Shield, Sparkles, Siren, Users } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
 

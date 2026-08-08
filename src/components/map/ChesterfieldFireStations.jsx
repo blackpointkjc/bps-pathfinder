@@ -1,4 +1,3 @@
-import React from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Flame, MapPin } from 'lucide-react';

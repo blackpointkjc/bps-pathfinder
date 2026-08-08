@@ -1,13 +1,13 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Clock, TrendingUp, AlertTriangle, 
+  Clock, TrendingUp, 
   CheckCircle2, Moon, Award, BarChart3, Calendar
 } from "lucide-react";
-import { format, parseISO, differenceInMinutes, startOfMonth, endOfMonth } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function OfficerAnalytics() {

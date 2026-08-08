@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { UserPlus, Edit, Save, X, Award, CheckCircle, XCircle, Clock } from "lucide-react";
+import { UserPlus, Edit, Save, X, Award, CheckCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_COLORS = {

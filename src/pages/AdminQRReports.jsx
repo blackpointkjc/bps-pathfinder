@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { QrCode, MapPin, Clock, CheckCircle2, AlertTriangle, User, Calendar, RefreshCw, XCircle } from "lucide-react";
+import { QrCode, MapPin, Clock, CheckCircle2, AlertTriangle, RefreshCw, XCircle } from "lucide-react";
 import { format } from "date-fns";
 
 export default function AdminQRReports() {

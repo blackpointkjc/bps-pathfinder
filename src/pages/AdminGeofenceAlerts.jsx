@@ -1,13 +1,12 @@
-import React, { useState, useRef } from "react";
+import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Shield, Target, MapPin, Check, AlertTriangle, Clock, User, ZoomIn, ZoomOut, Trash2 } from "lucide-react";
+import { Shield, Target, MapPin, Check, AlertTriangle, Clock, User, ZoomIn, ZoomOut } from "lucide-react";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { MapContainer, TileLayer, Marker, Circle, Polygon, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";

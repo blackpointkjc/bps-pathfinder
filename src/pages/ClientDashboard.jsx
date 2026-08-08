@@ -1,15 +1,13 @@
 import { getClientPortalUser, getClientPreviewId } from '@/utils/clientPreview';
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, FileText, AlertTriangle, UserX, Calendar, MapPin, ArrowRight, TrendingUp, Clock, Radio } from "lucide-react";
-import { format } from "date-fns";
+import { Shield, FileText, AlertTriangle, UserX, MapPin, Clock, Radio } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import QuickActionCard from "../components/dashboard/QuickActionCard";
 
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/c29aab328_c3ff2618-4412-4498-8923-8f484a9469b8-2533645741.jpeg";

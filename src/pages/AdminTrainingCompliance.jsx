@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   GraduationCap, Plus, CheckCircle, XCircle, Eye, Users, Shield,
-  Trash2, Edit, Search, Download, FileText, Calendar, Clock, AlertTriangle, X, Printer, Upload
+  Trash2, Edit, Search, Download, FileText, AlertTriangle, X, Printer, Upload
 } from "lucide-react";
 import { format, parseISO, addMonths } from "date-fns";
 import { toast } from "sonner";

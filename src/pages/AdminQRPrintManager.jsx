@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { QrCode, Printer, Search, CheckSquare, Square } from "lucide-react";
+import { Printer, Search, CheckSquare, Square } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { format } from "date-fns";
 
 export default function AdminQRPrintManager() {
   const [search, setSearch] = useState("");

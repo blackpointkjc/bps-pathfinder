@@ -4,8 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Calendar, Trash2, ChevronLeft, ChevronRight, Plus, Printer, User, RefreshCw, CalendarDays, Pencil, AlertTriangle, X, Clock, DollarSign, CheckCircle, Wand2, TrendingUp, Users } from "lucide-react";
-import { format, addDays, subDays, startOfWeek, addWeeks, subWeeks, parseISO } from "date-fns";
+import { Shield, Calendar, Trash2, ChevronLeft, ChevronRight, Plus, Printer, User, RefreshCw, CalendarDays, Pencil, AlertTriangle, X, Clock, DollarSign, CheckCircle, Users } from "lucide-react";
+import { format, addDays, subDays, startOfWeek, addWeeks, parseISO } from "date-fns";
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -25,9 +25,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import AISchedulingAssistant from "../components/scheduling/AISchedulingAssistant";
-import AIPerformanceAnalyzer from "../components/scheduling/AIPerformanceAnalyzer";
-import AIOpenShiftManager from "../components/scheduling/AIOpenShiftManager";
 import LocationHourCard from "../components/scheduling/LocationHourCard";
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/857a5f1c1_UntitledProject3.png";
 

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, MapPin, Clock, Activity, Users, History, Calendar as CalendarIcon, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Shield, MapPin, Clock, Activity, Users, History, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -261,7 +261,7 @@ export default function AdminLocationTracker() {
         clearInterval(interval);
       };
     }
-  }, [viewMode, hasAccess, allUsers, activeOfficerLocations]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [viewMode, hasAccess, allUsers, activeOfficerLocations]);  
 
   const officersWithLocation = currentlyActiveOfficers?.filter(o => Number.isFinite(Number(o.latitude)) && Number.isFinite(Number(o.longitude))) || [];
   const filteredOfficersForDropdown = allUsers?.filter(u => !!u.email && isOperationallyVisibleUser(u)).sort((a, b) => {

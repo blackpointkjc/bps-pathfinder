@@ -1,12 +1,12 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sparkles, Users, MapPin, Clock, Bell, Loader2, X, CheckCircle } from "lucide-react";
+import { Sparkles, Users, MapPin, Bell, Loader2, X } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function AIOpenShiftManager({ 
   schedules, 

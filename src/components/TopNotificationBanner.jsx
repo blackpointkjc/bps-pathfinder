@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bell, X, Calendar, Star, AlertTriangle, GraduationCap, ChevronRight } from "lucide-react";
+import { Bell, X, Calendar, Star, AlertTriangle, GraduationCap } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 

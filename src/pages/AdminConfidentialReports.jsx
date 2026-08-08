@@ -8,12 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Shield, Eye, Archive, AlertCircle, User, UserX, Phone, Mail, MessageSquare, Clock, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+
+
 import {
   MobileResponsiveDialog,
   MobileResponsiveDialogContent,
