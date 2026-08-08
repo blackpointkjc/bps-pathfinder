@@ -31,21 +31,16 @@ export default function AdminAnalytics() {
     queryFn: () => base44.entities.Division.list('name'),
   });
 
-  const { data: payrollPeriods } = useQuery({
-    queryKey: ['payrollPeriods'],
-    queryFn: () => base44.entities.PayrollPeriod.list('-start_date'),
-  });
-
   const { data: timeEntries } = useQuery({
     queryKey: ['allTimeEntries'],
     queryFn: () => base44.entities.TimeEntry.list('-clock_in'),
-    refetchInterval: 15000,
+    refetchInterval: 30000,
   });
 
   const { data: schedules } = useQuery({
     queryKey: ['allSchedules'],
     queryFn: () => base44.entities.Schedule.list('-shift_date'),
-    refetchInterval: 15000,
+    refetchInterval: 30000,
   });
 
   const { data: trainingCompletions } = useQuery({
@@ -78,14 +73,13 @@ export default function AdminAnalytics() {
     queryFn: () => base44.entities.Complaint.list('-complaint_date'),
   });
 
-  const { data: allPerformanceReviews } = useQuery({
-    queryKey: ['allPerformanceReviews'],
-    queryFn: () => base44.entities.PerformanceReview.list('-review_date'),
-  });
-
   const filteredUsers = useMemo(() => {
     if (!allUsers) return [];
-    const active = allUsers.filter(u => !u.termination_date && u.role !== 'admin');
+    const active = allUsers.filter(u => {
+      if (u.termination_date) return false;
+      const roles = new Set((u.additional_roles || []).map(role => String(role).toLowerCase()));
+      return roles.has('cad_access') && roles.has('officer');
+    });
     if (selectedDivision === 'all') return active;
     return active.filter(u => u.division === selectedDivision);
   }, [allUsers, selectedDivision]);
@@ -218,34 +212,6 @@ export default function AdminAnalytics() {
       .filter(o => o.total > 0)
       .sort((a, b) => b.total - a.total);
   }, [timeEntries, filteredUsers]);
-
-  const shiftBreakdown = useMemo(() => {
-    if (!schedules) return { regular: 0, overnight: 0, split: 0 };
-
-    let overnight = 0;
-    let split = 0;
-    let regular = 0;
-    const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
-    const monthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
-
-    schedules.filter(schedule => schedule.shift_date >= monthStart && schedule.shift_date <= monthEnd).forEach(schedule => {
-      if (schedule.is_split_shift) {
-        split++;
-        return;
-      }
-      
-      const endHour = parseInt(schedule.end_time?.split(':')[0] || 0);
-      const startHour = parseInt(schedule.start_time?.split(':')[0] || 0);
-      
-      if (endHour < startHour || (startHour >= 22 || endHour <= 6)) {
-        overnight++;
-      } else {
-        regular++;
-      }
-    });
-
-    return { regular, overnight, split };
-  }, [schedules]);
 
   const trainingByOfficer = useMemo(() => {
     if (!trainingCompletions || !allTraining || !filteredUsers) return [];
