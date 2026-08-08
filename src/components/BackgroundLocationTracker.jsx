@@ -135,15 +135,17 @@ export default function BackgroundLocationTracker({ user }) {
           status: user?.status || 'Signed In',
           user_role: user?.role || 'user',
           session_active: true,
-          latitude: null,
-          longitude: null,
-          accuracy: null,
         };
-        if (newest) {
+        const newestStamp = newest ? new Date(newest.last_update || newest.updated_date || newest.created_date || 0).getTime() : 0;
+        const canReuseCurrentSession = newest && Number.isFinite(newestStamp) && Date.now() - newestStamp <= 2 * 60 * 1000;
+        if (canReuseCurrentSession) {
           activeOfficerRecordRef.current = newest.id;
           await base44.entities.ActiveOfficer.update(newest.id, sessionData);
           await Promise.all(records.filter(record => record.id !== newest.id).map(record => base44.entities.ActiveOfficer.delete(record.id).catch(() => null)));
         } else {
+          // A stale previous-session record may contain old coordinates. Delete it and
+          // create a clean session row so old GPS can never be presented as current.
+          await Promise.all(records.map(record => base44.entities.ActiveOfficer.delete(record.id).catch(() => null)));
           const created = await base44.entities.ActiveOfficer.create(sessionData);
           activeOfficerRecordRef.current = created.id;
         }
