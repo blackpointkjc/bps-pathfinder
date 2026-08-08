@@ -100,16 +100,16 @@ export default function TimeRequests() {
   const ptoYearToDate = user?.pto_year_to_date_accrued || 0;
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div className="flex justify-between items-center">
+    <div className="min-h-screen overflow-x-hidden p-3 sm:p-4 md:p-5">
+      <div className="mx-auto w-full min-w-0 space-y-4" style={{ maxWidth: '1100px' }}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Time Off Requests</h1>
+            <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Time Off Requests</h1>
             <p className="text-slate-600">Submit and track your time-off requests</p>
           </div>
           <Button
             onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="w-full bg-blue-600 hover:bg-blue-700 sm:w-auto"
           >
             <Plus className="w-4 h-4 mr-2" />
             New Request
@@ -117,21 +117,21 @@ export default function TimeRequests() {
         </div>
 
         <Card className="border-none shadow-lg bg-gradient-to-r from-green-50 to-emerald-100">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
+          <CardContent className="p-4 sm:p-5">
+            <div className="grid gap-4 sm:grid-cols-3 sm:items-center">
               <div>
                 <p className="text-sm text-slate-600 font-medium">PTO Balance</p>
-                <p className="text-4xl font-bold text-emerald-900">{ptoBalance.toFixed(1)} hrs</p>
+                <p className="text-3xl font-bold text-emerald-900 sm:text-4xl">{ptoBalance.toFixed(1)} hrs</p>
                 <p className="text-xs text-slate-600 mt-1">
                   Earn up to 40 hrs/year (rate: 0.0196 hrs per hour worked)
                 </p>
                 </div>
-              <div className="text-right">
+              <div className="sm:text-center">
                 <p className="text-sm text-slate-600 font-medium">Year to Date</p>
                 <p className="text-2xl font-bold text-slate-900">{ptoYearToDate.toFixed(1)} hrs</p>
                 <p className="text-xs text-slate-600 mt-1">Total Accrued</p>
               </div>
-              <div className="text-right">
+              <div className="sm:text-center">
                 <p className="text-sm text-slate-600 font-medium">Used This Year</p>
                 <p className="text-2xl font-bold text-orange-900">{(user?.pto_year_to_date_used || 0).toFixed(1)} hrs</p>
                 <p className="text-xs text-slate-600 mt-1">Total Used</p>
@@ -148,7 +148,7 @@ export default function TimeRequests() {
                 New Time Off Request
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-5">
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -242,9 +242,9 @@ export default function TimeRequests() {
             <CardTitle>Your Requests</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {requests?.map((request) => (
-                <div key={request.id} className="p-5 bg-slate-50 rounded-lg border border-slate-200">
+                <div key={request.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
@@ -281,7 +281,7 @@ export default function TimeRequests() {
                 </div>
               ))}
               {!requests?.length && (
-                <p className="text-center text-slate-500 py-8">No requests yet</p>
+                <div className="rounded-xl border border-dashed border-slate-700/70 bg-slate-950/20 px-4 py-8 text-center text-slate-500">No requests yet</div>
               )}
             </div>
           </CardContent>
