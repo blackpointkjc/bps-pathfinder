@@ -86,8 +86,14 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
 
     if (unitsToShow.length === 0) return null;
     
+    const locationSignature = unitsToShow
+        .map(unit => `${unit.id}:${Number(unit.latitude).toFixed(6)}:${Number(unit.longitude).toFixed(6)}:${unit.last_updated || ''}`)
+        .sort()
+        .join('|');
+
     return (
         <MarkerClusterGroup
+            key={locationSignature}
             chunkedLoading
             maxClusterRadius={8}
             spiderfyOnMaxZoom={true}
