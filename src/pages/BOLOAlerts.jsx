@@ -50,11 +50,18 @@ export default function BOLOAlerts() {
     init();
   }, []);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (attempt = 0) => {
+    if (attempt === 0) setLoading(true);
     try {
       const data = await base44.entities.BOLOAlert.list('-created_date', 500);
       setBolos(data || []);
+    } catch (error) {
+      const isRateLimit = String(error?.message || error || '').toLowerCase().includes('rate limit');
+      if (isRateLimit && attempt < 3) {
+        await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+        return load(attempt + 1);
+      }
+      setBolos([]);
     } finally {
       setLoading(false);
     }
