@@ -541,12 +541,12 @@ export default function TimeClock() {
       setSelectedNewSite('');
       setGeoError(null);
     } catch (error) {
-      console.error("Error getting location for site switch:", error);
-      let errorMessage = "Unable to get your current location for site switch.";
-      if (error.code === 1) {
+      console.error("Error switching sites:", error);
+      let errorMessage = error?.message || "Unable to switch sites.";
+      if (error?.code === 1) {
         errorMessage = "LOCATION PERMISSION DENIED - Cannot switch sites without location access. Please enable location services in your browser.";
-      } else if (error.code === 3 || error.message === 'TIMEOUT') {
-        errorMessage = "LOCATION TIMEOUT - Could not get your location in time. Please try again with better GPS signal.";
+      } else if (error?.code === 3 || error?.message === 'TIMEOUT' || error?.message === 'LIVE_LOCATION_TIMEOUT') {
+        errorMessage = "LOCATION TIMEOUT - Pathfinder could not obtain a current, accurate GPS fix. Move where your device has a better GPS signal and try again.";
       }
       setGeoError(errorMessage);
     } finally {
