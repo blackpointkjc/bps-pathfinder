@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { isCriticalCall } from '@/lib/cadCallUtils';
 import { splitCallsByCoords } from '@/lib/geocodingPipeline';
+import { monitoredPropertiesFromLocations } from '@/utils/alertUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
@@ -556,8 +557,8 @@ export default function Navigation() {
 
     const loadMonitoredProperties = async () => {
         try {
-            const props = await base44.entities.MonitoredProperty.list();
-            setMonitoredProperties(props?.filter(p => p.enabled) || []);
+            const locations = await base44.entities.Location.list('site_name');
+            setMonitoredProperties(monitoredPropertiesFromLocations(locations || []));
         } catch (e) {}
     };
 
