@@ -26,11 +26,33 @@ L.Icon.Default.mergeOptions({
 function MapUpdater({ center }) {
   const map = useMap();
   useEffect(() => {
-    if (center) {
-      map.setView(center, 17);
-    }
+    if (center) map.setView(center, 17);
   }, [center, map]);
   return null;
+}
+
+function pointInsidePolygon(lat, lng, rawPolygon = []) {
+  const polygon = rawPolygon.map(p => Array.isArray(p) ? { lat: Number(p[0]), lng: Number(p[1]) } : { lat: Number(p?.lat), lng: Number(p?.lng) }).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+  if (polygon.length < 3) return null;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i], b = polygon[j];
+    const hit = ((a.lng > lng) !== (b.lng > lng)) && (lat < ((b.lat - a.lat) * (lng - a.lng)) / ((b.lng - a.lng) || Number.EPSILON) + a.lat);
+    if (hit) inside = !inside;
+  }
+  return inside;
+}
+
+function verifyAgainstLocationBoundary(location, lat, lng) {
+  if (!location) return { ok: false, message: 'Location not found.' };
+  if (location.is_special_event) return { ok: true };
+  const polygon = location.geofence_polygon || [];
+  const inside = pointInsidePolygon(lat, lng, polygon);
+  if (inside !== null) return { ok: inside, message: inside ? '' : `You are outside the approved property boundary for ${location.site_name}.` };
+  if (!Number.isFinite(Number(location.latitude)) || !Number.isFinite(Number(location.longitude))) return { ok: false, message: `${location.site_name} does not have a valid geofence configured. Contact an administrator.` };
+  const distance = calculateDistance(lat, lng, Number(location.latitude), Number(location.longitude));
+  const radius = Number(location.geofence_radius_meters || 100);
+  return { ok: distance <= radius, distance, message: distance <= radius ? '' : `You are outside the approved ${radius} meter geofence for ${location.site_name}.` };
 }
 
 export default function TimeClock() {
