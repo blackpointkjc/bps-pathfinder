@@ -59,7 +59,10 @@ export default function ManageClients() {
       return allUsers
         .filter(u => {
           const roles = (u.additional_roles || []).map(r => String(r).toLowerCase());
-          return !u.termination_date && (roles.includes('client') || String(u.rank || '').toLowerCase() === 'client');
+          const isClientAccount = roles.includes('client') ||
+            String(u.rank || '').toLowerCase() === 'client' ||
+            String(u.user_type || '').toLowerCase() === 'client';
+          return !u.termination_date && isClientAccount;
         })
         .sort((a, b) => `${a.last_name || ''} ${a.first_name || ''}`.localeCompare(`${b.last_name || ''} ${b.first_name || ''}`));
     },
