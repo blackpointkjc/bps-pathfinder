@@ -147,48 +147,35 @@ export default function AdminLocationTracker() {
     });
   }, [newestLocationByEmail, allUsers]);
 
-  // Get selected time entry for historical view
-  const { data: selectedTimeEntry } = useQuery({
-    queryKey: ['selectedTimeEntry', selectedOfficerEmail, selectedDate],
-    queryFn: async () => {
-      if (!selectedOfficerEmail || viewMode !== 'history') return null;
-      
-      const entries = await base44.entities.TimeEntry.filter({
-        officer_email: selectedOfficerEmail
-      }, '-created_date');
-      
-      // Find entry for selected date that is completed (has clock_out)
-      const entry = entries.find(e => {
-        const entryDate = e.clock_in.split('T')[0];
-        return entryDate === selectedDate && e.clock_out; 
-      });
-      
-      return entry || null;
-    },
-    enabled: hasAccess && viewMode === 'history' && !!selectedOfficerEmail,
-  });
-
-  // Get location history for the selected time entry
+  // Historical movement is session-based, not shift-based. Any authenticated user
+  // can be reviewed for any date, including admins and users who never clocked in.
   const { data: locationHistory } = useQuery({
-    queryKey: ['locationHistory', selectedTimeEntry?.id],
+    queryKey: ['locationHistory', selectedOfficerEmail, selectedDate],
     queryFn: async () => {
-      if (!selectedTimeEntry) return [];
-      
+      if (!selectedOfficerEmail || !selectedDate) return [];
       const allHistory = await base44.entities.LocationHistory.filter({
         officer_email: selectedOfficerEmail
       }, 'timestamp');
-      
-      // Filter to only points during this specific shift
-      const clockIn = new Date(selectedTimeEntry.clock_in);
-      const clockOut = new Date(selectedTimeEntry.clock_out);
-      
-      return allHistory.filter(h => {
+      const start = new Date(`${selectedDate}T00:00:00`);
+      const end = new Date(`${selectedDate}T23:59:59.999`);
+      return (allHistory || []).filter(h => {
         const timestamp = new Date(h.timestamp);
-        return timestamp >= clockIn && timestamp <= clockOut;
-      });
+        return timestamp >= start && timestamp <= end;
+      }).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     },
-    enabled: hasAccess && !!selectedTimeEntry,
+    enabled: hasAccess && viewMode === 'history' && !!selectedOfficerEmail && !!selectedDate,
+    refetchInterval: viewMode === 'history' ? 60000 : false,
   });
+
+  const selectedSessionSummary = React.useMemo(() => {
+    if (!locationHistory?.length) return null;
+    return {
+      first: locationHistory[0],
+      last: locationHistory[locationHistory.length - 1],
+      firstTime: locationHistory[0]?.timestamp,
+      lastTime: locationHistory[locationHistory.length - 1]?.timestamp,
+    };
+  }, [locationHistory]);
 
   const getOfficerName = (email) => {
     const officer = allUsers?.find(u => u.email === email);
@@ -201,74 +188,39 @@ export default function AdminLocationTracker() {
   const performLocationCheck = async () => {
     try {
       setCheckingLocations(true);
-
-      // Use cached React Query data instead of making duplicate API calls
-      // The hooks already refetch on an interval, so this avoids rate limiting
-      const freshEntries = activeEntries || [];
-      const freshLocations = activeOfficerLocations || [];
       const freshUsers = allUsers || [];
-
-      const currentEntries = freshEntries.filter(e => {
-        if (e.clock_out) return false;
-        if (EXCLUDED_OFFICERS.includes(e.officer_email)) return false;
-        const officer = freshUsers.find(u => u.email === e.officer_email);
-        if (officer?.role === 'admin') return false;
-        return true;
-      });
-
-      const results = {
-        total: currentEntries.length,
-        withLocation: [],
-        withoutLocation: [],
-        staleLocation: [],
-        timestamp: new Date().toISOString()
-      };
-
-      const now = new Date();
-
-      currentEntries.forEach(entry => {
-        const officerUser = freshUsers.find(u => u.email === entry.officer_email);
-        const officerName = officerUser?.first_name && officerUser?.last_name
-          ? `${officerUser.first_name} ${officerUser.last_name}`
-          : entry.officer_email;
-        const matchingLocations = freshLocations.filter(ao => String(ao.officer_email || '').toLowerCase() === String(entry.officer_email || '').toLowerCase());
-        const locationData = [...matchingLocations].sort((a, b) => new Date(b.last_update || b.updated_date || b.created_date || 0).getTime() - new Date(a.last_update || a.updated_date || a.created_date || 0).getTime())[0];
-
-        if (locationData && locationData.latitude && locationData.longitude) {
-          const lastUpdate = new Date(locationData.last_update);
-          const minutesSinceUpdate = (now - lastUpdate) / 1000 / 60;
-
-          if (minutesSinceUpdate > 5) {
-            results.staleLocation.push({
-              name: officerName,
-              email: entry.officer_email,
-              location: entry.location,
-              lastUpdate: locationData.last_update,
-              minutesSinceUpdate: Math.floor(minutesSinceUpdate)
-            });
-          } else {
-            results.withLocation.push({
-              name: officerName,
-              email: entry.officer_email,
-              location: entry.location,
-              lastUpdate: locationData.last_update
-            });
-          }
-        } else {
-          results.withoutLocation.push({
-            name: officerName,
-            email: entry.officer_email,
-            location: entry.location,
-            clockedInAt: entry.clock_in
-          });
+      const latestByEmail = new Map();
+      for (const row of activeOfficerLocations || []) {
+        const key = String(row.officer_email || '').toLowerCase();
+        if (!key || latestByEmail.has(key)) continue;
+        latestByEmail.set(key, row);
+      }
+      const results = { total: 0, withLocation: [], withoutLocation: [], staleLocation: [], timestamp: new Date().toISOString() };
+      const now = Date.now();
+      for (const locationData of latestByEmail.values()) {
+        const stamp = new Date(locationData.last_update || locationData.updated_date || locationData.created_date || 0).getTime();
+        const ageMs = now - stamp;
+        const profile = freshUsers.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
+        const name = profile?.first_name && profile?.last_name ? `${profile.first_name} ${profile.last_name}` : (locationData.officer_name || locationData.officer_email);
+        const item = {
+          name,
+          email: locationData.officer_email,
+          location: locationData.current_location || profile?.assigned_location || 'Signed In',
+          role: locationData.user_role || profile?.role || 'user',
+          lastUpdate: locationData.last_update,
+          minutesSinceUpdate: Math.max(0, Math.floor(ageMs / 60000)),
+        };
+        if (ageMs <= LIVE_SESSION_FRESH_MS) {
+          results.total += 1;
+          if (Number.isFinite(Number(locationData.latitude)) && Number.isFinite(Number(locationData.longitude))) results.withLocation.push(item);
+          else results.withoutLocation.push(item);
+        } else if (ageMs <= 15 * 60 * 1000) {
+          results.staleLocation.push(item);
         }
-      });
-
+      }
       setLocationCheckResults(results);
       setLastAutoCheck(new Date());
       queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
-      queryClient.invalidateQueries({ queryKey: ['allActiveTimeEntries'] });
-
       return results;
     } catch (error) {
       console.error("❌ Error checking locations:", error);
@@ -282,36 +234,23 @@ export default function AdminLocationTracker() {
     try {
       await performLocationCheck();
     } catch (error) {
-      alert("Failed to check officer locations. Please try again.");
+      alert("Failed to check user locations. Please try again.");
     }
   };
 
   useEffect(() => {
-    if (viewMode === 'live' && hasAccess && allUsers && activeEntries) { // Changed activeTimeEntries to activeEntries
-      console.log("🔄 Setting up auto-check interval");
-      
-      const initialTimer = setTimeout(() => {
-        console.log("⏰ Running initial location check");
-        performLocationCheck();
-      }, 3000);
-
-      const interval = setInterval(() => {
-        console.log("⏰ Running scheduled location check");
-        performLocationCheck();
-      }, 30000);
-
+    if (viewMode === 'live' && hasAccess && allUsers) {
+      const initialTimer = setTimeout(() => performLocationCheck(), 1500);
+      const interval = setInterval(() => performLocationCheck(), 60000);
       return () => {
         clearTimeout(initialTimer);
         clearInterval(interval);
       };
     }
-  }, [viewMode, hasAccess, allUsers]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [viewMode, hasAccess, allUsers, activeOfficerLocations]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const officersWithLocation = currentlyActiveOfficers?.filter(o => o.latitude && o.longitude) || [];
-  const filteredOfficersForDropdown = allUsers?.filter(u => 
-    !EXCLUDED_OFFICERS.includes(u.email) && 
-    u.role !== 'admin'
-  ).sort((a, b) => {
+  const officersWithLocation = currentlyActiveOfficers?.filter(o => Number.isFinite(Number(o.latitude)) && Number.isFinite(Number(o.longitude))) || [];
+  const filteredOfficersForDropdown = allUsers?.filter(u => !!u.email).sort((a, b) => {
     const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email;
     const nameB = `${b.first_name || ''} ${b.last_name || ''}`.trim() || b.email;
     return nameA.localeCompare(nameB);
