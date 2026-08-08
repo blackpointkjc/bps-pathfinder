@@ -34,7 +34,7 @@ export default function AdminMessages() {
     queryFn: () => base44.entities.User.list(),
   });
 
-  const { data: allMessages, refetch } = useQuery({
+  const { data: allMessages } = useQuery({
     queryKey: ['allDirectMessages'],
     queryFn: async () => {
       const messages = await base44.entities.DirectMessage.list('-created_date');
