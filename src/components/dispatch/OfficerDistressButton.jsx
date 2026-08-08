@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { AlertTriangle } from 'lucide-react';
+import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 
 // Hold for 2 seconds to activate
 const HOLD_MS = 2000;
@@ -47,7 +48,6 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
     const progressTimer = useRef(null);
     const startTime = useRef(null);
     const audioCtxRef = useRef(null);
-    const watchIdRef = useRef(null);
     const activeAlertIdRef = useRef(null);
 
     // Check if user already has an active distress alert on mount
@@ -95,17 +95,11 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
         setHolding(false);
         setProgress(0);
 
-        // Get GPS
-        const getCoords = () => new Promise((resolve) => {
-            if (!navigator.geolocation) return resolve(null);
-            navigator.geolocation.getCurrentPosition(
-                pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-                () => resolve(null),
-                { enableHighAccuracy: true, timeout: 5000 }
-            );
-        });
-
-        const coords = await getCoords();
+        let liveFix = getLiveLocation(10000);
+        if (!liveFix) {
+            try { liveFix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 5000 }); } catch (_) {}
+        }
+        const coords = liveFix ? { lat: liveFix.latitude, lon: liveFix.longitude } : null;
 
         const distressData = {
             officer_id: currentUser.id,
@@ -129,29 +123,8 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
             toast.error('🚨 OFFICER DISTRESS ACTIVATED — Help is being notified', { duration: 10000 });
             window.dispatchEvent(new CustomEvent('officer-distress-activated', { detail: distressData }));
 
-            // Start live GPS tracking — update record continuously
-            if (navigator.geolocation) {
-                watchIdRef.current = navigator.geolocation.watchPosition(
-                    (pos) => {
-                        const lat = pos.coords.latitude;
-                        const lon = pos.coords.longitude;
-                        if (activeAlertIdRef.current) {
-                            base44.entities.OfficerDistress.update(activeAlertIdRef.current, {
-                                current_latitude: lat,
-                                current_longitude: lon,
-                                location_description: `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
-                            }).catch(() => {});
-                        }
-                        // Also update user's own location so they appear on the map for everyone
-                        base44.auth.updateMe({
-                            latitude: lat, longitude: lon,
-                            last_updated: new Date().toISOString()
-                        }).catch(() => {});
-                    },
-                    () => {},
-                    { enableHighAccuracy: true, maximumAge: 0 }
-                );
-            }
+            // Ongoing distress coordinates are fed by the one app-wide live-location
+            // service; this component never starts a second GPS watcher.
         } catch (err) {
             toast.error('Failed to send distress signal — try again');
             console.error(err);
@@ -160,11 +133,6 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
 
     const cancelDistress = async () => {
         if (!currentUser?.id) return;
-        // Stop live GPS watch
-        if (watchIdRef.current !== null) {
-            navigator.geolocation.clearWatch(watchIdRef.current);
-            watchIdRef.current = null;
-        }
         try {
             const alerts = await base44.entities.OfficerDistress.filter({ officer_id: currentUser.id, status: 'active' });
             for (const alert of alerts) {
