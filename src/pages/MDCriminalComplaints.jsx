@@ -213,8 +213,8 @@ export default function MDCriminalComplaints() {
     createComplaintMutation.mutate(formData);
   };
 
-  const getOfficerSignature = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
+  const getOfficerSignature = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
     if (!officer) return 'Officer';
     
     const rank = officer.rank || '';
@@ -889,7 +889,7 @@ export default function MDCriminalComplaints() {
                         Offense Date: {complaint.offense_date ? format(new Date(complaint.offense_date), 'MMMM d, yyyy') : 'N/A'}
                       </p>
                       <p className="text-sm text-slate-600">
-                        Filed by: {getOfficerSignature(complaint.created_by)}
+                        Filed by: {getOfficerSignature(complaint.created_by_id || complaint.created_by)}
                       </p>
                     </div>
                   </div>
@@ -897,7 +897,7 @@ export default function MDCriminalComplaints() {
                   <div className="mt-4 pt-4 border-t-2 border-slate-300">
                     <p className="text-xs text-slate-500 mb-2">Officer Signature:</p>
                     <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                      {getOfficerSignature(complaint.created_by)}
+                      {getOfficerSignature(complaint.created_by_id || complaint.created_by)}
                     </p>
                     {complaint.officer_ip_address && complaint.created_date && (
                       <p className="text-xs text-slate-400 mt-1">
