@@ -238,7 +238,8 @@ export default function WelcomeBriefing({ user }) {
   }, [offlineSince]);
 
   const go = page => {
-    setOpen(false);
+    // Navigation from inside the briefing must not acknowledge or dismiss it.
+    // START SESSION is the only action allowed to close the briefing.
     window.location.href = createPageUrl(page);
   };
 
