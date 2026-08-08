@@ -115,7 +115,7 @@ export default function AdminScheduling() {
           /^\d{2}:\d{2}$/.test(String(shift?.end_time || ''));
         const validLocation = typeof shift?.location === 'string' && shift.location.trim().length > 0;
         const validOfficer = typeof shift?.officer_email === 'string' && shift.officer_email.trim().length > 0;
-        return validDate && validTimes && validLocation && validOfficer;
+        return shift?.archived !== true && validDate && validTimes && validLocation && validOfficer;
       });
       const ignoredCount = (rows || []).length - validRows.length;
       if (ignoredCount > 0) {
