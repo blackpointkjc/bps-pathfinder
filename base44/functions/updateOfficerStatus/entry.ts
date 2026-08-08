@@ -33,7 +33,8 @@ Deno.serve(async (req) => {
 
         const updateData = {
             status,
-            last_updated: now
+            last_updated: now,
+            status_since: now
         };
 
         if (estimated_return) {
