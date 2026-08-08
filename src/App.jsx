@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import './App.css';
 import { Toaster } from "@/components/ui/toaster";
+import { toast } from "@/components/ui/use-toast";
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
 import VisualEditAgent from '@/lib/VisualEditAgent';
@@ -119,6 +120,29 @@ const AuthenticatedApp = () => {
 };
 
 function App() {
+  useEffect(() => {
+    const nativeAlert = window.alert;
+
+    // Legacy pages still call alert(). Route every one of those messages through
+    // the in-app notification system so the browser never opens its dated modal.
+    window.alert = (message) => {
+      const text = String(message ?? '').trim();
+      if (!text) return;
+      const isError = /(^|\s)(❌|error|failed|unable|invalid|warning|⚠️)/i.test(text);
+      const isSuccess = /(^|\s)(✅|success|successfully|published|saved|created|submitted|approved|updated|sent|complete)/i.test(text);
+      const cleanText = text.replace(/^[✅❌⚠️\s]+/, '').replace(/\n{3,}/g, '\n\n');
+      toast({
+        title: isError ? 'Action Needed' : isSuccess ? 'Success' : 'Pathfinder',
+        description: cleanText,
+        variant: isError ? 'destructive' : 'default',
+      });
+    };
+
+    return () => {
+      window.alert = nativeAlert;
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
