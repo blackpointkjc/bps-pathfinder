@@ -72,13 +72,13 @@ export default function NotificationMonitor({ user }) {
 
   // Monitor PTO request status changes
   const { data: myPTORequests } = useQuery({
-    queryKey: ['myPTONotify', user?.email],
+    queryKey: ['myPTONotify', user?.id],
     queryFn: async () => {
-      const requests = await base44.entities.TimeOffRequest.filter({ created_by: user?.email }, '-updated_date', 5);
+      const requests = await base44.entities.TimeOffRequest.filter({ created_by_id: user?.id }, '-updated_date', 5);
       return requests;
     },
     refetchInterval: 30000,
-    enabled: !!user?.email,
+    enabled: !!user?.id,
   });
 
   // Monitor overtime alerts (check if weekly hours approaching 40)
