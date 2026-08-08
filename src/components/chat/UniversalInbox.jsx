@@ -88,7 +88,18 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   useEffect(() => {
     if (!selected) return;
     const unread = selected.messages.filter(message => message.recipient_id === currentUser.id && !message.read);
-    if (unread.length) Promise.all(unread.map(message => base44.entities.Message.update(message.id, { read: true }).catch(() => null)));
+    if (!unread.length) return;
+
+    // Clear the thread badge immediately, then persist the read state and refresh
+    // the global Inbox count as soon as the user opens the conversation.
+    const unreadIds = new Set(unread.map(message => message.id));
+    setMessages(current => current.map(message => unreadIds.has(message.id) ? { ...message, read: true } : message));
+    window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
+
+    Promise.all(unread.map(message => base44.entities.Message.update(message.id, { read: true }).catch(() => null)))
+      .then(() => {
+        window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
+      });
   }, [selectedKey, selected?.messages.length, currentUser.id]);
 
   const threadNames = thread => {
