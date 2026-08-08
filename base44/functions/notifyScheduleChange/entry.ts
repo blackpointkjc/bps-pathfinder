@@ -54,8 +54,6 @@ Deno.serve(async (req) => {
     const officer = (users || []).find((person: any) => String(person.email || '').toLowerCase() === officerEmail);
     if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
 
-    const actorName = [actor.rank, actor.last_name].filter(Boolean).join(' ') || actor.full_name || actor.email || 'Scheduling';
-    const recipientName = [officer.rank, officer.last_name].filter(Boolean).join(' ') || officer.full_name || officer.email;
     const previous = shiftSummary(before);
     const current = shiftSummary(after);
 
