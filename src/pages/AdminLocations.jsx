@@ -356,7 +356,7 @@ export default function AdminLocations() {
       notes: location.notes || "",
       geofence_enabled: location.geofence_enabled || false,
       geofence_radius_meters: location.geofence_radius_meters || 100,
-      geofence_polygon: (location.property_monitoring_polygon?.length >= 3 ? location.property_monitoring_polygon : location.geofence_polygon) || [],
+      geofence_polygon: location.geofence_polygon || [],
       property_monitoring_enabled: location.property_monitoring_enabled || false,
       property_monitoring_boundary_type: location.property_monitoring_boundary_type || 'circle',
       property_monitoring_radius_meters: location.property_monitoring_radius_meters || 500,
@@ -374,18 +374,17 @@ export default function AdminLocations() {
     setFormData(prev => ({
       ...prev,
       geofence_polygon: next,
-      property_monitoring_polygon: next,
       property_monitoring_boundary_type: next.length >= 3 ? 'polygon' : prev.property_monitoring_boundary_type,
     }));
   };
 
   const undoBoundaryPoint = () => {
     const next = (formData.geofence_polygon || []).slice(0, -1);
-    setFormData(prev => ({ ...prev, geofence_polygon: next, property_monitoring_polygon: next }));
+    setFormData(prev => ({ ...prev, geofence_polygon: next }));
   };
 
   const clearBoundary = () => {
-    setFormData(prev => ({ ...prev, geofence_polygon: [], property_monitoring_polygon: [], property_monitoring_boundary_type: 'circle' }));
+    setFormData(prev => ({ ...prev, geofence_polygon: [], property_monitoring_boundary_type: 'circle' }));
   };
 
   const handleSubmit = async (e) => {
@@ -417,7 +416,6 @@ export default function AdminLocations() {
     const data = {
       ...formData,
       geofence_polygon: sharedBoundary,
-      property_monitoring_polygon: sharedBoundary,
       property_monitoring_boundary_type: sharedBoundary.length >= 3 ? 'polygon' : 'circle',
       latitude: formData.latitude ? parseFloat(formData.latitude) : null,
       longitude: formData.longitude ? parseFloat(formData.longitude) : null,
