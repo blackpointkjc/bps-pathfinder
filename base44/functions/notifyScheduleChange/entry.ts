@@ -72,28 +72,16 @@ Deno.serve(async (req) => {
         ? `<p>A new shift was added to your published schedule.</p><p><strong>Added:</strong><br>${safe(current)}</p>`
         : `<p>Your published schedule was changed.</p><p><strong>Previous:</strong><br>${safe(previous)}</p><p><strong>Updated:</strong><br>${safe(current)}</p>`;
 
-    const requiredMessage = `SCHEDULE UPDATE\n\n${plainDetail}\n\nPlease review My Schedule. This message requires acknowledgment.`;
-
     await Promise.all([
-      base44.asServiceRole.entities.Message.create({
-        sender_id: actor.id || 'scheduling',
-        sender_name: actorName,
-        recipient_id: officer.id,
-        recipient_name: recipientName,
-        message: requiredMessage,
-        read: false,
-        message_type: 'schedule_update',
-        thread_id: `schedule:${officer.id}`,
-        participant_ids: [actor.id || 'scheduling', officer.id],
-        participant_names: [actorName, recipientName],
-      }),
       base44.asServiceRole.entities.Notification.create({
         recipient_email: officer.email,
         type: 'schedule_changed',
         title: subject,
-        message: plainDetail,
+        message: `${plainDetail}\n\nPlease review My Schedule and acknowledge this update.`,
         priority: 'high',
         is_read: false,
+        requires_acknowledgment: true,
+        source_name: 'System Scheduling',
       }),
       base44.asServiceRole.integrations.Core.SendEmail({
         to: officer.email,
