@@ -31,7 +31,7 @@ export default function Announcements() {
     queryKey: ['announcementReceipts', user?.email],
     queryFn: () => base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500),
     enabled: !!user?.email,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const readAnnouncementIds = React.useMemo(() => new Set(announcementReceipts.map(r => r.announcement_id)), [announcementReceipts]);
