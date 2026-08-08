@@ -743,7 +743,9 @@ export default function Layout({ children, currentPageName }) {
         const [calls, properties, existingAlerts] = await Promise.all([
           base44.entities.DispatchCall.list('-created_date', 300),
           base44.entities.MonitoredProperty.filter({ enabled: true }),
-          base44.entities.PropertyAlert.filter({ acknowledged: false }, '-created_date', 300).catch(() => []),
+          // Load acknowledged records too. Otherwise the same still-active call can be
+          // recreated as a brand-new alert after page navigation or app remount.
+          base44.entities.PropertyAlert.list('-created_date', 1000).catch(() => []),
         ]);
         if (cancelled) return;
         const existingAlertMap = new Map((existingAlerts || []).map(item => [`${item.callId}:${item.propertyId}`, item]));
@@ -757,6 +759,9 @@ export default function Layout({ children, currentPageName }) {
           if (alertedPropertyKeys.current.has(key)) continue;
           alertedPropertyKeys.current.add(key);
           const existingRecord = existingAlertMap.get(key);
+          // Once this call/property pair has been acknowledged, do not recreate or
+          // re-sound it while the same CAD call remains active.
+          if (existingRecord?.acknowledged === true) continue;
           const alert = {
             call,
             property: match.property,
