@@ -146,7 +146,15 @@ export const AuthProvider = ({ children }) => {
     };
   }, [checkAppState]);
 
-  const logout = useCallback((shouldRedirect = true) => {
+  const logout = useCallback(async (shouldRedirect = true) => {
+    // Before clearing the auth token, force any CAD officer Out of Service so
+    // logout can never leave a ghost Available unit on dispatch/status boards.
+    try {
+      await base44.functions.invoke('enforceOfficerDutyStatus', { action: 'logout' });
+    } catch (error) {
+      console.warn('[AUTH] Unable to force Out of Service before logout:', error?.message);
+    }
+
     setUser(null);
     setIsAuthenticated(false);
     
