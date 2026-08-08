@@ -109,12 +109,14 @@ function verifyAgainstLocationBoundary(location, lat, lng) {
 }
 
 export default function TimeClock() {
+  const easternTodayKey = getEasternDateKey(new Date());
+  const easternToday = new Date(`${easternTodayKey}T12:00:00`);
   const [selectedLocation, setSelectedLocation] = useState("");
   const [notes, setNotes] = useState("");
   const [geoError, setGeoError] = useState(null);
   const [verifyingLocation, setVerifyingLocation] = useState(false);
-  const [startDate, setStartDate] = useState(format(subWeeks(new Date(), 2), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [startDate, setStartDate] = useState(format(subWeeks(easternToday, 2), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(easternTodayKey);
   const [clockInCoords, setClockInCoords] = useState(null);
   const [currentLocationCoords, setCurrentLocationCoords] = useState(null);
   const queryClient = useQueryClient();
@@ -574,19 +576,23 @@ export default function TimeClock() {
   );
 
   const setThisWeek = () => {
-    setStartDate(format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
-    setEndDate(format(endOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
+    const today = new Date(`${getEasternDateKey(new Date())}T12:00:00`);
+    setStartDate(format(startOfWeek(today, { weekStartsOn: 0 }), 'yyyy-MM-dd'));
+    setEndDate(format(endOfWeek(today, { weekStartsOn: 0 }), 'yyyy-MM-dd'));
   };
 
   const setLastWeek = () => {
-    const lastWeek = subWeeks(new Date(), 1);
+    const today = new Date(`${getEasternDateKey(new Date())}T12:00:00`);
+    const lastWeek = subWeeks(today, 1);
     setStartDate(format(startOfWeek(lastWeek, { weekStartsOn: 0 }), 'yyyy-MM-dd'));
     setEndDate(format(endOfWeek(lastWeek, { weekStartsOn: 0 }), 'yyyy-MM-dd'));
   };
 
   const setLast2Weeks = () => {
-    setStartDate(format(subWeeks(new Date(), 2), 'yyyy-MM-dd'));
-    setEndDate(format(new Date(), 'yyyy-MM-dd'));
+    const todayKey = getEasternDateKey(new Date());
+    const today = new Date(`${todayKey}T12:00:00`);
+    setStartDate(format(subWeeks(today, 2), 'yyyy-MM-dd'));
+    setEndDate(todayKey);
   };
 
   const handlePrintTimeEntries = () => {
