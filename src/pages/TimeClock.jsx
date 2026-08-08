@@ -511,7 +511,7 @@ export default function TimeClock() {
       setGeoError(null);
     } catch (error) {
       console.error("Error getting location for site switch:", error);
-      let errorMessage = "Unable to get your current location for site switch.";
+      let errorMessage = error?.message || "Unable to get your current location for site switch.";
       if (error.code === 1) {
         errorMessage = "LOCATION PERMISSION DENIED - Cannot switch sites without location access. Please enable location services in your browser.";
       } else if (error.code === 3 || error.message === 'TIMEOUT') {
