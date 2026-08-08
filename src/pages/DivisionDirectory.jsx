@@ -54,8 +54,12 @@ export default function DivisionDirectory() {
 
     return allUsers
       .filter(u => {
-        // Filter out client users - only show officers
-        if (u.additional_roles?.includes('client')) return false;
+        // Operational directory never exposes client, student, or pending accounts.
+        const roles = new Set([u.role, ...(u.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+        const userType = String(u.user_type || u.account_type || u.portal_type || '').toLowerCase();
+        const accountStatus = String(u.account_status || '').toLowerCase();
+        if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
+        if (['client', 'student', 'pending'].includes(userType) || accountStatus === 'pending') return false;
         
         // Filter out users who don't want to be shown
         if (u.show_in_directory === false) return false;
