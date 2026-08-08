@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Clock, MapPin, CheckCircle, XCircle, Navigation, AlertCircle, Calendar as CalendarIcon, AlertTriangle, Printer } from "lucide-react";
 import { generateTimeClockPrint } from "../components/TimeClockPrintView";
-import { format, subWeeks, startOfWeek, endOfWeek, subDays, isAfter } from "date-fns";
+import { format, subWeeks, startOfWeek, endOfWeek } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MapContainer, TileLayer, Marker, Circle, Polygon, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -141,39 +141,44 @@ export default function TimeClock() {
   });
 
   const { data: activeEntry, isLoading } = useQuery({
-    queryKey: ['activeTimeEntry'],
+    queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
-      const entries = await base44.entities.TimeEntry.list('-created_date');
-      const userEntries = entries.filter(e => e.officer_email === user.email);
-      return userEntries.find(e => !e.clock_out) || null;
+      const entries = await base44.entities.TimeEntry.filter({ officer_email: user.email }, '-clock_in');
+      return (entries || []).find(entry => !entry.clock_out && entry.archived !== true) || null;
     },
-    enabled: !!user,
-    refetchInterval: 5000,
+    enabled: !!user?.email,
+    staleTime: 15000,
+    refetchInterval: 30000,
   });
 
-  const { data: recentEntries } = useQuery({
+  const { data: recentEntries = [] } = useQuery({
     queryKey: ['recentTimeEntries', user?.email, startDate, endDate, selectedLocation],
     queryFn: async () => {
       if (!user?.email) return [];
-      const entries = await base44.entities.TimeEntry.list('-created_date');
-      const userEntries = entries.filter(e => e.officer_email === user.email);
-      
-      let filteredEntries = userEntries.filter(entry => {
-        if (!entry.clock_out) return false;
-        const entryDate = entry.clock_in.split('T')[0];
-        return entryDate >= startDate && entryDate <= endDate;
+      const entries = await base44.entities.TimeEntry.filter({ officer_email: user.email }, '-clock_in');
+      return (entries || []).filter(entry => {
+        if (!entry.clock_in || !entry.clock_out || entry.archived === true) return false;
+        const entryDate = getEasternDateKey(entry.clock_in);
+        if (!entryDate || entryDate < startDate || entryDate > endDate) return false;
+        return !selectedLocation || String(entry.location || '').includes(selectedLocation);
       });
-
-      if (selectedLocation) {
-        filteredEntries = filteredEntries.filter(entry => entry.location.includes(selectedLocation));
-      }
-
-      return filteredEntries;
     },
-    enabled: !!user,
-    refetchInterval: 5000,
+    enabled: !!user?.email,
+    staleTime: 15000,
+    refetchInterval: 60000,
   });
+
+  useEffect(() => {
+    if (!user?.email) return undefined;
+    const unsubscribe = base44.entities.TimeEntry.subscribe(event => {
+      const record = event?.data || event?.record || event;
+      if (record?.officer_email && String(record.officer_email).toLowerCase() !== String(user.email).toLowerCase()) return;
+      queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user.email] });
+      queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user.email] });
+    });
+    return unsubscribe;
+  }, [user?.email, queryClient]);
 
   const saveLocationHistoryMutation = useMutation({
     mutationFn: (data) => base44.entities.LocationHistory.create(data),
@@ -555,36 +560,38 @@ export default function TimeClock() {
   };
 
 
-  const calculateHours = (clockIn, clockOut) => {
-    if (!clockOut) return "Active";
-    const diff = new Date(clockOut) - new Date(clockIn);
-    const hours = Math.floor(diff / 1000 / 60 / 60);
-    const minutes = Math.floor((diff / 1000 / 60) % 60);
-    return `${hours}h ${minutes}m`;
+  const calculateEntryMinutes = (entry) => {
+    if (!entry?.clock_in || !entry?.clock_out) return 0;
+    const grossMs = new Date(entry.clock_out).getTime() - new Date(entry.clock_in).getTime();
+    if (!Number.isFinite(grossMs) || grossMs <= 0) return 0;
+    const breakMs = (entry.break_periods || []).reduce((total, period) => {
+      if (!period?.start || !period?.end) return total;
+      const duration = new Date(period.end).getTime() - new Date(period.start).getTime();
+      return total + (Number.isFinite(duration) && duration > 0 ? duration : 0);
+    }, 0);
+    return Math.max(0, Math.round((grossMs - breakMs) / 60000));
   };
 
-  const calculateTotalHours = () => {
-    let totalMinutes = 0;
-    recentEntries?.forEach(entry => {
-      if (entry.clock_out) {
-        const diff = new Date(entry.clock_out) - new Date(entry.clock_in);
-        totalMinutes += diff / 1000 / 60;
-      }
-    });
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = Math.floor(totalMinutes % 60);
-    return `${hours}h ${minutes}m`;
+  const formatMinutes = (minutes) => `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+
+  const calculateHours = (entry) => {
+    if (!entry?.clock_out) return "Active";
+    return formatMinutes(calculateEntryMinutes(entry));
   };
+
+  const calculateTotalHours = () => formatMinutes(
+    (recentEntries || []).reduce((total, entry) => total + calculateEntryMinutes(entry), 0)
+  );
 
   const setThisWeek = () => {
-    setStartDate(format(startOfWeek(new Date(), { weekStartsOn: 5 }), 'yyyy-MM-dd'));
-    setEndDate(format(endOfWeek(new Date(), { weekStartsOn: 5 }), 'yyyy-MM-dd'));
+    setStartDate(format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
+    setEndDate(format(endOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
   };
 
   const setLastWeek = () => {
     const lastWeek = subWeeks(new Date(), 1);
-    setStartDate(format(startOfWeek(lastWeek, { weekStartsOn: 5 }), 'yyyy-MM-dd'));
-    setEndDate(format(endOfWeek(lastWeek, { weekStartsOn: 5 }), 'yyyy-MM-dd'));
+    setStartDate(format(startOfWeek(lastWeek, { weekStartsOn: 0 }), 'yyyy-MM-dd'));
+    setEndDate(format(endOfWeek(lastWeek, { weekStartsOn: 0 }), 'yyyy-MM-dd'));
   };
 
   const setLast2Weeks = () => {
@@ -1003,7 +1010,7 @@ export default function TimeClock() {
                   </div>
                   <div className="text-left sm:text-right">
                     <p className="text-lg font-black text-white">
-                      {calculateHours(entry.clock_in, entry.clock_out)}
+                      {calculateHours(entry)}
                     </p>
                   </div>
                 </div>
