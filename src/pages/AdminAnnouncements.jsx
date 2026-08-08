@@ -53,7 +53,7 @@ export default function AdminAnnouncements() {
     queryKey: ['allAnnouncementReceipts'],
     queryFn: () => base44.entities.AnnouncementReceipt.list('-read_at', 5000),
     enabled: user?.role === 'admin',
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const createAnnouncementMutation = useMutation({
