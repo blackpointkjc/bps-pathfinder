@@ -17,9 +17,6 @@ import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview'
 import StructuredPeopleEditor from '@/components/reports/StructuredPeopleEditor';
 import { toast } from 'sonner';
 
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/c29aab328_c3ff2618-4412-4498-8923-8f484a9469b8-2533645741.jpeg";
-const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
-
 // Build an incident description that references the CAD number instead of the
 // upstream GRAC feed tag (e.g. "VANDALISM at ... [GRAC:abc]" -> "VANDALISM at ... [CAD:B1123]").
 function buildCallDescription(raw, cadNumber) {
@@ -580,7 +577,6 @@ Provide:
     const incidentDate = report.incident_date ? format(new Date(report.incident_date), 'MMMM d, yyyy') : '';
     const incidentTimeZulu = report.incident_time ? report.incident_time + 'Z' : '';
     const discoveredTimeZulu = report.discovered_time ? report.discovered_time + 'Z' : '';
-    const createdDateZulu = report.created_date ? toZulu(report.created_date) : '';
     const submittedZulu = report.created_date ? toZulu(report.created_date) : 'N/A';
     
     // HTML-escape user-controlled fields before interpolating into the print template
