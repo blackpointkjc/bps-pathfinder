@@ -13,7 +13,7 @@ export default function NotificationMonitor({ user }) {
   const [lastAnnouncementId, setLastAnnouncementId] = useState(null);
   const [lastScheduleCheck, setLastScheduleCheck] = useState(null);
   const [lastPTOStatusId, setLastPTOStatusId] = useState(null);
-  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [audioEnabled] = useState(true);
 
   // Monitor chat messages
   const { data: latestChat } = useQuery({
@@ -46,17 +46,6 @@ export default function NotificationMonitor({ user }) {
     },
     refetchInterval: 10000,
     enabled: !!user,
-  });
-
-  // Monitor schedule changes
-  const { data: mySchedules } = useQuery({
-    queryKey: ['mySchedulesNotify', user?.email],
-    queryFn: async () => {
-      const schedules = await base44.entities.Schedule.filter({ officer_email: user?.email }, '-updated_date', 5);
-      return schedules;
-    },
-    refetchInterval: 30000,
-    enabled: !!user?.email,
   });
 
   // Monitor schedule week status (for new schedule published)
