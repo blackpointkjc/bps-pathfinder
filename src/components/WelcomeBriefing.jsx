@@ -54,6 +54,7 @@ export default function WelcomeBriefing({ user }) {
   const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null, allUsers: [], allUnits: [], todaySchedules: [], activeTimeEntries: [], todayVehicleAssignments: [] });
   const userKey = normalized(user?.email || user?.id);
   const storageKey = userKey ? `bps-last-active:${userKey}` : '';
+  const sessionKey = userKey ? `bps-welcome-session:${userKey}` : '';
   const [offlineSince] = useState(() => {
     if (typeof window === 'undefined' || !storageKey) return null;
     const saved = localStorage.getItem(storageKey);
@@ -63,6 +64,11 @@ export default function WelcomeBriefing({ user }) {
 
   useEffect(() => {
     if (!user?.id || !user?.email) return;
+    // Show the welcome briefing once per actual app/browser session. React refreshes,
+    // route changes, query refetches, and component remounts must not reopen it.
+    // sessionStorage is cleared when the app/browser session is fully closed.
+    if (sessionKey && sessionStorage.getItem(sessionKey) === 'shown') return;
+    if (sessionKey) sessionStorage.setItem(sessionKey, 'shown');
     let active = true;
     const load = async () => {
       try {
@@ -117,7 +123,7 @@ export default function WelcomeBriefing({ user }) {
     };
     load();
     return () => { active = false; };
-  }, [user?.id, user?.email]);
+  }, [user?.id, user?.email, sessionKey]);
 
   useEffect(() => {
     if (!open) return;
