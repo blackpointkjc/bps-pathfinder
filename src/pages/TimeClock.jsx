@@ -23,6 +23,20 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+function getEasternDateKey(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const byType = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${byType.year}-${byType.month}-${byType.day}`;
+}
+
 function MapUpdater({ center }) {
   const map = useMap();
   useEffect(() => {
@@ -187,20 +201,20 @@ export default function TimeClock() {
   const clockInMutation = useMutation({
     mutationFn: (data) => base44.entities.TimeEntry.create(data),
     onMutate: async (newEntry) => {
-      await queryClient.cancelQueries({ queryKey: ['activeTimeEntry'] });
-      const previousEntry = queryClient.getQueryData(['activeTimeEntry']);
+      await queryClient.cancelQueries({ queryKey: ['activeTimeEntry', user?.email] });
+      const previousEntry = queryClient.getQueryData(['activeTimeEntry', user?.email]);
       
-      queryClient.setQueryData(['activeTimeEntry'], newEntry);
+      queryClient.setQueryData(['activeTimeEntry', user?.email], newEntry);
       
       return { previousEntry };
     },
     onError: (err, newEntry, context) => {
       if (context?.previousEntry) {
-        queryClient.setQueryData(['activeTimeEntry'], context.previousEntry);
+        queryClient.setQueryData(['activeTimeEntry', user?.email], context.previousEntry);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activeTimeEntry'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries'] });
       setUserCoords(null);
     },
@@ -209,10 +223,10 @@ export default function TimeClock() {
   const clockOutMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.TimeEntry.update(id, data),
     onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries({ queryKey: ['activeTimeEntry'] });
-      const previousEntry = queryClient.getQueryData(['activeTimeEntry']);
+      await queryClient.cancelQueries({ queryKey: ['activeTimeEntry', user?.email] });
+      const previousEntry = queryClient.getQueryData(['activeTimeEntry', user?.email]);
       
-      queryClient.setQueryData(['activeTimeEntry'], null);
+      queryClient.setQueryData(['activeTimeEntry', user?.email], null);
       
       return { previousEntry };
     },
@@ -221,11 +235,11 @@ export default function TimeClock() {
       setGeoError('Failed to clock out. Please try again.');
       setVerifyingLocation(false);
       if (context?.previousEntry) {
-        queryClient.setQueryData(['activeTimeEntry'], context.previousEntry);
+        queryClient.setQueryData(['activeTimeEntry', user?.email], context.previousEntry);
       }
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['activeTimeEntry'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries'] });
       setNotes("");
       setSelectedLocation("");
@@ -297,7 +311,7 @@ export default function TimeClock() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activeTimeEntry'] });
+      queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries'] });
       setSwitchingSite(false);
       setSelectedNewSite("");
