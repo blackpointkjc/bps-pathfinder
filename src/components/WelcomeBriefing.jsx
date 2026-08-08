@@ -51,6 +51,7 @@ export default function WelcomeBriefing({ user }) {
   const [open, setOpen] = useState(false);
   const [seconds, setSeconds] = useState(30);
   const [loading, setLoading] = useState(true);
+  const [triggerVersion, setTriggerVersion] = useState(0);
   const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null, allUsers: [], allUnits: [], todaySchedules: [], activeTimeEntries: [], todayVehicleAssignments: [] });
   const userKey = normalized(user?.email || user?.id);
   const storageKey = userKey ? `bps-last-active:${userKey}` : '';
@@ -74,21 +75,21 @@ export default function WelcomeBriefing({ user }) {
     const currentStatus = normalized(user?.status || 'out of service');
     const returnedToService = previousStatus === 'out of service' && currentStatus !== 'out of service';
     const isNewAppSession = !sessionSeen;
-+
-+    // Page changes, route changes, React remounts, query refreshes, and CAD refreshes
-+    // are NOT briefing triggers. Only a new app/browser session, 60+ minutes idle,
-+    // or an Out of Service -> In Service transition may open the briefing.
-+    if (!isNewAppSession && !idleForHour && !returnedToService) {
-+      localStorage.setItem(lastStatusKey, user?.status || 'Out of Service');
-+      return;
-+    }
-+
-+    sessionStorage.setItem(sessionKey, 'shown');
-+    localStorage.setItem(lastShownKey, new Date(now).toISOString());
-+    localStorage.setItem(lastStatusKey, user?.status || 'Out of Service');
-+    setOfflineSince(savedActive);
-+    let active = true;
-+    const load = async () => {
+
+    // Page changes, route changes, React remounts, query refreshes, and CAD refreshes
+    // are NOT briefing triggers. Only a new app/browser session, 60+ minutes idle,
+    // or an Out of Service -> In Service transition may open the briefing.
+    if (!isNewAppSession && !idleForHour && !returnedToService) {
+      localStorage.setItem(lastStatusKey, user?.status || 'Out of Service');
+      return;
+    }
+
+    sessionStorage.setItem(sessionKey, 'shown');
+    localStorage.setItem(lastShownKey, new Date(now).toISOString());
+    localStorage.setItem(lastStatusKey, user?.status || 'Out of Service');
+    setOfflineSince(savedActive);
+    let active = true;
+    const load = async () => {
       try {
         const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
         const [messages, mentions, announcements, receipts, notifications, propertyAlerts, liveUsers, units, schedules, vehicleAssignments, overrides, allUsers, allUnits, allSchedules, timeEntries] = await Promise.all([
@@ -141,7 +142,7 @@ export default function WelcomeBriefing({ user }) {
     };
     load();
     return () => { active = false; };
-  }, [user?.id, user?.email, user?.status, sessionKey, storageKey, lastShownKey, lastStatusKey]);
+  }, [user?.id, user?.email, user?.status, sessionKey, storageKey, lastShownKey, lastStatusKey, triggerVersion]);
 
   useEffect(() => {
     if (!open) return;
@@ -167,8 +168,10 @@ export default function WelcomeBriefing({ user }) {
         const saved = localStorage.getItem(storageKey);
         const last = saved ? new Date(saved).getTime() : 0;
         if (last && Date.now() - last >= 60 * 60 * 1000) {
-          // Allow the next mounted briefing check to treat this as an idle return.
+          // Re-open the briefing immediately when the user returns after 60+ minutes idle.
+          setOfflineSince(last);
           sessionStorage.removeItem(sessionKey);
+          setTriggerVersion(value => value + 1);
         }
         markActive();
       }
