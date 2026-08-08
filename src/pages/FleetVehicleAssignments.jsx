@@ -31,7 +31,6 @@ export default function FleetVehicleAssignments() {
 
   const windowStart = addDays(startOfDay(new Date()), dayOffset);
   const dates = Array.from({length:3},(_,i)=>format(addDays(windowStart,i),'yyyy-MM-dd')); 
-  const eligibleUsers = users.filter(u => !u.termination_date && (u.additional_roles || []).includes('cad_access') && (u.additional_roles || []).includes('officer'));
   const windowShifts = schedules.filter(s => dates.includes(s.shift_date) && s.officer_email && s.officer_email !== 'OPEN' && !s.is_open);
   const teamShifts = windowShifts.filter(s => !s.partner_officer_email || String(s.officer_email).localeCompare(String(s.partner_officer_email)) <= 0);
   const myShifts = isAdmin ? teamShifts : windowShifts.filter(s=>s.officer_email===user?.email);
