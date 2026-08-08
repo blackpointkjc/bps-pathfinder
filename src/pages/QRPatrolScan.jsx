@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { QrCode, CheckCircle2, AlertTriangle, MapPin, Clock, List, X, ScanLine, Camera, CameraOff, ChevronDown, ChevronUp, XCircle } from "lucide-react";
 import { format, addMinutes } from "date-fns";
 import { Html5Qrcode } from "html5-qrcode";
+import { subscribeLiveLocation } from '@/lib/liveLocationService';
 
 // Build hourly round slots from shift start — one slot per hour, 30-min window to complete all checkpoints
 function getHourlySlots(shiftStart) {
@@ -222,12 +223,9 @@ export default function QRPatrolScan() {
     placeholderData: (prev) => prev ?? [],
   });
 
-  useEffect(() => {
-    navigator.geolocation?.getCurrentPosition(
-      pos => setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => {}
-    );
-  }, []);
+  useEffect(() => subscribeLiveLocation((fix) => {
+    setGps({ lat: fix.latitude, lng: fix.longitude });
+  }), []);
 
   // Use subscription to append new scans directly to cache — avoids a full refetch (which causes flicker on 429)
   useEffect(() => {
