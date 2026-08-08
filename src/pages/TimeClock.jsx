@@ -241,53 +241,55 @@ export default function TimeClock() {
     },
   });
 
-  // NEW MUTATION: switchSiteMutation
+  // Site switch is one guarded operation: current GPS must be inside the destination's
+  // canonical gold boundary. If either database step fails, roll back so the user is
+  // not left with a broken/missing active time entry.
   const switchSiteMutation = useMutation({
     mutationFn: async ({ newSite, currentPosition }) => {
-      const newLocation = locations.find(loc => loc.site_name === newSite);
-      if (!newLocation) throw new Error('Location not found');
+      const newLocation = locations?.find(loc => loc.site_name === newSite);
+      if (!newLocation) throw new Error('Destination location not found. Refresh the page and try again.');
+      if (!activeEntry?.id) throw new Error('Your active time entry could not be found. Refresh the page and try again.');
+      if (!currentPosition?.coords) throw new Error('GPS location required. Please enable location access and try again.');
 
-      // Admins bypass GPS + geofence verification, matching clock-in/clock-out behavior elsewhere.
-      let clockOutLat = null;
-      let clockOutLng = null;
-      let clockInLat = null;
-      let clockInLng = null;
+      const lat = Number(currentPosition.coords.latitude);
+      const lng = Number(currentPosition.coords.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('A valid GPS location is required to switch sites.');
 
-      if (!isAdmin) {
-        if (!currentPosition) {
-          throw new Error('GPS location required. Please enable location access and try again.');
-        }
-        const boundaryCheck = verifyAgainstLocationBoundary(
-          newLocation,
-          currentPosition.coords.latitude,
-          currentPosition.coords.longitude
-        );
-        if (!boundaryCheck.ok) throw new Error(boundaryCheck.message);
-        clockOutLat = currentPosition.coords.latitude;
-        clockOutLng = currentPosition.coords.longitude;
-        clockInLat = currentPosition.coords.latitude;
-        clockInLng = currentPosition.coords.longitude;
-      }
+      const boundaryCheck = verifyAgainstLocationBoundary(newLocation, lat, lng);
+      if (!boundaryCheck.ok) throw new Error(boundaryCheck.message);
 
-      // Clock out from old site
-      const clockOutData = {
-        clock_out: new Date().toISOString(),
-        clock_out_latitude: clockOutLat,
-        clock_out_longitude: clockOutLng,
-      };
-      await base44.entities.TimeEntry.update(activeEntry.id, clockOutData);
-
-      // Clock in to new site
+      const switchedAt = new Date().toISOString();
+      const oldSite = activeEntry.location?.split(' - ')[0] || 'previous site';
       const clockInData = {
         officer_email: user?.email,
         officer_name: user?.full_name || user?.email,
-        clock_in: new Date().toISOString(),
-        location: `${newSite} - ${newLocation.address}`,
-        clock_in_latitude: clockInLat,
-        clock_in_longitude: clockInLng,
-        notes: `Switched from ${activeEntry.location.split(' - ')[0]}`,
+        clock_in: switchedAt,
+        location: `${newSite} - ${newLocation.address || ''}`.trim(),
+        clock_in_latitude: lat,
+        clock_in_longitude: lng,
+        notes: `Switched from ${oldSite}`,
       };
-      return await base44.entities.TimeEntry.create(clockInData);
+
+      let newEntry = null;
+      try {
+        // Create the destination entry first. If closing the old entry fails, delete
+        // this new row so the user never ends up with two active shifts.
+        newEntry = await base44.entities.TimeEntry.create(clockInData);
+        await base44.entities.TimeEntry.update(activeEntry.id, {
+          clock_out: switchedAt,
+          clock_out_latitude: lat,
+          clock_out_longitude: lng,
+          notes: [activeEntry.notes, `Switched to ${newSite}`].filter(Boolean).join('\n'),
+        });
+        return newEntry;
+      } catch (error) {
+        if (newEntry?.id) {
+          try { await base44.entities.TimeEntry.delete(newEntry.id); } catch (rollbackError) {
+            console.error('Site switch rollback failed:', rollbackError);
+          }
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry'] });
