@@ -343,132 +343,6 @@ export default function Navigation() {
         }
     };
 
-    // Credit-free GPS update: write the signed-in officer's live position to BOTH
-    // their User profile and an ActiveOfficer record. ActiveOfficer is the map's
-    // primary source, so writing it here guarantees other dispatchers/units see
-    // this officer's real-time location — not a stale last-known coordinate.
-    const pushLocationUpdate = useCallback(async (coords, hdg, spd, accuracy) => {
-        const now = Date.now();
-        const moving = Number(spd) > 2;
-        const minimumInterval = moving ? 1500 : 4000;
-        if (now - lastUpdateRef.current < minimumInterval) return;
-        lastUpdateRef.current = now;
-        const [latitude, longitude] = coords;
-        const stamp = new Date().toISOString();
-        const status = unitStatusRef.current;
-        const user = currentUser;
-        const email = user?.email;
-        const fullName = user?.full_name || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || email;
-
-        try {
-            const update = {
-                latitude,
-                longitude,
-                heading: Number.isFinite(hdg) ? hdg : 0,
-                speed: Number.isFinite(spd) ? spd : 0,
-                accuracy: Number.isFinite(accuracy) ? accuracy : 0,
-                status,
-                last_updated: stamp,
-                show_on_map: true,
-            };
-            await base44.auth.updateMe(update);
-            setCurrentUser(prev => prev ? { ...prev, ...update } : prev);
-        } catch (e) {
-            console.warn('[NAV] direct location update failed:', e?.message);
-        }
-
-        // Upsert a live ActiveOfficer record so the map (and other units) see this officer in real time.
-        if (email) {
-            try {
-                if (activeOfficerEmailRef.current !== email) {
-                    activeOfficerEmailRef.current = email;
-                    activeOfficerIdRef.current = null;
-                    const existing = await base44.entities.ActiveOfficer.filter({ officer_email: email }).catch(() => []);
-                    if (existing && existing.length > 0) activeOfficerIdRef.current = existing[0].id;
-                }
-                const payload = {
-                    officer_email: email,
-                    officer_name: fullName,
-                    unit_number: user?.unit_number || '',
-                    current_location: user?.current_location || '',
-                    last_update: stamp,
-                    latitude,
-                    longitude,
-                    heading: Number.isFinite(hdg) ? hdg : 0,
-                    speed: Number.isFinite(spd) ? spd : 0,
-                    accuracy: Number.isFinite(accuracy) ? accuracy : 0,
-                    status,
-                    union_id: user?.union_id || '',
-                    partner_email: user?.partner_email || '',
-                    partner_name: user?.partner_name || '',
-                    is_union_lead: user?.is_union_lead === true,
-                    union_member_count: user?.union_member_count || 1,
-                    scheduled_shift_id: user?.scheduled_shift_id || '',
-                };
-                if (activeOfficerIdRef.current) {
-                    await base44.entities.ActiveOfficer.update(activeOfficerIdRef.current, payload);
-                } else {
-                    const created = await base44.entities.ActiveOfficer.create(payload);
-                    if (created?.id) activeOfficerIdRef.current = created.id;
-                }
-            } catch (e) {
-                console.warn('[NAV] ActiveOfficer upsert failed:', e?.message);
-            }
-        }
-    }, [currentUser]);
-
-    const startTracking = () => {
-        if (!navigator.geolocation) { toast.error('Geolocation not supported'); return; }
-        if (locationWatchId.current) navigator.geolocation.clearWatch(locationWatchId.current);
-        if (forcePollRef.current) clearInterval(forcePollRef.current);
-        setIsLiveTracking(true);
-
-        locationWatchId.current = navigator.geolocation.watchPosition(
-            (pos) => {
-                const coords = [pos.coords.latitude, pos.coords.longitude];
-                const hdg = (pos.coords.heading !== null && pos.coords.heading >= 0) ? pos.coords.heading : null;
-                const spd = pos.coords.speed ? Math.round(pos.coords.speed * 2.237) : 0;
-                setCurrentLocation(coords);
-                setLastGpsFixAt(pos.timestamp || Date.now());
-                if (hdg !== null) setHeading(hdg);
-                setSpeed(spd);
-                setLocationHistory(prev => [...prev, coords].slice(-30));
-                pushLocationUpdate(coords, hdg, spd, pos.coords.accuracy || 0);
-            },
-            (err) => {
-                if (err.code === err.PERMISSION_DENIED) {
-                    setIsLiveTracking(false);
-                    toast.error('Location permission denied');
-                }
-            },
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
-        );
-
-        // Fallback poll every 5s to keep live position fresh
-        forcePollRef.current = setInterval(() => {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const coords = [pos.coords.latitude, pos.coords.longitude];
-                    setCurrentLocation(coords);
-                    setLastGpsFixAt(pos.timestamp || Date.now());
-                    const fallbackHeading = (pos.coords.heading !== null && pos.coords.heading >= 0) ? pos.coords.heading : heading;
-                    const fallbackSpeed = pos.coords.speed ? pos.coords.speed * 2.237 : 0;
-                    if (fallbackHeading !== null) setHeading(fallbackHeading);
-                    setSpeed(Math.round(fallbackSpeed));
-                    pushLocationUpdate(coords, fallbackHeading, fallbackSpeed, pos.coords.accuracy);
-                },
-                () => {},
-                { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-            );
-        }, 5000);
-    };
-
-    const stopTracking = () => {
-        if (locationWatchId.current) { navigator.geolocation.clearWatch(locationWatchId.current); locationWatchId.current = null; }
-        if (forcePollRef.current) { clearInterval(forcePollRef.current); forcePollRef.current = null; }
-        setIsLiveTracking(false);
-    };
-
     const formatInstruction = (step) => {
         if (!step) return 'Continue to destination';
         const type = step.maneuver?.type || 'continue';
@@ -480,27 +354,19 @@ export default function Navigation() {
         return `${type.charAt(0).toUpperCase() + type.slice(1)}${modifier}${road}`;
     };
 
-    const getFreshDeviceLocation = () => new Promise((resolve) => {
-        if (!navigator.geolocation) {
-            resolve(currentLocation);
-            return;
+    const getFreshDeviceLocation = async () => {
+        try {
+            const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 10000 });
+            const fresh = [fix.latitude, fix.longitude];
+            setCurrentLocation(fresh);
+            setLastGpsFixAt(fix.timestamp);
+            if (fix.heading !== null) setHeading(fix.heading);
+            setSpeed(Math.round(fix.speed || 0));
+            return fresh;
+        } catch {
+            return currentLocation;
         }
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const fresh = [pos.coords.latitude, pos.coords.longitude];
-                const freshHeading = (pos.coords.heading !== null && pos.coords.heading >= 0) ? pos.coords.heading : heading;
-                const freshSpeed = pos.coords.speed ? pos.coords.speed * 2.237 : speed;
-                setCurrentLocation(fresh);
-                setLastGpsFixAt(pos.timestamp || Date.now());
-                if (freshHeading !== null) setHeading(freshHeading);
-                setSpeed(Math.round(freshSpeed || 0));
-                pushLocationUpdate(fresh, freshHeading, freshSpeed, pos.coords.accuracy || 0);
-                resolve(fresh);
-            },
-            () => resolve(currentLocation),
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-        );
-    });
+    };
 
     const startNavigationToPoint = async (destination, options = {}) => {
         const coords = destination?.coords || (destination?.latitude && destination?.longitude ? [Number(destination.latitude), Number(destination.longitude)] : null);
