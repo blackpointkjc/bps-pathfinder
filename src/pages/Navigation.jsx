@@ -321,8 +321,9 @@ export default function Navigation() {
         setUnitStatus(newStatus);
         unitStatusRef.current = newStatus;
         try {
-            await base44.auth.updateMe({ status: newStatus, last_updated: new Date().toISOString() });
-            setCurrentUser(prev => prev ? { ...prev, status: newStatus, last_updated: new Date().toISOString() } : prev);
+            const stamp = new Date().toISOString();
+            await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
+            setCurrentUser(prev => prev ? { ...prev, status: newStatus, last_updated: stamp, status_since: stamp } : prev);
             fetchOtherUnits();
         } catch (e) {
             console.warn('[NAV] direct status update failed:', e?.message);
