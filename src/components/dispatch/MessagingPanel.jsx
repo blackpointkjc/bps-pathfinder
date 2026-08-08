@@ -27,7 +27,10 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
   const recipients = useMemo(() => units.filter(unit => (
     !unit.termination_date && unit.id !== currentUser?.id && unit.email !== currentUser?.email && isOperationalRecipient(unit)
   )), [units, currentUser?.id, currentUser?.email]);
-  const officers = useMemo(() => recipients.filter(unit => roleSet(unit).has('officer')), [recipients]);
+  const officers = useMemo(() => recipients.filter(unit => {
+    const roles = roleSet(unit);
+    return roles.has('officer') && roles.has('cad_access');
+  }), [recipients]);
 
   const loadMessages = async () => {
     if (!currentUser?.id) return;
