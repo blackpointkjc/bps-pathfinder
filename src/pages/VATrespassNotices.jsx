@@ -409,56 +409,6 @@ export default function VATrespassNotices() {
     saveNoticeMutation.mutate({ data: formData, isDraft: false });
   };
 
-  const startEdit = (notice, todoId = null) => {
-    if (String(notice.created_by_id || '') !== String(user?.id || '') && !isAdmin) {
-      alert("You can only edit your own notices.");
-      return;
-    }
-
-    setEditingNotice(notice);
-    setEditingTodoId(todoId);
-    setFormData({
-      notice_date: new Date(notice.notice_date).toISOString().slice(0, 16),
-      location: notice.location,
-      subject_name: notice.subject_name,
-      subject_first_name: notice.subject_first_name || String(notice.subject_name || '').split(' ')[0] || '',
-      subject_middle_name: notice.subject_middle_name || '',
-      subject_last_name: notice.subject_last_name || String(notice.subject_name || '').split(' ').slice(1).join(' ') || '',
-      subject_description: notice.subject_description || "",
-      subject_id: notice.subject_id || "",
-      subject_id_state: notice.subject_id_state || "",
-      subject_id_expiration: notice.subject_id_expiration || "",
-      subject_dob: notice.subject_dob || "",
-      subject_race: notice.subject_race || "",
-      subject_sex: notice.subject_sex || "unknown",
-      subject_height_ft: notice.subject_height_ft || "",
-      subject_height_in: notice.subject_height_in || "",
-      subject_weight: notice.subject_weight || "",
-      subject_eyes: notice.subject_eyes || "",
-      subject_hair: notice.subject_hair || "",
-      subject_phone: notice.subject_phone || "",
-      subject_address: notice.subject_address || "",
-      subject_city: notice.subject_city || "",
-      subject_state: notice.subject_state || "",
-      subject_zip: notice.subject_zip || "",
-      vehicle_info: notice.vehicle_info || "",
-      reason: notice.reason,
-      duration: notice.duration || "Permanent",
-      police_notified: notice.police_notified,
-      police_report_number: notice.police_report_number || "",
-      photo_url: notice.photo_url || "",
-      signature_url: notice.signature_url || "",
-      officer_signature_url: notice.officer_signature_url || notice.signature_url || "",
-      officer_signed_at: notice.officer_signed_at || "",
-      witness_name: notice.witness_name || "",
-      witness_signature_url: notice.witness_signature_url || "",
-      witness_signed_at: notice.witness_signed_at || "",
-      subject_signature_url: notice.subject_signature_url || "",
-      subject_signed_at: notice.subject_signed_at || "",
-    });
-    setShowForm(true);
-  };
-
   const viewNotice = (notice) => {
     setSelectedNotice(notice);
     setShowViewDialog(true);

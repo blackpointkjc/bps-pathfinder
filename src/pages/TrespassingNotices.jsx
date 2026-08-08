@@ -339,31 +339,6 @@ export default function TrespassingNotices() {
     saveNoticeMutation.mutate({ data: formData, isDraft: false }); // Pass isDraft as false by default for standard submission
   };
 
-  const startEdit = (notice, todoId = null) => {
-    if (String(notice.created_by_id || '') !== String(user?.id || '') && !isAdmin) {
-      alert("You can only edit your own notices.");
-      return;
-    }
-
-    // Updated: set editingNotice with the full object
-    setEditingNotice(notice);
-    setEditingTodoId(todoId);
-    setFormData({
-      notice_date: new Date(notice.notice_date).toISOString().slice(0, 16),
-      location: notice.location,
-      subject_name: notice.subject_name,
-      subject_description: notice.subject_description || "",
-      subject_id: notice.subject_id || "",
-      vehicle_info: notice.vehicle_info || "",
-      reason: notice.reason,
-      duration: notice.duration || "Permanent",
-      police_notified: notice.police_notified,
-      police_report_number: notice.police_report_number || "",
-      photo_url: notice.photo_url || "",
-    });
-    setShowForm(true);
-  };
-
   const viewNotice = (notice) => {
     setSelectedNotice(notice);
     setShowViewDialog(true);
