@@ -45,7 +45,7 @@ function PersonCard({ person, users }) {
         </div>
       </div>
     </div>
-    <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2"><div className="rounded-lg border border-slate-800 bg-slate-900 p-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Reports To</div><div className="mt-1 font-semibold text-slate-200">{supervisor ? displayName(supervisor) : person.supervisor_name || 'Top of Command'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Chain Above</div><div className="mt-1 font-semibold leading-5 text-slate-200">{chainAbove.length ? chainAbove.map(displayName).join(' → ') : 'Top of Command'}</div></div></div>
+    <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2"><div className="rounded-lg border border-slate-800 bg-slate-900 p-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Reports To</div><div className="mt-1 font-semibold text-slate-200">{supervisor ? displayName(supervisor) : person.supervisor_name || 'Top of Command'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Rank</div><div className="mt-1 font-semibold leading-5 text-slate-200">{person.rank || '—'}</div></div></div>
   </div>;
 }
 
