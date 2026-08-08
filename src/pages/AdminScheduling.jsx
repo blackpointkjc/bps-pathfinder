@@ -508,29 +508,6 @@ export default function AdminScheduling() {
     return endMinutes <= startMinutes;
   };
 
-  const getStartingOnSchedulesForDate = useCallback((date, showOvernightContinuation = false, includeOvernightStartingYesterday = false) => {
-    if (!schedules) return [];
-    const dateStr = format(date, 'yyyy-MM-dd');
-    const yesterdayStr = format(addDays(date, -1), 'yyyy-MM-dd');
-    
-    let result = schedules.filter(s => {
-      // Check for shifts that *start* on the given date
-      if (s.shift_date === dateStr) {
-        // If showOvernightContinuation is true, and it's an overnight shift, include it
-        // Otherwise, if it's not an overnight shift, include it.
-        // This ensures shifts starting on `date` are included, handling the overnight flag.
-        return showOvernightContinuation || !isOvernightShift(s.start_time, s.end_time);
-      }
-      // Check for shifts that *started yesterday* and are overnight, meaning they *end* on the given date
-      if (includeOvernightStartingYesterday && s.shift_date === yesterdayStr) {
-        return isOvernightShift(s.start_time, s.end_time);
-      }
-      return false;
-    });
-
-    return result;
-  }, [schedules]);
-
   const getCurrentPayrollPeriod = useCallback(() => {
     if (!payrollPeriods) return null;
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -572,7 +549,7 @@ export default function AdminScheduling() {
       const rankA = getOfficerRank(a);
       const rankB = getOfficerRank(b);
       const indexA = rankOrder.indexOf(rankA);
-      const indexB = rankOrder.indexOf(b);
+      const indexB = rankOrder.indexOf(rankB);
       const finalIndexA = indexA === -1 ? rankOrder.length : indexA;
       const finalIndexB = indexB === -1 ? rankOrder.length : indexB;
       return finalIndexA - finalIndexB;
