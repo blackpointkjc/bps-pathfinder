@@ -101,7 +101,7 @@ export const OfflineStorage = {
         const cloudDrafts = await base44.entities.OfflineSync.filter({
           sync_type: 'draft',
           entity_type: entityType,
-          created_by: user.email,
+          created_by_id: user.id,
           synced: false
         }, '-last_edited', 1);
         
@@ -129,7 +129,7 @@ export const OfflineStorage = {
         const cloudDrafts = await base44.entities.OfflineSync.filter({
           sync_type: 'draft',
           entity_type: entityType,
-          created_by: user.email,
+          created_by_id: user.id,
           synced: false
         });
         
