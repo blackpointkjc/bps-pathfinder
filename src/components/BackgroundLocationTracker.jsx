@@ -38,6 +38,7 @@ export default function BackgroundLocationTracker({ user }) {
   const lastGeofenceCheckRef = useRef(0);
   const watchIdRef = useRef(null);
   const activeOfficerRecordRef = useRef(null);
+  const lastPositionRef = useRef(null);
   const sessionStartedRef = useRef(new Date().toISOString());
   const queryClient = useQueryClient();
 
@@ -171,14 +172,16 @@ export default function BackgroundLocationTracker({ user }) {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
       const accuracy = position.coords.accuracy;
-      publishLiveLocation({
+      const normalizedFix = {
         latitude: lat,
         longitude: lng,
         accuracy,
         heading: position.coords.heading,
         speed: position.coords.speed ? position.coords.speed * 2.237 : 0,
         timestamp: position.timestamp || Date.now(),
-      });
+      };
+      lastPositionRef.current = normalizedFix;
+      publishLiveLocation(normalizedFix);
 
       // Reject extremely inaccurate location readings (over 500 meters)
       if (accuracy > 500) {
@@ -262,22 +265,7 @@ export default function BackgroundLocationTracker({ user }) {
           }
         }
 
-        // Historical breadcrumb for every signed-in user, once per minute. Clock-in
-        // data is included when present but is NOT required for tracking.
-        if (now - lastSaveRef.current >= 60000) {
-          await saveLocationHistoryMutation.mutateAsync({
-            time_entry_id: activeEntry?.id || '',
-            officer_email: user.email,
-            officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
-            location: activeEntry?.location || user?.current_location || user?.assigned_location || `Signed In · ${user?.role || 'user'}`,
-            latitude: lat,
-            longitude: lng,
-            timestamp: new Date().toISOString(),
-            accuracy: position.coords.accuracy,
-          });
-          lastSaveRef.current = now;
-          queryClient.invalidateQueries({ queryKey: ['locationHistory'] });
-        }
+
       } catch (error) {
         console.error('Failed to save location:', error);
       }
