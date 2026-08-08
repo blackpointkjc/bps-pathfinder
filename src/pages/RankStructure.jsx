@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { Shield, Users, GitBranch, ArrowDown } from 'lucide-react';
+import { Shield, GitBranch } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 const RANKS = ['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'];
@@ -29,7 +29,7 @@ function PersonCard({ person, users }) {
         </div>
       </div>
     </div>
-    <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2"><div className="rounded-lg border border-slate-800 bg-slate-900 p-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Reports To</div><div className="mt-1 font-semibold text-slate-200">{supervisor ? displayName(supervisor) : person.supervisor_name || 'Top of Command'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Rank</div><div className="mt-1 font-semibold leading-5 text-slate-200">{person.rank || '—'}</div></div></div>
+    <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2"><div className="rounded-lg border border-slate-800 bg-slate-900 p-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Reports To</div><div className="mt-1 font-semibold text-slate-200">{supervisor ? displayName(supervisor) : person.supervisor_name || 'Top of Command'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Reports To Rank</div><div className="mt-1 font-semibold leading-5 text-slate-200">{supervisor?.rank || (person.rank === 'Colonel' ? 'Top of Command' : 'Not assigned')}</div></div></div>
   </div>;
 }
 
