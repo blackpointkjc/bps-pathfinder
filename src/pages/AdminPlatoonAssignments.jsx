@@ -18,15 +18,22 @@ const displayName = user => `${user?.rank || 'Officer'} ${user?.last_name || use
 
 function eligibleSupervisors(person, users, platoon) {
   const personRank = rankIndex(person.rank);
-  const nextRankIndex = personRank - 1;
-  if (nextRankIndex < 0) return [];
-  const requiredRank = RANKS[nextRankIndex];
-  return users.filter(candidate => {
+  if (personRank <= 0 || personRank >= 999) return [];
+  // A reporting supervisor must be higher in the chain. Prefer the nearest
+  // populated rank above the person, but do not make the dropdown unusable
+  // when an intermediate rank (for example Captain or Sergeant) is vacant.
+  const higher = users.filter(candidate => {
     if (candidate.id === person.id || !isOperational(candidate)) return false;
-    if (candidate.rank !== requiredRank) return false;
+    const candidateRank = rankIndex(candidate.rank);
+    if (candidateRank >= personRank) return false;
     if (COMMAND_RANKS.has(candidate.rank)) return true;
     return platoon && candidate.platoon === platoon;
-  }).sort((a,b) => Number(a.unit_number || 9999) - Number(b.unit_number || 9999));
+  });
+  if (!higher.length) return [];
+  const nearestAvailableRank = Math.max(...higher.map(candidate => rankIndex(candidate.rank)));
+  return higher
+    .filter(candidate => rankIndex(candidate.rank) === nearestAvailableRank)
+    .sort((a,b) => Number(a.unit_number || 9999) - Number(b.unit_number || 9999));
 }
 
 function nearestSupervisor(person, users, platoon) {
