@@ -423,27 +423,9 @@ export default function TimeClock() {
 
     // Try to get location, but always allow clock out
     try {
-      const position = await new Promise((resolve, reject) => {
-        const timeoutId = setTimeout(() => reject(new Error('TIMEOUT')), 8000);
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            clearTimeout(timeoutId);
-            resolve(pos);
-          },
-          (err) => {
-            clearTimeout(timeoutId);
-            reject(err);
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 8000,
-            maximumAge: 5000
-          }
-        );
-      });
-
-      const currentLat = position.coords.latitude;
-      const currentLng = position.coords.longitude;
+      const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 8000 });
+      const currentLat = fix.latitude;
+      const currentLng = fix.longitude;
       
       // Check distance for non-special assignments
       let flagNote = '';
@@ -520,13 +502,8 @@ export default function TimeClock() {
     setGeoError(null);
 
     try {
-      const currentPosition = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        });
-      });
+      const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 10000 });
+      const currentPosition = { coords: { latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy }, timestamp: fix.timestamp };
 
       if (confirm(`Switch from ${activeEntry.location.split(' - ')[0]} to ${selectedNewSite}?\n\nThis will clock you out of your current site and clock you in to the new site.`)) {
         switchSiteMutation.mutate({ newSite: selectedNewSite, currentPosition });
@@ -555,21 +532,15 @@ export default function TimeClock() {
       if (!activeEntry || !user?.email || isAdmin) return;
 
       try {
-        const position = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 30000,
-            maximumAge: 120000
-          });
-        });
+        const fix = await waitForLiveLocation({ maxAgeMs: 30000, timeoutMs: 10000 });
 
         saveLocationHistoryMutation.mutate({
           time_entry_id: activeEntry.id,
           officer_email: user.email,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          timestamp: new Date().toISOString(),
-          accuracy: position.coords.accuracy,
+          latitude: fix.latitude,
+          longitude: fix.longitude,
+          timestamp: new Date(fix.timestamp).toISOString(),
+          accuracy: fix.accuracy,
         });
 
       } catch (error) {
