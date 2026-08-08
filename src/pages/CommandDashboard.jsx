@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { normalizeRank } from '@/utils/rankDisplay';
-import { playDispatchAlert, setDispatchAlertMuted, shouldAlertForGeofence } from '@/utils/alertUtils';
+import { isDispatchAlertMuted, playDispatchAlert, setDispatchAlertMuted, shouldAlertForGeofence } from '@/utils/alertUtils';
 import { classifyCall } from '@/lib/cadCallTypes';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
@@ -86,14 +86,14 @@ function CommandDashboardInner() {
 
     const [refreshing, setRefreshing]           = useState(false);
     const [currentUser, setCurrentUser]         = useState(null);
-    const [soundEnabled, setSoundEnabled]       = useState(true);
+    const [soundEnabled, setSoundEnabled]       = useState(() => !isDispatchAlertMuted());
     const [syncStatus, setSyncStatus]           = useState({ state: 'idle', lastSync: null, added: 0, updated: 0, total: 0, error: null });
     const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [selectedCall, setSelectedCall] = useState(null);
     const [agencyFilter, setAgencyFilter] = useState('ALL');
     const [, setTick]                           = useState(0);
 
-    const soundEnabledRef        = useRef(true);
+    const soundEnabledRef        = useRef(!isDispatchAlertMuted());
     const knownCallIdsRef        = useRef(null);
     const syncingRef             = useRef(false);
     const lastManualRefreshRef   = useRef(0);
@@ -107,13 +107,9 @@ function CommandDashboardInner() {
     useEffect(() => {
         base44.auth.me().then(user => {
             setCurrentUser(user);
-            const stored = localStorage.getItem(`bps_alerts_${user?.id}`);
-            if (stored !== null) {
-                const val = stored === 'true';
-                setSoundEnabled(val);
-                soundEnabledRef.current = val;
-                setDispatchAlertMuted(!val);
-            }
+            const val = !isDispatchAlertMuted();
+            setSoundEnabled(val);
+            soundEnabledRef.current = val;
         }).catch(() => {});
 
         base44.entities.MonitoredProperty.list().then(props => {
@@ -178,9 +174,18 @@ function CommandDashboardInner() {
         const next = !soundEnabled;
         setSoundEnabled(next);
         soundEnabledRef.current = next;
-        if (currentUser?.id) localStorage.setItem(`bps_alerts_${currentUser.id}`, String(next));
         setDispatchAlertMuted(!next);
     };
+
+    useEffect(() => {
+        const syncMute = (event) => {
+            const enabled = !(event?.detail?.muted ?? isDispatchAlertMuted());
+            setSoundEnabled(enabled);
+            soundEnabledRef.current = enabled;
+        };
+        window.addEventListener('bps-alert-mute-changed', syncMute);
+        return () => window.removeEventListener('bps-alert-mute-changed', syncMute);
+    }, []);
 
     const handlePriorityOverride = async (call, e) => {
         e.stopPropagation();
