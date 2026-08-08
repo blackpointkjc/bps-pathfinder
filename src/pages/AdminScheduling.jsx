@@ -258,8 +258,17 @@ export default function AdminScheduling() {
       }
       return created;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allSchedules'] });
+    onSuccess: async (created) => {
+      // Put the newly-created shift into the admin schedule immediately instead
+      // of waiting for the next list refresh. Then refetch from Base44 so the
+      // local view is reconciled with the persisted Schedule entity.
+      if (created?.id) {
+        queryClient.setQueryData(['allSchedules'], (current = []) => {
+          if (current.some((shift) => shift.id === created.id)) return current;
+          return [created, ...current];
+        });
+      }
+      await queryClient.refetchQueries({ queryKey: ['allSchedules'] });
       setShowAddDialog(false); // Updated here
       setNewShift({
         officer_email: "",
