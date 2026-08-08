@@ -134,16 +134,33 @@ export default function AdminLocationTracker() {
     enabled: hasAccess && !!allUsers,
   });
 
+  const newestLocationByEmail = React.useMemo(() => {
+    const map = new Map();
+    for (const row of activeOfficerLocations || []) {
+      const email = String(row.officer_email || '').toLowerCase();
+      if (!email) continue;
+      const stamp = new Date(row.last_update || row.updated_date || row.created_date || 0).getTime();
+      const existing = map.get(email);
+      const existingStamp = existing ? new Date(existing.last_update || existing.updated_date || existing.created_date || 0).getTime() : -Infinity;
+      if (!existing || stamp > existingStamp) map.set(email, row);
+    }
+    return map;
+  }, [activeOfficerLocations]);
+
   const currentlyActiveOfficers = activeEntries?.map(entry => {
-    const locationData = activeOfficerLocations?.find(ao => ao.officer_email === entry.officer_email);
-    // Fall back to clock-in GPS coords if no ActiveOfficer record yet
-    const lat = locationData?.latitude || entry.clock_in_latitude;
-    const lng = locationData?.longitude || entry.clock_in_longitude;
+    const locationData = newestLocationByEmail.get(String(entry.officer_email || '').toLowerCase());
+    const liveStamp = locationData?.last_update ? new Date(locationData.last_update).getTime() : NaN;
+    const liveIsFresh = Number.isFinite(liveStamp) && Date.now() - liveStamp <= 2 * 60 * 1000;
+    // Never label an old GPS point as live. Clock-in coordinates are shown only when
+    // there has not yet been a live ActiveOfficer fix for this session.
+    const lat = liveIsFresh ? locationData?.latitude : (!locationData ? entry.clock_in_latitude : null);
+    const lng = liveIsFresh ? locationData?.longitude : (!locationData ? entry.clock_in_longitude : null);
     return {
       ...entry,
       latitude: lat,
       longitude: lng,
       last_update: locationData?.last_update || entry.clock_in,
+      gps_stale: !!locationData && !liveIsFresh,
       current_location: entry.location,
       clock_in_time: entry.clock_in,
       officer_email: entry.officer_email,
@@ -235,7 +252,8 @@ export default function AdminLocationTracker() {
         const officerName = officerUser?.first_name && officerUser?.last_name
           ? `${officerUser.first_name} ${officerUser.last_name}`
           : entry.officer_email;
-        const locationData = freshLocations.find(ao => ao.officer_email === entry.officer_email);
+        const matchingLocations = freshLocations.filter(ao => String(ao.officer_email || '').toLowerCase() === String(entry.officer_email || '').toLowerCase());
+        const locationData = [...matchingLocations].sort((a, b) => new Date(b.last_update || b.updated_date || b.created_date || 0).getTime() - new Date(a.last_update || a.updated_date || a.created_date || 0).getTime())[0];
 
         if (locationData && locationData.latitude && locationData.longitude) {
           const lastUpdate = new Date(locationData.last_update);
