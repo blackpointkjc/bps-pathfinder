@@ -21,7 +21,7 @@ import {
   MobileResponsiveDialogTitle,
 } from "../components/MobileResponsiveDialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Circle, Polygon, CircleMarker, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import {
@@ -55,6 +55,33 @@ function MapUpdater({ center, zoom }) {
     }
   }, [center, zoom, map]);
   return null;
+}
+
+function BoundaryPointEditor({ enabled, points, onAddPoint }) {
+  useMapEvents({
+    click(event) {
+      if (!enabled) return;
+      onAddPoint({ lat: event.latlng.lat, lng: event.latlng.lng });
+    },
+  });
+  return (
+    <>
+      {(points || []).map((point, index) => (
+        <CircleMarker
+          key={`${point.lat}-${point.lng}-${index}`}
+          center={[point.lat, point.lng]}
+          radius={5}
+          pathOptions={{ color: '#fbbf24', fillColor: '#fbbf24', fillOpacity: 1 }}
+        />
+      ))}
+      {(points || []).length >= 3 && (
+        <Polygon
+          positions={points.map(point => [point.lat, point.lng])}
+          pathOptions={{ color: '#fbbf24', fillColor: '#fbbf24', fillOpacity: 0.18, weight: 3 }}
+        />
+      )}
+    </>
+  );
 }
 
 export default function AdminLocations() {
