@@ -692,6 +692,107 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   color: #e5edf5 !important;
 }
 
+/* Legacy pastel status cards: keep semantic color, but use readable dark surfaces. */
+.cad-app main.night-workspace .bg-green-50,
+.cad-app main.night-workspace .bg-green-100,
+.cad-app main.night-workspace .bg-emerald-50,
+.cad-app main.night-workspace .bg-emerald-100 {
+  background-color: #0d2a22 !important;
+  color: #d1fae5 !important;
+}
+.cad-app main.night-workspace .bg-blue-50,
+.cad-app main.night-workspace .bg-blue-100,
+.cad-app main.night-workspace .bg-cyan-50,
+.cad-app main.night-workspace .bg-cyan-100,
+.cad-app main.night-workspace .bg-indigo-50,
+.cad-app main.night-workspace .bg-indigo-100 {
+  background-color: #10263b !important;
+  color: #dbeafe !important;
+}
+.cad-app main.night-workspace .bg-red-50,
+.cad-app main.night-workspace .bg-red-100,
+.cad-app main.night-workspace .bg-rose-50,
+.cad-app main.night-workspace .bg-rose-100 {
+  background-color: #321619 !important;
+  color: #fee2e2 !important;
+}
+.cad-app main.night-workspace .bg-amber-50,
+.cad-app main.night-workspace .bg-amber-100,
+.cad-app main.night-workspace .bg-yellow-50,
+.cad-app main.night-workspace .bg-yellow-100,
+.cad-app main.night-workspace .bg-orange-50,
+.cad-app main.night-workspace .bg-orange-100 {
+  background-color: #31230f !important;
+  color: #fef3c7 !important;
+}
+.cad-app main.night-workspace .bg-purple-50,
+.cad-app main.night-workspace .bg-purple-100,
+.cad-app main.night-workspace .bg-violet-50,
+.cad-app main.night-workspace .bg-violet-100,
+.cad-app main.night-workspace .bg-pink-50,
+.cad-app main.night-workspace .bg-pink-100 {
+  background-color: #251a38 !important;
+  color: #ede9fe !important;
+}
+
+.cad-app main.night-workspace .text-green-700,
+.cad-app main.night-workspace .text-green-800,
+.cad-app main.night-workspace .text-green-900,
+.cad-app main.night-workspace .text-emerald-700,
+.cad-app main.night-workspace .text-emerald-800,
+.cad-app main.night-workspace .text-emerald-900 { color: #86efac !important; }
+.cad-app main.night-workspace .text-blue-700,
+.cad-app main.night-workspace .text-blue-800,
+.cad-app main.night-workspace .text-blue-900,
+.cad-app main.night-workspace .text-cyan-700,
+.cad-app main.night-workspace .text-cyan-800,
+.cad-app main.night-workspace .text-cyan-900,
+.cad-app main.night-workspace .text-indigo-700,
+.cad-app main.night-workspace .text-indigo-800,
+.cad-app main.night-workspace .text-indigo-900 { color: #93c5fd !important; }
+.cad-app main.night-workspace .text-red-700,
+.cad-app main.night-workspace .text-red-800,
+.cad-app main.night-workspace .text-red-900,
+.cad-app main.night-workspace .text-rose-700,
+.cad-app main.night-workspace .text-rose-800,
+.cad-app main.night-workspace .text-rose-900 { color: #fca5a5 !important; }
+.cad-app main.night-workspace .text-amber-700,
+.cad-app main.night-workspace .text-amber-800,
+.cad-app main.night-workspace .text-amber-900,
+.cad-app main.night-workspace .text-yellow-700,
+.cad-app main.night-workspace .text-yellow-800,
+.cad-app main.night-workspace .text-yellow-900,
+.cad-app main.night-workspace .text-orange-700,
+.cad-app main.night-workspace .text-orange-800,
+.cad-app main.night-workspace .text-orange-900 { color: #fcd34d !important; }
+.cad-app main.night-workspace .text-purple-700,
+.cad-app main.night-workspace .text-purple-800,
+.cad-app main.night-workspace .text-purple-900,
+.cad-app main.night-workspace .text-violet-700,
+.cad-app main.night-workspace .text-violet-800,
+.cad-app main.night-workspace .text-violet-900 { color: #c4b5fd !important; }
+
+.cad-app main.night-workspace .border-green-200,
+.cad-app main.night-workspace .border-green-300,
+.cad-app main.night-workspace .border-emerald-200,
+.cad-app main.night-workspace .border-emerald-300 { border-color: #246348 !important; }
+.cad-app main.night-workspace .border-blue-200,
+.cad-app main.night-workspace .border-blue-300,
+.cad-app main.night-workspace .border-cyan-200,
+.cad-app main.night-workspace .border-indigo-200,
+.cad-app main.night-workspace .border-indigo-300 { border-color: #315a82 !important; }
+.cad-app main.night-workspace .border-red-200,
+.cad-app main.night-workspace .border-red-300,
+.cad-app main.night-workspace .border-rose-200 { border-color: #7f3438 !important; }
+.cad-app main.night-workspace .border-amber-200,
+.cad-app main.night-workspace .border-amber-300,
+.cad-app main.night-workspace .border-yellow-200,
+.cad-app main.night-workspace .border-yellow-300,
+.cad-app main.night-workspace .border-orange-200 { border-color: #79571e !important; }
+.cad-app main.night-workspace .border-purple-200,
+.cad-app main.night-workspace .border-purple-300,
+.cad-app main.night-workspace .border-violet-200 { border-color: #5b447d !important; }
+
 .cad-app main.night-workspace .bg-card,
 .cad-app main.night-workspace [class*="rounded"].shadow,
 .cad-app main.night-workspace [class*="rounded"].shadow-sm,
