@@ -12,7 +12,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
-import { findPropertyMatch, playPropertyAlert, stopAllAlerts } from '@/utils/alertUtils';
+import { findPropertyMatch, monitoredPropertiesFromLocations, playPropertyAlert, stopAllAlerts } from '@/utils/alertUtils';
 import GlobalMessageBanner from '@/components/GlobalMessageBanner';
 import MandatoryReadGate from '@/components/MandatoryReadGate';
 import WelcomeBriefing from '@/components/WelcomeBriefing';
@@ -742,7 +742,7 @@ export default function Layout({ children, currentPageName }) {
       try {
         const [calls, properties, existingAlerts] = await Promise.all([
           base44.entities.DispatchCall.list('-created_date', 300),
-          base44.entities.MonitoredProperty.filter({ enabled: true }),
+          base44.entities.Location.list('site_name').then(monitoredPropertiesFromLocations),
           // Load acknowledged records too. Otherwise the same still-active call can be
           // recreated as a brand-new alert after page navigation or app remount.
           base44.entities.PropertyAlert.list('-created_date', 1000).catch(() => []),
