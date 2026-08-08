@@ -989,47 +989,41 @@ export default function AdminLocations() {
             </div>
 
             {formData.latitude && formData.longitude && !formData.is_special_event && (
-              <div className="space-y-2">
-                <Label>Location Preview with 165 ft Clock-in Radius</Label>
-                <div className="h-64 rounded-lg overflow-hidden border border-slate-200">
-                  <MapContainer
-                    center={mapCenter}
-                    zoom={17}
-                    style={{ height: '100%', width: '100%' }}
-                  >
-                    <TileLayer
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    />
+              <div className="space-y-3 rounded-xl border border-slate-700 bg-[#081522] p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <Label className="text-slate-100">Property & Geofence Boundary Editor</Label>
+                    <p className="mt-1 text-xs text-slate-400">Click around the outside edge of the property. The same custom boundary is used for officer geofencing and CAD property alerts.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" size="sm" onClick={() => setDrawingBoundary(value => !value)} className={drawingBoundary ? 'bg-amber-500 text-black hover:bg-amber-400' : 'bg-blue-600 text-white hover:bg-blue-500'}>
+                      {drawingBoundary ? 'STOP DRAWING' : 'START DRAWING'}
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={undoBoundaryPoint} disabled={!formData.geofence_polygon?.length}>UNDO POINT</Button>
+                    <Button type="button" size="sm" variant="outline" onClick={clearBoundary} disabled={!formData.geofence_polygon?.length}>CLEAR BOUNDARY</Button>
+                  </div>
+                </div>
+                <div className={`h-80 rounded-lg overflow-hidden border ${drawingBoundary ? 'border-amber-400 ring-2 ring-amber-400/20' : 'border-slate-700'}`}>
+                  <MapContainer center={mapCenter} zoom={17} style={{ height: '100%', width: '100%' }}>
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
                     <MapUpdater center={mapCenter} zoom={17} />
                     <Marker position={mapCenter} />
-                    <Circle
-                      center={mapCenter}
-                      radius={50} // Leaflet's Circle radius is in meters (165ft = ~50.3m)
-                      pathOptions={{
-                        color: 'blue',
-                        fillColor: 'blue',
-                        fillOpacity: 0.2
-                      }}
-                    />
-                    {formData.geofence_enabled && (
-                      <Circle
-                        center={mapCenter}
-                        radius={formData.geofence_radius_meters || 100}
-                        pathOptions={{
-                          color: '#22c55e',
-                          fillColor: '#22c55e',
-                          fillOpacity: 0.1,
-                          dashArray: '5, 10'
-                        }}
-                      />
+                    <Circle center={mapCenter} radius={50} pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.12 }} />
+                    {formData.geofence_enabled && (formData.geofence_polygon || []).length < 3 && (
+                      <Circle center={mapCenter} radius={formData.geofence_radius_meters || 100} pathOptions={{ color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.1, dashArray: '5, 10' }} />
                     )}
+                    {formData.property_monitoring_enabled && (formData.geofence_polygon || []).length < 3 && (
+                      <Circle center={mapCenter} radius={formData.property_monitoring_radius_meters || 500} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.06, dashArray: '8, 8' }} />
+                    )}
+                    <BoundaryPointEditor enabled={drawingBoundary} points={formData.geofence_polygon || []} onAddPoint={addBoundaryPoint} />
                   </MapContainer>
                 </div>
-                <p className="text-xs text-slate-600">
-                  Officers must be within the blue circle (165 feet) to clock in at this location.
-                  {formData.geofence_enabled && ` Green dashed circle shows ${formData.geofence_radius_meters}m geofence boundary.`}
-                </p>
+                <div className="grid gap-2 text-xs sm:grid-cols-3">
+                  <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300"><span className="font-semibold text-white">Boundary Points:</span> {formData.geofence_polygon?.length || 0}</div>
+                  <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300"><span className="font-semibold text-white">Officer Geofence:</span> {(formData.geofence_polygon || []).length >= 3 ? 'Custom polygon' : `${formData.geofence_radius_meters || 100}m radius`}</div>
+                  <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300"><span className="font-semibold text-white">Property Monitoring:</span> {(formData.geofence_polygon || []).length >= 3 ? 'Same custom polygon' : `${formData.property_monitoring_radius_meters || 500}m radius`}</div>
+                </div>
+                <p className="text-xs text-slate-400">Blue circle = clock-in radius. Gold polygon = the custom property boundary. With 3 or more points, the polygon replaces the circular geofence for both live officer alerts and monitored-property CAD calls.</p>
               </div>
             )}
 
@@ -1051,18 +1045,17 @@ export default function AdminLocations() {
 
                 {formData.geofence_enabled && (
                   <div className="space-y-2">
-                    <Label htmlFor="geofence_radius">Geofence Radius (meters)</Label>
-                    <Input
-                      id="geofence_radius"
-                      type="number"
-                      min="50"
-                      max="5000"
-                      value={formData.geofence_radius_meters}
-                      onChange={(e) => setFormData({...formData, geofence_radius_meters: parseInt(e.target.value) || 100})}
-                    />
-                    <p className="text-xs text-green-700">
-                      Officers will trigger an alert when they move more than {formData.geofence_radius_meters}m from the site center while clocked in.
-                    </p>
+                    {(formData.geofence_polygon || []).length >= 3 ? (
+                      <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 p-3 text-xs text-amber-200">
+                        Custom property polygon active — officers are considered inside the geofence only while their live GPS position is inside the boundary drawn on the map above.
+                      </div>
+                    ) : (
+                      <>
+                        <Label htmlFor="geofence_radius">Geofence Radius (meters)</Label>
+                        <Input id="geofence_radius" type="number" min="50" max="5000" value={formData.geofence_radius_meters} onChange={(e) => setFormData({...formData, geofence_radius_meters: parseInt(e.target.value) || 100})} />
+                        <p className="text-xs text-green-700">No custom polygon is saved yet, so officer geofencing uses the {formData.geofence_radius_meters}m center radius.</p>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -1083,22 +1076,21 @@ export default function AdminLocations() {
                   <div className="grid gap-3 md:grid-cols-2">
                     <div>
                       <Label className="text-slate-300">Monitoring Boundary</Label>
-                      <Select value={formData.property_monitoring_boundary_type || 'circle'} onValueChange={(value) => setFormData({...formData, property_monitoring_boundary_type: value})}>
-                        <SelectTrigger className="mt-1 bg-[#0e2138] border-slate-700 text-white"><SelectValue /></SelectTrigger>
-                        <SelectContent><SelectItem value="circle">Circle / Radius</SelectItem><SelectItem value="polygon">Saved Polygon</SelectItem></SelectContent>
-                      </Select>
+                      <div className="mt-1 rounded-lg border border-slate-700 bg-[#0e2138] px-3 py-2 text-sm text-white">
+                        {(formData.geofence_polygon || []).length >= 3 ? `Custom map polygon · ${formData.geofence_polygon.length} points` : 'Circle / radius fallback'}
+                      </div>
                     </div>
                     <div>
                       <Label className="text-slate-300">Alert Radius (meters)</Label>
-                      <Input type="number" min="25" max="10000" value={formData.property_monitoring_radius_meters || 500} onChange={(e) => setFormData({...formData, property_monitoring_radius_meters: parseInt(e.target.value) || 500})} disabled={formData.property_monitoring_boundary_type === 'polygon'} className="mt-1" />
+                      <Input type="number" min="25" max="10000" value={formData.property_monitoring_radius_meters || 500} onChange={(e) => setFormData({...formData, property_monitoring_radius_meters: parseInt(e.target.value) || 500})} disabled={(formData.geofence_polygon || []).length >= 3} className="mt-1" />
                     </div>
                     <div className="md:col-span-2">
                       <Label className="text-slate-300">Monitoring Notes</Label>
                       <Textarea value={formData.property_monitoring_description || ''} onChange={(e) => setFormData({...formData, property_monitoring_description: e.target.value})} placeholder="Property monitoring notes or special instructions" className="mt-1" />
                     </div>
-                    {formData.property_monitoring_boundary_type === 'polygon' && (
-                      <div className="md:col-span-2 rounded-lg border border-slate-700 bg-slate-900/60 p-3 text-xs text-slate-400">
-                        {formData.property_monitoring_polygon?.length >= 3 ? `Saved polygon: ${formData.property_monitoring_polygon.length} points.` : 'No polygon is saved yet. This location will use its center/radius until a polygon is added.'}
+                    {(formData.geofence_polygon || []).length >= 3 && (
+                      <div className="md:col-span-2 rounded-lg border border-amber-500/30 bg-amber-950/20 p-3 text-xs text-amber-200">
+                        Synced boundary active: CAD property monitoring and officer geofencing both use the exact polygon drawn on the map.
                       </div>
                     )}
                   </div>
