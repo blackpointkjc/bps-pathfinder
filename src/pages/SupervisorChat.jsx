@@ -86,8 +86,6 @@ export default function SupervisorChat() {
   const getUserRecord = (email) => allUsers.find(u => String(u.email).toLowerCase() === String(email || '').toLowerCase());
 
   const getMessageEmail = (msg) => msg.sender_email || msg.created_by || '';
-  const getMessageSenderKey = (msg) => msg.sender_email || msg.sender_name || msg.created_by || msg.id;
-
   const getUserPhoto = (msg) => msg.sender_photo_url || getUserRecord(getMessageEmail(msg))?.profile_photo_url;
 
   const getSenderName = (msg) => {
@@ -172,9 +170,8 @@ export default function SupervisorChat() {
 
           <ScrollArea className="flex-1 p-6" ref={scrollRef}>
             <div className="space-y-4">
-              {reversedMessages?.map((msg, index) => {
+              {reversedMessages?.map((msg) => {
                 const senderEmail = getMessageEmail(msg);
-                const senderKey = getMessageSenderKey(msg);
                 const isOwnMessage = senderEmail.toLowerCase() === String(user?.email || '').toLowerCase() || (!msg.sender_email && msg.sender_name === senderName);
                 const showName = true;
                 const showTime = true;
