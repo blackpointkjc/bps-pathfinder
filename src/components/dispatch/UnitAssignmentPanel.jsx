@@ -8,7 +8,10 @@ import { Plus, X, Search } from 'lucide-react';
 const isOperationalUnit = (user) => {
     const roles = new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
     const userType = String(user?.user_type || user?.account_type || user?.portal_type || '').toLowerCase();
-    return !roles.has('client') && !roles.has('student') && !roles.has('pending') && !['client', 'student', 'pending'].includes(userType);
+    const accountStatus = String(user?.account_status || '').toLowerCase();
+    if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
+    if (['client', 'student', 'pending'].includes(userType) || accountStatus === 'pending') return false;
+    return roles.has('cad_access') && roles.has('officer');
 };
 
 export default function UnitAssignmentPanel({ call, units, onUpdate }) {
