@@ -7,6 +7,7 @@ import { ClipboardList, AlertTriangle, FileWarning, ClipboardCheck, UserCheck, C
 import { format, parseISO } from "date-fns";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { commandDescendants } from "@/utils/platoonChain";
 
 export default function SupervisorTasks() {
   const { data: user } = useQuery({
@@ -14,38 +15,48 @@ export default function SupervisorTasks() {
     queryFn: () => base44.auth.me(),
   });
 
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['supervisorCommandUsers'],
+    queryFn: () => base44.entities.User.list(),
+    enabled: !!user,
+  });
+
+  const assignedPeople = commandDescendants(user, allUsers);
+  const assignedEmails = new Set(assignedPeople.map(person => String(person.email || '').toLowerCase()).filter(Boolean));
+  const isAssignedOfficer = email => assignedEmails.has(String(email || '').toLowerCase());
+
   const { data: pendingComplaints } = useQuery({
-    queryKey: ['supervisorComplaints'],
+    queryKey: ['supervisorComplaints', user?.id, ...Array.from(assignedEmails).sort()],
     queryFn: async () => {
-      const all = await base44.entities.Complaint.filter({ created_by_id: user.id });
-      return all.filter(c => c.investigation_status === 'pending' || c.investigation_status === 'under_investigation');
+      const all = await base44.entities.Complaint.list('-complaint_date');
+      return all.filter(c => isAssignedOfficer(c.officer_email) && (c.investigation_status === 'pending' || c.investigation_status === 'under_investigation'));
     },
     enabled: user?.additional_roles?.includes('supervisor'),
   });
 
   const { data: pendingWriteUps } = useQuery({
-    queryKey: ['supervisorWriteUps'],
+    queryKey: ['supervisorWriteUps', user?.id, ...Array.from(assignedEmails).sort()],
     queryFn: async () => {
-      const all = await base44.entities.WriteUpReport.filter({ created_by_id: user.id });
-      return all.filter(w => w.status === 'pending_approval');
+      const all = await base44.entities.WriteUpReport.list('-report_date');
+      return all.filter(w => isAssignedOfficer(w.officer_email) && w.status === 'pending_approval');
     },
     enabled: user?.additional_roles?.includes('supervisor'),
   });
 
   const { data: pendingPerformanceReviews } = useQuery({
-    queryKey: ['supervisorPendingReviews'],
+    queryKey: ['supervisorPendingReviews', user?.id, ...Array.from(assignedEmails).sort()],
     queryFn: async () => {
       const all = await base44.entities.PerformanceReview.list('-review_date');
-      return all.filter(r => r.supervisor_review_pending && !r.supervisor_review_completed);
+      return all.filter(r => isAssignedOfficer(r.officer_email) && r.supervisor_review_pending && !r.supervisor_review_completed);
     },
     enabled: user?.additional_roles?.includes('supervisor'),
   });
 
   const { data: followUpInspections } = useQuery({
-    queryKey: ['followUpInspections'],
+    queryKey: ['followUpInspections', user?.id, ...Array.from(assignedEmails).sort()],
     queryFn: async () => {
-      const all = await base44.entities.InspectionReport.filter({ created_by_id: user.id });
-      return all.filter(i => i.follow_up_required && !i.follow_up_completed);
+      const all = await base44.entities.InspectionReport.list('-inspection_date');
+      return all.filter(i => isAssignedOfficer(i.officer_email) && i.follow_up_required && !i.follow_up_completed);
     },
     enabled: user?.additional_roles?.includes('supervisor'),
   });
@@ -73,7 +84,7 @@ export default function SupervisorTasks() {
             Supervisor Action Items
           </h1>
           <p className="text-slate-600">
-            Tasks requiring your attention ({totalTasks} pending)
+            Tasks for personnel in your assigned command ({assignedPeople.length} personnel · {totalTasks} pending)
           </p>
         </div>
 
