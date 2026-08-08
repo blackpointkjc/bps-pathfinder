@@ -179,6 +179,17 @@ export default function Navigation() {
     }, [mapTheme]);
 
     useEffect(() => {
+        const syncConnectivity = () => setIsOnline(navigator.onLine);
+        window.addEventListener('online', syncConnectivity);
+        window.addEventListener('offline', syncConnectivity);
+        syncConnectivity();
+        return () => {
+            window.removeEventListener('online', syncConnectivity);
+            window.removeEventListener('offline', syncConnectivity);
+        };
+    }, []);
+
+    useEffect(() => {
         if (!isNavigating || !currentLocation || navSteps.length === 0) return;
         const step = navSteps[navStepIndex];
         const location = step?.maneuver?.location;
