@@ -16,6 +16,7 @@ import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import FieldCallActions from '@/components/dispatch/FieldCallActions';
+import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 
 const PRIORITY_COLORS = {
     critical: 'bg-red-600 text-white',
@@ -100,13 +101,8 @@ export default function Navigation() {
         showEMS: false, showJails: true
     });
 
-    const locationWatchId = useRef(null);
-    const forcePollRef = useRef(null);
     const syncingGracRef = useRef(false);
-    const lastUpdateRef = useRef(0);
     const unitStatusRef = useRef(unitStatus);
-    const activeOfficerIdRef = useRef(null);
-    const activeOfficerEmailRef = useRef(null);
 
     const [focusCenter] = useState(() => {
         const p = new URLSearchParams(window.location.search);
@@ -119,7 +115,16 @@ export default function Navigation() {
 
     useEffect(() => {
         init();
-        return () => stopTracking();
+        const unsubscribe = subscribeLiveLocation((fix) => {
+            const coords = [fix.latitude, fix.longitude];
+            setCurrentLocation(coords);
+            setLastGpsFixAt(fix.timestamp);
+            if (fix.heading !== null) setHeading(fix.heading);
+            setSpeed(Math.round(fix.speed || 0));
+            setLocationHistory(prev => [...prev, coords].slice(-30));
+            setIsLiveTracking(true);
+        });
+        return unsubscribe;
     }, []);
 
     // Credit-free live officer refresh. ActiveOfficer is the source written by
@@ -273,7 +278,14 @@ export default function Navigation() {
             setCurrentUser(partneredUser);
             if (user.status) setUnitStatus(user.status);
         } catch (e) {}
-        startTracking();
+        const fix = getLiveLocation(30000);
+        if (fix) {
+            setCurrentLocation([fix.latitude, fix.longitude]);
+            setLastGpsFixAt(fix.timestamp);
+            if (fix.heading !== null) setHeading(fix.heading);
+            setSpeed(Math.round(fix.speed || 0));
+            setIsLiveTracking(true);
+        }
     };
 
     const handleSelfAssign = async () => {
