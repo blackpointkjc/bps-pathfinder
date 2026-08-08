@@ -64,6 +64,7 @@ export default function VATrespassNotices() {
     police_notified: false,
     police_report_number: "",
     photo_url: "",
+    signature_url: "",
     officer_signature_url: "",
     officer_signed_at: "",
     witness_name: "",
@@ -262,7 +263,9 @@ export default function VATrespassNotices() {
   const canSubmit = isAdmin || !!activeEntry;
 
   const saveNoticeMutation = useMutation({
-    mutationFn: async ({ data, isDraft }) => {
+    mutationFn: async (variables) => {
+      const { data, isDraft } = variables || {};
+      if (!data) throw new Error('Trespass notice data is required');
       let ipAddress = 'Unknown';
       try {
         const ipResponse = await fetch('https://api.ipify.org?format=json');
