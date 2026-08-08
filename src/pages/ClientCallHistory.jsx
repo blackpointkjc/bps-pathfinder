@@ -8,6 +8,18 @@ const norm = value => String(value || '').toUpperCase().replace(/\bBLOCK\b/g, ''
 const fmt = value => value ? new Date(value).toLocaleString('en-US', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 const compactRef = value => String(value || '').replace(/^(BPS-\d{6}-)0+(\d+)$/i, '$1$2');
 
+function pointInsidePolygon(lat, lng, rawPolygon = []) {
+  const polygon = rawPolygon.map(point => Array.isArray(point) ? { lat: Number(point[0]), lng: Number(point[1]) } : { lat: Number(point?.lat), lng: Number(point?.lng) }).filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+  if (polygon.length < 3) return null;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i], b = polygon[j];
+    const hit = ((a.lng > lng) !== (b.lng > lng)) && (lat < ((b.lat - a.lat) * (lng - a.lng)) / ((b.lng - a.lng) || Number.EPSILON) + a.lat);
+    if (hit) inside = !inside;
+  }
+  return inside;
+}
+
 function callMatchesSite(call, site) {
   if (!call || !site) return false;
   const callLocation = norm(call.location);
@@ -20,6 +32,10 @@ function callMatchesSite(call, site) {
   const lng = Number(call.longitude);
   const siteLat = Number(site.latitude);
   const siteLng = Number(site.longitude);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    const inside = pointInsidePolygon(lat, lng, site.geofence_polygon || []);
+    if (inside !== null) return inside;
+  }
   if (Number.isFinite(lat) && Number.isFinite(lng) && Number.isFinite(siteLat) && Number.isFinite(siteLng)) {
     const radius = Math.max(Number(site.geofence_radius_meters || 100), 100);
     return calculateDistance(lat, lng, siteLat, siteLng) <= radius;
