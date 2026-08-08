@@ -748,7 +748,13 @@ export default function Layout({ children, currentPageName }) {
           base44.entities.PropertyAlert.list('-created_date', 1000).catch(() => []),
         ]);
         if (cancelled) return;
-        const existingAlertMap = new Map((existingAlerts || []).map(item => [`${item.callId}:${item.propertyId}`, item]));
+        const existingAlertMap = new Map();
+        // Results are newest-first. Keep the newest record for each call/property pair
+        // so an old duplicate can never override a newer acknowledged record.
+        for (const item of existingAlerts || []) {
+          const alertKey = `${item.callId}:${item.propertyId}`;
+          if (!existingAlertMap.has(alertKey)) existingAlertMap.set(alertKey, item);
+        }
         const activeCalls = (calls || []).filter(call => !['Cleared', 'Cancelled'].includes(call.status));
         const matches = [];
         for (const call of activeCalls) {
@@ -885,6 +891,7 @@ export default function Layout({ children, currentPageName }) {
               <div className="rounded border border-slate-700 bg-slate-900/70 p-3"><div className="text-slate-500">CALL STATUS</div><div className="mt-1 font-bold text-slate-100">{propertyAlert.call.status || 'New'} · {(propertyAlert.call.priority || 'medium').toUpperCase()}</div></div>
             </div>
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button onClick={stopAllAlerts} className="rounded-lg border border-amber-500/60 bg-amber-950/40 px-5 py-3 text-sm font-black text-amber-200 hover:bg-amber-900/50">SILENCE ALARM</button>
               <button onClick={acknowledgePropertyAlert} className="rounded-lg border border-slate-600 bg-slate-800 px-5 py-3 text-sm font-black text-slate-100 hover:bg-slate-700">ACKNOWLEDGE</button>
               <Link to={createPageUrl('DispatchCenter')} onClick={acknowledgePropertyAlert} className="rounded-lg border border-blue-400 bg-blue-600 px-5 py-3 text-center text-sm font-black text-white hover:bg-blue-500">OPEN CAD CALL</Link>
             </div>
