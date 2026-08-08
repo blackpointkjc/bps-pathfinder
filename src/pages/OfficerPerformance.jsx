@@ -83,7 +83,7 @@ export default function OfficerPerformance() {
 
       const periodIncidents = incidentReports?.filter(i => {
         const iDate = format(parseISO(i.incident_date), 'yyyy-MM-dd');
-        return iDate >= periodStart && iDate <= periodEnd && i.created_by === user.email;
+        return iDate >= periodStart && iDate <= periodEnd && String(i.created_by_id || '') === String(user.id || '');
       }) || [];
 
       const periodCommendations = commendations?.filter(c => {
