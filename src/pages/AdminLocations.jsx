@@ -1008,22 +1008,17 @@ export default function AdminLocations() {
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
                     <MapUpdater center={mapCenter} zoom={17} />
                     <Marker position={mapCenter} />
-                    <Circle center={mapCenter} radius={50} pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.12 }} />
-                    {formData.geofence_enabled && (formData.geofence_polygon || []).length < 3 && (
-                      <Circle center={mapCenter} radius={formData.geofence_radius_meters || 100} pathOptions={{ color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.1, dashArray: '5, 10' }} />
-                    )}
-                    {formData.property_monitoring_enabled && (formData.geofence_polygon || []).length < 3 && (
-                      <Circle center={mapCenter} radius={formData.property_monitoring_radius_meters || 500} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.06, dashArray: '8, 8' }} />
+                    {(formData.geofence_polygon || []).length < 3 && (
+                      <Circle center={mapCenter} radius={formData.geofence_radius_meters || 100} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.08, dashArray: '8, 8' }} />
                     )}
                     <BoundaryPointEditor enabled={drawingBoundary} points={formData.geofence_polygon || []} onAddPoint={addBoundaryPoint} />
                   </MapContainer>
                 </div>
-                <div className="grid gap-2 text-xs sm:grid-cols-3">
+                <div className="grid gap-2 text-xs sm:grid-cols-2">
                   <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300"><span className="font-semibold text-white">Boundary Points:</span> {formData.geofence_polygon?.length || 0}</div>
-                  <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300"><span className="font-semibold text-white">Officer Geofence:</span> {(formData.geofence_polygon || []).length >= 3 ? 'Custom polygon' : `${formData.geofence_radius_meters || 100}m radius`}</div>
-                  <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300"><span className="font-semibold text-white">Property Monitoring:</span> {(formData.geofence_polygon || []).length >= 3 ? 'Same custom polygon' : `${formData.property_monitoring_radius_meters || 500}m radius`}</div>
+                  <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300"><span className="font-semibold text-white">Canonical Geofence:</span> {(formData.geofence_polygon || []).length >= 3 ? 'Custom property polygon' : `${formData.geofence_radius_meters || 100}m shared radius fallback`}</div>
                 </div>
-                <p className="text-xs text-slate-400">Blue circle = clock-in radius. Gold polygon = the custom property boundary. With 3 or more points, the polygon replaces the circular geofence for both live officer alerts and monitored-property CAD calls.</p>
+                <p className="text-xs text-slate-400">Gold boundary = the single location boundary used for clock-in eligibility, live geofence alerts, property/CAD monitoring, and location enforcement.</p>
               </div>
             )}
 
@@ -1081,8 +1076,8 @@ export default function AdminLocations() {
                       </div>
                     </div>
                     <div>
-                      <Label className="text-slate-300">Alert Radius (meters)</Label>
-                      <Input type="number" min="25" max="10000" value={formData.property_monitoring_radius_meters || 500} onChange={(e) => setFormData({...formData, property_monitoring_radius_meters: parseInt(e.target.value) || 500})} disabled={(formData.geofence_polygon || []).length >= 3} className="mt-1" />
+                      <Label className="text-slate-300">Shared Fallback Radius</Label>
+                      <div className="mt-1 rounded-lg border border-slate-700 bg-[#0e2138] px-3 py-2 text-sm text-white">{formData.geofence_radius_meters || 100} meters · used only when no polygon is drawn</div>
                     </div>
                     <div className="md:col-span-2">
                       <Label className="text-slate-300">Monitoring Notes</Label>
