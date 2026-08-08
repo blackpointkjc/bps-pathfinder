@@ -700,9 +700,14 @@ export default function Layout({ children, currentPageName }) {
   }, [currentPageName, unreadStorageKey]);
 
   useEffect(() => {
-    const pageCenter = (PAGE_TO_CENTERS[currentPageName] || []).find(center => allowedCenters(user).includes(center));
+    const pageCenters = PAGE_TO_CENTERS[currentPageName] || [];
+    const available = allowedCenters(user);
+    // Shared pages (for example Rank Structure) must remain in the workspace the
+    // user opened them from instead of always snapping to the first mapped center.
+    if (pageCenters.includes(activeCenter) && available.includes(activeCenter)) return;
+    const pageCenter = pageCenters.find(center => available.includes(center));
     if (pageCenter) setActiveCenter(pageCenter);
-  }, [currentPageName, user?.role, JSON.stringify(user?.additional_roles || [])]);
+  }, [currentPageName, activeCenter, user?.role, JSON.stringify(user?.additional_roles || [])]);
 
   useEffect(() => {
     const id = setInterval(() => setClock(new Date()), 1000);
