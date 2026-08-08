@@ -100,6 +100,7 @@ export default function Navigation() {
 
     const syncingGracRef = useRef(false);
     const unitStatusRef = useRef(unitStatus);
+    const unitDirectoryRef = useRef({ users: [], loadedAt: 0 });
 
     const [focusCenter] = useState(() => {
         const p = new URLSearchParams(window.location.search);
@@ -129,7 +130,9 @@ export default function Navigation() {
         if (!currentUser?.id) return;
         fetchOtherUnits();
         const unsubscribe = base44.entities.ActiveOfficer.subscribe(() => fetchOtherUnits());
-        const fallback = setInterval(fetchOtherUnits, 15000);
+        // GPS writers push about every 5 seconds, so keep Navigation on the same
+        // cadence even if realtime entity subscriptions are delayed or dropped.
+        const fallback = setInterval(fetchOtherUnits, 5000);
         const refreshWhenVisible = () => {
             if (!document.hidden) fetchOtherUnits();
         };
@@ -496,13 +499,16 @@ export default function Navigation() {
 
     const fetchOtherUnits = async () => {
         try {
-            const [activeOfficers, users] = await Promise.all([
-                base44.entities.ActiveOfficer.list('-last_update', 500),
-                base44.entities.User.list('-updated_date', 500),
-            ]);
+            const activeOfficers = await base44.entities.ActiveOfficer.list('-last_update', 500);
+            const directoryExpired = Date.now() - Number(unitDirectoryRef.current.loadedAt || 0) > 60000;
+            if (!unitDirectoryRef.current.users.length || directoryExpired) {
+                const users = await base44.entities.User.list('-updated_date', 500).catch(() => unitDirectoryRef.current.users || []);
+                unitDirectoryRef.current = { users: users || [], loadedAt: Date.now() };
+            }
+            const users = unitDirectoryRef.current.users || [];
             const currentEmail = currentUser?.email?.toLowerCase();
             const userByEmail = new Map(
-                (users || []).filter(user => user.email).map(user => [user.email.toLowerCase(), user])
+                users.filter(user => user.email).map(user => [user.email.toLowerCase(), user])
             );
             const unitsByEmail = new Map();
 
