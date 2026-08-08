@@ -1,7 +1,5 @@
 import { createClient } from '@base44/sdk';
 import { appParams } from '@/lib/app-params';
-import { brandEmailPayload } from '@/utils/blackPointEmail';
-
 const { appId, serverUrl, token, functionsVersion } = appParams;
 
 //Create a client with authentication required
@@ -13,16 +11,9 @@ export const base44 = createClient({
   requiresAuth: false
 });
 
-// Central email-branding guard. Every app email is normalized to the Black Point
-// HTML design before it reaches the Base44 email integration.
-const rawSendEmail = base44.integrations?.Core?.SendEmail?.bind(base44.integrations.Core);
-if (rawSendEmail) {
-  // Email-to-SMS carrier gateways must remain plain text or the carrier will expose
-  // HTML markup in the text message. Every actual email recipient is forced through
-  // the one approved Black Point black-and-gold HTML renderer.
-  const smsGatewayPattern = /@(txt\.att\.net|vtext\.com|tmomail\.net|messaging\.sprintpcs\.com|vmobl\.com|mmst5\.tracfone\.com)$/i;
-  base44.integrations.Core.SendEmail = payload => {
-    const recipient = String(payload?.to || '').trim();
-    return rawSendEmail(smsGatewayPattern.test(recipient) ? payload : brandEmailPayload(payload));
-  };
+// Force every browser-side email through one backend gateway. That gateway applies
+// the Black Point template server-side, so individual pages cannot accidentally
+// bypass branding by calling SendEmail directly.
+if (base44.integrations?.Core?.SendEmail) {
+  base44.integrations.Core.SendEmail = payload => base44.functions.invoke('sendBrandedEmail', payload);
 }
