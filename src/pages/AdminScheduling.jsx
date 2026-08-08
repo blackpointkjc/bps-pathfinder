@@ -756,7 +756,15 @@ export default function AdminScheduling() {
     return groups;
   }, [weekDivisionalSchedules, locations]);
 
-  const activeOfficers = useMemo(() => allUsers?.filter(u => !u.termination_date) || [], [allUsers]);
+  const activeOfficers = useMemo(() => (allUsers || []).filter(u => {
+    if (u.termination_date) return false;
+    const roles = new Set([u.role, ...(u.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+    const userType = String(u.user_type || u.account_type || u.portal_type || '').toLowerCase();
+    const accountStatus = String(u.account_status || '').toLowerCase();
+    if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
+    if (['client', 'student', 'pending'].includes(userType) || accountStatus === 'pending') return false;
+    return roles.has('cad_access') && roles.has('officer');
+  }), [allUsers]);
 
   useEffect(() => {
     const generatePayrollPeriods = async () => {
