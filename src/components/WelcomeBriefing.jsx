@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Bell, CalendarClock, Car, CheckCircle2, ChevronRight, Clock3, MapPin, Megaphone, MessageCircle, Radio, Shield, Sparkles, Siren, Users, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -48,6 +49,7 @@ function BriefCard({ icon: Icon, label, value, detail, tone = 'blue', onClick })
 }
 
 export default function WelcomeBriefing({ user }) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [triggerVersion, setTriggerVersion] = useState(0);
@@ -239,8 +241,8 @@ export default function WelcomeBriefing({ user }) {
 
   const go = page => {
     // Navigation from inside the briefing must not acknowledge or dismiss it.
-    // START SESSION is the only action allowed to close the briefing.
-    window.location.href = createPageUrl(page);
+    // Keep this as SPA navigation so the briefing remains mounted and visible.
+    navigate(createPageUrl(page));
   };
 
   if (!user?.id || !user?.email) return null;
