@@ -218,21 +218,33 @@ export default function TimeClock() {
       const newLocation = locations.find(loc => loc.site_name === newSite);
       if (!newLocation) throw new Error('Location not found');
 
-      if (!currentPosition) {
-        throw new Error('GPS location required. Please enable location access and try again.');
+      // Admins bypass GPS + geofence verification, matching clock-in/clock-out behavior elsewhere.
+      let clockOutLat = null;
+      let clockOutLng = null;
+      let clockInLat = null;
+      let clockInLng = null;
+
+      if (!isAdmin) {
+        if (!currentPosition) {
+          throw new Error('GPS location required. Please enable location access and try again.');
+        }
+        const boundaryCheck = verifyAgainstLocationBoundary(
+          newLocation,
+          currentPosition.coords.latitude,
+          currentPosition.coords.longitude
+        );
+        if (!boundaryCheck.ok) throw new Error(boundaryCheck.message);
+        clockOutLat = currentPosition.coords.latitude;
+        clockOutLng = currentPosition.coords.longitude;
+        clockInLat = currentPosition.coords.latitude;
+        clockInLng = currentPosition.coords.longitude;
       }
-      const boundaryCheck = verifyAgainstLocationBoundary(
-        newLocation,
-        currentPosition.coords.latitude,
-        currentPosition.coords.longitude
-      );
-      if (!boundaryCheck.ok) throw new Error(boundaryCheck.message);
 
       // Clock out from old site
       const clockOutData = {
         clock_out: new Date().toISOString(),
-        clock_out_latitude: currentPosition?.coords.latitude,
-        clock_out_longitude: currentPosition?.coords.longitude,
+        clock_out_latitude: clockOutLat,
+        clock_out_longitude: clockOutLng,
       };
       await base44.entities.TimeEntry.update(activeEntry.id, clockOutData);
 
@@ -242,8 +254,8 @@ export default function TimeClock() {
         officer_name: user?.full_name || user?.email,
         clock_in: new Date().toISOString(),
         location: `${newSite} - ${newLocation.address}`,
-        clock_in_latitude: currentPosition?.coords.latitude,
-        clock_in_longitude: currentPosition?.coords.longitude,
+        clock_in_latitude: clockInLat,
+        clock_in_longitude: clockInLng,
         notes: `Switched from ${activeEntry.location.split(' - ')[0]}`,
       };
       return await base44.entities.TimeEntry.create(clockInData);
