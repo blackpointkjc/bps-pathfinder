@@ -49,7 +49,6 @@ function BriefCard({ icon: Icon, label, value, detail, tone = 'blue', onClick })
 
 export default function WelcomeBriefing({ user }) {
   const [open, setOpen] = useState(false);
-  const [seconds, setSeconds] = useState(30);
   const [loading, setLoading] = useState(true);
   const [triggerVersion, setTriggerVersion] = useState(0);
   const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null, allUsers: [], allUnits: [], todaySchedules: [], activeTimeEntries: [], todayVehicleAssignments: [] });
@@ -136,23 +135,12 @@ export default function WelcomeBriefing({ user }) {
         if (active) {
           setLoading(false);
           setOpen(true);
-          setSeconds(30);
         }
       }
     };
     load();
     return () => { active = false; };
   }, [user?.id, user?.email, user?.status, sessionKey, storageKey, lastShownKey, lastStatusKey, triggerVersion]);
-
-  useEffect(() => {
-    if (!open) return;
-    const timer = window.setInterval(() => setSeconds(value => value <= 1 ? 0 : value - 1), 1000);
-    return () => window.clearInterval(timer);
-  }, [open]);
-
-  useEffect(() => {
-    if (open && seconds === 0) setOpen(false);
-  }, [open, seconds]);
 
   useEffect(() => {
     if (!storageKey) return;
@@ -274,7 +262,7 @@ export default function WelcomeBriefing({ user }) {
                     <span className={`rounded-full border px-2.5 py-1 font-black ${status === 'Available' ? 'border-emerald-700/60 bg-emerald-950/40 text-emerald-300' : status === 'Out of Service' ? 'border-slate-700 bg-slate-900 text-slate-300' : 'border-blue-700/60 bg-blue-950/40 text-blue-300'}`}>STATUS: {String(status).toUpperCase()}</span>
                   </div>
                 </div>
-                <button type="button" onClick={() => setOpen(false)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-700 bg-slate-900/60 text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Close welcome briefing"><X className="h-4 w-4" /></button>
+
               </div>
             </div>
 
@@ -371,7 +359,7 @@ export default function WelcomeBriefing({ user }) {
 
             <div className="border-t border-[#21384f] bg-[#07111c]/90 px-3 py-3 sm:px-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500"><Clock3 className="h-3.5 w-3.5"/><span>Brief closes automatically in <span className="text-white">{seconds}s</span></span></div>
+                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500"><CheckCircle2 className="h-3.5 w-3.5"/><span>Review your briefing, then acknowledge it to start your session.</span></div>
                 <div className="sm:ml-auto flex gap-2">
                   <button type="button" onClick={() => go('OfficerInbox')} className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-blue-700/60 bg-blue-950/30 px-4 text-xs font-black text-blue-200 hover:bg-blue-900/40 sm:flex-none"><MessageCircle className="h-4 w-4"/>INBOX</button>
                   <button type="button" onClick={() => setOpen(false)} className="flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-4 text-xs font-black text-white shadow-lg hover:from-cyan-500 hover:to-blue-500 sm:flex-none"><CheckCircle2 className="h-4 w-4"/>START SESSION</button>
