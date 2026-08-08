@@ -3,7 +3,13 @@ import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 
-const AuthContext = createContext();
+// Keep one AuthContext instance across Vite/Base44 hot-module reloads. Without
+// this, the provider can remain mounted with the previous module's context while
+// a freshly reloaded Layout imports a new context object, producing the false
+// "useAuth must be used within an AuthProvider" runtime error in editor preview.
+const AUTH_CONTEXT_KEY = '__BPS_PATHFINDER_AUTH_CONTEXT__';
+const AuthContext = globalThis[AUTH_CONTEXT_KEY] || createContext(null);
+if (!globalThis[AUTH_CONTEXT_KEY]) globalThis[AUTH_CONTEXT_KEY] = AuthContext;
 
 const withTimeout = (promise, milliseconds, label) => {
   let timer;
