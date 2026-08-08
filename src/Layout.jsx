@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity, AlertTriangle, Award, BarChart3, Bell, BookOpen, Bot, Briefcase,
@@ -258,7 +258,6 @@ function hasFullAccess(user) {
   return user?.role === 'admin' || normalizedRoles(user).has('full_access');
 }
 
-const FULLSCREEN_PAGES = new Set([]);
 const DARK_WORKSPACE_PAGES = new Set([
   'CommandDashboard', 'DispatchCenter', 'CallHistory', 'ClientCallHistory',
   'BOLOAlerts', 'RecordsAssistant', 'Personnel', 'PathfinderReports', 'AdminPortal'
@@ -530,7 +529,6 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
 }
 
 export default function Layout({ children, currentPageName }) {
-  const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
