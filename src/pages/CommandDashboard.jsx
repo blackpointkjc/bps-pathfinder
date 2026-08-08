@@ -84,7 +84,6 @@ function CommandDashboardInner() {
     const navigate = useNavigate();
     const { calls, users, loading, lastRefresh, rateLimited, manualRefresh } = useDashboardData();
 
-    const [refreshing, setRefreshing]           = useState(false);
     const [currentUser, setCurrentUser]         = useState(null);
     const [soundEnabled, setSoundEnabled]       = useState(() => !isDispatchAlertMuted());
     const [syncStatus, setSyncStatus]           = useState({ state: 'idle', lastSync: null, added: 0, updated: 0, total: 0, error: null });
@@ -95,8 +94,6 @@ function CommandDashboardInner() {
 
     const soundEnabledRef        = useRef(!isDispatchAlertMuted());
     const knownCallIdsRef        = useRef(null);
-    const syncingRef             = useRef(false);
-    const lastManualRefreshRef   = useRef(0);
 
     // Re-render every second for live elapsed timers
     useEffect(() => {
@@ -143,19 +140,6 @@ function CommandDashboardInner() {
         setSyncStatus({ state: 'ok', lastSync: lastRefresh, added: 0, updated: 0, total: 0, error: null });
     }, [lastRefresh]);
 
-    const handleRefresh = async () => {
-        const now = Date.now();
-        if (now - lastManualRefreshRef.current < 5000) return; // block spam
-        lastManualRefreshRef.current = now;
-        setRefreshing(true);
-        try {
-            await manualRefresh();
-            // Also trigger backend geocoding for any calls still missing coordinates
-            base44.functions.invoke('geocodeMissingCalls', {}).catch(e => console.warn('[CAD] geocode trigger failed:', e?.message));
-        } finally {
-            setRefreshing(false);
-        }
-    };
 
     const handleStatusChange = async (newStatus) => {
         const previousStatus = currentUser?.status;
