@@ -36,8 +36,12 @@ export default function OfficerRoster() {
       // Exclude if user has termination_date
       if (userRecord.termination_date) return false;
       
-      // Exclude if user has client role
-      if (userRecord.additional_roles?.includes('client')) return false;
+      // Operational roster never exposes client, student, or pending accounts.
+      const roles = new Set([userRecord.role, ...(userRecord.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+      const userType = String(userRecord.user_type || userRecord.account_type || userRecord.portal_type || '').toLowerCase();
+      const accountStatus = String(userRecord.account_status || '').toLowerCase();
+      if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
+      if (['client', 'student', 'pending'].includes(userType) || accountStatus === 'pending') return false;
       
       return true;
     });
