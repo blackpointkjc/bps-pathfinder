@@ -56,17 +56,17 @@ export default function MDCriminalComplaints() {
   const isAdmin = user?.role === 'admin';
 
   const { data: activeEntry } = useQuery({
-    queryKey: ['activeTimeEntry'],
+    queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
       const entries = await base44.entities.TimeEntry.filter(
-        { created_by: user.email },
-        '-created_date',
-        1
+        { officer_email: user.email },
+        '-clock_in',
+        100
       );
       return entries.find(e => !e.clock_out) || null;
     },
-    enabled: !!user,
+    enabled: !!user?.email,
   });
 
   const canSubmit = isAdmin || !!activeEntry;
@@ -83,7 +83,7 @@ export default function MDCriminalComplaints() {
     
     const userComplaints = isAdmin 
       ? allComplaints 
-      : allComplaints.filter(complaint => complaint.created_by === user.email);
+      : allComplaints.filter(complaint => String(complaint.created_by_id || '') === String(user.id));
     
     if (!searchQuery.trim()) return userComplaints;
     
