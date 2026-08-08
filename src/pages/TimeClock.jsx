@@ -660,14 +660,14 @@ export default function TimeClock() {
     generateTimeClockPrint(recentEntries || [], officerName, startDate, endDate);
   };
 
-  if (isLoading) return <div className="p-8">Loading...</div>;
+  if (isLoading) return <div className="p-6 text-slate-300">Loading time clock...</div>;
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Time Clock</h1>
-          <p className="text-slate-600">Track your shift hours{isAdmin ? '' : ' with live location tracking'}</p>
+    <div className="min-h-screen bg-[#08111d] px-3 py-4 text-slate-100 sm:px-5 md:px-8 md:py-7">
+      <div className="mx-auto max-w-5xl space-y-5 md:space-y-6">
+        <div className="rounded-2xl border border-[#21384f] bg-[#0d1825] px-4 py-4 shadow-xl sm:px-6">
+          <h1 className="mb-1 text-2xl font-black tracking-tight text-white sm:text-3xl">Time Clock</h1>
+          <p className="text-sm text-slate-400 sm:text-base">Track your shift hours{isAdmin ? '' : ' with live location tracking'}</p>
         </div>
 
         {!isAdmin && (
@@ -690,14 +690,16 @@ export default function TimeClock() {
           </div>
         )}
 
-        <Card className="border-none shadow-xl overflow-hidden">
-          <CardHeader className={`border-b ${activeEntry ? 'bg-green-100' : 'bg-gradient-to-r from-blue-50 to-purple-50'}`}>
-            <CardTitle className="flex items-center gap-2 text-2xl text-slate-900">
-              <Clock className={`w-7 h-7 ${activeEntry ? 'text-green-600' : 'text-blue-600'}`} />
+        <Card className="overflow-hidden border border-[#29445f] bg-[#0d1825] text-slate-100 shadow-2xl">
+          <CardHeader className={`border-b border-[#29445f] ${activeEntry ? 'bg-[#0f2a22]' : 'bg-[#10263b]'}`}>
+            <CardTitle className="flex items-center gap-3 text-xl font-black text-white sm:text-2xl">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${activeEntry ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-blue-500/40 bg-blue-500/10'}`}>
+                <Clock className={`h-5 w-5 ${activeEntry ? 'text-emerald-300' : 'text-blue-300'}`} />
+              </div>
               {activeEntry ? 'Currently On Duty' : 'Ready to Clock In'}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8">
+          <CardContent className="p-4 sm:p-6 md:p-7">
             {activeEntry ? (
               <div className="space-y-6">
                 {geoError && (
@@ -707,23 +709,23 @@ export default function TimeClock() {
                   </Alert>
                 )}
                 {/* Updated styling for active shift display card */}
-                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                    <span className="font-semibold text-green-900">Active Shift{!isAdmin && ' - Live Tracking Enabled'}</span>
+                <div className="rounded-2xl border border-emerald-500/30 bg-[#0c201b] p-4 sm:p-5">
+                  <div className="mb-4 flex flex-wrap items-center gap-3">
+                    <div className="h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_16px_rgba(52,211,153,.55)] animate-pulse" />
+                    <span className="text-sm font-black uppercase tracking-wide text-emerald-200">Active Shift{!isAdmin && ' · Live Tracking Enabled'}</span>
                   </div>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-green-700 mb-1">Clocked In</p>
-                      <p className="text-2xl font-bold text-green-900">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-[#2b4158] bg-[#0a1521] p-4">
+                      <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Clocked In</p>
+                      <p className="text-2xl font-black text-white">
                         {format(new Date(activeEntry.clock_in), 'h:mm a')}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-sm text-green-700 mb-1">Location</p>
-                      <p className="text-lg font-medium text-green-900 flex items-center gap-2">
-                        <MapPin className="w-4 h-4" />
-                        {activeEntry.location}
+                    <div className="min-w-0 rounded-xl border border-[#2b4158] bg-[#0a1521] p-4">
+                      <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Location</p>
+                      <p className="flex min-w-0 items-start gap-2 break-words text-base font-bold leading-6 text-white sm:text-lg">
+                        <MapPin className="mt-1 h-4 w-4 shrink-0 text-blue-300" />
+                        <span className="min-w-0 break-words">{activeEntry.location}</span>
                       </p>
                       {isSpecialAssignment(activeEntry.location) && (
                         <p className="text-xs text-amber-700 mt-1 font-semibold">
@@ -734,16 +736,16 @@ export default function TimeClock() {
                   </div>
                   {!isAdmin && (
                     <>
-                      <div className="mt-4 p-3 bg-white rounded-lg border border-green-200">
-                        <p className="text-xs text-green-700 flex items-center gap-2">
-                          <Navigation className="w-4 h-4 animate-pulse" />
+                      <div className="mt-4 rounded-xl border border-blue-500/25 bg-blue-500/10 p-3">
+                        <p className="flex items-start gap-2 text-xs leading-5 text-blue-200">
+                          <Navigation className="mt-0.5 h-4 w-4 shrink-0 animate-pulse" />
                           Your location is being tracked every 10 seconds. Keep this app open to maintain accurate tracking.
                         </p>
                       </div>
-                      <div className="mt-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                        <p className="text-xs text-red-700 font-semibold flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4" />
-                          WARNING: Closing this app will automatically clock you out!
+                      <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+                        <p className="flex items-start gap-2 text-xs font-semibold leading-5 text-red-200">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                          WARNING: Closing this app will automatically clock you out.
                         </p>
                       </div>
                     </>
@@ -801,15 +803,15 @@ export default function TimeClock() {
                   </Card>
                 )}
 
-                <div className="space-y-3">
-                  <Label htmlFor="notes">Shift Notes (Optional)</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="notes" className="text-sm font-bold text-slate-200">Shift Notes (Optional)</Label>
                   <Textarea
                     id="notes"
                     placeholder="Add any notes about your shift..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={4}
-                    className="resize-none"
+                    className="min-h-[110px] resize-none border-[#36516b] bg-[#091522] text-white placeholder:text-slate-500 focus-visible:ring-blue-500"
                   />
                 </div>
 
@@ -920,22 +922,22 @@ export default function TimeClock() {
             {/* The existing active shift display card starts here. Modified its className. */}
             {/* This card is now nested inside the activeEntry check. */}
             
-            <Card className="border-none shadow-lg"> {/* New Card for Switch Site */}
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-blue-600">
-                  <MapPin className="w-5 h-5" />
+            <Card className="border border-[#29445f] bg-[#0d1825] text-slate-100 shadow-xl"> {/* New Card for Switch Site */}
+              <CardHeader className="border-b border-[#29445f]">
+                <CardTitle className="flex items-center gap-2 text-blue-300">
+                  <MapPin className="h-5 w-5" />
                   Switch Site
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="space-y-4">
-                  <p className="text-sm text-slate-600">
+                  <p className="text-sm leading-6 text-slate-400">
                     Moving to a different site? Switch your active location here. This will clock you out of your current site and clock you in to the new site.
                   </p>
                   <div className="space-y-2">
                     <Label htmlFor="new_site">Select New Site</Label>
                     <Select value={selectedNewSite} onValueChange={setSelectedNewSite}>
-                      <SelectTrigger id="new_site" className="min-h-[44px]">
+                      <SelectTrigger id="new_site" className="min-h-[46px] border-[#36516b] bg-[#091522] text-white">
                         <SelectValue placeholder="Choose a site..." />
                       </SelectTrigger>
                       <SelectContent className="max-h-[60vh]">
@@ -966,8 +968,8 @@ export default function TimeClock() {
           </>
         )}
 
-        <Card className="border-none shadow-lg">
-          <CardHeader className="border-b">
+        <Card className="border border-[#29445f] bg-[#0d1825] text-slate-100 shadow-xl">
+          <CardHeader className="border-b border-[#29445f]">
             <div className="flex items-center justify-between mb-4">
               <CardTitle className="flex items-center gap-2">
                 <CalendarIcon className="w-5 h-5 text-blue-600" />
