@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, MapPin, Clock, Activity } from "lucide-react";
 import { format } from "date-fns";
@@ -8,8 +8,6 @@ import { format } from "date-fns";
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/857a5f1c1_UntitledProject3.png";
 
 export default function ActiveTracker() {
-  const queryClient = useQueryClient();
-
   const getOfficerDisplayName = (officer) => {
     // This function assumes the officer object from base44.entities.ActiveOfficer might have officer_name, 
     // but the `user` object (which is also an 'officer' in a broader sense) might have first_name/last_name.
@@ -38,97 +36,8 @@ export default function ActiveTracker() {
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
-  const { data: myActiveEntry } = useQuery({
-    queryKey: ['myActiveEntry'],
-    queryFn: async () => {
-      const entries = await base44.entities.TimeEntry.filter(
-        { created_by: user?.email },
-        '-created_date',
-        1
-      );
-      return entries.find(e => !e.clock_out) || null;
-    },
-    enabled: !!user,
-  });
-
-  const updateLocationMutation = useMutation({
-    mutationFn: async (position) => {
-      try {
-        // Find existing active officer record
-        const existing = await base44.entities.ActiveOfficer.filter({
-          officer_email: user.email
-        });
-
-        const data = {
-          officer_email: user.email,
-          officer_name: user.full_name || user.email,
-          current_location: myActiveEntry?.location || 'Unknown',
-          clock_in_time: myActiveEntry?.clock_in || new Date().toISOString(),
-          last_update: new Date().toISOString(),
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        };
-
-        if (existing && existing.length > 0) {
-          try {
-            await base44.entities.ActiveOfficer.update(existing[0].id, data);
-          } catch (err) {
-            // If record not found, create a new one
-            if (err.message?.includes('not found')) {
-              await base44.entities.ActiveOfficer.create(data);
-            } else {
-              throw err;
-            }
-          }
-        } else {
-          await base44.entities.ActiveOfficer.create(data);
-        }
-      } catch (err) {
-        console.error('Error updating location:', err);
-      }
-    },
-  });
-
-  // Update location every 30 seconds if on duty
-  useEffect(() => {
-    if (!myActiveEntry) return;
-
-    const updateLocation = () => {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          updateLocationMutation.mutate(position);
-        },
-        (error) => console.error('Location error:', error),
-        { enableHighAccuracy: true }
-      );
-    };
-
-    updateLocation(); // Initial update
-    const interval = setInterval(updateLocation, 30000); // Every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [myActiveEntry, updateLocationMutation]); // Added updateLocationMutation to dependencies
-
-  // Clean up when clocking out
-  useEffect(() => {
-    if (!myActiveEntry && user) {
-      // Remove from active officers when no active entry
-      base44.entities.ActiveOfficer.filter({
-        officer_email: user.email
-      }).then(records => {
-        records.forEach(record => {
-          base44.entities.ActiveOfficer.delete(record.id).catch(err => {
-            // Silently ignore "not found" errors - record may have already been deleted
-            if (!err.message?.includes('not found')) {
-              console.error('Error deleting ActiveOfficer:', err);
-            }
-          });
-        });
-      }).catch(err => {
-        console.error('Error fetching ActiveOfficer records:', err);
-      });
-    }
-  }, [myActiveEntry, user]);
+  // Read-only view. The app-wide BackgroundLocationTracker is the only component
+  // permitted to create/update/remove ActiveOfficer live-location records.
 
   if (user?.role !== 'admin') {
     return (
