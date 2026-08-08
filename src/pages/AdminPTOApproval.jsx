@@ -108,9 +108,6 @@ export default function AdminPTOApproval() {
       if (payload.error) throw new Error(payload.error);
 
       if (request) {
-        const requestEmail = request.requested_by_email || request.created_by;
-        const officer = allUsers?.find(u => u.email === requestEmail);
-        
         // Send email notification
         await base44.integrations.Core.SendEmail({
           from_name: "Black Point Protection HR",
@@ -126,31 +123,6 @@ export default function AdminPTOApproval() {
             ${status === 'approved' ? '<p>Your time off has been approved.</p>' : '<p>Your request was not approved at this time. Please contact your supervisor if you have questions.</p>'}
           `
         });
-        
-        // Send SMS notification if phone number is available and request is approved
-        if (officer?.mobile_phone && status === 'approved') {
-          const smsCarriers = [
-            '@txt.att.net',
-            '@vtext.com',
-            '@tmomail.net',
-            '@messaging.sprintpcs.com',
-            '@vmobl.com',
-            '@mmst5.tracfone.com'
-          ];
-          
-          for (const carrier of smsCarriers) {
-            try {
-              await base44.integrations.Core.SendEmail({
-                from_name: "Black Point Protection",
-                to: officer.mobile_phone + carrier,
-                subject: "",
-                body: `Black Point Protection: Your PTO request for ${format(new Date(request.start_date), 'MMM d')}-${format(new Date(request.end_date), 'MMM d')} has been APPROVED. Check Black Point Portal for details.`
-              });
-            } catch (error) {
-              console.log(`SMS attempt failed for carrier ${carrier}`);
-            }
-          }
-        }
       }
     },
     onSuccess: () => {
@@ -179,17 +151,6 @@ export default function AdminPTOApproval() {
     },
     onError: error => toast.error(error?.message || 'Unable to remove approved PTO'),
   });
-
-  const getPendingForDate = (date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    return pendingRequests?.filter(req => {
-      // Compare date strings directly
-      // Assuming req.start_date and req.end_date are ISO 8601 strings (e.g., "YYYY-MM-DDTHH:mm:ss.sssZ")
-      const startDate = req.start_date.split('T')[0];
-      const endDate = req.end_date.split('T')[0];
-      return dateStr >= startDate && dateStr <= endDate;
-    }) || [];
-  };
 
   const handleAction = (request, type) => {
     setSelectedRequest(request);
