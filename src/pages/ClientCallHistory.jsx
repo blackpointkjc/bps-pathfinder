@@ -21,7 +21,7 @@ function callMatchesSite(call, site) {
   const siteLat = Number(site.latitude);
   const siteLng = Number(site.longitude);
   if (Number.isFinite(lat) && Number.isFinite(lng) && Number.isFinite(siteLat) && Number.isFinite(siteLng)) {
-    const radius = Math.max(Number(site.property_monitoring_radius_meters || site.geofence_radius_meters || 100), 100);
+    const radius = Math.max(Number(site.geofence_radius_meters || 100), 100);
     return calculateDistance(lat, lng, siteLat, siteLng) <= radius;
   }
   return false;
