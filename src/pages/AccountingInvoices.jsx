@@ -94,7 +94,7 @@ export default function AccountingInvoices() {
       }
     },
     enabled: isAccountingRole,
-    refetchInterval: 3000,
+    refetchInterval: 30000,
   });
 
   const generateInvoiceMutation = useMutation({
