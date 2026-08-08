@@ -13,8 +13,6 @@ import { toast } from "sonner";
 
 export default function ManageStudents() {
   const [editingStudent, setEditingStudent] = useState(null);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [createForm, setCreateForm] = useState({ first_name: '', last_name: '', email: '', mobile_phone: '' });
   const [editForm, setEditForm] = useState({});
   const queryClient = useQueryClient();
 
@@ -47,37 +45,6 @@ export default function ManageStudents() {
     enabled: hasAccess,
   });
 
-
-  const createStudentMutation = useMutation({
-    mutationFn: async (data) => {
-      const response = await base44.functions.invoke('createPortalAccount', {
-        accountType: 'student',
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email,
-        mobile_phone: data.mobile_phone,
-      });
-      if (response?.error) throw new Error(response.error);
-      return response;
-    },
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      setShowCreateDialog(false);
-      setCreateForm({ first_name: '', last_name: '', email: '', mobile_phone: '' });
-      const accountMessage = result?.invitation_pending
-        ? 'The student account setup was saved, but the platform invitation provider is still processing. The Black Point setup email was sent so the student can use Forgot Password once the account appears.'
-        : result?.assignment_pending
-          ? 'Student invitation sent. Student Portal access will attach when the pending account becomes available.'
-          : 'Student invitation sent. Student Portal-only access assigned.';
-      if (result?.email_sent === false) {
-        toast.error(`${accountMessage} Welcome email delivery failed: ${result?.email_error || 'verify the email address.'}`);
-      } else {
-        toast.success(`${accountMessage} The Black Point account-created email was sent.`);
-      }
-    },
-    onError: (err) => toast.error('Unable to create student: ' + err.message),
-  });
 
   const updateStudentMutation = useMutation({
     mutationFn: async ({ id, data }) => {
