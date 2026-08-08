@@ -51,34 +51,32 @@ export default function ShiftReports() {
   const isAdmin = user?.role === 'admin'; // Determine if the current user is an admin
 
   const { data: activeEntry } = useQuery({
-    queryKey: ['activeTimeEntry'],
+    queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
       const entries = await base44.entities.TimeEntry.filter(
-        { created_by: user.email },
-        '-created_date',
-        1
+        { officer_email: user.email },
+        '-clock_in',
+        100
       );
       return entries.find(e => !e.clock_out) || null;
     },
-    enabled: !!user,
+    enabled: !!user?.email,
   });
 
   // For admins, allow submission from anywhere; for officers, an active entry is required.
   const canSubmit = isAdmin || !!activeEntry;
 
   const { data: reports } = useQuery({
-    queryKey: ['myShiftReports', user?.email],
+    queryKey: ['myShiftReports', user?.id],
     queryFn: () => base44.entities.ShiftReport.filter(
-      { created_by: user?.email },
+      { created_by_id: user.id },
       '-created_date'
     ),
-    enabled: !!user,
+    enabled: !!user?.id,
   });
 
-  // IMPORTANT: Shift reports are PRIVATE - only show officer's own reports.
-  // The 'reports' query already filters by 'created_by: user?.email', so 'reports' already contains only the officer's own reports.
-  // No further filtering like `myReports = reports?.filter(r => r.created_by === user?.email)` is needed here.
+  // Shift reports are private to their creator (plus authorized admin review).
 
   const { data: reportTodos } = useQuery({
     queryKey: ['myReportTodos'],
@@ -120,7 +118,9 @@ export default function ShiftReports() {
     initialData: [],
   });
 
-  const getOfficerSignature = (email) => {
+  const getOfficerSignature = (officerRef) => {
+    const officerFromUsers = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    const email = officerFromUsers?.email || officerRef;
     // First check officer roster
     const rosterEntry = rosterEntries?.find(r => r.email === email && r.status === 'active');
     if (rosterEntry) {
@@ -138,7 +138,7 @@ export default function ShiftReports() {
     }
 
     // Fall back to user entity
-    const officer = allUsers?.find(u => u.email === email);
+    const officer = officerFromUsers || allUsers?.find(u => u.email === email);
     if (!officer) return email;
     
     const rank = officer.rank || '';
@@ -154,7 +154,9 @@ export default function ShiftReports() {
     return `${officer?.first_name || ''} ${officer?.last_name || ''}`.trim() || email;
   };
 
-  const getOfficerName = (email) => {
+  const getOfficerName = (officerRef) => {
+    const officerFromUsers = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    const email = officerFromUsers?.email || officerRef;
     // First check officer roster
     const rosterEntry = rosterEntries?.find(r => r.email === email && r.status === 'active');
     if (rosterEntry) {
@@ -167,7 +169,7 @@ export default function ShiftReports() {
     }
 
     // Fall back to user entity
-    const officer = allUsers?.find(u => u.email === email);
+    const officer = officerFromUsers || allUsers?.find(u => u.email === email);
     if (officer?.last_name && officer?.unit_number) {
       return `${officer.last_name} Unit ${officer.unit_number}`;
     }
@@ -246,11 +248,11 @@ export default function ShiftReports() {
       }
     },
     onMutate: async ({ data, isDraft }) => {
-      await queryClient.cancelQueries({ queryKey: ['myShiftReports'] });
-      const previousReports = queryClient.getQueryData(['myShiftReports']);
+      await queryClient.cancelQueries({ queryKey: ['myShiftReports', user?.id] });
+      const previousReports = queryClient.getQueryData(['myShiftReports', user?.id]);
       
       if (editingReport) {
-        queryClient.setQueryData(['myShiftReports'], (old) => 
+        queryClient.setQueryData(['myShiftReports', user?.id], (old) => 
           old?.map((r) => r.id === editingReport.id ? { ...r, ...data, status: isDraft ? "draft" : "submitted" } : r)
         );
       } else {
@@ -259,9 +261,9 @@ export default function ShiftReports() {
           id: 'temp-' + Date.now(),
           status: isDraft ? "draft" : "submitted",
           created_date: new Date().toISOString(),
-          created_by: user?.email,
+          created_by_id: user?.id,
         };
-        queryClient.setQueryData(['myShiftReports'], (old) => [optimisticReport, ...(old || [])]);
+        queryClient.setQueryData(['myShiftReports', user?.id], (old) => [optimisticReport, ...(old || [])]);
       }
       
       return { previousReports };
@@ -270,11 +272,11 @@ export default function ShiftReports() {
       console.error('Error saving shift report:', error);
       setSaving(false);
       if (context?.previousReports) {
-        queryClient.setQueryData(['myShiftReports'], context.previousReports);
+        queryClient.setQueryData(['myShiftReports', user?.id], context.previousReports);
       }
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['myShiftReports'] });
+      queryClient.invalidateQueries({ queryKey: ['myShiftReports', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['myReportTodos'] });
       
       if (!variables.isDraft) {
@@ -354,7 +356,7 @@ export default function ShiftReports() {
     }
     
     // Only allow officer to edit their own reports
-    if (report.created_by !== user?.email) {
+    if (String(report.created_by_id || '') !== String(user?.id || '')) {
       alert("You can only edit your own reports.");
       return;
     }
@@ -389,8 +391,7 @@ export default function ShiftReports() {
   const printReport = (report) => {
     const printWindow = window.open('', '', 'width=850,height=1100');
     
-    const officerName = getOfficerName(report.created_by);
-    const officerSig = getOfficerSignature(report.created_by);
+    const officerName = getOfficerName(report.created_by_id);
     const displayShiftDate = report.shift_date ? format(new Date(report.shift_date), 'MMMM d, yyyy') : '';
     
     const htmlContent = `
@@ -1026,7 +1027,7 @@ export default function ShiftReports() {
                         <div className="mt-4 pt-4 border-t-2 border-slate-300">
                           <p className="text-xs text-slate-500 mb-2">Officer Signature:</p>
                           <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                            {getOfficerSignature(report.created_by)}
+                            {getOfficerSignature(report.created_by_id)}
                           </p>
                           {report.officer_ip_address && report.created_date && (
                             <p className="text-xs text-slate-400 mt-1">
@@ -1108,7 +1109,7 @@ export default function ShiftReports() {
                         <div className="mt-4 pt-4 border-t-2 border-slate-300">
                           <p className="text-xs text-slate-500 mb-2">Officer Signature:</p>
                           <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                            {getOfficerSignature(report.created_by)}
+                            {getOfficerSignature(report.created_by_id)}
                           </p>
                           {report.officer_ip_address && report.created_date && (
                             <p className="text-xs text-slate-400 mt-1">
@@ -1182,7 +1183,7 @@ export default function ShiftReports() {
                         <div className="mt-4 pt-4 border-t-2 border-slate-300">
                           <p className="text-xs text-slate-500 mb-2">Officer Signature:</p>
                           <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                            {getOfficerSignature(report.created_by)}
+                            {getOfficerSignature(report.created_by_id)}
                           </p>
                           {report.officer_ip_address && report.created_date && (
                             <p className="text-xs text-slate-400 mt-1">
