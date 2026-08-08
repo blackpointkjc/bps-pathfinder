@@ -1,8 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Shield, Users, RefreshCw, Save, Network } from 'lucide-react';
 import { toast } from 'sonner';
