@@ -54,6 +54,11 @@
     "linked_shift_id": {
       "type": "string",
       "description": "ID of the shift this split shift is linked to (the shift that comes after it chronologically)"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this schedule row has been archived and should be hidden from active schedules"
     }
   },
   "required": [
