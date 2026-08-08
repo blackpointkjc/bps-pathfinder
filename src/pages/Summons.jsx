@@ -95,17 +95,17 @@ export default function Summons() {
   const isAdmin = user?.role === 'admin';
 
   const { data: activeEntry } = useQuery({
-    queryKey: ['activeTimeEntry'],
+    queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
       const entries = await base44.entities.TimeEntry.filter(
-        { created_by: user.email },
-        '-created_date',
-        1
+        { officer_email: user.email },
+        '-clock_in',
+        100
       );
       return entries.find(e => !e.clock_out) || null;
     },
-    enabled: !!user,
+    enabled: !!user?.email,
   });
 
   const canSubmit = isAdmin || !!activeEntry;
@@ -121,7 +121,7 @@ export default function Summons() {
     
     const userSummons = isAdmin 
       ? allSummons 
-      : allSummons.filter(summons => summons.created_by === user.email);
+      : allSummons.filter(summons => String(summons.created_by_id || '') === String(user.id));
     
     if (!searchQuery.trim()) return userSummons;
     
@@ -279,6 +279,11 @@ export default function Summons() {
     createSummonsMutation.mutate(formData);
   };
 
+  const getOfficerEmail = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    return officer?.email || '';
+  };
+
   const getOfficerFullDisplay = (email) => {
     if (!email || !allUsers || allUsers.length === 0) return 'Officer';
     const officer = allUsers.find(u => u.email === email);
@@ -299,7 +304,7 @@ export default function Summons() {
 
   const printSummons = (summons) => {
     openVirginiaSummonsPrint(summons, {
-      officerName: summons.officer_name || getOfficerFullDisplay(summons.created_by),
+      officerName: summons.officer_name || getOfficerFullDisplay(getOfficerEmail(summons.created_by_id)),
       badge: summons.officer_code_badge || '',
     });
     return;
@@ -1664,7 +1669,7 @@ export default function Summons() {
                         </p>
                       )}
                       <p className="text-sm text-slate-600">
-                        Issued by: {getOfficerFullDisplay(summons.created_by)}
+                        Issued by: {getOfficerFullDisplay(getOfficerEmail(summons.created_by_id))}
                       </p>
                     </div>
                   </div>
