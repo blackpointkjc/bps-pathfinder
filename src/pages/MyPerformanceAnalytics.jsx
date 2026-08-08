@@ -343,10 +343,10 @@ export default function MyPerformanceAnalytics() {
   };
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen overflow-x-hidden p-3 sm:p-4 md:p-5">
+      <div className="mx-auto w-full min-w-0 space-y-4" style={{ maxWidth: '1180px' }}>
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 sm:text-3xl">
             <BarChart3 className="w-8 h-8 text-blue-600" />
             My Performance Analytics
           </h1>
@@ -358,35 +358,35 @@ export default function MyPerformanceAnalytics() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
           <Card className="border-none shadow-lg bg-gradient-to-br from-green-50 to-emerald-100">
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
-              <p className="text-3xl font-bold text-green-600">{onTimeStats.rate}%</p>
+              <p className="text-2xl font-bold text-green-600 sm:text-3xl">{onTimeStats.rate}%</p>
               <p className="text-xs text-slate-600">On-Time Arrival</p>
             </CardContent>
           </Card>
 
           <Card className="border-none shadow-lg bg-gradient-to-br from-blue-50 to-indigo-100">
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <Clock className="w-6 h-6 text-blue-600 mb-2" />
-              <p className="text-3xl font-bold text-blue-600">{hoursData.total}h</p>
+              <p className="text-2xl font-bold text-blue-600 sm:text-3xl">{hoursData.total}h</p>
               <p className="text-xs text-slate-600">Hours This Month</p>
             </CardContent>
           </Card>
 
           <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-violet-100">
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <Award className="w-6 h-6 text-purple-600 mb-2" />
-              <p className="text-3xl font-bold text-purple-600">{trainingStats.pending}</p>
+              <p className="text-2xl font-bold text-purple-600 sm:text-3xl">{trainingStats.pending}</p>
               <p className="text-xs text-slate-600">Training Pending</p>
             </CardContent>
           </Card>
 
           <Card className="border-none shadow-lg bg-gradient-to-br from-amber-50 to-orange-100">
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <Star className="w-6 h-6 text-amber-600 mb-2" />
-              <p className="text-3xl font-bold text-amber-600">{bidStats.acceptanceRate}%</p>
+              <p className="text-2xl font-bold text-amber-600 sm:text-3xl">{bidStats.acceptanceRate}%</p>
               <p className="text-xs text-slate-600">Bid Acceptance Rate</p>
             </CardContent>
           </Card>
@@ -401,7 +401,7 @@ export default function MyPerformanceAnalytics() {
                 QR Patrol Performance — {currentMonthName}
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
                 <div className="p-3 bg-teal-50 rounded-lg">
                   <p className="text-2xl font-bold text-teal-700">{qrPatrolStats.totalScans}</p>
@@ -445,7 +445,7 @@ export default function MyPerformanceAnalytics() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <ScrollArea className="h-64">
+              <ScrollArea className="h-56 sm:h-60">
                 {recentNotifications.length > 0 ? (
                   <div className="p-4 space-y-3">
                     {recentNotifications.map(n => (
@@ -490,7 +490,7 @@ export default function MyPerformanceAnalytics() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <ScrollArea className="h-64">
+              <ScrollArea className="h-56 sm:h-60">
                 {thisWeekSchedule.length > 0 ? (
                   <div className="p-4 space-y-2">
                     {thisWeekSchedule.map((shift, idx) => {
@@ -540,7 +540,7 @@ export default function MyPerformanceAnalytics() {
         </div>
 
         {/* Charts Row */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
           <Card className="border-none shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -628,7 +628,7 @@ export default function MyPerformanceAnalytics() {
                 Call-Outs & Attendance Issues
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4">
               <div className="space-y-3">
                 {myCallOuts.map((callOut) => (
                   <div key={callOut.id} className="p-3 bg-red-50 border border-red-200 rounded-lg">
