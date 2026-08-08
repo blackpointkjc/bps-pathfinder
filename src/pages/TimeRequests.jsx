@@ -21,7 +21,7 @@ export default function TimeRequests() {
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => base44.auth.me(),
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const { data: requests = [], error: requestsError } = useQuery({
@@ -33,7 +33,7 @@ export default function TimeRequests() {
       return payload.requests || [];
     },
     enabled: !!user?.email,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
     initialData: [],
   });
 
