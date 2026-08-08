@@ -8,7 +8,6 @@ import { format, parseISO } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { commandDescendants } from "@/utils/platoonChain";
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
@@ -24,23 +23,20 @@ export default function SupervisorPerformanceReview() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: allUsers = [] } = useQuery({
-    queryKey: ['supervisorPerformanceCommandUsers'],
-    queryFn: () => base44.entities.User.list(),
-    enabled: !!user,
-  });
-
-  const assignedPeople = commandDescendants(user, allUsers);
-  const assignedEmails = new Set(assignedPeople.map(person => String(person.email || '').toLowerCase()).filter(Boolean));
-
-  const { data: pendingReviews } = useQuery({
-    queryKey: ['pendingPerformanceReviews', user?.id, ...Array.from(assignedEmails).sort()],
+  const { data: scopedTasks = {} } = useQuery({
+    queryKey: ['supervisorScopedTasks', user?.id],
     queryFn: async () => {
-      const all = await base44.entities.PerformanceReview.list('-review_date');
-      return all.filter(r => assignedEmails.has(String(r.officer_email || '').toLowerCase()) && r.supervisor_review_pending && !r.supervisor_review_completed);
+      const response = await base44.functions.invoke('getSupervisorScopedTasks', {});
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
-    enabled: user?.additional_roles?.includes('supervisor'),
+    enabled: !!user && (user?.role === 'admin' || user?.additional_roles?.includes('supervisor')),
+    refetchInterval: 60000,
   });
+
+  const assignedPeople = scopedTasks.assignedPeople || [];
+  const pendingReviews = scopedTasks.reviews || [];
 
   const completeReviewMutation = useMutation({
     mutationFn: async (reviewId) => {
