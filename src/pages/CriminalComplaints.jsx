@@ -230,6 +230,11 @@ export default function CriminalComplaints() {
     createComplaintMutation.mutate(submissionData);
   };
 
+  const getOfficerEmail = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    return officer?.email || '';
+  };
+
   const getOfficerFullDisplay = (email) => {
     if (!email || !allUsers || allUsers.length === 0) return 'Officer';
     const officer = allUsers.find(u => u.email === email);
@@ -1016,7 +1021,7 @@ export default function CriminalComplaints() {
                         Violation: {complaint.violation_code}{complaint.violation_section ? ' ' + complaint.violation_section : ''}
                       </p>
                       <p className="text-sm text-slate-600">
-                        Filed by: {getOfficerFullDisplay(officerInfo?.email)}
+                        Filed by: {getOfficerFullDisplay(getOfficerEmail(complaint.created_by_id))}
                       </p>
                     </div>
                   </div>
@@ -1024,7 +1029,7 @@ export default function CriminalComplaints() {
                   <div className="mt-4 pt-4 border-t-2 border-slate-300">
                     <p className="text-xs text-slate-500 mb-2">Officer Signature:</p>
                     <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                      {getOfficerSignature(officerInfo?.email)}
+                      {getOfficerSignature(getOfficerEmail(complaint.created_by_id))}
                     </p>
                     {complaint.officer_ip_address && complaint.created_date && (
                       <p className="text-xs text-slate-400 mt-1">
