@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { normalizeRank } from '@/utils/rankDisplay';
-import { isDispatchAlertMuted, playDispatchAlert, setDispatchAlertMuted, shouldAlertForGeofence } from '@/utils/alertUtils';
+import { isDispatchAlertMuted, monitoredPropertiesFromLocations, playDispatchAlert, setDispatchAlertMuted, shouldAlertForGeofence } from '@/utils/alertUtils';
 import { classifyCall } from '@/lib/cadCallTypes';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
@@ -112,8 +112,8 @@ function CommandDashboardInner() {
             soundEnabledRef.current = val;
         }).catch(() => {});
 
-        base44.entities.MonitoredProperty.list().then(props => {
-            setMonitoredProperties((props || []).filter(p => p.enabled));
+        base44.entities.Location.list('site_name').then(locations => {
+            setMonitoredProperties(monitoredPropertiesFromLocations(locations || []));
         }).catch(() => {});
     }, []);
 
