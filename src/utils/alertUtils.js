@@ -75,8 +75,8 @@ export const evaluatePropertyMatch = (call, property, nearbyFeet = 100) => {
 
 export const locationToMonitoredProperty = (location) => {
   if (!location?.property_monitoring_enabled) return null;
-  const polygon = Array.isArray(location.property_monitoring_polygon)
-    ? location.property_monitoring_polygon.map(point => Array.isArray(point) ? point : [Number(point.lat), Number(point.lng)]).filter(pair => pair.every(Number.isFinite))
+  const polygon = Array.isArray(location.geofence_polygon)
+    ? location.geofence_polygon.map(point => Array.isArray(point) ? point : [Number(point.lat), Number(point.lng)]).filter(pair => pair.every(Number.isFinite))
     : [];
   return {
     id: location.id,
