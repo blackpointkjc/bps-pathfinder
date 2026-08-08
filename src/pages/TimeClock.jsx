@@ -26,8 +26,37 @@ L.Icon.Default.mergeOptions({
 function MapUpdater({ center }) {
   const map = useMap();
   useEffect(() => {
-    if (center) map.setView(center, 17);
-  }, [center, map]);
+    if (!center || !Array.isArray(center) || center.length !== 2) return undefined;
+    const lat = Number(center[0]);
+    const lng = Number(center[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return undefined;
+
+    let cancelled = false;
+    const safelyRecenter = () => {
+      if (cancelled) return;
+      const container = map.getContainer?.();
+      if (!container || !container.isConnected || !map._loaded) return;
+      try {
+        // Stop any in-flight zoom/pan transition before moving. Animated Leaflet
+        // transitions can finish after React unmounts the map pane and cause
+        // `_leaflet_pos` errors in getPosition().
+        map.stop?.();
+        map.invalidateSize?.({ pan: false, animate: false });
+        map.setView([lat, lng], 17, { animate: false, reset: true });
+      } catch (error) {
+        // A map may be in the middle of teardown during route/card replacement.
+        // Ignore that lifecycle race rather than crashing the Time Clock page.
+        console.warn('Time Clock map recenter skipped during Leaflet teardown:', error?.message || error);
+      }
+    };
+
+    const frame = window.requestAnimationFrame(safelyRecenter);
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+      try { map.stop?.(); } catch (_) {}
+    };
+  }, [center?.[0], center?.[1], map]);
   return null;
 }
 
