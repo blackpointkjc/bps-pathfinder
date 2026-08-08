@@ -17,6 +17,17 @@ const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/pub
 
 const LIVE_SESSION_FRESH_MS = 2 * 60 * 1000;
 
+function isOperationallyVisibleUser(person) {
+  if (!person) return false;
+  const roles = new Set([person.role, ...(person.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+  const userType = String(person.user_type || person.account_type || person.portal_type || '').toLowerCase();
+  const status = String(person.account_status || '').toLowerCase();
+  if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
+  if (['client', 'student', 'pending'].includes(userType)) return false;
+  if (status === 'pending') return false;
+  return true;
+}
+
 // Custom marker icons
 const clockInIcon = new L.Icon({
   iconUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iNDUiIHZpZXdCb3g9IjAgMCAzMCA0NSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTUgMEMxMCAwIDAgNSAwIDE1YzAgMTAgMTUgMzAgMTUgMzBzMTUtMjAgMTUtMzBjMC0xMC0xMC0xNS0xNS0xNXoiIGZpbGw9IiMyMmMzNWUiLz48Y2lyY2xlIGN4PSIxNSIgY3k9IjE1IiByPSI4IiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==',
@@ -127,7 +138,8 @@ export default function AdminLocationTracker() {
   }, [activeOfficerLocations]);
 
   // "Live" means the authenticated app session has pinged within the last two minutes.
-  // This includes admins, supervisors, dispatchers, support staff, clients, and officers.
+  // Client/student/pending accounts are still tracked internally for session security,
+  // but are intentionally hidden from operational maps and personnel-style displays.
   const currentlyActiveOfficers = React.useMemo(() => {
     const now = Date.now();
     return [...newestLocationByEmail.values()].filter(locationData => {
@@ -135,6 +147,7 @@ export default function AdminLocationTracker() {
       return Number.isFinite(stamp) && now - stamp <= LIVE_SESSION_FRESH_MS;
     }).map(locationData => {
       const profile = allUsers?.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
+      if (!isOperationallyVisibleUser(profile)) return null;
       return {
         ...locationData,
         id: locationData.id,
@@ -144,7 +157,7 @@ export default function AdminLocationTracker() {
         user_status: locationData.status || profile?.status || 'Signed In',
         gps_pending: !(Number.isFinite(Number(locationData.latitude)) && Number.isFinite(Number(locationData.longitude))),
       };
-    });
+    }).filter(Boolean);
   }, [newestLocationByEmail, allUsers]);
 
   // Historical movement is session-based, not shift-based. Any authenticated user
@@ -250,7 +263,7 @@ export default function AdminLocationTracker() {
   }, [viewMode, hasAccess, allUsers, activeOfficerLocations]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const officersWithLocation = currentlyActiveOfficers?.filter(o => Number.isFinite(Number(o.latitude)) && Number.isFinite(Number(o.longitude))) || [];
-  const filteredOfficersForDropdown = allUsers?.filter(u => !!u.email).sort((a, b) => {
+  const filteredOfficersForDropdown = allUsers?.filter(u => !!u.email && isOperationallyVisibleUser(u)).sort((a, b) => {
     const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email;
     const nameB = `${b.first_name || ''} ${b.last_name || ''}`.trim() || b.email;
     return nameA.localeCompare(nameB);
@@ -788,7 +801,7 @@ export default function AdminLocationTracker() {
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-900">
-            <strong>Live Tracking:</strong> Shows every user with an active Pathfinder session heartbeat, including admins, supervisors, dispatchers, support staff, clients, and officers. GPS uses the single app-wide location service.
+            <strong>Live Tracking:</strong> Shows operational signed-in users such as admins, supervisors, dispatchers, support staff, and officers. Client, student, and pending accounts are intentionally hidden from this operational display even though session tracking remains internal. GPS uses the single app-wide location service.
           </p>
           <p className="text-sm text-blue-900 mt-2">
             <strong>Check All Locations Now:</strong> Checks all recent signed-in session records and separates users with current GPS, users signed in with GPS unavailable, and recently stale sessions.
