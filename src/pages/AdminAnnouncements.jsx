@@ -59,41 +59,11 @@ export default function AdminAnnouncements() {
   const createAnnouncementMutation = useMutation({
     mutationFn: async (data) => {
       const announcement = await base44.entities.Announcement.create(data);
-      
-      // Send SMS notifications to all active officers
-      const activeOfficers = allUsers?.filter(u => 
-        !u.termination_date && 
-        u.mobile_phone && 
-        u.role !== 'admin'
-      ) || [];
 
-      const smsCarriers = [
-        '@txt.att.net',
-        '@vtext.com',
-        '@tmomail.net',
-        '@messaging.sprintpcs.com',
-        '@vmobl.com',
-        '@mmst5.tracfone.com'
-      ];
-
-      const priorityEmoji = data.priority === 'urgent' ? '🚨' : data.priority === 'important' ? '⚠️' : '📢';
-      const smsMessage = `${priorityEmoji} Black Point Protection: ${data.title}. Check Black Point Portal for full announcement.`;
-
-      for (const officer of activeOfficers) {
-        for (const carrier of smsCarriers) {
-          try {
-            await base44.integrations.Core.SendEmail({
-              from_name: "Black Point Protection",
-              to: officer.mobile_phone + carrier,
-              subject: "",
-              body: smsMessage
-            });
-          } catch (error) {
-            console.log(`SMS attempt failed for ${officer.email} with carrier ${carrier}`);
-          }
-        }
-      }
-      
+      // Announcement delivery is handled by Pathfinder's persistent banner/read-receipt
+      // system. The former email-to-SMS carrier fan-out was removed because it created
+      // multiple unreliable outbound requests per user and bypassed the standard
+      // Black Point notification/email architecture.
       return announcement;
     },
     onSuccess: () => {
