@@ -91,11 +91,22 @@ let masterCtx = null;
 let alertInterval = null;
 let alertRunning = false;
 let alertGeneration = 0;
-let dispatchAlertMuted = false;
+let dispatchAlertMuted = typeof window !== 'undefined' && localStorage.getItem('bps_dispatch_alert_muted') === 'true';
 
 export const setDispatchAlertMuted = (muted) => {
-  dispatchAlertMuted = muted;
-  if (muted) stopDispatchAlert();
+  dispatchAlertMuted = Boolean(muted);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('bps_dispatch_alert_muted', String(dispatchAlertMuted));
+    window.dispatchEvent(new CustomEvent('bps-alert-mute-changed', { detail: { muted: dispatchAlertMuted } }));
+  }
+  if (dispatchAlertMuted) stopDispatchAlert();
+};
+
+export const isDispatchAlertMuted = () => {
+  if (typeof window !== 'undefined') {
+    dispatchAlertMuted = localStorage.getItem('bps_dispatch_alert_muted') === 'true';
+  }
+  return dispatchAlertMuted;
 };
 
 const getMasterCtx = () => {
@@ -186,7 +197,7 @@ const playBeepTone = (freq = 1000, vol = 0.5) => {
 };
 
 export const playDispatchAlert = () => {
-  if (alertRunning || dispatchAlertMuted) return;
+  if (alertRunning || isDispatchAlertMuted()) return;
   alertGeneration += 1;
   alertRunning = true;
   playSirenTone();
@@ -194,7 +205,7 @@ export const playDispatchAlert = () => {
 };
 
 export const playPropertyAlert = () => {
-  if (alertRunning || dispatchAlertMuted) return;
+  if (alertRunning || isDispatchAlertMuted()) return;
   alertGeneration += 1;
   const generation = alertGeneration;
   alertRunning = true;
