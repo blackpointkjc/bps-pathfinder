@@ -90,6 +90,7 @@ export const shouldAlertForGeofence = (call, user, monitoredProperties) => Boole
 let masterCtx = null;
 let alertInterval = null;
 let alertRunning = false;
+let alertGeneration = 0;
 let dispatchAlertMuted = false;
 
 export const setDispatchAlertMuted = (muted) => {
@@ -105,6 +106,7 @@ const getMasterCtx = () => {
 };
 
 export const stopDispatchAlert = () => {
+  alertGeneration += 1;
   alertRunning = false;
   if (alertInterval) {
     clearInterval(alertInterval);
@@ -185,6 +187,7 @@ const playBeepTone = (freq = 1000, vol = 0.5) => {
 
 export const playDispatchAlert = () => {
   if (alertRunning || dispatchAlertMuted) return;
+  alertGeneration += 1;
   alertRunning = true;
   playSirenTone();
   alertInterval = setInterval(playSirenTone, 3500);
@@ -192,6 +195,8 @@ export const playDispatchAlert = () => {
 
 export const playPropertyAlert = () => {
   if (alertRunning || dispatchAlertMuted) return;
+  alertGeneration += 1;
+  const generation = alertGeneration;
   alertRunning = true;
 
   // Property alerts are an attention burst, not an endless alarm. Keep the visual
@@ -199,6 +204,7 @@ export const playPropertyAlert = () => {
   playBeepTone(1000, 0.5);
   alertInterval = setInterval(() => playBeepTone(1000, 0.5), 650);
   window.setTimeout(() => {
-    if (alertRunning) stopDispatchAlert();
+    // Do not let an old property-alert timeout stop a newer dispatch/property alarm.
+    if (alertRunning && alertGeneration === generation) stopDispatchAlert();
   }, 6000);
 };
