@@ -138,6 +138,22 @@ export default function UniversalInbox({ currentUser, users = [] }) {
     const existing = hiddenPreferences.find(item => item.thread_key === thread.key);
     setSelectedKey(null);
 
+    // A hidden thread must not leave invisible unread records behind. Those records
+    // were causing the global Inbox badge to show unread messages even though the
+    // conversation had been removed from the user's Inbox.
+    const unreadInThread = (thread.messages || []).filter(message =>
+      message.recipient_id === currentUser.id &&
+      !message.read &&
+      !message.draft &&
+      String(message.message || '').trim()
+    );
+    if (unreadInThread.length) {
+      await Promise.all(unreadInThread.map(message =>
+        base44.entities.Message.update(message.id, { read: true }).catch(() => null)
+      ));
+      window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
+    }
+
     const optimistic = {
       id: existing?.id || `pending:${thread.key}`,
       user_email: currentUser.email,
