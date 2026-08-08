@@ -344,7 +344,7 @@ export default function AdminLocationTracker() {
                 <div className="mb-6">
                   <h3 className="font-bold text-green-900 mb-3 flex items-center gap-2">
                     <CheckCircle className="w-5 h-5" />
-                    Officers with Active GPS Tracking
+                    Signed-In Users with Active GPS
                   </h3>
                   <div className="space-y-2">
                     {locationCheckResults.withLocation.map((officer, idx) => (
@@ -369,12 +369,12 @@ export default function AdminLocationTracker() {
                 <div className="mb-6">
                   <h3 className="font-bold text-amber-900 mb-3 flex items-center gap-2">
                     <AlertTriangle className="w-5 h-5" />
-                    Officers with Stale GPS Data
+                    Recently Stale User Sessions
                   </h3>
                   <Alert className="bg-amber-50 border-amber-300 mb-3">
                     <AlertTriangle className="h-4 w-4 text-amber-600" />
                     <AlertDescription className="text-amber-900">
-                      These officers are clocked in and have GPS data, but it hasn't updated in over 2 minutes. Their app may be closed or in the background.
+                      These users were recently signed in, but their session heartbeat has not updated in over 2 minutes. The app may have been closed or suspended.
                     </AlertDescription>
                   </Alert>
                   <div className="space-y-2">
@@ -400,12 +400,12 @@ export default function AdminLocationTracker() {
                 <div>
                   <h3 className="font-bold text-red-900 mb-3 flex items-center gap-2">
                     <XCircle className="w-5 h-5" />
-                    Officers Without GPS Data
+                    Signed-In Users Without GPS Data
                   </h3>
                   <Alert className="bg-red-50 border-red-300 mb-3">
                     <XCircle className="h-4 w-4 text-red-600" />
                     <AlertDescription className="text-red-900">
-                      These officers are clocked in but have NO GPS data. They may have location services disabled, denied permission, or closed the app completely.
+                      These users have a current signed-in session heartbeat but no usable GPS fix. Location permission may be disabled, denied, or unavailable.
                     </AlertDescription>
                   </Alert>
                   <div className="space-y-2">
@@ -416,10 +416,8 @@ export default function AdminLocationTracker() {
                           <p className="text-sm text-red-700">{officer.location}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs text-red-600">Clocked In</p>
-                          <p className="text-sm font-medium text-red-900">
-                            {officer.clockedInAt ? format(new Date(officer.clockedInAt), 'h:mm a') : 'N/A'}
-                          </p>
+                          <p className="text-xs text-red-600">Session Role</p>
+                          <p className="text-sm font-medium text-red-900">{String(officer.role || 'user').toUpperCase()}</p>
                         </div>
                       </div>
                     ))}
