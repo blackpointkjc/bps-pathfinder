@@ -293,9 +293,16 @@ export default function AdminScheduling() {
       ));
       return created;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allSchedules'] });
-      alert('Schedule copied successfully from previous week!');
+    onSuccess: async (created) => {
+      const createdRows = Array.isArray(created) ? created : [];
+      if (createdRows.length > 0) {
+        queryClient.setQueryData(['allSchedules'], (current = []) => {
+          const existingIds = new Set(current.map((shift) => shift.id));
+          const newRows = createdRows.filter((shift) => shift?.id && !existingIds.has(shift.id));
+          return [...newRows, ...current];
+        });
+      }
+      await queryClient.refetchQueries({ queryKey: ['allSchedules'] });
     },
   });
 
