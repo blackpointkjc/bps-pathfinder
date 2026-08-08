@@ -18,19 +18,20 @@ const displayName = user => `${user?.rank || 'Officer'} ${user?.last_name || use
 
 function eligibleSupervisors(person, users, platoon) {
   const personRank = rankIndex(person.rank);
+  const nextRankIndex = personRank - 1;
+  if (nextRankIndex < 0) return [];
+  const requiredRank = RANKS[nextRankIndex];
   return users.filter(candidate => {
     if (candidate.id === person.id || !isOperational(candidate)) return false;
-    if (rankIndex(candidate.rank) >= personRank) return false;
+    if (candidate.rank !== requiredRank) return false;
     if (COMMAND_RANKS.has(candidate.rank)) return true;
     return platoon && candidate.platoon === platoon;
-  }).sort((a,b) => rankIndex(b.rank) - rankIndex(a.rank) || Number(a.unit_number || 9999) - Number(b.unit_number || 9999));
+  }).sort((a,b) => Number(a.unit_number || 9999) - Number(b.unit_number || 9999));
 }
 
 function nearestSupervisor(person, users, platoon) {
   const eligible = eligibleSupervisors(person, users, platoon);
-  if (!eligible.length) return null;
-  const desiredRank = Math.max(0, rankIndex(person.rank) - 1);
-  return eligible.find(u => rankIndex(u.rank) === desiredRank) || eligible[0];
+  return eligible[0] || null;
 }
 
 function nextSupervisor(supervisor, users, platoon) {
@@ -87,15 +88,16 @@ export default function AdminPlatoonAssignments() {
         const sameRank = belowCommand.filter(u => u.rank === rank);
         sameRank.forEach((u, idx) => assignment.set(u.id, idx % 2 === 0 ? 'A' : 'B'));
       }
+      const projected = operational.map(u => ({ ...u, platoon: COMMAND_RANKS.has(u.rank) ? 'Command' : (assignment.get(u.id) || u.platoon || 'A') }));
+      const supervisorLoads = new Map();
       for (const person of operational) {
-        if (COMMAND_RANKS.has(person.rank)) {
-          const supervisor = nearestSupervisor(person, operational, 'Command');
-          await saveOne(person, { platoon:'Command', supervisor_id:supervisor?.id || '' });
-          continue;
+        const platoon = COMMAND_RANKS.has(person.rank) ? 'Command' : (assignment.get(person.id) || 'A');
+        const candidates = eligibleSupervisors({ ...person, platoon }, projected, platoon);
+        let supervisor = null;
+        if (candidates.length) {
+          supervisor = [...candidates].sort((a,b) => (supervisorLoads.get(a.id) || 0) - (supervisorLoads.get(b.id) || 0) || Number(a.unit_number || 9999) - Number(b.unit_number || 9999))[0];
+          supervisorLoads.set(supervisor.id, (supervisorLoads.get(supervisor.id) || 0) + 1);
         }
-        const platoon = assignment.get(person.id) || 'A';
-        const projected = operational.map(u => ({ ...u, platoon: COMMAND_RANKS.has(u.rank) ? 'Command' : (assignment.get(u.id) || u.platoon || 'A') }));
-        const supervisor = nearestSupervisor({ ...person, platoon }, projected, platoon);
         await saveOne(person, { platoon, supervisor_id: supervisor?.id || '' });
       }
     },
