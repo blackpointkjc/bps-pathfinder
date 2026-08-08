@@ -191,8 +191,14 @@ export const playDispatchAlert = () => {
 };
 
 export const playPropertyAlert = () => {
-  if (alertRunning) return;
+  if (alertRunning || dispatchAlertMuted) return;
   alertRunning = true;
+
+  // Property alerts are an attention burst, not an endless alarm. Keep the visual
+  // alert on screen until acknowledged, but stop audio automatically after 6 seconds.
   playBeepTone(1000, 0.5);
-  alertInterval = setInterval(() => playBeepTone(1000, 0.5), 500);
+  alertInterval = setInterval(() => playBeepTone(1000, 0.5), 650);
+  window.setTimeout(() => {
+    if (alertRunning) stopDispatchAlert();
+  }, 6000);
 };
