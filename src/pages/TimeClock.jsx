@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -264,33 +265,11 @@ export default function TimeClock() {
   // Removed auto-trigger of location permission - will request on clock in button click
 
   useEffect(() => {
-    let watchId;
-    
-    if (activeEntry && !isAdmin) {
-      watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          setCurrentLocationCoords({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        },
-        (error) => {
-          console.error("Error watching position:", error);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 30000,
-          maximumAge: 10000
-        }
-      );
-    }
-
-    return () => {
-      if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-    };
-  }, [activeEntry, isAdmin]);
+    if (isAdmin) return undefined;
+    return subscribeLiveLocation((fix) => {
+      setCurrentLocationCoords({ lat: fix.latitude, lng: fix.longitude });
+    });
+  }, [isAdmin]);
 
   const requestLocationPermission = async () => {
     // Admin bypasses location check entirely IF NOT a special event
@@ -306,16 +285,10 @@ export default function TimeClock() {
     setGeoError(null);
 
     try {
-      const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        });
-      });
-
-      const userLat = position.coords.latitude;
-      const userLng = position.coords.longitude;
+      const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 10000 });
+      const userLat = fix.latitude;
+      const userLng = fix.longitude;
+      const position = { coords: { latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy }, timestamp: fix.timestamp };
       setUserCoords({ lat: userLat, lng: userLng, position });
       setLocationPermissionGranted(true);
       setGeoError(null);
