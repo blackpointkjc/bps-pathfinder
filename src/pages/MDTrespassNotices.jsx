@@ -54,9 +54,9 @@ export default function MDTrespassNotices() {
     initialData: [],
   });
 
-  const getOfficerSignature = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
-    if (!officer) return email;
+  const getOfficerSignature = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    if (!officer) return String(officerRef || 'Unknown Officer');
     
     const rank = officer.rank || '';
     const lastName = officer.last_name || '';
@@ -137,8 +137,8 @@ export default function MDTrespassNotices() {
     initialData: [],
   });
 
-  const getOfficerIdentifier = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
+  const getOfficerIdentifier = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
     if (officer?.last_name && officer?.unit_number) {
       return `${officer.last_name} - Unit ${officer.unit_number}`;
     }
@@ -301,7 +301,7 @@ export default function MDTrespassNotices() {
     
     const siteLocation = locations?.find(loc => loc.site_name === notice.location);
     const displayLocation = siteLocation ? `${siteLocation.site_name}: ${siteLocation.address}` : notice.location;
-    const officer = allUsers?.find(u => u.email === notice.created_by);
+    const officer = allUsers?.find(u => String(u.id) === String(notice.created_by_id || notice.created_by) || String(u.email || '').toLowerCase() === String(notice.created_by || '').toLowerCase());
     const officerFullName = officer ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() : 'Officer';
     
     printWindow.document.write(`
@@ -489,7 +489,7 @@ export default function MDTrespassNotices() {
       notice.location?.toLowerCase().includes(query) ||
       notice.subject_id?.toLowerCase().includes(query) ||
       notice.vehicle_info?.toLowerCase().includes(query) ||
-      getOfficerIdentifier(notice.created_by).toLowerCase().includes(query)
+      getOfficerIdentifier(notice.created_by_id || notice.created_by).toLowerCase().includes(query)
     );
   }) || [];
 
@@ -501,7 +501,7 @@ export default function MDTrespassNotices() {
       notice.location?.toLowerCase().includes(query) ||
       notice.subject_id?.toLowerCase().includes(query) ||
       notice.vehicle_info?.toLowerCase().includes(query) ||
-      getOfficerIdentifier(notice.created_by).toLowerCase().includes(query)
+      getOfficerIdentifier(notice.created_by_id || notice.created_by).toLowerCase().includes(query)
     );
   }) || [];
 
@@ -780,7 +780,7 @@ export default function MDTrespassNotices() {
                           <div className="mt-4 pt-4 border-t-2 border-slate-300">
                             <p className="text-xs text-slate-500 mb-2">Officer Signature:</p>
                             <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                              {getOfficerSignature(notice.created_by)}
+                              {getOfficerSignature(notice.created_by_id || notice.created_by)}
                             </p>
                           </div>
                         </CardContent>
