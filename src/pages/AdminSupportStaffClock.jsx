@@ -35,7 +35,7 @@ export default function AdminSupportStaffClock() {
       return records || [];
     },
     enabled: hasAccess && !!user?.email,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
     initialData: [],
   });
 
@@ -50,8 +50,8 @@ export default function AdminSupportStaffClock() {
       officer_email: user.email,
       clock_in: new Date().toISOString(),
       location: 'Office - Administrative',
-      clock_in_latitude: 0,
-      clock_in_longitude: 0,
+      clock_in_latitude: null,
+      clock_in_longitude: null,
       on_break: false,
       break_periods: [],
     }),
@@ -67,8 +67,8 @@ export default function AdminSupportStaffClock() {
       }
       return base44.entities.TimeEntry.update(activeEntry.id, {
         clock_out: new Date().toISOString(),
-        clock_out_latitude: 0,
-        clock_out_longitude: 0,
+        clock_out_latitude: null,
+        clock_out_longitude: null,
         on_break: false,
         break_started_at: null,
         break_periods: periods,
