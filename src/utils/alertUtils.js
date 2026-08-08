@@ -73,6 +73,28 @@ export const evaluatePropertyMatch = (call, property, nearbyFeet = 100) => {
     : null;
 };
 
+export const locationToMonitoredProperty = (location) => {
+  if (!location?.property_monitoring_enabled) return null;
+  const polygon = Array.isArray(location.property_monitoring_polygon)
+    ? location.property_monitoring_polygon.map(point => Array.isArray(point) ? point : [Number(point.lat), Number(point.lng)]).filter(pair => pair.every(Number.isFinite))
+    : [];
+  return {
+    id: location.id,
+    location_id: location.id,
+    name: location.site_name,
+    address: location.address,
+    latitude: Number(location.latitude),
+    longitude: Number(location.longitude),
+    enabled: location.active !== false && location.property_monitoring_enabled === true,
+    boundary_type: location.property_monitoring_boundary_type || (polygon.length >= 3 ? 'polygon' : 'circle'),
+    radiusMeters: Number(location.property_monitoring_radius_meters || 500),
+    polygon,
+    description: location.property_monitoring_description || '',
+  };
+};
+
+export const monitoredPropertiesFromLocations = (locations = []) => locations.map(locationToMonitoredProperty).filter(Boolean);
+
 export const findPropertyMatch = (call, monitoredProperties, nearbyFeet = 100) => {
   const matches = (monitoredProperties || [])
     .map(property => evaluatePropertyMatch(call, property, nearbyFeet))
