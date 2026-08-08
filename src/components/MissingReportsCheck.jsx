@@ -13,7 +13,7 @@ const officerLabel = officer => {
   return [rank, last].filter(Boolean).join(' ') || officer?.email || 'Unknown officer';
 };
 
-export default function MissingReportsCheck({ schedules, filteredUsers, weekStart, weekEnd }) {
+export default function MissingReportsCheck({ schedules, allUsers = [], filteredUsers = [], weekStart, weekEnd }) {
   const currentWeekStart = weekStart || startOfWeek(new Date(), { weekStartsOn: 0 });
   const currentWeekEnd = weekEnd || endOfWeek(new Date(), { weekStartsOn: 0 });
 
@@ -24,21 +24,33 @@ export default function MissingReportsCheck({ schedules, filteredUsers, weekStar
   });
 
   const checks = useMemo(() => {
-    if (!schedules || !filteredUsers) return [];
+    if (!schedules) return [];
     const start = format(currentWeekStart, 'yyyy-MM-dd');
     const end = format(currentWeekEnd, 'yyyy-MM-dd');
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const usersByEmail = new Map(filteredUsers.map(user => [String(user.email || '').toLowerCase(), user]));
+    const usersByEmail = new Map((allUsers.length ? allUsers : filteredUsers).map(user => [String(user.email || '').toLowerCase(), user]));
+
+    const shiftHasEnded = shift => {
+      if (!shift?.shift_date || !shift?.start_time || !shift?.end_time) return false;
+      const [startHour = 0, startMinute = 0] = String(shift.start_time).split(':').map(Number);
+      const [endHour = 0, endMinute = 0] = String(shift.end_time).split(':').map(Number);
+      const startDateTime = new Date(`${shift.shift_date}T${String(startHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}:00`);
+      const endDateTime = new Date(`${shift.shift_date}T${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}:00`);
+      const overnight = endHour * 60 + endMinute <= startHour * 60 + startMinute;
+      if (overnight) endDateTime.setDate(endDateTime.getDate() + 1);
+      return Number.isFinite(startDateTime.getTime()) && Number.isFinite(endDateTime.getTime()) && Date.now() >= endDateTime.getTime();
+    };
 
     return schedules
-      .filter(shift => shift.shift_date >= start && shift.shift_date <= end && shift.shift_date < today && shift.officer_email && shift.officer_email !== 'OPEN')
+      .filter(shift => shift.shift_date >= start && shift.shift_date <= end && shiftHasEnded(shift) && shift.officer_email && shift.officer_email !== 'OPEN')
       .map(shift => {
         const email = String(shift.officer_email || '').toLowerCase();
         const officer = usersByEmail.get(email);
         const matching = reports
           .filter(report => {
-            const creator = String(report.created_by || report.officer_email || report.created_by_email || '').toLowerCase();
-            return creator === email && report.report_date === shift.shift_date && normalizeSite(report.location) === normalizeSite(shift.location);
+            const sameOfficer = officer?.id
+              ? String(report.created_by_id || '') === String(officer.id)
+              : false;
+            return sameOfficer && report.report_date === shift.shift_date && normalizeSite(report.location) === normalizeSite(shift.location);
           })
           .sort((a, b) => new Date(b.updated_date || b.created_date || 0) - new Date(a.updated_date || a.created_date || 0))[0];
 
@@ -65,7 +77,7 @@ export default function MissingReportsCheck({ schedules, filteredUsers, weekStar
         };
       })
       .sort((a, b) => b.date.localeCompare(a.date) || a.officer.localeCompare(b.officer));
-  }, [schedules, filteredUsers, reports, currentWeekStart, currentWeekEnd]);
+  }, [schedules, allUsers, filteredUsers, reports, currentWeekStart, currentWeekEnd]);
 
   const counts = checks.reduce((acc, item) => {
     acc[item.status] = (acc[item.status] || 0) + 1;
