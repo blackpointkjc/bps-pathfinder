@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Shield, Radio, Map as MapIcon, RefreshCw, Plus, Search, Clock3, MessageSquarePlus, AlertTriangle, History, Megaphone, Activity, Users, Wifi, Keyboard, Navigation } from 'lucide-react';
 import { lookupDistrict } from '@/utils/districtLookup';
 import { createPageUrl } from '../utils';
-import { findPropertyMatch, stopAllAlerts } from '@/utils/alertUtils';
+import { findPropertyMatch, monitoredPropertiesFromLocations, stopAllAlerts } from '@/utils/alertUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
 import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
@@ -124,8 +124,8 @@ export default function DispatchCenter() {
 
     const loadMonitoredProperties = async () => {
         try {
-            const props = await base44.entities.MonitoredProperty.list();
-            setMonitoredProperties(props?.filter(p => p.enabled) || []);
+            const locations = await base44.entities.Location.list('site_name');
+            setMonitoredProperties(monitoredPropertiesFromLocations(locations || []));
         } catch (error) {
             console.error('Error loading monitored properties:', error);
         }
