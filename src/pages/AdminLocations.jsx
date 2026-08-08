@@ -94,6 +94,11 @@ export default function AdminLocations() {
     notes: "",
     geofence_enabled: false,
     geofence_radius_meters: 100,
+    property_monitoring_enabled: false,
+    property_monitoring_boundary_type: 'circle',
+    property_monitoring_radius_meters: 500,
+    property_monitoring_polygon: [],
+    property_monitoring_description: '',
   });
   const [geocoding, setGeocoding] = useState(false);
   const [mapCenter, setMapCenter] = useState([37.5407, -77.4360]); // Richmond, VA default
@@ -315,6 +320,11 @@ export default function AdminLocations() {
       notes: location.notes || "",
       geofence_enabled: location.geofence_enabled || false,
       geofence_radius_meters: location.geofence_radius_meters || 100,
+      property_monitoring_enabled: location.property_monitoring_enabled || false,
+      property_monitoring_boundary_type: location.property_monitoring_boundary_type || 'circle',
+      property_monitoring_radius_meters: location.property_monitoring_radius_meters || 500,
+      property_monitoring_polygon: location.property_monitoring_polygon || [],
+      property_monitoring_description: location.property_monitoring_description || '',
     });
     if (location.latitude && location.longitude) {
       setMapCenter([location.latitude, location.longitude]);
@@ -993,6 +1003,44 @@ export default function AdminLocations() {
                     <p className="text-xs text-green-700">
                       Officers will trigger an alert when they move more than {formData.geofence_radius_meters}m from the site center while clocked in.
                     </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {formData.latitude && formData.longitude && !formData.is_special_event && (
+              <div className="rounded-xl border border-blue-500/30 bg-[#0b1d31] p-4 space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <Label className="font-semibold text-blue-200 flex items-center gap-2">
+                      <MapPin className="w-4 h-4" /> Property Call Monitoring
+                    </Label>
+                    <p className="text-xs text-slate-400 mt-1">Use this managed location as a CAD property-alert zone.</p>
+                  </div>
+                  <Checkbox checked={formData.property_monitoring_enabled} onCheckedChange={(checked) => setFormData({...formData, property_monitoring_enabled: checked})} />
+                </div>
+                {formData.property_monitoring_enabled && (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <Label className="text-slate-300">Monitoring Boundary</Label>
+                      <Select value={formData.property_monitoring_boundary_type || 'circle'} onValueChange={(value) => setFormData({...formData, property_monitoring_boundary_type: value})}>
+                        <SelectTrigger className="mt-1 bg-[#0e2138] border-slate-700 text-white"><SelectValue /></SelectTrigger>
+                        <SelectContent><SelectItem value="circle">Circle / Radius</SelectItem><SelectItem value="polygon">Saved Polygon</SelectItem></SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-slate-300">Alert Radius (meters)</Label>
+                      <Input type="number" min="25" max="10000" value={formData.property_monitoring_radius_meters || 500} onChange={(e) => setFormData({...formData, property_monitoring_radius_meters: parseInt(e.target.value) || 500})} disabled={formData.property_monitoring_boundary_type === 'polygon'} className="mt-1" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label className="text-slate-300">Monitoring Notes</Label>
+                      <Textarea value={formData.property_monitoring_description || ''} onChange={(e) => setFormData({...formData, property_monitoring_description: e.target.value})} placeholder="Property monitoring notes or special instructions" className="mt-1" />
+                    </div>
+                    {formData.property_monitoring_boundary_type === 'polygon' && (
+                      <div className="md:col-span-2 rounded-lg border border-slate-700 bg-slate-900/60 p-3 text-xs text-slate-400">
+                        {formData.property_monitoring_polygon?.length >= 3 ? `Saved polygon: ${formData.property_monitoring_polygon.length} points.` : 'No polygon is saved yet. This location will use its center/radius until a polygon is added.'}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
