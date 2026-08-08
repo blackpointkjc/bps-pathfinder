@@ -55,7 +55,7 @@ export default function ManageClients() {
   const { data: clientUsers = [] } = useQuery({
     queryKey: ['clientUsers'],
     queryFn: async () => {
-      const allUsers = await base44.entities.User.list(undefined, 1000) || [];
+      const allUsers = await base44.entities.User.list() || [];
       return allUsers
         .filter(u => {
           const roles = (u.additional_roles || []).map(r => String(r).toLowerCase());
