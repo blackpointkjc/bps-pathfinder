@@ -3233,7 +3233,12 @@ Return ONLY a JSON array of suggestion objects with this structure:
 
               completedEntries.forEach(entry => {
                 const email = entry.officer_email;
-                const weekKey = format(startOfWeek(new Date(entry.clock_in), { weekStartsOn: 0 }), 'yyyy-MM-dd');
+                const clockDate = new Date(entry.clock_in);
+                const daysSinceFriday = (clockDate.getDay() + 2) % 7;
+                const payrollWeekStart = new Date(clockDate);
+                payrollWeekStart.setDate(payrollWeekStart.getDate() - daysSinceFriday);
+                payrollWeekStart.setHours(0, 0, 0, 0);
+                const weekKey = format(payrollWeekStart, 'yyyy-MM-dd');
                 if (!workedByOfficerWeek[email]) workedByOfficerWeek[email] = {};
                 workedByOfficerWeek[email][weekKey] = (workedByOfficerWeek[email][weekKey] || 0) + entryHours(entry);
               });
