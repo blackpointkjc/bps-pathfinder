@@ -11,7 +11,7 @@ import { Clock, MapPin, CheckCircle, XCircle, Navigation, AlertCircle, Calendar 
 import { generateTimeClockPrint } from "../components/TimeClockPrintView";
 import { format, subWeeks, startOfWeek, endOfWeek, subDays, isAfter } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Circle, Polygon, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
@@ -709,17 +709,18 @@ export default function TimeClock() {
                           />
                           <MapUpdater center={[currentLocationCoords.lat, currentLocationCoords.lng]} />
                           <Marker position={[currentLocationCoords.lat, currentLocationCoords.lng]} />
-                          {activeEntry.clock_in_latitude && activeEntry.clock_in_longitude && !isSpecialAssignment(activeEntry.location) && (
-                            <Circle
-                              center={[activeEntry.clock_in_latitude, activeEntry.clock_in_longitude]}
-                              radius={402}
-                              pathOptions={{
-                                color: 'green',
-                                fillColor: 'green',
-                                fillOpacity: 0.1
-                              }}
-                            />
-                          )}
+                          {(() => {
+                            const activeSiteName = activeEntry.location?.split(' - ')[0]?.trim();
+                            const activeSite = locations?.find(loc => loc.site_name === activeSiteName);
+                            const polygon = activeSite?.geofence_polygon || [];
+                            if (polygon.length >= 3) {
+                              return <Polygon positions={polygon.map(point => [Number(point.lat), Number(point.lng)])} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.12, weight: 3 }} />;
+                            }
+                            if (activeSite?.latitude && activeSite?.longitude) {
+                              return <Circle center={[activeSite.latitude, activeSite.longitude]} radius={activeSite.geofence_radius_meters || 100} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.08 }} />;
+                            }
+                            return null;
+                          })()}
                         </MapContainer>
                       </div>
                       <div className="p-3 bg-blue-50 border-t border-blue-200">
@@ -728,8 +729,8 @@ export default function TimeClock() {
                           GPS: {currentLocationCoords.lat.toFixed(6)}, {currentLocationCoords.lng.toFixed(6)}
                         </p>
                         {!isSpecialAssignment(activeEntry.location) && (
-                          <p className="text-xs text-blue-700 mt-1">
-                            Green circle shows 0.25 mile radius from clock-in location
+                          <p className="text-xs text-amber-300 mt-1">
+                            Gold boundary is the approved property geofence used for clock-in, geofence alerts, and property-call monitoring.
                           </p>
                         )}
                       </div>
