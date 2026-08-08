@@ -777,87 +777,53 @@ export default function Layout({ children, currentPageName }) {
     let cancelled = false;
 
     const monitor = async () => {
+      if (propertyAlert) return;
       try {
-        const [calls, properties, existingAlerts] = await Promise.all([
-          base44.entities.DispatchCall.list('-created_date', 300),
-          base44.entities.Location.list('site_name').then(monitoredPropertiesFromLocations),
-          // Load acknowledged records too. Otherwise the same still-active call can be
-          // recreated as a brand-new alert after page navigation or app remount.
-          base44.entities.PropertyAlert.list('-created_date', 1000).catch(() => []),
+        // Property matching/creation now happens server-side during CAD ingestion.
+        // The shell only needs the newest unacknowledged alert and its two related rows.
+        const alerts = await base44.entities.PropertyAlert.filter({ acknowledged: false }, '-created_date', 20).catch(() => []);
+        const record = alerts?.[0];
+        if (!record || cancelled) return;
+        const [callRows, locationRows] = await Promise.all([
+          base44.entities.DispatchCall.filter({ id: record.callId }).catch(() => []),
+          base44.entities.Location.filter({ id: record.propertyId }).catch(() => []),
         ]);
         if (cancelled) return;
-        const existingAlertMap = new Map();
-        // Results are newest-first. Keep the newest record for each call/property pair
-        // so an old duplicate can never override a newer acknowledged record.
-        for (const item of existingAlerts || []) {
-          const alertKey = `${item.callId}:${item.propertyId}`;
-          if (!existingAlertMap.has(alertKey)) existingAlertMap.set(alertKey, item);
-        }
-        const activeCalls = (calls || []).filter(call => !['Cleared', 'Cancelled'].includes(call.status));
-        const matches = [];
-        for (const call of activeCalls) {
-          const match = findPropertyMatch(call, properties || [], 100);
-          if (!match) continue;
-          const key = `${call.id}:${match.property.id}`;
-          matches.push(key);
-          if (alertedPropertyKeys.current.has(key)) continue;
-          const existingRecord = existingAlertMap.get(key);
-          // Once this call/property pair has been acknowledged, do not recreate or
-          // re-sound it while the same CAD call remains active.
-          if (existingRecord?.acknowledged === true) continue;
-          const alert = {
-            call,
-            property: match.property,
-            relation: existingRecord?.relation || match.relation,
-            distanceFeet: Math.round(existingRecord ? Number(existingRecord.distanceMeters || 0) / 0.3048 : (match.distanceFeet || 0)),
-            key,
-          };
-          if (!existingRecord) {
-            try {
-              await base44.entities.PropertyAlert.create({
-                callId: call.id,
-                cadNumber: call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || '',
-                propertyId: match.property.id,
-                propertyName: match.property.name,
-                callIncident: call.incident,
-                callLocation: call.location,
-                distanceMeters: Number(match.distanceMeters || 0),
-                relation: match.relation,
-                acknowledged: false,
-                description: match.relation === 'inside' ? 'Call is inside the monitored property boundary.' : `Call is within ${Math.round(match.distanceFeet || 0)} feet of the property boundary.`,
-              });
-            } catch (error) {
-              // Do not mark the pair handled if persistence failed. The next realtime
-              // event/poll must retry until the active-property alert exists.
-              console.warn('Unable to create property alert; will retry:', error?.message);
-              continue;
-            }
-          }
-          alertedPropertyKeys.current.add(key);
-          if (!propertyAlert) {
-            setPropertyAlert(alert);
-            playPropertyAlert();
-          }
-          break;
-        }
-        alertedPropertyKeys.current = new Set([...alertedPropertyKeys.current].filter(key => matches.includes(key)));
+        const call = callRows?.[0];
+        const location = locationRows?.[0];
+        if (!call || !location || ['Cleared', 'Cancelled'].includes(call.status)) return;
+        const key = `${call.id}:${location.id}`;
+        const relation = String(record.description || '').toLowerCase().includes('inside') ? 'inside' : 'nearby';
+        setPropertyAlert({
+          call,
+          property: {
+            id: location.id,
+            location_id: location.id,
+            name: location.site_name || record.propertyName || 'Monitored Property',
+            address: location.address || '',
+          },
+          relation,
+          distanceFeet: Math.round(Number(record.distanceMeters || 0) / 0.3048),
+          key,
+        });
+        playPropertyAlert();
       } catch (error) {
-        console.warn('Property monitor check failed:', error?.message);
+        console.warn('Property alert display check failed:', error?.message);
       }
     };
 
     monitor();
-    const id = setInterval(monitor, 10000);
-    const unsubscribeCalls = base44.entities.DispatchCall.subscribe(event => {
+    const id = setInterval(monitor, 30000);
+    const unsubscribeAlerts = base44.entities.PropertyAlert.subscribe(event => {
       if (event?.type === 'create' || event?.type === 'update') monitor();
     });
-    const refreshOnFocus = () => monitor();
+    const refreshOnFocus = () => { if (!document.hidden) monitor(); };
     window.addEventListener('focus', refreshOnFocus);
     document.addEventListener('visibilitychange', refreshOnFocus);
     return () => {
       cancelled = true;
       clearInterval(id);
-      unsubscribeCalls?.();
+      unsubscribeAlerts?.();
       window.removeEventListener('focus', refreshOnFocus);
       document.removeEventListener('visibilitychange', refreshOnFocus);
     };
