@@ -535,7 +535,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    return Response.json({ success: true, active: incoming.length, created, updated, removed, duplicates_removed: duplicatesRemoved, synced_at: new Date().toISOString(), duration_ms: Date.now() - startedAt });
+    const propertyAlertsCreated = await reconcilePropertyAlerts(base44).catch(error => {
+      console.error('Property alert reconciliation failed:', error);
+      return 0;
+    });
+
+    return Response.json({ success: true, active: incoming.length, created, updated, removed, duplicates_removed: duplicatesRemoved, property_alerts_created: propertyAlertsCreated, synced_at: new Date().toISOString(), duration_ms: Date.now() - startedAt });
     } finally {
       await releaseIngestionLease(base44, lease);
     }
