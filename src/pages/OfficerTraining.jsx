@@ -266,23 +266,23 @@ export default function OfficerTraining() {
   const overdueCount = assignments.filter(a => a.due_date && isPast(new Date(a.due_date)) && a.status !== 'approved').length;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 p-3 sm:p-4 md:p-5">
+      <div className="mx-auto w-full min-w-0 space-y-4" style={{ maxWidth: '1180px' }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 sm:h-11 sm:w-11">
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">My Training & Compliance</h1>
+              <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">My Training & Compliance</h1>
             <p className="text-slate-500 text-sm">All training modules, certifications, and compliance records</p>
             </div>
           </div>
           <Link
             to={createPageUrl("MyPerformanceAnalytics")}
-            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium bg-blue-50 border border-blue-200 rounded-lg px-3 py-2"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 sm:w-auto"
           >
             <BarChart3 className="w-4 h-4" />
             View My Performance <ChevronRight className="w-4 h-4" />
@@ -290,27 +290,27 @@ export default function OfficerTraining() {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
           <Card className="border-none shadow-sm bg-amber-50">
-            <CardContent className="p-4 text-center">
+            <CardContent className="p-3 text-center sm:p-4">
               <p className="text-3xl font-bold text-amber-600">{pendingModules.length}</p>
               <p className="text-xs text-slate-600 mt-1">Modules Pending</p>
             </CardContent>
           </Card>
           <Card className="border-none shadow-sm bg-green-50">
-            <CardContent className="p-4 text-center">
+            <CardContent className="p-3 text-center sm:p-4">
               <p className="text-3xl font-bold text-green-600">{completedModules.length}</p>
               <p className="text-xs text-slate-600 mt-1">Modules Completed</p>
             </CardContent>
           </Card>
           <Card className="border-none shadow-sm bg-blue-50">
-            <CardContent className="p-4 text-center">
+            <CardContent className="p-3 text-center sm:p-4">
               <p className="text-3xl font-bold text-blue-600">{completedAssignments.length}</p>
               <p className="text-xs text-slate-600 mt-1">Certifications Approved</p>
             </CardContent>
           </Card>
           <Card className={`border-none shadow-sm ${overdueCount > 0 ? 'bg-red-50' : 'bg-slate-50'}`}>
-            <CardContent className="p-4 text-center">
+            <CardContent className="p-3 text-center sm:p-4">
               <p className={`text-3xl font-bold ${overdueCount > 0 ? 'text-red-600' : 'text-slate-400'}`}>{overdueCount}</p>
               <p className="text-xs text-slate-600 mt-1">Overdue Items</p>
             </CardContent>
@@ -326,26 +326,26 @@ export default function OfficerTraining() {
 
         {/* Main Tabs */}
         <Tabs defaultValue="modules">
-          <TabsList className="bg-white border w-full md:w-auto">
-            <TabsTrigger value="modules" className="gap-2">
+          <TabsList className="grid h-auto w-full grid-cols-1 gap-1 border bg-white p-1 sm:grid-cols-2 lg:w-auto">
+            <TabsTrigger value="modules" className="min-w-0 gap-2 whitespace-normal py-2 text-left">
               <GraduationCap className="w-4 h-4" />
               Training Modules {pendingModules.length > 0 && <Badge className="bg-amber-500 text-white text-xs ml-1">{pendingModules.length}</Badge>}
             </TabsTrigger>
-            <TabsTrigger value="compliance" className="gap-2">
+            <TabsTrigger value="compliance" className="min-w-0 gap-2 whitespace-normal py-2 text-left">
               <CheckCircle className="w-4 h-4" />
               Certifications & Compliance {activeAssignments.length > 0 && <Badge className="bg-blue-500 text-white text-xs ml-1">{activeAssignments.length}</Badge>}
             </TabsTrigger>
           </TabsList>
 
           {/* ---- MODULES TAB ---- */}
-          <TabsContent value="modules" className="space-y-6 mt-4">
+          <TabsContent value="modules" className="mt-4 space-y-4">
             {pendingModules.length > 0 && (
               <div>
                 <h2 className="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
                   <div className="w-2 h-5 bg-amber-500 rounded-full" />
                   Pending Training
                 </h2>
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid min-w-0 gap-3 lg:grid-cols-2">
                   {pendingModules.map(module => (
                     <Card key={module.id} className="border border-slate-200 shadow-sm hover:shadow-md transition-all">
                       <div className={`h-1.5 ${module.required ? 'bg-red-500' : 'bg-amber-400'}`} />
@@ -384,7 +384,7 @@ export default function OfficerTraining() {
                   <div className="w-2 h-5 bg-green-500 rounded-full" />
                   Completed Modules
                 </h2>
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid min-w-0 gap-3 lg:grid-cols-2">
                   {completedModules.map(module => {
                     const completion = myCompletions.find(c => c.training_module_id === module.id && c.completed);
                     return (
