@@ -703,7 +703,11 @@ export default function Layout({ children, currentPageName }) {
 
   useEffect(() => {
     if (!currentPageName) return;
-    const pageCenter = (PAGE_TO_CENTERS[currentPageName] || []).find(center => ['cad', 'officer', 'admin'].includes(center));
+    const available = allowedCenters(user);
+    const pageCenters = (PAGE_TO_CENTERS[currentPageName] || []).filter(center => available.includes(center));
+    // Preserve the page for the workspace the user is actually in. Shared pages
+    // should not overwrite every center that happens to expose the same route.
+    const pageCenter = pageCenters.includes(activeCenter) ? activeCenter : pageCenters[0];
     if (pageCenter) {
       centerLastPagesRef.current[pageCenter] = currentPageName;
       sessionStorage.setItem('bps-mobile-center-pages', JSON.stringify(centerLastPagesRef.current));
