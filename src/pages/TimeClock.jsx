@@ -492,14 +492,7 @@ export default function TimeClock() {
       return;
     }
 
-    // Admins bypass location check
-    if (isAdmin) {
-      if (confirm(`Switch from ${activeEntry.location.split(' - ')[0]} to ${selectedNewSite}?\n\nThis will clock you out of your current site and clock you in to the new site.`)) {
-        switchSiteMutation.mutate({ newSite: selectedNewSite, currentPosition: null });
-      }
-      return;
-    }
-
+    // Site switching uses the same canonical GPS/geofence rule for every user, including admins.
     setSwitchingSite(true);
     setGeoError(null);
 
