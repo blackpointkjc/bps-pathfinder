@@ -196,7 +196,7 @@ export default function TimeClock() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
-      queryClient.invalidateQueries({ queryKey: ['recentTimeEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
     },
   });
 
@@ -220,7 +220,7 @@ export default function TimeClock() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
-      queryClient.invalidateQueries({ queryKey: ['recentTimeEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
       setNotes("");
       setSelectedLocation("");
       setVerifyingLocation(false);
@@ -292,7 +292,7 @@ export default function TimeClock() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
-      queryClient.invalidateQueries({ queryKey: ['recentTimeEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
       setSwitchingSite(false);
       setSelectedNewSite("");
       setGeoError(null); // Clear any geo error from previous operations
