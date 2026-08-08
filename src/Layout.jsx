@@ -542,7 +542,6 @@ export default function Layout({ children, currentPageName }) {
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
   const [search, setSearch] = useState('');
-  const nightMode = true;
   const [activeCenter, setActiveCenterState] = useState(() => localStorage.getItem('bps-active-center') || 'cad');
   const [unreadCounts, setUnreadCounts] = useState({});
   const mainScrollRef = useRef(null);
