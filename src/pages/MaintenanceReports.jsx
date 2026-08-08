@@ -13,8 +13,6 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
-
 export default function MaintenanceReports() {
   const [showForm, setShowForm] = useState(false);
   const [editingReportId, setEditingReportId] = useState(null);
@@ -40,19 +38,17 @@ export default function MaintenanceReports() {
   });
 
   const { data: activeEntry } = useQuery({
-    queryKey: ['activeTimeEntry'],
+    queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
-      // Fetch the most recent time entry for the user
       const entries = await base44.entities.TimeEntry.filter(
-        { created_by: user.email },
-        '-created_date', // Order by created_date descending
-        1 // Limit to 1 result
+        { officer_email: user.email },
+        '-clock_in',
+        100
       );
-      // Return the entry if it exists and clock_out is null (meaning it's active)
       return entries.find(e => !e.clock_out) || null;
     },
-    enabled: !!user, // Only run this query if user data is available
+    enabled: !!user?.email,
   });
 
   // Get current site name from active entry
@@ -230,9 +226,9 @@ export default function MaintenanceReports() {
     rejected: "bg-red-100 text-red-800 border-red-200", // Added rejected status color
   };
 
-  const getOfficerSignature = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
-    if (!officer) return email;
+  const getOfficerSignature = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    if (!officer) return String(officerRef || 'Unknown Officer');
     
     const rank = officer.rank || '';
     const lastName = officer.last_name || '';
@@ -244,19 +240,12 @@ export default function MaintenanceReports() {
     if (rank && lastName) {
       return `${rank} ${lastName}`;
     }
-    return `${officer?.first_name || ''} ${officer?.last_name || ''}`.trim() || email;
-  };
-
-  const getOfficerName = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
-    return officer?.full_name || email;
+    return `${officer?.first_name || ''} ${officer?.last_name || ''}`.trim() || officer?.email || 'Unknown Officer';
   };
 
   const printReport = (report) => {
     const printWindow = window.open('', '', 'width=850,height=1100');
     
-    const officerName = getOfficerName(report.created_by);
-    const officerSig = getOfficerSignature(report.created_by);
     const reportDate = report.report_date ? format(new Date(report.report_date), 'MMMM d, yyyy h:mm a') : '';
     
     const htmlContent = `
@@ -763,7 +752,7 @@ export default function MaintenanceReports() {
                     <div className="mt-4 pt-4 border-t-2 border-slate-300">
                       <p className="text-xs text-slate-500 mb-2">Officer Signature:</p>
                       <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                        {getOfficerSignature(report.created_by)}
+                        {getOfficerSignature(report.created_by_id)}
                       </p>
                       {report.officer_ip_address && (
                         <p className="text-xs text-slate-400 mt-1">
@@ -773,7 +762,7 @@ export default function MaintenanceReports() {
                     </div>
 
                     <div className="mt-3 flex gap-2">
-                      {report.status === 'rejected' && report.created_by === user?.email && (
+                      {report.status === 'rejected' && String(report.created_by_id || '') === String(user?.id || '') && (
                         <Button
                           onClick={() => editReport(report)}
                           size="sm"
