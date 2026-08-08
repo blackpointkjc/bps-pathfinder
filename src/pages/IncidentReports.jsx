@@ -100,17 +100,17 @@ export default function IncidentReports() {
   const isAdmin = user?.role === 'admin';
 
   const { data: activeEntry } = useQuery({
-    queryKey: ['activeTimeEntry'],
+    queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
       const entries = await base44.entities.TimeEntry.filter(
-        { created_by: user.email },
-        '-created_date',
-        1
+        { officer_email: user.email },
+        '-clock_in',
+        100
       );
       return entries.find(e => !e.clock_out) || null;
     },
-    enabled: !!user,
+    enabled: !!user?.email,
   });
 
   const canSubmit = isAdmin || !!activeEntry;
@@ -133,7 +133,7 @@ export default function IncidentReports() {
     } else {
       // Officers see their own drafts, and submitted reports for their active site
       const officerReports = allReports.filter(report => {
-        const isMyDraft = report.status === 'draft' && report.created_by === user.email;
+        const isMyDraft = report.status === 'draft' && String(report.created_by_id || '') === String(user.id);
         const isSubmittedAtMySite = report.status !== 'draft' && currentSiteName && report.location === currentSiteName;
         return isMyDraft || isSubmittedAtMySite;
       });
@@ -141,7 +141,7 @@ export default function IncidentReports() {
     }
   }, [allReports, currentSiteName, isAdmin, user]);
 
-  const draftReports = reportsPotentiallyVisible.filter(r => r.status === 'draft' && r.created_by === user?.email) || [];
+  const draftReports = reportsPotentiallyVisible.filter(r => r.status === 'draft' && String(r.created_by_id || '') === String(user?.id || '')) || [];
   const submittedReports = reportsPotentiallyVisible.filter(r => r.status !== 'draft') || [];
 
   const { data: locations } = useQuery({
@@ -484,7 +484,7 @@ Provide:
     }
 
     // Only allow officer to edit their own reports
-    if (report.created_by !== user?.email) {
+    if (String(report.created_by_id || '') !== String(user?.id || '')) {
       alert("You can only edit your own reports.");
       return;
     }
@@ -530,9 +530,9 @@ Provide:
     setShowForm(true);
   };
 
-  const getOfficerSignature = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
-    if (!officer) return email;
+  const getOfficerSignature = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    if (!officer) return String(officerRef || 'Unknown Officer');
     
     const rank = officer.rank || '';
     const lastName = officer.last_name || '';
@@ -544,12 +544,17 @@ Provide:
     if (rank && lastName) {
       return `${rank} ${lastName}`;
     }
-    return `${officer?.first_name || ''} ${officer?.last_name || ''}`.trim() || email;
+    return `${officer?.first_name || ''} ${officer?.last_name || ''}`.trim() || officer?.email || 'Unknown Officer';
   };
 
-  const getOfficerFullName = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
-    return officer?.full_name || email;
+  const getOfficerFullName = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    return officer?.full_name || [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || officer?.email || String(officerRef || 'Unknown Officer');
+  };
+
+  const getOfficerEmail = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    return officer?.email || '';
   };
 
   const severityColors = {
@@ -562,8 +567,8 @@ Provide:
   const printReport = (report) => {
     const printWindow = window.open('', '', 'width=850,height=1100');
     
-    const officerName = getOfficerFullName(report.created_by);
-    const officerSig = getOfficerSignature(report.created_by);
+    const officerName = getOfficerFullName(report.created_by_id);
+    const officerSig = getOfficerSignature(report.created_by_id);
     
     // Convert to Zulu time
     const toZulu = (dateString) => {
@@ -604,7 +609,7 @@ Provide:
       police_report_number: esc(report.police_report_number),
       photo_url: esc(report.photo_url),
       officer_ip_address: esc(report.officer_ip_address),
-      created_by: esc(report.created_by),
+      created_by: esc(getOfficerEmail(report.created_by_id)),
       officer_name: esc(officerName),
       officer_sig: esc(officerSig),
     };
@@ -1404,7 +1409,7 @@ Provide:
                           Time of Incident: {report.incident_time || 'N/A'}
                         </p>
                         <p className="text-sm text-slate-600">Location: {report.location}</p>
-                        <p className="text-sm text-slate-600">Reporting Officer: {getOfficerSignature(report.created_by)}</p>
+                        <p className="text-sm text-slate-600">Reporting Officer: {getOfficerSignature(report.created_by_id)}</p>
                       </div>
                     </div>
                     <p className="text-sm text-slate-700 mb-3">{report.description}</p>
@@ -1422,7 +1427,7 @@ Provide:
                       </div>
                     )}
                     <div className="mt-3 flex gap-2">
-                        {report.created_by === user?.email && report.status !== 'approved' && (
+                        {String(report.created_by_id || '') === String(user?.id || '') && report.status !== 'approved' && (
                             <Button
                             onClick={() => handleEditReport(report)}
                             size="sm"
@@ -1447,7 +1452,7 @@ Provide:
                     <div className="mt-4 pt-4 border-t-2 border-slate-300">
                       <p className="text-xs text-slate-500 mb-2">Officer Signature:</p>
                       <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                        {getOfficerSignature(report.created_by)}
+                        {getOfficerSignature(report.created_by_id)}
                       </p>
                       {report.officer_ip_address && (
                         <p className="text-xs text-slate-400 mt-1">
@@ -1460,7 +1465,7 @@ Provide:
                       <span>•</span>
                       <span>Richmond, VA</span>
                       <span>•</span>
-                      <span>Reported by ${report.created_by || 'N/A'}</span>
+                      <span>Reported by ${getOfficerEmail(report.created_by_id) || 'N/A'}</span>
                     </div>
                   </div>
                 ))}
