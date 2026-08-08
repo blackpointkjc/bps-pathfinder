@@ -82,7 +82,6 @@ const CENTER_CONFIG = {
         ['Training & Compliance', 'OfficerTraining', GraduationCap],
         ['Shift Handover', 'ShiftHandover', ClipboardCheck],
         ['Summons', 'Summons', FileText],
-        ['VA Contact Sheet', 'VAContactSheet', Users],
       ]},
     ],
   },
