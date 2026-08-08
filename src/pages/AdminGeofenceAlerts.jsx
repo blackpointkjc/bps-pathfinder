@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Shield, Target, MapPin, Check, AlertTriangle, Clock, User, ZoomIn, ZoomOut, Trash2 } from "lucide-react";
 import { format, parseISO, differenceInMinutes } from "date-fns";
-import { MapContainer, TileLayer, Marker, Circle, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Circle, Polygon, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -102,7 +102,9 @@ export default function AdminGeofenceAlerts() {
 
   const getLocationCoords = (locationName) => {
     const loc = locations?.find(l => l.site_name === locationName);
-    return loc ? { lat: loc.latitude, lng: loc.longitude, radius: loc.geofence_radius_meters || 100 } : null;
+    if (!loc) return null;
+    const polygon = (loc.geofence_polygon || []).map(point => [Number(point.lat), Number(point.lng)]).filter(pair => pair.every(Number.isFinite));
+    return { lat: Number(loc.latitude), lng: Number(loc.longitude), radius: loc.geofence_radius_meters || 100, polygon };
   };
 
   return (
@@ -183,13 +185,15 @@ export default function AdminGeofenceAlerts() {
                               scrollWheelZoom={false}
                             >
                               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
-                              <Circle
-                                center={[locCoords.lat, locCoords.lng]}
-                                radius={locCoords.radius}
-                                pathOptions={{ color: '#22c55e', fillOpacity: 0.1 }}
-                              >
-                                <Popup>Site Center - {alert.location}</Popup>
-                              </Circle>
+                              {locCoords.polygon?.length >= 3 ? (
+                                <Polygon positions={locCoords.polygon} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.12, weight: 3 }}>
+                                  <Popup>Approved property geofence - {alert.location}</Popup>
+                                </Polygon>
+                              ) : (
+                                <Circle center={[locCoords.lat, locCoords.lng]} radius={locCoords.radius} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.08 }}>
+                                  <Popup>Shared fallback geofence - {alert.location}</Popup>
+                                </Circle>
+                              )}
                               <Marker position={[locCoords.lat, locCoords.lng]}>
                                 <Popup>Site Center</Popup>
                               </Marker>
