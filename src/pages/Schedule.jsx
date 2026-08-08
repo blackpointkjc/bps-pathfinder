@@ -88,7 +88,6 @@ export default function Schedule() {
   const today = startOfDay(new Date());
   const weekStart = addDays(today, currentWeekOffset * 5);
   const weekEnd = addDays(weekStart, 4);
-  const publicationWeekStart = startOfWeek(weekStart, { weekStartsOn: 0 });
 
   const { data: openShifts } = useQuery({
     queryKey: ['openShifts', format(weekStart, 'yyyy-MM-dd'), format(weekEnd, 'yyyy-MM-dd')],
