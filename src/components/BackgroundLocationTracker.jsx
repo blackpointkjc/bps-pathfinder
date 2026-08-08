@@ -242,9 +242,7 @@ export default function BackgroundLocationTracker({ user }) {
               siteLocation.latitude,
               siteLocation.longitude
             );
-            const sharedPolygon = (siteLocation.geofence_polygon?.length >= 3
-              ? siteLocation.geofence_polygon
-              : siteLocation.property_monitoring_polygon) || [];
+            const sharedPolygon = siteLocation.geofence_polygon || [];
             const polygonInside = isPointInsideBoundary(lat, lng, sharedPolygon);
             const radius = siteLocation.geofence_radius_meters || 100;
             const outsideGeofence = polygonInside === null ? distance > radius : !polygonInside;
