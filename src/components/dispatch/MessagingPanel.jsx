@@ -8,8 +8,14 @@ import { MessageSquare, Send, X, Megaphone, Radio } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MentionInput from '@/components/chat/MentionInput';
 
-const roleSet = (user) => new Set((user?.additional_roles || []).map(r => String(r).toLowerCase()));
+const roleSet = (user) => new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(r => String(r).toLowerCase()));
 const isDispatchUser = (user) => user?.role === 'admin' || user?.role === 'dispatch' || user?.dispatch_role === true || roleSet(user).has('full_access');
+const isOperationalRecipient = (user) => {
+  const roles = roleSet(user);
+  const userType = String(user?.user_type || user?.account_type || user?.portal_type || '').toLowerCase();
+  const accountStatus = String(user?.account_status || '').toLowerCase();
+  return !roles.has('client') && !roles.has('student') && !roles.has('pending') && !['client', 'student', 'pending'].includes(userType) && accountStatus !== 'pending';
+};
 
 export default function MessagingPanel({ currentUser, units = [], isOpen = true, onClose, embedded = false, inboxOnly = false }) {
   const dispatchMode = !inboxOnly && isDispatchUser(currentUser);
@@ -19,7 +25,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
   const [selectedRecipient, setSelectedRecipient] = useState(inboxOnly ? '' : dispatchMode ? 'team_chat' : 'dispatch');
 
   const recipients = useMemo(() => units.filter(unit => (
-    !unit.termination_date && unit.id !== currentUser?.id && unit.email !== currentUser?.email
+    !unit.termination_date && unit.id !== currentUser?.id && unit.email !== currentUser?.email && isOperationalRecipient(unit)
   )), [units, currentUser?.id, currentUser?.email]);
   const officers = useMemo(() => recipients.filter(unit => roleSet(unit).has('officer')), [recipients]);
 
