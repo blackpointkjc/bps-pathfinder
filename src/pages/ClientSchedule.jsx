@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, ChevronLeft, ChevronRight, MapPin, AlertCircle } from "lucide-react";
+import { Shield, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import { format, addDays, startOfWeek, addWeeks } from "date-fns";
 import { Button } from "@/components/ui/button";
 
@@ -73,16 +73,6 @@ export default function ClientSchedule() {
     },
     enabled: !!user,
   });
-
-  // Check if we should show the warning banner (within 2 days of week start)
-  const shouldShowWarning = useMemo(() => {
-    if (weekStatus?.is_ready) return false;
-    
-    const today = new Date();
-    const twoDaysBeforeWeekStart = addDays(weekStart, -2);
-    
-    return today >= twoDaysBeforeWeekStart;
-  }, [weekStatus, weekStart]);
 
   // Filter schedules to only show if week is marked as ready
   const visibleSchedules = useMemo(() => {
@@ -209,20 +199,6 @@ export default function ClientSchedule() {
             {effectiveLocation}
           </div>
         </div>
-
-        {shouldShowWarning && (
-          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-6 h-6 text-yellow-700" />
-              <div>
-                <p className="font-bold text-yellow-900">Schedule Not Yet Published</p>
-                <p className="text-sm text-yellow-700">
-                  The security schedule for this week is still being finalized by Black Point Protection. Please check back later.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="flex items-center justify-between bg-gradient-to-r from-purple-100 to-blue-100 p-4 rounded-lg border-2 border-purple-400">
           <Button
