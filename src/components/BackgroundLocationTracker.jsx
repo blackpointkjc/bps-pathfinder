@@ -302,13 +302,13 @@ export default function BackgroundLocationTracker({ user }) {
     };
   }, [shouldTrack, shouldPublish, activeEntry, user, locations]);
 
-  // Add beforeunload handler to warn users
+  // All signed-in users are tracked, but only clocked-in users get a close warning.
   useEffect(() => {
-    if (!shouldTrack) return;
+    if (!shouldTrack || !activeEntry) return;
 
     const handleBeforeUnload = (e) => {
       e.preventDefault();
-      e.returnValue = '⚠️ WARNING: You are currently clocked in. Closing this tab will stop location tracking and may result in disciplinary action. Are you sure you want to close?';
+      e.returnValue = '⚠️ WARNING: You are currently clocked in. Closing this tab will stop location tracking. Are you sure you want to close?';
       return e.returnValue;
     };
 
