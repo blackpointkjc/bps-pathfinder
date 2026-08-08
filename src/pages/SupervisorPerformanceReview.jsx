@@ -8,6 +8,7 @@ import { format, parseISO } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { commandDescendants } from "@/utils/platoonChain";
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
@@ -23,11 +24,20 @@ export default function SupervisorPerformanceReview() {
     queryFn: () => base44.auth.me(),
   });
 
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['supervisorPerformanceCommandUsers'],
+    queryFn: () => base44.entities.User.list(),
+    enabled: !!user,
+  });
+
+  const assignedPeople = commandDescendants(user, allUsers);
+  const assignedEmails = new Set(assignedPeople.map(person => String(person.email || '').toLowerCase()).filter(Boolean));
+
   const { data: pendingReviews } = useQuery({
-    queryKey: ['pendingPerformanceReviews'],
+    queryKey: ['pendingPerformanceReviews', user?.id, ...Array.from(assignedEmails).sort()],
     queryFn: async () => {
       const all = await base44.entities.PerformanceReview.list('-review_date');
-      return all.filter(r => r.supervisor_review_pending && !r.supervisor_review_completed);
+      return all.filter(r => assignedEmails.has(String(r.officer_email || '').toLowerCase()) && r.supervisor_review_pending && !r.supervisor_review_completed);
     },
     enabled: user?.additional_roles?.includes('supervisor'),
   });
@@ -268,7 +278,7 @@ export default function SupervisorPerformanceReview() {
             <ClipboardCheck className="w-8 h-8 text-purple-600" />
             Performance Review Tasks
           </h1>
-          <p className="text-slate-600">Review performance with officers and obtain signatures</p>
+          <p className="text-slate-600">Review performance for personnel in your assigned command ({assignedPeople.length} personnel)</p>
         </div>
 
         {selectedReview ? (
