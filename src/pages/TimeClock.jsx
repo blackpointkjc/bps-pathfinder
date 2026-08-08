@@ -113,8 +113,6 @@ export default function TimeClock() {
   const [notes, setNotes] = useState("");
   const [geoError, setGeoError] = useState(null);
   const [verifyingLocation, setVerifyingLocation] = useState(false);
-  const [userCoords, setUserCoords] = useState(null);
-  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
   const [startDate, setStartDate] = useState(format(subWeeks(new Date(), 2), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [clockInCoords, setClockInCoords] = useState(null);
@@ -139,19 +137,6 @@ export default function TimeClock() {
       return allLocations.filter(loc => loc.active);
     },
     enabled: !!user, // ADDED enabled property
-  });
-
-  const { data: mySchedule } = useQuery({
-    queryKey: ['mySchedule', user?.email],
-    queryFn: async () => {
-      if (!user?.email) return [];
-      const today = format(new Date(), 'yyyy-MM-dd');
-      return await base44.entities.Schedule.filter({
-        officer_email: user.email,
-        shift_date: today
-      });
-    },
-    enabled: !!user,
   });
 
   const { data: activeEntry, isLoading } = useQuery({
@@ -194,10 +179,6 @@ export default function TimeClock() {
     return unsubscribe;
   }, [user?.email, queryClient]);
 
-  const saveLocationHistoryMutation = useMutation({
-    mutationFn: (data) => base44.entities.LocationHistory.create(data),
-  });
-
   const clockInMutation = useMutation({
     mutationFn: (data) => base44.entities.TimeEntry.create(data),
     onMutate: async (newEntry) => {
@@ -216,7 +197,6 @@ export default function TimeClock() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries'] });
-      setUserCoords(null);
     },
   });
 
@@ -337,8 +317,7 @@ export default function TimeClock() {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
     const distanceMeters = R * c;
-    const distanceFeet = distanceMeters * 3.28084;
-    return distanceMeters; // Return in meters as per new requirement
+    return distanceMeters;
   };
 
   const isSpecialAssignment = (locationString) => {
@@ -365,8 +344,6 @@ export default function TimeClock() {
       const userLat = fix.latitude;
       const userLng = fix.longitude;
       const position = { coords: { latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy }, timestamp: fix.timestamp };
-      setUserCoords({ lat: userLat, lng: userLng, position });
-      setLocationPermissionGranted(true);
       setGeoError(null);
 
       const location = locations?.find(loc => loc.site_name === selectedLocation);
@@ -383,7 +360,6 @@ export default function TimeClock() {
       } else {
         setGeoError("Unable to access your location. Please enable location services in your browser settings and try again.");
       }
-      setLocationPermissionGranted(false);
       return { verified: false, error: error.message };
     } finally {
       setVerifyingLocation(false);
@@ -697,7 +673,7 @@ export default function TimeClock() {
                       <div className="mt-4 rounded-xl border border-blue-500/25 bg-blue-500/10 p-3">
                         <p className="flex items-start gap-2 text-xs leading-5 text-blue-200">
                           <Navigation className="mt-0.5 h-4 w-4 shrink-0 animate-pulse" />
-                          Your location is being tracked every 10 seconds. Keep this app open to maintain accurate tracking.
+                          Pathfinder is receiving your live device location through the shared location service. Keep location permission enabled for accurate status, geofence, and history updates.
                         </p>
                       </div>
                       <div className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
@@ -810,10 +786,8 @@ export default function TimeClock() {
                     onValueChange={(value) => {
                       setSelectedLocation(value);
                       setGeoError(null);
-                      setUserCoords(null);
-                      if (!isAdmin) {
-                        setLocationPermissionGranted(false);
-                      }
+                                      if (!isAdmin) {
+                                        }
                     }}
                     required
                   >
@@ -1039,7 +1013,7 @@ export default function TimeClock() {
         {!isAdmin && (
           <div className="rounded-xl border border-blue-500/25 bg-blue-500/10 p-4">
             <p className="text-sm leading-6 text-blue-200">
-              <strong>Live Tracking:</strong> Your location is automatically tracked every 10 seconds while clocked in. GPS coordinates are accurate to within 30-50 feet depending on signal strength. Location tracking automatically stops when you clock out.
+              <strong>Live Tracking:</strong> Pathfinder uses one shared device-location service while you are signed in. Current GPS is used for clock-in/geofence verification, and historical location points are recorded on the centralized tracking heartbeat when location permission is available.
             </p>
           </div>
         )}
