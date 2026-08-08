@@ -68,7 +68,7 @@ function MapUpdater({ center }) {
     return () => {
       cancelled = true;
       window.cancelAnimationFrame(frame);
-      try { map.stop?.(); } catch (_) {}
+      try { map.stop?.(); } catch {}
     };
   }, [center?.[0], center?.[1], map]);
   return null;
@@ -204,7 +204,7 @@ export default function TimeClock() {
 
   const clockOutMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.TimeEntry.update(id, data),
-    onMutate: async ({ id, data }) => {
+    onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['activeTimeEntry', user?.email] });
       const previousEntry = queryClient.getQueryData(['activeTimeEntry', user?.email]);
       
@@ -220,7 +220,7 @@ export default function TimeClock() {
         queryClient.setQueryData(['activeTimeEntry', user?.email], context.previousEntry);
       }
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
       setNotes("");
