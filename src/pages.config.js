@@ -169,7 +169,6 @@ import TeamChat from './pages/TeamChat';
 import TimeClock from './pages/TimeClock';
 import TimeRequests from './pages/TimeRequests';
 import TrespassingNotices from './pages/TrespassingNotices';
-import VAContactSheet from './pages/VAContactSheet';
 import VACriminalComplaints from './pages/VACriminalComplaints';
 import VATrespassNotices from './pages/VATrespassNotices';
 import QRPatrolScan from './pages/QRPatrolScan.jsx';
@@ -303,7 +302,6 @@ export const PAGES = {
     "TimeClock": TimeClock,
     "TimeRequests": TimeRequests,
     "TrespassingNotices": TrespassingNotices,
-    "VAContactSheet": VAContactSheet,
     "VACriminalComplaints": VACriminalComplaints,
     "VATrespassNotices": VATrespassNotices,
     "QRPatrolScan": QRPatrolScan,
