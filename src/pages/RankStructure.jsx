@@ -33,10 +33,17 @@ function PersonCard({ person, users }) {
   const supervisor = users.find(u=>u.id===person.supervisor_id);
   const chainAbove = buildChainAbove(person, users);
   return <div className="rounded-xl border border-slate-700 bg-slate-950/70 p-3">
-    <div className="flex items-center gap-3">
-      {person.profile_photo_url ? <img src={person.profile_photo_url} alt="" className="h-10 w-10 rounded-full object-cover"/> : <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-xs font-black">{person.first_name?.[0]}{person.last_name?.[0]}</div>}
-      <div className="min-w-0 flex-1"><div className="truncate font-bold text-white">{displayName(person)}</div><div className="text-xs text-slate-500">Unit {person.unit_number || '—'} · {person.division || 'No division'}</div></div>
-      <Badge className="bg-blue-950 text-blue-300">{person.platoon === 'Command' ? 'Command' : `Platoon ${person.platoon || '—'}`}</Badge>
+    <div className="flex items-start gap-3">
+      {person.profile_photo_url ? <img src={person.profile_photo_url} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover"/> : <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-black">{person.first_name?.[0]}{person.last_name?.[0]}</div>}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+          <div className="min-w-0">
+            <div className="break-words text-base font-black leading-5 text-white sm:text-lg">{displayName(person)}</div>
+            <div className="mt-1 break-words text-xs leading-4 text-slate-400">Unit {person.unit_number || '—'} · {person.division || 'No division'}</div>
+          </div>
+          <Badge className="w-fit shrink-0 bg-blue-950 text-blue-300">{person.platoon === 'Command' ? 'Command' : `Platoon ${person.platoon || '—'}`}</Badge>
+        </div>
+      </div>
     </div>
     <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2"><div className="rounded-lg border border-slate-800 bg-slate-900 p-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Reports To</div><div className="mt-1 font-semibold text-slate-200">{supervisor ? displayName(supervisor) : person.supervisor_name || 'Top of Command'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Chain Above</div><div className="mt-1 font-semibold leading-5 text-slate-200">{chainAbove.length ? chainAbove.map(displayName).join(' → ') : 'Top of Command'}</div></div></div>
   </div>;
