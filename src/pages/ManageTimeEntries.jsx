@@ -66,7 +66,7 @@ export default function ManageTimeEntries() {
       return entries.filter(e => e.officer_email === selectedOfficer);
     },
     enabled: isAdmin || isHR,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const createEntryMutation = useMutation({
