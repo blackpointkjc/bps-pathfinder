@@ -270,7 +270,7 @@ export default function Navigation() {
             const partneredUser = await syncScheduledCadPartnership(user);
             setCurrentUser(partneredUser);
             if (user.status) setUnitStatus(user.status);
-        } catch (e) {}
+        } catch {}
         const fix = getLiveLocation(30000);
         if (fix) {
             setCurrentLocation([fix.latitude, fix.longitude]);
@@ -299,7 +299,7 @@ export default function Navigation() {
                 await handleStatusChange('Enroute');
                 toast.success('Assigned to call — status set to Enroute');
             }
-        } catch (e) {
+        } catch {
             toast.error('Failed to assign');
         } finally {
             setAssigning(false);
@@ -314,7 +314,7 @@ export default function Navigation() {
             await base44.entities.DispatchCall.update(selectedCall.id, { assigned_units: updatedUnits });
             setSelectedCall(prev => ({ ...prev, assigned_units: updatedUnits }));
             toast.success('Unassigned from call');
-        } catch (e) {
+        } catch {
             toast.error('Failed to unassign');
         } finally {
             setAssigning(false);
@@ -545,15 +545,6 @@ export default function Navigation() {
         }
     };
 
-    const loadMonitoredProperties = async () => {
-        try {
-            const locations = await base44.entities.Location.list('site_name');
-            setMonitoredProperties(monitoredPropertiesFromLocations(locations || []));
-        } catch (e) {}
-    };
-
-    const AGENCY_CITY = { RPD: 'Richmond, VA', RFD: 'Richmond, VA', HPD: 'Henrico County, VA', CCPD: 'Chesterfield County, VA', CCFD: 'Chesterfield County, VA' };
-
     const autoGeocodeUnmapped = async (unmapped) => {
         if (!unmapped.length || isGeocoding) return;
         setIsGeocoding(true);
@@ -578,14 +569,7 @@ export default function Navigation() {
     // Geocoding handled by backend "geocodeMissingCalls" automation (every 10 min).
     // Frontend must not call geocoding providers directly (causes 502s / rate limits).
 
-    const handleRefreshCalls = async () => {
-        await fetchCalls();
-        // Also trigger backend geocoding for any calls still missing coordinates
-        base44.functions.invoke('geocodeMissingCalls', {}).catch(e => console.warn('[NAV] geocode trigger failed:', e?.message));
-    };
-
     const fetchCalls = async () => {
-        setIsLoadingCalls(true);
         try {
             const all = await base44.entities.DispatchCall.list('-created_date', 500);
             const uniqueCalls = new Map();
@@ -614,8 +598,6 @@ export default function Navigation() {
             // geocoding handled by backend automation
         } catch (e) {
             console.warn('[NAV] fetchCalls error:', e.message);
-        } finally {
-            setIsLoadingCalls(false);
         }
     };
 
