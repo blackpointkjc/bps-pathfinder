@@ -62,12 +62,12 @@ export default function ClientTrespass() {
 
   const effectiveLocation = selectedLocation || clientLocations[0];
 
-  const getOfficerFullDisplay = (email) => {
-    if (email === 'OPEN') return 'OPEN SHIFT';
-    if (!email || !allUsers || allUsers.length === 0) return email || 'Officer';
+  const getOfficerFullDisplay = (officerRef) => {
+    if (officerRef === 'OPEN') return 'OPEN SHIFT';
+    if (!officerRef || !allUsers || allUsers.length === 0) return 'Officer';
     
-    const officer = allUsers.find(u => u.email === email);
-    if (!officer) return email || 'Officer';
+    const officer = allUsers.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    if (!officer) return 'Officer';
 
     const lastName = officer.last_name || '';
     const rank = officer.rank || '';
@@ -81,15 +81,15 @@ export default function ClientTrespass() {
     if (rank) {
       return rank;
     }
-    return email || 'Officer';
+    return officer.email || 'Officer';
   };
 
-  const getOfficerSignature = (email) => {
-    if (email === 'OPEN') return 'OPEN SHIFT';
-    if (!email || !allUsers || allUsers.length === 0) return email || 'Officer';
+  const getOfficerSignature = (officerRef) => {
+    if (officerRef === 'OPEN') return 'OPEN SHIFT';
+    if (!officerRef || !allUsers || allUsers.length === 0) return 'Officer';
     
-    const officer = allUsers.find(u => u.email === email);
-    if (!officer) return email || 'Officer';
+    const officer = allUsers.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    if (!officer) return 'Officer';
 
     const lastName = officer.last_name || '';
     const rank = officer.rank || '';
@@ -103,7 +103,7 @@ export default function ClientTrespass() {
     if (rank) {
       return rank;
     }
-    return email || 'Officer';
+    return officer.email || 'Officer';
   };
 
   const { data: notices } = useQuery({
@@ -146,7 +146,7 @@ export default function ClientTrespass() {
             <h3>Trespass Notice Details</h3>
             <p><strong>Subject:</strong> ${notice.subject_name}<br>
             <strong>Date Issued:</strong> ${format(new Date(notice.notice_date), 'MMMM d, yyyy h:mm a')}<br>
-            <strong>Officer:</strong> ${getOfficerFullDisplay(notice.created_by)}<br>
+            <strong>Officer:</strong> ${getOfficerFullDisplay(notice.created_by_id || notice.created_by)}<br>
             <strong>Expiration:</strong> ${notice.expiration_date ? format(new Date(notice.expiration_date), 'MMMM d, yyyy') : 'Permanent'}<br>
             <strong>Notice ID:</strong> ${notice.id}</p>
             <p><strong>Action Required:</strong> Please email the requested trespass notice to ${user?.email} at your earliest convenience.</p>
@@ -192,7 +192,6 @@ export default function ClientTrespass() {
   };
 
   const printNotice = (notice) => {
-    const issuerSignature = getOfficerSignature(notice.created_by);
     const site = locations.find(loc => loc.site_name === notice.location);
     openTrespassNoticePrint(notice, {
       jurisdiction: 'VA',
@@ -201,7 +200,7 @@ export default function ClientTrespass() {
       propertyAddress: site?.address || notice.location,
       senderName: 'Black Point Protection',
       senderAddress: site?.address || notice.location,
-      officerName: getOfficerFullDisplay(notice.created_by),
+      officerName: getOfficerFullDisplay(notice.created_by_id || notice.created_by),
       signatureName: '',
       policeDepartment: resolvePoliceDepartment(site || { site_name: notice.location, division: 'Virginia' }),
     });
