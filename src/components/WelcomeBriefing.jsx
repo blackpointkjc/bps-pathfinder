@@ -55,7 +55,9 @@ export default function WelcomeBriefing({ user }) {
   const userKey = normalized(user?.email || user?.id);
   const storageKey = userKey ? `bps-last-active:${userKey}` : '';
   const sessionKey = userKey ? `bps-welcome-session:${userKey}` : '';
-  const [offlineSince] = useState(() => {
+  const lastShownKey = userKey ? `bps-welcome-last-shown:${userKey}` : '';
+  const lastStatusKey = userKey ? `bps-welcome-last-status:${userKey}` : '';
+  const [offlineSince, setOfflineSince] = useState(() => {
     if (typeof window === 'undefined' || !storageKey) return null;
     const saved = localStorage.getItem(storageKey);
     const parsed = saved ? new Date(saved).getTime() : NaN;
@@ -63,14 +65,30 @@ export default function WelcomeBriefing({ user }) {
   });
 
   useEffect(() => {
-    if (!user?.id || !user?.email) return;
-    // Show the welcome briefing once per actual app/browser session. React refreshes,
-    // route changes, query refetches, and component remounts must not reopen it.
-    // sessionStorage is cleared when the app/browser session is fully closed.
-    if (sessionKey && sessionStorage.getItem(sessionKey) === 'shown') return;
-    if (sessionKey) sessionStorage.setItem(sessionKey, 'shown');
-    let active = true;
-    const load = async () => {
+    if (!user?.id || !user?.email || !sessionKey || !storageKey) return;
+    const now = Date.now();
+    const sessionSeen = sessionStorage.getItem(sessionKey) === 'shown';
+    const savedActive = Number.isFinite(new Date(localStorage.getItem(storageKey) || '').getTime()) ? new Date(localStorage.getItem(storageKey)).getTime() : null;
+    const idleForHour = Boolean(savedActive && now - savedActive >= 60 * 60 * 1000);
+    const previousStatus = normalized(localStorage.getItem(lastStatusKey));
+    const currentStatus = normalized(user?.status || 'out of service');
+    const returnedToService = previousStatus === 'out of service' && currentStatus !== 'out of service';
+    const isNewAppSession = !sessionSeen;
++
++    // Page changes, route changes, React remounts, query refreshes, and CAD refreshes
++    // are NOT briefing triggers. Only a new app/browser session, 60+ minutes idle,
++    // or an Out of Service -> In Service transition may open the briefing.
++    if (!isNewAppSession && !idleForHour && !returnedToService) {
++      localStorage.setItem(lastStatusKey, user?.status || 'Out of Service');
++      return;
++    }
++
++    sessionStorage.setItem(sessionKey, 'shown');
++    localStorage.setItem(lastShownKey, new Date(now).toISOString());
++    localStorage.setItem(lastStatusKey, user?.status || 'Out of Service');
++    setOfflineSince(savedActive);
++    let active = true;
++    const load = async () => {
       try {
         const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
         const [messages, mentions, announcements, receipts, notifications, propertyAlerts, liveUsers, units, schedules, vehicleAssignments, overrides, allUsers, allUnits, allSchedules, timeEntries] = await Promise.all([
@@ -123,7 +141,7 @@ export default function WelcomeBriefing({ user }) {
     };
     load();
     return () => { active = false; };
-  }, [user?.id, user?.email, sessionKey]);
+  }, [user?.id, user?.email, user?.status, sessionKey, storageKey, lastShownKey, lastStatusKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -137,19 +155,33 @@ export default function WelcomeBriefing({ user }) {
 
   useEffect(() => {
     if (!storageKey) return;
-    const markActive = () => localStorage.setItem(storageKey, new Date().toISOString());
+    const markActive = () => {
+      // Only advance activity while the user is actually interacting with/looking at
+      // Pathfinder. This makes 60+ minutes away a real briefing trigger.
+      if (!document.hidden) localStorage.setItem(storageKey, new Date().toISOString());
+    };
     markActive();
     const interval = window.setInterval(markActive, 60000);
-    const onVisibility = () => { if (document.hidden) markActive(); };
-    window.addEventListener('beforeunload', markActive);
+    const onVisibility = () => {
+      if (!document.hidden) {
+        const saved = localStorage.getItem(storageKey);
+        const last = saved ? new Date(saved).getTime() : 0;
+        if (last && Date.now() - last >= 60 * 60 * 1000) {
+          // Allow the next mounted briefing check to treat this as an idle return.
+          sessionStorage.removeItem(sessionKey);
+        }
+        markActive();
+      }
+    };
+    const activityEvents = ['pointerdown', 'keydown', 'touchstart'];
+    activityEvents.forEach(eventName => window.addEventListener(eventName, markActive, { passive: true }));
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
-      markActive();
       window.clearInterval(interval);
-      window.removeEventListener('beforeunload', markActive);
+      activityEvents.forEach(eventName => window.removeEventListener(eventName, markActive));
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [storageKey]);
+  }, [storageKey, sessionKey]);
 
   const pendingMessages = brief.messages.length + brief.mentions.length;
   const totalItems = pendingMessages + brief.announcements.length + brief.updates.length + brief.appUpdates.length + brief.propertyAlerts.length;
