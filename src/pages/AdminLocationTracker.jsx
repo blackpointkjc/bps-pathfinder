@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
-const EXCLUDED_OFFICERS = ['calvin.jones@example.com', 'kavon.hiers@example.com'];
+const LIVE_SESSION_FRESH_MS = 2 * 60 * 1000;
 
 // Custom marker icons
 const clockInIcon = new L.Icon({
@@ -98,38 +98,9 @@ export default function AdminLocationTracker() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: activeEntries } = useQuery({
-    queryKey: ['allActiveTimeEntries'],
-    queryFn: async () => {
-      const entries = await base44.entities.TimeEntry.list('-created_date');
-      // Filter out admins and excluded officers from location tracking
-      return entries.filter(e => {
-        if (e.clock_out) return false; // Only consider active (not clocked out) entries
-
-        // Exclude specific officers from the predefined list
-        if (EXCLUDED_OFFICERS.includes(e.officer_email)) return false;
-        
-        // Exclude admins from location tracker (they track themselves differently)
-        const officer = allUsers?.find(u => u.email === e.officer_email);
-        if (officer?.role === 'admin') return false;
-        
-        return true;
-      });
-    },
-    refetchInterval: 15000,
-    enabled: hasAccess && !!allUsers,
-  });
-
   const { data: activeOfficerLocations } = useQuery({
     queryKey: ['activeOfficerLocations'],
-    queryFn: async () => {
-      const locations = await base44.entities.ActiveOfficer.list('-last_update');
-      // Filter out admins from displaying their active locations
-      return locations.filter(loc => {
-        const user = allUsers?.find(u => u.email === loc.officer_email);
-        return user?.role !== 'admin';
-      });
-    },
+    queryFn: async () => base44.entities.ActiveOfficer.list('-last_update'),
     refetchInterval: 15000,
     enabled: hasAccess && !!allUsers,
   });
@@ -155,26 +126,26 @@ export default function AdminLocationTracker() {
     return map;
   }, [activeOfficerLocations]);
 
-  const currentlyActiveOfficers = activeEntries?.map(entry => {
-    const locationData = newestLocationByEmail.get(String(entry.officer_email || '').toLowerCase());
-    const liveStamp = locationData?.last_update ? new Date(locationData.last_update).getTime() : NaN;
-    const liveIsFresh = Number.isFinite(liveStamp) && Date.now() - liveStamp <= 2 * 60 * 1000;
-    // Never label an old GPS point as live. Clock-in coordinates are shown only when
-    // there has not yet been a live ActiveOfficer fix for this session.
-    const lat = liveIsFresh ? locationData?.latitude : (!locationData ? entry.clock_in_latitude : null);
-    const lng = liveIsFresh ? locationData?.longitude : (!locationData ? entry.clock_in_longitude : null);
-    return {
-      ...entry,
-      latitude: lat,
-      longitude: lng,
-      last_update: locationData?.last_update || entry.clock_in,
-      gps_stale: !!locationData && !liveIsFresh,
-      current_location: entry.location,
-      clock_in_time: entry.clock_in,
-      officer_email: entry.officer_email,
-      id: entry.id
-    };
-  }) || [];
+  // "Live" means the authenticated app session has pinged within the last two minutes.
+  // This includes admins, supervisors, dispatchers, support staff, clients, and officers.
+  const currentlyActiveOfficers = React.useMemo(() => {
+    const now = Date.now();
+    return [...newestLocationByEmail.values()].filter(locationData => {
+      const stamp = new Date(locationData.last_update || locationData.updated_date || locationData.created_date || 0).getTime();
+      return Number.isFinite(stamp) && now - stamp <= LIVE_SESSION_FRESH_MS;
+    }).map(locationData => {
+      const profile = allUsers?.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
+      return {
+        ...locationData,
+        id: locationData.id,
+        current_location: locationData.current_location || profile?.assigned_location || 'Signed In',
+        clock_in_time: locationData.clock_in_time,
+        user_role: locationData.user_role || profile?.role || 'user',
+        user_status: locationData.status || profile?.status || 'Signed In',
+        gps_pending: !(Number.isFinite(Number(locationData.latitude)) && Number.isFinite(Number(locationData.longitude))),
+      };
+    });
+  }, [newestLocationByEmail, allUsers]);
 
   // Get selected time entry for historical view
   const { data: selectedTimeEntry } = useQuery({
