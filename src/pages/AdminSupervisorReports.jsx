@@ -90,7 +90,10 @@ export default function AdminSupervisorReports() {
     enabled: user?.role === 'admin',
   });
 
-  const getOfficerIdentifier = (email) => getRankLastNameByEmail(allUsers, email, email);
+  const getOfficerIdentifier = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    return getRankLastNameByEmail(allUsers, officer?.email || '', officer?.email || 'Unknown Officer');
+  };
 
   const approveWriteUpMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.WriteUpReport.update(id, data),
@@ -670,7 +673,7 @@ export default function AdminSupervisorReports() {
                             Incident: {format(new Date(writeUp.incident_date), 'MMM d, yyyy h:mm a')}
                           </p>
                           <p className="text-sm text-slate-600 mb-2">{writeUp.location}</p>
-                          <p className="text-xs text-slate-500">Supervisor: {getOfficerIdentifier(writeUp.created_by)}</p>
+                          <p className="text-xs text-slate-500">Supervisor: {getOfficerIdentifier(writeUp.created_by_id || writeUp.created_by)}</p>
                         </div>
                         <div className="flex flex-col gap-2 items-end">
                           <Badge variant="outline" className={getSeverityColor(writeUp.severity)}>
@@ -750,7 +753,7 @@ export default function AdminSupervisorReports() {
                             Incident: {format(new Date(writeUp.incident_date), 'MMM d, yyyy h:mm a')}
                           </p>
                           <p className="text-sm text-slate-600 mb-2">{writeUp.location}</p>
-                          <p className="text-xs text-slate-500">Supervisor: {getOfficerIdentifier(writeUp.created_by)}</p>
+                          <p className="text-xs text-slate-500">Supervisor: {getOfficerIdentifier(writeUp.created_by_id || writeUp.created_by)}</p>
                           <p className="text-xs text-green-700 mt-1">
                             Approved by {getOfficerIdentifier(writeUp.reviewed_by)} on {format(new Date(writeUp.reviewed_date), 'MMM d, yyyy')}
                           </p>
@@ -791,7 +794,7 @@ export default function AdminSupervisorReports() {
                             {format(new Date(inspection.inspection_date), 'MMM d, yyyy h:mm a')}
                           </p>
                           <p className="text-sm text-slate-600">{inspection.location}</p>
-                          <p className="text-xs text-slate-500 mt-1">By: {getOfficerIdentifier(inspection.created_by)}</p>
+                          <p className="text-xs text-slate-500 mt-1">By: {getOfficerIdentifier(inspection.created_by_id || inspection.created_by)}</p>
                         </div>
                         {inspection.follow_up_required && (
                           <Badge className="bg-red-100 text-red-800 border-red-200">
@@ -1049,7 +1052,7 @@ export default function AdminSupervisorReports() {
               <div className="p-4 bg-slate-50 rounded-lg">
                 <p className="font-semibold text-slate-900">{selectedWriteUp.officer_name}</p>
                 <p className="text-sm text-slate-600">{selectedWriteUp.location}</p>
-                <p className="text-xs text-slate-500 mt-1">Supervisor: {getOfficerIdentifier(selectedWriteUp.created_by)}</p>
+                <p className="text-xs text-slate-500 mt-1">Supervisor: {getOfficerIdentifier(selectedWriteUp.created_by_id || selectedWriteUp.created_by)}</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="admin_notes">
