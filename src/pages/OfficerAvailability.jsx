@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,22 +18,24 @@ export default function OfficerAvailability() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: existingAvailability } = useQuery({
+  const { data: existingAvailability = [] } = useQuery({
     queryKey: ['myAvailability', user?.email],
     queryFn: () => base44.entities.OfficerAvailability.filter({ officer_email: user?.email }),
     enabled: !!user?.email,
-    onSuccess: (data) => {
-      const mapped = {};
-      data.forEach(entry => {
-        mapped[entry.day_of_week] = {
-          available: entry.available,
-          preferred_start_time: entry.preferred_start_time || '18:00',
-          preferred_end_time: entry.preferred_end_time || '06:00'
-        };
-      });
-      setAvailability(mapped);
-    }
   });
+
+  useEffect(() => {
+    if (!existingAvailability.length) return;
+    const mapped = {};
+    existingAvailability.forEach(entry => {
+      mapped[entry.day_of_week] = {
+        available: entry.available,
+        preferred_start_time: entry.preferred_start_time || '18:00',
+        preferred_end_time: entry.preferred_end_time || '06:00'
+      };
+    });
+    setAvailability(mapped);
+  }, [existingAvailability]);
 
   const { data: myRequests = [] } = useQuery({
     queryKey: ['myAvailabilityRequests', user?.email],
