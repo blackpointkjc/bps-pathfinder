@@ -17,6 +17,7 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 
 export default function BackgroundLocationTracker({ user }) {
   const lastSaveRef = useRef(0);
+  const lastLivePushRef = useRef(0);
   const lastGeofenceCheckRef = useRef(0);
   const watchIdRef = useRef(null);
   const activeOfficerRecordRef = useRef(null);
@@ -57,9 +58,11 @@ export default function BackgroundLocationTracker({ user }) {
     staleTime: 60000,
   });
 
-  // Track ANY logged-in officer so live positions are always current on the map.
-  // Geofence alerts and location-history logging below remain gated on an active time entry.
-  const shouldTrack = !!user?.email;
+  // Keep one authoritative live GPS feed across the entire app, not only while the
+  // officer is on the Navigation page. Do not publish an Out-of-Service officer.
+  const roles = new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+  const isCadOfficer = roles.has('officer') || roles.has('cad_access') || roles.has('cad') || roles.has('full_access');
+  const shouldTrack = !!user?.email && isCadOfficer && (activeEntry || (user?.status && user.status !== 'Out of Service')); 
 
   // Mutation to create geofence alert
   const createGeofenceAlertMutation = useMutation({
@@ -109,7 +112,11 @@ export default function BackgroundLocationTracker({ user }) {
       try {
         const records = await base44.entities.ActiveOfficer.filter({ officer_email: user.email });
         if (records.length > 0) {
-          activeOfficerRecordRef.current = records[0].id;
+          const newest = [...records].sort((a, b) => new Date(b.last_update || b.updated_date || b.created_date || 0).getTime() - new Date(a.last_update || a.updated_date || a.created_date || 0).getTime())[0];
+          activeOfficerRecordRef.current = newest.id;
+          // Best-effort cleanup of duplicate self-created live-location records. Older
+          // duplicates are what caused command to sometimes display a stale city.
+          await Promise.all(records.filter(record => record.id !== newest.id).map(record => base44.entities.ActiveOfficer.delete(record.id).catch(() => null)));
         }
       } catch (error) {
         console.error('Error fetching active officer record:', error);
@@ -146,7 +153,12 @@ export default function BackgroundLocationTracker({ user }) {
       }
 
       try {
-        // Always update ActiveOfficer immediately for real-time tracking
+        // Limit server writes to one live GPS update every 5 seconds. Browser GPS can
+        // emit multiple fixes per second, which previously contributed to API throttling.
+        if (now - lastLivePushRef.current < 5000) return;
+        lastLivePushRef.current = now;
+
+        // Always update ActiveOfficer for the app-wide authoritative live position.
         updateActiveOfficerMutation.mutate({
           officer_email: user.email,
           officer_name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
@@ -233,7 +245,7 @@ export default function BackgroundLocationTracker({ user }) {
       {
         enableHighAccuracy: true, // Force GPS, not cell tower
         timeout: 30000,
-        maximumAge: 0, // Always get fresh location, never use cached
+        maximumAge: 2000, // Permit only a very recent fix; never reuse old city-level cache
       }
     );
 
