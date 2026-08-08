@@ -42,7 +42,7 @@ const pointToSegmentMeters = (lat, lng, a, b) => {
   return Math.sqrt(x * x + y * y);
 };
 
-export const evaluatePropertyMatch = (call, property, nearbyFeet = 100) => {
+export const evaluatePropertyMatch = (call, property, nearbyFeet = 0) => {
   const lat = Number(call?.latitude);
   const lng = Number(call?.longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || !property?.enabled) return null;
@@ -86,7 +86,7 @@ export const locationToMonitoredProperty = (location) => {
     latitude: Number(location.latitude),
     longitude: Number(location.longitude),
     enabled: location.active !== false && location.property_monitoring_enabled === true,
-    boundary_type: location.property_monitoring_boundary_type || (polygon.length >= 3 ? 'polygon' : 'circle'),
+    boundary_type: polygon.length >= 3 ? 'polygon' : 'circle',
     radiusMeters: Number(location.geofence_radius_meters || 100),
     polygon,
     description: location.property_monitoring_description || '',
@@ -95,7 +95,7 @@ export const locationToMonitoredProperty = (location) => {
 
 export const monitoredPropertiesFromLocations = (locations = []) => locations.map(locationToMonitoredProperty).filter(Boolean);
 
-export const findPropertyMatch = (call, monitoredProperties, nearbyFeet = 100) => {
+export const findPropertyMatch = (call, monitoredProperties, nearbyFeet = 0) => {
   const matches = (monitoredProperties || [])
     .map(property => evaluatePropertyMatch(call, property, nearbyFeet))
     .filter(Boolean)
