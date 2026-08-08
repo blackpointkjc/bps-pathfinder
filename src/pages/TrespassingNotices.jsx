@@ -78,20 +78,6 @@ export default function TrespassingNotices() {
     return officer.email || String(officerRef || 'Unknown Officer');
   };
 
-  // Helper to get officer's full name for print reports
-  const getOfficerFullName = (officerRef) => {
-    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
-    if (officer) {
-      if (officer.first_name && officer.last_name) {
-        return `${officer.first_name} ${officer.last_name}`;
-      }
-      if (officer.rank && officer.last_name) {
-        return `${officer.rank} ${officer.last_name}`;
-      }
-    }
-    return officer?.email || String(officerRef || 'Unknown Officer');
-  };
-
   const { data: activeEntry } = useQuery({
     queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
