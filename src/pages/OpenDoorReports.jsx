@@ -35,19 +35,17 @@ export default function OpenDoorReports() {
   });
 
   const { data: activeEntry } = useQuery({
-    queryKey: ['activeTimeEntry'],
+    queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
-      // Fetch the latest time entry for the current user
       const entries = await base44.entities.TimeEntry.filter(
-        { created_by: user.email },
-        '-created_date', // Order by created_date descending
-        1 // Limit to 1 result
+        { officer_email: user.email },
+        '-clock_in',
+        100
       );
-      // Return the entry if it exists and has no clock_out time
       return entries.find(e => !e.clock_out) || null;
     },
-    enabled: !!user, // Only run this query if user data is available
+    enabled: !!user?.email,
   });
 
   // Get current site name from active entry
@@ -82,9 +80,9 @@ export default function OpenDoorReports() {
     initialData: [], // Provide initial empty array
   });
 
-  const getOfficerSignature = (email) => {
-    const officer = allUsers?.find(u => u.email === email);
-    if (!officer) return email;
+  const getOfficerSignature = (officerRef) => {
+    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    if (!officer) return String(officerRef || 'Unknown Officer');
     
     const rank = officer.rank || '';
     const lastName = officer.last_name || '';
@@ -96,7 +94,7 @@ export default function OpenDoorReports() {
     if (rank && lastName) {
       return `${rank} ${lastName}`;
     }
-    return email;
+    return officer.email || String(officerRef || 'Unknown Officer');
   };
 
   // Auto-select location when officer is clocked in and locations data is available
@@ -475,7 +473,7 @@ export default function OpenDoorReports() {
                     <div className="mt-4 pt-4 border-t-2 border-slate-300">
                       <p className="text-xs text-slate-500 mb-2">Officer Signature:</p>
                       <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                        {getOfficerSignature(report.created_by)}
+                        {getOfficerSignature(report.created_by_id)}
                       </p>
                       {report.officer_ip_address && report.created_date && (
                         <p className="text-xs text-slate-400 mt-1">
@@ -484,7 +482,7 @@ export default function OpenDoorReports() {
                       )}
                     </div>
                     
-                    {report.status === 'rejected' && report.created_by === user?.email && (
+                    {report.status === 'rejected' && String(report.created_by_id || '') === String(user?.id || '') && (
                       <div className="mt-3 pt-3 border-t border-slate-200 flex items-center gap-2 text-xs text-slate-500">
                         <Button
                           onClick={() => editReport(report)}
