@@ -45,12 +45,12 @@ export default function ClientFeedback() {
   });
 
   const { data: feedback } = useQuery({
-    queryKey: ['clientFeedback', user?.email],
+    queryKey: ['clientFeedback', user?.id],
     queryFn: async () => {
       const all = await base44.entities.ClientFeedback.list('-created_date');
-      return all.filter(f => f.created_by === user?.email);
+      return all.filter(f => String(f.created_by_id || '') === String(user?.id || ''));
     },
-    enabled: !!user,
+    enabled: !!user?.id,
   });
 
   const submitFeedbackMutation = useMutation({
