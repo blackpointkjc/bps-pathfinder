@@ -12,8 +12,6 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/c29aab328_c3ff2618-4412-4498-8923-8f484a9469b8-2533645741.jpeg";
-
 export default function CriminalComplaints() {
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchComplaints] = useState("");
@@ -58,21 +56,20 @@ export default function CriminalComplaints() {
   const isAdmin = user?.role === 'admin';
 
   const { data: activeEntry } = useQuery({
-    queryKey: ['activeTimeEntry'],
+    queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
       const entries = await base44.entities.TimeEntry.filter(
-        { created_by: user.email },
-        '-created_date',
-        1
+        { officer_email: user.email },
+        '-clock_in',
+        100
       );
       return entries.find(e => !e.clock_out) || null;
     },
-    enabled: !!user,
+    enabled: !!user?.email,
   });
 
   const canSubmit = isAdmin || !!activeEntry;
-  const currentSiteName = activeEntry?.location ? activeEntry.location.split(' - ')[0] : null;
 
   const { data: allComplaints } = useQuery({
     queryKey: ['allCriminalComplaints'],
@@ -87,7 +84,7 @@ export default function CriminalComplaints() {
     // Officers see their own complaints, admins see all
     const userComplaints = isAdmin 
       ? allComplaints 
-      : allComplaints.filter(complaint => complaint.created_by === user.email);
+      : allComplaints.filter(complaint => String(complaint.created_by_id || '') === String(user.id));
     
     // Apply search filter
     if (!searchQuery.trim()) return userComplaints;
@@ -274,7 +271,7 @@ export default function CriminalComplaints() {
     
     const siteLocation = locations?.find(loc => loc.site_name === complaint.location);
     const displayLocation = siteLocation?.address || complaint.location;
-    const officerInfo = allUsers?.find(u => u.email === complaint.created_by);
+    const officerInfo = allUsers?.find(u => String(u.id) === String(complaint.created_by_id));
     const officerFullName = officerInfo ? `${officerInfo.first_name || ''} ${officerInfo.last_name || ''}`.trim() : 'Officer';
     
     const dobFormatted = complaint.accused_dob ? format(new Date(complaint.accused_dob), 'MM/dd/yyyy') : '';
@@ -1019,7 +1016,7 @@ export default function CriminalComplaints() {
                         Violation: {complaint.violation_code}{complaint.violation_section ? ' ' + complaint.violation_section : ''}
                       </p>
                       <p className="text-sm text-slate-600">
-                        Filed by: {getOfficerFullDisplay(complaint.created_by)}
+                        Filed by: {getOfficerFullDisplay(officerInfo?.email)}
                       </p>
                     </div>
                   </div>
@@ -1027,7 +1024,7 @@ export default function CriminalComplaints() {
                   <div className="mt-4 pt-4 border-t-2 border-slate-300">
                     <p className="text-xs text-slate-500 mb-2">Officer Signature:</p>
                     <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                      {getOfficerSignature(complaint.created_by)}
+                      {getOfficerSignature(officerInfo?.email)}
                     </p>
                     {complaint.officer_ip_address && complaint.created_date && (
                       <p className="text-xs text-slate-400 mt-1">
