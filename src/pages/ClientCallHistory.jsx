@@ -21,7 +21,7 @@ function callMatchesSite(call, site) {
   const siteLat = Number(site.latitude);
   const siteLng = Number(site.longitude);
   if (Number.isFinite(lat) && Number.isFinite(lng) && Number.isFinite(siteLat) && Number.isFinite(siteLng)) {
-    const radius = Math.max(Number(site.geofence_radius_meters || 100), 100);
+    const radius = Math.max(Number(site.property_monitoring_radius_meters || site.geofence_radius_meters || 100), 100);
     return calculateDistance(lat, lng, siteLat, siteLng) <= radius;
   }
   return false;
@@ -44,14 +44,13 @@ export default function ClientCallHistory() {
       const me = user || await getClientPortalUser();
       if (!user) setUser(me);
       const assignedNames = me?.assigned_locations || (me?.assigned_location ? [me.assigned_location] : []);
-      const [allLocations, active, archived, notes, reports, propertyAlerts, monitoredProperties] = await Promise.all([
+      const [allLocations, active, archived, notes, reports, propertyAlerts] = await Promise.all([
         base44.entities.Location.list(),
         base44.entities.DispatchCall.list('-time_received', 500),
         base44.entities.CallHistory.list('-archived_date', 500),
         base44.entities.CallNote.list('-created_date', 1000),
         base44.entities.IncidentReport.list('-created_date', 1000),
         base44.entities.PropertyAlert.list('-created_date', 1000).catch(() => []),
-        base44.entities.MonitoredProperty.list('-created_date', 500).catch(() => []),
       ]);
       const assignedSites = (allLocations || []).filter(site => assignedNames.includes(site.site_name) || String(site.assigned_client_email || '').toLowerCase() === String(me?.email || '').toLowerCase());
       setSites(assignedSites);
@@ -67,21 +66,10 @@ export default function ClientCallHistory() {
       const clientRows = [...unique.values()].flatMap(call => {
         const callIdentifiers = new Set([call.id, call.original_call_id, call.call_id, call.agency_cad_number, call.bps_reference].filter(Boolean).map(String));
         const verifiedAlert = (propertyAlerts || []).find(alert => callIdentifiers.has(String(alert.callId || '')) && assignedSites.some(site => norm(alert.propertyName) === norm(site.site_name)));
-        const monitoredMatch = !verifiedAlert ? (monitoredProperties || []).find(property => {
-          const assignedSite = assignedSites.find(site => norm(property.name) === norm(site.site_name) || norm(property.address) === norm(site.address));
-          if (!assignedSite) return false;
-          return callMatchesSite(call, {
-            ...assignedSite,
-            latitude: property.latitude ?? assignedSite.latitude,
-            longitude: property.longitude ?? assignedSite.longitude,
-            geofence_radius_meters: property.radiusMeters ?? assignedSite.geofence_radius_meters,
-          });
-        }) : null;
+        const monitoredMatch = !verifiedAlert ? assignedSites.find(site => site.property_monitoring_enabled && callMatchesSite(call, site)) : null;
         const matchedSite = verifiedAlert
           ? assignedSites.find(site => norm(site.site_name) === norm(verifiedAlert.propertyName))
-          : monitoredMatch
-            ? assignedSites.find(site => norm(site.site_name) === norm(monitoredMatch.name) || norm(site.address) === norm(monitoredMatch.address))
-            : assignedSites.find(site => callMatchesSite(call, site));
+          : monitoredMatch || assignedSites.find(site => callMatchesSite(call, site));
         if (!matchedSite) return [];
         const identifiers = callIdentifiers;
         const linkedNotes = (notes || []).filter(note => identifiers.has(String(note.call_id || '')));
