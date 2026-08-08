@@ -308,21 +308,26 @@ function allowedCenters(user) {
   return [...new Set(centers)];
 }
 
+const CENTER_DEFAULT_PAGE = {
+  cad: 'CommandDashboard',
+  officer: 'Dashboard',
+  supervisor: 'SupervisorTasks',
+  admin: 'AdminDashboard',
+  training: 'AdminTraining',
+  hr: 'HRManageCompanyEmployees',
+  support: 'AdminSupportStaffClock',
+  accounting: 'AccountingPayroll',
+  client: 'ClientDashboard',
+  student: 'StudentPortal',
+};
+
+function defaultPageForCenter(center) {
+  return CENTER_DEFAULT_PAGE[center] || 'CommandDashboard';
+}
+
 function defaultPageForUser(user) {
   const centers = allowedCenters(user);
-  const first = centers[0];
-  return {
-    client: 'ClientDashboard',
-    student: 'StudentPortal',
-    officer: 'Dashboard',
-    supervisor: 'SupervisorTasks',
-    hr: 'HRManageCompanyEmployees',
-    support: 'AdminSupportStaffClock',
-    training: 'AdminTraining',
-    accounting: 'AccountingPayroll',
-    admin: 'AdminDashboard',
-    cad: 'CommandDashboard',
-  }[first] || 'CommandDashboard';
+  return defaultPageForCenter(centers[0]);
 }
 
 function canAccessPage(user, pageName) {
@@ -561,6 +566,25 @@ export default function Layout({ children, currentPageName }) {
     localStorage.setItem('bps-active-center', center);
   };
 
+  const switchCenter = center => {
+    const available = allowedCenters(user);
+    if (!available.includes(center)) return;
+
+    setActiveCenter(center);
+    setMobileSection(null);
+    setMobileOpen(false);
+
+    const remembered = centerLastPagesRef.current?.[center];
+    const rememberedCenters = remembered ? (PAGE_TO_CENTERS[remembered] || []) : [];
+    const target = remembered && rememberedCenters.includes(center) && canAccessPage(user, remembered)
+      ? remembered
+      : defaultPageForCenter(center);
+
+    if (target && target !== currentPageName) {
+      navigate(createPageUrl(target));
+    }
+  };
+
   useEffect(() => {
     const media = window.matchMedia('(max-width: 767px)');
     const updateViewport = event => setIsMobileViewport(event.matches);
@@ -700,12 +724,19 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     const pageCenters = PAGE_TO_CENTERS[currentPageName] || [];
     const available = allowedCenters(user);
-    // Shared pages (for example Rank Structure) must remain in the workspace the
-    // user opened them from instead of always snapping to the first mapped center.
-    if (pageCenters.includes(activeCenter) && available.includes(activeCenter)) return;
-    const pageCenter = pageCenters.find(center => available.includes(center));
-    if (pageCenter) setActiveCenter(pageCenter);
-  }, [currentPageName, activeCenter, user?.role, JSON.stringify(user?.additional_roles || [])]);
+    if (!pageCenters.length) return;
+
+    // Route changes may update the workspace, but changing the workspace dropdown
+    // must never trigger this effect by itself. Using the functional state form
+    // preserves the current center for shared pages such as Rank Structure.
+    setActiveCenterState(current => {
+      if (pageCenters.includes(current) && available.includes(current)) return current;
+      const next = pageCenters.find(center => available.includes(center));
+      if (!next || next === current) return current;
+      localStorage.setItem('bps-active-center', next);
+      return next;
+    });
+  }, [currentPageName, user?.role, JSON.stringify(user?.additional_roles || [])]);
 
   useEffect(() => {
     const id = setInterval(() => setClock(new Date()), 1000);
@@ -847,12 +878,12 @@ export default function Layout({ children, currentPageName }) {
 
   return <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><BackgroundLocationTracker user={user} /><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} />
     <aside className="relative hidden flex-col border-r border-[#1c3049] md:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
-      <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={setActiveCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onToggleCollapsed={() => setCollapsed(value => !value)} onLogout={() => logout(true)} />
+      <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onToggleCollapsed={() => setCollapsed(value => !value)} onLogout={() => logout(true)} />
     </aside>
 
     <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/70 md:hidden" onClick={() => setMobileOpen(false)}>
       <motion.aside initial={{ x: -360 }} animate={{ x: 0 }} exit={{ x: -360 }} className="h-full w-[min(92vw,360px)] border-r border-[#1c3049] shadow-2xl" onClick={event => event.stopPropagation()}>
-        <Sidebar mobile mobileSection={mobileSection} user={user} activeCenter={activeCenter} setActiveCenter={center => { setMobileSection(null); setActiveCenter(center); }} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => { setMobileOpen(false); setMobileSection(null); }} onLogout={() => logout(true)} />
+        <Sidebar mobile mobileSection={mobileSection} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => { setMobileOpen(false); setMobileSection(null); }} onLogout={() => logout(true)} />
       </motion.aside>
     </motion.div>}</AnimatePresence>
 
