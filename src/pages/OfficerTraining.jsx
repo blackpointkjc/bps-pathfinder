@@ -548,7 +548,7 @@ export default function OfficerTraining() {
 
       {/* Module Viewer Dialog */}
       <Dialog open={!!viewingModule} onOpenChange={() => setViewingModule(null)}>
-        <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
+        <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-5xl flex-col overflow-hidden sm:max-h-[92vh] sm:w-auto">
           <DialogHeader className="border-b pb-3 flex-shrink-0">
             <DialogTitle className="text-lg flex items-center gap-3">
               <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -581,7 +581,7 @@ export default function OfficerTraining() {
 
       {/* Submit Proof Dialog */}
       <Dialog open={!!submittingAssignment} onOpenChange={() => setSubmittingAssignment(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-lg overflow-y-auto sm:max-h-[90vh] sm:w-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Upload className="w-5 h-5 text-blue-600" />
@@ -661,7 +661,7 @@ export default function OfficerTraining() {
 
       {/* View Submission Dialog */}
       <Dialog open={!!viewingAssignment} onOpenChange={() => setViewingAssignment(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-lg overflow-y-auto sm:max-h-[90vh] sm:w-auto">
           <DialogHeader>
             <DialogTitle>Submission Details — {viewingAssignment?.assignment?.training_name}</DialogTitle>
           </DialogHeader>
