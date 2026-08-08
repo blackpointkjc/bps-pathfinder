@@ -98,7 +98,6 @@ export default function Navigation() {
         showEMS: false, showJails: true
     });
 
-    const syncingGracRef = useRef(false);
     const unitStatusRef = useRef(unitStatus);
     const unitDirectoryRef = useRef({ users: [], loadedAt: 0 });
 
@@ -145,29 +144,17 @@ export default function Navigation() {
     }, [currentUser?.id]);
 
     useEffect(() => {
-        const syncLiveCalls = async () => {
-            if (syncingGracRef.current || document.hidden) return;
-            syncingGracRef.current = true;
-            try {
-                await base44.functions.invoke('ingestGractivecalls', {});
-                await base44.functions.invoke('archiveOldCalls', {}).catch(error => console.warn('[NAV] archive pass failed:', error?.message));
-                await fetchCalls();
-            } catch (error) {
-                console.warn('[NAV] GRAC live sync failed:', error?.message);
-            } finally {
-                syncingGracRef.current = false;
-            }
-        };
-
-        syncLiveCalls();
-        const syncInterval = setInterval(syncLiveCalls, 15000);
-        const localInterval = setInterval(fetchCalls, 10000);
+        // GRAC ingestion is owned app-wide by DashboardDataProvider. Navigation only
+        // reads DispatchCall so opening the map cannot start another backend sync loop.
+        fetchCalls();
+        const unsubscribe = base44.entities.DispatchCall.subscribe(() => fetchCalls());
+        const localInterval = setInterval(fetchCalls, 20000);
         const onVisibility = () => {
-            if (!document.hidden) syncLiveCalls();
+            if (!document.hidden) fetchCalls();
         };
         document.addEventListener('visibilitychange', onVisibility);
         return () => {
-            clearInterval(syncInterval);
+            unsubscribe?.();
             clearInterval(localInterval);
             document.removeEventListener('visibilitychange', onVisibility);
         };
