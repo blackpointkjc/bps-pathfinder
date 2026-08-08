@@ -54,9 +54,28 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
     useEffect(() => {
         if (!currentUser?.id) return;
         base44.entities.OfficerDistress.filter({ officer_id: currentUser.id, status: 'active' })
-            .then(results => { if (Array.isArray(results) && results.length > 0) setActivated(true); })
+            .then(results => {
+                if (Array.isArray(results) && results.length > 0) {
+                    activeAlertIdRef.current = results[0].id;
+                    setActivated(true);
+                }
+            })
             .catch(() => {});
     }, [currentUser?.id]);
+
+    useEffect(() => {
+        if (!activated) return undefined;
+        let lastWrite = 0;
+        return subscribeLiveLocation((fix) => {
+            if (!activeAlertIdRef.current || Date.now() - lastWrite < 3000) return;
+            lastWrite = Date.now();
+            base44.entities.OfficerDistress.update(activeAlertIdRef.current, {
+                current_latitude: fix.latitude,
+                current_longitude: fix.longitude,
+                location_description: `${fix.latitude.toFixed(5)}, ${fix.longitude.toFixed(5)}`,
+            }).catch(() => {});
+        });
+    }, [activated]);
 
     const startHold = (e) => {
         if (activated || holding) return;
