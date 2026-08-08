@@ -16,6 +16,22 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+function isPointInsideBoundary(lat, lng, rawPolygon = []) {
+  const polygon = rawPolygon
+    .map(point => Array.isArray(point) ? { lat: Number(point[0]), lng: Number(point[1]) } : { lat: Number(point?.lat), lng: Number(point?.lng) })
+    .filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+  if (polygon.length < 3) return null;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const pi = polygon[i];
+    const pj = polygon[j];
+    const intersects = ((pi.lng > lng) !== (pj.lng > lng)) &&
+      (lat < ((pj.lat - pi.lat) * (lng - pi.lng)) / ((pj.lng - pi.lng) || Number.EPSILON) + pi.lat);
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
 export default function BackgroundLocationTracker({ user }) {
   const lastSaveRef = useRef(0);
   const lastLivePushRef = useRef(0);
@@ -205,15 +221,20 @@ export default function BackgroundLocationTracker({ user }) {
 
           if (siteLocation?.geofence_enabled && siteLocation.latitude && siteLocation.longitude) {
             const distance = getDistanceFromLatLonInMeters(
-              lat, lng, 
-              siteLocation.latitude, 
+              lat, lng,
+              siteLocation.latitude,
               siteLocation.longitude
             );
-
+            const sharedPolygon = (siteLocation.geofence_polygon?.length >= 3
+              ? siteLocation.geofence_polygon
+              : siteLocation.property_monitoring_polygon) || [];
+            const polygonInside = isPointInsideBoundary(lat, lng, sharedPolygon);
             const radius = siteLocation.geofence_radius_meters || 100;
+            const outsideGeofence = polygonInside === null ? distance > radius : !polygonInside;
 
-            // Only create alert if GPS accuracy is reasonable (under 200m) and officer is outside the geofence
-            if (accuracy <= 200 && distance > radius) {
+            // Only create alert if GPS accuracy is reasonable (under 200m) and officer is outside
+            // the custom property polygon (or the radius fallback when no polygon exists).
+            if (accuracy <= 200 && outsideGeofence) {
               try {
                 await createGeofenceAlertMutation.mutateAsync({
                   officer_email: user.email,
@@ -224,7 +245,7 @@ export default function BackgroundLocationTracker({ user }) {
                   longitude: lng,
                   distance_from_site: Math.round(distance),
                 });
-                console.warn(`Geofence alert: Officer ${distance.toFixed(0)}m from ${siteLocation.site_name}`);
+                console.warn(`Geofence alert: Officer outside ${sharedPolygon.length >= 3 ? 'custom boundary' : `${radius}m radius`} at ${siteLocation.site_name}`);
               } catch (e) {
                 console.error('Failed to create geofence alert:', e);
               }
