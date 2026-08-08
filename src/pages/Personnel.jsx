@@ -231,43 +231,6 @@ export default function Personnel() {
                 <span className="text-green-500">● LIVE — 10s REFRESH</span>
             </div>
 
-            {/* Edit Dialog */}
-            <Dialog open={editDialog} onOpenChange={setEditDialog}>
-                <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] max-w-md overflow-y-auto border-slate-700 bg-slate-900 p-3 font-mono text-white sm:p-6">
-                    <DialogHeader>
-                        <DialogTitle className="font-mono text-sm tracking-widest text-gold">EDIT PERSONNEL RECORD</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-3">
-                        {[
-                            { label: 'LAST NAME', key: 'last_name', type: 'text' },
-                            { label: 'FIRST NAME', key: 'first_name', type: 'text' },
-                            { label: 'UNIT NUMBER', key: 'unit_number', type: 'text' },
-                            { label: 'RANK', key: 'rank', type: 'text' },
-                        ].map(({ label, key, type }) => (
-                            <div key={key}>
-                                <label className="text-[10px] text-slate-400 tracking-widest mb-1 block">{label}</label>
-                                <input type={type} value={editForm[key] || ''} onChange={e => setEditForm({ ...editForm, [key]: e.target.value })}
-                                    className="w-full bg-slate-800 border border-slate-700 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:border-gold" />
-                            </div>
-                        ))}
-                        <div>
-                            <label className="text-[10px] text-slate-400 tracking-widest mb-1 block">STATUS</label>
-                            <select value={editForm.status || 'Available'} onChange={e => setEditForm({ ...editForm, status: e.target.value })}
-                                className="w-full bg-slate-800 border border-slate-700 text-white font-mono text-sm px-3 py-2 rounded focus:outline-none focus:border-gold">
-                                {Object.keys(STATUS_CFG).map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                        <div className="flex gap-2 pt-2">
-                            <button onClick={handleSave} className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded font-bold text-sm transition-colors">
-                                <Save className="w-4 h-4" />SAVE
-                            </button>
-                            <button onClick={() => setEditDialog(false)} className="flex-1 flex items-center justify-center gap-2 py-2 bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 rounded text-sm transition-colors">
-                                <X className="w-4 h-4" />CANCEL
-                            </button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }
