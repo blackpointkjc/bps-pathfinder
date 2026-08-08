@@ -38,6 +38,7 @@ export default function BackgroundLocationTracker({ user }) {
   const lastGeofenceCheckRef = useRef(0);
   const watchIdRef = useRef(null);
   const activeOfficerRecordRef = useRef(null);
+  const sessionStartedRef = useRef(new Date().toISOString());
   const queryClient = useQueryClient();
 
   const { data: activeEntry } = useQuery({
@@ -75,12 +76,10 @@ export default function BackgroundLocationTracker({ user }) {
     staleTime: 60000,
   });
 
-  // Keep one authoritative live GPS feed across the entire app, not only while the
-  // officer is on the Navigation page. Do not publish an Out-of-Service officer.
-  const roles = new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
-  const isCadOfficer = roles.has('officer') || roles.has('cad_access') || roles.has('cad') || roles.has('full_access');
-  const shouldTrack = !!user?.email && isCadOfficer;
-  const shouldPublish = !!activeEntry || (!!user?.status && user.status !== 'Out of Service');
+  // One authoritative GPS feed for EVERY authenticated Pathfinder user. Duty status
+  // is context only; being signed into the app is what activates location tracking.
+  const shouldTrack = !!user?.email;
+  const shouldPublish = !!user?.email;
 
   // Mutation to create geofence alert
   const createGeofenceAlertMutation = useMutation({
@@ -115,35 +114,43 @@ export default function BackgroundLocationTracker({ user }) {
     },
   });
 
-  // Get or create ActiveOfficer record
+  // Establish exactly one live-session record immediately on sign-in, even before
+  // the first GPS fix. This lets Admin Location Tracker show "signed in / GPS pending".
   useEffect(() => {
-    if (!shouldPublish) {
-      // Keep device GPS available for clock-in/verification, but remove OOS officers
-      // from the operational live-location feed.
-      if (activeOfficerRecordRef.current) {
-        deleteActiveOfficerMutation.mutate(activeOfficerRecordRef.current);
-        activeOfficerRecordRef.current = null;
-      }
-      return;
-    }
+    if (!shouldPublish) return;
 
     const getActiveOfficerRecord = async () => {
       try {
         const records = await base44.entities.ActiveOfficer.filter({ officer_email: user.email });
-        if (records.length > 0) {
-          const newest = [...records].sort((a, b) => new Date(b.last_update || b.updated_date || b.created_date || 0).getTime() - new Date(a.last_update || a.updated_date || a.created_date || 0).getTime())[0];
+        const newest = records.length > 0
+          ? [...records].sort((a, b) => new Date(b.last_update || b.updated_date || b.created_date || 0).getTime() - new Date(a.last_update || a.updated_date || a.created_date || 0).getTime())[0]
+          : null;
+        const sessionData = {
+          officer_email: user.email,
+          officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+          current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
+          clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
+          last_update: new Date().toISOString(),
+          status: user?.status || 'Signed In',
+          user_role: user?.role || 'user',
+          session_active: true,
+        };
+        if (newest) {
           activeOfficerRecordRef.current = newest.id;
-          // Best-effort cleanup of duplicate self-created live-location records. Older
-          // duplicates are what caused command to sometimes display a stale city.
+          await base44.entities.ActiveOfficer.update(newest.id, sessionData);
           await Promise.all(records.filter(record => record.id !== newest.id).map(record => base44.entities.ActiveOfficer.delete(record.id).catch(() => null)));
+        } else {
+          const created = await base44.entities.ActiveOfficer.create(sessionData);
+          activeOfficerRecordRef.current = created.id;
         }
+        queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
       } catch (error) {
-        console.error('Error fetching active officer record:', error);
+        console.error('Error establishing live user location record:', error);
       }
     };
 
     getActiveOfficerRecord();
-  }, [shouldPublish, user?.email]);
+  }, [shouldPublish, user?.email, activeEntry?.id]);
 
   useEffect(() => {
     if (!shouldTrack) {
@@ -190,17 +197,19 @@ export default function BackgroundLocationTracker({ user }) {
         // Always update ActiveOfficer for the app-wide authoritative live position.
         updateActiveOfficerMutation.mutate({
           officer_email: user.email,
-          officer_name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+          officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
           unit_number: user.unit_number || '',
-          current_location: activeEntry?.location || user?.current_location || '',
-          clock_in_time: activeEntry?.clock_in || null,
+          current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
+          clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
           last_update: new Date().toISOString(),
           latitude: lat,
           longitude: lng,
           heading: Number.isFinite(position.coords.heading) ? position.coords.heading : 0,
           speed: position.coords.speed ? position.coords.speed * 2.237 : 0,
           accuracy: accuracy,
-          status: user?.status || 'Available',
+          status: user?.status || 'Signed In',
+          user_role: user?.role || 'user',
+          session_active: true,
         });
         
         // Invalidate active officers query to refresh map
@@ -253,19 +262,21 @@ export default function BackgroundLocationTracker({ user }) {
           }
         }
 
-        // Save to LocationHistory every 60 seconds (only while clocked in)
-        if (activeEntry && now - lastSaveRef.current >= 60000) {
+        // Historical breadcrumb for every signed-in user, once per minute. Clock-in
+        // data is included when present but is NOT required for tracking.
+        if (now - lastSaveRef.current >= 60000) {
           await saveLocationHistoryMutation.mutateAsync({
-            time_entry_id: activeEntry.id,
+            time_entry_id: activeEntry?.id || '',
             officer_email: user.email,
-            officer_name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
-            location: activeEntry.location,
+            officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+            location: activeEntry?.location || user?.current_location || user?.assigned_location || `Signed In · ${user?.role || 'user'}`,
             latitude: lat,
             longitude: lng,
             timestamp: new Date().toISOString(),
             accuracy: position.coords.accuracy,
           });
           lastSaveRef.current = now;
+          queryClient.invalidateQueries({ queryKey: ['locationHistory'] });
         }
       } catch (error) {
         console.error('Failed to save location:', error);
