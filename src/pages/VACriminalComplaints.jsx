@@ -798,7 +798,7 @@ export default function VACriminalComplaints() {
                         Violation: {complaint.violation_code}{complaint.violation_section ? ' ' + complaint.violation_section : ''}
                       </p>
                       <p className="text-sm text-slate-600">
-                        Filed by: {getOfficerFullDisplay(complaint.created_by)}
+                        Filed by: {getOfficerFullDisplay(allUsers?.find(u => String(u.id) === String(complaint.created_by_id))?.email)}
                       </p>
                     </div>
                   </div>
@@ -806,7 +806,7 @@ export default function VACriminalComplaints() {
                   <div className="mt-4 pt-4 border-t-2 border-slate-300">
                     <p className="text-xs text-slate-500 mb-2">Officer Signature:</p>
                     <p className="text-2xl font-serif italic text-slate-700" style={{ fontFamily: 'Brush Script MT, cursive' }}>
-                      {getOfficerSignature(complaint.created_by)}
+                      {getOfficerSignature(allUsers?.find(u => String(u.id) === String(complaint.created_by_id))?.email)}
                     </p>
                     {complaint.officer_ip_address && complaint.created_date && (
                       <p className="text-xs text-slate-400 mt-1">
