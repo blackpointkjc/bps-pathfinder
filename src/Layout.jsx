@@ -605,13 +605,24 @@ export default function Layout({ children, currentPageName }) {
       setUnreadCounts({});
     }
     if (user?.id) {
-      base44.entities.Message.filter({ recipient_id: user.id, read: false }, '-created_date', 200)
-        .then(records => setUnreadCounts(current => {
-          const next = { ...current, OfficerInbox: (records || []).length };
+      Promise.all([
+        base44.entities.Message.filter({ recipient_id: user.id, read: false }, '-created_date', 200),
+        base44.functions.invoke('get-inbox-thread-preferences', {}).catch(() => ({ data: { preferences: [] } })),
+      ]).then(([records, preferenceResponse]) => {
+        const preferencePayload = preferenceResponse?.data || preferenceResponse || {};
+        const hiddenKeys = new Set((preferencePayload.preferences || []).filter(preference => preference.hidden !== false).map(preference => preference.thread_key));
+        const visibleUnread = (records || []).filter(message => {
+          if (message.draft || !String(message.message || '').trim()) return false;
+          const fallbackPartner = message.sender_id === user.id ? message.recipient_id : message.sender_id;
+          const threadKey = message.thread_id || `direct:${fallbackPartner}`;
+          return !hiddenKeys.has(threadKey);
+        });
+        setUnreadCounts(current => {
+          const next = { ...current, OfficerInbox: visibleUnread.length };
           localStorage.setItem(unreadStorageKey, JSON.stringify(next));
           return next;
-        }))
-        .catch(() => null);
+        });
+      }).catch(() => null);
     }
   }, [unreadStorageKey, user?.id]);
 
@@ -634,11 +645,12 @@ export default function Layout({ children, currentPageName }) {
     let active = true;
     const refreshUnreadFromServer = async () => {
       try {
-        const [messages, mentions, announcements, receipts] = await Promise.all([
+        const [messages, mentions, announcements, receipts, preferenceResponse] = await Promise.all([
           base44.entities.Message.filter({ recipient_id: user.id, read: false }, '-created_date', 200),
           base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200),
           base44.entities.Announcement.list('-created_date', 100),
           base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500),
+          base44.functions.invoke('get-inbox-thread-preferences', {}).catch(() => ({ data: { preferences: [] } })),
         ]);
         if (!active) return;
         const receiptIds = new Set((receipts || []).map(r => r.announcement_id));
@@ -651,8 +663,16 @@ export default function Layout({ children, currentPageName }) {
         });
         const teamMentions = (mentions || []).filter(m => m.page === 'TeamChat').length;
         const supervisorMentions = (mentions || []).filter(m => m.page === 'SupervisorChat').length;
+        const preferencePayload = preferenceResponse?.data || preferenceResponse || {};
+        const hiddenKeys = new Set((preferencePayload.preferences || []).filter(preference => preference.hidden !== false).map(preference => preference.thread_key));
+        const visibleUnreadMessages = (messages || []).filter(message => {
+          if (message.draft || !String(message.message || '').trim()) return false;
+          const fallbackPartner = message.sender_id === user.id ? message.recipient_id : message.sender_id;
+          const threadKey = message.thread_id || `direct:${fallbackPartner}`;
+          return !hiddenKeys.has(threadKey);
+        });
         setUnreadCounts(current => {
-          const next = { ...current, OfficerInbox: (messages || []).length, TeamChat: teamMentions, SupervisorChat: supervisorMentions, Announcements: unreadAnnouncements.length };
+          const next = { ...current, OfficerInbox: visibleUnreadMessages.length, TeamChat: teamMentions, SupervisorChat: supervisorMentions, Announcements: unreadAnnouncements.length };
           localStorage.setItem(unreadStorageKey, JSON.stringify(next));
           return next;
         });
