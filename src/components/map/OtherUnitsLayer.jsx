@@ -17,52 +17,42 @@ const getAgencyLabel = (unitNumber) => {
     return num.slice(0, 4) || 'UNIT';
 };
 
-// Create icons for other units based on status with agency labels
-const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumber, isUnionLead) => {
-    let color = '#6B7280'; // Gray for Available
-    if (status === 'Enroute') color = '#EF4444';
-    else if (status === 'On Scene') color = '#10B981';
-    else if (status === 'On Patrol') color = '#6366F1';
-    else if (status === 'Busy') color = '#F59E0B';
-    else if (status === 'Out of Service') color = '#9CA3AF';
-    else if (status === 'Supervisor') color = '#EAB308'; // Gold
+// Law-enforcement-style patrol shield for officer/unit locations.
+const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumber) => {
+    let statusColor = '#64748B';
+    if (status === 'Dispatched' || status === 'Enroute') statusColor = '#EF4444';
+    else if (status === 'On Scene') statusColor = '#22C55E';
+    else if (status === 'On Patrol') statusColor = '#3B82F6';
+    else if (status === 'Busy') statusColor = '#F59E0B';
+    else if (status === 'Out of Service') statusColor = '#475569';
+    if (isSupervisor) statusColor = '#EAB308';
 
-    if (isSupervisor) {
-        color = '#EAB308'; // Gold/Yellow
-    }
-
-    const normalizedHeading = heading ? ((heading % 360) + 360) % 360 : 0;
-    const agencyLabel = getAgencyLabel(unitNumber);
-
-    // Determine if unit should show lights - green for dispatched/enroute/on scene
-    const shouldShowLights = status === 'Dispatched' || status === 'Enroute' || status === 'On Scene';
-    const lightsColor = shouldShowLights ? '#00FF00' : null;
+    const normalizedHeading = Number.isFinite(Number(heading)) ? ((Number(heading) % 360) + 360) % 360 : 0;
+    const unitLabel = String(unitNumber || getAgencyLabel(unitNumber) || 'UNIT').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 7) || 'UNIT';
+    const emergency = showLights || status === 'Dispatched' || status === 'Enroute' || status === 'On Scene';
 
     return new L.DivIcon({
-        className: 'custom-marker',
+        className: 'custom-marker patrol-shield-marker',
         html: `
-            <div style="position: relative; width: 50px; height: 50px; transform: rotate(${normalizedHeading}deg); transition: transform 0.3s ease;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" style="position: relative; z-index: 2; filter: drop-shadow(0 3px 10px rgba(0,0,0,0.4));">
-                    ${lightsColor ? `
-                    <circle cx="8" cy="5" r="1.8" fill="${lightsColor}">
-                        <animate attributeName="opacity" values="1;0;1" dur="0.8s" repeatCount="indefinite"/>
-                    </circle>
-                    <circle cx="16" cy="5" r="1.8" fill="${lightsColor}">
-                        <animate attributeName="opacity" values="0;1;0" dur="0.8s" repeatCount="indefinite"/>
-                    </circle>
-                    ` : ''}
-                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" fill="${color}" stroke="${isSupervisor ? '#FFD700' : (lightsColor ? lightsColor : '#1E3A8A')}" stroke-width="0.8"/>
-                    <circle cx="7" cy="17" r="2.2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
-                    <circle cx="17" cy="17" r="2.2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
-                    <rect x="6" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
-                    <rect x="11" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
-                    <polygon points="12,1 15,7 9,7" fill="${color}" stroke="${isSupervisor ? '#FFD700' : (lightsColor ? lightsColor : '#1E3A8A')}" stroke-width="0.8"/>
-                    ${isSupervisor ? `<text x="12" y="-2" text-anchor="middle" font-size="7" fill="#FFD700" font-weight="bold" font-family="monospace">★SUP</text>` : ''}
-                </svg>
-            </div>
+          <div style="position:relative;width:54px;height:64px;filter:drop-shadow(0 5px 8px rgba(0,0,0,.55));">
+            ${emergency ? `<div style="position:absolute;left:13px;top:0;width:28px;height:6px;border-radius:5px;overflow:hidden;border:1px solid rgba(255,255,255,.9);z-index:4;background:#111827"><span style="position:absolute;left:0;top:0;width:50%;height:100%;background:#ef4444;animation:bpsPoliceFlash .8s infinite"></span><span style="position:absolute;right:0;top:0;width:50%;height:100%;background:#2563eb;animation:bpsPoliceFlash .8s .4s infinite"></span></div>` : ''}
+            <svg width="54" height="58" viewBox="0 0 54 58" style="position:absolute;top:5px;left:0;z-index:2;overflow:visible">
+              <path d="M27 2 L47 9 V26 C47 40 39 50 27 56 C15 50 7 40 7 26 V9 Z" fill="#081a2d" stroke="${isSupervisor ? '#facc15' : '#dbeafe'}" stroke-width="2.2"/>
+              <path d="M27 7 L42 12 V26 C42 36 36 44 27 49 C18 44 12 36 12 26 V12 Z" fill="#0f3b68" stroke="${statusColor}" stroke-width="2"/>
+              <circle cx="27" cy="25" r="9" fill="#e5eef8" stroke="#93c5fd" stroke-width="1.2"/>
+              <path d="M27 17.2 L29.2 22.3 L34.7 22.8 L30.5 26.5 L31.8 31.8 L27 29 L22.2 31.8 L23.5 26.5 L19.3 22.8 L24.8 22.3 Z" fill="${isSupervisor ? '#eab308' : '#123b63'}"/>
+              <circle cx="27" cy="25" r="12.5" fill="none" stroke="${statusColor}" stroke-width="1.4" opacity=".9"/>
+              <rect x="13" y="39" width="28" height="10" rx="4" fill="#050b13" stroke="#294d70"/>
+              <text x="27" y="46.2" text-anchor="middle" font-size="7" font-weight="900" fill="#ffffff" font-family="Arial, sans-serif">${unitLabel}</text>
+              ${isSupervisor ? `<text x="27" y="14" text-anchor="middle" font-size="6" font-weight="900" fill="#fde047" font-family="Arial, sans-serif">SUPV</text>` : ''}
+            </svg>
+            ${Number.isFinite(Number(heading)) ? `<div style="position:absolute;left:24px;top:-8px;width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:10px solid ${isSupervisor ? '#facc15' : '#67e8f9'};transform:rotate(${normalizedHeading}deg);transform-origin:4px 39px;z-index:1"></div>` : ''}
+          </div>
+          <style>@keyframes bpsPoliceFlash{0%,48%{opacity:1}50%,100%{opacity:.2}}</style>
         `,
-        iconSize: [50, 50],
-        iconAnchor: [25, 25],
+        iconSize: [54, 64],
+        iconAnchor: [27, 56],
+        popupAnchor: [0, -50],
     });
 };
 
@@ -128,7 +118,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                 <Marker
                     key={markerKey}
                     position={[unit.latitude, unit.longitude]}
-                    icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor, unit.unit_number, unit.isUnionLead)}
+                    icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor, unit.unit_number)}
                     eventHandlers={{ click: () => onUnitClick?.(unit) }}
                 >
                         <Popup>
