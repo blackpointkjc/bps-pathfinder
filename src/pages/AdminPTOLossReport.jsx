@@ -506,7 +506,7 @@ export default function AdminPTOLossReport() {
     }, 250);
   };
 
-  if (user?.role !== 'admin' && !user?.additional_roles?.includes('hr')) {
+  if (!hasHRAccess) {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
