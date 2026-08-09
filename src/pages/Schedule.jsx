@@ -139,10 +139,9 @@ export default function Schedule() {
       const shift = openShifts?.find(s => s.id === shiftId);
       if (!shift) throw new Error('Shift not found');
       
-      await base44.entities.Schedule.update(shiftId, {
-        officer_email: user?.email,
-        is_open: false
-      });
+      const result = await base44.functions.invoke('claimOpenShift', { shift_id: shiftId });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
