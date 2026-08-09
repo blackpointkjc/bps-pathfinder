@@ -43,16 +43,31 @@ export default function AdminPTOLossReport() {
     enabled: user?.role === 'admin' || user?.additional_roles?.includes('hr'),
   });
 
-  const { data: timeEntries } = useQuery({
+  const hrRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const hasHRAccess = user?.role === 'admin' || hrRoles.has('hr') || hrRoles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
+
+  const { data: timeEntries = [] } = useQuery({
     queryKey: ['allTimeEntries', selectedYear],
-    queryFn: () => base44.entities.TimeEntry.list('-clock_in'),
-    enabled: user?.role === 'admin' || user?.additional_roles?.includes('accounting'),
+    queryFn: async () => {
+      const result = await base44.functions.invoke('manageHRTimeEntries', { action: 'list' });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.entries || [];
+    },
+    enabled: hasHRAccess,
+    initialData: [],
   });
 
-  const { data: callOuts } = useQuery({
+  const { data: callOuts = [] } = useQuery({
     queryKey: ['allCallOuts', selectedYear],
-    queryFn: () => base44.entities.CallOut.list('-call_out_date'),
-    enabled: user?.role === 'admin' || user?.additional_roles?.includes('accounting'),
+    queryFn: async () => {
+      const result = await base44.functions.invoke('manageHRTimeEntries', { action: 'list' });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.call_outs || [];
+    },
+    enabled: hasHRAccess,
+    initialData: [],
   });
 
   // Calculate PTO based on actual time entries for the selected date range
