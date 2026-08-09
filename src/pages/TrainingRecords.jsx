@@ -43,7 +43,7 @@ export default function TrainingRecords() {
   useEffect(() => { base44.auth.me().then(setUser); }, []);
 
   const isAdmin = user?.role === "admin";
-  const isTrainer = user?.additional_roles?.includes("trainer") || isAdmin;
+  const isTrainer = user?.additional_roles?.includes("trainer") || user?.additional_roles?.includes("full_access") || isAdmin;
   const isSupervisor = user?.additional_roles?.includes("supervisor");
   const isHR = user?.additional_roles?.includes("hr");
   const canAccess = isAdmin || isTrainer || isSupervisor || isHR;
