@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { listDirectoryUsers, listDirectoryLocations } from '@/lib/appDirectory';
+import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 export default function SupervisorWriteUps() {
   const [showForm, setShowForm] = useState(false);
@@ -44,47 +46,22 @@ export default function SupervisorWriteUps() {
   });
 
   // Re-introducing allUsers query as `getOfficerIdentifier` function requires it.
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['directoryUsers', 'supervisorWriteUps'],
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
-  // Rank hierarchy (lower number = higher rank)
-  const rankOrder = {
-    'Colonel (Operations Manager)': 1,
-    'Lieutenant Colonel (Deputy Operations Manager)': 2,
-    'Major (Division Commander)': 3,
-    'Captain': 4,
-    'Lieutenant': 5,
-    'Sergeant': 6,
-    'Corporal': 7,
-    'Officer': 8,
-  };
+  const filteredUsers = allUsers.filter(hasOfficerAdditionalRole);
 
-  const userRankOrder = rankOrder[user?.rank] || 99;
-  const userUnitNumber = parseInt(user?.unit_number) || 0;
-
-  const filteredUsers = (allUsers || []).filter(u => {
-    if (!u.email || !u.first_name || !u.last_name) return false;
-    
-    // Admins see everyone
-    if (user?.role === 'admin') return true;
-    
-    const officerRankOrder = rankOrder[u.rank] || 99;
-    const officerUnitNumber = parseInt(u.unit_number) || 0;
-    
-    // Show officers with lower rank OR lower unit number
-    return officerRankOrder > userRankOrder || (u.unit_number && officerUnitNumber < userUnitNumber);
-  });
-
-  const { data: locations } = useQuery({
-    queryKey: ['activeLocations'],
-    queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
-      return allLocations.filter(loc => loc.active);
-    },
+  const { data: locations = [] } = useQuery({
+    queryKey: ['directoryLocations', 'supervisorWriteUps'],
+    queryFn: () => listDirectoryLocations('site_name', 1000),
     enabled: user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access'),
+    initialData: [],
   });
 
   const { data: writeUps } = useQuery({
