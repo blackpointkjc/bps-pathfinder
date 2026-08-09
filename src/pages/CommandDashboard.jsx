@@ -182,7 +182,13 @@ function CommandDashboardInner() {
 
     const handleMarkCleared = async (call, e) => {
         e.stopPropagation();
-        await base44.entities.DispatchCall.update(call.id, { status: 'Cleared', time_cleared: new Date().toISOString() });
+        const now = new Date().toISOString();
+        await base44.entities.DispatchCall.update(call.id, {
+            status: 'Cleared',
+            time_cleared: now,
+            manual_dismissed: true,
+            manual_dismissed_at: now,
+        });
         manualRefresh();
     };
 
