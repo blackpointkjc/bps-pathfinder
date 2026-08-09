@@ -95,11 +95,12 @@ export function announceRecordSearch(results = []) {
     announceVoice('Records search complete. No matching records found.', { dedupeMs: 3000 });
     return;
   }
-  const linked = results.find(item => item.linked_call_number || item.call_number || item.call_type || item.incident_type || item.call_incident);
+  const linked = results.find(item => item.linked_call_number || item.call_number || item.call_type || item.incident_type || item.call_incident || item.linked_call_type);
   if (linked) {
-    const callType = linked.call_type || linked.incident_type || linked.call_incident || linked.linked_call_type || 'related call';
+    const callType = linked.linked_call_type || linked.call_type || linked.incident_type || linked.call_incident || 'related call';
     const callNumber = linked.linked_call_number || linked.call_number || '';
-    announceVoice(`Records search complete. ${results.length} matching records. Related call type: ${callType}${callNumber ? `. Call ${callNumber}` : ''}.`, { dedupeMs: 5000, rate: 0.86, pitch: 0.7 });
+    const location = linked.linked_call_location || linked.location || '';
+    announceVoice(`Records search complete. ${results.length} matching records. Related call type: ${callType}${callNumber ? `. Call ${callNumber}` : ''}${location ? `. Location ${location}` : ''}.`, { dedupeMs: 5000, rate: 0.86, pitch: 0.7 });
   } else {
     announceVoice(`Records search complete. ${results.length} matching records returned.`, { dedupeMs: 5000, rate: 0.86, pitch: 0.7 });
   }
