@@ -19,7 +19,7 @@ export default function AccountingProfit() {
     queryFn: () => base44.auth.me(),
   });
 
-  const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.role === 'admin';
+  const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access') || user?.role === 'admin';
 
   const { data: timeEntries } = useQuery({
     queryKey: ['timeEntries', startDate, endDate],
