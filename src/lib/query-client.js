@@ -9,7 +9,10 @@ export const queryClientInstance = new QueryClient({
 			// explicit refresh controls handle live data without resetting form state.
 			refetchOnWindowFocus: false,
 			refetchOnReconnect: true,
-			refetchOnMount: false,
+			// Navigating to a page must load that page's current data. This is separate
+			// from window focus: minimizing/restoring remains disabled above, so forms
+			// are not torn down just because the browser loses focus.
+			refetchOnMount: true,
 			// Do not globally poll every query. Live/critical screens define their own
 			// refresh cadence or subscriptions; global 5s polling was exhausting the
 			// Base44 request budget and starving the CAD/GRAC call feed.
