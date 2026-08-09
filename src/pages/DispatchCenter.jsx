@@ -94,20 +94,12 @@ export default function DispatchCenter() {
         }, 20000);
         const unitsInterval = setInterval(loadUnits, 60000);
         const secondaryInterval = setInterval(loadMonitoredProperties, 120000);
-        const onVisibility = () => {
-            if (!document.hidden) {
-                loadActiveCalls();
-                loadUnits();
-            }
-        };
-        document.addEventListener('visibilitychange', onVisibility);
 
         return () => {
             unsubscribeCalls?.();
             clearInterval(localInterval);
             clearInterval(unitsInterval);
             clearInterval(secondaryInterval);
-            document.removeEventListener('visibilitychange', onVisibility);
         };
     }, []);
 
