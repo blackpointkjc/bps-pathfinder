@@ -585,7 +585,17 @@ export default function Navigation() {
             setUnmappedCalls(unmapped);
             if (focusCallId) {
                 const target = active.find(c => c.id === focusCallId);
-                if (target) { setSelectedCall(target); setShowCallSidebar(true); }
+                if (target) {
+                    setSelectedCall(target);
+                    setShowCallSidebar(true);
+                    setCallSidebarCollapsed(false);
+                    setCallDistrict(null);
+                    if (Number.isFinite(Number(target.latitude)) && Number.isFinite(Number(target.longitude))) {
+                        setMapCenter([Number(target.latitude), Number(target.longitude)]);
+                        window.setTimeout(() => setMapCenter(null), 1200);
+                        lookupDistrict(target.latitude, target.longitude).then(d => setCallDistrict(d)).catch(() => null);
+                    }
+                }
             }
             // geocoding handled by backend automation
         } catch (e) {
