@@ -103,7 +103,7 @@ export default function MDCriminalComplaints() {
   });
 
   const { data: locations } = useQuery({
-    queryKey: ['activeLocations'],
+    queryKey: ['activeLocations', 'mdCriminalComplaints', user?.division || 'all'],
     queryFn: async () => {
       const allLocations = await base44.entities.Location.list('site_name');
       const activeLocations = allLocations.filter(loc => loc.active);
