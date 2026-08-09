@@ -278,15 +278,10 @@ export default function Navigation() {
         try {
             const alreadyAssigned = selectedCall.assigned_units?.includes(currentUser.id);
             if (!alreadyAssigned) {
-                await base44.entities.CallAssignment.create({
-                    call_id: selectedCall.id,
-                    unit_id: currentUser.id,
-                    role: 'primary',
-                    assigned_at: new Date().toISOString(),
-                    status: 'accepted'
-                });
+                const result = await base44.functions.invoke('updateMyCallAssignment', { call_id: selectedCall.id, action: 'join' });
+                const payload = result?.data || result || {};
+                if (payload.error) throw new Error(payload.error);
                 const updatedUnits = [...(selectedCall.assigned_units || []), currentUser.id];
-                await base44.entities.DispatchCall.update(selectedCall.id, { assigned_units: updatedUnits });
                 setSelectedCall(prev => ({ ...prev, assigned_units: updatedUnits }));
                 await handleStatusChange('Enroute');
                 toast.success('Assigned to call — status set to Enroute');
@@ -302,8 +297,10 @@ export default function Navigation() {
         if (!currentUser || !selectedCall) return;
         setAssigning(true);
         try {
+            const result = await base44.functions.invoke('updateMyCallAssignment', { call_id: selectedCall.id, action: 'leave' });
+            const payload = result?.data || result || {};
+            if (payload.error) throw new Error(payload.error);
             const updatedUnits = (selectedCall.assigned_units || []).filter(id => id !== currentUser.id);
-            await base44.entities.DispatchCall.update(selectedCall.id, { assigned_units: updatedUnits });
             setSelectedCall(prev => ({ ...prev, assigned_units: updatedUnits }));
             toast.success('Unassigned from call');
         } catch {
