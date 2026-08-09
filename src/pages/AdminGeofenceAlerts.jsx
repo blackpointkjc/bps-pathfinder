@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Shield, Target, MapPin, Check, AlertTriangle, Clock, User, ZoomIn, ZoomOut } from "lucide-react";
-import { parseISO, differenceInMinutes } from "date-fns";
+import { differenceInMinutes } from "date-fns";
 import { MapContainer, TileLayer, Marker, Circle, Polygon, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
