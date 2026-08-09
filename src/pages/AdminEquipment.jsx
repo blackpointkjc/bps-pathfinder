@@ -454,13 +454,13 @@ export default function AdminEquipment() {
                 <Label>Assigned To</Label>
                 <Select
                   value={formData.assigned_to}
-                  onValueChange={(val) => setFormData({ ...formData, assigned_to: val, status: val ? 'assigned' : 'available' })}
+                  onValueChange={(val) => { const next = val === '__none__' ? '' : val; setFormData({ ...formData, assigned_to: next, status: next ? 'assigned' : 'available' }); }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Not assigned" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>Not Assigned</SelectItem>
+                    <SelectItem value="__none__">Not Assigned</SelectItem>
                     {activeOfficers.map(officer => (
                       <SelectItem key={officer.email} value={officer.email}>
                         {officer.first_name} {officer.last_name} - {officer.rank}
