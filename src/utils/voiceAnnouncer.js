@@ -65,6 +65,51 @@ export function announceVoice(text, options = {}) {
   }
 }
 
+export function announceVoiceAsync(text, options = {}) {
+  if (!text || !isVoiceSupported() || !isVoiceEnabled()) return Promise.resolve(false);
+  const clean = String(text).replace(/\s+/g, ' ').trim();
+  if (!clean) return Promise.resolve(false);
+
+  const now = Date.now();
+  const dedupeMs = options.dedupeMs ?? 1800;
+  if (clean === lastText && now - lastAt < dedupeMs) return Promise.resolve(false);
+  lastText = clean;
+  lastAt = now;
+
+  return new Promise(resolve => {
+    try {
+      const utterance = new SpeechSynthesisUtterance(clean);
+      utterance.lang = options.lang || 'en-US';
+      utterance.rate = options.rate ?? 0.88;
+      utterance.pitch = options.pitch ?? 0.72;
+      utterance.volume = options.volume ?? 1;
+      const voice = getPreferredVoice();
+      if (voice) utterance.voice = voice;
+      let settled = false;
+      const finish = value => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      utterance.onend = () => finish(true);
+      utterance.onerror = () => finish(false);
+      if (options.interrupt !== false) window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      resolve(false);
+    }
+  });
+} 
+@@
+ export function announceDistressSignal({ unit, name }) {
+   announceVoice(`Distress signal 13. ${unit ? `Unit ${unit}.` : ''} ${name ? `${name}.` : ''}`, { dedupeMs: 15000, rate: 0.78, pitch: 0.65 });
+ }
++
++export function announceDistressSignalAsync({ unit, name }) {
++  return announceVoiceAsync(`Distress signal 13. ${unit ? `Unit ${unit}.` : ''} ${name ? `${name}.` : ''}`, { dedupeMs: 15000, rate: 0.78, pitch: 0.65 });
++}
+*** End Patch
+
 export function announceNavigationInstruction(instruction, distanceFeet) {
   if (!instruction) return;
   const distance = Number(distanceFeet);
