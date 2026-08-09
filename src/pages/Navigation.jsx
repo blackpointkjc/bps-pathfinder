@@ -1307,6 +1307,25 @@ export default function Navigation() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {streetViewUrl && (
+                <div className="fixed inset-0 z-[99990] flex items-center justify-center bg-black/75 p-3 sm:p-6" onClick={() => setStreetViewUrl('')}>
+                    <div className="flex h-[min(88vh,760px)] w-[min(96vw,1100px)] flex-col overflow-hidden rounded-2xl border border-[#3b5570] bg-[#07111f] shadow-[0_30px_100px_rgba(0,0,0,.8)]" onClick={event => event.stopPropagation()}>
+                        <div className="flex flex-none items-center gap-3 border-b border-[#263c52] bg-[#0d1725] px-4 py-3">
+                            <div className="min-w-0 flex-1">
+                                <div className="text-xs font-black tracking-[0.16em] text-white">STREET VIEW</div>
+                                <div className="text-[10px] text-slate-500">Call location · In-app map view</div>
+                            </div>
+                            <button type="button" onClick={() => setStreetViewUrl('')} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#38516b] text-slate-300 hover:bg-[#17283b] hover:text-white" aria-label="Close Street View">
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <div className="min-h-0 flex-1 bg-black">
+                            <iframe title="Street View" src={streetViewUrl} className="h-full w-full border-0" allow="fullscreen" referrerPolicy="no-referrer-when-downgrade" />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
