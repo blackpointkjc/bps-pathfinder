@@ -82,6 +82,7 @@ const CENTER_CONFIG = {
         ['Training & Compliance', 'OfficerTraining', GraduationCap],
         ['Shift Handover', 'ShiftHandover', ClipboardCheck],
         ['Summons', 'Summons', FileText],
+        ['Virginia Field Law Assistant', 'VirginiaFieldLawAssistant', BookOpen],
       ]},
     ],
   },
@@ -260,7 +261,7 @@ function hasFullAccess(user) {
 
 const DARK_WORKSPACE_PAGES = new Set([
   'CommandDashboard', 'DispatchCenter', 'CallHistory', 'ClientCallHistory',
-  'BOLOAlerts', 'RecordsAssistant', 'Personnel', 'PathfinderReports', 'AdminPortal'
+  'BOLOAlerts', 'RecordsAssistant', 'VirginiaFieldLawAssistant', 'Personnel', 'PathfinderReports', 'AdminPortal'
 ]);
 
 function normalizedRoles(user) {
