@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { accountingBulkCreate, accountingCreate, accountingDelete, accountingUpdate } from '@/lib/accountingRecordsApi';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,7 +92,7 @@ export default function AccountingPayroll() {
   }, [payrollPeriods, selectedPeriodId]);
 
   const createPayrollMutation = useMutation({
-    mutationFn: (entries) => base44.entities.PayrollEntry.bulkCreate(entries),
+    mutationFn: (entries) => accountingBulkCreate('PayrollEntry', entries),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payrollEntries'] });
       setGenerating(false);
@@ -104,7 +105,7 @@ export default function AccountingPayroll() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: (id) => base44.entities.PayrollEntry.update(id, {
+    mutationFn: (id) => accountingUpdate('PayrollEntry', id, {
       status: 'approved',
       approved_by: user.email,
       approved_date: new Date().toISOString()
@@ -113,7 +114,7 @@ export default function AccountingPayroll() {
   });
 
   const markPaidMutation = useMutation({
-    mutationFn: (id) => base44.entities.PayrollEntry.update(id, {
+    mutationFn: (id) => accountingUpdate('PayrollEntry', id, {
       status: 'paid',
       pay_date: format(new Date(), 'yyyy-MM-dd')
     }),
@@ -124,16 +125,16 @@ export default function AccountingPayroll() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.PayrollEntry.delete(id),
+    mutationFn: (id) => accountingDelete('PayrollEntry', id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payrollEntries'] }),
   });
 
   const saveConfigMutation = useMutation({
     mutationFn: async (data) => {
       if (config) {
-        return base44.entities.PayrollConfig.update(config.id, data);
+        return accountingUpdate('PayrollConfig', config.id, data);
       } else {
-        return base44.entities.PayrollConfig.create({ config_name: "Default", ...data });
+        return accountingCreate('PayrollConfig', { config_name: "Default", ...data });
       }
     },
     onSuccess: () => {
