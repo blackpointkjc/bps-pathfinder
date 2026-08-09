@@ -37,6 +37,7 @@ export function waitForLiveLocation({ maxAgeMs = 15000, timeoutMs = 10000, maxAc
   if (acceptable(current)) return Promise.resolve(current);
   return new Promise((resolve, reject) => {
     let done = false;
+    let timer;
     const finish = (value, error) => {
       if (done) return;
       done = true;
@@ -47,6 +48,6 @@ export function waitForLiveLocation({ maxAgeMs = 15000, timeoutMs = 10000, maxAc
     const unsubscribe = subscribeLiveLocation(fix => {
       if (acceptable(fix)) finish(fix);
     });
-    const timer = setTimeout(() => finish(null, new Error('LIVE_LOCATION_TIMEOUT')), timeoutMs);
+    timer = setTimeout(() => finish(null, new Error('LIVE_LOCATION_TIMEOUT')), timeoutMs);
   });
 }
