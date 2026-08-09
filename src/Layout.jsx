@@ -852,11 +852,9 @@ export default function Layout({ children, currentPageName }) {
     try {
       const records = await base44.entities.PropertyAlert.filter({ callId: propertyAlert.call.id, propertyId: propertyAlert.property.id, acknowledged: false });
       for (const record of records || []) {
-        await base44.entities.PropertyAlert.update(record.id, {
-          acknowledged: true,
-          acknowledgedBy: user?.email || '',
-          acknowledgedAt: new Date().toISOString(),
-        });
+        const result = await base44.functions.invoke('acknowledgePropertyAlert', { alert_id: record.id });
+        const payload = result?.data || result || {};
+        if (payload.error) throw new Error(payload.error);
       }
     } catch (error) {
       console.warn('Unable to record property alert acknowledgment:', error?.message);
