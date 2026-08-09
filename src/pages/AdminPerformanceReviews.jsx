@@ -39,25 +39,20 @@ export default function AdminPerformanceReviews() {
     queryFn: () => base44.auth.me(),
   });
 
-  const hasHRAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access');
+  const hasHRAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
 
-  const { data: allUsers, error: usersError } = useQuery({
-    queryKey: ['allUsers'],
+  const { data: allUsers = [], error: usersError } = useQuery({
+    queryKey: ['hrUsers', 'performanceReviews'],
     queryFn: async () => {
-      console.log('🔍 Performance Review - Querying users...');
-      try {
-        const users = await base44.entities.User.list();
-        console.log('✅ Performance Review - Fetched users:', users);
-        console.log('✅ Number of users:', users?.length);
-        return users || [];
-      } catch (err) {
-        console.error('❌ Performance Review - Error fetching users:', err);
-        throw err;
-      }
+      const result = await base44.functions.invoke('getHRUsers', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.users || [];
     },
     enabled: hasHRAccess,
-    retry: 3,
+    retry: 2,
     staleTime: 0,
+    initialData: [],
   });
 
   const { data: allReviews } = useQuery({
@@ -65,10 +60,16 @@ export default function AdminPerformanceReviews() {
     queryFn: () => base44.entities.PerformanceReview.list('-review_date'),
   });
 
-  const { data: timeEntries } = useQuery({
-    queryKey: ['allTimeEntries'],
-    queryFn: () => base44.entities.TimeEntry.list(),
-    enabled: !!selectedOfficer,
+  const { data: timeEntries = [] } = useQuery({
+    queryKey: ['hrTimeEntries', 'performanceReviews', selectedOfficer],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('manageHRTimeEntries', { action: 'list' });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return (payload.entries || []).filter(entry => !selectedOfficer || entry.officer_email === selectedOfficer);
+    },
+    enabled: hasHRAccess && !!selectedOfficer,
+    initialData: [],
   });
 
   const { data: schedules } = useQuery({
