@@ -11,7 +11,7 @@ import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import FieldCallModal from '@/components/dispatch/FieldCallModal';
 import ActiveBoloBanner from '@/components/bolo/ActiveBoloBanner';
 import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
-import { DashboardDataProvider, useDashboardData } from '@/lib/DashboardDataContext';
+import { useDashboardData } from '@/lib/DashboardDataContext';
 import { Volume2, VolumeX, Zap, MapPin, Users, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
 
 const PRIORITY_CONFIG = {
@@ -552,11 +552,6 @@ function CommandDashboardInner() {
     );
 }
 
-// Wrap with provider so context is available
 export default function CommandDashboard() {
-    return (
-        <DashboardDataProvider>
-            <CommandDashboardInner />
-        </DashboardDataProvider>
-    );
+    return <CommandDashboardInner />;
 }
