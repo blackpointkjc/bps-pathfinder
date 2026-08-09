@@ -404,6 +404,7 @@ function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, acti
 
 function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, unreadCounts = {}, onCloseMobile, onToggleCollapsed, onLogout }) {
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [openNavGroup, setOpenNavGroup] = useState(() => sessionStorage.getItem(`bps-open-nav-group:${activeCenter}`) || '');
   const availableCenters = allowedCenters(user).filter(center => !mobile || ['cad', 'officer', 'supervisor', 'admin'].includes(center));
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
   const query = search.trim().toLowerCase();
@@ -415,6 +416,23 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
       items: group.items.filter(([label]) => !query || label.toLowerCase().includes(query)),
     }))
     .filter(group => group.items.length > 0);
+
+  useEffect(() => {
+    const groupForPage = center.groups
+      .filter(group => !group.fullAccessOnly || hasFullAccess(user))
+      .find(group => group.items.some(([, page]) => page === currentPageName));
+    const remembered = sessionStorage.getItem(`bps-open-nav-group:${activeCenter}`);
+    const next = groupForPage?.label || remembered || groups[0]?.label || '';
+    setOpenNavGroup(next);
+    if (next) sessionStorage.setItem(`bps-open-nav-group:${activeCenter}`, next);
+  }, [activeCenter, currentPageName, user?.role, JSON.stringify(user?.additional_roles || [])]);
+
+  const setNavGroup = (label, isOpen) => {
+    const next = isOpen ? label : '';
+    setOpenNavGroup(next);
+    if (next) sessionStorage.setItem(`bps-open-nav-group:${activeCenter}`, next);
+    else sessionStorage.removeItem(`bps-open-nav-group:${activeCenter}`);
+  };
 
   return (
     <div className="flex h-full flex-col border-r border-[#183049] bg-gradient-to-b from-[#071321] via-[#081522] to-[#050d17] shadow-[12px_0_40px_rgba(0,0,0,.25)]">
@@ -496,7 +514,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             </span>
           )}
         </Link>
-        {groups.map((group, groupIndex) => <details key={group.label} name={`${activeCenter}-nav-groups`} open={groups.length === 1 || groupIndex === 0} className="mb-2 group">
+        {groups.map((group) => <details key={`${activeCenter}:${group.label}`} open={openNavGroup === group.label || Boolean(query)} onToggle={event => { if (!query) setNavGroup(group.label, event.currentTarget.open); }} className="mb-2 group">
           {(!collapsed || mobile) ? (
             <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-2.5 py-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7895b2] transition hover:bg-[#0d2135] hover:text-[#9fc7e8]">{group.label}<ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-open:rotate-180" /></summary>
           ) : (
@@ -505,7 +523,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
           <div className="space-y-1 pb-1">
             {group.items.map(([label, page, Icon]) => {
               const active = currentPageName === page;
-              return <Link key={page} to={createPageUrl(page)} title={collapsed && !mobile ? label : undefined} onClick={() => onCloseMobile?.()} className={`relative flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all duration-200 ${active ? 'border-[#2f6f9d] bg-[#12304a] text-white shadow-[0_6px_18px_rgba(0,0,0,.18)]' : 'border-transparent text-[#91a8bf] hover:bg-[#0d2236] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
+              return <Link key={page} to={createPageUrl(page)} title={collapsed && !mobile ? label : undefined} onClick={() => { setNavGroup(group.label, true); onCloseMobile?.(); }} className={`relative flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all duration-200 ${active ? 'border-[#2f6f9d] bg-[#12304a] text-white shadow-[0_6px_18px_rgba(0,0,0,.18)]' : 'border-transparent text-[#91a8bf] hover:bg-[#0d2236] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
                 {active && <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,.55)]" />}
                 <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-[#7ec1ff]' : 'text-[#6683a0]'}`} />
                 {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-bold leading-tight">{label}</span>}
