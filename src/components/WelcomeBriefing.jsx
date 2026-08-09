@@ -71,19 +71,11 @@ export default function WelcomeBriefing({ user }) {
     const now = Date.now();
     const sessionSeen = sessionStorage.getItem(sessionKey) === 'shown';
     const savedActive = Number.isFinite(new Date(localStorage.getItem(storageKey) || '').getTime()) ? new Date(localStorage.getItem(storageKey)).getTime() : null;
-    const idleForHour = Boolean(savedActive && now - savedActive >= 60 * 60 * 1000);
-    const previousStatus = normalized(localStorage.getItem(lastStatusKey));
-    const currentStatus = normalized(user?.status || 'out of service');
-    const returnedToService = previousStatus === 'out of service' && currentStatus !== 'out of service';
-    const isNewAppSession = !sessionSeen;
 
-    // Page changes, route changes, React remounts, query refreshes, and CAD refreshes
-    // are NOT briefing triggers. Only a new app/browser session, 60+ minutes idle,
-    // or an Out of Service -> In Service transition may open the briefing.
-    if (!isNewAppSession && !idleForHour && !returnedToService) {
-      localStorage.setItem(lastStatusKey, user?.status || 'Out of Service');
-      return;
-    }
+    // The login briefing is a once-per-login/browser-session window. It must not
+    // reopen because the app was minimized, the tab was hidden, the user returned
+    // after an hour, their duty status changed, or a component remounted.
+    if (sessionSeen) return;
 
     sessionStorage.setItem(sessionKey, 'shown');
     localStorage.setItem(lastShownKey, new Date(now).toISOString());
@@ -146,35 +138,17 @@ export default function WelcomeBriefing({ user }) {
 
   useEffect(() => {
     if (!storageKey) return;
-    const markActive = () => {
-      // Only advance activity while the user is actually interacting with/looking at
-      // Pathfinder. This makes 60+ minutes away a real briefing trigger.
-      if (!document.hidden) localStorage.setItem(storageKey, new Date().toISOString());
-    };
+    // Activity bookkeeping is informational only. It never reopens the briefing.
+    const markActive = () => localStorage.setItem(storageKey, new Date().toISOString());
     markActive();
     const interval = window.setInterval(markActive, 60000);
-    const onVisibility = () => {
-      if (!document.hidden) {
-        const saved = localStorage.getItem(storageKey);
-        const last = saved ? new Date(saved).getTime() : 0;
-        if (last && Date.now() - last >= 60 * 60 * 1000) {
-          // Re-open the briefing immediately when the user returns after 60+ minutes idle.
-          setOfflineSince(last);
-          sessionStorage.removeItem(sessionKey);
-          setTriggerVersion(value => value + 1);
-        }
-        markActive();
-      }
-    };
     const activityEvents = ['pointerdown', 'keydown', 'touchstart'];
     activityEvents.forEach(eventName => window.addEventListener(eventName, markActive, { passive: true }));
-    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.clearInterval(interval);
       activityEvents.forEach(eventName => window.removeEventListener(eventName, markActive));
-      document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [storageKey, sessionKey]);
+  }, [storageKey]);
 
   const pendingMessages = brief.messages.length + brief.mentions.length;
   const totalItems = pendingMessages + brief.announcements.length + brief.updates.length + brief.appUpdates.length + brief.propertyAlerts.length;
