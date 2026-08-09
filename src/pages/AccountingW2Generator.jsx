@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { accountingCreate, accountingUpdate } from '@/lib/accountingRecordsApi';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,8 +58,8 @@ export default function AccountingW2Generator() {
         Number(form.tax_year) === Number(data.tax_year) && form.officer_email === data.officer_email
       );
       return existing
-        ? base44.entities.W2Form.update(existing.id, data)
-        : base44.entities.W2Form.create(data);
+        ? accountingUpdate('W2Form', existing.id, data)
+        : accountingCreate('W2Form', data);
     })),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['w2Forms'] });
@@ -72,7 +73,7 @@ export default function AccountingW2Generator() {
   });
 
   const finalizeW2Mutation = useMutation({
-    mutationFn: (id) => base44.entities.W2Form.update(id, { status: 'finalized' }),
+    mutationFn: (id) => accountingUpdate('W2Form', id, { status: 'finalized' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['w2Forms'] });
     },
