@@ -37,14 +37,21 @@ export default function AdminPTOLossReport() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
-    enabled: user?.role === 'admin' || user?.additional_roles?.includes('hr'),
-  });
-
   const hrRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const hasHRAccess = user?.role === 'admin' || hrRoles.has('hr') || hrRoles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
+
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['hrUsers', 'ptoLoss'],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getHRUsers', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.users || [];
+    },
+    enabled: hasHRAccess,
+    initialData: [],
+  });
+
 
   const { data: timeEntries = [] } = useQuery({
     queryKey: ['allTimeEntries', selectedYear],
