@@ -322,6 +322,11 @@ async function reserveCadNumbers(base44: any, count: number) {
 
 function chooseCanonical(records: any[]) {
   return [...records].sort((a, b) => {
+    // If any duplicate row was manually dismissed, keep that row as canonical so
+    // duplicate cleanup can never preserve an active twin and resurrect the call.
+    const aManual = a.manual_dismissed === true ? 0 : 1;
+    const bManual = b.manual_dismissed === true ? 0 : 1;
+    if (aManual !== bManual) return aManual - bManual;
     const aOfficial = a.official_cad_verified && a.agency_cad_number ? 0 : 1;
     const bOfficial = b.official_cad_verified && b.agency_cad_number ? 0 : 1;
     if (aOfficial !== bOfficial) return aOfficial - bOfficial;
@@ -488,20 +493,21 @@ Deno.serve(async (req) => {
         const savedOfficialCad = existing.official_cad_verified ? String(existing.agency_cad_number || '').trim() : chesterfieldPublicId;
         const officialCad = matchedOfficialCad || savedOfficialCad;
         const bpsReference = String(existing.bps_reference || '').trim();
-        const manuallyCleared = existing.status === 'Cleared' && Boolean(existing.time_cleared);
+        const manuallyCleared = existing.manual_dismissed === true;
         const incomingWithCad = {
           ...callData,
-          // A dispatcher/officer manual clear is authoritative for this exact upstream
-          // call ID. GRAC may continue publishing the incident for a while, but that
-          // must not resurrect it in the Pathfinder active queue.
+          // A Pathfinder manual clear is authoritative for this exact upstream call
+          // ID. GRAC may continue publishing it, but ingestion must keep it dismissed.
           status: manuallyCleared ? 'Cleared' : callData.status,
+          manual_dismissed: manuallyCleared,
+          ...(manuallyCleared ? { manual_dismissed_at: existing.manual_dismissed_at || existing.time_cleared || new Date().toISOString() } : {}),
           agency_cad_number: officialCad,
           bps_reference: bpsReference,
           call_id: officialCad || bpsReference || existing.call_id,
           cad_number_source: officialCad ? 'official_government_feed' : 'bps_internal',
           official_cad_verified: Boolean(officialCad),
           description: callData.description,
-          ...(manuallyCleared ? { time_cleared: existing.time_cleared } : {}),
+          ...(manuallyCleared ? { time_cleared: existing.time_cleared || existing.manual_dismissed_at || new Date().toISOString() } : {}),
         };
         if (changed(existing, incomingWithCad)) {
           await base44.asServiceRole.entities.DispatchCall.update(existing.id, incomingWithCad);
