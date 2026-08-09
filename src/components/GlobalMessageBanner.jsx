@@ -24,6 +24,20 @@ function audioContext() {
   return notificationAudioContext;
 }
 
+function speakNotification(text, { rate = 0.9, pitch = 0.78 } = {}) {
+  try {
+    if (!('speechSynthesis' in window) || !text) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = rate;
+    utterance.pitch = pitch;
+    utterance.volume = 1;
+    window.speechSynthesis.speak(utterance);
+  } catch (error) {
+    console.warn('Notification voice unavailable:', error?.message);
+  }
+}
+
 function playNotificationChime(urgent = false) {
   try {
     const context = audioContext();
@@ -132,7 +146,13 @@ export default function GlobalMessageBanner({ user }) {
       window.setTimeout(() => recentFingerprints.current.delete(fingerprint), 5000);
 
       if (!duplicate) {
-        playNotificationChime(source.kind === 'property');
+        if (source.kind === 'message' && source.direct) {
+          // Deliberately use the familiar phrase the user requested rather than a
+          // generic notification tone. Keep it short so it does not delay the banner.
+          speakNotification('You got mail', { rate: 0.82, pitch: 0.72 });
+        } else {
+          playNotificationChime(source.kind === 'property');
+        }
         window.dispatchEvent(new CustomEvent('bps-unread-notification', {
           detail: { page: record.page || source.page, key },
         }));
@@ -161,6 +181,25 @@ export default function GlobalMessageBanner({ user }) {
         timers.current.set(key, timer);
       }
     };
+
+    // BOLOs are a separate operational alert source. Announce a newly issued BOLO
+    // with the exact phrase requested by dispatch/officer workflows.
+    try {
+      const boloUnsubscribe = base44.entities.BOLOAlert.subscribe(event => {
+        if (event?.type !== 'create' || !event.data?.id) return;
+        const record = event.data;
+        const key = `BOLOAlert:${record.id}`;
+        if (knownIds.current.has(key)) return;
+        knownIds.current.add(key);
+        speakNotification('Be on the lookout. Be on the lookout.', { rate: 0.78, pitch: 0.7 });
+        window.dispatchEvent(new CustomEvent('bps-unread-notification', {
+          detail: { page: 'BOLOAlerts', key },
+        }));
+      });
+      if (typeof boloUnsubscribe === 'function') unsubscribers.push(boloUnsubscribe);
+    } catch (error) {
+      console.warn('Unable to subscribe to BOLO alerts:', error?.message);
+    }
 
     for (const source of SOURCES) {
       if (source.supervisorOnly && user.role !== 'admin' && !roles.has('supervisor') && !roles.has('full_access')) continue;
