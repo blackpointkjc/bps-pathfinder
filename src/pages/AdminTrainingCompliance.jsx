@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { trainingCreate, trainingDelete, trainingUpdate } from '@/lib/trainingRecordsApi';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -208,8 +209,8 @@ export default function AdminTrainingCompliance() {
         renewal_training_name: renewalReq?.training_name || null,
       };
       return editingRequirement
-        ? base44.entities.TrainingRequirement.update(editingRequirement.id, finalData)
-        : base44.entities.TrainingRequirement.create(finalData);
+        ? trainingUpdate('TrainingRequirement', editingRequirement.id, finalData)
+        : trainingCreate('TrainingRequirement', finalData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trainingRequirements'] });
@@ -221,7 +222,7 @@ export default function AdminTrainingCompliance() {
   });
 
   const deleteRequirementMutation = useMutation({
-    mutationFn: (id) => base44.entities.TrainingRequirement.delete(id),
+    mutationFn: (id) => trainingDelete('TrainingRequirement', id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['trainingRequirements'] }); toast.success("Deleted"); },
   });
 
@@ -238,7 +239,7 @@ export default function AdminTrainingCompliance() {
         for (const email of targetEmails) {
           const officer = officerUsers.find(u => u.email === email);
           const renewalReq = t.renewal_requirement_id ? requirements.find(r => r.id === t.renewal_requirement_id) : null;
-          const a = await base44.entities.TrainingAssignment.create({
+          const a = await trainingCreate('TrainingAssignment', {
             requirement_id: t.requirement_id || null,
             training_name: t.training_name,
             category: t.category,
@@ -298,7 +299,7 @@ export default function AdminTrainingCompliance() {
       const finalCertNumber = approvalDetails.certificate_number || submission.certificate_number || null;
       const finalIssueDate = approvalDetails.issue_date || submission.issue_date || null;
 
-      await base44.entities.TrainingSubmission.update(submission.id, {
+      await trainingUpdate('TrainingSubmission', submission.id, {
         status: decision,
         reviewed_by: user.email,
         reviewed_by_name: adminName,
@@ -366,7 +367,7 @@ export default function AdminTrainingCompliance() {
         }
       }
 
-      await base44.entities.TrainingAssignment.update(submission.assignment_id, updateData);
+      await trainingUpdate('TrainingAssignment', submission.assignment_id, updateData);
 
       // Notify officer of approval/rejection
       const renewalReqName = approvalDetails.renewal_requirement_id
@@ -408,7 +409,7 @@ export default function AdminTrainingCompliance() {
         const reminderTargetDate = entry.expiration_date || entry.due_date || null;
         const renewalReq = entry.renewal_requirement_id ? requirements.find(r => r.id === entry.renewal_requirement_id) : null;
 
-        const assignment = await base44.entities.TrainingAssignment.create({
+        const assignment = await trainingCreate('TrainingAssignment', {
           training_name: entry.training_name,
           category: entry.category,
           officer_email: form.officer_email,
@@ -429,7 +430,7 @@ export default function AdminTrainingCompliance() {
           requirement_id: entry.requirement_id || null,
         });
 
-        await base44.entities.TrainingSubmission.create({
+        await trainingCreate('TrainingSubmission', {
           assignment_id: assignment.id,
           training_name: entry.training_name,
           officer_email: form.officer_email,
@@ -492,8 +493,8 @@ export default function AdminTrainingCompliance() {
     mutationFn: async (assignmentId) => {
       // Also delete any submissions linked to it
       const linked = submissions.filter(s => s.assignment_id === assignmentId);
-      await Promise.all(linked.map(s => base44.entities.TrainingSubmission.delete(s.id)));
-      await base44.entities.TrainingAssignment.delete(assignmentId);
+      await Promise.all(linked.map(s => trainingDelete('TrainingSubmission', s.id)));
+      await trainingDelete('TrainingAssignment', assignmentId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allTrainingAssignments'] });
@@ -510,7 +511,7 @@ export default function AdminTrainingCompliance() {
       if (form.expiration_date && assignment.renewal_period_months > 0) {
         renewalDueDate = addMonths(new Date(form.expiration_date), assignment.renewal_period_months).toISOString().split('T')[0];
       }
-      await base44.entities.TrainingAssignment.update(assignment.id, {
+      await trainingUpdate('TrainingAssignment', assignment.id, {
         renewal_due_date: renewalDueDate,
         expiration_date: form.expiration_date || null,
       });
@@ -519,7 +520,7 @@ export default function AdminTrainingCompliance() {
       const approvedSub = freshSubs.filter(s => s.status === 'approved')
         .sort((a, b) => new Date(b.submission_date) - new Date(a.submission_date))[0];
       if (approvedSub) {
-        await base44.entities.TrainingSubmission.update(approvedSub.id, {
+        await trainingUpdate('TrainingSubmission', approvedSub.id, {
           expiration_date: form.expiration_date || null,
           certificate_number: form.certificate_number || null,
           issue_date: form.completed_date || approvedSub.issue_date,
@@ -590,7 +591,7 @@ export default function AdminTrainingCompliance() {
       const approvedSub = subs.filter(s => s.status === 'approved')
         .sort((a, b) => new Date(b.submission_date) - new Date(a.submission_date))[0];
       if (approvedSub) {
-        await base44.entities.TrainingSubmission.update(approvedSub.id, { admin_cert_file_url: file_url });
+        await trainingUpdate('TrainingSubmission', approvedSub.id, { admin_cert_file_url: file_url });
       }
     },
     onSuccess: () => {
@@ -607,7 +608,7 @@ export default function AdminTrainingCompliance() {
       const approvedSub = subs.filter(s => s.status === 'approved')
         .sort((a, b) => new Date(b.submission_date) - new Date(a.submission_date))[0];
       if (approvedSub) {
-        await base44.entities.TrainingSubmission.update(approvedSub.id, { admin_cert_file_url: null });
+        await trainingUpdate('TrainingSubmission', approvedSub.id, { admin_cert_file_url: null });
       }
     },
     onSuccess: () => {
@@ -1075,7 +1076,7 @@ export default function AdminTrainingCompliance() {
                           {a.renewal_due_date && <span className="text-blue-600">Renewal: {format(parseISO(a.renewal_due_date), 'MM/dd/yyyy')}</span>}
                         </div>
                       </div>
-                      <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => base44.entities.TrainingAssignment.delete(a.id).then(() => queryClient.invalidateQueries({ queryKey: ['allTrainingAssignments'] }))}>
+                      <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => trainingDelete('TrainingAssignment', a.id).then(() => queryClient.invalidateQueries({ queryKey: ['allTrainingAssignments'] }))}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -1583,7 +1584,7 @@ export default function AdminTrainingCompliance() {
                 <Label>Renewal Training Course</Label>
                 <Select value={updatingAssignment?.renewal_requirement_id || ""} onValueChange={v => {
                   const renewalReq = v ? requirements.find(r => r.id === v) : null;
-                  base44.entities.TrainingAssignment.update(updatingAssignment.id, {
+                  trainingUpdate('TrainingAssignment', updatingAssignment.id, {
                     renewal_requirement_id: v || null,
                     renewal_training_name: renewalReq?.training_name || null,
                   }).then(() => {
