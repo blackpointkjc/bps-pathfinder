@@ -26,41 +26,24 @@ export default function ClientPayrollReport() {
     staleTime: 0,
   });
 
-  const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
-
-  const { data: timeEntries } = useQuery({
-    queryKey: ['clientTimeEntries', startDate, endDate],
-    queryFn: () => base44.entities.TimeEntry.list('-clock_in', 2000),
-    enabled: user?.additional_roles?.includes('client'),
-    initialData: [],
-  });
-
-  const { data: officers } = useQuery({
-    queryKey: ['officers'],
-    queryFn: () => base44.entities.User.list(),
-    initialData: [],
-  });
-
-  const { data: locations } = useQuery({
-    queryKey: ['locations'],
-    queryFn: () => base44.entities.Location.list(),
-    initialData: [],
-  });
-
-  const { data: clientInvoices = [] } = useQuery({
-    queryKey: ['clientInvoices', user?.email],
+  const previewId = getClientPreviewId();
+  const { data: billingData = {} } = useQuery({
+    queryKey: ['clientBillingData', user?.id || user?.email, previewId],
     queryFn: async () => {
-      try {
-        const allInvoices = await base44.entities.Invoice.list('-created_date', 1000);
-        return allInvoices.filter(inv => inv.client_email === user?.email) || [];
-      } catch (error) {
-        console.error('Error fetching invoices:', error);
-        return [];
-      }
+      const result = await base44.functions.invoke('getClientBillingData', previewId ? { client_id: previewId } : {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
-    enabled: !!user && user?.additional_roles?.includes('client'),
-    initialData: [],
+    enabled: !!user,
+    initialData: {},
   });
+
+  const clientLocations = billingData.assigned_locations || user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
+  const timeEntries = billingData.time_entries || [];
+  const officers = billingData.officers || [];
+  const locations = billingData.locations || [];
+  const clientInvoices = billingData.invoices || [];
 
   // Show invoice popup on first load
   useEffect(() => {
