@@ -6,7 +6,8 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     const roles = new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));
     const supportRank = ['support staff', 'human resources'].includes(String(user?.rank || '').toLowerCase());
-    const privileged = !!user && (user.role === 'admin' || roles.has('hr') || roles.has('trainer') || roles.has('full_access'));
+    const hrPrivileged = !!user && (user.role === 'admin' || roles.has('hr') || roles.has('full_access'));
+    const privileged = hrPrivileged || (!!user && roles.has('trainer'));
     const authorized = privileged || (!!user && (supportRank || roles.has('support_staff')));
     if (!authorized) return Response.json({ error: 'Unauthorized', users: [] }, { status: 403 });
 
@@ -18,7 +19,13 @@ Deno.serve(async (req) => {
         const entryRoles = entry.additional_roles || [];
         return !entry.termination_date && (entry.role === 'admin' || entryRoles.some((role: string) => internalRoles.has(String(role).toLowerCase())) || ['support staff', 'human resources'].includes(String(entry.rank || '').toLowerCase()));
       })
-      .map((entry: any) => ({
+      .map((entry: any) => hrPrivileged ? {
+        ...entry,
+        role: entry.role || 'user',
+        additional_roles: entry.additional_roles || [],
+        pto_balance_hours: entry.pto_balance_hours || 0,
+        sick_time_balance_hours: entry.sick_time_balance_hours || entry.sick_balance_hours || 0,
+      } : ({
         id: entry.id,
         email: entry.email,
         role: entry.role || 'user',
@@ -30,7 +37,7 @@ Deno.serve(async (req) => {
         profile_photo_url: entry.profile_photo_url || '',
         additional_roles: entry.additional_roles || [],
         pto_balance_hours: entry.pto_balance_hours || 0,
-        sick_balance_hours: entry.sick_balance_hours || 0,
+        sick_time_balance_hours: entry.sick_time_balance_hours || entry.sick_balance_hours || 0,
       }))
       .sort((a: any, b: any) => `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`));
 
