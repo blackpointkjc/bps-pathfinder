@@ -35,21 +35,13 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
         if (!call) return;
         
         try {
-            const updatedUnits = [...assignedUnitIds, unit.id];
-            await base44.entities.DispatchCall.update(call.id, {
-                assigned_units: updatedUnits,
-                status: 'Dispatched',
-                time_dispatched: new Date().toISOString()
-            });
-
-            // Create assignment record
-            await base44.entities.CallAssignment.create({
+            const result = await base44.functions.invoke('manageCadUnitAssignment', {
+                action: 'assign',
                 call_id: call.id,
                 unit_id: unit.id,
-                role: assignedUnitIds.length === 0 ? 'primary' : 'backup',
-                assigned_at: new Date().toISOString(),
-                status: 'pending'
             });
+            const payload = result?.data || result || {};
+            if (payload.error) throw new Error(payload.error);
 
             const unitName = unit.unit_number || (unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name);
             toast.success(`${unitName} assigned to call`);
@@ -64,23 +56,13 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
         if (!call) return;
         
         try {
-            const updatedUnits = assignedUnitIds.filter(id => id !== unit.id);
-            await base44.entities.DispatchCall.update(call.id, {
-                assigned_units: updatedUnits
-            });
-
-            // Update assignment record
-            const assignments = await base44.entities.CallAssignment.filter({
+            const result = await base44.functions.invoke('manageCadUnitAssignment', {
+                action: 'unassign',
                 call_id: call.id,
-                unit_id: unit.id
+                unit_id: unit.id,
             });
-            
-            if (assignments && assignments.length > 0) {
-                await base44.entities.CallAssignment.update(assignments[0].id, {
-                    status: 'cleared',
-                    cleared_at: new Date().toISOString()
-                });
-            }
+            const payload = result?.data || result || {};
+            if (payload.error) throw new Error(payload.error);
 
             const unitName = unit.unit_number || (unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name);
             toast.success(`${unitName} unassigned from call`);
