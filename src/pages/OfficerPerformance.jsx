@@ -18,52 +18,28 @@ export default function OfficerPerformance() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: timeEntries } = useQuery({
-    queryKey: ['myTimeEntries', user?.email],
-    queryFn: () => base44.entities.TimeEntry.filter({ officer_email: user.email }),
+  const { data: performanceData = {}, error: performanceError } = useQuery({
+    queryKey: ['myPerformanceData', user?.email],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getMyPerformanceData', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
     enabled: !!user?.email,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
-  const { data: schedules } = useQuery({
-    queryKey: ['mySchedules', user?.email],
-    queryFn: () => base44.entities.Schedule.filter({ officer_email: user.email }),
-    enabled: !!user?.email,
-  });
-
-  const { data: incidentReports } = useQuery({
-    queryKey: ['myIncidents', user?.email],
-    queryFn: () => base44.entities.IncidentReport.list('-created_date'),
-    enabled: !!user?.email,
-  });
-
-  const { data: commendations } = useQuery({
-    queryKey: ['myCommendations', user?.email],
-    queryFn: () => base44.entities.Commendation.filter({ officer_email: user.email }),
-    enabled: !!user?.email,
-  });
-
-  const { data: complaints } = useQuery({
-    queryKey: ['myComplaints', user?.email],
-    queryFn: () => base44.entities.Complaint.filter({ officer_email: user.email }),
-    enabled: !!user?.email,
-  });
-
-  const { data: trainingModules } = useQuery({
-    queryKey: ['allTrainingModules'],
-    queryFn: () => base44.entities.TrainingModule.list(),
-  });
-
-  const { data: trainingCompletions } = useQuery({
-    queryKey: ['myTrainingCompletions', user?.email],
-    queryFn: () => base44.entities.TrainingCompletion.filter({ officer_email: user.email }),
-    enabled: !!user?.email,
-  });
-
-  const { data: clientFeedback } = useQuery({
-    queryKey: ['myClientFeedback', user?.email],
-    queryFn: () => base44.entities.ClientFeedback.filter({ officer_email: user.email }),
-    enabled: !!user?.email,
-  });
+  const timeEntries = performanceData.timeEntries || [];
+  const schedules = performanceData.schedules || [];
+  const incidentReports = performanceData.incidents || [];
+  const commendations = performanceData.commendations || [];
+  const complaints = performanceData.complaints || [];
+  const trainingModules = performanceData.trainingModules || [];
+  const trainingCompletions = performanceData.trainingCompletions || [];
+  const clientFeedback = performanceData.clientFeedback || [];
 
   const generatePerformanceReport = async () => {
     setGenerating(true);
