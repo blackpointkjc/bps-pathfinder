@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { trainingCreate, trainingDelete, trainingUpdate } from '@/lib/trainingRecordsApi';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -142,9 +143,9 @@ export default function AdminTraining() {
       // Sync material_type for backward compat
       const saveData = { ...data, material_type: data.material_types?.[0] || data.material_type };
       if (editingModule) {
-        return await base44.entities.TrainingModule.update(editingModule.id, saveData);
+        return await trainingUpdate('TrainingModule', editingModule.id, saveData);
       }
-      const newModule = await base44.entities.TrainingModule.create(saveData);
+      const newModule = await trainingCreate('TrainingModule', saveData);
       
       // Create notifications for assigned officers (only if allUsers is available)
       const users = allUsers || [];
@@ -230,7 +231,7 @@ export default function AdminTraining() {
   });
 
   const deleteModuleMutation = useMutation({
-    mutationFn: (id) => base44.entities.TrainingModule.delete(id),
+    mutationFn: (id) => trainingDelete('TrainingModule', id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trainingModules'] });
     },
