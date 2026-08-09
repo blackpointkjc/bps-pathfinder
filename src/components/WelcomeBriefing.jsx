@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Bell, CalendarClock, Car, CheckCircle2, ChevronRight, MapPin, Megaphone, MessageCircle, Radio, Shield, Sparkles, Siren, Users } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 const normalized = value => String(value || '').trim().toLowerCase();
 const APP_UPDATE_TYPES = new Set(['app_update', 'system_update', 'release', 'release_notes', 'software_update', 'platform_update']);
@@ -161,10 +162,7 @@ export default function WelcomeBriefing({ user }) {
   const userByEmail = useMemo(() => new Map((brief.allUsers || []).map(person => [normalized(person.email), person])), [brief.allUsers]);
   const userById = useMemo(() => new Map((brief.allUsers || []).map(person => [String(person.id || ''), person])), [brief.allUsers]);
   const unitByEmail = useMemo(() => new Map((brief.allUnits || []).map(unitRow => [normalized(unitRow.user_email || userById.get(String(unitRow.user_id || ''))?.email), unitRow])), [brief.allUnits, userById]);
-  const isCadOfficer = person => {
-    const roles = (person?.additional_roles || []).map(normalized);
-    return roles.includes('cad_access') && roles.includes('officer');
-  };
+  const isCadOfficer = isOperationalOfficer;
   const activeEntryByEmail = useMemo(() => new Map((brief.activeTimeEntries || []).map(entry => [normalized(entry.officer_email), entry])), [brief.activeTimeEntries]);
   const vehicleByEmail = useMemo(() => {
     const map = new Map();
