@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import { trainingCreate, trainingUpdate } from '@/lib/trainingRecordsApi';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,9 +43,9 @@ export default function ClassForm({ existingClass, onSave, onCancel }) {
   const handleSave = async () => {
     setSaving(true);
     if (existingClass?.id) {
-      await base44.entities.TrainingClass.update(existingClass.id, form);
+      await trainingUpdate('TrainingClass', existingClass.id, form);
     } else {
-      await base44.entities.TrainingClass.create(form);
+      await trainingCreate('TrainingClass', form);
     }
     setSaving(false);
     onSave();
