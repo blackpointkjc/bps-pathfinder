@@ -50,37 +50,24 @@ export default function AccountingPayroll() {
 
   const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access') || user?.role === 'admin';
 
-  const { data: payrollEntries = [] } = useQuery({
-    queryKey: ['payrollEntries'],
-    queryFn: () => base44.entities.PayrollEntry.list('-created_date', 1000),
-    enabled: isAccountingRole,
-  });
-
-  const { data: officers = [] } = useQuery({
-    queryKey: ['officers'],
-    queryFn: () => base44.entities.User.list(),
-  });
-
-  const { data: timeEntries = [] } = useQuery({
-    queryKey: ['timeEntries'],
-    queryFn: () => base44.entities.TimeEntry.list('-clock_in', 2000),
-    enabled: isAccountingRole,
-  });
-
-  const { data: config } = useQuery({
-    queryKey: ['payrollConfig'],
+  const { data: accountingData = {}, isLoading: accountingLoading, error: accountingError } = useQuery({
+    queryKey: ['accountingData', 'payroll'],
     queryFn: async () => {
-      const configs = await base44.entities.PayrollConfig.list();
-      return configs[0] || null;
+      const result = await base44.functions.invoke('getAccountingData', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     enabled: isAccountingRole,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
-
-  const { data: payrollPeriods = [] } = useQuery({
-    queryKey: ['payrollPeriods'],
-    queryFn: () => base44.entities.PayrollPeriod.list('-start_date'),
-    enabled: isAccountingRole,
-  });
+  const payrollEntries = accountingData.payrollEntries || [];
+  const officers = accountingData.users || [];
+  const timeEntries = accountingData.timeEntries || [];
+  const config = accountingData.config || null;
+  const payrollPeriods = accountingData.payrollPeriods || [];
 
   useEffect(() => {
     if (selectedPeriodId || payrollPeriods.length === 0) return;
