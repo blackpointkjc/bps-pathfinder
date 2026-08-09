@@ -172,6 +172,26 @@ export default function BOLOAlerts() {
       </div>
 
       {modal && <BOLOModal mode={modal.mode} bolo={modal.bolo} user={user} onClose={() => setModal(null)} onSaved={() => { setModal(null); load(); }} />}
+
+      <Dialog open={!!resolutionDialog} onOpenChange={open => { if (!open && !resolving) { setResolutionDialog(null); setResolutionText(''); } }}>
+        <DialogContent className="max-w-lg border-slate-700 bg-[#0b1320] text-white">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black tracking-wide">Resolve BOLO</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-3 text-sm">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">BOLO</div>
+              <div className="mt-1 font-black text-amber-300">{resolutionDialog?.bolo_number || resolutionDialog?.title}</div>
+            </div>
+            <label className="block text-sm font-semibold text-slate-200" htmlFor="bolo-resolution">Disposition / resolution</label>
+            <textarea id="bolo-resolution" autoFocus value={resolutionText} onChange={e => setResolutionText(e.target.value)} placeholder="Enter the disposition or resolution..." className="min-h-28 w-full resize-y rounded-lg border border-slate-700 bg-slate-950 p-3 text-sm text-white outline-none focus:border-blue-500" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={!!resolving} onClick={() => { setResolutionDialog(null); setResolutionText(''); }}>Cancel</Button>
+            <Button disabled={!resolutionText.trim() || !!resolving} onClick={resolveBolo}>{resolving ? 'Resolving…' : 'Resolve BOLO'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
