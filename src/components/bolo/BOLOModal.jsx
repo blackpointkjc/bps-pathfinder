@@ -174,8 +174,15 @@ function FormView({ data, onChange }) {
     </div>
 
     <div className="rounded border border-slate-700 p-3">
-      <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-slate-300"><ImageIcon className="h-3 w-3" />PHOTOS / IMAGES</div><label className="cursor-pointer rounded border border-blue-700 bg-blue-950/40 px-3 py-1.5 text-[9px] font-bold text-blue-300 hover:bg-blue-900/50"><Upload className="mr-1 inline h-3 w-3" />{uploading ? 'UPLOADING...' : 'ADD PHOTOS'}<input type="file" accept="image/*" multiple className="hidden" onChange={uploadPhotos} disabled={uploading} /></label></div>
-      {(data.photo_urls || []).length === 0 ? <div className="text-[10px] text-slate-600">No images attached. Up to 8 images can be added.</div> : <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">{data.photo_urls.map((url,i) => <div key={url+i} className="relative overflow-hidden rounded border border-slate-700"><img src={url} className="h-24 w-full object-cover" /><button type="button" onClick={() => set('photo_urls', data.photo_urls.filter((_,x) => x !== i))} className="absolute right-1 top-1 rounded bg-black/80 p-1 text-red-300"><Trash2 className="h-3 w-3" /></button></div>)}</div>}
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-slate-300"><ImageIcon className="h-3 w-3" />PHOTOS / IMAGES</div>
+        <div>
+          <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple className="sr-only" onChange={uploadPhotos} disabled={uploading} />
+          <button type="button" onClick={() => photoInputRef.current?.click()} disabled={uploading || (data.photo_urls || []).length >= 8} className="rounded border border-blue-700 bg-blue-950/40 px-3 py-1.5 text-[9px] font-bold text-blue-300 hover:bg-blue-900/50 disabled:cursor-not-allowed disabled:opacity-50"><Upload className="mr-1 inline h-3 w-3" />{uploading ? 'UPLOADING...' : 'ADD PHOTOS'}</button>
+        </div>
+      </div>
+      {uploadError && <div className="mb-3 rounded border border-red-700/60 bg-red-950/30 px-3 py-2 text-[10px] font-bold text-red-300">{uploadError}</div>}
+      {(data.photo_urls || []).length === 0 ? <div className="text-[10px] text-slate-600">No images attached. Add up to 8 JPG, PNG, WEBP, HEIC, or HEIF images.</div> : <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">{data.photo_urls.map((url,i) => <div key={url+i} className="relative overflow-hidden rounded border border-slate-700"><img src={url} alt={`BOLO photo ${i + 1}`} className="h-24 w-full object-cover" /><button type="button" onClick={() => set('photo_urls', data.photo_urls.filter((_,x) => x !== i))} className="absolute right-1 top-1 rounded bg-black/80 p-1 text-red-300"><Trash2 className="h-3 w-3" /></button></div>)}</div>}
     </div>
 
     <div className="rounded border border-blue-900/70 bg-blue-950/10 p-3">
