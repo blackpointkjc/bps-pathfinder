@@ -474,65 +474,26 @@ export default function Navigation() {
 
     const fetchOtherUnits = async () => {
         try {
-            const activeOfficers = await base44.entities.ActiveOfficer.list('-last_update', 500);
-            const directoryExpired = Date.now() - Number(unitDirectoryRef.current.loadedAt || 0) > 60000;
-            if (!unitDirectoryRef.current.users.length || directoryExpired) {
-                const users = await base44.entities.User.list('-updated_date', 500).catch(() => unitDirectoryRef.current.users || []);
-                unitDirectoryRef.current = { users: users || [], loadedAt: Date.now() };
-            }
-            const users = unitDirectoryRef.current.users || [];
+            const result = await base44.functions.invoke('getOnDutyUnits', {});
+            const payload = result?.data || result || {};
+            if (payload.error) throw new Error(payload.error);
             const currentEmail = currentUser?.email?.toLowerCase();
-            const userByEmail = new Map(
-                users.filter(user => user.email).map(user => [user.email.toLowerCase(), user])
-            );
-            const unitsByEmail = new Map();
-
-            // Primary source: newest ActiveOfficer GPS record per officer. Older duplicate
-            // rows must never overwrite a newer fix from another page/device.
-            const newestActiveByEmail = new Map();
-            for (const active of activeOfficers || []) {
-                const email = active.officer_email?.toLowerCase();
-                if (!email) continue;
-                const stamp = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
-                const existing = newestActiveByEmail.get(email);
-                const existingStamp = existing ? new Date(existing.last_update || existing.updated_date || existing.created_date || 0).getTime() : -Infinity;
-                if (!existing || stamp > existingStamp) newestActiveByEmail.set(email, active);
-            }
-            for (const active of newestActiveByEmail.values()) {
-                const email = active.officer_email?.toLowerCase();
-                if (!email || email === currentEmail) continue;
-                const latitude = Number(active.latitude);
-                const longitude = Number(active.longitude);
-                if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
-                const profile = userByEmail.get(email) || {};
-                unitsByEmail.set(email, {
-                    ...profile,
-                    id: profile.id || active.id,
-                    active_officer_id: active.id,
-                    email: active.officer_email,
-                    full_name: active.officer_name || profile.full_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
-                    unit_number: profile.unit_number || active.unit_number || 'ON DUTY',
-                    latitude,
-                    longitude,
-                    heading: Number(active.heading ?? profile.heading) || 0,
-                    status: profile.status || active.status || 'Out of Service',
-                    last_updated: active.last_update || active.updated_date || active.created_date,
-                    current_location: active.current_location,
-                    union_id: active.union_id || '',
-                    partner_email: active.partner_email || '',
-                    partner_name: active.partner_name || '',
-                    is_union_lead: active.is_union_lead === true,
-                    isUnionLead: active.is_union_lead === true,
-                    union_member_count: Number(active.union_member_count) || 1,
-                    unionMembers: Number(active.union_member_count) || 1,
-                    scheduled_shift_id: active.scheduled_shift_id || '',
+            const units = (payload.units || [])
+                .filter(unit => String(unit.officer_email || unit.email || '').toLowerCase() !== currentEmail)
+                .filter(unit => Number.isFinite(Number(unit.latitude)) && Number.isFinite(Number(unit.longitude)))
+                .map(unit => ({
+                    ...unit,
+                    email: unit.officer_email || unit.email,
+                    latitude: Number(unit.latitude),
+                    longitude: Number(unit.longitude),
+                    heading: Number(unit.heading) || 0,
+                    isUnionLead: unit.is_union_lead === true || unit.isUnionLead === true,
+                    unionMembers: Number(unit.union_member_count || unit.unionMembers) || 1,
                     show_on_map: true,
-                });
-            }
-
-            setOtherUnits([...unitsByEmail.values()]);
+                }));
+            setOtherUnits(units);
         } catch (e) {
-            console.warn('[NAV] active officer fetch failed:', e?.message);
+            console.warn('[NAV] on-duty unit fetch failed:', e?.message);
             setOtherUnits([]);
         }
     };
