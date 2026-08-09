@@ -308,6 +308,18 @@ export default function MyPerformanceAnalytics() {
           </Badge>
         </div>
 
+        {performanceLoading && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">Loading your performance records…</div>
+        )}
+        {performanceError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">Performance data could not be loaded: {performanceError.message}</div>
+        )}
+        {!performanceLoading && !performanceError && performanceData.meta && (
+          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
+            Loaded {performanceData.meta.timeEntries || 0} time entries, {performanceData.meta.schedules || 0} schedules, {performanceData.meta.trainingAssignments || 0} training assignments, and {performanceData.meta.qrScans || 0} QR scans for your account.
+          </div>
+        )}
+
         {/* Quick Stats */}
         <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
           <Card className="border-none shadow-lg bg-gradient-to-br from-green-50 to-emerald-100">
