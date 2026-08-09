@@ -130,25 +130,21 @@ export const AuthProvider = ({ children }) => {
   }, [checkUserAuth]);
 
   useEffect(() => {
+    // Authenticate once when the application session starts. Merely minimizing,
+    // Alt-Tabbing, switching tabs, or restoring the window must never put the
+    // entire React tree back into a loading state and destroy in-progress work.
     checkAppState();
 
     const reconnect = () => {
+      // A genuine offline -> online transition may require session recovery.
       if (navigator.onLine) checkAppState();
     };
 
-    const handleVisibilityChange = () => {
-      if (!document.hidden) reconnect();
-    };
-
     window.addEventListener('online', reconnect);
-    window.addEventListener('focus', reconnect);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       requestSequence.current += 1;
       window.removeEventListener('online', reconnect);
-      window.removeEventListener('focus', reconnect);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [checkAppState]);
 
