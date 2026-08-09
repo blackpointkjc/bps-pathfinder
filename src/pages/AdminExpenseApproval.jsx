@@ -65,7 +65,7 @@ export default function AdminExpenseApproval() {
     }
   };
 
-  if (user?.role !== 'admin' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('accounting')) {
+  if (user?.role !== 'admin' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('accounting') && !user?.additional_roles?.includes('full_access')) {
     return (
       <div className="p-8 text-center">
         <h2 className="text-2xl font-bold">Access Denied</h2>
