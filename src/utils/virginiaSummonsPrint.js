@@ -91,7 +91,7 @@ export function buildVirginiaSummonsHtml(s, options = {}) {
     @media print { .toolbar { display: none !important; } .sheet { margin: 0 auto; } body { padding-bottom: 0 !important; } }
   </style>
 </head>
-<body class="bps-summons-print">
+<body class="bps-summons-print" data-no-company-footer="true">
   <div class="toolbar"><button onclick="window.close()">← Back to App</button></div>
   <main class="sheet">
     <aside class="waiver">
