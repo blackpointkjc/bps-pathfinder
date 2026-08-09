@@ -12,6 +12,7 @@ import { Shield, Plus, Edit, Save, X, FileText, MapPin, BookOpen, Trash2 } from 
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function AdminPostOrders() {
   const [editingId, setEditingId] = useState(null);
@@ -30,13 +31,13 @@ export default function AdminPostOrders() {
 
   const isAdmin = user?.role === 'admin';
 
-  const { data: locations } = useQuery({
-    queryKey: ['allLocations'],
-    queryFn: async () => {
-      const locs = await base44.entities.Location.list('site_name');
-      return locs.filter(loc => loc.active);
-    },
+  const { data: locations = [] } = useQuery({
+    queryKey: ['directoryLocations', 'adminPostOrders'],
+    queryFn: () => listDirectoryLocations('site_name', 1000),
     initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
   const { data: postOrders } = useQuery({
@@ -45,9 +46,9 @@ export default function AdminPostOrders() {
     initialData: [],
   });
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['directoryUsers', 'adminPostOrders'],
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     initialData: [],
   });
 
@@ -71,6 +72,7 @@ export default function AdminPostOrders() {
       setFormData({});
       toast.success('Post orders saved successfully!');
     },
+    onError: (error) => toast.error(error?.message || 'Unable to save site post orders'),
   });
 
   const saveGeneralMutation = useMutation({
