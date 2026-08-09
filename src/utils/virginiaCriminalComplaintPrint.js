@@ -86,7 +86,7 @@ export function openVirginiaCriminalComplaintPrint(complaint, options = {}) {
     .auth-caption { text-align: center; font-size: 7.2pt; margin: 2px 0 0.15in; }
   </style>
 </head>
-<body>
+<body data-no-company-footer="true">
   <button class="back no-print" onclick="window.close()">Back to App</button>
   <div class="sheet">
     <section class="left">
