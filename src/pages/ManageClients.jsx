@@ -53,18 +53,12 @@ export default function ManageClients() {
   });
 
   const { data: clientUsers = [] } = useQuery({
-    queryKey: ['clientUsers'],
+    queryKey: ['hrClientUsers'],
     queryFn: async () => {
-      const allUsers = await base44.entities.User.list() || [];
-      return allUsers
-        .filter(u => {
-          const roles = (u.additional_roles || []).map(r => String(r).toLowerCase());
-          const isClientAccount = roles.includes('client') ||
-            String(u.rank || '').toLowerCase() === 'client' ||
-            String(u.user_type || '').toLowerCase() === 'client';
-          return !u.termination_date && isClientAccount;
-        })
-        .sort((a, b) => `${a.last_name || ''} ${a.first_name || ''}`.localeCompare(`${b.last_name || ''} ${b.first_name || ''}`));
+      const result = await base44.functions.invoke('getClientUsers', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.clients || [];
     },
     enabled: hasAccess,
     initialData: [],
@@ -84,7 +78,7 @@ export default function ManageClients() {
       return response;
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['clientUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['hrClientUsers'] });
       queryClient.invalidateQueries({ queryKey: ['activeLocations'] });
       setShowDialog(false);
       resetForm();
@@ -111,37 +105,17 @@ export default function ManageClients() {
         });
         if (roleResult?.error) throw new Error(roleResult.error);
       }
-      const updated = await base44.entities.User.update(id, {
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email,
-        mobile_phone: data.mobile_phone,
-        additional_roles: ['client'],
-        assigned_location: data.property_name,
-        assigned_locations: [data.property_name],
-        assigned_sites: [data.property_name],
+      const result = await base44.functions.invoke('manageClientAssignments', {
+        action: 'update',
+        client_id: id,
+        data,
       });
-
-      // Update old location to remove client assignment
-      const oldLocation = locations?.find(loc => loc.assigned_client_email === editingClient.email);
-      if (oldLocation && oldLocation.site_name !== data.property_name) {
-        await base44.entities.Location.update(oldLocation.id, {
-          assigned_client_email: null
-        });
-      }
-
-      // Update new location with client assignment
-      const newLocation = locations?.find(loc => loc.site_name === data.property_name);
-      if (newLocation) {
-        await base44.entities.Location.update(newLocation.id, {
-          assigned_client_email: data.email
-        });
-      }
-
-      return updated;
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['hrClientUsers'] });
       queryClient.invalidateQueries({ queryKey: ['activeLocations'] });
       setShowDialog(false);
       setEditingClient(null);
@@ -151,26 +125,13 @@ export default function ManageClients() {
 
   const deleteClientMutation = useMutation({
     mutationFn: async (clientId) => {
-      const client = clientUsers?.find(c => c.id === clientId);
-      if (client) {
-        // Remove client role
-        const updatedRoles = client.additional_roles?.filter(r => r !== 'client') || [];
-        await base44.entities.User.update(clientId, { 
-          additional_roles: updatedRoles,
-          assigned_location: null
-        });
-
-        // Remove from location assignment
-        const location = locations?.find(loc => loc.assigned_client_email === client.email);
-        if (location) {
-          await base44.entities.Location.update(location.id, {
-            assigned_client_email: null
-          });
-        }
-      }
+      const result = await base44.functions.invoke('manageClientAssignments', { action: 'remove', client_id: clientId });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clientUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['hrClientUsers'] });
       queryClient.invalidateQueries({ queryKey: ['activeLocations'] });
     },
   });
