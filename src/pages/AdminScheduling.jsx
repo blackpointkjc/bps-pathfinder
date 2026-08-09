@@ -126,7 +126,7 @@ export default function AdminScheduling() {
     },
     enabled: user?.role === 'admin',
     staleTime: 30000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   const { data: payrollPeriods } = useQuery({
