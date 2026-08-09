@@ -70,6 +70,7 @@ export default function AccountingInvoices() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['accountingData'] });
       alert('✅ Invoice created and sent to client!');
     },
   });
@@ -94,9 +95,11 @@ export default function AccountingInvoices() {
 
       // Filter time entries for this site and date range
       const siteEntries = timeEntries.filter(entry => {
-        if (!entry.clock_in || !entry.clock_out || entry.location !== selectedSite) return false;
-        const entryDate = new Date(entry.clock_in);
-        return entryDate >= new Date(startDate) && entryDate <= new Date(endDate);
+        if (!entry.clock_in || !entry.clock_out) return false;
+        const entrySite = String(entry.location || '').split(':')[0].trim();
+        if (entrySite !== selectedSite) return false;
+        const entryDate = String(entry.clock_in).slice(0, 10);
+        return entryDate >= startDate && entryDate <= endDate;
       });
 
       let totalHours = 0;
@@ -201,9 +204,11 @@ export default function AccountingInvoices() {
         }
 
         const siteEntries = timeEntries.filter(entry => {
-          if (!entry.clock_in || !entry.clock_out || entry.location !== site) return false;
-          const entryDate = new Date(entry.clock_in);
-          return entryDate >= new Date(startDate) && entryDate <= new Date(endDate);
+          if (!entry.clock_in || !entry.clock_out) return false;
+          const entrySite = String(entry.location || '').split(':')[0].trim();
+          if (entrySite !== site) return false;
+          const entryDate = String(entry.clock_in).slice(0, 10);
+          return entryDate >= startDate && entryDate <= endDate;
         });
 
         if (siteEntries.length === 0) continue;
