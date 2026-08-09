@@ -24,67 +24,30 @@ export default function MyPerformanceAnalytics() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: timeEntries } = useQuery({
-    queryKey: ['myTimeEntries', user?.email],
-    queryFn: () => base44.entities.TimeEntry.filter({ officer_email: user?.email }, '-clock_in'),
+  const { data: performanceData = {}, isLoading: performanceLoading, error: performanceError } = useQuery({
+    queryKey: ['myPerformanceData', user?.email],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getMyPerformanceData', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
     enabled: !!user?.email,
-    refetchInterval: 15000,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
-  const { data: schedules } = useQuery({
-    queryKey: ['mySchedules', user?.email],
-    queryFn: () => base44.entities.Schedule.filter({ officer_email: user?.email }, '-shift_date'),
-    enabled: !!user?.email,
-    refetchInterval: 15000,
-  });
-
-  const { data: myBids } = useQuery({
-    queryKey: ['myBidHistory', user?.email],
-    queryFn: () => base44.entities.ShiftBid.filter({ officer_email: user?.email }, '-created_date'),
-    enabled: !!user?.email,
-  });
-
-  const { data: trainingCompletions } = useQuery({
-    queryKey: ['myTrainingCompletions', user?.email],
-    queryFn: () => base44.entities.TrainingCompletion.filter({ officer_email: user?.email }),
-    enabled: !!user?.email,
-  });
-
-  const { data: allTraining } = useQuery({
-    queryKey: ['assignedTraining'],
-    queryFn: () => base44.entities.TrainingModule.filter({ active: true }),
-  });
-
-  const { data: myAssignments } = useQuery({
-    queryKey: ['myTrainingAssignmentsPerf', user?.email],
-    queryFn: () => base44.entities.TrainingAssignment.filter({ officer_email: user?.email }),
-    enabled: !!user?.email,
-  });
-
-  const { data: notifications } = useQuery({
-    queryKey: ['myNotifications', user?.email],
-    queryFn: () => base44.entities.Notification.filter({ recipient_email: user?.email }, '-created_date'),
-    enabled: !!user?.email,
-  });
-
-  const { data: myCallOuts } = useQuery({
-    queryKey: ['myCallOuts', user?.email],
-    queryFn: () => base44.entities.CallOut.filter({ officer_email: user?.email }, '-call_out_date'),
-    enabled: !!user?.email,
-  });
-
-  const { data: qrScanEvents } = useQuery({
-    queryKey: ['myQRScansPerf', user?.email, currentMonthStart, currentMonthEnd],
-    queryFn: () => base44.entities.QRScanEvent.filter({ officer_email: user?.email }, '-scanned_at', 500),
-    enabled: !!user?.email,
-    staleTime: 60000,
-  });
-
-  const { data: allCheckpoints } = useQuery({
-    queryKey: ['allQRCheckpoints'],
-    queryFn: () => base44.entities.QRCheckpoint.filter({ is_active: true, is_required: true }),
-    staleTime: 300000,
-  });
+  const timeEntries = performanceData.timeEntries || [];
+  const schedules = performanceData.schedules || [];
+  const myBids = performanceData.bids || [];
+  const trainingCompletions = performanceData.trainingCompletions || [];
+  const allTraining = performanceData.trainingModules || [];
+  const myAssignments = performanceData.trainingAssignments || [];
+  const notifications = performanceData.notifications || [];
+  const myCallOuts = performanceData.callOuts || [];
+  const qrScanEvents = performanceData.qrScanEvents || [];
+  const allCheckpoints = performanceData.checkpoints || [];
 
   const thisWeekSchedule = React.useMemo(() => {
     if (!schedules) return [];
