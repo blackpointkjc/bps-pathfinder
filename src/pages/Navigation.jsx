@@ -99,7 +99,6 @@ export default function Navigation() {
     });
 
     const unitStatusRef = useRef(unitStatus);
-    const unitDirectoryRef = useRef({ users: [], loadedAt: 0 });
 
     const [focusCenter] = useState(() => {
         const p = new URLSearchParams(window.location.search);
