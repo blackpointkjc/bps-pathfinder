@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { MessageSquare, Send, X, Megaphone, Radio } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MentionInput from '@/components/chat/MentionInput';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 const roleSet = (user) => new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(r => String(r).toLowerCase()));
 const isDispatchUser = (user) => user?.role === 'admin' || user?.role === 'dispatch' || user?.dispatch_role === true || roleSet(user).has('full_access');
@@ -27,10 +28,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
   const recipients = useMemo(() => units.filter(unit => (
     !unit.termination_date && unit.id !== currentUser?.id && unit.email !== currentUser?.email && isOperationalRecipient(unit)
   )), [units, currentUser?.id, currentUser?.email]);
-  const officers = useMemo(() => recipients.filter(unit => {
-    const roles = roleSet(unit);
-    return roles.has('officer') && roles.has('cad_access');
-  }), [recipients]);
+  const officers = useMemo(() => recipients.filter(isOperationalOfficer), [recipients]);
 
   const loadMessages = async () => {
     if (!currentUser?.id) return;
