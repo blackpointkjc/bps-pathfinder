@@ -245,7 +245,11 @@ export default function DispatchCenter() {
         try {
             await base44.entities.DispatchCall.update(selectedCall.id, {
                 status: newStatus,
-                ...(timeField ? { [timeField]: now } : {})
+                ...(timeField ? { [timeField]: now } : {}),
+                ...(newStatus === 'Cleared' ? {
+                    manual_dismissed: true,
+                    manual_dismissed_at: now,
+                } : {}),
             });
             await base44.entities.CallStatusLog.create({
                 call_id: selectedCall.id,
