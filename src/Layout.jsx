@@ -839,15 +839,10 @@ export default function Layout({ children, currentPageName }) {
     const unsubscribeAlerts = base44.entities.PropertyAlert.subscribe(event => {
       if (event?.type === 'create' || event?.type === 'update') monitor();
     });
-    const refreshOnFocus = () => { if (!document.hidden) monitor(); };
-    window.addEventListener('focus', refreshOnFocus);
-    document.addEventListener('visibilitychange', refreshOnFocus);
     return () => {
       cancelled = true;
       clearInterval(id);
       unsubscribeAlerts?.();
-      window.removeEventListener('focus', refreshOnFocus);
-      document.removeEventListener('visibilitychange', refreshOnFocus);
     };
   }, [user?.role, JSON.stringify(user?.additional_roles || []), propertyAlert?.key]);
 
