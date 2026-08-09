@@ -47,44 +47,42 @@ const CENTER_CONFIG = {
     label: 'Officer Center',
     icon: Shield,
     groups: [
-      { label: 'Home & Profile', items: [
-        ['Officer Dashboard', 'Dashboard', Gauge],
-        ['My Profile', 'OfficerProfile', UserCheck],
-        ['My Performance', 'MyPerformanceAnalytics', BarChart3],
-      ]},
-      { label: 'Legal & Enforcement', items: [
-        ['Virginia Field Law Assistant', 'VirginiaFieldLawAssistant', BookOpen],
-        ['VA Trespass Notices', 'VATrespassNotices', UserX],
-        ['VA Criminal Complaint', 'VACriminalComplaints', Shield],
-        ['VA Summons', 'Summons', FileText],
-      ]},
-      { label: 'Duty & Scheduling', items: [
+      { label: 'Quick Access', items: [
+        ['Dashboard', 'Dashboard', Gauge],
         ['Time Clock', 'TimeClock', Clock3],
         ['My Schedule', 'Schedule', Calendar],
+        ['Virginia Law', 'VirginiaFieldLawAssistant', BookOpen],
+      ]},
+      { label: 'Field Tools', items: [
+        ['Post Orders', 'PostOrders', BookOpen],
+        ['QR Patrol', 'QRPatrolScan', MapPin],
+        ['Shift Handover', 'ShiftHandover', ClipboardCheck],
+        ['VA Trespass', 'VATrespassNotices', UserX],
+        ['VA Complaint', 'VACriminalComplaints', Shield],
+        ['VA Summons', 'Summons', FileText],
+      ]},
+      { label: 'Reports & Requests', items: [
+        ['Daily Activity', 'DailyActivityReports', ClipboardList],
+        ['Incident Report', 'IncidentReports', AlertTriangle],
+        ['Maintenance', 'MaintenanceReports', Wrench],
+        ['Open Door', 'OpenDoorReports', DoorOpen],
+        ['Confidential', 'ConfidentialReport', ShieldCheck],
+        ['Expense Report', 'ExpenseReports', DollarSign],
+        ['Time Request', 'TimeRequests', CalendarClock],
+      ]},
+      { label: 'Schedule & Availability', items: [
         ['Availability', 'OfficerAvailability', CalendarClock],
         ['Open Shifts', 'OpenShifts', Briefcase],
-        ['Time Requests', 'TimeRequests', CalendarClock],
         ['Payroll Dates', 'OfficerPayrollDates', DollarSign],
       ]},
-      { label: 'Field Operations', items: [
-        ['Post Orders', 'PostOrders', BookOpen],
-        ['QR Patrol Scan', 'QRPatrolScan', MapPin],
-        ['Shift Handover', 'ShiftHandover', ClipboardCheck],
-      ]},
-      { label: 'Reports', items: [
-        ['Daily Activity Reports', 'DailyActivityReports', ClipboardList],
-        ['Incident Reports', 'IncidentReports', AlertTriangle],
-        ['Maintenance Reports', 'MaintenanceReports', Wrench],
-        ['Open Door Reports', 'OpenDoorReports', DoorOpen],
-        ['Confidential Report', 'ConfidentialReport', ShieldCheck],
-        ['Expense Reports', 'ExpenseReports', DollarSign],
-      ]},
-      { label: 'Communication', items: [
+      { label: 'Messages', items: [
         ['Team Chat', 'TeamChat', MessageCircle],
         ['Announcements', 'Announcements', Bell],
       ]},
-      { label: 'Training & Career', items: [
-        ['Training & Compliance', 'OfficerTraining', GraduationCap],
+      { label: 'Profile & Training', items: [
+        ['My Profile', 'OfficerProfile', UserCheck],
+        ['My Performance', 'MyPerformanceAnalytics', BarChart3],
+        ['Training', 'OfficerTraining', GraduationCap],
         ['Rank Structure', 'RankStructure', Shield],
         ['Rank Duties', 'RankDuties', Shield],
       ]},
@@ -477,16 +475,16 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             </span>
           )}
         </Link>
-        {groups.map(group => <details key={group.label} open={!mobile || groups.length === 1 || (activeCenter === 'officer' && group.label === 'Legal & Enforcement')} className="mb-3 group">
+        {groups.map((group, groupIndex) => <details key={group.label} open={!mobile || groups.length === 1 || (activeCenter === 'officer' && groupIndex === 0)} className="mb-2 group">
           {(!collapsed || mobile) ? (
-            <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-2 py-2 text-[9px] font-bold uppercase tracking-[0.2em] text-[#6f91b3] hover:bg-[#102239]">{group.label}<ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" /></summary>
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-2.5 py-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7895b2] transition hover:bg-[#0d2135] hover:text-[#9fc7e8]">{group.label}<ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-open:rotate-180" /></summary>
           ) : (
             <summary className="hidden">{group.label}</summary>
           )}
-          <div className="space-y-0.5">
+          <div className="space-y-1 pb-1">
             {group.items.map(([label, page, Icon]) => {
               const active = currentPageName === page;
-              return <Link key={page} to={createPageUrl(page)} title={collapsed && !mobile ? label : undefined} onClick={() => onCloseMobile?.()} className={`relative flex min-h-9 items-center gap-2.5 rounded-md border px-2.5 py-1.5 transition-all duration-150 ${active ? 'border-cyan-500/50 bg-gradient-to-r from-[#153f66] to-[#102e4a] text-white shadow-md shadow-black/20' : 'border-transparent text-[#8ea4bc] hover:translate-x-0.5 hover:border-[#274864] hover:bg-[#0f2539] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
+              return <Link key={page} to={createPageUrl(page)} title={collapsed && !mobile ? label : undefined} onClick={() => onCloseMobile?.()} className={`relative flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all duration-200 ${active ? 'border-[#2f6f9d] bg-[#12304a] text-white shadow-[0_6px_18px_rgba(0,0,0,.18)]' : 'border-transparent text-[#91a8bf] hover:bg-[#0d2236] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
                 {active && <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,.55)]" />}
                 <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-[#7ec1ff]' : 'text-[#6683a0]'}`} />
                 {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-bold leading-tight">{label}</span>}
