@@ -176,17 +176,12 @@ export function DashboardDataProvider({ children }) {
         return () => clearInterval(id);
     }, [loadData]);
 
-    // Near-real-time foreground synchronization. Pauses when the tab is hidden.
+    // Near-real-time synchronization. Browsers naturally throttle timers in hidden
+    // tabs; do not force an extra sync when the window/tab becomes visible again.
+    // That return-to-window burst was causing visible jumps and unnecessary reloads.
     useEffect(() => {
         const id = setInterval(syncGrac, GRAC_SYNC_INTERVAL_MS);
-        const onVisibility = () => {
-            if (!document.hidden) syncGrac();
-        };
-        document.addEventListener('visibilitychange', onVisibility);
-        return () => {
-            clearInterval(id);
-            document.removeEventListener('visibilitychange', onVisibility);
-        };
+        return () => clearInterval(id);
     }, [syncGrac]);
 
     // Clear stale rate limit state on mount (in-memory ref resets anyway, but clear UI state)
