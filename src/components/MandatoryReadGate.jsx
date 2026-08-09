@@ -14,7 +14,7 @@ export default function MandatoryReadGate({ user }) {
     queryFn: () => base44.entities.Message.filter({ recipient_id: user.id, read: false }, '-created_date', 200),
     enabled,
     refetchInterval: 3000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   const { data: mentions = [] } = useQuery({
@@ -22,7 +22,7 @@ export default function MandatoryReadGate({ user }) {
     queryFn: () => base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200),
     enabled: enabled && !!user?.email,
     refetchInterval: 3000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   const { data: scheduleAlerts = [] } = useQuery({
@@ -33,7 +33,7 @@ export default function MandatoryReadGate({ user }) {
     },
     enabled: scheduleAlertsEnabled,
     refetchInterval: 3000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   const queue = useMemo(() => {
