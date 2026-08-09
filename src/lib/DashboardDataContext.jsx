@@ -14,6 +14,16 @@ const GRAC_SYNC_INTERVAL_MS = 60_000;   // One shared sync per browser, no page-
 const RATE_LIMIT_BACKOFF_MS = 90_000;   // Give Base44 room to recover after a 429 instead of retry-storming
 const MIN_REFRESH_MS = 5_000;           // Prevent subscription bursts from causing repeated list calls
 const USER_REFRESH_MS = 30_000;         // Unit roster changes slower than calls
+const ARCHIVE_CHECK_MS = 60_000;         // Move calls older than one hour out of the active CAD queue
+
+function parseServerTimestamp(value) {
+    if (!value) return null;
+    const raw = String(value).trim();
+    if (!raw) return null;
+    const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw) ? raw : `${raw}Z`;
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+}
 
 function isRateLimitError(err) {
     return err?.status === 429 || String(err?.message || err).includes('429') || String(err?.message || err).toLowerCase().includes('rate limit');
@@ -33,6 +43,7 @@ export function DashboardDataProvider({ children }) {
     const lastRefreshTime  = useRef(0);
     const lastUsersRefreshTime = useRef(0);
     const usersCacheRef = useRef([]);
+    const lastArchiveCheckRef = useRef(0);
 
     const loadData = useCallback(async (force = false) => {
         const now = Date.now();
@@ -54,6 +65,17 @@ export function DashboardDataProvider({ children }) {
 
         try {
             setRequestCount(c => c + 2);
+
+            // Keep the active CAD queue limited to the most recent hour. The server
+            // archive function moves expired calls into CallHistory; the frontend
+            // immediately stops presenting them as active so an old call cannot sit
+            // in the live queue waiting for the next history-page visit.
+            if (force || now - lastArchiveCheckRef.current >= ARCHIVE_CHECK_MS) {
+                lastArchiveCheckRef.current = now;
+                await base44.functions.invoke('archiveOldCalls', {}).catch(error => {
+                    console.warn('[CAD] automatic old-call archive pass failed:', error?.message);
+                });
+            }
 
             // Fetch calls and the authoritative on-duty roster independently so a
             // stale saved User.status can never leave a clocked-out officer visible.
@@ -84,8 +106,9 @@ export function DashboardDataProvider({ children }) {
             console.log(`[CAD ${nowET}] Calls fetched: ${callsData?.length ?? 0} | Users: ${usersData?.length ?? 0}`);
 
             // DispatchCall is synchronized to GRAC's current active-call list.
-            // Do not hide calls based on age; a call remains visible until ingestion
-            // marks it Closed/Cleared/Cancelled after it disappears from GRAC.
+            // Calls older than one hour are no longer active CAD work. The backend
+            // archive pass moves them to CallHistory, while this client also filters
+            // them immediately to avoid showing stale calls during the transition.
             const uniqueCalls = new Map();
             for (const call of callsData || []) {
                 const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
@@ -97,9 +120,12 @@ export function DashboardDataProvider({ children }) {
                 const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
-            const active = [...uniqueCalls.values()].filter(c =>
-                !['Cleared', 'Cancelled'].includes(c.status)
-            );
+            const active = [...uniqueCalls.values()].filter(c => {
+                if (['Cleared', 'Cancelled'].includes(c.status)) return false;
+                const receivedAt = parseServerTimestamp(c.time_received || c.created_date);
+                if (!receivedAt) return true;
+                return Date.now() - receivedAt < 60 * 60 * 1000;
+            });
 
             // Debug: newest call time
             if (active.length > 0) {
