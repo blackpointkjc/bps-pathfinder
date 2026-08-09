@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,12 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
     const [creating, setCreating] = useState(false);
     const [selectedUnits, setSelectedUnits] = useState([]);
     const [suggestedCallType, setSuggestedCallType] = useState(null);
+    const [callTypeSearch, setCallTypeSearch] = useState('');
+    const filteredCallTypes = useMemo(() => {
+        const query = callTypeSearch.trim().toLowerCase();
+        if (!query) return CALL_TYPES;
+        return CALL_TYPES.filter(type => [type.code, type.label, type.category, ...(type.keywords || [])].join(' ').toLowerCase().includes(query));
+    }, [callTypeSearch]);
     const [formData, setFormData] = useState({
         incident: initialCallType || '',
         location: '',
@@ -174,19 +180,34 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                                                 </Button>
                                             </div>
                                         )}
-                                        <div className="mt-3 grid grid-cols-2 gap-1 max-h-24 overflow-y-auto">
-                                            {CALL_TYPES.slice(0, 10).map(ct => (
-                                                <button
-                                                    key={ct.code}
-                                                    onClick={() => {
-                                                        setFormData({...formData, incident: ct.label});
-                                                        setSuggestedCallType(null);
-                                                    }}
-                                                    className="text-left text-xs px-2 py-1 bg-slate-700/50 hover:bg-slate-600/70 rounded text-slate-300 hover:text-white transition-colors"
-                                                >
-                                                    <strong>{ct.code}</strong> {ct.label.substring(0, 18)}
-                                                </button>
-                                            ))}
+                                        <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/40 p-2">
+                                            <div className="mb-2 flex items-center justify-between gap-2">
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">CAD Incident Catalog · {CALL_TYPES.length} Types</span>
+                                                <span className="text-[9px] text-slate-600">Search or select</span>
+                                            </div>
+                                            <Input
+                                                value={callTypeSearch}
+                                                onChange={(e) => setCallTypeSearch(e.target.value)}
+                                                placeholder="Search trespass, alarm, theft, medical, traffic..."
+                                                className="mb-2 h-8 bg-slate-900 border-slate-700 text-xs text-white"
+                                            />
+                                            <div className="grid max-h-56 grid-cols-1 gap-1 overflow-y-auto pr-1 sm:grid-cols-2">
+                                                {filteredCallTypes.map(ct => (
+                                                    <button
+                                                        type="button"
+                                                        key={ct.code}
+                                                        onClick={() => {
+                                                            setFormData({...formData, incident: ct.label, priority: ct.priority || formData.priority});
+                                                            setSuggestedCallType(null);
+                                                        }}
+                                                        className={`rounded border px-2.5 py-2 text-left text-xs transition-colors ${formData.incident === ct.label ? 'border-blue-500 bg-blue-950/50 text-white' : 'border-slate-800 bg-slate-800/60 text-slate-300 hover:border-slate-600 hover:bg-slate-700/70 hover:text-white'}`}
+                                                    >
+                                                        <div className="flex items-center gap-2"><strong className="text-blue-300">{ct.code}</strong><span className="font-semibold">{ct.label}</span></div>
+                                                        <div className="mt-0.5 text-[9px] uppercase tracking-wide text-slate-500">{ct.category || 'General'} · {(ct.priority || 'medium').toUpperCase()}</div>
+                                                    </button>
+                                                ))}
+                                                {filteredCallTypes.length === 0 && <div className="col-span-full py-4 text-center text-xs text-slate-500">No matching CAD call type. You can still enter a custom incident above.</div>}
+                                            </div>
                                         </div>
                                     </div>
 
