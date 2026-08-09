@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Search, MapPin, RefreshCw } from 'lucide-react';
 import { createPageUrl } from '../utils';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 const STATUS_CFG = {
     Available:        { dot: 'bg-green-400',  badge: 'bg-green-900/40 text-green-300 border-green-600/50' },
@@ -59,14 +60,7 @@ export default function Personnel() {
     const loadPersonnel = async () => {
         try {
             const response = await base44.entities.User.list();
-            // CAD Personnel roster only shows operational officers who have BOTH
-            // required roles. Client, student, admin-only, and full-access-only users
-            // must not appear on the CAD personnel/status roster.
-            const cadPersonnel = (response || []).filter(user => {
-                const roles = Array.isArray(user.additional_roles) ? user.additional_roles.map(role => String(role).toLowerCase()) : [];
-                return roles.includes('cad_access') && roles.includes('officer');
-            });
-            setPersonnel(cadPersonnel);
+            setPersonnel((response || []).filter(isOperationalOfficer));
             setLastRefresh(new Date());
         } catch (error) { console.error(error); }
         finally { setRefreshing(false); }
