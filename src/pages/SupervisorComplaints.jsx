@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { listDirectoryUsers } from '@/lib/appDirectory';
+import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 export default function SupervisorComplaints() {
   const [showForm, setShowForm] = useState(false);
@@ -34,10 +36,13 @@ export default function SupervisorComplaints() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['directoryUsers', 'supervisorComplaints'],
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access'),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
   const { data: myComplaints } = useQuery({
@@ -96,7 +101,7 @@ This is a formal notification and will be part of your personnel file pending in
     },
   });
 
-  const activeOfficers = allUsers?.filter(u => !u.termination_date) || [];
+  const activeOfficers = allUsers.filter(hasOfficerAdditionalRole);
 
   if (user?.role !== 'admin' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access')) {
     return (
