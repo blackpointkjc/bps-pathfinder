@@ -37,13 +37,13 @@ export default function SupervisorComplaints() {
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
     queryFn: () => base44.entities.User.list(),
-    enabled: user?.additional_roles?.includes('supervisor'),
+    enabled: user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access'),
   });
 
   const { data: myComplaints } = useQuery({
     queryKey: ['myComplaints', user?.id],
     queryFn: () => base44.entities.Complaint.filter({ created_by_id: user.id }),
-    enabled: !!user?.id && user?.additional_roles?.includes('supervisor'),
+    enabled: !!user?.id && (user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access')),
   });
 
   const createComplaintMutation = useMutation({
@@ -98,7 +98,7 @@ This is a formal notification and will be part of your personnel file pending in
 
   const activeOfficers = allUsers?.filter(u => !u.termination_date) || [];
 
-  if (!user?.additional_roles?.includes('supervisor')) {
+  if (user?.role !== 'admin' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access')) {
     return (
       <div className="p-8 text-center">
         <UserCheck className="w-16 h-16 mx-auto mb-4 text-slate-400" />
