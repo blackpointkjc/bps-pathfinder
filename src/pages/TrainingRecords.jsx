@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { trainingCreate, trainingUpdate } from '@/lib/trainingRecordsApi';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,9 +87,9 @@ export default function TrainingRecords() {
     setSavingSchool(true);
     try {
       if (schoolSettings?.id) {
-        await base44.entities.TrainingSchoolSettings.update(schoolSettings.id, schoolForm);
+        await trainingUpdate('TrainingSchoolSettings', schoolSettings.id, schoolForm);
       } else {
-        await base44.entities.TrainingSchoolSettings.create(schoolForm);
+        await trainingCreate('TrainingSchoolSettings', schoolForm);
       }
       await qc.invalidateQueries({ queryKey: ["trainingSchoolSettings"] });
       toast.success("School settings saved");
@@ -102,7 +103,7 @@ export default function TrainingRecords() {
   const handleGenerateCertificate = async (attendee) => {
     const cls = selectedClass;
     const certNum = `CERT-${Date.now().toString().slice(-8)}`;
-    const cert = await base44.entities.TrainingCertificate.create({
+    const cert = await trainingCreate('TrainingCertificate', {
       certificate_number: certNum,
       class_id: cls.id,
       attendee_id: attendee.id,
@@ -129,7 +130,7 @@ export default function TrainingRecords() {
       quiz_total: attendee.quiz_total,
       quiz_percentage: attendee.quiz_percentage,
     });
-    await base44.entities.TrainingAttendee.update(attendee.id, {
+    await trainingUpdate('TrainingAttendee', attendee.id, {
       certificate_issued: true,
       certificate_id: cert.id,
     });
