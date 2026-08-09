@@ -365,15 +365,15 @@ export default function AdminAnalytics() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-950 p-4 text-white md:p-8">
+      <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
+            <h1 className="flex items-center gap-2 text-3xl font-bold text-white">
               <BarChart3 className="w-8 h-8 text-blue-600" />
               Company Analytics
             </h1>
-            <p className="text-slate-600">Performance metrics across all officers</p>
+            <p className="text-slate-400">Performance metrics across all officers</p>
           </div>
           <Select value={selectedDivision} onValueChange={setSelectedDivision}>
             <SelectTrigger className="w-48">
@@ -388,86 +388,90 @@ export default function AdminAnalytics() {
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
-          <Card className="border-none shadow-lg bg-gradient-to-br from-green-50 to-emerald-100">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
             <CardContent className="p-4">
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
               <p className="text-2xl font-bold text-green-600">{companyOnTimeStats.rate || 0}%</p>
-              <p className="text-xs text-slate-600">On-Time Rate</p>
+              <p className="text-xs text-slate-400">On-Time Rate</p>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-lg bg-gradient-to-br from-blue-50 to-indigo-100">
+          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
             <CardContent className="p-4">
               <Users className="w-6 h-6 text-blue-600 mb-2" />
               <p className="text-2xl font-bold text-blue-600">{filteredUsers.length}</p>
-              <p className="text-xs text-slate-600">Active Officers</p>
+              <p className="text-xs text-slate-400">Active Officers</p>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-violet-100">
+          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
             <CardContent className="p-4">
               <Award className="w-6 h-6 text-purple-600 mb-2" />
               <p className="text-2xl font-bold text-purple-600">
                 {trainingByOfficer.length}
               </p>
-              <p className="text-xs text-slate-600">Need Training</p>
+              <p className="text-xs text-slate-400">Need Training</p>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-lg bg-gradient-to-br from-amber-50 to-orange-100">
+          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
             <CardContent className="p-4">
               <Clock className="w-6 h-6 text-amber-600 mb-2" />
               <p className="text-2xl font-bold text-amber-600">{responseTimeStats.avg || 0}m</p>
-              <p className="text-xs text-slate-600">Avg Response</p>
+              <p className="text-xs text-slate-400">Avg Response</p>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-lg bg-gradient-to-br from-red-50 to-pink-100">
+          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
             <CardContent className="p-4">
               <AlertTriangle className="w-6 h-6 text-red-600 mb-2" />
               <p className="text-2xl font-bold text-red-600">
                 {(hoursBreakdown?.reduce((sum, o) => sum + (o.overtime || 0), 0) || 0).toFixed(1)}h
               </p>
-              <p className="text-xs text-slate-600">Total OT</p>
+              <p className="text-xs text-slate-400">Total OT</p>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-lg bg-gradient-to-br from-green-50 to-green-100">
+          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
             <CardContent className="p-4">
               <Award className="w-6 h-6 text-green-600 mb-2" />
               <p className="text-2xl font-bold text-green-600">{commendationStats.total || 0}</p>
-              <p className="text-xs text-slate-600">Commendations</p>
+              <p className="text-xs text-slate-400">Commendations</p>
             </CardContent>
           </Card>
-          <Card className="border-none shadow-lg bg-gradient-to-br from-rose-50 to-red-100">
+          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
             <CardContent className="p-4">
               <AlertTriangle className="w-6 h-6 text-rose-600 mb-2" />
               <p className="text-2xl font-bold text-rose-600">{complaintStats.total || 0}</p>
-              <p className="text-xs text-slate-600">Complaints</p>
+              <p className="text-xs text-slate-400">Complaints</p>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="border-none shadow-lg">
+        <Card className="min-w-0 overflow-hidden border border-slate-800 bg-slate-900 text-white shadow-lg">
           <CardHeader>
             <CardTitle>Hours by Officer (Current Month - {format(new Date(), 'MMMM yyyy')})</CardTitle>
           </CardHeader>
           <CardContent>
             {hoursBreakdown.length > 0 ? (
+              <div className="min-w-0 overflow-x-auto">
+              <div className="min-w-[620px]">
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={hoursBreakdown.slice(0, 15)} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
+                <BarChart data={hoursBreakdown.slice(0, 15)} layout="vertical" margin={{ left: 8, right: 16 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis type="number" tick={{ fill: '#cbd5e1', fontSize: 11 }} />
+                  <YAxis dataKey="name" type="category" width={140} tick={{ fill: '#cbd5e1', fontSize: 11 }} />
                   <Tooltip />
                   <Bar dataKey="regular" stackId="a" fill="#3b82f6" name="Regular" />
                   <Bar dataKey="overtime" stackId="a" fill="#ef4444" name="Overtime" />
                 </BarChart>
               </ResponsiveContainer>
+              </div>
+              </div>
             ) : (
               <p className="text-center text-slate-500 py-8">No data available</p>
             )}
           </CardContent>
         </Card>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card className="border-none shadow-lg">
+        <div className="grid min-w-0 gap-6 lg:grid-cols-2">
+          <Card className="min-w-0 overflow-hidden border border-slate-800 bg-slate-900 text-white shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -495,7 +499,7 @@ export default function AdminAnalytics() {
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-lg">
+          <Card className="min-w-0 overflow-hidden border border-slate-800 bg-slate-900 text-white shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Award className="w-5 h-5 text-green-600" />
@@ -526,8 +530,8 @@ export default function AdminAnalytics() {
           </Card>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card className="border-none shadow-lg">
+        <div className="grid min-w-0 gap-6 lg:grid-cols-2">
+          <Card className="min-w-0 overflow-hidden border border-slate-800 bg-slate-900 text-white shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Award className="w-5 h-5 text-amber-600" />
@@ -561,7 +565,7 @@ export default function AdminAnalytics() {
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-lg">
+          <Card className="min-w-0 overflow-hidden border border-slate-800 bg-slate-900 text-white shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
@@ -592,7 +596,7 @@ export default function AdminAnalytics() {
           </Card>
         </div>
 
-        <Card className="border-none shadow-lg">
+        <Card className="min-w-0 overflow-hidden border border-slate-800 bg-slate-900 text-white shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-600" />
