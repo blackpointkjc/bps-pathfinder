@@ -226,14 +226,6 @@ export default function DispatchCenter() {
 
     const updateCallStatus = async (newStatus) => {
         if (!selectedCall || selectedCall.status === newStatus) return;
-        const now = new Date().toISOString();
-        const timeField = {
-            Dispatched: 'time_dispatched',
-            Enroute: 'time_enroute',
-            'On Scene': 'time_on_scene',
-            Cleared: 'time_cleared',
-            Cancelled: 'time_closed'
-        }[newStatus];
         try {
             const result = await base44.functions.invoke('updateCadCallStatus', {
                 call_id: selectedCall.id,
