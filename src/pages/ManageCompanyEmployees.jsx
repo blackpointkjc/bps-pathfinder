@@ -61,18 +61,12 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const hasAccess = canManageEmployees;
 
   const { data: users, isLoading } = useQuery({
-    queryKey: ['users', portalContext],
-    queryFn: async () => {
-      if (portalContext === 'hr') {
-        const result = await base44.functions.invoke('getHRUsers', {});
-        const payload = result?.data || result || {};
-        if (payload.error) throw new Error(payload.error);
-        return payload.users || [];
-      }
-      return base44.entities.User.list();
-    },
+    queryKey: ['appDirectoryUsers', 'manageCompanyEmployees', portalContext],
+    queryFn: () => base44.entities.User.list('last_name', 1000),
     enabled: hasAccess,
     staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
   const { data: locations } = useQuery({
