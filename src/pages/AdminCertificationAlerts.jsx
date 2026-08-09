@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { trainingCreate, trainingUpdate } from '@/lib/trainingRecordsApi';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, AlertTriangle, CheckCircle2, RefreshCw, Printer } from "lucide-react";
@@ -45,7 +46,7 @@ export default function AdminCertificationAlerts() {
   });
 
   const acknowledgeAlertMutation = useMutation({
-    mutationFn: ({ id, notes }) => base44.entities.CertificationTodo.update(id, {
+    mutationFn: ({ id, notes }) => trainingUpdate('CertificationTodo', id, {
       completed: true,
       notes: notes
     }),
@@ -86,14 +87,14 @@ export default function AdminCertificationAlerts() {
             
             if (existingAlert) {
               // Update existing alert
-              await base44.entities.CertificationTodo.update(existingAlert.id, {
+              await trainingUpdate('CertificationTodo', existingAlert.id, {
                 days_until_expiration: daysUntil,
                 last_alert_date: new Date().toISOString()
               });
               alertsUpdated++;
             } else {
               // Create new alert
-              await base44.entities.CertificationTodo.create({
+              await trainingCreate('CertificationTodo', {
                 officer_email: officer.email,
                 officer_name: `${officer.first_name} ${officer.last_name}`,
                 certification_type: 'dcjs',
@@ -122,14 +123,14 @@ export default function AdminCertificationAlerts() {
             
             if (existingAlert) {
               // Update existing alert
-              await base44.entities.CertificationTodo.update(existingAlert.id, {
+              await trainingUpdate('CertificationTodo', existingAlert.id, {
                 days_until_expiration: daysUntil,
                 last_alert_date: new Date().toISOString()
               });
               alertsUpdated++;
             } else {
               // Create new alert
-              await base44.entities.CertificationTodo.create({
+              await trainingCreate('CertificationTodo', {
                 officer_email: officer.email,
                 officer_name: `${officer.first_name} ${officer.last_name}`,
                 certification_type: 'firearm',
