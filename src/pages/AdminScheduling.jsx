@@ -3561,14 +3561,16 @@ Return ONLY a JSON array of suggestion objects with this structure:
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="officer">Primary Officer *</Label>
-                  <Select value={newShift.officer_email} onValueChange={(value) => setNewShift({ ...newShift, officer_email: value, partner_officer_email: newShift.partner_officer_email === value ? '' : newShift.partner_officer_email })}>
-                    <SelectTrigger id="officer"><SelectValue placeholder="Select primary officer..." /></SelectTrigger>
+                  <Select value={newShift.officer_email} onValueChange={(value) => setNewShift({ ...newShift, officer_email: value, partner_officer_email: newShift.partner_officer_email === value ? '' : newShift.partner_officer_email })} disabled={usersLoading || !!usersError}>
+                    <SelectTrigger id="officer"><SelectValue placeholder={usersLoading ? "Loading officers..." : usersError ? "Officer directory unavailable" : activeOfficers.length ? "Select primary officer..." : "No active officers found"} /></SelectTrigger>
                     <SelectContent>
                       {activeOfficers.map((officer) => (
-                        <SelectItem key={officer.email} value={officer.email}>{officer.first_name && officer.last_name ? `${officer.first_name} ${officer.last_name}` : officer.full_name || officer.email}</SelectItem>
+                        <SelectItem key={officer.email} value={officer.email}>{officer.first_name && officer.last_name ? `${officer.first_name} ${officer.last_name}` : officer.full_name || officer.email}{officer.rank ? ` — ${officer.rank}` : ''}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {usersError && <p className="text-xs text-red-600">Officer directory failed to load: {usersError.message}</p>}
+                  {!usersLoading && !usersError && activeOfficers.length === 0 && <p className="text-xs text-amber-700">No officer accounts are currently eligible for scheduling.</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="partner_officer">Partner Officer (Optional)</Label>
