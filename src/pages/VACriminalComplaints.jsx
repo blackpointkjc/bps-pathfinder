@@ -115,7 +115,7 @@ export default function VACriminalComplaints() {
   }, [allComplaints, user, isAdmin, searchQuery]);
 
   const { data: locations } = useQuery({
-    queryKey: ['activeLocations'],
+    queryKey: ['activeLocations', 'vaCriminalComplaints', user?.division || 'all'],
     queryFn: async () => {
       const allLocations = await base44.entities.Location.list('site_name');
       const activeLocations = allLocations.filter(loc => loc.active);
