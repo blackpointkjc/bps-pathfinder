@@ -27,67 +27,34 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Police car icon with lights
-const createCurrentLocationIcon = (withLights = false) => {
+const makeCurrentOfficerShield = (heading = null, withLights = false, unitName = 'YOU') => {
+    const normalizedHeading = Number.isFinite(Number(heading)) ? ((Number(heading) % 360) + 360) % 360 : 0;
+    const unitLabel = String(unitName || 'YOU').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 7) || 'YOU';
     return new L.DivIcon({
-        className: 'custom-marker',
+        className: 'custom-marker patrol-shield-marker current-officer-marker',
         html: `
-            <div style="position: relative; width: 40px; height: 40px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" style="position: relative; z-index: 2; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));">
-                    ${withLights ? `
-                    <circle cx="8" cy="6" r="1.5" fill="#00FF00">
-                        <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
-                    </circle>
-                    <circle cx="16" cy="6" r="1.5" fill="#00FF00">
-                        <animate attributeName="opacity" values="0;1;0" dur="1s" repeatCount="indefinite"/>
-                    </circle>
-                    ` : ''}
-                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" fill="#1E40AF" stroke="#1E3A8A" stroke-width="0.5"/>
-                    <circle cx="7" cy="17" r="2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
-                    <circle cx="17" cy="17" r="2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
-                    <rect x="6" y="11" width="3" height="2" fill="#60A5FA" rx="0.5"/>
-                    <rect x="11" y="11" width="3" height="2" fill="#60A5FA" rx="0.5"/>
-                </svg>
-            </div>
+          <div style="position:relative;width:58px;height:68px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.58));">
+            ${withLights ? `<div style="position:absolute;left:14px;top:0;width:30px;height:7px;border-radius:5px;overflow:hidden;border:1px solid #fff;z-index:4;background:#111827"><span style="position:absolute;left:0;top:0;width:50%;height:100%;background:#ef4444;animation:bpsCurrentFlash .75s infinite"></span><span style="position:absolute;right:0;top:0;width:50%;height:100%;background:#2563eb;animation:bpsCurrentFlash .75s .375s infinite"></span></div>` : ''}
+            <svg width="58" height="61" viewBox="0 0 58 61" style="position:absolute;top:6px;left:0;z-index:2;overflow:visible">
+              <path d="M29 2 L51 10 V28 C51 43 42 53 29 59 C16 53 7 43 7 28 V10 Z" fill="#06101d" stroke="#67e8f9" stroke-width="2.6"/>
+              <path d="M29 8 L45 14 V28 C45 38 39 46 29 51 C19 46 13 38 13 28 V14 Z" fill="#124776" stroke="#38bdf8" stroke-width="2"/>
+              <circle cx="29" cy="27" r="10" fill="#edf6ff" stroke="#7dd3fc" stroke-width="1.4"/>
+              <path d="M29 18 L31.5 23.8 L37.8 24.3 L33 28.6 L34.5 34.5 L29 31.4 L23.5 34.5 L25 28.6 L20.2 24.3 L26.5 23.8 Z" fill="#0c4a6e"/>
+              <rect x="14" y="42" width="30" height="10" rx="4" fill="#020617" stroke="#38bdf8"/>
+              <text x="29" y="49.2" text-anchor="middle" font-size="7" font-weight="900" fill="#fff" font-family="Arial, sans-serif">${unitLabel}</text>
+            </svg>
+            ${Number.isFinite(Number(heading)) ? `<div style="position:absolute;left:25px;top:-9px;width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:11px solid #67e8f9;transform:rotate(${normalizedHeading}deg);transform-origin:4px 42px;z-index:1"></div>` : ''}
+          </div>
+          <style>@keyframes bpsCurrentFlash{0%,48%{opacity:1}50%,100%{opacity:.18}}</style>
         `,
-        iconSize: [40, 40],
-        iconAnchor: [20, 20],
+        iconSize: [58, 68],
+        iconAnchor: [29, 59],
+        popupAnchor: [0, -54],
     });
 };
 
-// Police car with heading arrow (no rotation, just directional arrow)
-const createLocationWithHeading = (heading, withLights = false) => {
-    // Normalize heading to 0-360
-    const normalizedHeading = heading ? ((heading % 360) + 360) % 360 : 0;
-    
-    return new L.DivIcon({
-        className: 'custom-marker',
-        html: `
-            <div style="position: relative; width: 50px; height: 50px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" style="position: relative; z-index: 2; filter: drop-shadow(0 3px 10px rgba(0,0,0,0.4));">
-                    ${withLights ? `
-                    <circle cx="8" cy="5" r="1.8" fill="#FF0000">
-                        <animate attributeName="opacity" values="1;0;1" dur="0.8s" repeatCount="indefinite"/>
-                    </circle>
-                    <circle cx="16" cy="5" r="1.8" fill="#0000FF">
-                        <animate attributeName="opacity" values="0;1;0" dur="0.8s" repeatCount="indefinite"/>
-                    </circle>
-                    ` : ''}
-                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" fill="#1E40AF" stroke="#1E3A8A" stroke-width="0.8"/>
-                    <circle cx="7" cy="17" r="2.2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
-                    <circle cx="17" cy="17" r="2.2" fill="#1F2937" stroke="#111827" stroke-width="0.5"/>
-                    <rect x="6" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
-                    <rect x="11" y="10.5" width="3.5" height="2.5" fill="#60A5FA" rx="0.5"/>
-                </svg>
-                <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50" style="position: absolute; top: 0; left: 0; transform: rotate(${normalizedHeading}deg); transform-origin: center; transition: transform 0.3s ease;">
-                    <polygon points="25,8 30,23 20,23" fill="#FBBF24" stroke="#F59E0B" stroke-width="1.5"/>
-                </svg>
-            </div>
-        `,
-        iconSize: [50, 50],
-        iconAnchor: [25, 25],
-    });
-};
+const createCurrentLocationIcon = (withLights = false, unitName = 'YOU') => makeCurrentOfficerShield(null, withLights, unitName);
+const createLocationWithHeading = (heading, withLights = false, unitName = 'YOU') => makeCurrentOfficerShield(heading, withLights, unitName);
 
 // Custom red marker for destination
 const destinationIcon = new L.DivIcon({
@@ -308,7 +275,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 <Marker
                     key={`self-${currentLocation[0].toFixed(6)}-${currentLocation[1].toFixed(6)}`}
                     position={currentLocation}
-                    icon={heading !== null ? createLocationWithHeading(heading, showLights) : createCurrentLocationIcon(showLights)}
+                    icon={heading !== null ? createLocationWithHeading(heading, showLights, unitName) : createCurrentLocationIcon(showLights, unitName)}
                 />
             )}
             
