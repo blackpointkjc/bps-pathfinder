@@ -20,6 +20,7 @@ import PropertyAlertsBanner from '@/components/dispatch/PropertyAlertsBanner';
 import ActiveBoloBanner from '@/components/bolo/ActiveBoloBanner';
 import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import 'leaflet/dist/leaflet.css';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 
 
@@ -141,10 +142,7 @@ export default function DispatchCenter() {
     const loadUnits = async () => {
         try {
             const allUsers = await base44.entities.User.list('-last_updated', 500);
-            const eligibleUnits = (allUsers || []).filter(user => {
-                const roles = Array.isArray(user.additional_roles) ? user.additional_roles.map(role => String(role).toLowerCase()) : [];
-                return roles.includes('cad_access') && roles.includes('officer');
-            });
+            const eligibleUnits = (allUsers || []).filter(isOperationalOfficer);
             console.log('📋 Dispatch loaded eligible CAD officers:', eligibleUnits.length);
             setUnits(eligibleUnits);
         } catch (error) {
