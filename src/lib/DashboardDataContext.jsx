@@ -5,7 +5,6 @@
  */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 
 const DashboardDataContext = createContext(null);
@@ -56,8 +55,8 @@ export function DashboardDataProvider({ children }) {
         try {
             setRequestCount(c => c + 2);
 
-            // Fetch calls and users independently — User.list() can 403 for non-admins,
-            // but that must NOT block calls from loading.
+            // Fetch calls and the authoritative on-duty roster independently so a
+            // stale saved User.status can never leave a clocked-out officer visible.
             let callsData = [];
             let usersData = [];
             try {
@@ -68,12 +67,14 @@ export function DashboardDataProvider({ children }) {
             }
             if (Date.now() - lastUsersRefreshTime.current >= USER_REFRESH_MS || usersCacheRef.current.length === 0) {
                 try {
-                    const allUsers = await base44.entities.User.list('-last_updated', 200);
-                    usersData = (allUsers || []).filter(isOperationalOfficer);
+                    const result = await base44.functions.invoke('getOnDutyUnits', {});
+                    const payload = result?.data || result || {};
+                    if (payload.error) throw new Error(payload.error);
+                    usersData = payload.users || [];
                     usersCacheRef.current = usersData;
                     lastUsersRefreshTime.current = Date.now();
                 } catch (usersErr) {
-                    console.warn(`[CAD ${nowET}] direct User fetch failed — continuing with cached users`, usersErr);
+                    console.warn(`[CAD ${nowET}] on-duty roster fetch failed — continuing with cached users`, usersErr);
                     usersData = usersCacheRef.current;
                 }
             } else {
