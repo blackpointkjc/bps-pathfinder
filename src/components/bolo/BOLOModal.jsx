@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TYPE_CONFIG, PRIORITY_STYLE } from '@/pages/BOLOAlerts';
@@ -92,6 +92,8 @@ function FormView({ data, onChange }) {
   const [calls, setCalls] = useState([]);
   const [reports, setReports] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const photoInputRef = useRef(null);
   const set = (field, val) => onChange(prev => ({ ...prev, [field]: val }));
   const parties = data.parties || [];
   const vehicles = data.vehicles || [];
@@ -113,15 +115,42 @@ function FormView({ data, onChange }) {
   const uploadPhotos = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
+    setUploadError('');
+    const remaining = Math.max(0, 8 - (data.photo_urls || []).length);
+    if (!remaining) {
+      setUploadError('A BOLO can contain up to 8 photos. Remove one before adding another.');
+      e.target.value = '';
+      return;
+    }
+    const selected = files.slice(0, remaining);
+    const invalid = selected.find(file => !String(file.type || '').startsWith('image/'));
+    if (invalid) {
+      setUploadError(`${invalid.name} is not a supported image file.`);
+      e.target.value = '';
+      return;
+    }
+    const oversized = selected.find(file => file.size > 15 * 1024 * 1024);
+    if (oversized) {
+      setUploadError(`${oversized.name} is larger than 15 MB. Choose a smaller image.`);
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
     try {
       const urls = [];
-      for (const file of files.slice(0, 8)) {
+      for (const file of selected) {
         const result = await base44.integrations.Core.UploadFile({ file });
-        if (result?.file_url) urls.push(result.file_url);
+        if (!result?.file_url) throw new Error(`Upload did not return a file URL for ${file.name}`);
+        urls.push(result.file_url);
       }
       set('photo_urls', [...(data.photo_urls || []), ...urls].slice(0, 8));
-    } finally { setUploading(false); e.target.value = ''; }
+    } catch (error) {
+      console.error('BOLO photo upload failed:', error);
+      setUploadError(error?.message || 'Photo upload failed. Please try the image again.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
   };
 
   const callLabel = c => c.agency_cad_number || c.bps_reference || c.call_id || c.id;
