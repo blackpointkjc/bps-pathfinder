@@ -154,6 +154,7 @@ import PostOrders from './pages/PostOrders';
 import RankDuties from './pages/RankDuties';
 import RankStructure from './pages/RankStructure';
 import Schedule from './pages/Schedule';
+import ShiftReports from './pages/ShiftReports';
 import ShiftHandover from './pages/ShiftHandover';
 import Summons from './pages/Summons';
 import SupervisorCallOuts from './pages/SupervisorCallOuts';
@@ -288,6 +289,7 @@ export const PAGES = {
     "RankDuties": RankDuties,
     "RankStructure": RankStructure,
     "Schedule": Schedule,
+    "ShiftReports": ShiftReports,
     "ShiftHandover": ShiftHandover,
     "Summons": Summons,
     "SupervisorCallOuts": SupervisorCallOuts,
