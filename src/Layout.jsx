@@ -26,17 +26,17 @@ const CENTER_CONFIG = {
     label: 'CAD Center',
     icon: Radio,
     groups: [
-      { label: 'Operations', items: [
+      { label: 'Live Operations', items: [
         ['Command Dashboard', 'CommandDashboard', Gauge],
         ['Dispatch Center', 'DispatchCenter', Radio],
         ['Live Map', 'Navigation', Map],
         ['BOLO / Alerts', 'BOLOAlerts', FileWarning],
       ]},
-      { label: 'Intelligence', items: [
+      { label: 'History & Intelligence', items: [
         ['Call History', 'CallHistory', Clock3],
         ['Records AI', 'RecordsAssistant', Bot],
       ]},
-      { label: 'Administration', fullAccessOnly: true, items: [
+      { label: 'CAD Administration', fullAccessOnly: true, items: [
         ['Personnel', 'Personnel', Users],
         ['CAD Reports', 'PathfinderReports', BarChart3],
         ['Admin Control', 'AdminPortal', Activity],
@@ -92,18 +92,22 @@ const CENTER_CONFIG = {
     label: 'Supervisor Center',
     icon: ClipboardCheck,
     groups: [
-      { label: 'Supervisor Portal', items: [
-        ['My Action Items', 'SupervisorTasks', ClipboardList],
-        ['My Daily Code', 'SupervisorDailyCode', ShieldCheck],
-        ['Rank Structure', 'RankStructure', Shield],
-        ['Company Directory', 'DivisionDirectory', Users],
-        ['Performance Review Tasks', 'SupervisorPerformanceReview', ClipboardCheck],
+      { label: 'Today', items: [
+        ['Action Items', 'SupervisorTasks', ClipboardList],
+        ['Daily Code', 'SupervisorDailyCode', ShieldCheck],
+        ['Call-Outs', 'SupervisorCallOuts', UserCheck],
+      ]},
+      { label: 'Officer Oversight', items: [
         ['Officer Inspections', 'SupervisorInspections', ClipboardCheck],
-        ['Write-Up Reports', 'SupervisorWriteUps', FileWarning],
-        ['Use-of-Force Reports', 'SupervisorUseOfForce', AlertTriangle],
-        ['File Complaints', 'SupervisorComplaints', AlertTriangle],
-        ['Call-Out Management', 'SupervisorCallOuts', UserCheck],
+        ['Performance Reviews', 'SupervisorPerformanceReview', ClipboardCheck],
+        ['Write-Ups', 'SupervisorWriteUps', FileWarning],
+        ['Use of Force', 'SupervisorUseOfForce', AlertTriangle],
+        ['Complaints', 'SupervisorComplaints', AlertTriangle],
+      ]},
+      { label: 'People & Communication', items: [
+        ['Company Directory', 'DivisionDirectory', Users],
         ['Supervisor Chat', 'SupervisorChat', MessageCircle],
+        ['Rank Structure', 'RankStructure', Shield],
       ]},
     ],
   },
@@ -111,11 +115,25 @@ const CENTER_CONFIG = {
     label: 'Admin Center',
     icon: Settings,
     groups: [
-      { label: 'Command & Analytics', items: [
+      { label: 'Command', items: [
         ['Admin Dashboard', 'AdminDashboard', Gauge],
         ['Company Analytics', 'AdminAnalytics', BarChart3],
         ['Location Tracker', 'AdminLocationTracker', MapPin],
         ['Geofence Alerts', 'AdminGeofenceAlerts', AlertTriangle],
+      ]},
+      { label: 'Scheduling & Fleet', items: [
+        ['Scheduling', 'AdminScheduling', Calendar],
+        ['Fleet Assignments', 'FleetVehicleAssignments', Car],
+        ['Availability Approvals', 'AdminOfficerManagement', UserCheck],
+        ['Planned Shifts', 'AdminPlannedShifts', Calendar],
+        ['Shift Bids', 'AdminShiftBids', Briefcase],
+      ]},
+      { label: 'Personnel & Sites', items: [
+        ['Users & Accounts', 'AdminUsers', Users],
+        ['Platoon & Chain', 'AdminPlatoonAssignments', GitBranch],
+        ['Locations', 'AdminLocations', Building2],
+        ['Equipment', 'AdminEquipment', Package],
+        ['Post Orders', 'AdminPostOrders', BookOpen],
       ]},
       { label: 'Reports & Quality', items: [
         ['All Reports', 'AdminReports', ClipboardList],
@@ -124,31 +142,21 @@ const CENTER_CONFIG = {
         ['Confidential Reports', 'AdminConfidentialReports', ShieldCheck],
         ['Complaints', 'AdminComplaints', AlertTriangle],
         ['Commendations', 'AdminCommendations', Award],
+        ['Client Feedback', 'AdminClientFeedback', Award],
       ]},
-      { label: 'Scheduling', items: [
-        ['Scheduling', 'AdminScheduling', Calendar],
-        ['Fleet Vehicle Assignment', 'FleetVehicleAssignments', Car],
-        ['Availability Approvals', 'AdminOfficerManagement', UserCheck],
-        ['Planned Shifts', 'AdminPlannedShifts', Calendar],
-        ['Shift Bids', 'AdminShiftBids', Briefcase],
-      ]},
-      { label: 'Operations Management', items: [
-        ['Pending Users & Account Assignment', 'AdminUsers', Users],
-        ['Platoon & Chain Assignments', 'AdminPlatoonAssignments', GitBranch],
-        ['Locations', 'AdminLocations', Building2],
-        ['Equipment', 'AdminEquipment', Package],
-        ['Documents', 'AdminDocuments', FileText],
-        ['Post Orders', 'AdminPostOrders', BookOpen],
+      { label: 'Communications & Requests', items: [
         ['Announcements', 'AdminAnnouncements', Bell],
         ['Notifications', 'AdminNotifications', Bell],
         ['Special Requests', 'AdminSpecialRequests', CalendarClock],
-        ['Portal Settings', 'AdminPortalSettings', Settings],
-        ['Client Feedback', 'AdminClientFeedback', Award],
+        ['Documents', 'AdminDocuments', FileText],
       ]},
       { label: 'QR Patrol', items: [
         ['QR Checkpoints', 'AdminQRCheckpoints', MapPin],
         ['QR Print Manager', 'AdminQRPrintManager', FileText],
         ['QR Patrol Reports', 'AdminQRReports', BarChart3],
+      ]},
+      { label: 'System', items: [
+        ['Portal Settings', 'AdminPortalSettings', Settings],
       ]},
     ],
   },
@@ -156,14 +164,16 @@ const CENTER_CONFIG = {
     label: 'Trainer Center',
     icon: GraduationCap,
     groups: [
-      { label: 'Training', items: [
-        ['Training Creation', 'AdminTraining', GraduationCap],
-        ['Training & Compliance', 'AdminTrainingCompliance', ShieldCheck],
+      { label: 'Training Management', items: [
+        ['Create Training', 'AdminTraining', GraduationCap],
+        ['Training Records', 'TrainingRecords', BookOpen],
+        ['Manage Students', 'ManageStudents', Users],
+      ]},
+      { label: 'Compliance & Certifications', items: [
+        ['Training Compliance', 'AdminTrainingCompliance', ShieldCheck],
         ['Compliance Tracker', 'TrainingComplianceTracker', BarChart3],
         ['Certification Alerts', 'AdminCertificationAlerts', Bell],
-        ['Manage Students', 'ManageStudents', Users],
-        ['Officer Certification Management', 'TrainingManageCompanyEmployees', Users],
-        ['Training Records', 'TrainingRecords', BookOpen],
+        ['Officer Certifications', 'TrainingManageCompanyEmployees', Users],
       ]},
     ],
   },
@@ -171,17 +181,19 @@ const CENTER_CONFIG = {
     label: 'HR Center',
     icon: Users,
     groups: [
-      { label: 'People Operations', items: [
-        ['Manage Company Employees', 'HRManageCompanyEmployees', Briefcase],
-        ['Client Accounts & Assignments', 'ManageClients', Building2],
-        ['Manage Time Entries', 'ManageTimeEntries', Clock3],
+      { label: 'Employees', items: [
+        ['Company Employees', 'HRManageCompanyEmployees', Briefcase],
+        ['Time Entries', 'ManageTimeEntries', Clock3],
+        ['Divisions', 'AdminDivisions', Layers],
       ]},
       { label: 'Leave & Performance', items: [
         ['PTO Approval & History', 'AdminPTOApproval', ClipboardCheck],
         ['Manual PTO', 'AdminManualPTO', CalendarClock],
         ['PTO Loss Report', 'AdminPTOLossReport', AlertTriangle],
         ['Performance Reviews', 'AdminPerformanceReviews', ClipboardCheck],
-        ['Divisions', 'AdminDivisions', Layers],
+      ]},
+      { label: 'Client Assignments', items: [
+        ['Client Accounts & Assignments', 'ManageClients', Building2],
       ]},
     ],
   },
@@ -198,14 +210,18 @@ const CENTER_CONFIG = {
     label: 'Accounting Center',
     icon: DollarSign,
     groups: [
-      { label: 'Accounting', items: [
+      { label: 'Payroll', items: [
         ['Payroll Center', 'AccountingPayroll', DollarSign],
         ['Payroll Dates', 'PayrollDates', CalendarClock],
+      ]},
+      { label: 'Billing & Expenses', items: [
         ['Client Invoices', 'AccountingInvoices', FileText],
         ['Bills & Expenses', 'AccountingExpenses', DollarSign],
+        ['Expense Approval', 'AdminExpenseApproval', ClipboardCheck],
+      ]},
+      { label: 'Financial Overview', items: [
         ['Company Profit', 'AccountingProfit', BarChart3],
         ['Tax Liability', 'AccountingTaxLiability', ClipboardList],
-        ['Expense Approval', 'AdminExpenseApproval', ClipboardCheck],
       ]},
     ],
   },
@@ -222,20 +238,26 @@ const CENTER_CONFIG = {
     label: 'Client Center',
     icon: Building2,
     groups: [
-      { label: 'Client Portal', items: [
+      { label: 'Overview', items: [
         ['Dashboard', 'ClientDashboard', Gauge],
         ['Security Alerts', 'ClientAlerts', AlertTriangle],
         ['Calls for Service', 'ClientCallHistory', Radio],
-        ['Special Requests', 'ClientSpecialRequests', CalendarClock],
+      ]},
+      { label: 'Site Operations', items: [
+        ['Site Schedule', 'ClientSchedule', Calendar],
         ['Site Supervisors', 'ClientSupervisors', UserCheck],
+        ['Location Info', 'ClientLocation', MapPin],
+        ['Trespass Management', 'ClientTrespass', UserX],
+      ]},
+      { label: 'Reports & Documents', items: [
         ['All Reports', 'ClientReports', FileText],
         ['QR Patrol Reports', 'ClientQRReports', MapPin],
-        ['Payroll & Invoicing', 'ClientPayrollReport', DollarSign],
-        ['Trespass Management', 'ClientTrespass', UserX],
-        ['Site Schedule', 'ClientSchedule', Calendar],
         ['Training Documents', 'ClientDocuments', BookOpen],
+      ]},
+      { label: 'Requests & Billing', items: [
+        ['Special Requests', 'ClientSpecialRequests', CalendarClock],
+        ['Payroll & Invoicing', 'ClientPayrollReport', DollarSign],
         ['Feedback', 'ClientFeedback', Award],
-        ['Location Info', 'ClientLocation', MapPin],
       ]},
     ],
   },
@@ -475,7 +497,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             </span>
           )}
         </Link>
-        {groups.map((group, groupIndex) => <details key={group.label} name={activeCenter === 'officer' ? 'officer-nav-groups' : undefined} open={groups.length === 1 || (activeCenter === 'officer' && groupIndex === 0)} className="mb-2 group">
+        {groups.map((group, groupIndex) => <details key={group.label} name={`${activeCenter}-nav-groups`} open={groups.length === 1 || groupIndex === 0} className="mb-2 group">
           {(!collapsed || mobile) ? (
             <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-2.5 py-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7895b2] transition hover:bg-[#0d2135] hover:text-[#9fc7e8]">{group.label}<ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-open:rotate-180" /></summary>
           ) : (
