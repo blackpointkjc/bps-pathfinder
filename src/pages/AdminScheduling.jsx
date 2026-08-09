@@ -78,12 +78,18 @@ export default function AdminScheduling() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
-    enabled: user?.role === 'admin',
-    staleTime: 30000,
-    refetchInterval: 30000,
+  const { data: allUsers = [], isLoading: usersLoading, error: usersError } = useQuery({
+    queryKey: ['schedulingEmployeeDirectory'],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getHRUsers', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.users || [];
+    },
+    enabled: !!user,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
   const { data: divisions } = useQuery({
@@ -748,13 +754,15 @@ export default function AdminScheduling() {
   }, [weekDivisionalSchedules, locations]);
 
   const activeOfficers = useMemo(() => (allUsers || []).filter(u => {
-    if (u.termination_date) return false;
-    const roles = new Set([u.role, ...(u.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
+    if (!u?.email || u.termination_date) return false;
+    const roles = new Set((u.additional_roles || []).map(value => String(value).toLowerCase()));
+    const rank = String(u.rank || '').toLowerCase();
     const userType = String(u.user_type || u.account_type || u.portal_type || '').toLowerCase();
     const accountStatus = String(u.account_status || '').toLowerCase();
     if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
     if (['client', 'student', 'pending'].includes(userType) || accountStatus === 'pending') return false;
-    return roles.has('cad_access') && roles.has('officer');
+    if (['client', 'student', 'human resources', 'support staff'].includes(rank)) return false;
+    return roles.has('officer') || roles.has('cad_access') || ['officer','unarmed officer','senior officer','corporal','sergeant','first sergeant','lieutenant','captain','major','lt colonel','colonel','supervisor'].includes(rank);
   }), [allUsers]);
 
   useEffect(() => {
