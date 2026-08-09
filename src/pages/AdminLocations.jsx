@@ -778,13 +778,13 @@ export default function AdminLocations() {
                 <Label htmlFor="subdivision">Subdivision</Label>
                 <Select
                   value={formData.subdivision}
-                  onValueChange={(value) => setFormData({...formData, subdivision: value})}
+                  onValueChange={(value) => setFormData({...formData, subdivision: value === '__none__' ? '' : value})}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select subdivision..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {divisions
                       ?.filter(d => d.is_subdivision && d.parent_division === formData.division)
                       .map((div) => (
@@ -824,13 +824,13 @@ export default function AdminLocations() {
               <Label htmlFor="assigned_client">Assign Client User (Optional)</Label>
               <Select
                 value={formData.assigned_client_email || ""} // Ensure value is controlled and handles null/undefined
-                onValueChange={(value) => setFormData({...formData, assigned_client_email: value === "" ? null : value})} // Set to null if empty string is selected
+                onValueChange={(value) => setFormData({...formData, assigned_client_email: value === '__none__' ? '' : value})}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select client user..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={null}>None</SelectItem> {/* Use empty string for "None" */}
+                  <SelectItem value="__none__">None</SelectItem>
                   {clientUsers?.map((client) => (
                     <SelectItem key={client.id} value={client.email}>
                       {client.first_name && client.last_name
