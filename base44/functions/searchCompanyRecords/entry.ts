@@ -6,7 +6,7 @@ const SOURCES = [
   ['CallForService', 'Calls for Service', 'CallHistory'],
   ['BOLOAlert', 'BOLO / Alerts', 'BOLOAlerts'],
   ['IncidentReport', 'Incident Reports', 'IncidentReports'],
-  ['DailyActivityReport', 'Daily Activity Reports', 'DailyActivityReports']
+  ['DailyActivityReport', 'Daily Activity Reports', 'DailyActivityReports'],
   ['MaintenanceReport', 'Maintenance Reports', 'MaintenanceReports'],
   ['OpenDoorReport', 'Open Door Reports', 'OpenDoorReports'],
   ['ConfidentialReport', 'Confidential Reports', 'AdminConfidentialReports'],
@@ -72,11 +72,10 @@ Deno.serve(async (req) => {
         label: labelFor(record),
         date: record.incident_date || record.notice_date || record.report_date || record.shift_date || record.created_date,
         location: record.location || record.site_name || record.property_name || record.address || record.last_known_location || record.offense_place || '',
-        person: record.subject_name || record.person_name || record.suspect_name || record.employee_name || record.officer_name || record.violator_name || record.accused_first_name && record.accused_last_name ? `${record.accused_first_name} ${record.accused_last_name}` : record.accused_last_name || record.defendant_printed_name || record.defendant_name_first && record.defendant_name_last ? `${record.defendant_name_first} ${record.defendant_name_last}` : record.defendant_name_last || '',
+        person: record.subject_name || record.person_name || record.suspect_name || record.employee_name || record.officer_name || record.violator_name || (record.accused_first_name && record.accused_last_name ? `${record.accused_first_name} ${record.accused_last_name}` : record.accused_last_name) || record.defendant_printed_name || (record.defendant_name_first && record.defendant_name_last ? `${record.defendant_name_first} ${record.defendant_name_last}` : record.defendant_name_last) || '',
         status: record.status || record.approval_status || '',
         summary: record.description || record.narrative || record.reason || record.notes || record.summary || record.details || record.statement_of_facts || record.ai_summary || '',
         linked_call_number: record.linked_call_number || record.call_number || record.call_id || '',
-        search_text: [record.bolo_number, record.title, record.description, record.subject_name, record.subject_description, record.vehicle_plate, record.vehicle_make, record.vehicle_model, record.last_known_location, record.last_known_direction, record.parties, record.vehicles].filter(Boolean).map(v => typeof v === 'string' ? v : JSON.stringify(v)).join(' '),
       }));
     }));
 
