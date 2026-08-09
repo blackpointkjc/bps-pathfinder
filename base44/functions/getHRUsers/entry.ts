@@ -12,12 +12,20 @@ Deno.serve(async (req) => {
     if (!authorized) return Response.json({ error: 'Unauthorized', users: [] }, { status: 403 });
 
     const allUsers = await base44.asServiceRole.entities.User.list();
-    const internalRoles = new Set(['cad_access', 'officer', 'supervisor', 'hr', 'accounting', 'trainer', 'full_access']);
+    const internalRoles = new Set(['cad_access', 'officer', 'supervisor', 'hr', 'accounting', 'trainer', 'full_access', 'support_staff']);
     const users = (allUsers || [])
       .filter((entry: any) => {
         if (!privileged && entry.email !== user.email) return false;
-        const entryRoles = entry.additional_roles || [];
-        return !entry.termination_date && (entry.role === 'admin' || entryRoles.some((role: string) => internalRoles.has(String(role).toLowerCase())) || ['support staff', 'human resources'].includes(String(entry.rank || '').toLowerCase()));
+        if (entry.termination_date) return false;
+        const entryRoles = new Set((entry.additional_roles || []).map((role: string) => String(role).toLowerCase()));
+        const rank = String(entry.rank || '').toLowerCase();
+        const userType = String(entry.user_type || entry.account_type || entry.portal_type || '').toLowerCase();
+        const employmentStatus = String(entry.employment_status || '').toLowerCase();
+        const portalOnly = entryRoles.has('client') || entryRoles.has('student') || ['client', 'student', 'pending'].includes(userType) || rank === 'client' || rank === 'student';
+        const internalByRole = entry.role === 'admin' || [...entryRoles].some((role: string) => internalRoles.has(role));
+        const internalByRank = Boolean(rank) && !['client', 'student', 'pending'].includes(rank);
+        const internalByEmployment = ['active', 'inactive', 'leave', 'terminated'].includes(employmentStatus);
+        return !portalOnly && (internalByRole || internalByRank || internalByEmployment);
       })
       .map((entry: any) => hrPrivileged ? {
         ...entry,
