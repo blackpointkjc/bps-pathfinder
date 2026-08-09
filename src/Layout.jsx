@@ -716,12 +716,10 @@ export default function Layout({ children, currentPageName }) {
     refreshUnreadFromServer();
     const interval = setInterval(refreshUnreadFromServer, 30000);
     window.addEventListener('bps-unread-refresh', refreshUnreadFromServer);
-    window.addEventListener('focus', refreshUnreadFromServer);
     return () => {
       active = false;
       clearInterval(interval);
       window.removeEventListener('bps-unread-refresh', refreshUnreadFromServer);
-      window.removeEventListener('focus', refreshUnreadFromServer);
     };
   }, [user?.id, user?.email, user?.created_date, unreadStorageKey]);
 
