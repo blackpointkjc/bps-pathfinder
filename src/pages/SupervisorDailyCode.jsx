@@ -20,7 +20,7 @@ export default function SupervisorDailyCode() {
     queryFn: () => base44.auth.me(),
   });
 
-  const isSupervisor = user?.additional_roles?.includes("supervisor");
+  const isSupervisor = user?.additional_roles?.includes("supervisor") || user?.additional_roles?.includes("full_access");
   const isAdmin = user?.role === "admin";
 
   const { data: todayChecks, refetch: refetchChecks } = useQuery({
