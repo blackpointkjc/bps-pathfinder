@@ -12,7 +12,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
-import { findPropertyMatch, monitoredPropertiesFromLocations, playPropertyAlert, stopAllAlerts } from '@/utils/alertUtils';
+import { playPropertyAlert, stopAllAlerts } from '@/utils/alertUtils';
 import GlobalMessageBanner from '@/components/GlobalMessageBanner';
 import MandatoryReadGate from '@/components/MandatoryReadGate';
 import WelcomeBriefing from '@/components/WelcomeBriefing';
@@ -542,7 +542,6 @@ export default function Layout({ children, currentPageName }) {
   const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
   const [activeAlert, setActiveAlert] = useState(null);
   const [propertyAlert, setPropertyAlert] = useState(null);
-  const alertedPropertyKeys = useRef(new Set());
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
   const [search, setSearch] = useState('');
