@@ -52,7 +52,6 @@ export default function WelcomeBriefing({ user }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [triggerVersion, setTriggerVersion] = useState(0);
   const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null, allUsers: [], allUnits: [], todaySchedules: [], activeTimeEntries: [], todayVehicleAssignments: [] });
   const userKey = normalized(user?.email || user?.id);
   const storageKey = userKey ? `bps-last-active:${userKey}` : '';
@@ -134,7 +133,7 @@ export default function WelcomeBriefing({ user }) {
     };
     load();
     return () => { active = false; };
-  }, [user?.id, user?.email, user?.status, sessionKey, storageKey, lastShownKey, lastStatusKey, triggerVersion]);
+  }, [user?.id, user?.email, user?.status, sessionKey, storageKey, lastShownKey, lastStatusKey]);
 
   useEffect(() => {
     if (!storageKey) return;
