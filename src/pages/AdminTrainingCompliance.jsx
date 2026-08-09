@@ -1217,10 +1217,10 @@ export default function AdminTrainingCompliance() {
             {requirementForm.renewal_period_months > 0 && (
               <div className="space-y-2">
                 <Label>Renewal Training Course (what officer must take to renew)</Label>
-                <Select value={requirementForm.renewal_requirement_id || ""} onValueChange={v => setRequirementForm(p => ({ ...p, renewal_requirement_id: v }))}>
+                <Select value={requirementForm.renewal_requirement_id || ""} onValueChange={v => setRequirementForm(p => ({ ...p, renewal_requirement_id: v === '__none__' ? '' : v }))}>
                   <SelectTrigger><SelectValue placeholder="Select renewal training..." /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {requirements.filter(r => r.id !== editingRequirement?.id && r.active).map(r => (
                       <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>
                     ))}
@@ -1313,12 +1313,12 @@ export default function AdminTrainingCompliance() {
                           <div className="text-xs">
                             <Select value={t.renewal_requirement_id || ""} onValueChange={v => setAssignForm(p => {
                               const updated = [...p.trainings];
-                              updated[idx] = { ...updated[idx], renewal_requirement_id: v };
+                              updated[idx] = { ...updated[idx], renewal_requirement_id: v === '__none__' ? '' : v };
                               return { ...p, trainings: updated };
                             })}>
                               <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select renewal course..." /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value={null}>None</SelectItem>
+                                <SelectItem value="__none__">None</SelectItem>
                                 {requirements.filter(r => r.active).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
                               </SelectContent>
                             </Select>
@@ -1477,16 +1477,17 @@ export default function AdminTrainingCompliance() {
                   <div className="space-y-1">
                     <Label className="text-xs">Renewal Training Course</Label>
                     <Select value={entry.renewal_requirement_id || ""} onValueChange={v => {
-                      const renewalReq = v ? requirements.find(r => r.id === v) : null;
+                      const nextRenewalId = v === '__none__' ? '' : v;
+                      const renewalReq = nextRenewalId ? requirements.find(r => r.id === nextRenewalId) : null;
                       setRecordForm(p => { 
                         const u = [...p.entries]; 
-                        u[idx] = { ...u[idx], renewal_requirement_id: v, renewal_training_name: renewalReq?.training_name || "" }; 
+                        u[idx] = { ...u[idx], renewal_requirement_id: nextRenewalId, renewal_training_name: renewalReq?.training_name || "" }; 
                         return { ...p, entries: u }; 
                       });
                     }}>
                       <SelectTrigger className="bg-white"><SelectValue placeholder="Select renewal course..." /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={null}>None</SelectItem>
+                        <SelectItem value="__none__">None</SelectItem>
                         {requirements.filter(r => r.active).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -1583,9 +1584,10 @@ export default function AdminTrainingCompliance() {
               <div className="space-y-2">
                 <Label>Renewal Training Course</Label>
                 <Select value={updatingAssignment?.renewal_requirement_id || ""} onValueChange={v => {
-                  const renewalReq = v ? requirements.find(r => r.id === v) : null;
+                  const nextRenewalId = v === '__none__' ? '' : v;
+                  const renewalReq = nextRenewalId ? requirements.find(r => r.id === nextRenewalId) : null;
                   trainingUpdate('TrainingAssignment', updatingAssignment.id, {
-                    renewal_requirement_id: v || null,
+                    renewal_requirement_id: nextRenewalId || null,
                     renewal_training_name: renewalReq?.training_name || null,
                   }).then(() => {
                     queryClient.invalidateQueries({ queryKey: ['allTrainingAssignments'] });
@@ -1594,7 +1596,7 @@ export default function AdminTrainingCompliance() {
                 }}>
                   <SelectTrigger><SelectValue placeholder="Select renewal course..." /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {requirements.filter(r => r.active).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -1769,10 +1771,10 @@ export default function AdminTrainingCompliance() {
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Renewal Training Course <span className="text-slate-400 font-normal">(training officer must take at renewal)</span></Label>
-                    <Select value={approvalDetails.renewal_requirement_id || ""} onValueChange={v => setApprovalDetails(p => ({ ...p, renewal_requirement_id: v }))}>
+                    <Select value={approvalDetails.renewal_requirement_id || ""} onValueChange={v => setApprovalDetails(p => ({ ...p, renewal_requirement_id: v === '__none__' ? '' : v }))}>
                       <SelectTrigger><SelectValue placeholder="Select renewal training..." /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={null}>None</SelectItem>
+                        <SelectItem value="__none__">None</SelectItem>
                         {requirements.filter(r => r.active).map(r => (
                           <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>
                         ))}
