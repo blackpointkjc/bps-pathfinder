@@ -41,15 +41,13 @@ export default function AdminPTOLossReport() {
   const hasHRAccess = user?.role === 'admin' || hrRoles.has('hr') || hrRoles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
 
   const { data: allUsers = [] } = useQuery({
-    queryKey: ['hrUsers', 'ptoLoss'],
-    queryFn: async () => {
-      const result = await base44.functions.invoke('getHRUsers', {});
-      const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload.users || [];
-    },
+    queryKey: ['appDirectoryUsers', 'ptoLoss'],
+    queryFn: () => base44.entities.User.list('last_name', 1000),
     enabled: hasHRAccess,
     initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
 
