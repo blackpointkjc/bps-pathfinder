@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function SupervisorUseOfForce() {
   const [showDialog, setShowDialog] = useState(false);
@@ -47,14 +48,12 @@ export default function SupervisorUseOfForce() {
     retry: false,
   });
 
-  const { data: officers } = useQuery({
-    queryKey: ["supervisorUseOfForceOfficers"],
-    queryFn: async () => {
-      const allOfficers = await base44.entities.User.list();
-      return allOfficers.filter(
-        (o) => o.role === "user" && o.additional_roles?.includes("officer")
-      );
-    },
+  const { data: officers = [] } = useQuery({
+    queryKey: ["appDirectoryUsers", "supervisorUseOfForceOfficers"],
+    queryFn: async () => (await base44.entities.User.list('last_name', 1000)).filter(isOperationalOfficer),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
   const { data: reports } = useQuery({
