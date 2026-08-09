@@ -879,14 +879,15 @@ export default function Layout({ children, currentPageName }) {
   };
 
   const openPropertyCadCall = async () => {
-    if (!propertyAlert?.call?.id) return;
+    const call = propertyAlert?.call;
+    if (!call?.id) return;
+    const params = new URLSearchParams({ callId: call.id });
+    if (Number.isFinite(Number(call.latitude)) && Number.isFinite(Number(call.longitude))) {
+      params.set('lat', String(call.latitude));
+      params.set('lng', String(call.longitude));
+    }
     const acknowledged = await acknowledgePropertyAlert();
     if (!acknowledged) return;
-    const params = new URLSearchParams({ callId: propertyAlert.call.id });
-    if (Number.isFinite(Number(propertyAlert.call.latitude)) && Number.isFinite(Number(propertyAlert.call.longitude))) {
-      params.set('lat', String(propertyAlert.call.latitude));
-      params.set('lng', String(propertyAlert.call.longitude));
-    }
     navigate(`${createPageUrl('Navigation')}?${params.toString()}`);
   };
 
@@ -959,9 +960,17 @@ export default function Layout({ children, currentPageName }) {
               <div className="rounded border border-slate-700 bg-slate-900/70 p-3"><div className="text-slate-500">CALL STATUS</div><div className="mt-1 font-bold text-slate-100">{propertyAlert.call.status || 'New'} · {(propertyAlert.call.priority || 'medium').toUpperCase()}</div></div>
             </div>
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <button onClick={stopAllAlerts} className="rounded-lg border border-amber-500/60 bg-amber-950/40 px-5 py-3 text-sm font-black text-amber-200 hover:bg-amber-900/50">SILENCE ALARM</button>
-              <button onClick={acknowledgePropertyAlert} className="rounded-lg border border-slate-600 bg-slate-800 px-5 py-3 text-sm font-black text-slate-100 hover:bg-slate-700">ACKNOWLEDGE</button>
-              <Link to={createPageUrl('DispatchCenter')} onClick={acknowledgePropertyAlert} className="rounded-lg border border-blue-400 bg-blue-600 px-5 py-3 text-center text-sm font-black text-white hover:bg-blue-500">OPEN CAD CALL</Link>
+              <button
+                type="button"
+                onClick={() => { stopAllAlerts(); setPropertyAlertSilenced(true); }}
+                disabled={propertyAlertSilenced}
+                aria-pressed={propertyAlertSilenced}
+                className="rounded-lg border border-amber-500/60 bg-amber-950/40 px-5 py-3 text-sm font-black text-amber-200 hover:bg-amber-900/50 disabled:cursor-default disabled:opacity-70"
+              >
+                {propertyAlertSilenced ? 'ALARM SILENCED' : 'SILENCE ALARM'}
+              </button>
+              <button type="button" onClick={acknowledgePropertyAlert} className="rounded-lg border border-slate-600 bg-slate-800 px-5 py-3 text-sm font-black text-slate-100 hover:bg-slate-700">ACKNOWLEDGE</button>
+              <button type="button" onClick={openPropertyCadCall} className="rounded-lg border border-blue-400 bg-blue-600 px-5 py-3 text-center text-sm font-black text-white hover:bg-blue-500">OPEN CAD CALL</button>
             </div>
           </div>
         </motion.div>
