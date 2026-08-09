@@ -84,7 +84,12 @@ export default function BackgroundLocationTracker({ user }) {
 
   // Mutation to create geofence alert
   const createGeofenceAlertMutation = useMutation({
-    mutationFn: (data) => base44.entities.GeofenceAlert.create(data),
+    mutationFn: async (data) => {
+      const result = await base44.functions.invoke('manageGeofenceAlerts', { action: 'outside', ...data });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['geofenceAlerts'] });
     },
@@ -251,6 +256,20 @@ export default function BackgroundLocationTracker({ user }) {
                 console.warn(`Geofence alert: Officer outside ${sharedPolygon.length >= 3 ? 'custom boundary' : `${radius}m radius`} at ${siteLocation.site_name}`);
               } catch (e) {
                 console.error('Failed to create geofence alert:', e);
+              }
+            } else if (accuracy <= 200 && !outsideGeofence) {
+              // Returning to the approved boundary resolves any outstanding alert
+              // for this officer/site automatically. Supervisors still retain the
+              // resolved item in history for review.
+              try {
+                await base44.functions.invoke('manageGeofenceAlerts', {
+                  action: 'resolve_mine',
+                  location: siteLocation.site_name,
+                  reason: 'Automatically resolved when officer returned inside the approved geofence.',
+                });
+                queryClient.invalidateQueries({ queryKey: ['geofenceAlerts'] });
+              } catch (e) {
+                console.warn('Unable to auto-resolve geofence alert:', e?.message);
               }
             }
           }
