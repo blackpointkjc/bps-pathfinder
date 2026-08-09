@@ -56,13 +56,21 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const isSystemAdmin = user?.role === 'admin';
-  const canManageEmployees = isSystemAdmin || userRoles.has('full_access') || userRoles.has('trainer');
-  const isHrReadOnly = userRoles.has('hr') && !canManageEmployees;
-  const hasAccess = canManageEmployees || isHrReadOnly;
+  const canManageEmployees = isSystemAdmin || userRoles.has('full_access') || userRoles.has('trainer') || userRoles.has('hr');
+  const isHrReadOnly = false;
+  const hasAccess = canManageEmployees;
 
   const { data: users, isLoading } = useQuery({
-    queryKey: ['users'],
-    queryFn: () => base44.entities.User.list(),
+    queryKey: ['users', portalContext],
+    queryFn: async () => {
+      if (portalContext === 'hr') {
+        const result = await base44.functions.invoke('getHRUsers', {});
+        const payload = result?.data || result || {};
+        if (payload.error) throw new Error(payload.error);
+        return payload.users || [];
+      }
+      return base44.entities.User.list();
+    },
     enabled: hasAccess,
     staleTime: 0,
   });
