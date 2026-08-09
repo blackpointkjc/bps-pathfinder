@@ -5,15 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Shield, Users, RefreshCw, Save, Network } from 'lucide-react';
 import { toast } from 'sonner';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 const RANKS = ['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'];
 const COMMAND_RANKS = new Set(['Colonel','Lt Colonel','Major']);
 const rankIndex = rank => { const i = RANKS.indexOf(rank); return i < 0 ? 999 : i; };
 const rolesOf = user => new Set((user?.additional_roles || []).map(r => String(r).toLowerCase()));
-const isOperational = user => {
-  const roles = rolesOf(user);
-  return !user?.termination_date && RANKS.includes(user?.rank) && roles.has('officer') && roles.has('cad_access');
-};
+const isOperational = user => isOperationalOfficer(user) && RANKS.includes(user?.rank);
 const displayName = user => `${user?.rank || 'Officer'} ${user?.last_name || user?.first_name || user?.email || ''}`.trim();
 
 function eligibleSupervisors(person, users, platoon) {
