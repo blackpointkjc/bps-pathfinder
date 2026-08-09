@@ -6,6 +6,9 @@ const STYLE_ID = 'bps-required-print-footer-style';
 
 function ensureFooter(targetDocument) {
   if (!targetDocument?.body || !targetDocument?.head) return;
+  // Official Virginia legal forms must print without company branding or the
+  // global company/DCJS footer. Their own form content remains intact.
+  if (targetDocument.body?.dataset?.noCompanyFooter === 'true' || targetDocument.documentElement?.dataset?.noCompanyFooter === 'true') return;
 
   let style = targetDocument.getElementById(STYLE_ID);
   if (!style) {
