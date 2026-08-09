@@ -4061,13 +4061,13 @@ Return ONLY a JSON array of suggestion objects with this structure:
                 <Label htmlFor="edit_linked_shift">Link to Shift from {format(subDays(parseISO(editingShift.shift_date), 1), 'MMM d, yyyy')} (Optional)</Label>
                 <Select
                   value={editingShift.linked_shift_id || ""}
-                  onValueChange={(value) => setEditingShift({ ...editingShift, linked_shift_id: value === "" ? null : value })}
+                  onValueChange={(value) => setEditingShift({ ...editingShift, linked_shift_id: value === '__none__' ? null : value })}
                 >
                   <SelectTrigger id="edit_linked_shift">
                     <SelectValue placeholder="Optional - link to a previous shift..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>No Link</SelectItem> {/* Option to unlink */}
+                    <SelectItem value="__none__">No Link</SelectItem>
                     {schedules
                       ?.filter(s => {
                         const dayBefore = format(subDays(parseISO(editingShift.shift_date), 1), 'yyyy-MM-dd');
