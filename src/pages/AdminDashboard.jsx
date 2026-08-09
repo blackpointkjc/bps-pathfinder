@@ -23,7 +23,7 @@ export default function AdminDashboard() {
   });
 
   const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
+    queryKey: ['adminDashboardActiveUsers'],
     queryFn: async () => {
       const users = await base44.entities.User.list();
       return users.filter(u => !u.termination_date);
