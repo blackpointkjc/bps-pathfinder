@@ -448,12 +448,23 @@ Deno.serve(async (req) => {
       if (legacy && !byLegacy.has(legacy)) byLegacy.set(legacy, record);
     }
 
+    // Calls are intentionally removed from DispatchCall after one hour and kept in
+    // CallHistory. GRAC can continue publishing an old call while it remains active;
+    // without this tombstone check ingestion would recreate it on every sync and the
+    // property-monitoring system would generate a new alert for the same call.
+    const archivedHistory = await base44.asServiceRole.entities.CallHistory.list('-archived_date', 5000).catch(() => []);
+    const archivedByExternal = new Set((archivedHistory || []).map((row: any) => externalKey(row)).filter(Boolean));
+    const archivedByLegacy = new Set((archivedHistory || []).map((row: any) => legacyKey(row)).filter(Boolean));
+
     const uniqueExisting = [...new Map(existingCalls.map(record => [record.id, record])).values()];
     const needingCad = uniqueExisting.filter(record =>
       recordKey(record) && !/^BPS-\d{6}-\d{1,8}$/i.test(String(record.bps_reference || ''))
     );
     const newCalls = incoming.filter(call =>
-      !byExternal.has(call.external_call_id) && !byLegacy.has(legacyKey(call))
+      !byExternal.has(call.external_call_id) &&
+      !byLegacy.has(legacyKey(call)) &&
+      !archivedByExternal.has(externalKey(call)) &&
+      !archivedByLegacy.has(legacyKey(call))
     );
     const cadNumbers = await reserveCadNumbers(base44, needingCad.length + newCalls.length);
     let cadIndex = 0;
@@ -477,7 +488,15 @@ Deno.serve(async (req) => {
 
     let created = 0, updated = 0, removed = 0;
     for (const callData of incoming) {
-      const existing = byExternal.get(callData.external_call_id) || byLegacy.get(legacyKey(callData));
+      const incomingExternal = externalKey(callData);
+      const incomingLegacy = legacyKey(callData);
+      const existing = byExternal.get(callData.external_call_id) || byLegacy.get(incomingLegacy);
+      const alreadyArchived = archivedByExternal.has(incomingExternal) || archivedByLegacy.has(incomingLegacy);
+      if (!existing && alreadyArchived) {
+        // Keep the one-hour archive authoritative. Do not resurrect a call that the
+        // CAD history system has already moved out of the active queue.
+        continue;
+      }
       if (!existing) {
         const bpsReference = cadNumbers[cadIndex++];
         const officialCad = String(callData.agency_cad_number || '').trim();
