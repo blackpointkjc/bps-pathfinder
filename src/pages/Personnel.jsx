@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Search, MapPin, RefreshCw } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { createPageUrl } from '../utils';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
@@ -25,6 +27,8 @@ export default function Personnel() {
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const [forcedOverrides, setForcedOverrides] = useState([]);
     const [statusUpdatingId, setStatusUpdatingId] = useState(null);
+    const [statusDialog, setStatusDialog] = useState(null);
+    const [statusReason, setStatusReason] = useState('');
 
     useEffect(() => {
         init();
@@ -67,20 +71,22 @@ export default function Personnel() {
     };
 
 
-    const handleForceStatus = async (person) => {
+    const openStatusDialog = (person) => {
         const existingOverride = forcedOverrides.find(entry => entry.officer_id === person.id);
-        const action = existingOverride ? 'release' : 'force_oos';
-        let reason = '';
-        if (action === 'force_oos') {
-            reason = window.prompt(`Reason for forcing ${person.rank || 'Officer'} ${person.last_name || person.full_name || person.email} Out of Service:`, '') ?? '';
-            if (reason === '' && !window.confirm('No reason was entered. Force this officer Out of Service anyway?')) return;
-        } else if (!window.confirm(`Release the forced Out of Service status for ${person.rank || 'Officer'} ${person.last_name || person.full_name || person.email}?`)) {
-            return;
-        }
+        setStatusReason('');
+        setStatusDialog({ person, action: existingOverride ? 'release' : 'force_oos' });
+    };
 
+    const handleForceStatus = async () => {
+        if (!statusDialog) return;
+        const { person, action } = statusDialog;
+        const reason = statusReason.trim();
+        if (action === 'force_oos' && !reason) return;
         setStatusUpdatingId(person.id);
         try {
             await base44.functions.invoke('forceOfficerStatus', { officer_id: person.id, action, reason });
+            setStatusDialog(null);
+            setStatusReason('');
             toast.success(action === 'force_oos' ? 'Officer forced Out of Service' : 'Out of Service override released');
             await Promise.all([loadPersonnel(), loadOverrides()]);
         } catch (error) {
@@ -112,6 +118,19 @@ export default function Personnel() {
 
     return (
         <div className="bg-slate-950 min-h-full flex flex-col font-mono">
+            <Dialog open={!!statusDialog} onOpenChange={open => { if (!open && !statusUpdatingId) { setStatusDialog(null); setStatusReason(''); } }}>
+                <DialogContent className="max-w-lg border-slate-700 bg-slate-950 text-white">
+                    <DialogHeader><DialogTitle>{statusDialog?.action === 'force_oos' ? 'Force Officer Out of Service' : 'Release Out of Service Override'}</DialogTitle></DialogHeader>
+                    <div className="space-y-3">
+                        <p className="text-sm text-slate-300">{statusDialog?.person?.rank || 'Officer'} {statusDialog?.person?.last_name || statusDialog?.person?.full_name || statusDialog?.person?.email}</p>
+                        {statusDialog?.action === 'force_oos' ? <textarea autoFocus value={statusReason} onChange={e => setStatusReason(e.target.value)} placeholder="Reason for placing this officer Out of Service..." className="min-h-28 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-blue-500" /> : <p className="rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-slate-300">Release this forced Out of Service status?</p>}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" disabled={!!statusUpdatingId} onClick={() => { setStatusDialog(null); setStatusReason(''); }}>Cancel</Button>
+                        <Button disabled={!!statusUpdatingId || (statusDialog?.action === 'force_oos' && !statusReason.trim())} onClick={handleForceStatus}>{statusUpdatingId ? 'Updating…' : statusDialog?.action === 'force_oos' ? 'Place Out of Service' : 'Release Override'}</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             {/* Header */}
             <div className="flex-none border-b-2 border-gold/50 bg-slate-900 px-3 py-2.5 sm:px-4 sm:py-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                 <div className="w-1 h-6 bg-gold rounded-sm" />
@@ -205,7 +224,7 @@ export default function Personnel() {
                                 {canForceStatus() && (() => {
                                     const forced = forcedOverrides.some(entry => entry.officer_id === person.id);
                                     return (
-                                        <button onClick={() => handleForceStatus(person)} disabled={statusUpdatingId === person.id}
+                                        <button onClick={() => openStatusDialog(person)} disabled={statusUpdatingId === person.id}
                                             title={forced ? 'Release forced Out of Service override' : 'Force this officer Out of Service'}
                                             className={`flex items-center gap-1 px-2 py-1 rounded border text-[9px] font-bold transition-all disabled:opacity-50 ${forced ? 'bg-emerald-950/60 border-emerald-700 text-emerald-300 hover:bg-emerald-900' : 'bg-red-950/60 border-red-700 text-red-300 hover:bg-red-900'}`}>
                                             {statusUpdatingId === person.id ? 'WORKING…' : forced ? 'RELEASE OOS' : 'FORCE OOS'}
