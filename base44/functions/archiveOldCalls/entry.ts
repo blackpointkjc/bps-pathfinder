@@ -58,6 +58,20 @@ Deno.serve(async (req) => {
                         });
                     }
 
+                    // Once a call leaves the active CAD queue, any open property alert
+                    // for that same call must close with it. Otherwise the shell can keep
+                    // presenting a property alert for a call that is already in history.
+                    const openPropertyAlerts = await base44.asServiceRole.entities.PropertyAlert.filter({ callId: call.id, acknowledged: false }, '-created_date', 50).catch(() => []);
+                    for (const alert of openPropertyAlerts || []) {
+                        await base44.asServiceRole.entities.PropertyAlert.update(alert.id, {
+                            acknowledged: true,
+                            acknowledgedAt: now.toISOString(),
+                            closed_with_call: true,
+                            callTime: alert.callTime || call.time_received || call.created_date,
+                            time_received: alert.time_received || call.time_received || call.created_date,
+                        }).catch(() => null);
+                    }
+
                     // The complete copy above remains available for incident-report linkage.
                     await base44.asServiceRole.entities.DispatchCall.delete(call.id);
                     archivedCount++;
