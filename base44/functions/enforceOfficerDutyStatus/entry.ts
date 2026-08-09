@@ -15,6 +15,13 @@ function displayName(user: any) {
   return [rank, last].filter(Boolean).join(' ');
 }
 
+async function retireLiveOfficer(base44: any, email: string) {
+  const rows = await base44.asServiceRole.entities.ActiveOfficer.list(undefined, 1000).catch(() => []);
+  const mine = (rows || []).filter((row: any) => lower(row.officer_email) === lower(email));
+  await Promise.all(mine.map((row: any) => base44.asServiceRole.entities.ActiveOfficer.delete(row.id).catch(() => null)));
+  return mine.length;
+}
+
 async function setOutOfService(base44: any, officer: any, reason: string, alertSupervisors: boolean) {
   const now = new Date().toISOString();
   const update = {
@@ -59,8 +66,9 @@ Deno.serve(async (req) => {
     const action = String(body?.action || 'sweep');
 
     if (action === 'logout') {
+      const retired = await retireLiveOfficer(base44, caller.email);
       if (caller.status === 'Out of Service') {
-        return Response.json({ success: true, changed: false, status: 'Out of Service' });
+        return Response.json({ success: true, changed: false, status: 'Out of Service', retired_live_records: retired });
       }
       const alert = lower(caller.status) === 'available';
       const result = await setOutOfService(
@@ -69,7 +77,15 @@ Deno.serve(async (req) => {
         'logged out while still marked Available and did not manually go Out of Service.',
         alert,
       );
-      return Response.json({ success: true, changed: true, officer: result });
+      return Response.json({ success: true, changed: true, officer: result, retired_live_records: retired });
+    }
+
+    if (action === 'clock_out') {
+      const retired = await retireLiveOfficer(base44, caller.email);
+      const result = caller.status === 'Out of Service'
+        ? { id: caller.id, email: caller.email, status: 'Out of Service' }
+        : await setOutOfService(base44, caller, 'clocked out of duty.', false);
+      return Response.json({ success: true, changed: caller.status !== 'Out of Service', officer: result, retired_live_records: retired });
     }
 
     if (action === 'self_check') {
