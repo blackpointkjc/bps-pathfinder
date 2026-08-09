@@ -58,14 +58,14 @@ export default function Schedule() {
     };
 
     subscribe(base44.entities.Schedule, () => {
-      queryClient.invalidateQueries({ queryKey: ['schedules', user.email] });
+      queryClient.invalidateQueries({ queryKey: ['myScheduleData', user.email] });
       queryClient.invalidateQueries({ queryKey: ['openShifts'] });
     });
     subscribe(base44.entities.ScheduleWeekStatus, () => {
-      queryClient.invalidateQueries({ queryKey: ['allWeekStatuses'] });
+      queryClient.invalidateQueries({ queryKey: ['myScheduleData', user.email] });
     });
     subscribe(base44.entities.VehicleAssignment, () => {
-      queryClient.invalidateQueries({ queryKey: ['myVehicleAssignments', user.email] });
+      queryClient.invalidateQueries({ queryKey: ['myScheduleData', user.email] });
     });
 
     return () => unsubscribers.forEach(unsubscribe => unsubscribe());
@@ -187,6 +187,7 @@ export default function Schedule() {
   };
 
   const handleRefresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['myScheduleData', user?.email] });
     await queryClient.invalidateQueries({ queryKey: ['schedules'] });
     await queryClient.invalidateQueries({ queryKey: ['myApprovedPTO'] });
     await queryClient.invalidateQueries({ queryKey: ['openShifts'] });
