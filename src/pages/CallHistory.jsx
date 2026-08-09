@@ -80,33 +80,20 @@ export default function CallHistory() {
     const loadAll = async () => {
         try {
             await base44.functions.invoke('archiveOldCalls', {}).catch(error => console.warn('[HISTORY] archive pass failed:', error?.message));
-            const [active, archived, propertyAlerts] = await Promise.all([
-                base44.entities.DispatchCall.list('-created_date', 500),
-                base44.entities.CallHistory.list('-archived_date', 500),
-                base44.entities.PropertyAlert.list('-created_date', 2000).catch(() => []),
-            ]);
-            const propertyCallIds = new Set();
-            (propertyAlerts || []).forEach(alert => {
-                [alert.callId, alert.call_id, alert.dispatchCallId, alert.original_call_id].filter(Boolean).forEach(value => propertyCallIds.add(String(value)));
-            });
-            const isPropertyLinked = call => {
-                // A Property Call is ONLY a call that actually triggered the property
-                // monitoring system and therefore has a PropertyAlert record. Merely
-                // matching a property address/name is not enough.
-                const ids = [call.id, call.call_id, call.original_call_id, call.bps_reference, call.agency_cad_number]
-                    .filter(Boolean)
-                    .map(String);
-                return ids.some(id => propertyCallIds.has(id));
-            };
-            const activeRows = (active || []).map(c => ({ ...c, _source: 'active', _propertyCall: isPropertyLinked(c) }));
-            const archivedRows = (archived || []).map(c => ({ ...c, _source: 'archived', _propertyCall: isPropertyLinked(c) }));
-            // Deduplicate by call_id if present
+            const result = await base44.functions.invoke('getCallHistoryFeed', {});
+            const payload = result?.data || result || {};
+            if (payload.error) throw new Error(payload.error);
+            const feedRows = payload.rows || [];
+            const activeRows = feedRows.filter(row => row._source === 'active');
+            const archivedRows = feedRows.filter(row => row._source !== 'active');
             const seenIds = new Set(activeRows.map(c => c.call_id || c.id));
             const dedupedArchived = archivedRows.filter(c => !seenIds.has(c.call_id));
             setRows([...activeRows, ...dedupedArchived]);
             setLastRefresh(new Date());
         } catch (e) {
-            console.error(e);
+            console.error('[HISTORY] feed load failed:', e);
+            toast.error(`Call history could not be loaded: ${e?.message || 'Unknown error'}`);
+            setRows([]);
         } finally {
             setLoading(false);
             setRefreshing(false);
