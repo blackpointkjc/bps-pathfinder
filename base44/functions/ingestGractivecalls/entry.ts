@@ -488,14 +488,20 @@ Deno.serve(async (req) => {
         const savedOfficialCad = existing.official_cad_verified ? String(existing.agency_cad_number || '').trim() : chesterfieldPublicId;
         const officialCad = matchedOfficialCad || savedOfficialCad;
         const bpsReference = String(existing.bps_reference || '').trim();
+        const manuallyCleared = existing.status === 'Cleared' && Boolean(existing.time_cleared);
         const incomingWithCad = {
           ...callData,
+          // A dispatcher/officer manual clear is authoritative for this exact upstream
+          // call ID. GRAC may continue publishing the incident for a while, but that
+          // must not resurrect it in the Pathfinder active queue.
+          status: manuallyCleared ? 'Cleared' : callData.status,
           agency_cad_number: officialCad,
           bps_reference: bpsReference,
           call_id: officialCad || bpsReference || existing.call_id,
           cad_number_source: officialCad ? 'official_government_feed' : 'bps_internal',
           official_cad_verified: Boolean(officialCad),
           description: callData.description,
+          ...(manuallyCleared ? { time_cleared: existing.time_cleared } : {}),
         };
         if (changed(existing, incomingWithCad)) {
           await base44.asServiceRole.entities.DispatchCall.update(existing.id, incomingWithCad);
