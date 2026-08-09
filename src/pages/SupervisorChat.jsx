@@ -26,11 +26,11 @@ export default function SupervisorChat() {
   const { data: messages } = useQuery({
     queryKey: ['supervisorChatMessages'],
     queryFn: () => base44.entities.SupervisorChatMessage.list('-created_date', 100),
-    enabled: user?.additional_roles?.includes('supervisor') || user?.role === 'admin',
+    enabled: user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin',
   });
 
   useEffect(() => {
-    if (!user?.additional_roles?.includes('supervisor') && user?.role !== 'admin') return undefined;
+    if (!user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access') && user?.role !== 'admin') return undefined;
     const unsubscribe = base44.entities.SupervisorChatMessage.subscribe(() => {
       queryClient.invalidateQueries({ queryKey: ['supervisorChatMessages'] });
     });
@@ -133,7 +133,7 @@ export default function SupervisorChat() {
     }
   }, [messages]);
 
-  if (!user?.additional_roles?.includes('supervisor') && user?.role !== 'admin') {
+  if (!user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access') && user?.role !== 'admin') {
     return (
       <div className="p-8 text-center">
         <UserCheck className="w-16 h-16 mx-auto mb-4 text-slate-400" />
