@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { trainingCreate, trainingDelete, trainingUpdate } from '@/lib/trainingRecordsApi';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,9 +80,9 @@ export default function AttendeeRoster({ trainingClass, onGenerateCertificate, s
     setSaving(true);
     const payload = { ...form, quiz_score: Number(form.quiz_score) || 0, quiz_total: Number(form.quiz_total) || 0 };
     if (editingId) {
-      await base44.entities.TrainingAttendee.update(editingId, payload);
+      await trainingUpdate('TrainingAttendee', editingId, payload);
     } else {
-      await base44.entities.TrainingAttendee.create(payload);
+      await trainingCreate('TrainingAttendee', payload);
     }
     setSaving(false);
     setShowForm(false);
@@ -99,7 +100,7 @@ export default function AttendeeRoster({ trainingClass, onGenerateCertificate, s
 
   const handleDelete = async (id) => {
     if (!confirm("Remove this attendee?")) return;
-    await base44.entities.TrainingAttendee.delete(id);
+    await trainingDelete('TrainingAttendee', id);
     fetchAttendees();
   };
 
