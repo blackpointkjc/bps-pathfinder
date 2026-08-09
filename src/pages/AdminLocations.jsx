@@ -34,6 +34,8 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { format } from 'date-fns';
+import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { isClientAccount } from '@/lib/directoryUtils';
 
 // Fix leaflet default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -132,21 +134,19 @@ export default function AdminLocations() {
     queryFn: () => base44.auth.me(),
   });
 
-  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('support');
+  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('support') || user?.additional_roles?.includes('support_staff') || user?.additional_roles?.includes('full_access');
 
-  const { data: divisions } = useQuery({
-    queryKey: ['activeDivisions'],
-    queryFn: async () => {
-      const allDivisions = await base44.entities.Division.list('division_name');
-      return allDivisions.filter(div => div.active);
-    },
+  const { data: divisions = [] } = useQuery({
+    queryKey: ['directoryDivisions', 'adminLocations'],
+    queryFn: () => listDirectoryDivisions('division_name', 1000),
     enabled: hasAccess,
+    initialData: [],
   });
 
   const { data: locations } = useQuery({
     queryKey: ['locations'],
     queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
+      const allLocations = await listDirectoryLocations('site_name', 1000);
       // Check contract dates and auto-deactivate if needed
       const now = new Date();
       now.setHours(0, 0, 0, 0); // Normalize 'now' to start of day for comparison
@@ -169,23 +169,17 @@ export default function AdminLocations() {
     enabled: hasAccess,
   });
 
-  const { data: clientUsers } = useQuery({
-    queryKey: ['clientUsers'],
-    queryFn: async () => {
-      const users = await base44.entities.User.list();
-      return users.filter(u => u.additional_roles?.includes('client'));
-    },
+  const { data: directoryUsers = [] } = useQuery({
+    queryKey: ['directoryUsers', 'adminLocations'],
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: hasAccess,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+    initialData: [],
   });
-
-  const { data: supervisorUsers } = useQuery({
-    queryKey: ['supervisorUsers'],
-    queryFn: async () => {
-      const users = await base44.entities.User.list();
-      return users.filter(u => u.additional_roles?.includes('supervisor'));
-    },
-    enabled: hasAccess,
-  });
+  const clientUsers = directoryUsers.filter(isClientAccount);
+  const supervisorUsers = directoryUsers.filter(u => (u.additional_roles || []).map(r => String(r).toLowerCase()).includes('supervisor'));
 
   const createLocationMutation = useMutation({
     mutationFn: (data) => base44.entities.Location.create(data),
