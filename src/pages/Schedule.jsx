@@ -126,9 +126,12 @@ export default function Schedule() {
 
   const isDatePublished = React.useCallback((dateStr) => {
     if (!dateStr || !allWeekStatuses || !user?.email) return false;
-    const date = parseISO(dateStr);
-    const sunday = format(startOfWeek(date, { weekStartsOn: 0 }), 'yyyy-MM-dd');
-    const status = allWeekStatuses.find(item => item.week_start_date === sunday);
+    // ScheduleWeekStatus owns the actual publication window. Do not assume the
+    // week starts on Sunday; payroll/schedule periods may start on another day.
+    const status = allWeekStatuses.find(item =>
+      item?.week_start_date && item?.week_end_date &&
+      dateStr >= item.week_start_date && dateStr <= item.week_end_date
+    );
     if (!status?.is_ready) return false;
     return !(status.unpublished_officer_emails || []).includes(user.email);
   }, [allWeekStatuses, user?.email]);
