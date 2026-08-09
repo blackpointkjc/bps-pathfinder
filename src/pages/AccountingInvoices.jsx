@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { accountingCreate } from '@/lib/accountingRecordsApi';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,7 +98,7 @@ export default function AccountingInvoices() {
   const generateInvoiceMutation = useMutation({
     mutationFn: async (invoiceData) => {
       // Create invoice record
-      const invoice = await base44.entities.Invoice.create(invoiceData);
+      const invoice = await accountingCreate('Invoice', invoiceData);
       
       // Create notification for client
       await base44.entities.Notification.create({
