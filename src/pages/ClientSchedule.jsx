@@ -56,7 +56,9 @@ export default function ClientSchedule() {
     queryFn: async () => {
       if (!officerEmails.length) return [];
       const result = await base44.functions.invoke('getClientOfficerDirectory', { officerEmails });
-      return result?.officers || [];
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.officers || [];
     },
     enabled: officerEmails.length > 0,
     staleTime: 300000,
