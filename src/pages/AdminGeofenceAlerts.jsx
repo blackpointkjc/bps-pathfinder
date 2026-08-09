@@ -92,16 +92,28 @@ export default function AdminGeofenceAlerts() {
     );
   }
 
+  const parseServerTimestamp = (value) => {
+    if (!value) return null;
+    const raw = String(value).trim();
+    // Base44 created_date values can arrive without an explicit timezone suffix.
+    // Those values are UTC server timestamps, so append Z before converting to ET.
+    const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw) ? raw : `${raw}Z`;
+    const date = new Date(normalized);
+    return Number.isNaN(date.getTime()) ? null : date;
+  };
+
   const getAlertAge = (createdDate) => {
-    const mins = Math.max(0, differenceInMinutes(new Date(), parseISO(createdDate)));
+    const created = parseServerTimestamp(createdDate);
+    if (!created) return 'Time unavailable';
+    const mins = Math.max(0, differenceInMinutes(new Date(), created));
     if (mins < 60) return `${mins}m ago`;
     if (mins < 1440) return `${Math.floor(mins / 60)}h ago`;
     return `${Math.floor(mins / 1440)}d ago`;
   };
 
   const formatET = (value, withYear = true) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return 'Time unavailable';
+    const date = parseServerTimestamp(value);
+    if (!date) return 'Time unavailable';
     return date.toLocaleString('en-US', {
       timeZone: 'America/New_York',
       month: 'short', day: 'numeric', ...(withYear ? { year: 'numeric' } : {}),
