@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertOctagon, Plus, Search, Edit2, CheckCircle2, User, Car, Shield, Bell, Eye, FileWarning, History, Radio, Clock3 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import BOLOModal from '@/components/bolo/BOLOModal';
 
 export const TYPE_CONFIG = {
@@ -34,6 +36,8 @@ export default function BOLOAlerts() {
   const [modal, setModal] = useState(null);
   const [user, setUser] = useState(null);
   const [resolving, setResolving] = useState(null);
+  const [resolutionDialog, setResolutionDialog] = useState(null);
+  const [resolutionText, setResolutionText] = useState('');
 
   useEffect(() => {
     const init = async () => {
@@ -89,13 +93,20 @@ export default function BOLOAlerts() {
 
   const canEditRecord = bolo => isManager || bolo.issued_by_id === user?.id || bolo.created_by_id === user?.id;
 
-  const resolveBolo = async (bolo, e) => {
+  const openResolveDialog = (bolo, e) => {
     e?.stopPropagation();
-    const resolution = window.prompt(`Disposition / resolution for ${bolo.bolo_number || bolo.title}:`, '');
-    if (!resolution?.trim()) return;
+    setResolutionText('');
+    setResolutionDialog(bolo);
+  };
+
+  const resolveBolo = async () => {
+    if (!resolutionDialog || !resolutionText.trim()) return;
+    const bolo = resolutionDialog;
     setResolving(bolo.id);
     try {
-      await base44.functions.invoke('manageBolo', { action: 'resolve', id: bolo.id, resolution: resolution.trim() });
+      await base44.functions.invoke('manageBolo', { action: 'resolve', id: bolo.id, resolution: resolutionText.trim() });
+      setResolutionDialog(null);
+      setResolutionText('');
       await load();
     } catch (error) {
       window.alert(error?.response?.data?.error || error?.message || 'Unable to resolve BOLO');
@@ -153,7 +164,7 @@ export default function BOLOAlerts() {
             <div className="md:col-span-2"><div className="text-[9px] text-slate-300">{bolo.issued_by || 'Unknown issuer'}</div><div className="mt-1 flex items-center gap-1 text-[8px] text-slate-500"><Clock3 className="h-2.5 w-2.5" />{fmt(bolo.created_date)}</div><div className={`mt-1 text-[9px] font-black ${bolo.status === 'active' ? 'text-green-400' : bolo.status === 'resolved' ? 'text-blue-400' : 'text-slate-500'}`}>● {(bolo.status || '').toUpperCase()}</div></div>
             <div className="flex items-center justify-end gap-1 md:col-span-2">
               {canEditRecord(bolo) && bolo.status === 'active' && <button onClick={e => { e.stopPropagation(); setModal({ mode: 'edit', bolo: { ...bolo } }); }} className="rounded border border-slate-700 p-1.5 text-slate-400 hover:border-gold hover:text-gold" title="Edit BOLO"><Edit2 className="h-3.5 w-3.5" /></button>}
-              {canEditRecord(bolo) && bolo.status === 'active' && <button onClick={e => resolveBolo(bolo,e)} disabled={resolving === bolo.id} className="flex items-center gap-1 rounded border border-green-700 bg-green-950/30 px-2 py-1.5 text-[8px] font-black text-green-300 hover:bg-green-900/40 disabled:opacity-50"><CheckCircle2 className="h-3.5 w-3.5" />{resolving === bolo.id ? 'RESOLVING' : 'RESOLVE'}</button>}
+              {canEditRecord(bolo) && bolo.status === 'active' && <button onClick={e => openResolveDialog(bolo,e)} disabled={resolving === bolo.id} className="flex items-center gap-1 rounded border border-green-700 bg-green-950/30 px-2 py-1.5 text-[8px] font-black text-green-300 hover:bg-green-900/40 disabled:opacity-50"><CheckCircle2 className="h-3.5 w-3.5" />{resolving === bolo.id ? 'RESOLVING' : 'RESOLVE'}</button>}
               {bolo.status !== 'active' && <span className="max-w-40 text-right text-[8px] text-slate-500">{bolo.resolution_notes || bolo.status}</span>}
             </div>
           </div>;
