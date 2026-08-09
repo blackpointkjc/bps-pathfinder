@@ -75,8 +75,14 @@ export default function AccountingPayroll() {
     const current = payrollPeriods.find(period =>
       period.status === 'current' || (period.start_date <= today && period.end_date >= today)
     );
-    if (current) setSelectedPeriodId(current.id);
-  }, [payrollPeriods, selectedPeriodId]);
+    if (current) {
+      setSelectedPeriodId(current.id);
+      return;
+    }
+    const completedDates = timeEntries.filter(entry => entry.clock_in && entry.clock_out).map(entry => String(entry.clock_in).slice(0, 10));
+    const matching = payrollPeriods.find(period => completedDates.some(date => date >= period.start_date && date <= period.end_date));
+    setSelectedPeriodId((matching || payrollPeriods[0]).id);
+  }, [payrollPeriods, selectedPeriodId, timeEntries]);
 
   const createPayrollMutation = useMutation({
     mutationFn: (entries) => accountingBulkCreate('PayrollEntry', entries),
