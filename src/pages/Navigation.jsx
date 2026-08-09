@@ -89,6 +89,7 @@ export default function Navigation() {
     const [addressResults, setAddressResults] = useState([]);
     const [addressSearching, setAddressSearching] = useState(false);
     const [showAddressSearch, setShowAddressSearch] = useState(false);
+    const [streetViewUrl, setStreetViewUrl] = useState('');
     const [fitBounds, setFitBounds] = useState(null);
     const lastSpokenNavStepRef = useRef(-1);
 
@@ -349,14 +350,48 @@ export default function Navigation() {
 
     const getFreshDeviceLocation = async () => {
         try {
-            const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 10000 });
+            const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 5000, maxAccuracyMeters: 100 });
             const fresh = [fix.latitude, fix.longitude];
             setCurrentLocation(fresh);
             if (fix.heading !== null) setHeading(fix.heading);
             setSpeed(Math.round(fix.speed || 0));
+            setIsLiveTracking(true);
             return fresh;
-        } catch {
-            return currentLocation;
+        } catch (liveError) {
+            // Starting GPS from Call Details or an address search must not depend on
+            // the background tracker already having emitted a fix. Ask the device
+            // directly and publish the result back into the app-wide location service.
+            if (!navigator.geolocation) return currentLocation;
+            try {
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        maximumAge: 3000,
+                        timeout: 12000,
+                    });
+                });
+                const fresh = [position.coords.latitude, position.coords.longitude];
+                const fix = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy,
+                    heading: Number.isFinite(position.coords.heading) ? position.coords.heading : null,
+                    speed: Number.isFinite(position.coords.speed) ? position.coords.speed * 2.236936 : 0,
+                    timestamp: position.timestamp || Date.now(),
+                };
+                setCurrentLocation(fresh);
+                if (fix.heading !== null) setHeading(fix.heading);
+                setSpeed(Math.round(fix.speed || 0));
+                setIsLiveTracking(true);
+                // Keep future route updates working even if the background tracker
+                // was not running when the user pressed START GPS.
+                const { publishLiveLocation } = await import('@/lib/liveLocationService');
+                publishLiveLocation(fix);
+                return fresh;
+            } catch (deviceError) {
+                console.warn('[NAV] direct GPS request failed:', deviceError?.message || liveError?.message);
+                return currentLocation;
+            }
         }
     };
 
