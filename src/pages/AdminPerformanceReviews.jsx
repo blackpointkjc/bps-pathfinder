@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { listDirectoryUsers } from '@/lib/appDirectory';
+import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 export default function AdminPerformanceReviews() {
   const [showForm, setShowForm] = useState(false);
@@ -41,9 +43,9 @@ export default function AdminPerformanceReviews() {
 
   const hasHRAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
 
-  const { data: allUsers = [], error: usersError } = useQuery({
-    queryKey: ['appDirectoryUsers', 'performanceReviews'],
-    queryFn: () => base44.entities.User.list('last_name', 1000),
+  const { data: directoryUsers = [], error: usersError } = useQuery({
+    queryKey: ['directoryUsers', 'performanceReviews'],
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: hasHRAccess,
     retry: 2,
     staleTime: 0,
@@ -51,6 +53,7 @@ export default function AdminPerformanceReviews() {
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
+  const allUsers = directoryUsers.filter(hasOfficerAdditionalRole);
 
   const { data: allReviews } = useQuery({
     queryKey: ['allPerformanceReviews'],
