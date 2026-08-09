@@ -145,14 +145,9 @@ export default function Navigation() {
         fetchCalls();
         const unsubscribe = base44.entities.DispatchCall.subscribe(() => fetchCalls());
         const localInterval = setInterval(fetchCalls, 20000);
-        const onVisibility = () => {
-            if (!document.hidden) fetchCalls();
-        };
-        document.addEventListener('visibilitychange', onVisibility);
         return () => {
             unsubscribe?.();
             clearInterval(localInterval);
-            document.removeEventListener('visibilitychange', onVisibility);
         };
     }, []);
 
