@@ -22,7 +22,7 @@ export default function SupervisorTasks() {
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
-    enabled: !!user && (user?.role === 'admin' || user?.additional_roles?.includes('supervisor')),
+    enabled: !!user && (user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access')),
     refetchInterval: 60000,
   });
 
@@ -32,7 +32,7 @@ export default function SupervisorTasks() {
   const pendingPerformanceReviews = scopedTasks.reviews || [];
   const followUpInspections = scopedTasks.inspections || [];
 
-  if (!user?.additional_roles?.includes('supervisor')) {
+  if (user?.role !== 'admin' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access')) {
     return (
       <div className="p-8 text-center">
         <UserCheck className="w-16 h-16 mx-auto mb-4 text-slate-400" />
