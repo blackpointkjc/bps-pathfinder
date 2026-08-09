@@ -40,16 +40,14 @@ export default function ManageTimeEntries() {
   const isHR = roles.has('hr') || roles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
   const isAdmin = user?.role === 'admin';
 
-  const { data: allUsers = [] } = useQuery({
-    queryKey: ['hrUsers'],
-    queryFn: async () => {
-      const result = await base44.functions.invoke('getHRUsers', {});
-      const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload.users || [];
-    },
+  const { data: allUsers = [], isLoading: usersLoading, error: usersError } = useQuery({
+    queryKey: ['appDirectoryUsers', 'manageTimeEntries'],
+    queryFn: () => base44.entities.User.list('last_name', 1000),
     enabled: isAdmin || isHR,
     initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
   const { data: locations } = useQuery({
