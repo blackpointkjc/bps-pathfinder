@@ -35,9 +35,14 @@ export default function AdminGeofenceAlerts() {
   const isAdmin = user?.role === 'admin';
   const isSupervisor = user?.additional_roles?.includes('supervisor');
 
-  const { data: alerts } = useQuery({
+  const { data: alerts = [] } = useQuery({
     queryKey: ['geofenceAlerts'],
-    queryFn: () => base44.entities.GeofenceAlert.list('-created_date'),
+    queryFn: async () => {
+      const result = await base44.functions.invoke('manageGeofenceAlerts', { action: 'list' });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.alerts || [];
+    },
     enabled: isAdmin || isSupervisor,
     refetchInterval: 30000,
   });
@@ -52,12 +57,12 @@ export default function AdminGeofenceAlerts() {
   const acknowledgedAlerts = alerts?.filter(a => a.acknowledged) || [];
 
   const acknowledgeMutation = useMutation({
-    mutationFn: ({ id, notes }) => base44.entities.GeofenceAlert.update(id, {
-      acknowledged: true,
-      acknowledged_by: user?.email,
-      acknowledged_date: new Date().toISOString(),
-      notes: notes || null,
-    }),
+    mutationFn: async ({ id, notes }) => {
+      const result = await base44.functions.invoke('manageGeofenceAlerts', { action: 'acknowledge', id, notes });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['geofenceAlerts'] });
       setSelectedAlert(null);
@@ -67,15 +72,10 @@ export default function AdminGeofenceAlerts() {
 
   const bulkAcknowledgeMutation = useMutation({
     mutationFn: async () => {
-      const promises = activeAlerts.map(alert =>
-        base44.entities.GeofenceAlert.update(alert.id, {
-          acknowledged: true,
-          acknowledged_by: user?.email,
-          acknowledged_date: new Date().toISOString(),
-          notes: "Bulk acknowledged",
-        })
-      );
-      await Promise.all(promises);
+      const result = await base44.functions.invoke('manageGeofenceAlerts', { action: 'clear_all' });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['geofenceAlerts'] });
@@ -93,10 +93,20 @@ export default function AdminGeofenceAlerts() {
   }
 
   const getAlertAge = (createdDate) => {
-    const mins = differenceInMinutes(new Date(), parseISO(createdDate));
+    const mins = Math.max(0, differenceInMinutes(new Date(), parseISO(createdDate)));
     if (mins < 60) return `${mins}m ago`;
     if (mins < 1440) return `${Math.floor(mins / 60)}h ago`;
     return `${Math.floor(mins / 1440)}d ago`;
+  };
+
+  const formatET = (value, withYear = true) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Time unavailable';
+    return date.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      month: 'short', day: 'numeric', ...(withYear ? { year: 'numeric' } : {}),
+      hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true,
+    }) + ' ET';
   };
 
   const getLocationCoords = (locationName) => {
@@ -161,7 +171,7 @@ export default function AdminGeofenceAlerts() {
                           </p>
                           <p className="text-xs text-slate-500 mt-1">
                             <Clock className="w-3 h-3 inline mr-1" />
-                            {format(parseISO(alert.created_date), 'MMM d, yyyy h:mm a')}
+                            {formatET(alert.created_date)
                           </p>
                         </div>
                         <Button
@@ -262,7 +272,7 @@ export default function AdminGeofenceAlerts() {
                           {alert.location} • {alert.distance_from_site}m from site
                         </p>
                         <p className="text-xs text-slate-500 mt-1">
-                          {format(parseISO(alert.created_date), 'MMM d h:mm a')} • Acknowledged by {alert.acknowledged_by}
+                          {formatET(alert.created_date, false)} • Acknowledged by {alert.acknowledged_by}
                         </p>
                         {alert.notes && (
                           <p className="text-xs text-slate-600 mt-1 italic">Note: {alert.notes}</p>
@@ -294,7 +304,7 @@ export default function AdminGeofenceAlerts() {
                   {selectedAlert.location} • {selectedAlert.distance_from_site}m outside zone
                 </p>
                 <p className="text-xs text-slate-500 mt-1">
-                  {format(parseISO(selectedAlert.created_date), 'MMM d, yyyy h:mm a')}
+                  {formatET(selectedAlert.created_date)
                 </p>
               </div>
 
