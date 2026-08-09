@@ -42,7 +42,7 @@ export default function BackgroundLocationTracker({ user }) {
   const sessionStartedRef = useRef(new Date().toISOString());
   const queryClient = useQueryClient();
 
-  const { data: activeEntry } = useQuery({
+  const { data: activeEntry, isLoading: activeEntryLoading } = useQuery({
     queryKey: ['bgTrackerActiveEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
@@ -77,10 +77,10 @@ export default function BackgroundLocationTracker({ user }) {
     staleTime: 60000,
   });
 
-  // One authoritative GPS feed for EVERY authenticated Pathfinder user. Duty status
-  // is context only; being signed into the app is what activates location tracking.
-  const shouldTrack = !!user?.email;
-  const shouldPublish = !!user?.email;
+  // Live officer GPS is duty-only. Being signed into Pathfinder by itself must not
+  // create or preserve an officer marker after the user has clocked out.
+  const shouldTrack = !!user?.email && !!activeEntry;
+  const shouldPublish = !!user?.email && !!activeEntry;
 
   // Mutation to create geofence alert
   const createGeofenceAlertMutation = useMutation({
@@ -108,8 +108,7 @@ export default function BackgroundLocationTracker({ user }) {
     },
   });
 
-  // Establish exactly one live-session record immediately on sign-in, even before
-  // the first GPS fix. This lets Admin Location Tracker show "signed in / GPS pending".
+  // Establish exactly one live-duty record while the officer is clocked in.
   useEffect(() => {
     if (!shouldPublish) return;
 
@@ -150,6 +149,27 @@ export default function BackgroundLocationTracker({ user }) {
 
     getActiveOfficerRecord();
   }, [shouldPublish, user?.email, activeEntry?.id]);
+
+  // Clock-out cleanup: once the active TimeEntry query has settled and no open
+  // entry remains, remove every live marker owned by this officer immediately.
+  useEffect(() => {
+    if (!user?.email || activeEntryLoading || activeEntry) return;
+    let cancelled = false;
+    const retireLiveMarker = async () => {
+      try {
+        const records = await base44.entities.ActiveOfficer.filter({ officer_email: user.email });
+        if (cancelled) return;
+        await Promise.all((records || []).map(record => base44.entities.ActiveOfficer.delete(record.id).catch(() => null)));
+        activeOfficerRecordRef.current = null;
+        queryClient.invalidateQueries({ queryKey: ['activeOfficers'] });
+        queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
+      } catch (error) {
+        console.warn('Unable to retire clocked-out officer marker:', error?.message);
+      }
+    };
+    retireLiveMarker();
+    return () => { cancelled = true; };
+  }, [user?.email, activeEntryLoading, activeEntry?.id, queryClient]);
 
   useEffect(() => {
     if (!shouldTrack) {
