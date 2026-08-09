@@ -21,6 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { listDirectoryUsers, listDirectoryLocations } from '@/lib/appDirectory';
+import { isClientAccount } from '@/lib/directoryUtils';
 
 export default function ManageClients() {
   const [showDialog, setShowDialog] = useState(false);
@@ -43,26 +45,23 @@ export default function ManageClients() {
   const isSystemAdmin = user?.role === 'admin';
   const hasAccess = isSystemAdmin || user?.additional_roles?.includes('full_access') || user?.additional_roles?.includes('hr');
 
-  const { data: locations } = useQuery({
-    queryKey: ['activeLocations'],
-    queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
-      return allLocations.filter(loc => loc.active);
-    },
-    enabled: hasAccess,
-  });
-
-  const { data: clientUsers = [] } = useQuery({
-    queryKey: ['hrClientUsers'],
-    queryFn: async () => {
-      const result = await base44.functions.invoke('getClientUsers', {});
-      const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload.clients || [];
-    },
+  const { data: locations = [] } = useQuery({
+    queryKey: ['directoryLocations', 'manageClients'],
+    queryFn: () => listDirectoryLocations('site_name', 1000),
     enabled: hasAccess,
     initialData: [],
   });
+
+  const { data: directoryUsers = [] } = useQuery({
+    queryKey: ['directoryUsers', 'manageClients'],
+    queryFn: () => listDirectoryUsers('last_name', 1000),
+    enabled: hasAccess,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+    initialData: [],
+  });
+  const clientUsers = directoryUsers.filter(isClientAccount);
 
   const createClientMutation = useMutation({
     mutationFn: async (data) => {
