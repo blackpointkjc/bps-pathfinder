@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertTriangle, MapPin, Clock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { announceDistressSignal } from '@/utils/voiceAnnouncer';
+import { announceDistressSignalAsync } from '@/utils/voiceAnnouncer';
 
 // Police-style yelp/warble tone — repeating every 3.5s
 function useDistressSound(isActive) {
@@ -92,31 +92,47 @@ async function reverseGeocode(lat, lon) {
 export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin = false }) {
     const [alerts, setAlerts] = useState([]);
     const [dismissed, setDismissed] = useState(new Set());
+    const [soundReady, setSoundReady] = useState(false);
     const [addresses, setAddresses] = useState({});  // alertId -> address string
     const geocodedRef = useRef(new Set());
     const announcedDistressRef = useRef(new Set());
 
     const activeAlerts = alerts.filter(a => a.status === 'active' || a.status === 'acknowledged' || a.status === 'responders_enroute');
     const visible = activeAlerts.filter(a => !dismissed.has(a.id));
-    const soundActive = visible.length > 0 && (isDispatchOrAdmin);
+    const soundActive = soundReady && visible.length > 0 && isDispatchOrAdmin;
 
     useDistressSound(soundActive);
+
+    useEffect(() => {
+        if (!visible.length || !isDispatchOrAdmin) {
+            setSoundReady(false);
+            return undefined;
+        }
+        // Voice first. The emergency tone is intentionally held until the spoken
+        // "Distress signal 13" announcement finishes.
+        let cancelled = false;
+        setSoundReady(false);
+        const newlyAnnounced = visible.filter(alert => !announcedDistressRef.current.has(alert.id));
+        newlyAnnounced.forEach(alert => announcedDistressRef.current.add(alert.id));
+        const speak = async () => {
+            const alert = newlyAnnounced[0] || visible[0];
+            if (newlyAnnounced.length) {
+                await announceDistressSignalAsync({
+                    unit: alert.unit_number,
+                    name: alert.last_name || alert.officer_name,
+                });
+            }
+            if (!cancelled) setSoundReady(true);
+        };
+        speak();
+        return () => { cancelled = true; };
+    }, [visible.map(alert => alert.id).join('|'), isDispatchOrAdmin]);
 
     const fetchAlerts = () => {
         base44.entities.OfficerDistress.list('-activated_at', 20)
             .then(all => {
                 const active = all.filter(a => ['active', 'acknowledged', 'responders_enroute'].includes(a.status));
                 setAlerts(active);
-                // Announce each newly activated distress alert once.
-                active.forEach(alert => {
-                    if (!announcedDistressRef.current.has(alert.id)) {
-                        announcedDistressRef.current.add(alert.id);
-                        announceDistressSignal({
-                            unit: alert.unit_number,
-                            name: alert.last_name || alert.officer_name,
-                        });
-                    }
-                });
                 // Reverse geocode any alert we haven't geocoded yet
                 active.forEach(alert => {
                     const lat = alert.current_latitude || alert.latitude;
