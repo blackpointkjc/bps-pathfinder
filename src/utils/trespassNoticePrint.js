@@ -63,10 +63,13 @@ export function openTrespassNoticePrint(notice, options = {}) {
   const jurisdiction = String(options.jurisdiction || 'VA').toUpperCase();
   const propertyName = options.propertyName || notice.location || '';
   const propertyAddress = options.propertyAddress || notice.location || '';
-  const senderName = options.senderName || 'Black Point Protection';
+  const officerName = options.officerName || 'Officer';
+  const requestedSenderName = options.senderName || '';
+  const senderName = jurisdiction === 'VA' && /black point/i.test(requestedSenderName)
+    ? officerName
+    : (requestedSenderName || officerName);
   const senderAddress = options.senderAddress || propertyAddress || '';
   const senderPhone = options.senderPhone || '';
-  const officerName = options.officerName || 'Officer';
   const signatureName = options.signatureName || '';
   const policeDepartment = options.policeDepartment || resolvePoliceDepartment(options.locationRecord || {
     site_name: propertyName,
@@ -118,7 +121,7 @@ export function openTrespassNoticePrint(notice, options = {}) {
     @media print { .no-print { display: none !important; } .sheet { margin: 0; width: auto; min-height: 0; } }
   </style>
 </head>
-<body>
+<body ${jurisdiction === 'VA' ? 'data-no-company-footer="true"' : ''}>
   <button class="no-print" onclick="window.close()">← Back to App</button>
   <main class="sheet">
     <h1>-----TRESPASS NOTICE-----</h1>
@@ -155,7 +158,7 @@ export function openTrespassNoticePrint(notice, options = {}) {
     </div>
 
     <div class="service">
-      Notice served in hand by ${servedByPolice ? esc(policeDepartment) : 'Black Point Protection Officer'}:
+      Notice served in hand by ${servedByPolice ? esc(policeDepartment) : (jurisdiction === 'VA' ? 'Issuing Officer' : 'Security Officer')}:
       <span class="service-choice">${servedByPolice ? 'Yes' : 'No'}</span> Yes
       <span class="service-choice">${servedByPolice ? 'No' : 'Yes'}</span> No
     </div>
