@@ -198,6 +198,25 @@ export default function GlobalMessageBanner({ user }) {
       console.warn('Unable to subscribe to announcement receipts:', error?.message);
     }
 
+    // Reconcile direct messages on initial load and periodically. Realtime subscriptions
+    // can be delayed when the browser is backgrounded, so an unread message must still
+    // produce the same in-app "NEW MESSAGE" banner when the user returns.
+    const messageSource = SOURCES.find(source => source.direct && source.entity === 'Message');
+    const loadUnreadMessages = async () => {
+      try {
+        const unread = await base44.entities.Message.filter({ read: false }, '-created_date', 50);
+        const recentCutoff = Date.now() - 24 * 60 * 60 * 1000;
+        (unread || []).slice().reverse().forEach(record => {
+          const created = new Date(record.created_date || 0).getTime();
+          if (!created || created >= recentCutoff) showBanner(messageSource, record);
+        });
+      } catch (error) {
+        console.warn('Unable to reconcile unread messages:', error?.message);
+      }
+    };
+    loadUnreadMessages();
+    const messagePoll = window.setInterval(loadUnreadMessages, 12000);
+
     // Load announcements missed while the user was offline. A persistent banner
     // remains until the Announcements page is opened and records the view.
     const announcementSource = SOURCES.find(source => source.kind === 'announcement');
@@ -218,6 +237,7 @@ export default function GlobalMessageBanner({ user }) {
 
     return () => {
       window.removeEventListener('bps-announcements-opened', clearAnnouncementBanners);
+      window.clearInterval(messagePoll);
       unsubscribers.forEach(unsubscribe => unsubscribe());
       timers.current.forEach(timer => window.clearTimeout(timer));
       timers.current.clear();
