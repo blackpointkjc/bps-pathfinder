@@ -5,6 +5,7 @@
  */
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 
 const DashboardDataContext = createContext(null);
@@ -68,11 +69,7 @@ export function DashboardDataProvider({ children }) {
             if (Date.now() - lastUsersRefreshTime.current >= USER_REFRESH_MS || usersCacheRef.current.length === 0) {
                 try {
                     const allUsers = await base44.entities.User.list('-last_updated', 200);
-                    usersData = (allUsers || []).filter(u => {
-                        const roles = Array.isArray(u.additional_roles) ? u.additional_roles.map(role => String(role).toLowerCase()) : [];
-                        const isCadOfficer = roles.includes('cad_access') && roles.includes('officer');
-                        return isCadOfficer && Boolean(u.status);
-                    });
+                    usersData = (allUsers || []).filter(isOperationalOfficer);
                     usersCacheRef.current = usersData;
                     lastUsersRefreshTime.current = Date.now();
                 } catch (usersErr) {
