@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
 const ALLOWED_ENTITIES = new Set([
   'TrainingClass', 'TrainingAttendee', 'TrainingCertificate', 'TrainingSchoolSettings',
-  'TrainingModule', 'TrainingRequirement', 'TrainingAssignment', 'TrainingSubmission'
+  'TrainingModule', 'TrainingRequirement', 'TrainingAssignment', 'TrainingSubmission', 'CertificationTodo'
 ]);
 
 Deno.serve(async (req) => {
