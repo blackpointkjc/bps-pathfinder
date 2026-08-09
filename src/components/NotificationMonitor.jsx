@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { parseISO } from "date-fns";
+import { announcePropertyCall } from "@/utils/voiceAnnouncer";
 
 export default function NotificationMonitor({ user }) {
   const { toast } = useToast();
@@ -26,13 +27,21 @@ export default function NotificationMonitor({ user }) {
     enabled: !!user,
   });
 
-  // Monitor calls for service
+  // Monitor calls for service. Property-monitoring calls are handled as spoken
+  // operational alerts instead of the generic notification tone/browser alert.
   const { data: latestCall } = useQuery({
     queryKey: ['latestCallForService'],
     queryFn: async () => {
       const calls = await base44.entities.CallForService.list('-call_time', 1);
       return calls[0] || null;
     },
+    refetchInterval: 5000,
+    enabled: !!user,
+  });
+
+  const { data: latestPropertyAlerts = [] } = useQuery({
+    queryKey: ['latestPropertyAlertsForNotifications'],
+    queryFn: () => base44.entities.PropertyAlert.list('-created_date', 20),
     refetchInterval: 5000,
     enabled: !!user,
   });
@@ -139,35 +148,40 @@ export default function NotificationMonitor({ user }) {
     if (latestChat) setLastChatId(latestChat.id);
   }, [latestChat, user?.email, lastChatId, toast, playNotificationSound, showBrowserNotification]);
 
-  // Monitor new calls for service
+  // Monitor new calls for service. Property calls are spoken with the actual
+  // incident/property details and do not play the old generic double-beep.
   useEffect(() => {
     if (latestCall && latestCall.id !== lastCallId && lastCallId !== null) {
-      toast({
-        title: "🚨 New Call for Service",
-        description: `${latestCall.incident_type} at ${latestCall.address}`,
-        duration: 12000,
-        className: "bg-red-50 border-red-300",
-        action: (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => window.location.href = createPageUrl("CallsForService")}
-            className="hover:bg-red-100"
-          >
-            View
-          </Button>
-        ),
-      });
-      playNotificationSound();
-      playNotificationSound(); // Double beep for calls
-      showBrowserNotification(
-        "🚨 Call for Service",
-        `${latestCall.incident_type} at ${latestCall.address}`,
-        "🚨"
-      );
+      const propertyAlert = (latestPropertyAlerts || []).find(alert => String(alert.callId) === String(latestCall.id));
+      if (propertyAlert) {
+        announcePropertyCall({
+          propertyName: propertyAlert.propertyName,
+          incident: latestCall.incident_type || propertyAlert.callIncident,
+          location: latestCall.address || propertyAlert.callLocation,
+          reference: latestCall.call_number || latestCall.call_id || latestCall.bps_reference || latestCall.id,
+        });
+      } else {
+        toast({
+          title: "🚨 New Call for Service",
+          description: `${latestCall.incident_type} at ${latestCall.address}`,
+          duration: 12000,
+          className: "bg-red-50 border-red-300",
+          action: (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => window.location.href = createPageUrl("CallsForService")}
+              className="hover:bg-red-100"
+            >
+              View
+            </Button>
+          ),
+        });
+        playNotificationSound();
+      }
     }
     if (latestCall) setLastCallId(latestCall.id);
-  }, [latestCall, lastCallId, toast, playNotificationSound, showBrowserNotification]);
+  }, [latestCall, latestPropertyAlerts, lastCallId, toast, playNotificationSound]);
 
   // Monitor new announcements
   useEffect(() => {
