@@ -584,6 +584,8 @@ export default function Layout({ children, currentPageName }) {
   const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
   const [activeAlert, setActiveAlert] = useState(null);
   const [propertyAlert, setPropertyAlert] = useState(null);
+  const [propertyAlertSilenced, setPropertyAlertSilenced] = useState(false);
+  const dismissedPropertyAlertIdsRef = useRef(new Set());
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
   const [search, setSearch] = useState('');
@@ -808,7 +810,7 @@ export default function Layout({ children, currentPageName }) {
         // Property matching/creation now happens server-side during CAD ingestion.
         // The shell only needs the newest unacknowledged alert and its two related rows.
         const alerts = await base44.entities.PropertyAlert.filter({ acknowledged: false }, '-created_date', 20).catch(() => []);
-        const record = alerts?.[0];
+        const record = (alerts || []).find(item => !dismissedPropertyAlertIdsRef.current.has(item.id));
         if (!record || cancelled) return;
         const [callRows, locationRows] = await Promise.all([
           base44.entities.DispatchCall.filter({ id: record.callId }).catch(() => []),
@@ -821,6 +823,7 @@ export default function Layout({ children, currentPageName }) {
         const key = `${call.id}:${location.id}`;
         const relation = String(record.description || '').toLowerCase().includes('inside') ? 'inside' : 'nearby';
         setPropertyAlert({
+          alertId: record.id,
           call,
           property: {
             id: location.id,
@@ -832,6 +835,7 @@ export default function Layout({ children, currentPageName }) {
           distanceFeet: Math.round(Number(record.distanceMeters || 0) / 0.3048),
           key,
         });
+        setPropertyAlertSilenced(false);
         playPropertyAlert();
       } catch (error) {
         console.warn('Property alert display check failed:', error?.message);
@@ -851,19 +855,39 @@ export default function Layout({ children, currentPageName }) {
   }, [user?.role, JSON.stringify(user?.additional_roles || []), propertyAlert?.key]);
 
   const acknowledgePropertyAlert = async () => {
-    if (!propertyAlert) return;
+    if (!propertyAlert) return false;
     stopAllAlerts();
+    const dismissedIds = [];
     try {
       const records = await base44.entities.PropertyAlert.filter({ callId: propertyAlert.call.id, propertyId: propertyAlert.property.id, acknowledged: false });
       for (const record of records || []) {
+        dismissedPropertyAlertIdsRef.current.add(record.id);
+        dismissedIds.push(record.id);
         const result = await base44.functions.invoke('acknowledgePropertyAlert', { alert_id: record.id });
         const payload = result?.data || result || {};
         if (payload.error) throw new Error(payload.error);
       }
+      setPropertyAlert(null);
+      setPropertyAlertSilenced(false);
+      return true;
     } catch (error) {
+      dismissedIds.forEach(id => dismissedPropertyAlertIdsRef.current.delete(id));
       console.warn('Unable to record property alert acknowledgment:', error?.message);
+      toast.error('Unable to acknowledge property alert. Please try again.');
+      return false;
     }
-    setPropertyAlert(null);
+  };
+
+  const openPropertyCadCall = async () => {
+    if (!propertyAlert?.call?.id) return;
+    const acknowledged = await acknowledgePropertyAlert();
+    if (!acknowledged) return;
+    const params = new URLSearchParams({ callId: propertyAlert.call.id });
+    if (Number.isFinite(Number(propertyAlert.call.latitude)) && Number.isFinite(Number(propertyAlert.call.longitude))) {
+      params.set('lat', String(propertyAlert.call.latitude));
+      params.set('lng', String(propertyAlert.call.longitude));
+    }
+    navigate(`${createPageUrl('Navigation')}?${params.toString()}`);
   };
 
   if (!canAccessPage(user, currentPageName)) {
