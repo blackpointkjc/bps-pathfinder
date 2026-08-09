@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { trainingCreate, trainingUpdate } from '@/lib/trainingRecordsApi';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -181,14 +182,14 @@ export default function TrainingComplianceTracker() {
           a.status !== 'approved'
       );
       await Promise.all(matchingAssignments.map(a =>
-        base44.entities.TrainingAssignment.update(a.id, { status: 'approved', expiration_date: expirationDate })
+        trainingUpdate('TrainingAssignment', a.id, { status: 'approved', expiration_date: expirationDate })
       ));
 
       // If no existing assignment, create one marked approved so it shows in all reports
       if (matchingAssignments.length === 0 && !assignments.find(
         a => a.officer_email === officerEmail && a.training_name?.toLowerCase() === module.title?.toLowerCase() && a.status === 'approved'
       )) {
-        const assignment = await base44.entities.TrainingAssignment.create({
+        const assignment = await trainingCreate('TrainingAssignment', {
           training_name: module.title,
           category: module.category || 'other',
           officer_email: officerEmail,
@@ -202,7 +203,7 @@ export default function TrainingComplianceTracker() {
           renewal_period_months: module.renewal_period_months || 12,
           expiration_date: expirationDate,
         });
-        await base44.entities.TrainingSubmission.create({
+        await trainingCreate('TrainingSubmission', {
           assignment_id: assignment.id,
           training_name: module.title,
           officer_email: officerEmail,
