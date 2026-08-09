@@ -9,9 +9,9 @@ import { base44 } from '@/api/base44Client';
 
 const DashboardDataContext = createContext(null);
 
-const POLL_INTERVAL_MS = 20_000;        // Realtime subscriptions handle most updates; this is only a fallback
-const GRAC_SYNC_INTERVAL_MS = 20_000;   // One app-wide GRAC sync owner; do not duplicate this on pages
-const RATE_LIMIT_BACKOFF_MS = 60_000;   // Give Base44 room to recover after a 429 instead of retry-storming
+const POLL_INTERVAL_MS = 30_000;        // Realtime subscriptions handle most updates; this is only a fallback
+const GRAC_SYNC_INTERVAL_MS = 60_000;   // One shared sync per browser, no page-level duplicate loops
+const RATE_LIMIT_BACKOFF_MS = 90_000;   // Give Base44 room to recover after a 429 instead of retry-storming
 const MIN_REFRESH_MS = 5_000;           // Prevent subscription bursts from causing repeated list calls
 const USER_REFRESH_MS = 30_000;         // Unit roster changes slower than calls
 
