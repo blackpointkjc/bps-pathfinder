@@ -1,13 +1,16 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
 const SOURCES = [
+  ['DispatchCall', 'CAD / Dispatch Calls', 'CallHistory'],
+  ['CallHistory', 'Archived Call History', 'CallHistory'],
+  ['CallForService', 'Calls for Service', 'CallHistory'],
+  ['BOLOAlert', 'BOLO / Alerts', 'BOLOAlerts'],
   ['IncidentReport', 'Incident Reports', 'IncidentReports'],
-  ['DailyActivityReport', 'Daily Activity Reports', 'DailyActivityReports'],
+  ['DailyActivityReport', 'Daily Activity Reports', 'DailyActivityReports']
   ['MaintenanceReport', 'Maintenance Reports', 'MaintenanceReports'],
   ['OpenDoorReport', 'Open Door Reports', 'OpenDoorReports'],
   ['ConfidentialReport', 'Confidential Reports', 'AdminConfidentialReports'],
   ['TrespassingNotice', 'Trespassing Notices', 'VATrespassNotices'],
-  ['VATrespassNotice', 'VA Trespass Notices', 'VATrespassNotices'],
   ['MDTrespassNotice', 'MD Trespass Notices', 'MDTrespassNotices'],
   ['CriminalComplaint', 'Criminal Complaints', 'CriminalComplaints'],
   ['MDCriminalComplaint', 'MD Criminal Complaints', 'MDCriminalComplaints'],
@@ -15,16 +18,17 @@ const SOURCES = [
   ['UseOfForceReport', 'Use of Force Reports', 'SupervisorUseOfForce'],
   ['WriteUpReport', 'Write-Up Reports', 'SupervisorWriteUps'],
   ['InspectionReport', 'Inspection Reports', 'SupervisorInspections'],
-  ['ParkingViolation', 'Parking Violations', 'IncidentReports'],
-  ['MovingViolation', 'Moving Violations', 'IncidentReports'],
+  ['ParkingViolation', 'Parking Violations', 'ParkingViolations'],
+  ['MovingViolation', 'Moving Violations', 'MovingViolations'],
   ['Summons', 'Summons', 'Summons'],
   ['QRPatrolReport', 'QR Patrol Reports', 'AdminQRReports'],
   ['ShiftReport', 'Shift Reports', 'ShiftReports'],
 ];
 
 const labelFor = (record: any) =>
-  record.report_number || record.notice_number || record.complaint_number || record.summons_number ||
-  record.call_number || record.linked_call_number || record.subject_name || record.location || record.id;
+  record.report_number || record.bolo_number || record.notice_number || record.citation_number ||
+  record.complaint_number || record.summons_number || record.call_id || record.call_number ||
+  record.linked_call_number || record.subject_name || record.person_name || record.location || record.id;
 
 Deno.serve(async (req) => {
   try {
@@ -67,11 +71,12 @@ Deno.serve(async (req) => {
         page,
         label: labelFor(record),
         date: record.incident_date || record.notice_date || record.report_date || record.shift_date || record.created_date,
-        location: record.location || record.site_name || record.property_name || '',
-        person: record.subject_name || record.person_name || record.suspect_name || record.employee_name || record.officer_name || '',
+        location: record.location || record.site_name || record.property_name || record.address || record.last_known_location || record.offense_place || '',
+        person: record.subject_name || record.person_name || record.suspect_name || record.employee_name || record.officer_name || record.violator_name || record.accused_first_name && record.accused_last_name ? `${record.accused_first_name} ${record.accused_last_name}` : record.accused_last_name || record.defendant_printed_name || record.defendant_name_first && record.defendant_name_last ? `${record.defendant_name_first} ${record.defendant_name_last}` : record.defendant_name_last || '',
         status: record.status || record.approval_status || '',
-        summary: record.description || record.narrative || record.reason || record.notes || record.summary || '',
-        linked_call_number: record.linked_call_number || record.call_number || '',
+        summary: record.description || record.narrative || record.reason || record.notes || record.summary || record.details || record.statement_of_facts || record.ai_summary || '',
+        linked_call_number: record.linked_call_number || record.call_number || record.call_id || '',
+        search_text: [record.bolo_number, record.title, record.description, record.subject_name, record.subject_description, record.vehicle_plate, record.vehicle_make, record.vehicle_model, record.last_known_location, record.last_known_direction, record.parties, record.vehicles].filter(Boolean).map(v => typeof v === 'string' ? v : JSON.stringify(v)).join(' '),
       }));
     }));
 
