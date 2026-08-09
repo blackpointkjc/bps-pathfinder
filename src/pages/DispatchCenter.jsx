@@ -235,25 +235,12 @@ export default function DispatchCenter() {
             Cancelled: 'time_closed'
         }[newStatus];
         try {
-            await base44.entities.DispatchCall.update(selectedCall.id, {
-                status: newStatus,
-                ...(timeField ? { [timeField]: now } : {}),
-                ...(newStatus === 'Cleared' ? {
-                    manual_dismissed: true,
-                    manual_dismissed_at: now,
-                } : {}),
-            });
-            await base44.entities.CallStatusLog.create({
+            const result = await base44.functions.invoke('updateCadCallStatus', {
                 call_id: selectedCall.id,
-                incident_type: selectedCall.incident,
-                location: selectedCall.location,
-                old_status: selectedCall.status,
-                new_status: newStatus,
-                unit_name: currentUser?.unit_number || currentUser?.full_name || 'Dispatch',
-                notes: `Status changed by dispatcher`,
-                latitude: selectedCall.latitude,
-                longitude: selectedCall.longitude
+                status: newStatus,
             });
+            const payload = result?.data || result || {};
+            if (payload.error) throw new Error(payload.error);
             toast.success(`Call marked ${newStatus}`);
             if (['Cleared', 'Cancelled'].includes(newStatus)) setSelectedCall(null);
             await loadActiveCalls();
