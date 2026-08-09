@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
 
-const ALLOWED_ENTITIES = new Set(['Invoice', 'PayrollEntry', 'PayrollConfig']);
+const ALLOWED_ENTITIES = new Set(['Invoice', 'PayrollEntry', 'PayrollConfig', 'W2Form']);
 
 Deno.serve(async (req) => {
   try {
