@@ -405,7 +405,7 @@ function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, acti
 
 function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, unreadCounts = {}, onCloseMobile, onToggleCollapsed, onLogout }) {
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
-  const availableCenters = allowedCenters(user);
+  const availableCenters = allowedCenters(user).filter(center => !mobile || ['cad', 'officer', 'supervisor', 'admin'].includes(center));
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
   const query = search.trim().toLowerCase();
   const groups = center.groups
@@ -876,7 +876,7 @@ export default function Layout({ children, currentPageName }) {
   }
 
   const mobilePageCenters = PAGE_TO_CENTERS[currentPageName] || [];
-  const allowedOnMobile = currentPageName === 'OfficerInbox' || mobilePageCenters.some(center => allowedCenters(user).includes(center));
+  const allowedOnMobile = currentPageName === 'OfficerInbox' || mobilePageCenters.some(center => ['cad', 'officer', 'supervisor', 'admin'].includes(center));
   if (isMobileViewport && !allowedOnMobile) {
     return <div className="fixed inset-0 flex items-center justify-center bg-[#07111f] p-6 text-white">
       <div className="w-full max-w-sm rounded-2xl border border-[#294867] bg-[#0c1a2a] p-6 text-center shadow-2xl">
