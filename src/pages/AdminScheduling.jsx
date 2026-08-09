@@ -79,13 +79,8 @@ export default function AdminScheduling() {
   });
 
   const { data: allUsers = [], isLoading: usersLoading, error: usersError } = useQuery({
-    queryKey: ['schedulingEmployeeDirectory'],
-    queryFn: async () => {
-      const result = await base44.functions.invoke('getHRUsers', {});
-      const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload.users || [];
-    },
+    queryKey: ['appDirectoryUsers', 'scheduling'],
+    queryFn: () => base44.entities.User.list('last_name', 1000),
     enabled: !!user,
     staleTime: 0,
     refetchOnMount: 'always',
