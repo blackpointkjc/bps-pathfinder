@@ -30,70 +30,25 @@ export default function AccountingInvoices() {
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const isAccountingRole = user?.role === 'admin' || roles.has('accounting') || roles.has('full_access');
 
-  const { data: clients = [], isLoading: clientsLoading, error: clientsError } = useQuery({
-    queryKey: ['accountingClientDirectory'],
+  const { data: accountingData = {}, isLoading: clientsLoading, error: clientsError } = useQuery({
+    queryKey: ['accountingData', 'invoices'],
     queryFn: async () => {
-      // Load the directory directly so the selector still works if the helper
-      // function is unavailable or returns a wrapped response.
-      const allUsers = await base44.entities.User.list();
-      return (allUsers || [])
-        .filter(entry => {
-          const entryRoles = (entry.additional_roles || []).map(role => String(role).toLowerCase());
-          return !entry.termination_date && (
-            entryRoles.includes('client') ||
-            String(entry.rank || '').toLowerCase() === 'client' ||
-            String(entry.user_type || '').toLowerCase() === 'client'
-          );
-        })
-        .sort((a, b) => (a.last_name || '').localeCompare(b.last_name || ''));
+      const result = await base44.functions.invoke('getAccountingData', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     enabled: isAccountingRole,
-    staleTime: 30000,
-    initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
-
-  const { data: locations } = useQuery({
-    queryKey: ['locations'],
-    queryFn: () => base44.entities.Location.list(),
-    initialData: [],
-  });
-
-  const { data: timeEntries } = useQuery({
-    queryKey: ['timeEntries'],
-    queryFn: () => base44.entities.TimeEntry.list('-clock_in', 2000),
-    enabled: isAccountingRole,
-    initialData: [],
-  });
-
-  const { data: officers } = useQuery({
-    queryKey: ['officers'],
-    queryFn: () => base44.entities.User.list(),
-    initialData: [],
-  });
-
-  const { data: config } = useQuery({
-    queryKey: ['payrollConfig'],
-    queryFn: async () => {
-      const configs = await base44.entities.PayrollConfig.list();
-      return configs[0] || null;
-    },
-    enabled: isAccountingRole,
-  });
-
-  const { data: invoices = [] } = useQuery({
-    queryKey: ['invoices'],
-    queryFn: async () => {
-      try {
-        const allInvoices = await base44.entities.Invoice.list('-created_date', 1000);
-        return allInvoices || [];
-      } catch (error) {
-        console.error('Error fetching invoices:', error);
-        return [];
-      }
-    },
-    enabled: isAccountingRole,
-    refetchInterval: 30000,
-  });
+  const clients = accountingData.clients || [];
+  const locations = accountingData.locations || [];
+  const timeEntries = accountingData.timeEntries || [];
+  const officers = accountingData.users || [];
+  const config = accountingData.config || null;
+  const invoices = accountingData.invoices || [];
 
   const generateInvoiceMutation = useMutation({
     mutationFn: async (invoiceData) => {
