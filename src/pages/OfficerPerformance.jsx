@@ -196,6 +196,10 @@ Provide:
           <p className="text-slate-600">Track your performance metrics and identify areas for growth</p>
         </div>
 
+        {performanceError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Performance records could not be loaded: {performanceError.message}</div>
+        )}
+
         <Card className="border-none shadow-lg">
           <CardHeader>
             <CardTitle>Generate Performance Report</CardTitle>
