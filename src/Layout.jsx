@@ -12,7 +12,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
-import { playPropertyAlert, stopAllAlerts } from '@/utils/alertUtils';
+import { stopAllAlerts } from '@/utils/alertUtils';
 import { announcePropertyCall, stopVoice } from '@/utils/voiceAnnouncer';
 import GlobalMessageBanner from '@/components/GlobalMessageBanner';
 import MandatoryReadGate from '@/components/MandatoryReadGate';
