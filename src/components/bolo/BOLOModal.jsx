@@ -205,10 +205,32 @@ function FormView({ data, onChange }) {
 }
 
 export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
-  const initial = useMemo(() => ({ ...bolo, parties: bolo?.parties?.length ? bolo.parties : legacyParty(bolo), vehicles: bolo?.vehicles?.length ? bolo.vehicles : legacyVehicle(bolo), photo_urls: bolo?.photo_urls || [] }), [bolo]);
+  const draftKey = useMemo(() => `bps-bolo-draft:${user?.id || user?.email || 'user'}:${mode}:${bolo?.id || 'new'}`, [user?.id, user?.email, mode, bolo?.id]);
+  const initial = useMemo(() => {
+    const base = { ...bolo, parties: bolo?.parties?.length ? bolo.parties : legacyParty(bolo), vehicles: bolo?.vehicles?.length ? bolo.vehicles : legacyVehicle(bolo), photo_urls: bolo?.photo_urls || [] };
+    if (mode !== 'create' && mode !== 'edit') return base;
+    try {
+      const saved = localStorage.getItem(draftKey);
+      if (!saved) return base;
+      const parsed = JSON.parse(saved);
+      return { ...base, ...(parsed?.data || {}) };
+    } catch {
+      return base;
+    }
+  }, [bolo, mode, draftKey]);
   const [formData, setFormData] = useState(initial || {});
   const [saving, setSaving] = useState(false);
   const isEditing = mode === 'create' || mode === 'edit';
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const timer = window.setTimeout(() => {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify({ saved_at: new Date().toISOString(), data: formData }));
+      } catch {}
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [formData, draftKey, isEditing]);
 
   const handleSave = async () => {
     if (!formData.title || !formData.alert_type) return;
@@ -227,9 +249,10 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
       };
       if (formData.id) await base44.functions.invoke('manageBolo', { action: 'edit', id: formData.id, data: normalized });
       else await base44.functions.invoke('manageBolo', { action: 'create', data: normalized });
+      localStorage.removeItem(draftKey);
       onSaved();
     } finally { setSaving(false); }
   };
 
-  return <Dialog open onOpenChange={v => !v && onClose()}><DialogContent className="max-h-[94dvh] w-[calc(100vw-1rem)] max-w-4xl overflow-x-hidden overflow-y-auto border-slate-700 bg-slate-950 p-3 text-white sm:p-6"><DialogHeader><DialogTitle className="font-mono tracking-widest text-gold">{mode === 'create' ? 'ISSUE NEW BOLO' : mode === 'edit' ? 'EDIT BOLO' : 'BOLO DETAIL'}</DialogTitle></DialogHeader>{isEditing ? <FormView data={formData} onChange={setFormData} /> : <DetailView bolo={bolo} />}{isEditing && <div className="mt-2 flex flex-col-reverse gap-2 border-t border-slate-800 pt-3 sm:flex-row sm:justify-end sm:gap-3"><button onClick={onClose} className="w-full px-4 py-2 text-sm font-mono text-slate-400 hover:text-white sm:w-auto">CANCEL</button><button onClick={handleSave} disabled={saving} className="w-full rounded border border-red-500 bg-red-700 px-6 py-2 text-sm font-mono font-bold text-white hover:bg-red-600 disabled:opacity-50 sm:w-auto">{saving ? 'SAVING...' : formData.id ? 'SAVE CHANGES' : 'ISSUE BOLO'}</button></div>}</DialogContent></Dialog>;
+  return <Dialog open onOpenChange={v => !v && onClose()}><DialogContent className="max-h-[94dvh] w-[calc(100vw-1rem)] max-w-4xl overflow-x-hidden overflow-y-auto border-slate-700 bg-slate-950 p-3 text-white sm:p-6"><DialogHeader><DialogTitle className="font-mono tracking-widest text-gold">{mode === 'create' ? 'ISSUE NEW BOLO' : mode === 'edit' ? 'EDIT BOLO' : 'BOLO DETAIL'}</DialogTitle></DialogHeader>{isEditing ? <FormView data={formData} onChange={setFormData} /> : <DetailView bolo={bolo} />}{isEditing && <div className="mt-2 flex flex-col gap-2 border-t border-slate-800 pt-3 sm:flex-row sm:items-center sm:justify-between"><div className="text-[10px] font-mono text-emerald-400">DRAFT AUTO-SAVED ON THIS DEVICE</div><div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3"><button onClick={onClose} className="w-full px-4 py-2 text-sm font-mono text-slate-400 hover:text-white sm:w-auto">CLOSE</button><button onClick={handleSave} disabled={saving} className="w-full rounded border border-red-500 bg-red-700 px-6 py-2 text-sm font-mono font-bold text-white hover:bg-red-600 disabled:opacity-50 sm:w-auto">{saving ? 'SAVING...' : formData.id ? 'SAVE CHANGES' : 'ISSUE BOLO'}</button></div></div>}</DialogContent></Dialog>;
 }
