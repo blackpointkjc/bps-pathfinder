@@ -167,7 +167,7 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
                 status: 'acknowledged',
                 acknowledged_at: new Date().toISOString(),
                 acknowledged_by: currentUser.id,
-                acknowledged_by_name: currentUser.full_name,
+                acknowledged_by_name: `${currentUser.rank ? `${currentUser.rank} ` : ''}${currentUser.last_name || currentUser.full_name || 'Dispatch'}`.trim(),
             });
             fetchAlerts();
         } catch (e) {}
