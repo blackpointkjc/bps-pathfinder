@@ -91,6 +91,8 @@ function DetailView({ bolo }) {
 function FormView({ data, onChange }) {
   const [calls, setCalls] = useState([]);
   const [reports, setReports] = useState([]);
+  const [linkLoading, setLinkLoading] = useState(true);
+  const [linkError, setLinkError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const photoInputRef = useRef(null);
@@ -99,10 +101,25 @@ function FormView({ data, onChange }) {
   const vehicles = data.vehicles || [];
 
   useEffect(() => {
-    Promise.all([
-      base44.entities.DispatchCall.list('-created_date', 200).catch(() => []),
-      base44.entities.IncidentReport.list('-created_date', 200).catch(() => []),
-    ]).then(([c,r]) => { setCalls(c || []); setReports(r || []); });
+    let active = true;
+    setLinkLoading(true);
+    setLinkError('');
+    base44.functions.invoke('getBoloLinkOptions', {})
+      .then(result => {
+        const payload = result?.data || result || {};
+        if (payload.error) throw new Error(payload.error);
+        if (!active) return;
+        setCalls(payload.calls || []);
+        setReports(payload.reports || []);
+      })
+      .catch(error => {
+        if (!active) return;
+        setCalls([]);
+        setReports([]);
+        setLinkError(error?.message || 'CAD/report links could not be loaded.');
+      })
+      .finally(() => { if (active) setLinkLoading(false); });
+    return () => { active = false; };
   }, []);
 
   const addParty = () => set('parties', [...parties, { role: 'Subject', name: '', dob: '', race: '', sex: '', height: '', weight: '', description: '' }]);
@@ -167,6 +184,8 @@ function FormView({ data, onChange }) {
 
     <div className="rounded border border-cyan-900/60 bg-cyan-950/10 p-3">
       <div className="mb-3 flex items-center gap-2 text-[10px] font-black tracking-widest text-cyan-300"><LinkIcon className="h-3 w-3" />LINK TO CAD / REPORT</div>
+      {linkLoading && <div className="mb-3 rounded border border-cyan-900 bg-cyan-950/30 px-3 py-2 text-[10px] text-cyan-200">Loading CAD calls and incident reports…</div>}
+      {linkError && <div className="mb-3 rounded border border-red-800 bg-red-950/30 px-3 py-2 text-[10px] text-red-300">{linkError}</div>}
       <div className="grid gap-3 md:grid-cols-2">
         <Field label="DISPATCH CALL"><select value={data.linked_call_id || ''} onChange={e => { const c = calls.find(x => x.id === e.target.value); set('linked_call_id', e.target.value); set('linked_call_number', c ? callLabel(c) : ''); }} className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white"><option value="">No linked call</option>{calls.map(c => <option key={c.id} value={c.id}>{callLabel(c)} — {titleCase(c.incident || '')} — {titleCase(c.location || '')}</option>)}</select></Field>
         <Field label="INCIDENT REPORT"><select value={data.linked_incident_report_id || ''} onChange={e => { const r = reports.find(x => x.id === e.target.value); set('linked_incident_report_id', e.target.value); set('linked_incident_report_number', r ? reportLabel(r) : ''); }} className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white"><option value="">No linked incident report</option>{reports.map(r => <option key={r.id} value={r.id}>{reportLabel(r)} — {titleCase(r.incident_type || r.report_type || r.location || '')}</option>)}</select></Field>
