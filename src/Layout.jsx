@@ -216,8 +216,7 @@ const CENTER_CONFIG = {
       ]},
       { label: 'Billing & Expenses', items: [
         ['Client Invoices', 'AccountingInvoices', FileText],
-        ['Bills & Expenses', 'AccountingExpenses', DollarSign],
-        ['Expense Approval', 'AdminExpenseApproval', ClipboardCheck],
+        ['Bills, Expenses & Approvals', 'AccountingExpenses', DollarSign],
       ]},
       { label: 'Financial Overview', items: [
         ['Company Profit', 'AccountingProfit', BarChart3],
