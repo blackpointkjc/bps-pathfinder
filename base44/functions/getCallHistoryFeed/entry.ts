@@ -46,7 +46,26 @@ Deno.serve(async (req) => {
     };
 
     const activeRows = (active || []).map((row: any) => decorate(row, 'active'));
-    const archivedRows = (archived || []).map((row: any) => decorate(row, 'archived'));
+    const archivedRowsRaw = (archived || []).map((row: any) => decorate(row, 'archived'));
+
+    // Older versions could archive the same upstream call repeatedly when the
+    // source continued reporting it. Collapse those historical duplicates by the
+    // real call timestamp + incident + location so Call History shows one event.
+    const historyFingerprint = (row: any) => [
+      String(row?.time_received || row?.created_date || ''),
+      String(row?.incident || '').trim().toUpperCase(),
+      String(row?.location || '').trim().toUpperCase(),
+      String(row?.agency || '').trim().toUpperCase(),
+    ].join('|');
+    const archivedSeen = new Set<string>();
+    const archivedRows = archivedRowsRaw
+      .sort((a: any, b: any) => new Date(b.archived_date || b.created_date || 0).getTime() - new Date(a.archived_date || a.created_date || 0).getTime())
+      .filter((row: any) => {
+        const key = historyFingerprint(row);
+        if (!key || archivedSeen.has(key)) return false;
+        archivedSeen.add(key);
+        return true;
+      });
 
     const representedPropertyCallIds = new Set<string>();
     for (const row of activeRows) if (row._propertyCall) representedPropertyCallIds.add(String(row.id));
@@ -65,7 +84,7 @@ Deno.serve(async (req) => {
         id: `property-alert-${alert.id}`,
         original_call_id: callId,
         call_id: callId,
-        time_received: alert.created_date,
+        time_received: alert.callTime || alert.time_received || alert.created_date,
         created_date: alert.created_date,
         incident: alert.callIncident || 'Monitored Property Call',
         location: alert.callLocation || alert.propertyName || 'Monitored property',
