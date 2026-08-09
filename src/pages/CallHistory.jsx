@@ -27,9 +27,23 @@ const STATUS_COLORS = {
     Cancelled: 'bg-slate-700 text-slate-500 border-slate-600',
 };
 
+// Base44 server timestamps are normally UTC. Some legacy records are stored as
+// ISO timestamps without a trailing Z; Date.parse() treats those as local time,
+// which caused PropertyAlert history to display UTC clock values as ET.
+function parseServerDate(value) {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    const raw = String(value).trim();
+    if (!raw) return null;
+    const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw) ? raw : `${raw}Z`;
+    const date = new Date(normalized);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function fmtDT(dateStr) {
-    if (!dateStr) return '—';
-    return new Date(dateStr).toLocaleString('en-US', {
+    const date = parseServerDate(dateStr);
+    if (!date) return '—';
+    return date.toLocaleString('en-US', {
         timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: '2-digit',
         hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
     });
@@ -106,7 +120,7 @@ export default function CallHistory() {
     };
 
     const openIncidentReport = (row) => {
-        const received = new Date(row.time_received || row.created_date || Date.now());
+        const received = parseServerDate(row.time_received || row.created_date) || new Date();
         const params = new URLSearchParams({
             from_call: 'true',
             call_id: row.original_call_id || row.id || '',
@@ -140,7 +154,7 @@ export default function CallHistory() {
 
     const sorted = [...filtered].sort((a, b) => {
         let va, vb;
-        if (sortField === 'time') { va = new Date(a.time_received || a.created_date); vb = new Date(b.time_received || b.created_date); }
+        if (sortField === 'time') { va = parseServerDate(a.time_received || a.created_date)?.getTime() || 0; vb = parseServerDate(b.time_received || b.created_date)?.getTime() || 0; }
         else if (sortField === 'incident') { va = a.incident || ''; vb = b.incident || ''; }
         else if (sortField === 'agency') { va = a.agency || ''; vb = b.agency || ''; }
         else if (sortField === 'status') { va = a.status || ''; vb = b.status || ''; }
