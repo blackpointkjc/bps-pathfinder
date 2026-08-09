@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, MapPin, FileText, ChevronLeft, ChevronRight, Info, ExternalLink, RefreshCw, CalendarDays, Car, Users } from "lucide-react";
-import { format, addDays, startOfDay, startOfWeek, parseISO } from "date-fns";
+import { format, addDays, startOfDay, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import PullToRefresh from "../components/PullToRefresh";
 
