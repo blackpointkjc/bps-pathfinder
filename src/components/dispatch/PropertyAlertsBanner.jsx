@@ -39,10 +39,9 @@ export default function PropertyAlertsBanner() {
         stopAllAlerts();
         setAlerts(current => current.filter(item => item.id !== alert.id));
         try {
-            await base44.entities.PropertyAlert.update(alert.id, {
-                acknowledged: true,
-                acknowledgedAt: new Date().toISOString(),
-            });
+            const result = await base44.functions.invoke('acknowledgePropertyAlert', { alert_id: alert.id });
+            const payload = result?.data || result || {};
+            if (payload.error) throw new Error(payload.error);
             toast.success('Alert acknowledged');
         } catch (error) {
             console.error('Error acknowledging alert:', error);
