@@ -261,7 +261,10 @@ async function reconcilePropertyAlerts(base44: any) {
   const [calls, locations, existingAlerts] = await Promise.all([
     base44.asServiceRole.entities.DispatchCall.list('-created_date', 300),
     base44.asServiceRole.entities.Location.list('site_name', 100),
-    base44.asServiceRole.entities.PropertyAlert.filter({ acknowledged: false }, '-created_date', 300).catch(() => []),
+    // Read ALL alerts, not only unacknowledged alerts. An acknowledged alert is
+    // still the authoritative record for that call/property pair and must not be
+    // recreated every ingestion cycle.
+    base44.asServiceRole.entities.PropertyAlert.list('-created_date', 3000).catch(() => []),
   ]);
   const activeCalls = (calls || []).filter((call: any) => !['Cleared', 'Cancelled'].includes(call.status));
   const monitored = (locations || []).filter((location: any) => location.active !== false && location.property_monitoring_enabled === true);
@@ -280,6 +283,8 @@ async function reconcilePropertyAlerts(base44: any) {
         propertyName: location.site_name || 'Monitored Property',
         callIncident: call.incident || 'Unknown incident',
         callLocation: call.location || '',
+        callTime: call.time_received || call.created_date,
+        time_received: call.time_received || call.created_date,
         distanceMeters: Number(match.distanceMeters || 0),
         acknowledged: false,
         description: match.relation === 'inside'
