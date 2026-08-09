@@ -30,13 +30,12 @@ export default function AdminCertificationAlerts() {
   const hasTrainingAccess = user?.role === 'admin' || userRoles.has('trainer') || userRoles.has('full_access');
 
   const { data: allUsers = [] } = useQuery({
-    queryKey: ['trainingUsers'],
-    queryFn: async () => {
-      const response = await base44.functions.invoke('getTrainingUsers', {});
-      if (response?.error) throw new Error(response.error);
-      return response?.users || [];
-    },
+    queryKey: ['appDirectoryUsers', 'certificationAlerts'],
+    queryFn: () => base44.entities.User.list('last_name', 1000),
     enabled: hasTrainingAccess,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
   const { data: certificationAlerts = [] } = useQuery({
