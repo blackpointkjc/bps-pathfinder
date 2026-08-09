@@ -790,6 +790,8 @@ export default function AccountingPayroll() {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
+      {accountingLoading && <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">Loading payroll hours and periods…</div>}
+      {accountingError && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Payroll data could not be loaded: {accountingError.message}</div>}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Payroll Center</h1>
