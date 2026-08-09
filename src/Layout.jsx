@@ -475,7 +475,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             </span>
           )}
         </Link>
-        {groups.map((group, groupIndex) => <details key={group.label} open={!mobile || groups.length === 1 || (activeCenter === 'officer' && groupIndex === 0)} className="mb-2 group">
+        {groups.map((group, groupIndex) => <details key={group.label} name={activeCenter === 'officer' ? 'officer-nav-groups' : undefined} open={groups.length === 1 || (activeCenter === 'officer' && groupIndex === 0)} className="mb-2 group">
           {(!collapsed || mobile) ? (
             <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-2.5 py-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7895b2] transition hover:bg-[#0d2135] hover:text-[#9fc7e8]">{group.label}<ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-open:rotate-180" /></summary>
           ) : (
