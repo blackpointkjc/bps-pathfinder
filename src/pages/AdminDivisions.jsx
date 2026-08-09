@@ -98,7 +98,7 @@ export default function AdminDivisions() {
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       return payload.division;
-    }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
     },
