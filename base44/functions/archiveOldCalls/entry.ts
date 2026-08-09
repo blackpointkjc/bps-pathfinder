@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const ARCHIVE_AFTER_MS = 61 * 60 * 1000;
+const ARCHIVE_AFTER_MS = 60 * 60 * 1000;
 
 Deno.serve(async (req) => {
     try {
@@ -9,7 +9,10 @@ Deno.serve(async (req) => {
         const user = await base44.auth.me().catch(() => null);
         if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
         const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
-        const authorized = user.role === 'admin' || user.role === 'dispatch' || roles.has('full_access') || roles.has('cad_access') || roles.has('dispatch');
+        // Any authenticated operational user may trigger the archive pass. The
+        // actual archive/delete writes use service role, so normal users never
+        // receive direct write access to DispatchCall or CallHistory.
+        const authorized = user.role === 'admin' || user.role === 'dispatch' || user.role === 'supervisor' || user.role === 'officer' || roles.has('full_access') || roles.has('cad_access') || roles.has('dispatch') || roles.has('supervisor') || roles.has('officer');
         if (!authorized) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
         const activeCalls = await base44.asServiceRole.entities.DispatchCall.list('-created_date', 500);
@@ -68,7 +71,7 @@ Deno.serve(async (req) => {
         return Response.json({
             success: true,
             archivedCount,
-            message: `Archived ${archivedCount} calls at 1 hour 1 minute elapsed`
+            message: `Archived ${archivedCount} calls at 1 hour elapsed`
         });
 
     } catch (error) {
