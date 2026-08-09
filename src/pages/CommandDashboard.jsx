@@ -295,16 +295,6 @@ function CommandDashboardInner() {
 
             </div>
 
-            {/* ── RATE LIMIT BANNER ── */}
-            {rateLimited && (
-                <div className="flex-none flex items-center gap-3 bg-yellow-950/80 border-b border-yellow-800/60 px-4 py-1.5">
-                    <WifiOff className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />
-                    <span className="text-yellow-300 font-mono text-[10px] font-bold tracking-wide">
-                        RATE LIMIT REACHED — Waiting before refreshing
-                    </span>
-                </div>
-            )}
-
             {/* ── SYNC ERROR BANNER ── */}
             {syncStatus.state === 'error' && syncStatus.error && !rateLimited && (
                 <div className="flex-none flex items-center gap-3 bg-red-950/80 border-b border-red-800/60 px-4 py-1.5">
