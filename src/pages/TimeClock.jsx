@@ -96,12 +96,55 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function pointToSegmentMeters(lat, lng, a, b) {
+  const aLat = Number(Array.isArray(a) ? a[0] : a?.lat);
+  const aLng = Number(Array.isArray(a) ? a[1] : a?.lng);
+  const bLat = Number(Array.isArray(b) ? b[0] : b?.lat);
+  const bLng = Number(Array.isArray(b) ? b[1] : b?.lng);
+  if (![aLat, aLng, bLat, bLng].every(Number.isFinite)) return Infinity;
+  const metersPerLat = 111320;
+  const metersPerLng = 111320 * Math.cos(lat * Math.PI / 180);
+  const ax = (aLng - lng) * metersPerLng;
+  const ay = (aLat - lat) * metersPerLat;
+  const bx = (bLng - lng) * metersPerLng;
+  const by = (bLat - lat) * metersPerLat;
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lengthSq = dx * dx + dy * dy;
+  const t = lengthSq ? Math.max(0, Math.min(1, ((-ax) * dx + (-ay) * dy) / lengthSq)) : 0;
+  const x = ax + t * dx;
+  const y = ay + t * dy;
+  return Math.sqrt(x * x + y * y);
+}
+
+function distanceToPolygonEdge(lat, lng, polygon = []) {
+  if (!Array.isArray(polygon) || polygon.length < 3) return Infinity;
+  let nearest = Infinity;
+  for (let i = 0; i < polygon.length; i += 1) {
+    nearest = Math.min(nearest, pointToSegmentMeters(lat, lng, polygon[i], polygon[(i + 1) % polygon.length]));
+  }
+  return nearest;
+}
+
 function verifyAgainstLocationBoundary(location, lat, lng) {
   if (!location) return { ok: false, message: 'Location not found.' };
   if (location.is_special_event) return { ok: true };
-  const polygon = location.geofence_polygon || [];
+
+  // Use the site's canonical officer boundary first, but accept the same property
+  // monitoring polygon as a fallback. GPS can drift a few meters at a building edge,
+  // so a small 50m edge grace prevents officers who are physically on-site from being
+  // rejected because the phone fix lands just outside a polygon vertex.
+  const polygon = (Array.isArray(location.geofence_polygon) && location.geofence_polygon.length >= 3)
+    ? location.geofence_polygon
+    : (Array.isArray(location.property_monitoring_polygon) ? location.property_monitoring_polygon : []);
   const inside = pointInsidePolygon(lat, lng, polygon);
-  if (inside !== null) return { ok: inside, message: inside ? '' : `You are outside the approved property boundary for ${location.site_name}.` };
+  if (inside !== null) {
+    if (inside) return { ok: true, distance: 0 };
+    const edgeDistance = distanceToPolygonEdge(lat, lng, polygon);
+    const graceMeters = 50;
+    if (edgeDistance <= graceMeters) return { ok: true, distance: edgeDistance, gpsGrace: true };
+    return { ok: false, distance: edgeDistance, message: `You are outside the approved property boundary for ${location.site_name}. Move onto the property and try again.` };
+  }
   if (!Number.isFinite(Number(location.latitude)) || !Number.isFinite(Number(location.longitude))) return { ok: false, message: `${location.site_name} does not have a valid geofence configured. Contact an administrator.` };
   const distance = distanceMeters(lat, lng, Number(location.latitude), Number(location.longitude));
   const radius = Number(location.geofence_radius_meters || 100);
