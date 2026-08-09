@@ -43,27 +43,17 @@ export default function FieldCallActions({ call, onStatusChange }) {
     if (!call) return;
     setSaving(true);
     try {
-      let assignedUnits = call.assigned_units || [];
       let becamePrimary = false;
-      if (newStatus === 'Enroute' && user) {
-        const alreadyAssigned = assignedUnits.includes(user.id);
-        if (!alreadyAssigned) {
-          const existing = await base44.entities.CallAssignment.filter({ call_id: call.id });
-          const role = existing?.length ? 'backup' : 'primary';
-          await base44.entities.CallAssignment.create({
-            call_id: call.id,
-            unit_id: user.id,
-            role,
-            assigned_at: new Date().toISOString(),
-            status: 'accepted',
-          });
-          assignedUnits = [...assignedUnits, user.id];
-          becamePrimary = role === 'primary';
-        }
+      const assignedUnits = call.assigned_units || [];
+      if (newStatus === 'Enroute' && user && !assignedUnits.includes(user.id)) {
+        const joinResult = await base44.functions.invoke('updateMyCallAssignment', { call_id: call.id, action: 'join' });
+        const joinPayload = joinResult?.data || joinResult || {};
+        if (joinPayload.error) throw new Error(joinPayload.error);
+        becamePrimary = assignedUnits.length === 0;
       }
-      const patch = { status: newStatus, assigned_units: assignedUnits };
-      if (newStatus === 'Enroute' && !call.time_enroute) patch.time_enroute = new Date().toISOString();
-      await base44.entities.DispatchCall.update(call.id, patch);
+      const result = await base44.functions.invoke('updateMyFieldCallStatus', { call_id: call.id, status: newStatus });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
       setStatus(newStatus);
       onStatusChange?.(newStatus, { becamePrimary });
     } catch (e) {
