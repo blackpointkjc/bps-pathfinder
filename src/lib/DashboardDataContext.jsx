@@ -37,14 +37,10 @@ export function DashboardDataProvider({ children }) {
     const loadData = useCallback(async (force = false) => {
         const now = Date.now();
 
-        // Block if rate limited
-        if (now < rateLimitedUntil.current) {
-            const waitSec = Math.ceil((rateLimitedUntil.current - now) / 1000);
-            console.log(`[CAD] Rate limit active — waiting ${waitSec}s before retrying`);
-            return;
-        }
+        // A rate limit must never hide already-persisted CAD data. Continue reading
+        // DispatchCall while ingestion is backed off; only syncGrac is paused.
 
-        // Throttle: skip if last refresh was < 10s ago — but always honor a forced/manual refresh
+        // Throttle local reads — but always honor a forced/manual refresh
         if (!force && now - lastRefreshTime.current < MIN_REFRESH_MS) {
             return;
         }
@@ -145,13 +141,25 @@ export function DashboardDataProvider({ children }) {
     // Pull GRAC into DispatchCall with the local backend function, then refresh the CAD.
     // This uses direct HTTP/server code and does not consume integration credits.
     const syncGrac = useCallback(async () => {
-        if (syncingGracRef.current || document.hidden) return;
+        const now = Date.now();
+        if (syncingGracRef.current || document.hidden || now < rateLimitedUntil.current) return;
         syncingGracRef.current = true;
         try {
             await base44.functions.invoke('ingestGractivecalls', {});
+            rateLimitedUntil.current = 0;
+            setRateLimited(false);
             await loadData(true);
         } catch (error) {
-            console.warn('[CAD] GRAC sync failed:', error?.message);
+            if (isRateLimitError(error)) {
+                rateLimitedUntil.current = Date.now() + RATE_LIMIT_BACKOFF_MS;
+                setRateLimited(true);
+                console.warn(`[CAD] Ingestion rate limited. Backing off ${RATE_LIMIT_BACKOFF_MS / 1000}s while continuing to display saved calls.`);
+            } else {
+                console.warn('[CAD] GRAC sync failed:', error?.message);
+            }
+            // Even if ingestion fails, refresh persisted DispatchCall rows so the
+            // dashboard never falsely falls to zero just because the feed is delayed.
+            await loadData(true).catch(() => null);
         } finally {
             syncingGracRef.current = false;
         }
