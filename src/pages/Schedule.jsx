@@ -213,8 +213,9 @@ export default function Schedule() {
 
         <div className="flex items-center justify-end gap-2 text-sm text-slate-600 mt-2">
             <RefreshCw className="w-4 h-4" />
-            <span>Updates every 10 seconds</span>
+            <span>Live updates enabled</span>
           </div>
+        {scheduleError && <div className="rounded-xl border border-red-800 bg-red-950/30 p-3 text-sm text-red-300">Schedule data could not be loaded: {scheduleError.message}</div>}
 
         {currentPeriod && (
           <div className="rounded-xl border border-emerald-800/60 bg-emerald-950/20 p-4">
