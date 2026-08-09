@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertTriangle, MapPin, Clock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { announceDistressSignal } from '@/utils/voiceAnnouncer';
 
 // Police-style yelp/warble tone — repeating every 3.5s
 function useDistressSound(isActive) {
@@ -93,6 +94,7 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
     const [dismissed, setDismissed] = useState(new Set());
     const [addresses, setAddresses] = useState({});  // alertId -> address string
     const geocodedRef = useRef(new Set());
+    const announcedDistressRef = useRef(new Set());
 
     const activeAlerts = alerts.filter(a => a.status === 'active' || a.status === 'acknowledged' || a.status === 'responders_enroute');
     const visible = activeAlerts.filter(a => !dismissed.has(a.id));
@@ -105,6 +107,16 @@ export default function OfficerDistressBanner({ currentUser, isDispatchOrAdmin =
             .then(all => {
                 const active = all.filter(a => ['active', 'acknowledged', 'responders_enroute'].includes(a.status));
                 setAlerts(active);
+                // Announce each newly activated distress alert once.
+                active.forEach(alert => {
+                    if (!announcedDistressRef.current.has(alert.id)) {
+                        announcedDistressRef.current.add(alert.id);
+                        announceDistressSignal({
+                            unit: alert.unit_number,
+                            name: alert.last_name || alert.officer_name,
+                        });
+                    }
+                });
                 // Reverse geocode any alert we haven't geocoded yet
                 active.forEach(alert => {
                     const lat = alert.current_latitude || alert.latitude;
