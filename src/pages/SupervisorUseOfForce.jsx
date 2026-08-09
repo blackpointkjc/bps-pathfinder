@@ -48,7 +48,7 @@ export default function SupervisorUseOfForce() {
   });
 
   const { data: officers } = useQuery({
-    queryKey: ["officers"],
+    queryKey: ["supervisorUseOfForceOfficers"],
     queryFn: async () => {
       const allOfficers = await base44.entities.User.list();
       return allOfficers.filter(
