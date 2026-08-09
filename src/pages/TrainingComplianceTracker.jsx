@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Shield, GraduationCap, Search, FileText, CheckCircle, Clock, AlertTriangle, Users, TrendingUp, BookOpen } from "lucide-react";
 import { format, parseISO, isPast, isAfter, isBefore } from "date-fns";
 import { toast } from "sonner";
-import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 const STATUS_COLORS = {
   assigned: "bg-blue-100 text-blue-800",
@@ -49,8 +50,8 @@ export default function TrainingComplianceTracker() {
     refetchInterval: 30000,
   });
   const { data: allUsers = [] } = useQuery({
-    queryKey: ['appDirectoryUsers', 'trainingCompliance'],
-    queryFn: () => base44.entities.User.list('last_name', 1000),
+    queryKey: ['directoryUsers', 'trainingCompliance'],
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: hasTrainingAccess,
     staleTime: 0,
     refetchOnMount: 'always',
@@ -75,7 +76,7 @@ export default function TrainingComplianceTracker() {
     staleTime: 60000,
   });
 
-  const activeOfficers = useMemo(() => allUsers.filter(isOperationalOfficer), [allUsers]);
+  const activeOfficers = useMemo(() => allUsers.filter(hasOfficerAdditionalRole), [allUsers]);
 
   const complianceRows = useMemo(() => {
     const normalize = value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -134,6 +135,45 @@ export default function TrainingComplianceTracker() {
           compliance_source: cert ? 'employee_certification' : completion ? 'training_completion' : assignment ? 'assignment' : 'missing_requirement',
           certificate_number: cert?.certificate_number || '', course_id: cert?.course_id || req.course_id || '',
         });
+      });
+
+      // Certifications stored directly on the employee profile must remain visible
+      // even when there is no matching TrainingRequirement/TrainingModule record.
+      certs.forEach((cert, index) => {
+        const certName = cert.training_name || cert.name || cert.course_name || cert.course_id || `Certification ${index + 1}`;
+        const alreadyShown = result.some(row => row.officer_email === officer.email && (
+          normalize(row.course_id) === normalize(cert.course_id) || normalize(row.training_name) === normalize(certName)
+        ));
+        if (alreadyShown) return;
+        let certStatus = cert.status === 'pending' ? 'pending_review' : 'approved';
+        if (cert.expiration_date) {
+          const exp = new Date(cert.expiration_date); exp.setHours(0,0,0,0);
+          if (exp < today) certStatus = 'expired';
+          else if (exp <= soon) certStatus = 'expiring_soon';
+        }
+        result.push({
+          id: `profile_cert_${officer.id}_${index}`,
+          officer_email: officer.email,
+          officer_name: [officer.rank, officer.last_name].filter(Boolean).join(' ') || `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email,
+          training_name: certName,
+          category: cert.category || 'certification',
+          expiration_date: cert.expiration_date || null,
+          status: certStatus,
+          compliance_source: 'employee_certification',
+          certificate_number: cert.certificate_number || '',
+          course_id: cert.course_id || '',
+          is_mandatory: true,
+        });
+      });
+
+      [
+        ['DCJS Registration', officer.dcjs_expiration, 'DCJS'],
+        ['Firearm Qualification', officer.firearm_expiration, 'FIREARM'],
+      ].forEach(([name, expiration, courseId]) => {
+        if (!expiration || result.some(row => row.officer_email === officer.email && (normalize(row.training_name).includes(normalize(name)) || normalize(row.course_id) === normalize(courseId)))) return;
+        const exp = new Date(expiration); exp.setHours(0,0,0,0);
+        const status = exp < today ? 'expired' : exp <= soon ? 'expiring_soon' : 'approved';
+        result.push({ id: `profile_exp_${officer.id}_${courseId}`, officer_email: officer.email, officer_name: [officer.rank, officer.last_name].filter(Boolean).join(' ') || officer.email, training_name: name, category: 'certification', expiration_date: expiration, status, compliance_source: 'employee_certification', certificate_number: '', course_id: courseId, is_mandatory: true });
       });
     });
     assignments.forEach(a => { if (!result.some(r => r.id === a.id)) result.push(a); });
