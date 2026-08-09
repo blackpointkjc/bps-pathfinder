@@ -103,6 +103,7 @@ export default function RecordsAssistant() {
                         <Badge variant="outline" className={SOURCE_COLORS[item.source] || 'border-slate-600 text-slate-300'}>{item.source}</Badge>
                         {item.status && <Badge className="bg-slate-700 text-slate-200">{String(item.status).toUpperCase()}</Badge>}
                         {item.linked_call_number && <Badge variant="outline" className="border-green-600/50 text-green-300"><Radio className="mr-1 h-3 w-3" />CALL {item.linked_call_number}</Badge>}
+                        {item.linked_call_type && <Badge variant="outline" className="border-cyan-600/50 text-cyan-300">CALL TYPE: {item.linked_call_type}</Badge>}
                       </div>
                       <h2 className="truncate text-lg font-bold text-white">{item.label || item.id}</h2>
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
@@ -110,6 +111,7 @@ export default function RecordsAssistant() {
                         {item.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{item.location}</span>}
                         {item.date && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(item.date).toLocaleDateString()}</span>}
                       </div>
+                      {item.linked_call_location && <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-cyan-300">Related CAD Location: {item.linked_call_location}</p>}
                       {item.summary && <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-slate-300">{item.summary}</p>}
                     </div>
                     <Button asChild variant="outline" className="shrink-0 border-blue-600/50 text-blue-300 hover:bg-blue-500/10">
