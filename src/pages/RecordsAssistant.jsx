@@ -8,6 +8,7 @@ import { Search, Bot, Loader2, FileText, MapPin, Calendar, ExternalLink, User, R
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
+import { announceRecordSearch } from '@/utils/voiceAnnouncer';
 
 const SOURCE_COLORS = {
   'Incident Reports': 'border-red-500/40 text-red-300',
@@ -35,9 +36,13 @@ export default function RecordsAssistant() {
       const response = await base44.functions.invoke('searchCompanyRecords', { query: query.trim() });
       const data = response?.data || response || {};
       if (data.error) throw new Error(data.error);
-      setResults(data.results || []);
+      const returnedResults = data.results || [];
+      setResults(returnedResults);
       setSearchedSources(data.searched_sources || 0);
       setTotalMatches(data.total_matches || 0);
+      // If a person/record search returns a linked call, announce the call type
+      // so CAD users do not have to stop and read the result immediately.
+      announceRecordSearch(returnedResults);
       setSourceFilter('all');
     } catch (error) {
       toast.error(error?.message || 'Company record search failed');
