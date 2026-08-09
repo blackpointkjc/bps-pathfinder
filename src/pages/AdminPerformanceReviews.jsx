@@ -42,17 +42,14 @@ export default function AdminPerformanceReviews() {
   const hasHRAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
 
   const { data: allUsers = [], error: usersError } = useQuery({
-    queryKey: ['hrUsers', 'performanceReviews'],
-    queryFn: async () => {
-      const result = await base44.functions.invoke('getHRUsers', {});
-      const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload.users || [];
-    },
+    queryKey: ['appDirectoryUsers', 'performanceReviews'],
+    queryFn: () => base44.entities.User.list('last_name', 1000),
     enabled: hasHRAccess,
     retry: 2,
     staleTime: 0,
     initialData: [],
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
 
   const { data: allReviews } = useQuery({
