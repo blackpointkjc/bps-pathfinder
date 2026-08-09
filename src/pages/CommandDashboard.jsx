@@ -12,6 +12,7 @@ import FieldCallModal from '@/components/dispatch/FieldCallModal';
 import ActiveBoloBanner from '@/components/bolo/ActiveBoloBanner';
 import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import { useDashboardData } from '@/lib/DashboardDataContext';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { Volume2, VolumeX, Zap, MapPin, Users, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
 
 const PRIORITY_CONFIG = {
@@ -223,10 +224,7 @@ function CommandDashboardInner() {
         return getRef(b) - getRef(a);
     });
 
-    const cadOfficerUnits = users.filter(u => {
-        const roles = Array.isArray(u.additional_roles) ? u.additional_roles.map(role => String(role).toLowerCase()) : [];
-        return roles.includes('cad_access') && roles.includes('officer');
-    });
+    const cadOfficerUnits = users.filter(isOperationalOfficer);
     const statusUnits    = cadOfficerUnits.filter(u => Boolean(u.status));
     const activeUnits    = statusUnits.filter(u => u.status !== 'Out of Service');
     const criticalCalls  = calls.filter(c => getCallPriority(c) === 'critical');
