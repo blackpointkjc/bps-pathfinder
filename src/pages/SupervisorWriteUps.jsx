@@ -84,13 +84,13 @@ export default function SupervisorWriteUps() {
       const allLocations = await base44.entities.Location.list('site_name');
       return allLocations.filter(loc => loc.active);
     },
-    enabled: user?.additional_roles?.includes('supervisor'),
+    enabled: user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access'),
   });
 
   const { data: writeUps } = useQuery({
     queryKey: ['writeUpReports'],
     queryFn: () => base44.entities.WriteUpReport.list('-created_date'),
-    enabled: user?.additional_roles?.includes('supervisor'),
+    enabled: user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access'),
   });
 
   // Auto-archive expired write-ups
@@ -219,7 +219,7 @@ export default function SupervisorWriteUps() {
   const filteredApprovedWriteUps = approvedWriteUps;
   const filteredArchivedWriteUps = archivedWriteUps;
 
-  if (!user?.additional_roles?.includes('supervisor')) {
+  if (user?.role !== 'admin' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access')) {
     return (
       <div className="p-8 text-center">
         <UserCheck className="w-16 h-16 mx-auto mb-4 text-slate-400" />
