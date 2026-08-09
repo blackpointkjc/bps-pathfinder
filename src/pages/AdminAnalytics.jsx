@@ -11,6 +11,7 @@ import {
 import { format, parseISO, differenceInMinutes, startOfWeek, addDays, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import MissingReportsCheck from "../components/MissingReportsCheck";
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function AdminAnalytics() {
   const [selectedDivision, setSelectedDivision] = useState('all');
@@ -75,11 +76,7 @@ export default function AdminAnalytics() {
 
   const filteredUsers = useMemo(() => {
     if (!allUsers) return [];
-    const active = allUsers.filter(u => {
-      if (u.termination_date) return false;
-      const roles = new Set((u.additional_roles || []).map(role => String(role).toLowerCase()));
-      return roles.has('cad_access') && roles.has('officer');
-    });
+    const active = allUsers.filter(isOperationalOfficer);
     if (selectedDivision === 'all') return active;
     return active.filter(u => u.division === selectedDivision);
   }, [allUsers, selectedDivision]);
