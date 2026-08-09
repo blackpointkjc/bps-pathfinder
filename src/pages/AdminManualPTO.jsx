@@ -38,7 +38,7 @@ export default function AdminManualPTO() {
       if (payload.error) throw new Error(payload.error);
       return payload.users || [];
     },
-    enabled: user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access'),
+    enabled: user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access') || String(user?.rank || '').toLowerCase() === 'human resources',
     initialData: [],
   });
 
@@ -111,7 +111,7 @@ export default function AdminManualPTO() {
 
   const officer = activeUsers.find(u => u.email === formData.officer_email);
 
-  if (user?.role !== 'admin' && !user?.additional_roles?.includes('hr')) {
+  if (user?.role !== 'admin' && !user?.additional_roles?.includes('hr') && !user?.additional_roles?.includes('full_access') && String(user?.rank || '').toLowerCase() !== 'human resources') {
     return (
       <div className="p-8 text-center">
         <AlertCircle className="w-16 h-16 mx-auto mb-4 text-slate-400" />
