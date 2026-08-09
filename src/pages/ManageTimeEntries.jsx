@@ -36,7 +36,8 @@ export default function ManageTimeEntries() {
     queryFn: () => base44.auth.me(),
   });
 
-  const isHR = user?.additional_roles?.includes('hr');
+  const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const isHR = roles.has('hr') || roles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
   const isAdmin = user?.role === 'admin';
 
   const { data: allUsers = [] } = useQuery({
