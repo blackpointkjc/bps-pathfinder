@@ -76,6 +76,27 @@ Deno.serve(async (req) => {
     }));
 
     const results = settled.flatMap(result => result.status === 'fulfilled' ? result.value : []);
+
+    // Enrich report hits that reference a CAD call with the actual incident type.
+    // This lets Records AI announce the call type instead of only saying a call number.
+    const linkedNumbers = [...new Set(results.map((item: any) => item.linked_call_number).filter(Boolean).map(String))];
+    if (linkedNumbers.length) {
+      const calls = await entityClient.DispatchCall.list('-time_received', 1000).catch(() => []);
+      const byNumber = new Map<string, any>();
+      for (const call of calls || []) {
+        for (const key of [call.call_id, call.agency_cad_number, call.bps_reference]) {
+          if (key) byNumber.set(String(key), call);
+        }
+      }
+      for (const item of results) {
+        const call = byNumber.get(String(item.linked_call_number || ''));
+        if (!call) continue;
+        item.linked_call_type = call.incident || '';
+        item.linked_call_location = call.location || '';
+        item.linked_call_status = call.status || '';
+      }
+    }
+
     results.sort((a: any, b: any) => String(b.date || '').localeCompare(String(a.date || '')));
     return Response.json({ results: results.slice(0, 250), searched_sources: SOURCES.length, total_matches: results.length });
   } catch (error) {
