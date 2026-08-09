@@ -284,9 +284,10 @@ export default function ManageTimeEntries() {
                       value={newEntry.officer_email}
                       onValueChange={(value) => setNewEntry({...newEntry, officer_email: value})}
                       required
+                      disabled={usersLoading || !!usersError}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select officer..." />
+                        <SelectValue placeholder={usersLoading ? "Loading officers..." : usersError ? "Officer directory unavailable" : activeOfficers.length ? "Select officer..." : "No officers found"} />
                       </SelectTrigger>
                       <SelectContent>
                         {activeOfficers.map((u) => (
@@ -298,6 +299,8 @@ export default function ManageTimeEntries() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {usersError && <p className="text-xs text-red-600">Officer directory failed to load: {usersError.message}</p>}
+                    {!usersLoading && !usersError && activeOfficers.length === 0 && <p className="text-xs text-amber-600">No officer records were returned by the company directory.</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="location">Location *</Label>
@@ -374,7 +377,7 @@ export default function ManageTimeEntries() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Filter by Officer</CardTitle>
-              <Select value={selectedOfficer} onValueChange={setSelectedOfficer}>
+              <Select value={selectedOfficer} onValueChange={setSelectedOfficer} disabled={usersLoading || !!usersError}>
                 <SelectTrigger className="w-64">
                   <SelectValue placeholder="Select officer..." />
                 </SelectTrigger>
