@@ -121,6 +121,12 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       const profileUpdates = { ...userData };
       delete profileUpdates.role;
       delete profileUpdates.additional_roles;
+      if (portalContext === 'hr' || userRoles.has('hr') || userRoles.has('full_access')) {
+        const result = await base44.functions.invoke('updateUser', { userId: id, updates: profileUpdates });
+        const payload = result?.data || result || {};
+        if (payload.error) throw new Error(payload.error);
+        return payload;
+      }
       return base44.entities.User.update(id, profileUpdates);
     },
     onSuccess: () => {
