@@ -77,31 +77,11 @@ export default function CreateCallDialog({ units, currentUser, onClose, onCreate
                 time_dispatched: selectedUnits.length > 0 ? new Date().toISOString() : null
             };
 
-            const createdCall = await base44.entities.DispatchCall.create(callData);
+            const result = await base44.functions.invoke('createDispatchCall', { data: callData, selected_units: selectedUnits });
+            const payload = result?.data || result || {};
+            if (payload.error) throw new Error(payload.error);
 
-            // Create assignment records
-            for (const unitId of selectedUnits) {
-                await base44.entities.CallAssignment.create({
-                    call_id: createdCall.id,
-                    unit_id: unitId,
-                    role: selectedUnits.indexOf(unitId) === 0 ? 'primary' : 'backup',
-                    assigned_at: new Date().toISOString(),
-                    status: 'pending'
-                });
-            }
-
-            // Create audit log
-            await base44.entities.AuditLog.create({
-                entity_type: 'DispatchCall',
-                entity_id: createdCall.id,
-                action: 'create',
-                actor_id: currentUser.id,
-                actor_name: currentUser.rank && currentUser.last_name ? `${currentUser.rank} ${currentUser.last_name}` : currentUser.full_name,
-                after_value: JSON.stringify(callData),
-                timestamp: new Date().toISOString()
-            });
-
-            onCreated();
+            onCreated(payload.call);
         } catch (error) {
             console.error('Error creating call:', error);
             toast.error('Failed to create call');
