@@ -80,12 +80,22 @@ export default function CallHistory() {
     const loadAll = async () => {
         try {
             await base44.functions.invoke('archiveOldCalls', {}).catch(error => console.warn('[HISTORY] archive pass failed:', error?.message));
-            const [active, archived] = await Promise.all([
+            const [active, archived, propertyAlerts] = await Promise.all([
                 base44.entities.DispatchCall.list('-created_date', 500),
                 base44.entities.CallHistory.list('-archived_date', 500),
+                base44.entities.PropertyAlert.list('-created_date', 2000).catch(() => []),
             ]);
-            const activeRows = (active || []).map(c => ({ ...c, _source: 'active' }));
-            const archivedRows = (archived || []).map(c => ({ ...c, _source: 'archived' }));
+            const propertyCallIds = new Set();
+            (propertyAlerts || []).forEach(alert => {
+                [alert.callId, alert.call_id, alert.dispatchCallId, alert.original_call_id].filter(Boolean).forEach(value => propertyCallIds.add(String(value)));
+            });
+            const isPropertyLinked = call => {
+                const ids = [call.id, call.call_id, call.original_call_id, call.bps_reference, call.agency_cad_number].filter(Boolean).map(String);
+                if (ids.some(id => propertyCallIds.has(id))) return true;
+                return Boolean(call.propertyId || call.property_id || call.propertyName || call.property_name || call.monitored_property_id);
+            };
+            const activeRows = (active || []).map(c => ({ ...c, _source: 'active', _propertyCall: isPropertyLinked(c) }));
+            const archivedRows = (archived || []).map(c => ({ ...c, _source: 'archived', _propertyCall: isPropertyLinked(c) }));
             // Deduplicate by call_id if present
             const seenIds = new Set(activeRows.map(c => c.call_id || c.id));
             const dedupedArchived = archivedRows.filter(c => !seenIds.has(c.call_id));
@@ -131,7 +141,7 @@ export default function CallHistory() {
         if (q && !r.incident?.toLowerCase().includes(q) && !r.location?.toLowerCase().includes(q) && !r.agency?.toLowerCase().includes(q)) return false;
         if (agencyFilter !== 'ALL' && !r.agency?.includes(agencyFilter)) return false;
         if (statusFilter !== 'ALL' && r.status !== statusFilter) return false;
-        const isPropertyCall = String(r.agency || '').toUpperCase().includes('BPS');
+        const isPropertyCall = Boolean(r._propertyCall);
         if (propertyFilter === 'PROPERTY' && !isPropertyCall) return false;
         if (propertyFilter === 'PUBLIC' && isPropertyCall) return false;
         return true;
@@ -247,7 +257,7 @@ export default function CallHistory() {
                                 <div className="min-w-0 w-full flex-1 md:pr-2">
                                     <span className={`text-white font-bold ${isActive ? 'text-blue-200' : ''}`}>{row.incident || '—'}</span>
                                     {isActive && <span className="ml-2 text-[8px] bg-blue-500/30 text-blue-300 border border-blue-500/40 px-1 py-0.5 rounded">ACTIVE</span>}
-                                    {String(row.agency || '').toUpperCase().includes('BPS') && <span className="ml-2 text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.5 rounded">PROPERTY CALL</span>}
+                                    {row._propertyCall && <span className="ml-2 text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.5 rounded">PROPERTY CALL</span>}
                                 </div>
                                 <div className="w-full break-words text-slate-400 md:w-56 md:flex-shrink-0 md:truncate md:pr-2">
                                     <MapPin className="w-2.5 h-2.5 inline mr-1 text-slate-600" />{row.location || '—'}
