@@ -131,15 +131,11 @@ export default function Navigation() {
         const unsubscribe = base44.entities.ActiveOfficer.subscribe(() => fetchOtherUnits());
         // GPS writers push about every 5 seconds, so keep Navigation on the same
         // cadence even if realtime entity subscriptions are delayed or dropped.
+        // Do not force an extra refresh when the tab/window is restored.
         const fallback = setInterval(fetchOtherUnits, 5000);
-        const refreshWhenVisible = () => {
-            if (!document.hidden) fetchOtherUnits();
-        };
-        document.addEventListener('visibilitychange', refreshWhenVisible);
         return () => {
             unsubscribe?.();
             clearInterval(fallback);
-            document.removeEventListener('visibilitychange', refreshWhenVisible);
         };
     }, [currentUser?.id]);
 
