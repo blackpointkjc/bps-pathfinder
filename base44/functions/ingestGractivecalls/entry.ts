@@ -259,9 +259,9 @@ function propertyMatch(call: any, location: any) {
 
 async function reconcilePropertyAlerts(base44: any) {
   const [calls, locations, existingAlerts] = await Promise.all([
-    base44.asServiceRole.entities.DispatchCall.list('-created_date', 1000),
-    base44.asServiceRole.entities.Location.list('site_name', 500),
-    base44.asServiceRole.entities.PropertyAlert.list('-created_date', 5000).catch(() => []),
+    base44.asServiceRole.entities.DispatchCall.list('-created_date', 300),
+    base44.asServiceRole.entities.Location.list('site_name', 100),
+    base44.asServiceRole.entities.PropertyAlert.filter({ acknowledged: false }, '-created_date', 300).catch(() => []),
   ]);
   const activeCalls = (calls || []).filter((call: any) => !['Cleared', 'Cancelled'].includes(call.status));
   const monitored = (locations || []).filter((location: any) => location.active !== false && location.property_monitoring_enabled === true);
