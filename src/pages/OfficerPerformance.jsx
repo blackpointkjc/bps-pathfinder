@@ -111,7 +111,7 @@ export default function OfficerPerformance() {
         !m.assigned_officers || m.assigned_officers.includes(user.email)
       ) || [];
       const completedTraining = trainingCompletions?.filter(c => 
-        assignedTraining.some(m => m.id === c.module_id)
+        c.completed && assignedTraining.some(m => m.id === c.training_module_id)
       ) || [];
       const trainingRate = assignedTraining.length > 0 
         ? Math.round((completedTraining.length / assignedTraining.length) * 100)
