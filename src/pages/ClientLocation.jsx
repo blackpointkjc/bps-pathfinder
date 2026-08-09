@@ -64,7 +64,12 @@ export default function ClientLocation() {
   });
 
   const updateLocationMutation = useMutation({
-    mutationFn: (data) => base44.entities.Location.update(location.id, data),
+    mutationFn: async (data) => {
+      const result = await base44.functions.invoke('updateMyClientLocation', { location_id: location.id, data });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.location;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clientLocation', effectiveLocation] });
       // Invalidate allLocations as well, in case we update something that changes its filter criteria
