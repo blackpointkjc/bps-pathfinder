@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TYPE_CONFIG, PRIORITY_STYLE } from '@/pages/BOLOAlerts';
-import { Plus, Trash2, Upload, Link as LinkIcon, User, Car, Image as ImageIcon } from 'lucide-react';
+import { Plus, Trash2, Upload, Link as LinkIcon, User, Car, Image as ImageIcon, FileWarning } from 'lucide-react';
 
 const titleCase = (value = '') => String(value).toLowerCase().replace(/\b([a-z])/g, m => m.toUpperCase());
 const upper = (value = '') => String(value).toUpperCase();
