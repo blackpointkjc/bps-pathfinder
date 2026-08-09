@@ -50,7 +50,7 @@ export default function ClientPayrollReport() {
     if (clientInvoices.length > 0) {
       setShowInvoiceDialog(true);
     }
-  }, []);
+  }, [clientInvoices.length]);
 
   // Filter to only client's locations
   const filteredEntries = timeEntries.filter(entry => {
