@@ -191,6 +191,16 @@ function CommandDashboardInner() {
         manualRefresh();
     };
 
+    const openCallOnMap = (call) => {
+        if (!call?.id) return;
+        const params = new URLSearchParams({ callId: call.id });
+        if (Number.isFinite(Number(call.latitude)) && Number.isFinite(Number(call.longitude))) {
+            params.set('lat', String(call.latitude));
+            params.set('lng', String(call.longitude));
+        }
+        navigate(`${createPageUrl('Navigation')}?${params.toString()}`);
+    };
+
     const getCallIdentifier = (call) => {
         const official = String(call?.agency_cad_number || (call?.official_cad_verified ? call?.call_id : '') || '').trim();
         const compactBps = (value) => String(value || '').trim().replace(/^(BPS-\d{6}-)0+(\d+)$/i, '$1$2');
@@ -408,7 +418,7 @@ function CommandDashboardInner() {
                             const identifier = getCallIdentifier(call);
                             return (
                                 <div key={call.id}
-                                    onClick={() => setSelectedCall(call)}
+                                    onClick={() => openCallOnMap(call)}
                                     className={`cad-call-row flex items-start px-3 py-2 border-b border-slate-800/60 cursor-pointer transition-colors ${cfg.row} ${priority === 'critical' ? 'border-l-2 border-l-red-500' : priority === 'high' ? 'border-l-2 border-l-orange-500' : 'border-l-2 border-l-transparent'}`}>
 
                                     <div className="cad-call-priority w-8 flex-shrink-0 pt-0.5">
