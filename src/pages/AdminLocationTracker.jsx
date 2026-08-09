@@ -109,10 +109,16 @@ export default function AdminLocationTracker() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: activeOfficerLocations } = useQuery({
+  const { data: activeOfficerLocations = [] } = useQuery({
     queryKey: ['activeOfficerLocations'],
-    queryFn: async () => base44.entities.ActiveOfficer.list('-last_update'),
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getOnDutyUnits', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.units || [];
+    },
     refetchInterval: 15000,
+    refetchOnWindowFocus: false,
     enabled: hasAccess && !!allUsers,
   });
 
@@ -137,9 +143,9 @@ export default function AdminLocationTracker() {
     return map;
   }, [activeOfficerLocations]);
 
-  // "Live" means the authenticated app session has pinged within the last two minutes.
-  // Client/student/pending accounts are still tracked internally for session security,
-  // but are intentionally hidden from operational maps and personnel-style displays.
+  // The live feed is already restricted server-side to officers with an open
+  // TimeEntry and a fresh ActiveOfficer ping. This client-side freshness check is
+  // only a final display safeguard.
   const currentlyActiveOfficers = React.useMemo(() => {
     const now = Date.now();
     return [...newestLocationByEmail.values()].filter(locationData => {
