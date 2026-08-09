@@ -67,7 +67,8 @@ export default function CallHistory() {
     const init = async () => {
         try {
             const user = await base44.auth.me();
-            if (user.role !== 'admin' && !user.dispatch_role) {
+            const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+            if (user.role !== 'admin' && !user.dispatch_role && !roles.has('cad_access') && !roles.has('full_access')) {
                 toast.error('Access required');
                 navigate(createPageUrl('CommandDashboard'));
                 return;
