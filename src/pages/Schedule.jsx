@@ -19,32 +19,22 @@ export default function Schedule() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: payrollPeriods } = useQuery({
-    queryKey: ['payrollPeriods'],
+  const { data: scheduleData = {}, isLoading: schedulesLoading, error: scheduleError } = useQuery({
+    queryKey: ['myScheduleData', user?.email],
     queryFn: async () => {
-      const periods = await base44.entities.PayrollPeriod.list('-start_date');
-      return periods;
+      const result = await base44.functions.invoke('getMyScheduleData', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    enabled: !!user?.email,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
-
-  const { data: schedules, isLoading: schedulesLoading } = useQuery({
-    queryKey: ['schedules', user?.email],
-    queryFn: async () => {
-      const allSchedules = await base44.entities.Schedule.list('-shift_date');
-      return allSchedules.filter(s => s.officer_email === user?.email);
-    },
-    enabled: !!user,
-    refetchInterval: 60000,
-  });
-
-  // Query all week statuses to check which weeks are ready
-  const { data: allWeekStatuses } = useQuery({
-    queryKey: ['allWeekStatuses'],
-    queryFn: () => base44.entities.ScheduleWeekStatus.list(),
-    enabled: !!user,
-    refetchInterval: 60000,
-  });
+  const payrollPeriods = scheduleData.payrollPeriods || [];
+  const schedules = scheduleData.schedules || [];
+  const allWeekStatuses = scheduleData.weekStatuses || [];
 
   const { data: companyUsers = [] } = useQuery({
     queryKey: ['companyUsersForFleet'],
@@ -53,15 +43,7 @@ export default function Schedule() {
     staleTime: 60000,
   });
 
-  const { data: vehicleAssignments = [] } = useQuery({
-    queryKey: ['myVehicleAssignments', user?.email],
-    queryFn: async () => {
-      const rows = await base44.entities.VehicleAssignment.list('-assignment_date');
-      return rows.filter(a => a.primary_officer_email === user?.email || a.partner_officer_email === user?.email);
-    },
-    enabled: !!user?.email,
-    refetchInterval: 60000,
-  });
+  const vehicleAssignments = scheduleData.vehicleAssignments || [];
 
   useEffect(() => {
     if (!user?.email) return undefined;
@@ -89,18 +71,8 @@ export default function Schedule() {
     return () => unsubscribers.forEach(unsubscribe => unsubscribe());
   }, [user?.email, queryClient]);
 
-  const { data: approvedPTO, isLoading: ptoLoading } = useQuery({
-    queryKey: ['myApprovedPTO', user?.id],
-    queryFn: async () => {
-      const requests = await base44.entities.TimeOffRequest.filter({
-        created_by_id: user.id,
-        status: 'approved'
-      });
-      return requests;
-    },
-    enabled: !!user?.id,
-    staleTime: 60000,
-  });
+  const approvedPTO = scheduleData.approvedPTO || [];
+  const ptoLoading = schedulesLoading;
 
   const getCurrentPayrollPeriod = () => {
     if (!payrollPeriods) return null;
