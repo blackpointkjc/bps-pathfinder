@@ -268,14 +268,31 @@ async function reconcilePropertyAlerts(base44: any) {
   ]);
   const activeCalls = (calls || []).filter((call: any) => !['Cleared', 'Cancelled'].includes(call.status));
   const monitored = (locations || []).filter((location: any) => location.active !== false && location.property_monitoring_enabled === true);
-  const existingKeys = new Set((existingAlerts || []).map((alert: any) => `${alert.callId}:${alert.propertyId}`));
+  // A CAD source can recycle an old active call with a new internal row ID. Use
+  // the call's source-time/incident/location fingerprint as the alert identity so
+  // one real-world call can only create one property alert for a property.
+  const alertFingerprint = (call: any, propertyId: any) => [
+    String(propertyId || ''),
+    String(call?.time_received || call?.created_date || ''),
+    String(call?.incident || '').trim().toUpperCase(),
+    String(call?.location || '').trim().toUpperCase(),
+  ].join('|');
+  const existingKeys = new Set((existingAlerts || []).map((alert: any) => {
+    if (alert?.source_key) return String(alert.source_key);
+    return [
+      String(alert?.propertyId || ''),
+      String(alert?.callTime || alert?.time_received || alert?.created_date || ''),
+      String(alert?.callIncident || '').trim().toUpperCase(),
+      String(alert?.callLocation || '').trim().toUpperCase(),
+    ].join('|');
+  }));
   let propertyAlertsCreated = 0;
 
   for (const call of activeCalls) {
     for (const location of monitored) {
       const match = propertyMatch(call, location);
       if (!match) continue;
-      const key = `${call.id}:${location.id}`;
+      const key = alertFingerprint(call, location.id);
       if (existingKeys.has(key)) continue;
       await base44.asServiceRole.entities.PropertyAlert.create({
         callId: call.id,
@@ -285,6 +302,7 @@ async function reconcilePropertyAlerts(base44: any) {
         callLocation: call.location || '',
         callTime: call.time_received || call.created_date,
         time_received: call.time_received || call.created_date,
+        source_key: key,
         distanceMeters: Number(match.distanceMeters || 0),
         acknowledged: false,
         description: match.relation === 'inside'
