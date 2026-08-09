@@ -29,10 +29,16 @@ export default function ActiveTracker() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: activeOfficers } = useQuery({
+  const { data: activeOfficers = [] } = useQuery({
     queryKey: ['activeOfficers'],
-    queryFn: () => base44.entities.ActiveOfficer.list('-last_update'),
-    refetchInterval: 5000, // Refresh every 5 seconds
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getOnDutyUnits', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.units || [];
+    },
+    refetchInterval: 5000,
+    refetchOnWindowFocus: false,
   });
 
   // Read-only view. The app-wide BackgroundLocationTracker is the only component
