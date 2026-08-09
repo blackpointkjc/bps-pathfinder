@@ -3,16 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { Plus, X, Search } from 'lucide-react';
 
-const isOperationalUnit = (user) => {
-    const roles = new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
-    const userType = String(user?.user_type || user?.account_type || user?.portal_type || '').toLowerCase();
-    const accountStatus = String(user?.account_status || '').toLowerCase();
-    if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
-    if (['client', 'student', 'pending'].includes(userType) || accountStatus === 'pending') return false;
-    return roles.has('cad_access') && roles.has('officer');
-};
+const isOperationalUnit = isOperationalOfficer;
 
 export default function UnitAssignmentPanel({ call, units, onUpdate }) {
     const [searchTerm, setSearchTerm] = useState('');
