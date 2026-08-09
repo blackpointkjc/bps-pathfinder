@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
+import { trainingUpdate } from '@/lib/trainingRecordsApi';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Award, Download, CheckCircle, XCircle, Eye } from "lucide-react";
@@ -123,7 +124,7 @@ export default function CertificateGenerator({ certificate, isAdmin, onStatusCha
 
   const handleStatusChange = async (newStatus) => {
     setUpdating(true);
-    await base44.entities.TrainingCertificate.update(certificate.id, {
+    await trainingUpdate('TrainingCertificate', certificate.id, {
       status: newStatus,
       reviewed_by: newStatus !== "draft" ? "admin" : undefined,
       reviewed_date: new Date().toISOString(),
