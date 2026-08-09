@@ -11,6 +11,12 @@ import { toast } from 'sonner';
 import { announceRecordSearch } from '@/utils/voiceAnnouncer';
 
 const SOURCE_COLORS = {
+  'CAD / Dispatch Calls': 'border-cyan-500/40 text-cyan-300',
+  'Archived Call History': 'border-slate-500/40 text-slate-300',
+  'Calls for Service': 'border-blue-500/40 text-blue-300',
+  'BOLO / Alerts': 'border-red-500/40 text-red-300',
+  'Parking Violations': 'border-yellow-500/40 text-yellow-300',
+  'Moving Violations': 'border-orange-500/40 text-orange-300',
   'Incident Reports': 'border-red-500/40 text-red-300',
   'Trespassing Notices': 'border-amber-500/40 text-amber-300',
   'VA Trespass Notices': 'border-amber-500/40 text-amber-300',
@@ -77,7 +83,7 @@ export default function RecordsAssistant() {
               </Button>
             </form>
             <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
-              <span>Searches incident, daily activity, maintenance, open-door, confidential, trespass, complaint, use-of-force, write-up, inspection, parking, summons, QR patrol, and shift reports.</span>
+              <span>Searches CAD calls, call history, BOLOs, incident reports, trespass notices, parking and moving violations, summonses, complaints, use-of-force, inspections, write-ups, daily activity, maintenance, open-door, QR patrol, and shift reports.</span>
             </div>
           </CardContent>
         </Card>
