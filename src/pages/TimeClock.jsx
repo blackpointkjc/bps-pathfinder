@@ -285,7 +285,11 @@ export default function TimeClock() {
         return newEntry;
       } catch (error) {
         if (newEntry?.id) {
-          try { await base44.entities.TimeEntry.delete(newEntry.id); } catch (rollbackError) {
+          try {
+            const result = await base44.functions.invoke('rollbackMyTimeEntry', { time_entry_id: newEntry.id });
+            const payload = result?.data || result || {};
+            if (payload.error) throw new Error(payload.error);
+          } catch (rollbackError) {
             console.error('Site switch rollback failed:', rollbackError);
           }
         }
