@@ -35,16 +35,28 @@ export default function AdminDivisions() {
     queryFn: () => base44.auth.me(),
   });
 
-  const hasAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr');
+  const divisionRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const hasAccess = user?.role === 'admin' || divisionRoles.has('hr') || divisionRoles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
 
-  const { data: divisions } = useQuery({
+  const { data: divisions = [] } = useQuery({
     queryKey: ['divisions'],
-    queryFn: () => base44.entities.Division.list('division_name'),
+    queryFn: async () => {
+      const result = await base44.functions.invoke('manageHRDivisions', { action: 'list' });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.divisions || [];
+    },
     enabled: hasAccess,
+    initialData: [],
   });
 
   const createDivisionMutation = useMutation({
-    mutationFn: (data) => base44.entities.Division.create(data),
+    mutationFn: async (data) => {
+      const result = await base44.functions.invoke('manageHRDivisions', { action: 'create', data });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.division;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
       setShowDialog(false);
@@ -54,7 +66,12 @@ export default function AdminDivisions() {
   });
 
   const updateDivisionMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Division.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      const result = await base44.functions.invoke('manageHRDivisions', { action: 'update', id, data });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.division;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
       setShowDialog(false);
@@ -64,14 +81,24 @@ export default function AdminDivisions() {
   });
 
   const deleteDivisionMutation = useMutation({
-    mutationFn: (id) => base44.entities.Division.delete(id),
+    mutationFn: async (id) => {
+      const result = await base44.functions.invoke('manageHRDivisions', { action: 'delete', id });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
     },
   });
 
   const toggleActiveMutation = useMutation({
-    mutationFn: ({ id, active }) => base44.entities.Division.update(id, { active }),
+    mutationFn: async ({ id, active }) => {
+      const result = await base44.functions.invoke('manageHRDivisions', { action: 'update', id, data: { active } });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.division;
+    }
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['divisions'] });
     },
