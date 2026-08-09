@@ -90,9 +90,13 @@ export default function CallHistory() {
                 [alert.callId, alert.call_id, alert.dispatchCallId, alert.original_call_id].filter(Boolean).forEach(value => propertyCallIds.add(String(value)));
             });
             const isPropertyLinked = call => {
-                const ids = [call.id, call.call_id, call.original_call_id, call.bps_reference, call.agency_cad_number].filter(Boolean).map(String);
-                if (ids.some(id => propertyCallIds.has(id))) return true;
-                return Boolean(call.propertyId || call.property_id || call.propertyName || call.property_name || call.monitored_property_id);
+                // A Property Call is ONLY a call that actually triggered the property
+                // monitoring system and therefore has a PropertyAlert record. Merely
+                // matching a property address/name is not enough.
+                const ids = [call.id, call.call_id, call.original_call_id, call.bps_reference, call.agency_cad_number]
+                    .filter(Boolean)
+                    .map(String);
+                return ids.some(id => propertyCallIds.has(id));
             };
             const activeRows = (active || []).map(c => ({ ...c, _source: 'active', _propertyCall: isPropertyLinked(c) }));
             const archivedRows = (archived || []).map(c => ({ ...c, _source: 'archived', _propertyCall: isPropertyLinked(c) }));
