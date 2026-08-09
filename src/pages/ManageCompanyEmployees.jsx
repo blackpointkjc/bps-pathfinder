@@ -154,14 +154,22 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   });
 
   const assignEquipmentMutation = useMutation({
-    mutationFn: ({ equipmentId, officerEmail }) =>
-      base44.entities.Equipment.update(equipmentId, { assigned_to: officerEmail, status: 'assigned' }),
+    mutationFn: async ({ equipmentId, officerEmail }) => {
+      const result = await base44.functions.invoke('manageHREquipment', { action: 'assign', equipment_id: equipmentId, officer_email: officerEmail });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.equipment;
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['equipment'] }); }
   });
 
   const unassignEquipmentMutation = useMutation({
-    mutationFn: ({ equipmentId }) =>
-      base44.entities.Equipment.update(equipmentId, { assigned_to: null, status: 'available' }),
+    mutationFn: async ({ equipmentId }) => {
+      const result = await base44.functions.invoke('manageHREquipment', { action: 'unassign', equipment_id: equipmentId });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.equipment;
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['equipment'] }); }
   });
 
