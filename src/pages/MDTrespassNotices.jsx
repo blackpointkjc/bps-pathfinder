@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { completeReportTodo } from '@/lib/reportTodoApi';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -206,7 +207,7 @@ export default function MDTrespassNotices() {
 
         if (!isDraft) {
           if (editingTodoId) {
-            await base44.entities.ReportTodo.update(editingTodoId, { completed: true });
+            await completeReportTodo(editingTodoId);
           }
         }
         return updated;
