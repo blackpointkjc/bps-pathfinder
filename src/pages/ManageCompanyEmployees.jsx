@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
+import { listDirectoryUsers, listDirectoryLocations, listDirectoryDivisions } from '@/lib/appDirectory';
+import { isInternalMember } from '@/lib/directoryUtils';
 
 const FIREARM_COURSE_PREFIXES = ["07", "08", "09", "10"];
 
@@ -61,8 +63,8 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const hasAccess = canManageEmployees;
 
   const { data: users, isLoading } = useQuery({
-    queryKey: ['appDirectoryUsers', 'manageCompanyEmployees', portalContext],
-    queryFn: () => base44.entities.User.list('last_name', 1000),
+    queryKey: ['directoryUsers', 'manageCompanyEmployees', portalContext],
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: hasAccess,
     staleTime: 0,
     refetchOnMount: 'always',
@@ -70,18 +72,15 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   });
 
   const { data: locations } = useQuery({
-    queryKey: ['locations'],
-    queryFn: () => base44.entities.Location.list(),
+    queryKey: ['directoryLocations', 'manageCompanyEmployees'],
+    queryFn: () => listDirectoryLocations('site_name', 1000),
     enabled: hasAccess,
     initialData: [],
   });
 
   const { data: divisions } = useQuery({
-    queryKey: ['activeDivisions'],
-    queryFn: async () => {
-      const all = await base44.entities.Division.list('division_name');
-      return all.filter(d => d.active);
-    },
+    queryKey: ['directoryDivisions', 'manageCompanyEmployees'],
+    queryFn: () => listDirectoryDivisions('division_name', 1000),
     enabled: hasAccess,
   });
 
@@ -167,17 +166,9 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['equipment'] }); }
   });
 
-  // Company employees are standard app users with at least one internal company role.
-  // Client-only and student-only accounts stay in their dedicated management pages.
-  const internalCompanyRoles = new Set(['cad_access', 'officer', 'supervisor', 'hr', 'accounting', 'trainer', 'full_access']);
-  const isCompanyEmployee = (u) => {
-    const roles = u.additional_roles || [];
-    return (u.role === 'admin' || roles.some(role => internalCompanyRoles.has(String(role).toLowerCase())))
-      && !roles.includes('client')
-      && !roles.includes('student');
-  };
-
-  const allEmployees = (users || []).filter(isCompanyEmployee);
+  // HR/member directory contains only internal employees. Client and student
+  // accounts stay in their dedicated menus and never appear in this list.
+  const allEmployees = (users || []).filter(isInternalMember);
   const activeEmployees = allEmployees.filter(u => !u.termination_date);
   const terminatedEmployees = allEmployees.filter(u => u.termination_date);
 
