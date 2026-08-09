@@ -61,6 +61,17 @@ function DetailView({ bolo }) {
 
       {photos.length > 0 && <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">{photos.map((url,i) => <a key={url+i} href={url} target="_blank" rel="noreferrer" className="overflow-hidden rounded border border-slate-700 bg-black"><img src={url} alt={`BOLO attachment ${i+1}`} className="h-40 w-full object-cover" /></a>)}</div>}
 
+      <div className="rounded-xl border-2 border-red-700/70 bg-red-950/20 p-4 shadow-lg shadow-red-950/10">
+        <div className="mb-3 flex items-center gap-2 text-sm font-black tracking-[0.16em] text-red-300"><FileWarning className="h-4 w-4" />BE ON THE LOOKOUT</div>
+        <div className="grid gap-3 text-xs md:grid-cols-2">
+          <div><div className="text-[9px] font-black tracking-widest text-red-400">PERSON / SUBJECT</div><div className="mt-1 font-bold text-white">{parties.length ? parties.map(p => titleCase(p.name)).filter(Boolean).join(' · ') || 'SEE PERSON DETAILS' : 'NO PERSON IDENTIFIED'}</div></div>
+          <div><div className="text-[9px] font-black tracking-widest text-red-400">VEHICLE</div><div className="mt-1 font-bold text-white">{vehicles.length ? vehicles.map(v => [v.year, titleCase(v.color), titleCase(v.make), titleCase(v.model), v.plate ? `PLATE ${upper(v.plate)}${v.state ? `/${upper(v.state)}` : ''}` : ''].filter(Boolean).join(' · ')).join(' | ') : 'NO VEHICLE INFORMATION'}</div></div>
+          <div><div className="text-[9px] font-black tracking-widest text-red-400">LAST KNOWN / LAST SEEN</div><div className="mt-1 font-bold text-white">{titleCase(bolo.last_known_location || 'UNKNOWN')}</div></div>
+          <div><div className="text-[9px] font-black tracking-widest text-red-400">TRAVEL / DIRECTION</div><div className="mt-1 font-bold text-white">{titleCase(bolo.last_known_direction || 'UNKNOWN')}</div></div>
+        </div>
+        {(parties.some(p => p.description) || bolo.description || vehicles.some(v => v.description)) && <div className="mt-3 border-t border-red-800/50 pt-3 text-xs leading-relaxed text-red-100"><span className="font-black text-red-300">DESCRIPTION: </span>{[...parties.map(p => p.description), ...vehicles.map(v => v.description), bolo.description].filter(Boolean).map(sentenceCase).join(' ')}</div>}
+      </div>
+
       {bolo.description && <div className="rounded border border-slate-700 bg-slate-900/60 p-3"><div className="mb-1 text-[9px] font-black tracking-widest text-slate-500">BOLO NARRATIVE</div><p className="text-sm leading-relaxed text-slate-200">{sentenceCase(bolo.description)}</p></div>}
 
       {parties.length > 0 && <div className="space-y-2"><div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-blue-300"><User className="h-3 w-3" />PARTIES / PERSONS</div>{parties.map((p,i) => <div key={i} className="rounded border border-blue-900/70 bg-blue-950/10 p-3">
@@ -216,7 +227,7 @@ function FormView({ data, onChange }) {
       <div className="space-y-3">{vehicles.map((v,i) => <div key={i} className="rounded border border-slate-700 bg-slate-900/60 p-3"><div className="mb-2 flex items-center"><span className="text-[9px] font-black text-yellow-400">VEHICLE {i+1}</span><button type="button" onClick={() => removeVehicle(i)} className="ml-auto text-red-400"><Trash2 className="h-3.5 w-3.5" /></button></div><div className="grid gap-2 md:grid-cols-4"><Input value={v.role} onChange={x => updateVehicle(i,'role',x)} normalize={titleCase} placeholder="Role" /><Input value={v.year} onChange={x => updateVehicle(i,'year',x)} placeholder="Year" /><Input value={v.color} onChange={x => updateVehicle(i,'color',x)} normalize={titleCase} placeholder="Color" /><Input value={v.make} onChange={x => updateVehicle(i,'make',x)} normalize={titleCase} placeholder="Make" /><Input value={v.model} onChange={x => updateVehicle(i,'model',x)} normalize={titleCase} placeholder="Model" /><Input value={v.plate} onChange={x => updateVehicle(i,'plate',upper(x))} placeholder="Plate" /><Input value={v.state} onChange={x => updateVehicle(i,'state',upper(x))} placeholder="State" /></div><div className="mt-2"><Textarea value={v.description} onChange={x => updateVehicle(i,'description',x)} normalize={sentenceCase} rows={2} /></div></div>)}</div>
     </div>
 
-    <Field label="LAST KNOWN / LAST SEEN LOCATION"><Input value={data.last_known_location} onChange={v => set('last_known_location', v)} normalize={titleCase} /></Field>
+    <div className="grid gap-3 md:grid-cols-2"><Field label="LAST KNOWN / LAST SEEN LOCATION"><Input value={data.last_known_location} onChange={v => set('last_known_location', v)} normalize={titleCase} placeholder="Address / area / landmark" /></Field><Field label="LAST KNOWN TRAVEL / DIRECTION"><Input value={data.last_known_direction} onChange={v => set('last_known_direction', v)} normalize={titleCase} placeholder="Northbound on Broad St / toward downtown" /></Field></div>
     <Field label="FULL BOLO NARRATIVE"><Textarea value={data.description} onChange={v => set('description', v)} normalize={sentenceCase} rows={4} /></Field>
     <div className="grid gap-3 md:grid-cols-2"><Field label="CONTACT INFO"><Input value={data.contact_info} onChange={v => set('contact_info', v)} normalize={titleCase} placeholder="Unit / phone / agency" /></Field><Field label="EXPIRES AT"><input type="datetime-local" value={data.expires_at ? data.expires_at.slice(0,16) : ''} onChange={e => set('expires_at', e.target.value ? new Date(e.target.value).toISOString() : '')} className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white" /></Field></div>
     <Field label="INTERNAL NOTES"><Textarea value={data.notes} onChange={v => set('notes', v)} normalize={sentenceCase} rows={2} /></Field>
@@ -260,6 +271,7 @@ export default function BOLOModal({ mode, bolo, user, onClose, onSaved }) {
         title: titleCase(formData.title),
         jurisdiction: titleCase(formData.jurisdiction),
         last_known_location: titleCase(formData.last_known_location),
+        last_known_direction: titleCase(formData.last_known_direction),
         case_number: upper(formData.case_number),
         description: sentenceCase(formData.description),
         notes: sentenceCase(formData.notes),
