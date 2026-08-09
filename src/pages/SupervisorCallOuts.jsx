@@ -86,7 +86,7 @@ export default function SupervisorCallOuts() {
     createCallOutMutation.mutate(formData);
   };
 
-  const isSupervisorOrAdmin = user?.role === 'admin' || user?.additional_roles?.includes('supervisor');
+  const isSupervisorOrAdmin = user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access');
 
   if (!isSupervisorOrAdmin) {
     return (
