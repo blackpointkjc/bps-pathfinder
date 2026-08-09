@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Shield, Target, MapPin, Check, AlertTriangle, Clock, User, ZoomIn, ZoomOut } from "lucide-react";
-import { format, parseISO, differenceInMinutes } from "date-fns";
+import { parseISO, differenceInMinutes } from "date-fns";
 import { MapContainer, TileLayer, Marker, Circle, Polygon, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -171,7 +171,7 @@ export default function AdminGeofenceAlerts() {
                           </p>
                           <p className="text-xs text-slate-500 mt-1">
                             <Clock className="w-3 h-3 inline mr-1" />
-                            {formatET(alert.created_date)
+                            {formatET(alert.created_date)}
                           </p>
                         </div>
                         <Button
@@ -304,7 +304,7 @@ export default function AdminGeofenceAlerts() {
                   {selectedAlert.location} • {selectedAlert.distance_from_site}m outside zone
                 </p>
                 <p className="text-xs text-slate-500 mt-1">
-                  {formatET(selectedAlert.created_date)
+                  {formatET(selectedAlert.created_date)}
                 </p>
               </div>
 
