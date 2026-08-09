@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Shield, GraduationCap, Search, FileText, CheckCircle, Clock, AlertTriangle, Users, TrendingUp, BookOpen } from "lucide-react";
 import { format, parseISO, isPast, isAfter, isBefore } from "date-fns";
 import { toast } from "sonner";
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 const STATUS_COLORS = {
   assigned: "bg-blue-100 text-blue-800",
@@ -48,14 +49,12 @@ export default function TrainingComplianceTracker() {
     refetchInterval: 30000,
   });
   const { data: allUsers = [] } = useQuery({
-    queryKey: ['trainingUsers'],
-    queryFn: async () => {
-      const response = await base44.functions.invoke('getTrainingUsers', {});
-      if (response?.error) throw new Error(response.error);
-      return response?.users || [];
-    },
+    queryKey: ['appDirectoryUsers', 'trainingCompliance'],
+    queryFn: () => base44.entities.User.list('last_name', 1000),
     enabled: hasTrainingAccess,
-    staleTime: 30000,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
   });
   const { data: trainingCompletions = [] } = useQuery({
     queryKey: ['allTrainingCompletions'],
@@ -76,10 +75,7 @@ export default function TrainingComplianceTracker() {
     staleTime: 60000,
   });
 
-  const activeOfficers = useMemo(() => allUsers.filter(u =>
-    !u.termination_date && u.employment_status !== 'terminated' &&
-    (u.role === 'admin' || (u.additional_roles || []).map(r => String(r).toLowerCase()).includes('officer'))
-  ), [allUsers]);
+  const activeOfficers = useMemo(() => allUsers.filter(isOperationalOfficer), [allUsers]);
 
   const complianceRows = useMemo(() => {
     const normalize = value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
