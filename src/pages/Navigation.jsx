@@ -454,6 +454,10 @@ export default function Navigation() {
             google: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
             apple: `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`,
         };
+        if (provider === 'street') {
+            setStreetViewUrl(urls.street);
+            return;
+        }
         window.open(urls[provider], '_blank', 'noopener,noreferrer');
     };
 
