@@ -13,6 +13,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
 import { playPropertyAlert, stopAllAlerts } from '@/utils/alertUtils';
+import { announcePropertyCall, stopVoice } from '@/utils/voiceAnnouncer';
 import GlobalMessageBanner from '@/components/GlobalMessageBanner';
 import MandatoryReadGate from '@/components/MandatoryReadGate';
 import WelcomeBriefing from '@/components/WelcomeBriefing';
@@ -836,7 +837,15 @@ export default function Layout({ children, currentPageName }) {
           key,
         });
         setPropertyAlertSilenced(false);
-        playPropertyAlert();
+        // Property-monitoring calls use a spoken operational announcement instead
+        // of the generic alarm noise so the dispatcher immediately knows what came in.
+        stopAllAlerts();
+        announcePropertyCall({
+          propertyName: location.site_name || record.propertyName || 'Monitored Property',
+          incident: call.incident || 'Unknown incident',
+          location: call.location || location.address || '',
+          reference: call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || '',
+        });
       } catch (error) {
         console.warn('Property alert display check failed:', error?.message);
       }
@@ -857,6 +866,7 @@ export default function Layout({ children, currentPageName }) {
   const acknowledgePropertyAlert = async () => {
     if (!propertyAlert) return false;
     stopAllAlerts();
+    stopVoice();
     const dismissedIds = [];
     try {
       const records = await base44.entities.PropertyAlert.filter({ callId: propertyAlert.call.id, propertyId: propertyAlert.property.id, acknowledged: false });
