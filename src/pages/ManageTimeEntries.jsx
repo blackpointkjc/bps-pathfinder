@@ -43,7 +43,9 @@ export default function ManageTimeEntries() {
     queryKey: ['hrUsers'],
     queryFn: async () => {
       const result = await base44.functions.invoke('getHRUsers', {});
-      return result?.users || [];
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.users || [];
     },
     enabled: isAdmin || isHR,
     initialData: [],
@@ -61,7 +63,10 @@ export default function ManageTimeEntries() {
   const { data: timeEntries } = useQuery({
     queryKey: ['allTimeEntries', selectedOfficer],
     queryFn: async () => {
-      const entries = await base44.entities.TimeEntry.list('-created_date');
+      const result = await base44.functions.invoke('manageHRTimeEntries', { action: 'list' });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      const entries = payload.entries || [];
       if (selectedOfficer === 'all') return entries;
       return entries.filter(e => e.officer_email === selectedOfficer);
     },
@@ -71,7 +76,10 @@ export default function ManageTimeEntries() {
 
   const createEntryMutation = useMutation({
     mutationFn: async (data) => {
-      const entry = await base44.entities.TimeEntry.create(data);
+      const result = await base44.functions.invoke('manageHRTimeEntries', { action: 'create', data });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      const entry = payload.entry;
       
       // Recalculate PTO for the officer if this is a completed shift
       if (data.clock_out && data.officer_email) {
@@ -102,7 +110,10 @@ export default function ManageTimeEntries() {
 
   const updateEntryMutation = useMutation({
     mutationFn: async ({ id, data }) => {
-      const entry = await base44.entities.TimeEntry.update(id, data);
+      const result = await base44.functions.invoke('manageHRTimeEntries', { action: 'update', id, data });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      const entry = payload.entry;
       
       // Recalculate PTO for the officer if this is a completed shift
       if (data.clock_out && data.officer_email) {
@@ -131,7 +142,12 @@ export default function ManageTimeEntries() {
   });
 
   const deleteEntryMutation = useMutation({
-    mutationFn: (id) => base44.entities.TimeEntry.delete(id),
+    mutationFn: async (id) => {
+      const result = await base44.functions.invoke('manageHRTimeEntries', { action: 'delete', id });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allTimeEntries'] });
     },
