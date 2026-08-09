@@ -171,6 +171,7 @@ import TimeRequests from './pages/TimeRequests';
 import TrespassingNotices from './pages/TrespassingNotices';
 import VACriminalComplaints from './pages/VACriminalComplaints';
 import VATrespassNotices from './pages/VATrespassNotices';
+import VirginiaFieldLawAssistant from './pages/VirginiaFieldLawAssistant';
 import QRPatrolScan from './pages/QRPatrolScan.jsx';
 import AdminQRCheckpoints from './pages/AdminQRCheckpoints';
 import AdminQRPrintManager from './pages/AdminQRPrintManager';
@@ -304,6 +305,7 @@ export const PAGES = {
     "TrespassingNotices": TrespassingNotices,
     "VACriminalComplaints": VACriminalComplaints,
     "VATrespassNotices": VATrespassNotices,
+    "VirginiaFieldLawAssistant": VirginiaFieldLawAssistant,
     "QRPatrolScan": QRPatrolScan,
     "AdminQRCheckpoints": AdminQRCheckpoints,
     "AdminQRPrintManager": AdminQRPrintManager,
