@@ -747,22 +747,9 @@ export default function Layout({ children, currentPageName }) {
     });
   }, [currentPageName, unreadStorageKey]);
 
-  useEffect(() => {
-    const pageCenters = PAGE_TO_CENTERS[currentPageName] || [];
-    const available = allowedCenters(user);
-    if (!pageCenters.length) return;
-
-    // Route changes may update the workspace, but changing the workspace dropdown
-    // must never trigger this effect by itself. Using the functional state form
-    // preserves the current center for shared pages such as Rank Structure.
-    setActiveCenterState(current => {
-      if (pageCenters.includes(current) && available.includes(current)) return current;
-      const next = pageCenters.find(center => available.includes(center));
-      if (!next || next === current) return current;
-      localStorage.setItem('bps-active-center', next);
-      return next;
-    });
-  }, [currentPageName, user?.role, JSON.stringify(user?.additional_roles || [])]);
+  // Keep the selected workspace locked while navigating pages. A route must never
+  // silently switch the sidebar to another center; only the workspace selector may
+  // change activeCenter. Access changes are handled by the availability effect below.
 
   useEffect(() => {
     const id = setInterval(() => setClock(new Date()), 1000);
