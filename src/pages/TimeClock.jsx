@@ -198,6 +198,7 @@ export default function TimeClock() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
+      queryClient.invalidateQueries({ queryKey: ['bgTrackerActiveEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
     },
   });
@@ -222,7 +223,11 @@ export default function TimeClock() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activeTimeEntry', user?.email] });
+      queryClient.invalidateQueries({ queryKey: ['bgTrackerActiveEntry', user?.email] });
       queryClient.invalidateQueries({ queryKey: ['recentTimeEntries', user?.email] });
+      queryClient.invalidateQueries({ queryKey: ['activeOfficers'] });
+      queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
+      base44.functions.invoke('enforceOfficerDutyStatus', { action: 'clock_out' }).catch(err => console.warn('Unable to retire live officer marker after clock-out:', err?.message));
       setNotes("");
       setSelectedLocation("");
       setVerifyingLocation(false);
