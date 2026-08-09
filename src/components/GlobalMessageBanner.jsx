@@ -9,7 +9,6 @@ const SOURCES = [
   { entity: 'SupervisorChatMessage', label: 'Supervisor Chat', page: 'SupervisorChat', supervisorOnly: true, kind: 'message' },
   { entity: 'Message', label: 'New Message', page: 'OfficerInbox', direct: true, kind: 'message' },
   { entity: 'Announcement', label: 'New Announcement', page: 'Announcements', kind: 'announcement' },
-  { entity: 'PropertyAlert', label: 'Monitored Property Call', page: 'DispatchCenter', kind: 'property' },
   { entity: 'ChatMention', label: 'You Were Mentioned', page: 'TeamChat', kind: 'mention', mention: true },
 ];
 
