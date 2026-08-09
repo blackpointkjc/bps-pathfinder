@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { completeReportTodo } from '@/lib/reportTodoApi';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -215,7 +216,7 @@ export default function TrespassingNotices() {
 
         if (!isDraft) {
           if (editingTodoId) {
-            await base44.entities.ReportTodo.update(editingTodoId, { completed: true });
+            await completeReportTodo(editingTodoId);
           } else {
             const todos = await base44.entities.ReportTodo.filter({
               officer_email: user.email,
@@ -224,7 +225,7 @@ export default function TrespassingNotices() {
               completed: false
             });
             for (const todo of todos) {
-              await base44.entities.ReportTodo.update(todo.id, { completed: true });
+              await completeReportTodo(todo.id);
             }
           }
         }
