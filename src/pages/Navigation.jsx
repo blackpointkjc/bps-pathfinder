@@ -17,6 +17,7 @@ import OfficerDistressBanner from '@/components/dispatch/OfficerDistressBanner';
 import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import FieldCallActions from '@/components/dispatch/FieldCallActions';
 import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
+import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer';
 
 const PRIORITY_COLORS = {
     critical: 'bg-red-600 text-white',
@@ -89,6 +90,7 @@ export default function Navigation() {
     const [addressSearching, setAddressSearching] = useState(false);
     const [showAddressSearch, setShowAddressSearch] = useState(false);
     const [fitBounds, setFitBounds] = useState(null);
+    const lastSpokenNavStepRef = useRef(-1);
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
@@ -194,6 +196,17 @@ export default function Navigation() {
             }
         }
     }, [currentLocation, isNavigating, navStepIndex, navSteps, navDestination]);
+
+    // Speak each turn once as GPS advances. This uses a generic deep tactical
+    // cadence rather than imitating a named character or actor.
+    useEffect(() => {
+        if (!isNavigating || !navSteps.length || navStepIndex < 0) return;
+        if (lastSpokenNavStepRef.current === navStepIndex) return;
+        const step = navSteps[navStepIndex];
+        if (!step) return;
+        lastSpokenNavStepRef.current = navStepIndex;
+        announceNavigationInstruction(formatInstruction(step), navTurnDistanceFeet);
+    }, [isNavigating, navStepIndex, navSteps, navTurnDistanceFeet]);
 
     const syncScheduledCadPartnership = async (user) => {
         if (!user?.email || !user?.id) return user;
@@ -367,8 +380,11 @@ export default function Navigation() {
             if (!route) throw new Error('No driving route found');
             setNavDestination({ coords: [destLat, destLng], name: destination.name || destination.address || 'Destination' });
             setNavRoute((route.geometry?.coordinates || []).map(([x, y]) => [y, x]));
-            setNavSteps(route.legs?.flatMap(leg => leg.steps || []) || []);
+            const routeSteps = route.legs?.flatMap(leg => leg.steps || []) || [];
+            setNavSteps(routeSteps);
             setNavStepIndex(0);
+            lastSpokenNavStepRef.current = -1;
+            if (routeSteps[0]) announceNavigationInstruction(formatInstruction(routeSteps[0]), 0);
             setNavDistanceMiles(route.distance / 1609.344);
             setNavDurationMinutes(Math.max(1, Math.round(route.duration / 60)));
             setIsNavigating(true);
@@ -430,6 +446,8 @@ export default function Navigation() {
     };
 
     const stopInAppNavigation = () => {
+        stopVoice();
+        lastSpokenNavStepRef.current = -1;
         setIsNavigating(false);
         setNavDestination(null);
         setNavRoute([]);
