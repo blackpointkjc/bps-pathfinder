@@ -113,9 +113,12 @@ export default function OfficerTraining() {
           a.status !== 'approved'
       );
       if (matchingAssignment) {
-        await base44.entities.TrainingAssignment.update(matchingAssignment.id, {
-          status: 'approved',
+        const result = await base44.functions.invoke('officerTrainingAction', {
+          action: 'complete_module',
+          assignment_id: matchingAssignment.id,
         });
+        const payload = result?.data || result || {};
+        if (payload.error) throw new Error(payload.error);
       }
     },
     onSuccess: () => {
@@ -130,19 +133,14 @@ export default function OfficerTraining() {
   // --- Compliance submission mutation ---
   const submitMutation = useMutation({
     mutationFn: async ({ assignment, form }) => {
-      const existingSubmissions = mySubmissions.filter(s => s.assignment_id === assignment.id);
-      const version = existingSubmissions.length + 1;
-      const submission = await base44.entities.TrainingSubmission.create({
+      const result = await base44.functions.invoke('officerTrainingAction', {
+        action: 'submit',
         assignment_id: assignment.id,
-        training_name: assignment.training_name,
-        officer_email: user.email,
-        officer_name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
-        submission_date: new Date().toISOString(),
-        ...form,
-        status: "pending_review",
-        version,
+        form,
       });
-      await base44.entities.TrainingAssignment.update(assignment.id, { status: "pending_review" });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      const submission = payload.submission;
       const admins = await base44.entities.User.list();
       await Promise.all(admins.filter(u => u.role === 'admin').map(admin =>
         base44.entities.Notification.create({
