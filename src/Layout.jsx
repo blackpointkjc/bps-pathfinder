@@ -47,42 +47,46 @@ const CENTER_CONFIG = {
     label: 'Officer Center',
     icon: Shield,
     groups: [
-      { label: 'Dashboard', items: [
-        ['Dashboard', 'Dashboard', Gauge],
+      { label: 'Home & Profile', items: [
+        ['Officer Dashboard', 'Dashboard', Gauge],
         ['My Profile', 'OfficerProfile', UserCheck],
         ['My Performance', 'MyPerformanceAnalytics', BarChart3],
-        ['Availability', 'OfficerAvailability', CalendarClock],
       ]},
-      { label: 'Schedule', items: [
+      { label: 'Legal & Enforcement', items: [
+        ['Virginia Field Law Assistant', 'VirginiaFieldLawAssistant', BookOpen],
+        ['VA Trespass Notices', 'VATrespassNotices', UserX],
+        ['VA Criminal Complaint', 'VACriminalComplaints', Shield],
+        ['VA Summons', 'Summons', FileText],
+      ]},
+      { label: 'Duty & Scheduling', items: [
         ['Time Clock', 'TimeClock', Clock3],
         ['My Schedule', 'Schedule', Calendar],
+        ['Availability', 'OfficerAvailability', CalendarClock],
         ['Open Shifts', 'OpenShifts', Briefcase],
         ['Time Requests', 'TimeRequests', CalendarClock],
         ['Payroll Dates', 'OfficerPayrollDates', DollarSign],
       ]},
+      { label: 'Field Operations', items: [
+        ['Post Orders', 'PostOrders', BookOpen],
+        ['QR Patrol Scan', 'QRPatrolScan', MapPin],
+        ['Shift Handover', 'ShiftHandover', ClipboardCheck],
+      ]},
       { label: 'Reports', items: [
         ['Daily Activity Reports', 'DailyActivityReports', ClipboardList],
         ['Incident Reports', 'IncidentReports', AlertTriangle],
-        ['Maintenance', 'MaintenanceReports', Wrench],
+        ['Maintenance Reports', 'MaintenanceReports', Wrench],
         ['Open Door Reports', 'OpenDoorReports', DoorOpen],
         ['Confidential Report', 'ConfidentialReport', ShieldCheck],
-        ['QR Patrol Scan', 'QRPatrolScan', MapPin],
-        ['VA Trespass Notices', 'VATrespassNotices', UserX],
-        ['VA Criminal Complaint', 'VACriminalComplaints', Shield],
+        ['Expense Reports', 'ExpenseReports', DollarSign],
       ]},
       { label: 'Communication', items: [
         ['Team Chat', 'TeamChat', MessageCircle],
         ['Announcements', 'Announcements', Bell],
-        ['Expense Reports', 'ExpenseReports', DollarSign],
       ]},
-      { label: 'Resources', items: [
+      { label: 'Training & Career', items: [
+        ['Training & Compliance', 'OfficerTraining', GraduationCap],
         ['Rank Structure', 'RankStructure', Shield],
         ['Rank Duties', 'RankDuties', Shield],
-        ['Post Orders', 'PostOrders', BookOpen],
-        ['Training & Compliance', 'OfficerTraining', GraduationCap],
-        ['Shift Handover', 'ShiftHandover', ClipboardCheck],
-        ['Summons', 'Summons', FileText],
-        ['Virginia Field Law Assistant', 'VirginiaFieldLawAssistant', BookOpen],
       ]},
     ],
   },
@@ -473,7 +477,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             </span>
           )}
         </Link>
-        {groups.map(group => <details key={group.label} open={!mobile || groups.length === 1} className="mb-3 group">
+        {groups.map(group => <details key={group.label} open={!mobile || groups.length === 1 || (activeCenter === 'officer' && group.label === 'Legal & Enforcement')} className="mb-3 group">
           {(!collapsed || mobile) ? (
             <summary className="flex cursor-pointer list-none items-center justify-between rounded-md px-2 py-2 text-[9px] font-bold uppercase tracking-[0.2em] text-[#6f91b3] hover:bg-[#102239]">{group.label}<ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" /></summary>
           ) : (
