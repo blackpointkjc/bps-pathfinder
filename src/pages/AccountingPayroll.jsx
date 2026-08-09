@@ -82,6 +82,7 @@ export default function AccountingPayroll() {
     mutationFn: (entries) => accountingBulkCreate('PayrollEntry', entries),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payrollEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['accountingData'] });
       setGenerating(false);
       alert('✅ Payroll generated successfully!');
     },
@@ -97,7 +98,10 @@ export default function AccountingPayroll() {
       approved_by: user.email,
       approved_date: new Date().toISOString()
     }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payrollEntries'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payrollEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['accountingData'] });
+    },
   });
 
   const markPaidMutation = useMutation({
@@ -107,13 +111,17 @@ export default function AccountingPayroll() {
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payrollEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['accountingData'] });
       queryClient.invalidateQueries({ queryKey: ['w2Forms'] });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => accountingDelete('PayrollEntry', id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payrollEntries'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payrollEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['accountingData'] });
+    },
   });
 
   const saveConfigMutation = useMutation({
@@ -126,6 +134,7 @@ export default function AccountingPayroll() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payrollConfig'] });
+      queryClient.invalidateQueries({ queryKey: ['accountingData'] });
       setShowConfigDialog(false);
       alert('✅ Configuration saved!');
     }
