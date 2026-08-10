@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Search, MapPin, RefreshCw } from 'lucide-react';
+import { Search, MapPin, RefreshCw, Lock, Unlock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '../utils';
@@ -29,6 +29,10 @@ export default function Personnel() {
     const [statusUpdatingId, setStatusUpdatingId] = useState(null);
     const [statusDialog, setStatusDialog] = useState(null);
     const [statusReason, setStatusReason] = useState('');
+    const [accountLocks, setAccountLocks] = useState([]);
+    const [accountLockDialog, setAccountLockDialog] = useState(null);
+    const [accountLockReason, setAccountLockReason] = useState('');
+    const [accountLockMessage, setAccountLockMessage] = useState('');
 
     useEffect(() => {
         init();
@@ -40,7 +44,7 @@ export default function Personnel() {
         try {
             const user = await base44.auth.me();
             setCurrentUser(user);
-            await Promise.all([loadPersonnel(), loadOverrides(user)]);
+            await Promise.all([loadPersonnel(), loadOverrides(user), loadAccountLocks(user)]);
         } catch (error) { console.error(error); }
         finally { setLoading(false); }
     };
@@ -70,11 +74,82 @@ export default function Personnel() {
         finally { setRefreshing(false); }
     };
 
+    const loadAccountLocks = async (actor = currentUser) => {
+        if (actor?.role !== 'admin') return setAccountLocks([]);
+        try {
+            const response = await base44.entities.AccountLock.list('-locked_at', 500);
+            setAccountLocks(response || []);
+        } catch (error) {
+            console.warn('Unable to load account locks:', error?.message);
+        }
+    };
+
 
     const openStatusDialog = (person) => {
         const existingOverride = forcedOverrides.find(entry => entry.officer_id === person.id);
         setStatusReason('');
         setStatusDialog({ person, action: existingOverride ? 'release' : 'force_oos' });
+    };
+
+    const openAccountLockDialog = (person) => {
+        const existing = accountLocks.find(entry => entry.user_id === person.id && entry.locked === true);
+        setAccountLockReason(existing?.reason || '');
+        setAccountLockMessage(existing?.message || 'Your account has been locked. Please contact your supervisor for assistance.');
+        setAccountLockDialog({ person, existing });
+    };
+
+    const handleAccountLock = async () => {
+        if (!accountLockDialog || currentUser?.role !== 'admin') return;
+        const { person, existing } = accountLockDialog;
+        if (!accountLockReason.trim() || !accountLockMessage.trim()) return;
+        try {
+            const now = new Date().toISOString();
+            if (existing?.id) {
+                await base44.entities.AccountLock.update(existing.id, {
+                    locked: true,
+                    reason: accountLockReason.trim(),
+                    message: accountLockMessage.trim(),
+                    locked_by_email: currentUser.email,
+                    locked_by_name: currentUser.full_name || `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim(),
+                    locked_at: now,
+                    unlocked_by_email: '',
+                    unlocked_at: ''
+                });
+            } else {
+                await base44.entities.AccountLock.create({
+                    user_id: person.id,
+                    user_email: person.email,
+                    locked: true,
+                    reason: accountLockReason.trim(),
+                    message: accountLockMessage.trim(),
+                    locked_by_email: currentUser.email,
+                    locked_by_name: currentUser.full_name || `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim(),
+                    locked_at: now
+                });
+            }
+            setAccountLockDialog(null);
+            toast.success('Account locked');
+            await loadAccountLocks();
+        } catch (error) {
+            toast.error(error?.message || 'Unable to lock account');
+        }
+    };
+
+    const handleAccountUnlock = async (person) => {
+        if (currentUser?.role !== 'admin') return;
+        const existing = accountLocks.find(entry => entry.user_id === person.id && entry.locked === true);
+        if (!existing?.id) return;
+        try {
+            await base44.entities.AccountLock.update(existing.id, {
+                locked: false,
+                unlocked_by_email: currentUser.email,
+                unlocked_at: new Date().toISOString()
+            });
+            toast.success('Account unlocked');
+            await loadAccountLocks();
+        } catch (error) {
+            toast.error(error?.message || 'Unable to unlock account');
+        }
     };
 
     const handleForceStatus = async () => {
@@ -118,6 +193,20 @@ export default function Personnel() {
 
     return (
         <div className="bg-slate-950 min-h-full flex flex-col font-mono">
+            <Dialog open={!!accountLockDialog} onOpenChange={open => { if (!open) { setAccountLockDialog(null); setAccountLockReason(''); setAccountLockMessage(''); } }}>
+                <DialogContent className="max-w-lg border-slate-700 bg-slate-950 text-white">
+                    <DialogHeader><DialogTitle>Lock User Account</DialogTitle></DialogHeader>
+                    <div className="space-y-3">
+                        <p className="text-sm text-slate-300">{accountLockDialog?.person?.rank || 'User'} {accountLockDialog?.person?.last_name || accountLockDialog?.person?.full_name || accountLockDialog?.person?.email}</p>
+                        <div><label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Reason</label><textarea autoFocus value={accountLockReason} onChange={e => setAccountLockReason(e.target.value)} placeholder="Reason the account is being locked..." className="min-h-24 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-red-500" /></div>
+                        <div><label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Message shown at login</label><textarea value={accountLockMessage} onChange={e => setAccountLockMessage(e.target.value)} placeholder="Please contact your supervisor for assistance." className="min-h-24 w-full rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-white outline-none focus:border-red-500" /></div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setAccountLockDialog(null)}>Cancel</Button>
+                        <Button className="bg-red-700 hover:bg-red-600" disabled={!accountLockReason.trim() || !accountLockMessage.trim()} onClick={handleAccountLock}>Lock Account</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <Dialog open={!!statusDialog} onOpenChange={open => { if (!open && !statusUpdatingId) { setStatusDialog(null); setStatusReason(''); } }}>
                 <DialogContent className="max-w-lg border-slate-700 bg-slate-950 text-white">
                     <DialogHeader><DialogTitle>{statusDialog?.action === 'force_oos' ? 'Force Officer Out of Service' : 'Release Out of Service Override'}</DialogTitle></DialogHeader>
@@ -230,6 +319,14 @@ export default function Personnel() {
                                             {statusUpdatingId === person.id ? 'WORKING…' : forced ? 'RELEASE OOS' : 'FORCE OOS'}
                                         </button>
                                     );
+                                })()}
+                                {currentUser?.role === 'admin' && (() => {
+                                    const locked = accountLocks.some(entry => entry.user_id === person.id && entry.locked === true);
+                                    return <button onClick={() => locked ? handleAccountUnlock(person) : openAccountLockDialog(person)}
+                                        title={locked ? 'Unlock this user account' : 'Lock this user account'}
+                                        className={`flex items-center gap-1 rounded border px-2 py-1 text-[9px] font-bold transition-all ${locked ? 'border-emerald-700 bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900' : 'border-red-700 bg-red-950/60 text-red-300 hover:bg-red-900'}`}>
+                                        {locked ? <><Unlock className="h-2.5 w-2.5" />UNLOCK</> : <><Lock className="h-2.5 w-2.5" />LOCK</>}
+                                    </button>;
                                 })()}
                             </div>
                         </div>
