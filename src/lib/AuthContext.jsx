@@ -168,7 +168,10 @@ export const AuthProvider = ({ children }) => {
   // Personnel page is open on another device/browser.
   const forcedLogoutInProgress = useRef(false);
   useEffect(() => {
-    if (!isAuthenticated || !user?.id || !user?.email || forcedLogoutInProgress.current) return;
+    // Admins manage overrides and must always be able to sign in to release
+    // them. A forced OOS must never lock the admin who issued it out of the app.
+    const isAdmin = user?.role === 'admin';
+    if (!isAuthenticated || !user?.id || !user?.email || forcedLogoutInProgress.current || isAdmin) return;
 
     let active = true;
     const checkForcedOOS = async () => {

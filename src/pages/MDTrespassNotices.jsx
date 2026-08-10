@@ -69,7 +69,7 @@ export default function MDTrespassNotices() {
     if (rank && lastName) {
       return `${rank} ${lastName}`;
     }
-    return email;
+    return user?.email || 'Unknown Officer';
   };
 
   const { data: activeEntry } = useQuery({
@@ -143,7 +143,7 @@ export default function MDTrespassNotices() {
     if (officer?.last_name && officer?.unit_number) {
       return `${officer.last_name} - Unit ${officer.unit_number}`;
     }
-    return email;
+    return officer?.email || user?.email || 'Unknown Officer';
   };
 
   useEffect(() => {
