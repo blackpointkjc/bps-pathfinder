@@ -26,6 +26,7 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
+  const [accountLock, setAccountLock] = useState(null);
   const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
 
   const checkUserAuth = useCallback(async (requestId) => {
@@ -36,11 +37,22 @@ export const AuthProvider = ({ children }) => {
       setUser(currentUser);
       setIsAuthenticated(true);
       setAuthError(null);
+      try {
+        const locks = await base44.entities.AccountLock.filter({ user_id: currentUser.id, locked: true }, '-locked_at', 1);
+        if (requestId !== requestSequence.current) return;
+        setAccountLock(locks?.[0] || null);
+      } catch (lockError) {
+        // A lock-check failure must not accidentally lock everyone out. Retry on
+        // the next authentication check instead.
+        console.warn('[AUTH] Account lock check unavailable:', lockError?.message);
+        setAccountLock(null);
+      }
     } catch (error) {
       if (requestId !== requestSequence.current) return;
       console.error('User auth check failed:', error);
       setUser(null);
       setIsAuthenticated(false);
+      setAccountLock(null);
       if (error.status === 401 || error.status === 403) {
         setAuthError({ type: 'auth_required', message: 'Authentication required' });
       } else {
@@ -202,6 +214,7 @@ export const AuthProvider = ({ children }) => {
 
     setUser(null);
     setIsAuthenticated(false);
+    setAccountLock(null);
     
     if (shouldRedirect) {
       // Use the SDK's logout method which handles token cleanup and redirect
@@ -223,6 +236,7 @@ export const AuthProvider = ({ children }) => {
       isLoadingAuth,
       isLoadingPublicSettings,
       authError,
+      accountLock,
       appPublicSettings,
       logout,
       navigateToLogin,
