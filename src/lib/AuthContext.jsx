@@ -180,17 +180,17 @@ export const AuthProvider = ({ children }) => {
         if (!active || forcedLogoutInProgress.current || !overrides?.length) return;
 
         forcedLogoutInProgress.current = true;
-        // Give the browser one short moment to persist UI state before the auth
-        // redirect. The server-side override has already changed the officer's
-        // User/Unit status to Out of Service.
+        // The server-side override has already changed the officer's User/Unit
+        // status to Out of Service. Show the professional notice overlay and wait
+        // for the officer to acknowledge before completing the sign-out redirect.
         try {
           window.dispatchEvent(new CustomEvent('bps:forced-oos', {
             detail: { reason: overrides[0]?.reason || 'An authorized user placed you Out of Service.' }
           }));
         } catch (_) {}
-        await new Promise(resolve => setTimeout(resolve, 150));
-        if (!active) return;
-        await logout(true);
+        // The overlay dispatches 'bps:forced-oos-acknowledged' when the officer
+        // clicks "Acknowledge & Sign Out". Until then, keep the session open so
+        // the message stays on screen.
       } catch (error) {
         // Do not log the officer out for a transient network/API failure. The
         // next interval will retry the authoritative server check.
@@ -200,9 +200,13 @@ export const AuthProvider = ({ children }) => {
 
     checkForcedOOS();
     const interval = window.setInterval(checkForcedOOS, 3000);
+    // When the officer acknowledges the forced-OOS notice, complete the sign-out.
+    const onAck = () => logout(true);
+    window.addEventListener('bps:forced-oos-acknowledged', onAck);
     return () => {
       active = false;
       window.clearInterval(interval);
+      window.removeEventListener('bps:forced-oos-acknowledged', onAck);
     };
   }, [isAuthenticated, user?.id, user?.email]);
 
