@@ -104,12 +104,25 @@ export function announceNavigationInstruction(instruction, distanceFeet) {
   announceVoice(`${instruction}${distanceText ? `, ${distanceText}` : ''}.`, { dedupeMs: 3000, rate: 0.84, pitch: 0.68 });
 }
 
-export function announcePropertyCall({ propertyName, incident, location, reference }) {
+export function announcePropertyCall({ propertyName, incident, location, reference, createdAt }) {
+  let timeText = '';
+  if (createdAt) {
+    const parsed = new Date(createdAt);
+    if (!Number.isNaN(parsed.getTime())) {
+      timeText = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      }).format(parsed);
+    }
+  }
   const parts = [
     'Monitored property call.',
     propertyName ? `${propertyName}.` : '',
-    incident ? `${incident}.` : '',
-    location ? `${location}.` : '',
+    incident ? `Call type: ${incident}.` : '',
+    timeText ? `Call received at ${timeText} Eastern Time.` : '',
+    location ? `Location: ${location}.` : '',
     reference ? `Call reference ${reference}.` : '',
   ].filter(Boolean);
   announceVoice(parts.join(' '), { dedupeMs: 10000, rate: 0.82, pitch: 0.68 });
