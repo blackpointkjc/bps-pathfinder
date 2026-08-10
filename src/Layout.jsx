@@ -587,6 +587,7 @@ export default function Layout({ children, currentPageName }) {
   const [propertyAlert, setPropertyAlert] = useState(null);
   const [propertyAlertSilenced, setPropertyAlertSilenced] = useState(false);
   const dismissedPropertyAlertIdsRef = useRef(new Set());
+  const announcedPropertyCallKeyRef = useRef(null);
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
   const [search, setSearch] = useState('');
@@ -839,13 +840,19 @@ export default function Layout({ children, currentPageName }) {
         setPropertyAlertSilenced(false);
         // Property-monitoring calls use a spoken operational announcement instead
         // of the generic alarm noise so the dispatcher immediately knows what came in.
+        // The call's creation timestamp is spoken in Eastern Time, and the same
+        // call is announced only once even if duplicate monitoring records arrive.
         stopAllAlerts();
-        announcePropertyCall({
-          propertyName: location.site_name || record.propertyName || 'Monitored Property',
-          incident: call.incident || 'Unknown incident',
-          location: call.location || location.address || '',
-          reference: call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || '',
-        });
+        if (announcedPropertyCallKeyRef.current !== key) {
+          announcedPropertyCallKeyRef.current = key;
+          announcePropertyCall({
+            propertyName: location.site_name || record.propertyName || 'Monitored Property',
+            incident: call.incident || 'Unknown incident',
+            location: call.location || location.address || '',
+            reference: call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || '',
+            createdAt: call.created_date || record.created_date,
+          });
+        }
       } catch (error) {
         console.warn('Property alert display check failed:', error?.message);
       }
