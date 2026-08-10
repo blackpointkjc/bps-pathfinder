@@ -410,9 +410,15 @@ export default function TimeClock() {
       return { verified: false, distance: boundaryCheck.distance };
     } catch (error) {
       if (error.code === 1) {
-        setGeoError("LOCATION PERMISSION DENIED - You cannot clock in without enabling location services. Click your browser's address bar and allow location access, then try again.");
+        setGeoError("LOCATION PERMISSION DENIED - Pathfinder does not have permission to use this device's location. Allow Location for this site/browser, then try again.");
+      } else if (error.code === 2) {
+        setGeoError("LOCATION UNAVAILABLE - Your browser has permission, but the device has not produced a GPS location. Make sure Windows Location Services is on and try again near a window or outdoors.");
+      } else if (error.code === 3 || error.message === 'LIVE_LOCATION_TIMEOUT') {
+        setGeoError("GPS TIMEOUT - Location permission is available, but Pathfinder did not receive an accurate GPS fix in time. Keep Location Services on and try Clock In again.");
+      } else if (error.message === 'GEOLOCATION_NOT_SUPPORTED') {
+        setGeoError("LOCATION NOT SUPPORTED - This browser cannot provide location to Pathfinder. Please use a supported browser with location access enabled.");
       } else {
-        setGeoError("Unable to access your location. Please enable location services in your browser settings and try again.");
+        setGeoError(`Unable to access your location${error?.message ? ` (${error.message})` : ''}. Please verify device and browser location settings and try again.`);
       }
       return { verified: false, error: error.message };
     } finally {
