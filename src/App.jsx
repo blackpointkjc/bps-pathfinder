@@ -39,6 +39,7 @@ const AuthenticatedApp = () => {
     isLoadingAuth,
     isLoadingPublicSettings,
     authError,
+    accountLock,
     isAuthenticated,
     navigateToLogin,
     checkAppState,
@@ -54,6 +55,25 @@ const AuthenticatedApp = () => {
   if (isLoadingPublicSettings || isLoadingAuth) return <LoadingScreen />;
 
   if (authError?.type === 'user_not_registered') return <UserNotRegisteredError />;
+
+  if (accountLock) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-slate-950 p-6 text-slate-100">
+        <div className="w-full max-w-lg rounded-2xl border border-red-700/70 bg-slate-900 p-7 text-center shadow-2xl">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-red-500/60 bg-red-950/60 text-3xl">🔒</div>
+          <h1 className="mt-5 text-2xl font-black tracking-wide">ACCOUNT ACCESS LOCKED</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-300">
+            Your Pathfinder account has been temporarily locked. You cannot access the application while this lock is active.
+          </p>
+          {accountLock.message && <div className="mt-5 rounded-xl border border-slate-700 bg-slate-950 p-4 text-left"><div className="text-[10px] font-black uppercase tracking-widest text-slate-500">MESSAGE</div><p className="mt-2 text-sm text-slate-200">{accountLock.message}</p></div>}
+          {accountLock.reason && <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-4 text-left"><div className="text-[10px] font-black uppercase tracking-widest text-slate-500">REASON</div><p className="mt-2 text-sm text-slate-300">{accountLock.reason}</p></div>}
+          <div className="mt-6 rounded-xl border border-amber-700/40 bg-amber-950/20 p-4 text-sm font-semibold text-amber-200">
+            Please contact your supervisor for assistance with your account.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (needsLogin) {
     return (
