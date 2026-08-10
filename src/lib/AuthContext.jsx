@@ -148,6 +148,49 @@ export const AuthProvider = ({ children }) => {
     };
   }, [checkAppState]);
 
+  // A supervisor/dispatch/admin can force an officer Out of Service from the
+  // Personnel page. That is a server-side duty-status override, so the target
+  // browser must also be removed from the authenticated session. Poll only the
+  // signed-in officer's own override (the entity RLS allows that record) and do
+  // not poll the whole roster. This keeps the action reliable even when the
+  // Personnel page is open on another device/browser.
+  const forcedLogoutInProgress = useRef(false);
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id || !user?.email || forcedLogoutInProgress.current) return;
+
+    let active = true;
+    const checkForcedOOS = async () => {
+      try {
+        const overrides = await base44.entities.OfficerStatusOverride.filter({ officer_id: user.id, active: true }, '-forced_at', 1);
+        if (!active || forcedLogoutInProgress.current || !overrides?.length) return;
+
+        forcedLogoutInProgress.current = true;
+        // Give the browser one short moment to persist UI state before the auth
+        // redirect. The server-side override has already changed the officer's
+        // User/Unit status to Out of Service.
+        try {
+          window.dispatchEvent(new CustomEvent('bps:forced-oos', {
+            detail: { reason: overrides[0]?.reason || 'An authorized user placed you Out of Service.' }
+          }));
+        } catch (_) {}
+        await new Promise(resolve => setTimeout(resolve, 150));
+        if (!active) return;
+        await logout(true);
+      } catch (error) {
+        // Do not log the officer out for a transient network/API failure. The
+        // next interval will retry the authoritative server check.
+        console.warn('[AUTH] Forced OOS check unavailable:', error?.message);
+      }
+    };
+
+    checkForcedOOS();
+    const interval = window.setInterval(checkForcedOOS, 3000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [isAuthenticated, user?.id, user?.email]);
+
   const logout = useCallback(async (shouldRedirect = true) => {
     // Before clearing the auth token, force any CAD officer Out of Service so
     // logout can never leave a ghost Available unit on dispatch/status boards.
