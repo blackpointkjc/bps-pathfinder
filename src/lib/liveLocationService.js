@@ -35,19 +35,63 @@ export function waitForLiveLocation({ maxAgeMs = 15000, timeoutMs = 10000, maxAc
     && Number(fix.accuracy) <= maxAccuracyMeters;
   const current = getLiveLocation(maxAgeMs);
   if (acceptable(current)) return Promise.resolve(current);
+
   return new Promise((resolve, reject) => {
     let done = false;
     let timer;
+    let watchId = null;
+    let unsubscribe = () => {};
+
     const finish = (value, error) => {
       if (done) return;
       done = true;
       unsubscribe();
       clearTimeout(timer);
+      if (watchId !== null && navigator?.geolocation) {
+        navigator.geolocation.clearWatch(watchId);
+      }
       if (error) reject(error); else resolve(value);
     };
-    const unsubscribe = subscribeLiveLocation(fix => {
+
+    unsubscribe = subscribeLiveLocation(fix => {
       if (acceptable(fix)) finish(fix);
     });
-    timer = setTimeout(() => finish(null, new Error('LIVE_LOCATION_TIMEOUT')), timeoutMs);
+
+    // The app-wide background tracker intentionally runs only after an officer is
+    // clocked in. Time Clock still needs a GPS fix BEFORE clock-in, so request one
+    // directly here instead of waiting for a tracker that is not running yet.
+    if (!('geolocation' in navigator)) {
+      const error = new Error('GEOLOCATION_NOT_SUPPORTED');
+      error.code = 0;
+      finish(null, error);
+      return;
+    }
+
+    watchId = navigator.geolocation.watchPosition(
+      position => {
+        const fix = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          heading: position.coords.heading,
+          speed: position.coords.speed,
+          timestamp: position.timestamp || Date.now(),
+        };
+        publishLiveLocation(fix);
+        if (acceptable(fix)) finish(fix);
+      },
+      error => finish(null, error),
+      {
+        enableHighAccuracy: true,
+        timeout: timeoutMs,
+        maximumAge: Math.min(maxAgeMs, 2000),
+      }
+    );
+
+    timer = setTimeout(() => {
+      const error = new Error('LIVE_LOCATION_TIMEOUT');
+      error.code = 3;
+      finish(null, error);
+    }, timeoutMs + 500);
   });
 }
