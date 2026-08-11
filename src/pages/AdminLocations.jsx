@@ -752,45 +752,36 @@ export default function AdminLocations() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="division">Division</Label>
-                <Select
-                  value={formData.division}
-                  onValueChange={(value) => setFormData({...formData, division: value, subdivision: ""})}
+                <select
+                  id="division"
+                  value={formData.division || ''}
+                  onChange={(e) => setFormData(prev => ({...prev, division: e.target.value, subdivision: ''}))}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select division..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {divisions?.filter(d => !d.is_subdivision).map((div) => (
-                      <SelectItem key={div.id} value={div.division_name}>
-                        {div.division_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value="">Select division...</option>
+                  {divisions.filter(d => !d.is_subdivision && d.active !== false).map((div) => (
+                    <option key={div.id} value={div.division_name}>{div.division_name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {formData.division && divisions?.filter(d => d.is_subdivision && d.parent_division === formData.division).length > 0 && (
+            {formData.division && divisions.filter(d => d.is_subdivision && d.parent_division === formData.division && d.active !== false).length > 0 && (
               <div className="space-y-2">
                 <Label htmlFor="subdivision">Subdivision</Label>
-                <Select
-                  value={formData.subdivision}
-                  onValueChange={(value) => setFormData({...formData, subdivision: value === '__none__' ? '' : value})}
+                <select
+                  id="subdivision"
+                  value={formData.subdivision || ''}
+                  onChange={(e) => setFormData(prev => ({...prev, subdivision: e.target.value}))}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select subdivision..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">None</SelectItem>
-                    {divisions
-                      ?.filter(d => d.is_subdivision && d.parent_division === formData.division)
-                      .map((div) => (
-                        <SelectItem key={div.id} value={div.subdivision || div.division_name}>
-                          {div.subdivision || div.division_name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                  <option value="">None</option>
+                  {divisions
+                    .filter(d => d.is_subdivision && d.parent_division === formData.division && d.active !== false)
+                    .map((div) => (
+                      <option key={div.id} value={div.subdivision || div.division_name}>{div.subdivision || div.division_name}</option>
+                    ))}
+                </select>
               </div>
             )}
 
@@ -1004,6 +995,21 @@ export default function AdminLocations() {
                   <div className="rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-slate-300"><span className="font-semibold text-white">Canonical Geofence:</span> {(formData.geofence_polygon || []).length >= 3 ? 'Custom property polygon' : `${formData.geofence_radius_meters || 100}m shared radius fallback`}</div>
                 </div>
                 <p className="text-xs text-slate-400">Gold boundary = the single location boundary used for clock-in eligibility, live geofence alerts, property/CAD monitoring, and location enforcement.</p>
+              </div>
+            )}
+
+            {!formData.is_special_event && (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-950/20 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <Label className="font-semibold text-amber-200">Allow Clock In From Anywhere</Label>
+                    <p className="mt-1 text-xs text-amber-100/80">Administrative site override. Officers may clock in to this location even when their GPS is outside the property boundary. Pathfinder will still record their GPS coordinates.</p>
+                  </div>
+                  <Checkbox
+                    checked={formData.allow_clock_in_anywhere || false}
+                    onCheckedChange={(checked) => setFormData(prev => ({...prev, allow_clock_in_anywhere: checked === true}))}
+                  />
+                </div>
               </div>
             )}
 
