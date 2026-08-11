@@ -191,13 +191,15 @@ function TrainingRecordsContent({ embedded = false }) {
 
   return (
     <div className={embedded ? "w-full space-y-5 px-4 py-5 md:px-6 md:py-6" : "p-4 md:p-6 space-y-4 max-w-7xl mx-auto"}>
-      <div className="flex items-center gap-3">
-        <GraduationCap className="w-7 h-7 text-indigo-600" />
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Training Records</h1>
-          <p className="text-sm text-slate-500">Manage in-person classes, rosters, and certificates</p>
+      {!embedded && (
+        <div className="flex items-center gap-3">
+          <GraduationCap className="w-7 h-7 text-indigo-600" />
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Training Records</h1>
+            <p className="text-sm text-slate-500">Manage in-person classes, rosters, and certificates</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <Tabs value={tab} onValueChange={t => { setTab(t); setSelectedClass(null); setShowClassForm(false); }}>
         <TabsList className="mb-2">
