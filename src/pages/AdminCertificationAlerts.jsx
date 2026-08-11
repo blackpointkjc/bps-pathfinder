@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-export default function AdminCertificationAlerts() {
+export default function AdminCertificationAlerts({ embedded = false }) {
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [notes, setNotes] = useState("");
   const [isRunningCheck, setIsRunningCheck] = useState(false);
@@ -355,8 +355,8 @@ export default function AdminCertificationAlerts() {
   const completedAlerts = certificationAlerts?.filter(a => a.completed) || [];
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className={embedded ? "w-full" : "p-4 md:p-8 min-h-screen"}>
+      <div className={embedded ? "w-full space-y-5" : "max-w-6xl mx-auto space-y-8"}>
         <div className="flex justify-between items-center flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <Shield className="w-8 h-8 text-amber-600" />
