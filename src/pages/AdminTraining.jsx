@@ -68,7 +68,7 @@ const COMPANY_ITEMS = [
   "OSHA Safety Standards",
 ];
 
-export default function AdminTraining() {
+export default function AdminTraining({ embedded = false }) {
   const [showDialog, setShowDialog] = useState(false);
   const [editingModule, setEditingModule] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -392,8 +392,8 @@ export default function AdminTraining() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className={embedded ? "w-full bg-transparent px-4 py-5 md:px-6 md:py-6" : "min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 md:p-8"}>
+      <div className={embedded ? "w-full space-y-5" : "max-w-7xl mx-auto space-y-8"}>
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-slate-200">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
