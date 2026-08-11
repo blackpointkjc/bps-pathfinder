@@ -772,10 +772,10 @@ function AdminTrainingComplianceContent({ embedded = false }) {
               <Printer className="w-4 h-4 mr-2" />Print Report
             </Button>
             <Button variant="outline" onClick={() => { setEditingRequirement(null); setRequirementForm(emptyRequirement); setShowRequirementDialog(true); }}>
-              <Plus className="w-4 h-4 mr-2" />New Training Type
+              <Plus className="w-4 h-4 mr-2" />New Compliance Rule
             </Button>
             <Button variant="outline" className="border-green-300 text-green-700 hover:bg-green-50" onClick={() => setShowRecordDialog(true)}>
-              <CheckCircle className="w-4 h-4 mr-2" />Record Existing Training
+              <CheckCircle className="w-4 h-4 mr-2" />Add Historical Record
             </Button>
             <Button className="bg-blue-700 hover:bg-blue-800" onClick={() => { setAssignForm(emptyAssignment); setShowAssignDialog(true); }}>
               <Users className="w-4 h-4 mr-2" />Assign Training
@@ -790,7 +790,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
             { label: "Pending Review", value: pendingSubmissions.length, color: "text-orange-600" },
             { label: "Approved", value: assignments.filter(a => a.status === 'approved').length, color: "text-green-600" },
             { label: "Rejected", value: assignments.filter(a => a.status === 'rejected').length, color: "text-red-600" },
-            { label: "Training Types", value: requirements.length, color: "text-purple-600" },
+            { label: "Compliance Rules", value: requirements.length, color: "text-purple-600" },
           ].map(s => (
             <Card key={s.label} className="border-none shadow-sm">
               <CardContent className="p-4">
@@ -809,7 +809,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
               {pendingSubmissions.length > 0 && <Badge className="ml-2 bg-orange-500 text-white text-xs">{pendingSubmissions.length}</Badge>}
             </TabsTrigger>
             <TabsTrigger value="assignments">Assignments</TabsTrigger>
-            <TabsTrigger value="templates">Requirements</TabsTrigger>
+            <TabsTrigger value="templates">Compliance Rules</TabsTrigger>
             <TabsTrigger value="overview">Overview & Reports</TabsTrigger>
             <TabsTrigger value="alerts">Certification Alerts</TabsTrigger>
           </TabsList>
@@ -930,7 +930,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
             {/* Training Types (from Requirements) */}
             {requirements.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Training Types (Compliance)</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Compliance Rules</p>
                 {requirements.map(req => (
                   <Card key={req.id} className={`border shadow-sm mb-2 overflow-hidden ${req.active ? 'border-slate-200' : 'border-slate-100 opacity-60'}`}>
                     <div className={`h-1.5 ${req.is_mandatory ? 'bg-gradient-to-r from-red-500 to-rose-600' : 'bg-gradient-to-r from-blue-500 to-indigo-600'}`} />
@@ -1026,11 +1026,11 @@ function AdminTrainingComplianceContent({ embedded = false }) {
       <Dialog open={showRequirementDialog} onOpenChange={setShowRequirementDialog}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingRequirement ? 'Edit Training Type' : 'New Training Type'}</DialogTitle>
+            <DialogTitle>{editingRequirement ? 'Edit Compliance Rule' : 'New Compliance Rule'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Training Name *</Label>
+              <Label>Requirement / Certification Name *</Label>
               <Input value={requirementForm.training_name} onChange={e => setRequirementForm(p => ({ ...p, training_name: e.target.value }))} placeholder="e.g., CPR, DCJS, Fire Watch" list="preset-trainings" />
               <datalist id="preset-trainings">{PRESET_TRAININGS.map(t => <option key={t} value={t} />)}</datalist>
             </div>
@@ -1112,7 +1112,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                 <SelectContent>
                   {requirements.filter(r => r.active).length > 0 && (
                     <>
-                      <div className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wide">Training Types</div>
+                      <div className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wide">Compliance Rules</div>
                       {requirements.filter(r => r.active).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
                     </>
                   )}
@@ -1124,19 +1124,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                   )}
                 </SelectContent>
               </Select>
-              {/* Manual entry */}
-              <div className="flex gap-2">
-                <Input placeholder="Or type a training name and press Add..." list="assign-presets" id="manual-training-input" className="flex-1" />
-                <datalist id="assign-presets">{PRESET_TRAININGS.map(t => <option key={t} value={t} />)}</datalist>
-                <Button type="button" size="sm" variant="outline" onClick={() => {
-                  const input = document.getElementById('manual-training-input');
-                  const name = input?.value?.trim();
-                  if (name && !assignForm.trainings.find(t => t.training_name === name)) {
-                    setAssignForm(p => ({ ...p, trainings: [...p.trainings, { ...emptyAssignmentTraining, training_name: name }] }));
-                    if (input) input.value = '';
-                  }
-                }}><Plus className="w-4 h-4" /></Button>
-              </div>
+              <p className="text-xs text-slate-500">Assignments must come from Training Setup or a saved Compliance Rule so officer records, student training, compliance checks, and certification alerts stay linked to the same source.</p>
               {assignForm.trainings.length > 0 && (
                 <div className="space-y-1 mt-1 p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <p className="text-xs font-semibold text-blue-800 mb-2">{assignForm.trainings.length} training{assignForm.trainings.length !== 1 ? 's' : ''} selected:</p>
@@ -1298,7 +1286,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                     <SelectContent>
                       {requirements.filter(r => r.active).length > 0 && (
                         <>
-                          <div className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wide">Training Types</div>
+                          <div className="px-2 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wide">Compliance Rules</div>
                           {requirements.filter(r => r.active).map(r => <SelectItem key={r.id} value={r.id}>{r.training_name}</SelectItem>)}
                         </>
                       )}
