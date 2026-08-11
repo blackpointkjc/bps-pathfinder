@@ -442,7 +442,12 @@ function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, acti
 function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActiveCenter, currentPageName, search, setSearch, unreadCounts = {}, onCloseMobile, onToggleCollapsed, onLogout }) {
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
   const [openNavGroup, setOpenNavGroup] = useState(() => sessionStorage.getItem(`bps-open-nav-group:${activeCenter}`) || '');
-  const availableCenters = allowedCenters(user).filter(center => !mobile || ['cad', 'officer', 'supervisor', 'admin'].includes(center));
+  const allAllowedCenters = allowedCenters(user);
+  // Support Clock lives inside Admin and HR. Do not waste desktop sidebar space
+  // on a duplicate Support Center when the user already has another center.
+  const availableCenters = allAllowedCenters
+    .filter(center => center !== 'support' || allAllowedCenters.length === 1)
+    .filter(center => !mobile || ['cad', 'officer', 'supervisor', 'admin'].includes(center));
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
   const query = search.trim().toLowerCase();
   const desktopCenterPage = !mobile ? DESKTOP_CENTER_PAGE[activeCenter] : null;
@@ -542,7 +547,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
                 </Select>
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="grid grid-cols-3 gap-2 rounded-xl border border-[#203a52] bg-[#07131f]/70 p-2">
                 {availableCenters.map(key => {
                   const item = CENTER_CONFIG[key];
                   const Icon = item.icon;
@@ -554,11 +559,12 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
                       key={key}
                       to={createPageUrl(target)}
                       onClick={() => setActiveCenter(key)}
-                      className={`relative flex min-h-9 min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 transition ${active ? 'border-cyan-500/60 bg-[#12304a] text-white' : 'border-transparent bg-transparent text-[#91a8bf] hover:border-[#25435e] hover:bg-[#102b47] hover:text-white'}`}
+                      title={item.label}
+                      className={`relative flex min-h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border px-1.5 py-2 text-center transition ${active ? 'border-cyan-400/70 bg-[#12304a] text-white shadow-[0_0_0_1px_rgba(34,211,238,.08)]' : 'border-transparent bg-[#0a1927] text-[#91a8bf] hover:border-[#31506d] hover:bg-[#102b47] hover:text-white'}`}
                     >
                       <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-cyan-300' : 'text-[#6683a0]'}`} />
-                      <span className="min-w-0 flex-1 truncate text-[10px] font-black">{item.label}</span>
-                      {!!centerUnread && <span className="rounded-full bg-red-500 px-1.5 text-[8px] font-black text-white">{centerUnread > 99 ? '99+' : centerUnread}</span>}
+                      <span className="w-full truncate text-[8px] font-black leading-tight">{item.label.replace(' Center', '').replace(' Portal', '')}</span>
+                      {!!centerUnread && <span className="absolute right-1 top-1 rounded-full bg-red-500 px-1 text-[7px] font-black text-white">{centerUnread > 99 ? '99+' : centerUnread}</span>}
                     </Link>
                   );
                 })}
