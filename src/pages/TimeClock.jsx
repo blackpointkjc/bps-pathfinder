@@ -129,6 +129,9 @@ function distanceToPolygonEdge(lat, lng, polygon = []) {
 function verifyAgainstLocationBoundary(location, lat, lng) {
   if (!location) return { ok: false, message: 'Location not found.' };
   if (location.is_special_event) return { ok: true };
+  if (location.allow_clock_in_anywhere === true) {
+    return { ok: true, boundaryOverride: true, distance: null };
+  }
 
   // Use the site's canonical officer boundary first, but accept the same property
   // monitoring polygon as a fallback. GPS can drift a few meters at a building edge,
