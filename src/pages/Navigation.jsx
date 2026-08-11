@@ -18,6 +18,7 @@ import OfficerDistressMarker from '@/components/map/OfficerDistressMarker';
 import FieldCallActions from '@/components/dispatch/FieldCallActions';
 import { getLiveLocation, subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 import { announceNavigationInstruction, stopVoice } from '@/utils/voiceAnnouncer';
+import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 
 const PRIORITY_COLORS = {
     critical: 'bg-red-600 text-white',
@@ -593,7 +594,7 @@ export default function Navigation() {
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
             const active = [...uniqueCalls.values()].filter(c => {
-                const receivedAt = new Date(c.time_received || c.created_date).getTime();
+                const receivedAt = parseServerTimestamp(c.time_received || c.created_date)?.getTime() || 0;
                 const isFresh = Number.isFinite(receivedAt) && Date.now() - receivedAt < 61 * 60 * 1000;
                 return isFresh && !['Cleared', 'Cancelled'].includes(c.status);
             });
@@ -1248,7 +1249,7 @@ export default function Navigation() {
                                 {[
                                     { label: 'AGENCY', value: selectedCall.agency || '—' },
                                     { label: 'DISTRICT', value: callDistrict !== null ? callDistrict : (selectedCall.zone || '—') },
-                                    { label: 'TIME RCV', value: selectedCall.time_received ? new Date(selectedCall.time_received).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' }) : '—' },
+                                    { label: 'TIME RCV', value: selectedCall.time_received ? `${formatEasternTime(selectedCall.time_received)} ET` : '—' },
                                     { label: 'CALLER', value: selectedCall.caller_name || '—' },
                                 ].map(({ label, value }) => (
                                     <div key={label} className="bg-[#111827] border border-[#1e2d4a] rounded-lg p-2">
