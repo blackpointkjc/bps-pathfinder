@@ -182,18 +182,35 @@ export default function AdminLocations() {
   const clientUsers = directoryUsers.filter(isClientAccount);
   const supervisorUsers = directoryUsers.filter(u => (u.additional_roles || []).map(r => String(r).toLowerCase()).includes('supervisor'));
 
+  const syncClientLocationAssignments = async () => {
+    // Locations are the source of truth. Rebuild every client account's assigned
+    // site list so reassignment/removal cannot leave stale portal access behind.
+    const [allLocations, allUsers] = await Promise.all([
+      base44.entities.Location.list('site_name', 1000),
+      base44.entities.User.list('last_name', 1000),
+    ]);
+    const clients = (allUsers || []).filter(isClientAccount);
+    await Promise.all(clients.map(async client => {
+      const email = String(client.email || '').trim().toLowerCase();
+      if (!email) return;
+      const assigned = (allLocations || [])
+        .filter(location => String(location.assigned_client_email || '').trim().toLowerCase() === email)
+        .map(location => location.site_name)
+        .filter(Boolean);
+      const uniqueAssigned = [...new Set(assigned)];
+      await base44.entities.User.update(client.id, {
+        assigned_locations: uniqueAssigned,
+        assigned_location: uniqueAssigned[0] || '',
+      });
+    }));
+  };
+
   const createLocationMutation = useMutation({
     mutationFn: (data) => base44.entities.Location.create(data),
-    onSuccess: async (newLocation) => {
+    onSuccess: async () => {
+      await syncClientLocationAssignments().catch(error => console.warn('Client location sync failed:', error?.message));
       queryClient.invalidateQueries({ queryKey: ['locations'] });
-
-      // If a client was assigned, update their user record
-      if (newLocation.assigned_client_email) {
-        const clientUsers = await base44.entities.User.filter({ email: newLocation.assigned_client_email });
-        if (clientUsers.length > 0) {
-          await base44.entities.User.update(clientUsers[0].id, { assigned_location: newLocation.site_name });
-        }
-      }
+      queryClient.invalidateQueries({ queryKey: ['directoryUsers'] });
 
       setShowDialog(false);
       setEditingLocation(null);
@@ -203,16 +220,10 @@ export default function AdminLocations() {
 
   const updateLocationMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Location.update(id, data),
-    onSuccess: async (updatedLocation) => {
+    onSuccess: async () => {
+      await syncClientLocationAssignments().catch(error => console.warn('Client location sync failed:', error?.message));
       queryClient.invalidateQueries({ queryKey: ['locations'] });
-
-      // If a client was assigned, update their user record
-      if (updatedLocation.assigned_client_email) {
-        const clientUsers = await base44.entities.User.filter({ email: updatedLocation.assigned_client_email });
-        if (clientUsers.length > 0) {
-          await base44.entities.User.update(clientUsers[0].id, { assigned_location: updatedLocation.site_name });
-        }
-      }
+      queryClient.invalidateQueries({ queryKey: ['directoryUsers'] });
 
       setShowDialog(false);
       setEditingLocation(null);
