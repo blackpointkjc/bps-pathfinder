@@ -263,6 +263,17 @@ const PAGE_TO_CENTERS = Object.entries(CENTER_CONFIG).reduce((map, [center, conf
   return map;
 }, {});
 
+const DESKTOP_CENTER_PAGE = {
+  admin: 'AdminCenter',
+  hr: 'HRCenter',
+  supervisor: 'SupervisorCenter',
+  client: 'ClientCenter',
+  training: 'TrainerCenter',
+};
+Object.entries(DESKTOP_CENTER_PAGE).forEach(([center, page]) => {
+  PAGE_TO_CENTERS[page] = [...new Set([...(PAGE_TO_CENTERS[page] || []), center])];
+});
+
 const FULL_ACCESS_PAGES = new Set(['Personnel', 'PathfinderReports', 'AdminPortal']);
 const ROOT_PAGES = new Set(['CommandDashboard', 'Dashboard', 'OfficerInbox']);
 const CENTER_UNREAD_PAGES = {
@@ -402,7 +413,11 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
   const availableCenters = allowedCenters(user).filter(center => !mobile || ['cad', 'officer', 'supervisor', 'admin'].includes(center));
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
   const query = search.trim().toLowerCase();
-  const groups = center.groups
+  const desktopCenterPage = !mobile ? DESKTOP_CENTER_PAGE[activeCenter] : null;
+  const sourceGroups = desktopCenterPage
+    ? [{ label: 'Workspace', items: [[center.label, desktopCenterPage, center.icon]] }]
+    : center.groups;
+  const groups = sourceGroups
     .filter(group => !group.fullAccessOnly || hasFullAccess(user))
     .filter(group => !mobileSection || (mobileSection === 'reports' && activeCenter === 'officer' && group.label === 'Reports'))
     .map(group => ({
@@ -412,7 +427,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
     .filter(group => group.items.length > 0);
 
   useEffect(() => {
-    const groupForPage = center.groups
+    const groupForPage = sourceGroups
       .filter(group => !group.fullAccessOnly || hasFullAccess(user))
       .find(group => group.items.some(([, page]) => page === currentPageName));
     const remembered = sessionStorage.getItem(`bps-open-nav-group:${activeCenter}`);
@@ -627,9 +642,10 @@ export default function Layout({ children, currentPageName }) {
 
     const remembered = centerLastPagesRef.current?.[center];
     const rememberedCenters = remembered ? (PAGE_TO_CENTERS[remembered] || []) : [];
-    const target = remembered && rememberedCenters.includes(center) && canAccessPage(user, remembered)
+    const desktopDefault = !isMobileViewport ? DESKTOP_CENTER_PAGE[center] : null;
+    const target = desktopDefault || (remembered && rememberedCenters.includes(center) && canAccessPage(user, remembered)
       ? remembered
-      : defaultPageForCenter(center);
+      : defaultPageForCenter(center));
 
     if (target && target !== currentPageName) {
       navigate(createPageUrl(target));
