@@ -144,7 +144,6 @@ export default function OfficerCertificationCenter() {
         training_name: selectedTraining.name,
         category: selectedTraining.category,
         requirement_id: selectedTraining.requirement_id || '',
-        training_module_id: selectedTraining.module_id || '',
         description: selectedTraining.description,
         assigned_date: format(new Date(), 'yyyy-MM-dd'),
         due_date: due,
