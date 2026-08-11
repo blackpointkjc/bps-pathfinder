@@ -495,13 +495,14 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                   <div><Label className="text-xs text-slate-500">Unit Number</Label><Input value={editFormData.unit_number || ""} onChange={(e) => setEditFormData({...editFormData, unit_number: e.target.value})} /></div>
                   <div>
                     <Label className="text-xs text-slate-500">Division</Label>
-                    <Select value={editFormData.division || "none"} onValueChange={(v) => setEditFormData({...editFormData, division: v === "none" ? "" : v, subdivision: ""})}>
-                      <SelectTrigger><SelectValue placeholder="Select division..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {divisions?.filter(d => !d.is_subdivision).map(d => <SelectItem key={d.id} value={d.division_name}>{d.division_name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <select
+                      value={editFormData.division || ''}
+                      onChange={(e) => setEditFormData(prev => ({...prev, division: e.target.value, subdivision: ''}))}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
+                    >
+                      <option value="">None</option>
+                      {divisions?.filter(d => !d.is_subdivision && d.active !== false).map(d => <option key={d.id} value={d.division_name}>{d.division_name}</option>)}
+                    </select>
                   </div>
                   <div><Label className="text-xs text-slate-500">Hire Date</Label><Input type="date" value={editFormData.hire_date || ""} onChange={(e) => setEditFormData({...editFormData, hire_date: e.target.value})} /></div>
                   <div>
