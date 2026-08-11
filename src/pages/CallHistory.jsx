@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Search, RefreshCw, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
+import { formatEasternDateTime, parseServerTimestamp } from '@/lib/easternTime';
 
 const AGENCY_COLORS = {
     RPD: 'bg-blue-800 text-blue-200 border-blue-700',
@@ -27,26 +28,12 @@ const STATUS_COLORS = {
     Cancelled: 'bg-slate-700 text-slate-500 border-slate-600',
 };
 
-// Base44 server timestamps are normally UTC. Some legacy records are stored as
-// ISO timestamps without a trailing Z; Date.parse() treats those as local time,
-// which caused PropertyAlert history to display UTC clock values as ET.
 function parseServerDate(value) {
-    if (!value) return null;
-    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-    const raw = String(value).trim();
-    if (!raw) return null;
-    const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw) ? raw : `${raw}Z`;
-    const date = new Date(normalized);
-    return Number.isNaN(date.getTime()) ? null : date;
+    return parseServerTimestamp(value);
 }
 
 function fmtDT(dateStr) {
-    const date = parseServerDate(dateStr);
-    if (!date) return '—';
-    return date.toLocaleString('en-US', {
-        timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-    });
+    return formatEasternDateTime(dateStr, { second: '2-digit', hour12: true });
 }
 
 function agencyKey(agency) {
