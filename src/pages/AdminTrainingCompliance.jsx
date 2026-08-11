@@ -987,11 +987,11 @@ export default function AdminTrainingCompliance({ embedded = false }) {
           </TabsContent>
 
           <TabsContent value="overview" className="mt-4">
-            <TrainingComplianceTracker />
+            <TrainingComplianceTracker embedded />
           </TabsContent>
 
           <TabsContent value="alerts" className="mt-4">
-            <AdminCertificationAlerts />
+            <AdminCertificationAlerts embedded />
           </TabsContent>
 
           {/* Training Templates Tab */}
