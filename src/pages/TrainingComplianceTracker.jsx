@@ -27,7 +27,7 @@ const STATUS_COLORS = {
   expiring_soon: "bg-amber-100 text-amber-800",
 };
 
-export default function TrainingComplianceTracker() {
+export default function TrainingComplianceTracker({ embedded = false }) {
   const [filters, setFilters] = useState({ officer: "", training: "", status: "all", dueDateStart: "", dueDateEnd: "", expDateStart: "", expDateEnd: "" });
   const [viewMode, setViewMode] = useState("overview"); // overview | by-officer | by-training
   const [markCompleteDialog, setMarkCompleteDialog] = useState(null); // { module, officerEmail?, officerName? }
@@ -525,8 +525,8 @@ export default function TrainingComplianceTracker() {
 
   return (
     <>
-    <div className="min-h-screen w-full overflow-x-hidden bg-[#080f1a] p-3 text-slate-100 md:p-5">
-      <div className="mx-auto w-full max-w-[1600px] min-w-0 space-y-5">
+    <div className={embedded ? "w-full overflow-x-hidden bg-transparent text-slate-100" : "min-h-screen w-full overflow-x-hidden bg-[#080f1a] p-3 text-slate-100 md:p-5"}>
+      <div className={embedded ? "w-full min-w-0 space-y-5" : "mx-auto w-full max-w-[1600px] min-w-0 space-y-5"}>
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
