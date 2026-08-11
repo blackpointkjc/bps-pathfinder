@@ -2473,28 +2473,23 @@ Return ONLY a JSON array of suggestion objects with this structure:
 
               <div className="bg-white p-3 rounded-lg border border-slate-200">
                 <Label className="text-xs text-slate-600 mb-2 block">Filter by Division/Subdivision</Label>
-                <Select value={selectedDivision} onValueChange={setSelectedDivision}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by division..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Divisions</SelectItem>
-                    {divisions
-                      ?.filter(d => !d.is_subdivision)
-                      .map((div) => (
-                        <SelectItem key={div.id} value={div.division_name}>
-                          {div.division_name}
-                        </SelectItem>
-                      ))}
-                    {divisions
-                      ?.filter(d => d.is_subdivision)
-                      .map((div) => (
-                        <SelectItem key={div.id} value={div.subdivision || div.division_name}>
-                          {div.parent_division ? `${div.parent_division} → ` : ''}{div.subdivision || div.division_name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                <select
+                  value={selectedDivision}
+                  onChange={(e) => setSelectedDivision(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="all">All Divisions</option>
+                  {divisions
+                    ?.filter(d => !d.is_subdivision && d.active !== false)
+                    .map((div) => (
+                      <option key={div.id} value={div.division_name}>{div.division_name}</option>
+                    ))}
+                  {divisions
+                    ?.filter(d => d.is_subdivision && d.active !== false)
+                    .map((div) => (
+                      <option key={div.id} value={div.subdivision || div.division_name}>{div.parent_division ? `${div.parent_division} → ` : ''}{div.subdivision || div.division_name}</option>
+                    ))}
+                </select>
               </div>
 
               <div className="bg-white p-3 rounded-lg border border-slate-200">
