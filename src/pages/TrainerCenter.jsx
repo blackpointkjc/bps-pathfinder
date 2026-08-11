@@ -3,6 +3,7 @@ import { BookOpen, GraduationCap, ShieldCheck, Users, Award, Bell } from 'lucide
 import AdminTraining from './AdminTraining';
 import TrainingRecords from './TrainingRecords';
 import AdminTrainingCompliance from './AdminTrainingCompliance';
+import TrainingComplianceTracker from './TrainingComplianceTracker';
 import ManageStudents from './ManageStudents';
 import ManageCompanyEmployees from './ManageCompanyEmployees';
 import AdminCertificationAlerts from './AdminCertificationAlerts';
@@ -22,6 +23,7 @@ export default function TrainerCenter() {
     return SECTIONS.some(section => section.id === requested) ? requested : 'compliance';
   }, []);
   const [section, setSection] = useState(initial);
+  const [complianceView, setComplianceView] = useState('records');
 
   const selectSection = (next) => {
     setSection(next);
@@ -69,7 +71,17 @@ export default function TrainerCenter() {
       <div className="mx-auto w-full max-w-[1600px] overflow-x-hidden">
         {section === 'courses' && <AdminTraining />}
         {section === 'classes' && <TrainingRecords />}
-        {section === 'compliance' && <AdminTrainingCompliance />}
+        {section === 'compliance' && (
+          <div>
+            <div className="sticky top-0 z-20 border-b border-slate-800 bg-[#08111e]/95 px-4 py-2 backdrop-blur md:px-6">
+              <div className="mx-auto flex max-w-[1600px] gap-2">
+                <button type="button" onClick={() => setComplianceView('records')} className={`rounded-lg px-3 py-2 text-xs font-bold ${complianceView === 'records' ? 'bg-blue-600 text-white' : 'border border-slate-700 bg-slate-900 text-slate-300'}`}>Management & Officer Records</button>
+                <button type="button" onClick={() => setComplianceView('overview')} className={`rounded-lg px-3 py-2 text-xs font-bold ${complianceView === 'overview' ? 'bg-blue-600 text-white' : 'border border-slate-700 bg-slate-900 text-slate-300'}`}>Compliance Overview & Reports</button>
+              </div>
+            </div>
+            {complianceView === 'records' ? <AdminTrainingCompliance /> : <TrainingComplianceTracker />}
+          </div>
+        )}
         {section === 'students' && <ManageStudents />}
         {section === 'officers' && <ManageCompanyEmployees portalContext="training" />}
         {section === 'alerts' && <AdminCertificationAlerts />}
