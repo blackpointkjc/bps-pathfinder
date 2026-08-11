@@ -22,6 +22,20 @@
       "type": "string",
       "description": "Call location"
     },
+    "callTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Authoritative dispatch call received time"
+    },
+    "time_received": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Compatibility copy of the dispatch received time"
+    },
+    "source_key": {
+      "type": "string",
+      "description": "Stable call/property fingerprint used to prevent duplicate alerts"
+    },
     "distanceMeters": {
       "type": "number",
       "description": "Distance from property to call in meters"
