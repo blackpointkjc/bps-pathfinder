@@ -392,6 +392,7 @@ export default function AdminTrainingCompliance() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allTrainingAssignments'] });
       queryClient.invalidateQueries({ queryKey: ['allTrainingSubmissions'] });
+      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       setReviewingSubmission(null);
       setRejectionReason("");
       setAdminNotes("");
@@ -493,6 +494,7 @@ export default function AdminTrainingCompliance() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allTrainingAssignments'] });
       queryClient.invalidateQueries({ queryKey: ['allTrainingSubmissions'] });
+      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
       setShowRecordDialog(false);
       setRecordForm({ officer_email: "", entries: [{ ...emptyRecordEntry }] });
       toast.success(`${recordForm.entries.length} training${recordForm.entries.length !== 1 ? 's' : ''} recorded successfully`);
