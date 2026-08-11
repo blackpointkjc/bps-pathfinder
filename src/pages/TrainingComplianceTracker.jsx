@@ -320,8 +320,10 @@ export default function TrainingComplianceTracker() {
       if (filters.officer && !a.officer_name?.toLowerCase().includes(filters.officer.toLowerCase()) && !a.officer_email?.toLowerCase().includes(filters.officer.toLowerCase())) return false;
       if (filters.training && !a.training_name?.toLowerCase().includes(filters.training.toLowerCase())) return false;
       if (filters.status !== 'all' && eff !== filters.status) return false;
-      if (filters.dueDateStart && a.due_date && isBefore(parseISO(a.due_date), parseISO(filters.dueDateStart))) return false;
-      if (filters.dueDateEnd && a.due_date && isAfter(parseISO(a.due_date), parseISO(filters.dueDateEnd))) return false;
+      if (filters.dueDateStart && (!a.due_date || isBefore(parseISO(a.due_date), parseISO(filters.dueDateStart)))) return false;
+      if (filters.dueDateEnd && (!a.due_date || isAfter(parseISO(a.due_date), parseISO(filters.dueDateEnd)))) return false;
+      if (filters.expDateStart && (!a.expiration_date || isBefore(parseISO(a.expiration_date), parseISO(filters.expDateStart)))) return false;
+      if (filters.expDateEnd && (!a.expiration_date || isAfter(parseISO(a.expiration_date), parseISO(filters.expDateEnd)))) return false;
       return true;
     });
   }, [complianceRows, filters]);
@@ -345,7 +347,7 @@ export default function TrainingComplianceTracker() {
       map[a.training_name].total++;
       if (eff === 'approved') map[a.training_name].approved++;
       else if (eff === 'pending_review') map[a.training_name].pending++;
-      else if (eff === 'overdue') map[a.training_name].overdue++;
+      else if (eff === 'overdue' || eff === 'expired') map[a.training_name].overdue++;
       else if (eff === 'rejected') map[a.training_name].rejected++;
       else map[a.training_name].not_started++;
     });
@@ -377,14 +379,14 @@ export default function TrainingComplianceTracker() {
       map[key].total++;
       if (eff === 'approved') map[key].approved++;
       else if (eff === 'pending_review') map[key].pending++;
-      else if (eff === 'overdue') map[key].overdue++;
+      else if (eff === 'overdue' || eff === 'expired') map[key].overdue++;
       else map[key].not_started++;
     });
     return Object.values(map).sort((a, b) => b.total - a.total);
   }, [filteredAssignments]);
 
   const printReport = (type) => {
-    const data = type === 'overdue' ? filteredAssignments.filter(a => getEffectiveStatus(a) === 'overdue')
+    const data = type === 'overdue' ? filteredAssignments.filter(a => ['overdue','expired'].includes(getEffectiveStatus(a)))
       : type === 'pending' ? filteredAssignments.filter(a => a.status === 'pending_review')
       : filteredAssignments;
 
