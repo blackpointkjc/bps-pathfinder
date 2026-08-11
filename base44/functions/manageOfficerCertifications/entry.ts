@@ -28,12 +28,10 @@ Deno.serve(async (req) => {
     if (!authorized) return Response.json({ error: 'Trainer access required' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
-    if (!body.user_id || !Array.isArray(body.officer_certifications)) {
-      return Response.json({ error: 'user_id and officer_certifications are required' }, { status: 400 });
-    }
-
     const users = await base44.asServiceRole.entities.User.list(undefined, 1000);
-    const target = (users || []).find((u: any) => u.id === body.user_id);
+    const target = body.user_id
+      ? (users || []).find((u: any) => u.id === body.user_id)
+      : (users || []).find((u: any) => String(u.email || '').toLowerCase() === String(body.officer_email || '').toLowerCase());
     if (!target) return Response.json({ error: 'Officer not found' }, { status: 404 });
 
     const targetRoles = new Set((target.additional_roles || []).map((r: string) => String(r).toLowerCase()));
@@ -42,7 +40,23 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Certification management is limited to company personnel' }, { status: 403 });
     }
 
-    const certs = body.officer_certifications;
+    let certs: any[];
+    if (body.action === 'upsert') {
+      if (!body.cert || typeof body.cert !== 'object') return Response.json({ error: 'cert is required for upsert' }, { status: 400 });
+      const current = Array.isArray(target.officer_certifications) ? [...target.officer_certifications] : [];
+      const normalize = (value: any) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const idx = current.findIndex((entry: any) => {
+        const courseMatch = body.cert.course_id && normalize(entry.course_id) === normalize(body.cert.course_id);
+        const nameMatch = normalize(entry.training_name || entry.name) === normalize(body.cert.training_name || body.cert.name);
+        return courseMatch || nameMatch;
+      });
+      const next = { ...(idx >= 0 ? current[idx] : {}), ...body.cert };
+      if (idx >= 0) current[idx] = next; else current.push(next);
+      certs = current;
+    } else {
+      if (!Array.isArray(body.officer_certifications)) return Response.json({ error: 'officer_certifications are required' }, { status: 400 });
+      certs = body.officer_certifications;
+    }
     const updates = {
       officer_certifications: certs,
       dcjs_expiration: computeDcjsExpiration(certs),
