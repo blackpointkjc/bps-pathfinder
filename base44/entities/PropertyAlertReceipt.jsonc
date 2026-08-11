@@ -11,6 +11,10 @@
     "property_id": {
       "type": "string"
     },
+    "event_key": {
+      "type": "string",
+      "description": "Stable property + upstream CAD call identity used across recycled internal row IDs"
+    },
     "user_email": {
       "type": "string"
     },
@@ -30,6 +34,7 @@
     "alert_id",
     "call_id",
     "property_id",
+    "event_key",
     "user_email",
     "action",
     "dismissed_at"
