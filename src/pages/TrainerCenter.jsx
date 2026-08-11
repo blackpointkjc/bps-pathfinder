@@ -1,17 +1,15 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, GraduationCap, ShieldCheck, Users, Bell } from 'lucide-react';
+import { BookOpen, GraduationCap, ShieldCheck, Users } from 'lucide-react';
 import AdminTraining from './AdminTraining';
 import TrainingRecords from './TrainingRecords';
 import AdminTrainingCompliance from './AdminTrainingCompliance';
 import ManageStudents from './ManageStudents';
-import AdminCertificationAlerts from './AdminCertificationAlerts';
 
 const SECTIONS = [
-  { id: 'courses', label: 'Courses & Modules', description: 'Create and manage online/company training', icon: GraduationCap },
-  { id: 'classes', label: 'Classes & Certificates', description: 'In-person classes, rosters, certificates and school settings', icon: BookOpen },
-  { id: 'compliance', label: 'Compliance & Officer Records', description: 'Assignments, reviews, certifications, requirements and reporting', icon: ShieldCheck },
+  { id: 'courses', label: 'Training Setup', description: 'The single place to create and manage training courses/modules', icon: GraduationCap },
+  { id: 'classes', label: 'Training Records', description: 'The single place for classes, rosters, certificates and school records', icon: BookOpen },
+  { id: 'compliance', label: 'Compliance & Records', description: 'Officer certifications, assignments, reviews, requirements, alerts and reporting', icon: ShieldCheck },
   { id: 'students', label: 'Students', description: 'Student accounts and assigned training', icon: Users },
-  { id: 'alerts', label: 'Certification Alerts', description: 'Expiring and expired certification alerts', icon: Bell },
 ];
 
 export default function TrainerCenter() {
@@ -36,12 +34,12 @@ export default function TrainerCenter() {
             <div>
               <div className="text-xs font-black uppercase tracking-[0.18em] text-cyan-400">Training Operations</div>
               <h1 className="mt-1 text-2xl font-black tracking-tight text-white md:text-3xl">Trainer Center</h1>
-              <p className="mt-1 max-w-3xl text-sm text-slate-400">One workspace for courses, classes, compliance, officer certifications, student management, and training alerts.</p>
+              <p className="mt-1 max-w-3xl text-sm text-slate-400">One workspace with one training setup, one training-record system, one compliance/officer-record system, and student management.</p>
             </div>
             <div className="text-xs text-slate-500">Legacy trainer pages remain route-compatible, but day-to-day work is consolidated here.</div>
           </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
+          <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-4">
             {SECTIONS.map(({ id, label, description, icon: Icon }) => {
               const active = section === id;
               return (
@@ -69,7 +67,6 @@ export default function TrainerCenter() {
         {section === 'classes' && <TrainingRecords />}
         {section === 'compliance' && <AdminTrainingCompliance />}
         {section === 'students' && <ManageStudents />}
-        {section === 'alerts' && <AdminCertificationAlerts />}
       </div>
     </div>
   );
