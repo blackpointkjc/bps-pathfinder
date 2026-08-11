@@ -563,6 +563,26 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
       </div>}
 
       <nav className="flex-1 overflow-y-auto px-2 py-2">
+        {collapsed && !mobile && (
+          <div className="mb-2 space-y-1 border-b border-[#1b3048] pb-2">
+            {availableCenters.map(key => {
+              const item = CENTER_CONFIG[key];
+              const Icon = item.icon;
+              const target = DESKTOP_CENTER_PAGE[key] || defaultPageForCenter(key);
+              return (
+                <Link
+                  key={`collapsed-${key}`}
+                  to={createPageUrl(target)}
+                  onClick={() => setActiveCenter(key)}
+                  title={item.label}
+                  className={`flex h-10 w-full items-center justify-center rounded-lg border transition ${activeCenter === key ? 'border-cyan-500/60 bg-[#12304a] text-cyan-300' : 'border-transparent text-[#6683a0] hover:bg-[#0d2236] hover:text-white'}`}
+                >
+                  <Icon className="h-4 w-4" />
+                </Link>
+              );
+            })}
+          </div>
+        )}
         <Link
           to={createPageUrl('OfficerInbox')}
           title={collapsed && !mobile ? 'Inbox' : undefined}
