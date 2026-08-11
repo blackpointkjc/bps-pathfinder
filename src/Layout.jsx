@@ -890,29 +890,31 @@ export default function Layout({ children, currentPageName }) {
       try {
         // PropertyAlert is a shared event; acknowledgement/silence is stored per user.
         // Dedupe by call+property so legacy duplicate alert rows cannot re-open the popup.
-        const [alerts, receipts] = await Promise.all([
+        const [alerts, receipts, activeCalls] = await Promise.all([
           base44.entities.PropertyAlert.list('-created_date', 100).catch(() => []),
           user?.email ? base44.entities.PropertyAlertReceipt.filter({ user_email: String(user.email).trim().toLowerCase() }, '-dismissed_at', 300).catch(() => []) : Promise.resolve([]),
+          base44.entities.DispatchCall.list('-created_date', 300).catch(() => []),
         ]);
         const dismissedPairs = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
+        const activeCallById = new Map((activeCalls || [])
+          .filter(call => !['Cleared', 'Cancelled'].includes(call.status))
+          .map(call => [String(call.id), call]));
         const seenPairs = new Set();
         const record = (alerts || []).find(item => {
           const pair = `${item.callId}:${item.propertyId}`;
           if (seenPairs.has(pair)) return false;
           seenPairs.add(pair);
-          return !dismissedPairs.has(pair)
+          return activeCallById.has(String(item.callId))
+            && !dismissedPairs.has(pair)
             && !dismissedPropertyAlertKeysRef.current.has(pair)
             && !dismissedPropertyAlertIdsRef.current.has(item.id);
         });
         if (!record || cancelled) return;
-        const [callRows, locationRows] = await Promise.all([
-          base44.entities.DispatchCall.filter({ id: record.callId }).catch(() => []),
-          base44.entities.Location.filter({ id: record.propertyId }).catch(() => []),
-        ]);
+        const locationRows = await base44.entities.Location.filter({ id: record.propertyId }).catch(() => []);
         if (cancelled) return;
-        const call = callRows?.[0];
+        const call = activeCallById.get(String(record.callId));
         const location = locationRows?.[0];
-        if (!call || !location || ['Cleared', 'Cancelled'].includes(call.status)) return;
+        if (!call || !location) return;
         const key = `${call.id}:${location.id}`;
         const relation = String(record.description || '').toLowerCase().includes('inside') ? 'inside' : 'nearby';
         setPropertyAlert({
