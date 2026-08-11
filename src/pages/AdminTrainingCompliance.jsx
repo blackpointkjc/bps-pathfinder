@@ -23,6 +23,7 @@ import TrainingComplianceTracker from './TrainingComplianceTracker';
 import AdminCertificationAlerts from './AdminCertificationAlerts';
 import { listTrainingUsers } from '@/lib/trainingDirectory';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
+import { Navigate } from 'react-router-dom';
 
 const CATEGORIES = [
   { value: "certification", label: "Certification" },
@@ -70,7 +71,7 @@ const emptyAssignmentTraining = {
   requires_certificate_number: false, renewal_period_months: 0, renewal_requirement_id: "",
 };
 
-export default function AdminTrainingCompliance({ embedded = false }) {
+function AdminTrainingComplianceContent({ embedded = false }) {
   const [activeTab, setActiveTab] = useState("officer-records");
   const [showRequirementDialog, setShowRequirementDialog] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
@@ -1720,4 +1721,9 @@ export default function AdminTrainingCompliance({ embedded = false }) {
       </Dialog>
     </div>
   );
+}
+
+export default function AdminTrainingCompliance(props) {
+  if (!props.embedded) return <Navigate to="/TrainerCenter?section=compliance" replace />;
+  return <AdminTrainingComplianceContent {...props} />;
 }
