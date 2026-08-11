@@ -275,6 +275,31 @@ Object.entries(DESKTOP_CENTER_PAGE).forEach(([center, page]) => {
   PAGE_TO_CENTERS[page] = [...new Set([...(PAGE_TO_CENTERS[page] || []), center])];
 });
 
+const DESKTOP_LEGACY_TOOL_ROUTES = {
+  AdminDashboard: ['admin','command','dashboard'], AdminAnalytics: ['admin','command','analytics'], AdminLocationTracker: ['admin','command','tracker'], AdminGeofenceAlerts: ['admin','command','geofence'],
+  AdminScheduling: ['admin','schedule','scheduling'], FleetVehicleAssignments: ['admin','schedule','fleet'], AdminOfficerManagement: ['admin','schedule','availability'], AdminPlannedShifts: ['admin','schedule','planned'], AdminShiftBids: ['admin','schedule','bids'],
+  AdminUsers: ['admin','people','users'], AdminPlatoonAssignments: ['admin','people','chain'], AdminLocations: ['admin','people','locations'], AdminEquipment: ['admin','people','equipment'], AdminPostOrders: ['admin','people','postorders'],
+  AdminReports: ['admin','reports','allreports'], AdminClientReports: ['admin','reports','clientreports'], AdminSupervisorReports: ['admin','reports','supervisorreports'], AdminConfidentialReports: ['admin','reports','confidential'], AdminComplaints: ['admin','reports','complaints'], AdminCommendations: ['admin','reports','commendations'], AdminClientFeedback: ['admin','reports','feedback'],
+  AdminAnnouncements: ['admin','communications','announcements'], AdminNotifications: ['admin','communications','notifications'], AdminSpecialRequests: ['admin','communications','requests'], AdminDocuments: ['admin','communications','documents'],
+  AdminQRCheckpoints: ['admin','system','qrcheckpoints'], AdminQRPrintManager: ['admin','system','qrprint'], AdminQRReports: ['admin','system','qrreports'], AdminPortalSettings: ['admin','system','settings'],
+  HRManageCompanyEmployees: ['hr','employees','employees'], ManageTimeEntries: ['hr','employees','timeentries'], AdminDivisions: ['hr','employees','divisions'], AdminPTOApproval: ['hr','leave','pto'], AdminManualPTO: ['hr','leave','manualpto'], AdminPTOLossReport: ['hr','leave','ptoloss'], AdminPerformanceReviews: ['hr','leave','reviews'], ManageClients: ['hr','clients','clients'],
+  SupervisorTasks: ['supervisor','today','tasks'], SupervisorDailyCode: ['supervisor','today','code'], SupervisorCallOuts: ['supervisor','today','callouts'], SupervisorInspections: ['supervisor','oversight','inspections'], SupervisorPerformanceReview: ['supervisor','oversight','reviews'], SupervisorWriteUps: ['supervisor','oversight','writeups'], SupervisorUseOfForce: ['supervisor','oversight','force'], SupervisorComplaints: ['supervisor','oversight','complaints'], DivisionDirectory: ['supervisor','people','directory'], SupervisorChat: ['supervisor','people','chat'],
+  ClientDashboard: ['client','overview','dashboard'], ClientAlerts: ['client','overview','alerts'], ClientCallHistory: ['client','overview','calls'], ClientSchedule: ['client','site','schedule'], ClientSupervisors: ['client','site','supervisors'], ClientLocation: ['client','site','location'], ClientTrespass: ['client','site','trespass'], ClientReports: ['client','records','reports'], ClientQRReports: ['client','records','qr'], ClientDocuments: ['client','records','documents'], ClientSpecialRequests: ['client','requests','special'], ClientPayrollReport: ['client','requests','payroll'], ClientFeedback: ['client','requests','feedback'],
+  AccountingPayroll: ['accounting','payroll','payroll'], PayrollDates: ['accounting','payroll','dates'], AccountingInvoices: ['accounting','billing','invoices'], AccountingExpenses: ['accounting','billing','expenses'], AccountingProfit: ['accounting','overview','profit'], AccountingTaxLiability: ['accounting','overview','tax'],
+};
+
+function desktopToolRoute(pageName) {
+  const route = DESKTOP_LEGACY_TOOL_ROUTES[pageName];
+  if (!route) return null;
+  const [center, section, tool] = route;
+  const centerPage = DESKTOP_CENTER_PAGE[center];
+  if (!centerPage) return null;
+  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  params.set('section', section);
+  params.set('tool', tool);
+  return `${createPageUrl(centerPage)}?${params.toString()}`;
+}
+
 const FULL_ACCESS_PAGES = new Set(['Personnel', 'PathfinderReports', 'AdminPortal']);
 const ROOT_PAGES = new Set(['CommandDashboard', 'Dashboard', 'OfficerInbox']);
 const CENTER_UNREAD_PAGES = {
