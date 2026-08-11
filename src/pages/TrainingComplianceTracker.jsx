@@ -14,6 +14,7 @@ import { format, parseISO, isPast, isAfter, isBefore } from "date-fns";
 import { toast } from "sonner";
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 import { listTrainingUsers } from '@/lib/trainingDirectory';
+import { Navigate } from 'react-router-dom';
 
 const STATUS_COLORS = {
   assigned: "bg-blue-100 text-blue-800",
@@ -27,7 +28,7 @@ const STATUS_COLORS = {
   expiring_soon: "bg-amber-100 text-amber-800",
 };
 
-export default function TrainingComplianceTracker({ embedded = false }) {
+function TrainingComplianceTrackerContent({ embedded = false }) {
   const [filters, setFilters] = useState({ officer: "", training: "", status: "all", dueDateStart: "", dueDateEnd: "", expDateStart: "", expDateEnd: "" });
   const [viewMode, setViewMode] = useState("overview"); // overview | by-officer | by-training
   const [markCompleteDialog, setMarkCompleteDialog] = useState(null); // { module, officerEmail?, officerName? }
@@ -821,4 +822,9 @@ export default function TrainingComplianceTracker({ embedded = false }) {
     </Dialog>
     </>
   );
+}
+
+export default function TrainingComplianceTracker(props) {
+  if (!props.embedded) return <Navigate to="/TrainerCenter?section=compliance" replace />;
+  return <TrainingComplianceTrackerContent {...props} />;
 }
