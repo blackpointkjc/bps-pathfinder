@@ -58,7 +58,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const isSystemAdmin = user?.role === 'admin';
-  const canManageEmployees = isSystemAdmin || userRoles.has('full_access') || userRoles.has('trainer') || userRoles.has('hr');
+  const canManageEmployees = isSystemAdmin || userRoles.has('full_access') || userRoles.has('hr');
   const isHrReadOnly = false;
   const hasAccess = canManageEmployees;
 
