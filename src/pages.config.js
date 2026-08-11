@@ -103,6 +103,7 @@ import AdminSupportStaffClock from './pages/AdminSupportStaffClock';
 import AdminTraining from './pages/AdminTraining';
 import AdminTrainingCompliance from './pages/AdminTrainingCompliance';
 import TrainingComplianceTracker from './pages/TrainingComplianceTracker';
+import TrainerCenter from './pages/TrainerCenter';
 import TrainingRecords from './pages/TrainingRecords';
 import StudentPortal from './pages/StudentPortal';
 import AdminUsers from './pages/AdminUsers';
@@ -238,6 +239,7 @@ export const PAGES = {
     "AdminTraining": AdminTraining,
     "AdminTrainingCompliance": AdminTrainingCompliance,
     "TrainingComplianceTracker": TrainingComplianceTracker,
+    "TrainerCenter": TrainerCenter,
     "TrainingRecords": TrainingRecords,
     "StudentPortal": StudentPortal,
     "AdminUsers": AdminUsers,
