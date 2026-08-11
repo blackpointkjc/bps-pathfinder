@@ -46,7 +46,10 @@ Deno.serve(async (req) => {
     const trainerAccess = fullAccess || roles.has('trainer');
     const accountingAccess = fullAccess || roles.has('accounting');
     const supervisorAccess = fullAccess || roles.has('supervisor');
-    const internalPrivileged = hrAccess || trainerAccess || accountingAccess || supervisorAccess;
+    // Trainers do not receive full employee records from the general app directory.
+    // Training-specific pages must use getTrainingUsers, which returns only the
+    // identity/certification fields necessary for training work.
+    const internalPrivileged = hrAccess || accountingAccess || supervisorAccess;
     const clientOnly = !fullAccess && (roles.has('client') || me.user_type === 'client' || rank === 'client');
     const studentOnly = !fullAccess && roles.has('student');
 
