@@ -922,17 +922,22 @@ export default function Layout({ children, currentPageName }) {
           base44.entities.DispatchCall.list('-created_date', 300).catch(() => []),
         ]);
         const dismissedPairs = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
+        const dismissedEventKeys = new Set((receipts || []).map(item => String(item.event_key || '')).filter(Boolean));
         const activeCallById = new Map((activeCalls || [])
           .filter(call => !['Cleared', 'Cancelled'].includes(call.status))
           .map(call => [String(call.id), call]));
         const seenPairs = new Set();
         const record = (alerts || []).find(item => {
           const pair = `${item.callId}:${item.propertyId}`;
-          if (seenPairs.has(pair)) return false;
-          seenPairs.add(pair);
-          return activeCallById.has(String(item.callId))
+          const linkedCall = activeCallById.get(String(item.callId));
+          const stableCallId = linkedCall?.external_call_id || linkedCall?.agency_cad_number || linkedCall?.bps_reference || linkedCall?.call_id || linkedCall?.id || item.callId;
+          const eventKey = `${item.propertyId}|${stableCallId}`;
+          if (seenPairs.has(eventKey)) return false;
+          seenPairs.add(eventKey);
+          return Boolean(linkedCall)
             && !dismissedPairs.has(pair)
-            && !dismissedPropertyAlertKeysRef.current.has(pair)
+            && !dismissedEventKeys.has(eventKey)
+            && !dismissedPropertyAlertKeysRef.current.has(eventKey)
             && !dismissedPropertyAlertIdsRef.current.has(item.id);
         });
         if (!record || cancelled) return;
@@ -941,7 +946,8 @@ export default function Layout({ children, currentPageName }) {
         const call = activeCallById.get(String(record.callId));
         const location = locationRows?.[0];
         if (!call || !location) return;
-        const key = `${call.id}:${location.id}`;
+        const stableCallId = call.external_call_id || call.agency_cad_number || call.bps_reference || call.call_id || call.id;
+        const key = `${location.id}|${stableCallId}`;
         const relation = String(record.description || '').toLowerCase().includes('inside') ? 'inside' : 'nearby';
         setPropertyAlert({
           alertId: record.id,
@@ -995,7 +1001,8 @@ export default function Layout({ children, currentPageName }) {
     stopVoice();
     if (action === 'silenced') setPropertyAlertSilenced(true);
 
-    const pairKey = `${propertyAlert.call.id}:${propertyAlert.property.id}`;
+    const stableCallId = propertyAlert.call.external_call_id || propertyAlert.call.agency_cad_number || propertyAlert.call.bps_reference || propertyAlert.call.call_id || propertyAlert.call.id;
+    const pairKey = `${propertyAlert.property.id}|${stableCallId}`;
     const dismissedIds = [];
     dismissedPropertyAlertKeysRef.current.add(pairKey);
     try {
