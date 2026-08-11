@@ -344,7 +344,7 @@ export default function GlobalMessageBanner({ user }) {
   };
 
   return (
-    <div className="pointer-events-none fixed right-3 top-3 z-[140] flex w-[min(440px,calc(100vw-24px))] flex-col gap-2">
+    <div className="pointer-events-none fixed left-1/2 top-1 z-[220] flex w-[min(760px,calc(100vw-16px))] -translate-x-1/2 flex-col gap-2 md:top-2">
       <AnimatePresence>
         {banners.map(banner => (
           <motion.button
