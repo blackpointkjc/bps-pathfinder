@@ -516,28 +516,41 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             </span>
           )}
         </Link>
-        {groups.map((group) => <details key={`${activeCenter}:${group.label}`} open={openNavGroup === group.label || Boolean(query)} onToggle={event => { if (!query) setNavGroup(group.label, event.currentTarget.open); }} className="mb-2 group">
-          {(!collapsed || mobile) ? (
-            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-2.5 py-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7895b2] transition hover:bg-[#0d2135] hover:text-[#9fc7e8]">{group.label}<ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-open:rotate-180" /></summary>
-          ) : (
-            <summary className="hidden">{group.label}</summary>
-          )}
-          <div className="space-y-1 pb-1">
-            {group.items.map(([label, page, Icon]) => {
-              const active = currentPageName === page;
-              return <Link key={page} to={createPageUrl(page)} title={collapsed && !mobile ? label : undefined} onClick={() => { setNavGroup(group.label, true); onCloseMobile?.(); }} className={`relative flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all duration-200 ${active ? 'border-[#2f6f9d] bg-[#12304a] text-white shadow-[0_6px_18px_rgba(0,0,0,.18)]' : 'border-transparent text-[#91a8bf] hover:bg-[#0d2236] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
-                {active && <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,.55)]" />}
-                <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-[#7ec1ff]' : 'text-[#6683a0]'}`} />
-                {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-bold leading-tight">{label}</span>}
-                {!!unreadCounts[page] && (
-                  <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white shadow-sm">
-                    {unreadCounts[page] > 99 ? '99+' : unreadCounts[page]}
-                  </span>
-                )}
-              </Link>;
-            })}
-          </div>
-        </details>)}
+        {groups.map((group) => {
+          const groupOpen = Boolean(query) || openNavGroup === group.label;
+          return (
+            <div key={`${activeCenter}:${group.label}`} className="mb-2">
+              {(!collapsed || mobile) && (
+                <button
+                  type="button"
+                  onClick={() => { if (!query) setNavGroup(group.label, !groupOpen); }}
+                  aria-expanded={groupOpen}
+                  className="flex w-full cursor-pointer items-center justify-between rounded-lg px-2.5 py-2 text-left text-[9px] font-semibold uppercase tracking-[0.14em] text-[#7895b2] transition hover:bg-[#0d2135] hover:text-[#9fc7e8]"
+                >
+                  <span>{group.label}</span>
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${groupOpen ? 'rotate-180' : ''}`} />
+                </button>
+              )}
+              {groupOpen && (
+                <div className="space-y-1 pb-1">
+                  {group.items.map(([label, page, Icon]) => {
+                    const active = currentPageName === page;
+                    return <Link key={page} to={createPageUrl(page)} title={collapsed && !mobile ? label : undefined} onClick={() => { setNavGroup(group.label, true); onCloseMobile?.(); }} className={`relative flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all duration-200 ${active ? 'border-[#2f6f9d] bg-[#12304a] text-white shadow-[0_6px_18px_rgba(0,0,0,.18)]' : 'border-transparent text-[#91a8bf] hover:bg-[#0d2236] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
+                      {active && <span className="absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,.55)]" />}
+                      <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-[#7ec1ff]' : 'text-[#6683a0]'}`} />
+                      {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-bold leading-tight">{label}</span>}
+                      {!!unreadCounts[page] && (
+                        <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white shadow-sm">
+                          {unreadCounts[page] > 99 ? '99+' : unreadCounts[page]}
+                        </span>
+                      )}
+                    </Link>;
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
         {groups.length === 0 && (!collapsed || mobile) && <div className="px-3 py-8 text-center text-xs text-[#68829b]">No tools match your search.</div>}
       </nav>
 
