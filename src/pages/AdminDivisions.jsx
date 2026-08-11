@@ -400,21 +400,18 @@ export default function AdminDivisions() {
             {formData.is_subdivision && (
               <div className="space-y-2">
                 <Label htmlFor="parent_division">Parent Division *</Label>
-                <Select
-                  value={formData.parent_division}
-                  onValueChange={(value) => setFormData({...formData, parent_division: value})}
+                <select
+                  id="parent_division"
+                  value={formData.parent_division || ''}
+                  onChange={(e) => setFormData(prev => ({...prev, parent_division: e.target.value}))}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
+                  required
                 >
-                  <SelectTrigger id="parent_division">
-                    <SelectValue placeholder="Select parent division..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mainDivisions?.map((div) => (
-                      <SelectItem key={div.id} value={div.division_name}>
-                        {div.division_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value="">Select parent division...</option>
+                  {mainDivisions?.filter(div => div.active !== false).map((div) => (
+                    <option key={div.id} value={div.division_name}>{div.division_name}</option>
+                  ))}
+                </select>
               </div>
             )}
 
