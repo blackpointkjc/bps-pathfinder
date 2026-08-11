@@ -12,7 +12,7 @@ export function useDesktopViewport() {
   return desktop;
 }
 
-export default function UnifiedCenter({ eyebrow, title, description, sections, defaultSection, children }) {
+export default function UnifiedCenter({ eyebrow, title, description, sections, defaultSection, children, contentClassName = 'bg-slate-50 text-slate-900 shadow-[inset_0_1px_0_rgba(148,163,184,.22)]' }) {
   const initial = useMemo(() => {
     const requested = new URLSearchParams(window.location.search).get('section');
     return sections.some(section => section.id === requested) ? requested : defaultSection || sections[0]?.id;
@@ -60,7 +60,7 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
           </div>
         </div>
       </header>
-      <main className="mx-auto min-h-[calc(100vh-190px)] w-full max-w-[1700px] overflow-x-hidden bg-slate-50 text-slate-900 shadow-[inset_0_1px_0_rgba(148,163,184,.22)]">{children(section)}</main>
+      <main className={`mx-auto min-h-[calc(100vh-190px)] w-full max-w-[1700px] overflow-x-hidden ${contentClassName}`}>{children(section)}</main>
     </div>
   );
 }
