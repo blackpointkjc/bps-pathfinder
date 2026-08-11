@@ -1142,6 +1142,15 @@ export default function AdminUsers() {
                 />
               </div>
 
+              <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="mb-3 text-sm font-semibold text-slate-800">Driver's License</div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div><Label className="text-xs text-slate-500">License Number</Label><Input value={editFormData.drivers_license_number || ''} onChange={(e) => setEditFormData({...editFormData, drivers_license_number: e.target.value})} /></div>
+                  <div><Label className="text-xs text-slate-500">State</Label><Input maxLength={2} placeholder="VA" value={editFormData.drivers_license_state || ''} onChange={(e) => setEditFormData({...editFormData, drivers_license_state: e.target.value.toUpperCase()})} /></div>
+                  <div><Label className="text-xs text-slate-500">Expiration</Label><Input type="date" value={editFormData.drivers_license_expiration || ''} onChange={(e) => setEditFormData({...editFormData, drivers_license_expiration: e.target.value})} /></div>
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="hourly_rate" className="text-xs text-slate-500">Hourly Rate ($) *</Label>
                 <Input
