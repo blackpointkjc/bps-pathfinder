@@ -21,6 +21,7 @@ import ActiveBoloBanner from '@/components/bolo/ActiveBoloBanner';
 import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import 'leaflet/dist/leaflet.css';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 
 
 
@@ -168,14 +169,14 @@ export default function DispatchCenter() {
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
             const recentCalls = [...uniqueCalls.values()].filter(call => {
-                const receivedAt = new Date(call.time_received || call.created_date).getTime();
+                const receivedAt = parseServerTimestamp(call.time_received || call.created_date)?.getTime() || 0;
                 const isFresh = Number.isFinite(receivedAt) && Date.now() - receivedAt < 61 * 60 * 1000;
                 return isFresh && !['Cleared', 'Cancelled'].includes(call.status);
             });
 
             recentCalls.sort((a, b) => {
-                const timeA = new Date(a.time_received || a.created_date);
-                const timeB = new Date(b.time_received || b.created_date);
+                const timeA = parseServerTimestamp(a.time_received || a.created_date)?.getTime() || 0;
+                const timeB = parseServerTimestamp(b.time_received || b.created_date)?.getTime() || 0;
                 return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
             });
 
@@ -272,8 +273,8 @@ export default function DispatchCenter() {
     // Re-sort calls when sortOrder changes
     useEffect(() => {
         const sorted = [...activeCalls].sort((a, b) => {
-            const timeA = new Date(a.time_received || a.created_date);
-            const timeB = new Date(b.time_received || b.created_date);
+            const timeA = parseServerTimestamp(a.time_received || a.created_date)?.getTime() || 0;
+            const timeB = parseServerTimestamp(b.time_received || b.created_date)?.getTime() || 0;
             return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
         });
         setActiveCalls(sorted);
@@ -319,7 +320,7 @@ export default function DispatchCenter() {
     const unassignedCalls = activeCalls.filter(call => !call.assigned_units?.length);
     const priorityCalls = activeCalls.filter(call => ['critical', 'high'].includes(call.priority));
     const oldestCallMinutes = activeCalls.length
-        ? Math.max(...activeCalls.map(call => Math.max(0, Math.floor((systemTime - new Date(call.time_received || call.created_date)) / 60000))))
+        ? Math.max(...activeCalls.map(call => Math.max(0, Math.floor((systemTime.getTime() - (parseServerTimestamp(call.time_received || call.created_date)?.getTime() || systemTime.getTime())) / 60000))))
         : 0;
 
     const handleAcknowledge = () => {
@@ -485,9 +486,9 @@ export default function DispatchCenter() {
                                         <div className="mt-1 text-[8px] font-semibold tracking-wide text-slate-600">{call.agency || 'AGENCY N/A'}</div>
                                     </div>
                                     <div className="col-span-5 text-[9px] text-slate-400 text-right pr-1">
-                                        <div>{new Date(call.time_received || call.created_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' })}</div>
-                                        <div className={`mt-1 font-bold ${Math.floor((systemTime - new Date(call.time_received || call.created_date)) / 60000) >= 15 ? 'text-red-400' : 'text-slate-600'}`}>
-                                            {Math.max(0, Math.floor((systemTime - new Date(call.time_received || call.created_date)) / 60000))} MIN AGO
+                                        <div>{formatEasternTime(call.time_received || call.created_date)}</div>
+                                        <div className={`mt-1 font-bold ${Math.floor((systemTime.getTime() - (parseServerTimestamp(call.time_received || call.created_date)?.getTime() || systemTime.getTime())) / 60000) >= 15 ? 'text-red-400' : 'text-slate-600'}`}>
+                                            {Math.max(0, Math.floor((systemTime.getTime() - (parseServerTimestamp(call.time_received || call.created_date)?.getTime() || systemTime.getTime())) / 60000))} MIN AGO
                                         </div>
                                     </div>
                                 </div>
@@ -509,7 +510,7 @@ export default function DispatchCenter() {
                                         <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${priorityBg(selectedCall.priority)}`}>{(selectedCall.priority || 'low').toUpperCase()}</span>
                                         <span className="text-[10px] text-slate-400">{selectedCall.status}</span>
                                         <span className="w-full md:w-auto md:ml-auto text-[9px] text-slate-500">
-                                            RECV: {new Date(selectedCall.time_received || selectedCall.created_date).toLocaleString('en-US', {timeZone:'America/New_York', month:'2-digit', day:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit'})}
+                                            RECV: {formatEasternDateTime(selectedCall.time_received || selectedCall.created_date)} ET
                                         </span>
                                     </div>
                                     <div className="px-3 md:px-4 py-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-[10px]">
@@ -549,7 +550,7 @@ export default function DispatchCenter() {
                                             <div className="bg-[#111827] border border-[#263653] rounded max-h-24 overflow-y-auto">
                                                 {callNotes.length === 0 ? <div className="p-2 text-[9px] text-slate-600">No dispatcher notes recorded.</div> : callNotes.map(note => (
                                                     <div key={note.id} className="px-2 py-1.5 border-b border-[#1e2d4a] last:border-0 text-[9px]">
-                                                        <div className="flex gap-2 text-slate-500"><span className="text-blue-300">{rankLastName(note.author_name)}</span><span>{new Date(note.created_date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></div>
+                                                        <div className="flex gap-2 text-slate-500"><span className="text-blue-300">{rankLastName(note.author_name)}</span><span>{formatEasternTime(note.created_date)} ET</span></div>
                                                         <div className="text-slate-200 mt-0.5">{note.note}</div>
                                                     </div>
                                                 ))}
