@@ -43,13 +43,21 @@ export default function BOLOAlerts() {
     const init = async () => {
       const me = await base44.auth.me().catch(() => null);
       setUser(me);
-      await load();
+      const loadedBolos = await load();
       const params = new URLSearchParams(window.location.search);
       if (params.get('new') === '1' && me) setModal({ mode: 'create', bolo: {
         alert_type: 'wanted_person', priority: 'medium', status: 'active',
         linked_call_id: params.get('call_id') || '',
         linked_call_number: params.get('call_number') || '',
       } });
+      const openId = params.get('open');
+      if (openId) {
+        const target = (loadedBolos || []).find(item => String(item.id) === String(openId));
+        if (target) {
+          setView(target.status === 'active' ? 'active' : 'history');
+          setModal({ mode: 'view', bolo: target });
+        }
+      }
     };
     init();
   }, []);
@@ -59,6 +67,7 @@ export default function BOLOAlerts() {
     try {
       const data = await base44.entities.BOLOAlert.list('-created_date', 500);
       setBolos(data || []);
+      return data || [];
     } catch (error) {
       const isRateLimit = String(error?.message || error || '').toLowerCase().includes('rate limit');
       if (isRateLimit && attempt < 3) {
@@ -66,6 +75,7 @@ export default function BOLOAlerts() {
         return load(attempt + 1);
       }
       setBolos([]);
+      return [];
     } finally {
       setLoading(false);
     }
