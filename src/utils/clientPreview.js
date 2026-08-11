@@ -5,7 +5,9 @@ const PROFILE_KEY = 'bps-client-preview-profile';
 
 export async function getClientPortalUser() {
   const authUser = await base44.auth.me();
-  if (authUser?.role !== 'admin') return authUser;
+  const roles = new Set((authUser?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const canPreview = authUser?.role === 'admin' || roles.has('full_access');
+  if (!canPreview) return authUser;
 
   const selectedId = localStorage.getItem(KEY) || '';
   if (!selectedId) return authUser;
