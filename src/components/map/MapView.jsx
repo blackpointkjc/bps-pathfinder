@@ -86,18 +86,45 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
     const lastUpdateTimeRef = useRef(0);
 
     useEffect(() => {
-        // Track user interaction
+        // Track user interaction. Keep the delayed reset cancellable so no map
+        // lifecycle work survives a CAD Center tab/unmount transition.
+        let interactionTimer = null;
         const handleMoveStart = () => { userInteractingRef.current = true; };
-        const handleMoveEnd = () => { 
-            setTimeout(() => { userInteractingRef.current = false; }, 5000);
+        const handleMoveEnd = () => {
+            if (interactionTimer) window.clearTimeout(interactionTimer);
+            interactionTimer = window.setTimeout(() => { userInteractingRef.current = false; }, 5000);
         };
 
         map.on('movestart', handleMoveStart);
         map.on('moveend', handleMoveEnd);
 
         return () => {
+            if (interactionTimer) window.clearTimeout(interactionTimer);
             map.off('movestart', handleMoveStart);
             map.off('moveend', handleMoveEnd);
+            map.closePopup();
+            map.stop();
+        };
+    }, [map]);
+
+    useEffect(() => {
+        // Leaflet does not automatically know when its embedded Center panel
+        // changes size. Keep its internal viewport synchronized with the actual
+        // Live Map canvas and cancel the observer cleanly on unmount.
+        const container = map.getContainer();
+        let frame = null;
+        const refresh = () => {
+            if (frame) cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => {
+                if (container?.isConnected) map.invalidateSize({ animate: false, pan: false });
+            });
+        };
+        const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(refresh) : null;
+        observer?.observe(container);
+        refresh();
+        return () => {
+            observer?.disconnect();
+            if (frame) cancelAnimationFrame(frame);
         };
     }, [map]);
 
