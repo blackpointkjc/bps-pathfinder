@@ -233,8 +233,10 @@ export default function AdminLocations() {
 
   const deleteLocationMutation = useMutation({
     mutationFn: (id) => base44.entities.Location.delete(id),
-    onSuccess: () => {
+    onSuccess: async () => {
+      await syncClientLocationAssignments().catch(error => console.warn('Client location sync failed:', error?.message));
       queryClient.invalidateQueries({ queryKey: ['locations'] });
+      queryClient.invalidateQueries({ queryKey: ['directoryUsers'] });
     },
   });
 
