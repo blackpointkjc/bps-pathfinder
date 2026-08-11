@@ -166,16 +166,8 @@ const CENTER_CONFIG = {
     label: 'Trainer Center',
     icon: GraduationCap,
     groups: [
-      { label: 'Training Management', items: [
-        ['Create Training', 'AdminTraining', GraduationCap],
-        ['Training Records', 'TrainingRecords', BookOpen],
-        ['Manage Students', 'ManageStudents', Users],
-      ]},
-      { label: 'Compliance & Certifications', items: [
-        ['Training Compliance', 'AdminTrainingCompliance', ShieldCheck],
-        ['Compliance Tracker', 'TrainingComplianceTracker', BarChart3],
-        ['Certification Alerts', 'AdminCertificationAlerts', Bell],
-        ['Officer Certifications', 'TrainingManageCompanyEmployees', Users],
+      { label: 'Training Operations', items: [
+        ['Trainer Center', 'TrainerCenter', GraduationCap],
       ]},
     ],
   },
@@ -339,7 +331,7 @@ const CENTER_DEFAULT_PAGE = {
   officer: 'Dashboard',
   supervisor: 'SupervisorTasks',
   admin: 'AdminDashboard',
-  training: 'AdminTraining',
+  training: 'TrainerCenter',
   hr: 'HRManageCompanyEmployees',
   support: 'AdminSupportStaffClock',
   accounting: 'AccountingPayroll',
