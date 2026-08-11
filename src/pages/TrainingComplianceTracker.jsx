@@ -13,7 +13,7 @@ import { Shield, GraduationCap, Search, FileText, CheckCircle, Clock, AlertTrian
 import { format, parseISO, isPast, isAfter, isBefore } from "date-fns";
 import { toast } from "sonner";
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { listTrainingUsers } from '@/lib/trainingDirectory';
 
 const STATUS_COLORS = {
   assigned: "bg-blue-100 text-blue-800",
@@ -50,8 +50,8 @@ export default function TrainingComplianceTracker() {
     refetchInterval: 30000,
   });
   const { data: allUsers = [] } = useQuery({
-    queryKey: ['directoryUsers', 'trainingCompliance'],
-    queryFn: () => listDirectoryUsers('last_name', 1000),
+    queryKey: ['trainingUsers'],
+    queryFn: () => listTrainingUsers(true),
     enabled: hasTrainingAccess,
     staleTime: 0,
     refetchOnMount: 'always',
