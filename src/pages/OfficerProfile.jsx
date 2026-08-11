@@ -31,6 +31,38 @@ function computeFirearmExpiration(certs) {
   return [...firearmCerts].sort((a, b) => new Date(b.expiration_date) - new Date(a.expiration_date))[0].expiration_date;
 }
 
+function profileCertifications(user) {
+  const structured = (user?.officer_certifications || []).map((cert, index) => ({
+    ...cert,
+    _key: `officer-${cert.course_id || cert.training_name || index}`,
+    name: cert.training_name || cert.name || cert.course_id || 'Certification',
+    issuer: cert.category === 'dcjs' ? 'Virginia DCJS' : (cert.issuer || 'Black Point Security'),
+  }));
+  const legacy = (user?.certifications || []).map((cert, index) => ({
+    ...cert,
+    _key: `legacy-${cert.id || cert.name || index}`,
+    name: cert.name || cert.training_name || cert.course_id || 'Certification',
+  }));
+  const seen = new Set();
+  return [...structured, ...legacy].filter(cert => {
+    const key = `${String(cert.course_id || '').toLowerCase()}|${String(cert.name || '').toLowerCase()}|${String(cert.expiration_date || '')}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function certificationStatus(cert) {
+  if (String(cert?.status || '').toLowerCase() === 'expired') return 'expired';
+  if (!cert?.expiration_date) return String(cert?.status || 'active').toLowerCase();
+  const end = new Date(`${cert.expiration_date}T23:59:59`);
+  if (Number.isNaN(end.getTime())) return String(cert?.status || 'active').toLowerCase();
+  const days = Math.ceil((end.getTime() - Date.now()) / 86400000);
+  if (days < 0) return 'expired';
+  if (days <= 60) return 'expiring';
+  return 'active';
+}
+
 export default function OfficerProfile() {
   const [uploading, setUploading] = useState(false);
   const [photoToCrop, setPhotoToCrop] = useState(null);
@@ -40,9 +72,16 @@ export default function OfficerProfile() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: async () => {
+      const authUser = await base44.auth.me();
+      if (!authUser?.email) return authUser;
+      const rows = await base44.entities.User.filter({ email: authUser.email }).catch(() => []);
+      return rows?.[0] ? { ...authUser, ...rows[0] } : authUser;
+    },
     refetchInterval: 30000,
   });
+
+  const certificationRows = profileCertifications(user);
 
   const { data: commendations } = useQuery({
     queryKey: ['myCommendations', user?.email],
@@ -304,39 +343,48 @@ export default function OfficerProfile() {
               </div>
             </div>
 
-            {user?.certifications && user.certifications.length > 0 ? (
+            {certificationRows.length > 0 ? (
               <div className="space-y-3">
-                <h4 className="font-semibold text-slate-900">Additional Certifications</h4>
-                {user.certifications.map((cert, idx) => (
-                  <div key={idx} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold text-blue-900">{cert.name}</p>
-                        <p className="text-sm text-slate-600">Issued by: {cert.issuer}</p>
-                        {cert.certificate_number && (
-                          <p className="text-xs text-slate-500">Certificate #: {cert.certificate_number}</p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-slate-600">
-                          {cert.expiration_date ? `Expires: ${format(new Date(cert.expiration_date), 'MMM d, yyyy')}` : 'No expiration'}
-                        </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="font-semibold text-slate-900">My Certifications</h4>
+                  <span className="text-xs text-slate-500">{certificationRows.length} record{certificationRows.length === 1 ? '' : 's'}</span>
+                </div>
+                {certificationRows.map((cert) => {
+                  const status = certificationStatus(cert);
+                  return (
+                    <div key={cert._key} className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold text-blue-900">{cert.name}</p>
+                            {cert.course_id && <Badge variant="outline" className="border-blue-300 bg-white text-blue-800">{cert.course_id}</Badge>}
+                            <Badge className={status === 'expired' ? 'bg-red-600' : status === 'expiring' ? 'bg-amber-500 text-slate-950' : 'bg-emerald-600'}>
+                              {status === 'expiring' ? 'Expiring Soon' : status.charAt(0).toUpperCase() + status.slice(1)}
+                            </Badge>
+                          </div>
+                          <p className="mt-1 text-sm text-slate-600">Issued by: {cert.issuer || 'Not specified'}</p>
+                          {cert.certificate_number && <p className="text-xs text-slate-500">Certificate #: {cert.certificate_number}</p>}
+                          {cert.issue_date && <p className="text-xs text-slate-500">Issued: {format(new Date(`${cert.issue_date}T00:00:00`), 'MMM d, yyyy')}</p>}
+                          {cert.notes && <p className="mt-1 text-xs text-slate-600">{cert.notes}</p>}
+                        </div>
+                        <div className="shrink-0 text-left sm:text-right">
+                          <p className="text-xs font-medium text-slate-700">{cert.expiration_date ? `Expires ${format(new Date(`${cert.expiration_date}T00:00:00`), 'MMM d, yyyy')}` : 'No expiration'}</p>
+                          {cert.cert_file_url && <a href={cert.cert_file_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-semibold text-blue-700 hover:underline">View certificate</a>}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
-              <div className="text-center py-6 text-slate-500">
-                <Shield className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="text-sm mb-3">No additional certifications on record</p>
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-6 text-center text-slate-500">
+                <Shield className="mx-auto mb-3 h-10 w-10 opacity-30" />
+                <p className="text-sm">No certifications or licenses have been added to your officer record yet.</p>
               </div>
             )}
 
-            <div className="pt-4 mt-4 border-t">
-              <p className="text-sm text-slate-600 mb-3">
-                📋 To view certification expiration status and alerts, visit your admin's <strong>Certification Alerts</strong> page or ask your admin to check the <strong>Admin Certification Alerts</strong> dashboard.
-              </p>
+            <div className="mt-4 border-t pt-4">
+              <p className="text-sm text-slate-600">Certification status shown here is synced from your officer certification record in Training Compliance. Contact Training or HR if a record needs to be corrected.</p>
             </div>
           </CardContent>
         </Card>
