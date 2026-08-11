@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
 import { stopAllAlerts } from '@/utils/alertUtils';
 import { announcePropertyCall, stopVoice } from '@/utils/voiceAnnouncer';
+import { formatEasternDateTime } from '@/lib/easternTime';
 import GlobalMessageBanner from '@/components/GlobalMessageBanner';
 import MandatoryReadGate from '@/components/MandatoryReadGate';
 import WelcomeBriefing from '@/components/WelcomeBriefing';
@@ -639,6 +640,7 @@ export default function Layout({ children, currentPageName }) {
   const [propertyAlert, setPropertyAlert] = useState(null);
   const [propertyAlertSilenced, setPropertyAlertSilenced] = useState(false);
   const dismissedPropertyAlertIdsRef = useRef(new Set());
+  const dismissedPropertyAlertKeysRef = useRef(new Set());
   const announcedPropertyCallKeyRef = useRef(null);
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
