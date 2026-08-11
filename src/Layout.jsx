@@ -269,6 +269,7 @@ const DESKTOP_CENTER_PAGE = {
   supervisor: 'SupervisorCenter',
   client: 'ClientCenter',
   training: 'TrainerCenter',
+  accounting: 'AccountingCenter',
 };
 Object.entries(DESKTOP_CENTER_PAGE).forEach(([center, page]) => {
   PAGE_TO_CENTERS[page] = [...new Set([...(PAGE_TO_CENTERS[page] || []), center])];
