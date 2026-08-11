@@ -2,6 +2,7 @@ import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { trainingCreate, trainingDelete, trainingUpdate } from '@/lib/trainingRecordsApi';
+import { listTrainingUsers } from '@/lib/trainingDirectory';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -117,10 +118,10 @@ export default function AdminTraining() {
   const hasTrainingAccess = user?.role === 'admin' || userRoles.has('trainer') || userRoles.has('full_access');
 
   const { data: allUsers = [] } = useQuery({
-    queryKey: ['appDirectoryUsers', 'adminTraining'],
-    queryFn: () => base44.entities.User.list('last_name', 1000),
+    queryKey: ['trainingUsers'],
+    queryFn: () => listTrainingUsers(true),
     enabled: hasTrainingAccess,
-    staleTime: 0,
+    staleTime: 15000,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
