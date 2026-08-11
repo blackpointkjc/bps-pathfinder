@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import ClassForm from "../components/training/ClassForm";
 import AttendeeRoster from "../components/training/AttendeeRoster";
 import CertificateGenerator from "../components/training/CertificateGenerator";
+import { Navigate } from 'react-router-dom';
 
 const CLASS_STATUS_COLORS = {
   draft: "bg-slate-100 text-slate-700",
@@ -26,7 +27,7 @@ const CLASS_STATUS_COLORS = {
   cancelled: "bg-red-100 text-red-800",
 };
 
-export default function TrainingRecords({ embedded = false }) {
+function TrainingRecordsContent({ embedded = false }) {
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState("classes");
   const [selectedClass, setSelectedClass] = useState(null);
@@ -424,4 +425,9 @@ export default function TrainingRecords({ embedded = false }) {
       </Tabs>
     </div>
   );
+}
+
+export default function TrainingRecords(props) {
+  if (!props.embedded) return <Navigate to="/TrainerCenter?section=classes" replace />;
+  return <TrainingRecordsContent {...props} />;
 }
