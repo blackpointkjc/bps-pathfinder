@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, GraduationCap, ShieldCheck, Users, Award, Bell } from 'lucide-react';
+import { BookOpen, GraduationCap, ShieldCheck, Users, Bell } from 'lucide-react';
 import AdminTraining from './AdminTraining';
 import TrainingRecords from './TrainingRecords';
 import AdminTrainingCompliance from './AdminTrainingCompliance';

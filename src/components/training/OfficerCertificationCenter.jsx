@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { addDays, format, parseISO } from 'date-fns';
-import { Award, Search, Send, Save, ShieldCheck, UserRound, AlertTriangle } from 'lucide-react';
+import { Search, Send, Save, ShieldCheck, UserRound } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { listTrainingUsers, invalidateTrainingUsers } from '@/lib/trainingDirectory';
 import { trainingCreate } from '@/lib/trainingRecordsApi';

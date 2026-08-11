@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   GraduationCap, Plus, CheckCircle, XCircle, Eye, Users, Shield,
-  Trash2, Edit, Search, Download, FileText, AlertTriangle, X, Printer, Upload
+  Trash2, Edit, Search, Download, FileText, AlertTriangle, X, Printer
 } from "lucide-react";
 import { format, parseISO, addMonths } from "date-fns";
 import { toast } from "sonner";
