@@ -961,30 +961,45 @@ export default function Layout({ children, currentPageName }) {
     };
   }, [user?.role, JSON.stringify(user?.additional_roles || []), propertyAlert?.key]);
 
-  const acknowledgePropertyAlert = async () => {
+  const dismissPropertyAlert = async (action = 'acknowledged') => {
     if (!propertyAlert) return false;
     stopAllAlerts();
     stopVoice();
+    if (action === 'silenced') setPropertyAlertSilenced(true);
+
+    const pairKey = `${propertyAlert.call.id}:${propertyAlert.property.id}`;
     const dismissedIds = [];
+    dismissedPropertyAlertKeysRef.current.add(pairKey);
     try {
-      const records = await base44.entities.PropertyAlert.filter({ callId: propertyAlert.call.id, propertyId: propertyAlert.property.id, acknowledged: false });
+      // Hide every legacy duplicate row for this call/property immediately in this session.
+      const records = await base44.entities.PropertyAlert.filter({ callId: propertyAlert.call.id, propertyId: propertyAlert.property.id }).catch(() => []);
       for (const record of records || []) {
         dismissedPropertyAlertIdsRef.current.add(record.id);
         dismissedIds.push(record.id);
-        const result = await base44.functions.invoke('acknowledgePropertyAlert', { alert_id: record.id });
-        const payload = result?.data || result || {};
-        if (payload.error) throw new Error(payload.error);
       }
+
+      // One receipt is enough because it is keyed to the user + call + property.
+      const result = await base44.functions.invoke('acknowledgePropertyAlert', {
+        alert_id: propertyAlert.alertId,
+        action,
+      });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+
       setPropertyAlert(null);
       setPropertyAlertSilenced(false);
       return true;
     } catch (error) {
+      dismissedPropertyAlertKeysRef.current.delete(pairKey);
       dismissedIds.forEach(id => dismissedPropertyAlertIdsRef.current.delete(id));
-      console.warn('Unable to record property alert acknowledgment:', error?.message);
-      toast.error('Unable to acknowledge property alert. Please try again.');
+      setPropertyAlertSilenced(false);
+      console.warn('Unable to save property alert dismissal:', error?.message);
+      toast.error(action === 'silenced' ? 'Unable to silence this property call for your account.' : 'Unable to acknowledge this property call.');
       return false;
     }
   };
+
+  const acknowledgePropertyAlert = () => dismissPropertyAlert('acknowledged');
 
   const openPropertyCadCall = async () => {
     const call = propertyAlert?.call;
@@ -1067,6 +1082,7 @@ export default function Layout({ children, currentPageName }) {
               </div>
               <div className="mt-2 text-2xl font-black text-white">{propertyAlert.call.incident || 'Unknown incident'}</div>
               <div className="mt-1 flex items-start gap-2 text-sm text-slate-300"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" />{propertyAlert.call.location}</div>
+              <div className="mt-2 text-xs font-bold uppercase tracking-wider text-slate-400">Call received {formatEasternDateTime(propertyAlert.call.time_received || propertyAlert.call.created_date)} ET</div>
             </div>
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="rounded border border-slate-700 bg-slate-900/70 p-3"><div className="text-slate-500">PROPERTY ADDRESS</div><div className="mt-1 font-bold text-slate-100">{propertyAlert.property.address}</div></div>
@@ -1075,12 +1091,12 @@ export default function Layout({ children, currentPageName }) {
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                onClick={() => { stopAllAlerts(); setPropertyAlertSilenced(true); }}
+                onClick={() => dismissPropertyAlert('silenced')}
                 disabled={propertyAlertSilenced}
                 aria-pressed={propertyAlertSilenced}
                 className="rounded-lg border border-amber-500/60 bg-amber-950/40 px-5 py-3 text-sm font-black text-amber-200 hover:bg-amber-900/50 disabled:cursor-default disabled:opacity-70"
               >
-                {propertyAlertSilenced ? 'ALARM SILENCED' : 'SILENCE ALARM'}
+                {propertyAlertSilenced ? 'SILENCING…' : 'SILENCE FOR ME'}
               </button>
               <button type="button" onClick={acknowledgePropertyAlert} className="rounded-lg border border-slate-600 bg-slate-800 px-5 py-3 text-sm font-black text-slate-100 hover:bg-slate-700">ACKNOWLEDGE</button>
               <button type="button" onClick={openPropertyCadCall} className="rounded-lg border border-blue-400 bg-blue-600 px-5 py-3 text-center text-sm font-black text-white hover:bg-blue-500">OPEN CAD CALL</button>
