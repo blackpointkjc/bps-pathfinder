@@ -503,32 +503,56 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
 
         {(!collapsed || mobile) && (
           <div className="mt-3">
-            <label htmlFor={mobile ? 'mobile-workspace-select' : 'desktop-workspace-select'} className="mb-1.5 block text-[8px] font-bold uppercase tracking-[0.18em] text-[#6886a3]">
-              Workspace
-            </label>
-            <div className="relative">
-              {React.createElement(center.icon, { className: 'pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-cyan-300' })}
-              <Select value={activeCenter} onValueChange={setActiveCenter}>
-                <SelectTrigger
-                  id={mobile ? 'mobile-workspace-select' : 'desktop-workspace-select'}
-                  className="h-10 w-full border-[#315879] bg-gradient-to-r from-[#102c49] to-[#0c2238] pl-10 text-[11px] font-bold text-white shadow-inner focus:ring-cyan-900/40"
-                  aria-label="Select workspace"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="border-[#315879] bg-[#0b1928] text-white">
-                  {availableCenters.map(key => {
-                    const item = CENTER_CONFIG[key];
-                    const centerUnread = (CENTER_UNREAD_PAGES[key] || []).reduce((sum, page) => sum + (Number(unreadCounts[page]) || 0), 0);
-                    return (
-                      <SelectItem key={key} value={key} className="focus:bg-[#15314f] focus:text-white">
-                        {item.label}{centerUnread ? ` — ${centerUnread > 99 ? '99+' : centerUnread} unread` : ''}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+            <div className="mb-1.5 text-[8px] font-bold uppercase tracking-[0.18em] text-[#6886a3]">
+              {mobile ? 'Workspace' : 'Main Centers'}
             </div>
+            {mobile ? (
+              <div className="relative">
+                {React.createElement(center.icon, { className: 'pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-cyan-300' })}
+                <Select value={activeCenter} onValueChange={setActiveCenter}>
+                  <SelectTrigger
+                    id="mobile-workspace-select"
+                    className="h-10 w-full border-[#315879] bg-gradient-to-r from-[#102c49] to-[#0c2238] pl-10 text-[11px] font-bold text-white shadow-inner focus:ring-cyan-900/40"
+                    aria-label="Select workspace"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-[#315879] bg-[#0b1928] text-white">
+                    {availableCenters.map(key => {
+                      const item = CENTER_CONFIG[key];
+                      const centerUnread = (CENTER_UNREAD_PAGES[key] || []).reduce((sum, page) => sum + (Number(unreadCounts[page]) || 0), 0);
+                      return (
+                        <SelectItem key={key} value={key} className="focus:bg-[#15314f] focus:text-white">
+                          {item.label}{centerUnread ? ` — ${centerUnread > 99 ? '99+' : centerUnread} unread` : ''}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-1.5">
+                {availableCenters.map(key => {
+                  const item = CENTER_CONFIG[key];
+                  const Icon = item.icon;
+                  const target = DESKTOP_CENTER_PAGE[key] || defaultPageForCenter(key);
+                  const active = activeCenter === key;
+                  const centerUnread = (CENTER_UNREAD_PAGES[key] || []).reduce((sum, page) => sum + (Number(unreadCounts[page]) || 0), 0);
+                  return (
+                    <Link
+                      key={key}
+                      to={createPageUrl(target)}
+                      onClick={() => setActiveCenter(key)}
+                      className={`relative flex min-h-10 min-w-0 items-center gap-2 rounded-lg border px-2 py-2 transition ${active ? 'border-cyan-500/60 bg-[#12304a] text-white' : 'border-[#25435e] bg-[#0a1927] text-[#91a8bf] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'}`}
+                    >
+                      <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-cyan-300' : 'text-[#6683a0]'}`} />
+                      <span className="min-w-0 flex-1 truncate text-[10px] font-black">{item.label.replace(' Center', '')}</span>
+                      {!!centerUnread && <span className="rounded-full bg-red-500 px-1.5 text-[8px] font-black text-white">{centerUnread > 99 ? '99+' : centerUnread}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
