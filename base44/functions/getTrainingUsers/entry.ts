@@ -10,7 +10,14 @@ Deno.serve(async (req) => {
 
     const allUsers = await base44.asServiceRole.entities.User.list(undefined, 1000);
     const users = (allUsers || [])
-      .filter((entry: any) => !entry.termination_date)
+      .filter((entry: any) => {
+        if (!entry?.email || entry.termination_date) return false;
+        const entryRoles = new Set((entry.additional_roles || []).map((r: string) => String(r).toLowerCase()));
+        const type = String(entry.user_type || entry.account_type || entry.portal_type || '').toLowerCase();
+        const rank = String(entry.rank || '').toLowerCase();
+        if (entryRoles.has('client') || entryRoles.has('student') || ['client','student','pending'].includes(type) || ['client','student'].includes(rank)) return false;
+        return entry.role === 'admin' || entryRoles.has('officer') || entryRoles.has('supervisor') || entryRoles.has('hr') || entryRoles.has('support') || entryRoles.has('support_staff') || entryRoles.has('accounting') || entryRoles.has('trainer') || entryRoles.has('full_access') || String(entry.employment_status || '').toLowerCase() === 'active';
+      })
       .map((entry: any) => ({
         id: entry.id,
         email: entry.email || '',
