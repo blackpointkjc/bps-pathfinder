@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 function certStatus(cert) {
   if (!cert?.expiration_date) return cert?.status === 'pending' ? 'pending' : 'active';
@@ -57,16 +58,21 @@ export default function OfficerCertificationCenter() {
   });
   const { data: currentUser } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
 
+  const officerUsers = useMemo(
+    () => users.filter(u => hasOfficerAdditionalRole(u) && !u.termination_date && String(u.status || '').toLowerCase() !== 'terminated'),
+    [users]
+  );
+
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return users.filter(u => {
+    return officerUsers.filter(u => {
       if (!q) return true;
       return [u.first_name, u.last_name, u.email, u.rank, u.unit_number, u.division]
         .filter(Boolean).join(' ').toLowerCase().includes(q);
     });
-  }, [users, search]);
+  }, [officerUsers, search]);
 
-  const selectedUser = users.find(u => u.id === selectedId) || null;
+  const selectedUser = officerUsers.find(u => u.id === selectedId) || null;
 
   const openOfficer = (officer) => {
     setSelectedId(officer.id);
