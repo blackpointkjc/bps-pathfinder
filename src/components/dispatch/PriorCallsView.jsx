@@ -8,7 +8,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Search, MapPin, Clock, History } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { formatEasternDateTime, parseServerTimestamp } from '@/lib/easternTime';
+import { EASTERN_TIME_ZONE, formatEasternDateTime, parseServerTimestamp } from '@/lib/easternTime';
 
 export default function PriorCallsView({ currentUser, units }) {
     const [priorCalls, setPriorCalls] = useState([]);
@@ -191,7 +191,7 @@ export default function PriorCallsView({ currentUser, units }) {
                                             <div className="flex items-center justify-between text-xs">
                                                 <div className="flex items-center gap-1 text-slate-400">
                                                     <Clock className="w-3 h-3" />
-                                                    {formatEasternDateTime(call.time_received || call.created_date, { hour: undefined, minute: undefined })}
+                                                    {(parseServerTimestamp(call.time_received || call.created_date)?.toLocaleDateString('en-US', { timeZone: EASTERN_TIME_ZONE, month: 'short', day: 'numeric', year: 'numeric' })) || '—'}
                                                 </div>
                                                 <Badge variant="outline" className="border-slate-600 text-slate-300 text-xs">
                                                     {call.status}
