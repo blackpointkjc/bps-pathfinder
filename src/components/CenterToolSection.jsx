@@ -31,7 +31,7 @@ export default function CenterToolSection({ tools, defaultTool }) {
           </div>
         </div>
       )}
-      <div className="min-w-0">{Component ? <Component embedded /> : null}</div>
+      <div className="min-w-0 [&>div]:!min-h-0 [&>div]:!max-w-none [&>div]:!mx-0 [&>div]:!px-4 [&>div]:!py-5 md:[&>div]:!px-6 md:[&>div]:!py-6 [&>div>div]:!max-w-none [&>div>div]:!mx-0">{Component ? <Component embedded /> : null}</div>
     </div>
   );
 }
