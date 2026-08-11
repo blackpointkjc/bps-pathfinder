@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { trainingCreate, trainingUpdate } from '@/lib/trainingRecordsApi';
 import { listTrainingUsers } from '@/lib/trainingDirectory';
+import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, AlertTriangle, CheckCircle2, RefreshCw, Printer } from "lucide-react";
@@ -65,7 +66,7 @@ export default function AdminCertificationAlerts() {
       let newAlertsCreated = 0;
       let alertsUpdated = 0;
       
-      for (const officer of allUsers) {
+      for (const officer of allUsers.filter(hasOfficerAdditionalRole)) {
         // Skip terminated officers
         if (officer.status === 'terminated' || officer.termination_date) continue;
         
