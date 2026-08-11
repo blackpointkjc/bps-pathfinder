@@ -17,7 +17,7 @@ export default function AdminClientPreviewBar({ user, activeCenter }) {
       base44.entities.Location.list('site_name', 500).catch(() => []),
     ]).then(([users, locations]) => {
       const clientUsers = (users || [])
-        .filter(person => (person.additional_roles || []).includes('client') || person.user_type === 'client')
+        .filter(person => (person.additional_roles || []).map(role => String(role).toLowerCase()).includes('client') || String(person.user_type || '').toLowerCase() === 'client')
         .map(person => {
           const email = String(person.email || '').toLowerCase();
           const assignedLocations = [...new Set([
