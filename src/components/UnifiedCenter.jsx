@@ -26,6 +26,16 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
     window.history.replaceState({}, '', url);
   };
 
+  const sectionGrid = sections.length >= 6
+    ? 'md:grid-cols-3 xl:grid-cols-6'
+    : sections.length === 5
+      ? 'md:grid-cols-3 xl:grid-cols-5'
+      : sections.length === 4
+        ? 'md:grid-cols-4'
+        : sections.length === 3
+          ? 'md:grid-cols-3'
+          : 'md:grid-cols-2';
+
   return (
     <div className="min-h-full bg-[#070d17] text-slate-100">
       <header className="border-b border-slate-800 bg-[#0a1220] px-4 py-4 md:px-6">
@@ -33,7 +43,7 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">{eyebrow}</div>
           <h1 className="mt-1 text-2xl font-black tracking-tight text-white md:text-3xl">{title}</h1>
           <p className="mt-1 max-w-4xl text-sm text-slate-400">{description}</p>
-          <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+          <div className={`mt-5 grid grid-cols-2 gap-2 ${sectionGrid}`}>
             {sections.map(({ id, label, description: sectionDescription, icon: Icon }) => {
               const active = section === id;
               return (
