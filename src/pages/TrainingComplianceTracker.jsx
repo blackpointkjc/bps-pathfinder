@@ -521,8 +521,8 @@ export default function TrainingComplianceTracker() {
 
   return (
     <>
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen w-full overflow-x-hidden bg-[#080f1a] p-3 text-slate-100 md:p-5">
+      <div className="mx-auto w-full max-w-[1600px] min-w-0 space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
@@ -560,7 +560,7 @@ export default function TrainingComplianceTracker() {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
           {[
             { label: "Total", value: stats.total, color: "bg-slate-600" },
             { label: "Approved", value: stats.approved, color: "bg-green-600" },
@@ -569,19 +569,19 @@ export default function TrainingComplianceTracker() {
             { label: "Rejected", value: stats.rejected, color: "bg-red-400" },
             { label: "Not Started", value: stats.not_started, color: "bg-slate-400" },
           ].map(s => (
-            <Card key={s.label} className="border-none shadow-sm">
-              <CardContent className="p-3">
-                <div className={`text-xl font-bold text-white ${s.color} rounded-lg w-10 h-10 flex items-center justify-center mb-1`}>{s.value}</div>
-                <p className="text-xs text-slate-500">{s.label}</p>
+            <Card key={s.label} className="min-w-0 border border-slate-800 bg-slate-900/70 shadow-sm">
+              <CardContent className="flex min-h-[92px] items-center gap-3 p-3">
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg font-black text-white ${s.color}`}>{s.value}</div>
+                <p className="min-w-0 text-sm font-semibold leading-5 text-slate-300">{s.label}</p>
               </CardContent>
             </Card>
           ))}
         </div>
 
         {/* Filters */}
-        <Card className="border-none shadow-sm">
+        <Card className="border border-slate-800 bg-slate-900/70 shadow-sm">
           <CardContent className="p-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div>
                 <Label className="text-xs mb-1 block">Officer</Label>
                 <div className="relative"><Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" /><Input className="pl-8 h-9 text-sm" placeholder="Search officer..." value={filters.officer} onChange={e => setFilters(p => ({ ...p, officer: e.target.value }))} /></div>
@@ -605,15 +605,30 @@ export default function TrainingComplianceTracker() {
                 </Select>
               </div>
               <div>
-                <Label className="text-xs mb-1 block">Due Date From</Label>
+                <Label className="mb-1 block text-xs">Due Date From</Label>
                 <Input type="date" className="h-9 text-sm" value={filters.dueDateStart} onChange={e => setFilters(p => ({ ...p, dueDateStart: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs">Due Date Through</Label>
+                <Input type="date" className="h-9 text-sm" value={filters.dueDateEnd} onChange={e => setFilters(p => ({ ...p, dueDateEnd: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs">Expiration From</Label>
+                <Input type="date" className="h-9 text-sm" value={filters.expDateStart} onChange={e => setFilters(p => ({ ...p, expDateStart: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs">Expiration Through</Label>
+                <Input type="date" className="h-9 text-sm" value={filters.expDateEnd} onChange={e => setFilters(p => ({ ...p, expDateEnd: e.target.value }))} />
+              </div>
+              <div className="flex items-end">
+                <Button type="button" variant="outline" className="h-9 w-full" onClick={() => setFilters({ officer: '', training: '', status: 'all', dueDateStart: '', dueDateEnd: '', expDateStart: '', expDateEnd: '' })}>Clear Filters</Button>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* View Mode Toggle */}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {[
             { value: "overview", label: "By Training" },
             { value: "by-officer", label: "By Officer" },
