@@ -13,14 +13,15 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { DashboardDataProvider } from '@/lib/DashboardDataContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import PageErrorBoundary from '@/components/PageErrorBoundary';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : null;
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout
-  ? <Layout currentPageName={currentPageName}>{children}</Layout>
-  : <>{children}</>;
+  ? <Layout currentPageName={currentPageName}><PageErrorBoundary pageName={currentPageName}>{children}</PageErrorBoundary></Layout>
+  : <PageErrorBoundary pageName={currentPageName}>{children}</PageErrorBoundary>;
 
 function LoadingScreen() {
   return (
