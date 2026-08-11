@@ -7,8 +7,11 @@ export default function AdminClientPreviewBar({ user, activeCenter }) {
   const [clients, setClients] = useState([]);
   const [selected, setSelected] = useState(() => getClientPreviewId());
 
+  const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const canPreview = user?.role === 'admin' || roles.has('full_access');
+
   useEffect(() => {
-    if (user?.role !== 'admin' || activeCenter !== 'client') return;
+    if (!canPreview || activeCenter !== 'client') return;
     Promise.all([
       base44.entities.User.list('-last_updated', 500),
       base44.entities.Location.list('site_name', 500).catch(() => []),
@@ -32,9 +35,9 @@ export default function AdminClientPreviewBar({ user, activeCenter }) {
         });
       setClients(clientUsers);
     }).catch(() => setClients([]));
-  }, [user?.role, user?.id, activeCenter]);
+  }, [canPreview, user?.id, activeCenter]);
 
-  if (user?.role !== 'admin' || activeCenter !== 'client') return null;
+  if (!canPreview || activeCenter !== 'client') return null;
 
   const apply = id => {
     const profile = clients.find(client => client.id === id) || null;
