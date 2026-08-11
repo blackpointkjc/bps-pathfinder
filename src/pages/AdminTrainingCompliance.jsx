@@ -22,6 +22,7 @@ import OfficerCertificationCenter from '@/components/training/OfficerCertificati
 import TrainingComplianceTracker from './TrainingComplianceTracker';
 import AdminCertificationAlerts from './AdminCertificationAlerts';
 import { listTrainingUsers } from '@/lib/trainingDirectory';
+import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 const CATEGORIES = [
   { value: "certification", label: "Certification" },
@@ -200,7 +201,7 @@ export default function AdminTrainingCompliance({ embedded = false }) {
     return [...reqOptions, ...uniqueModules];
   }, [requirements, trainingModules]);
 
-  const officerUsers = allUsers.filter(u => u.first_name && u.email && !u.termination_date);
+  const officerUsers = allUsers.filter(u => hasOfficerAdditionalRole(u) && u.first_name && u.email && !u.termination_date && String(u.status || '').toLowerCase() !== 'terminated');
 
   // Save requirement
   const saveRequirementMutation = useMutation({
