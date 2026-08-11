@@ -881,17 +881,29 @@ export default function Layout({ children, currentPageName }) {
 
   useEffect(() => {
     const roles = normalizedRoles(user);
-    const canMonitor = user?.role === 'admin' || user?.role === 'dispatch' || roles.has('cad_access') || roles.has('full_access');
+    const canMonitor = user?.role === 'admin' || user?.role === 'dispatch' || roles.has('cad_access') || roles.has('full_access') || roles.has('supervisor') || roles.has('officer');
     if (!canMonitor) return undefined;
     let cancelled = false;
 
     const monitor = async () => {
       if (propertyAlert) return;
       try {
-        // Property matching/creation now happens server-side during CAD ingestion.
-        // The shell only needs the newest unacknowledged alert and its two related rows.
-        const alerts = await base44.entities.PropertyAlert.filter({ acknowledged: false }, '-created_date', 20).catch(() => []);
-        const record = (alerts || []).find(item => !dismissedPropertyAlertIdsRef.current.has(item.id));
+        // PropertyAlert is a shared event; acknowledgement/silence is stored per user.
+        // Dedupe by call+property so legacy duplicate alert rows cannot re-open the popup.
+        const [alerts, receipts] = await Promise.all([
+          base44.entities.PropertyAlert.list('-created_date', 100).catch(() => []),
+          user?.email ? base44.entities.PropertyAlertReceipt.filter({ user_email: String(user.email).trim().toLowerCase() }, '-dismissed_at', 300).catch(() => []) : Promise.resolve([]),
+        ]);
+        const dismissedPairs = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
+        const seenPairs = new Set();
+        const record = (alerts || []).find(item => {
+          const pair = `${item.callId}:${item.propertyId}`;
+          if (seenPairs.has(pair)) return false;
+          seenPairs.add(pair);
+          return !dismissedPairs.has(pair)
+            && !dismissedPropertyAlertKeysRef.current.has(pair)
+            && !dismissedPropertyAlertIdsRef.current.has(item.id);
+        });
         if (!record || cancelled) return;
         const [callRows, locationRows] = await Promise.all([
           base44.entities.DispatchCall.filter({ id: record.callId }).catch(() => []),
@@ -929,7 +941,7 @@ export default function Layout({ children, currentPageName }) {
             incident: call.incident || 'Unknown incident',
             location: call.location || location.address || '',
             reference: call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || '',
-            createdAt: call.created_date || record.created_date,
+            createdAt: call.time_received || record.callTime || record.time_received || call.created_date || record.created_date,
           });
         }
       } catch (error) {
