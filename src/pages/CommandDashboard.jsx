@@ -14,6 +14,7 @@ import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import { useDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { Volume2, VolumeX, Zap, MapPin, Users, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
+import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 
 const PRIORITY_CONFIG = {
     critical: { label: 'P1', color: '#ef4444', bg: 'bg-red-500', text: 'text-red-400', border: 'border-red-500', row: 'bg-red-950/30 hover:bg-red-950/50', badge: 'bg-red-500/20 text-red-300 border-red-500/40' },
@@ -42,17 +43,17 @@ function getCallPriority(call) {
 // Display time in ET, 12-hour format
 function fmtTime(dateStr) {
     if (!dateStr) return '----';
-    const d = new Date(dateStr);
-    if (isNaN(d)) return '----';
-    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/New_York' });
+    const d = parseServerTimestamp(dateStr);
+    if (!d) return '----';
+    return formatEasternTime(d);
 }
 
 // Elapsed since call was received — uses created_date as reliable fallback
 function elapsed(call) {
     // Prefer time_received if it's within 24h of created_date (scraper stored it correctly)
     // Otherwise fall back to created_date (scraper had timezone bug)
-    const created = call?.created_date ? new Date(call.created_date).getTime() : null;
-    const received = call?.time_received ? new Date(call.time_received).getTime() : null;
+    const created = call?.created_date ? parseServerTimestamp(call.created_date)?.getTime() : null;
+    const received = call?.time_received ? parseServerTimestamp(call.time_received)?.getTime() : null;
     let ref = created;
     if (received && created && Math.abs(received - created) < 24 * 3600 * 1000) {
         ref = received; // time_received is trustworthy
@@ -216,8 +217,8 @@ function CommandDashboardInner() {
     const visibleCalls = agencyFilter === 'ALL' ? calls : calls.filter(call => call.agency === agencyFilter);
     const sortedCalls = [...visibleCalls].sort((a, b) => {
         const getRef = (c) => {
-            const created = c.created_date ? new Date(c.created_date).getTime() : 0;
-            const received = c.time_received ? new Date(c.time_received).getTime() : 0;
+            const created = c.created_date ? parseServerTimestamp(c.created_date)?.getTime() || 0 : 0;
+            const received = c.time_received ? parseServerTimestamp(c.time_received)?.getTime() || 0 : 0;
             if (received && created && Math.abs(received - created) < 24 * 3600 * 1000) return received;
             return created;
         };
