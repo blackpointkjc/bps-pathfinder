@@ -481,6 +481,21 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             <div className="text-[12px] font-black tracking-[0.16em] text-white">BPS PATHFINDER</div>
             <div className="text-[9px] tracking-[0.16em] text-[#7290ad]">BLACK POINT PROTECTION</div>
           </div>}
+          {!mobile && (
+            <Link
+              to={createPageUrl('OfficerInbox')}
+              title="Inbox"
+              aria-label="Inbox"
+              className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition ${currentPageName === 'OfficerInbox' ? 'border-cyan-400 bg-cyan-500/15 text-cyan-200' : 'border-[#31506d] bg-[#102337] text-[#8cc7ff] hover:bg-[#19334e] hover:text-white'}`}
+            >
+              <MessageCircle className="h-4 w-4" />
+              {!!unreadCounts.OfficerInbox && (
+                <span className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">
+                  {unreadCounts.OfficerInbox > 99 ? '99+' : unreadCounts.OfficerInbox}
+                </span>
+              )}
+            </Link>
+          )}
           {mobile && (
             <button type="button" onClick={onCloseMobile} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#31506d] bg-[#13263a] text-white" aria-label="Close menu">
               <X className="h-5 w-5" />
@@ -499,11 +514,9 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
           )}
         </div>
 
-        {(!collapsed || mobile) && (
+        {(!collapsed || mobile) && (mobile || availableCenters.length > 1) && (
           <div className="mt-3">
-            <div className="mb-1.5 text-[8px] font-bold uppercase tracking-[0.18em] text-[#6886a3]">
-              {mobile ? 'Workspace' : 'Main Centers'}
-            </div>
+            {mobile && <div className="mb-1.5 text-[8px] font-bold uppercase tracking-[0.18em] text-[#6886a3]">Workspace</div>}
             {mobile ? (
               <div className="relative">
                 {React.createElement(center.icon, { className: 'pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-cyan-300' })}
@@ -529,7 +542,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
                 </Select>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="space-y-1">
                 {availableCenters.map(key => {
                   const item = CENTER_CONFIG[key];
                   const Icon = item.icon;
@@ -541,10 +554,10 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
                       key={key}
                       to={createPageUrl(target)}
                       onClick={() => setActiveCenter(key)}
-                      className={`relative flex min-h-10 min-w-0 items-center gap-2 rounded-lg border px-2 py-2 transition ${active ? 'border-cyan-500/60 bg-[#12304a] text-white' : 'border-[#25435e] bg-[#0a1927] text-[#91a8bf] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'}`}
+                      className={`relative flex min-h-9 min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 transition ${active ? 'border-cyan-500/60 bg-[#12304a] text-white' : 'border-transparent bg-transparent text-[#91a8bf] hover:border-[#25435e] hover:bg-[#102b47] hover:text-white'}`}
                     >
                       <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-cyan-300' : 'text-[#6683a0]'}`} />
-                      <span className="min-w-0 flex-1 truncate text-[10px] font-black">{item.label.replace(' Center', '')}</span>
+                      <span className="min-w-0 flex-1 truncate text-[10px] font-black">{item.label}</span>
                       {!!centerUnread && <span className="rounded-full bg-red-500 px-1.5 text-[8px] font-black text-white">{centerUnread > 99 ? '99+' : centerUnread}</span>}
                     </Link>
                   );
@@ -583,20 +596,15 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             })}
           </div>
         )}
-        <Link
+        {mobile && <Link
           to={createPageUrl('OfficerInbox')}
-          title={collapsed && !mobile ? 'Inbox' : undefined}
           onClick={() => onCloseMobile?.()}
-          className={`relative mb-2 flex min-h-9 items-center gap-2.5 rounded-md border px-2.5 py-1.5 transition-all ${currentPageName === 'OfficerInbox' ? 'border-cyan-500/60 bg-gradient-to-r from-[#16466f] to-[#123554] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
+          className={`relative mb-2 flex min-h-9 items-center gap-2.5 rounded-md border px-2.5 py-1.5 transition-all ${currentPageName === 'OfficerInbox' ? 'border-cyan-500/60 bg-gradient-to-r from-[#16466f] to-[#123554] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'}`}
         >
           <MessageCircle className="h-4 w-4 shrink-0 text-[#7ec1ff]" />
-          {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">INBOX</span>}
-          {!!unreadCounts.OfficerInbox && (
-            <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">
-              {unreadCounts.OfficerInbox > 99 ? '99+' : unreadCounts.OfficerInbox}
-            </span>
-          )}
-        </Link>
+          <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">INBOX</span>
+          {!!unreadCounts.OfficerInbox && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.OfficerInbox > 99 ? '99+' : unreadCounts.OfficerInbox}</span>}
+        </Link>}
         {groups.map((group) => {
           const groupOpen = Boolean(query) || openNavGroup === group.label;
           return (
@@ -632,7 +640,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             </div>
           );
         })}
-        {groups.length === 0 && (!collapsed || mobile) && <div className="px-3 py-8 text-center text-xs text-[#68829b]">No tools match your search.</div>}
+        {groups.length === 0 && mobile && query && <div className="px-3 py-8 text-center text-xs text-[#68829b]">No tools match your search.</div>}
       </nav>
 
       <div className="border-t border-[#1b3048] bg-[#06101b]/90 p-2.5 backdrop-blur">
