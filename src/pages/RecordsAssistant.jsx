@@ -99,7 +99,10 @@ export default function RecordsAssistant() {
 
         <div className="grid gap-3">
           {visible.map(item => {
-            const target = `${createPageUrl('RecordViewer')}?id=${encodeURIComponent(item.id)}&entity=${encodeURIComponent(item.entity)}`;
+            const isBolo = item.entity === 'BOLOAlert' || item.source === 'BOLO / Alerts';
+            const target = isBolo
+              ? `${createPageUrl('CADCenter')}?section=alerts&tool=bolo&open=${encodeURIComponent(item.id)}`
+              : `${createPageUrl('RecordViewer')}?id=${encodeURIComponent(item.id)}&entity=${encodeURIComponent(item.entity)}`;
             return (
               <Card key={`${item.entity}-${item.id}`} className="border-slate-700 bg-[#101b29] hover:border-blue-500/50">
                 <CardContent className="p-4">
@@ -121,7 +124,7 @@ export default function RecordsAssistant() {
                       {item.summary && <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-slate-300">{item.summary}</p>}
                     </div>
                     <Button asChild variant="outline" className="shrink-0 border-blue-600/50 text-blue-300 hover:bg-blue-500/10">
-                      <Link to={target}><FileText className="mr-2 h-4 w-4" />OPEN SOURCE REPORT<ExternalLink className="ml-2 h-3 w-3" /></Link>
+                      <Link to={target}><FileText className="mr-2 h-4 w-4" />{isBolo ? 'OPEN BOLO' : 'OPEN SOURCE REPORT'}<ExternalLink className="ml-2 h-3 w-3" /></Link>
                     </Button>
                   </div>
                 </CardContent>
