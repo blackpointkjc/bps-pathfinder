@@ -862,6 +862,11 @@ export default function Layout({ children, currentPageName }) {
     // Preserve the page for the workspace the user is actually in. Shared pages
     // should not overwrite every center that happens to expose the same route.
     const pageCenter = pageCenters.includes(activeCenter) ? activeCenter : pageCenters[0];
+    // Main Center routes are authoritative. This keeps direct links/refreshes in
+    // ClientCenter (and the other consolidated centers) synchronized with the shell.
+    if (pageCenter && DESKTOP_CENTER_PAGE[pageCenter] === currentPageName && activeCenter !== pageCenter) {
+      setActiveCenter(pageCenter);
+    }
     if (pageCenter) {
       centerLastPagesRef.current[pageCenter] = currentPageName;
       sessionStorage.setItem('bps-mobile-center-pages', JSON.stringify(centerLastPagesRef.current));
