@@ -354,9 +354,10 @@ function defaultPageForCenter(center) {
   return CENTER_DEFAULT_PAGE[center] || 'CommandDashboard';
 }
 
-function defaultPageForUser(user) {
+function defaultPageForUser(user, desktop = false) {
   const centers = allowedCenters(user);
-  return defaultPageForCenter(centers[0]);
+  const center = centers[0];
+  return desktop && DESKTOP_CENTER_PAGE[center] ? DESKTOP_CENTER_PAGE[center] : defaultPageForCenter(center);
 }
 
 function canAccessPage(user, pageName) {
@@ -931,7 +932,7 @@ export default function Layout({ children, currentPageName }) {
   };
 
   if (!canAccessPage(user, currentPageName)) {
-    return <Navigate to={createPageUrl(defaultPageForUser(user))} replace />;
+    return <Navigate to={createPageUrl(defaultPageForUser(user, !isMobileViewport))} replace />;
   }
 
   const mobilePageCenters = PAGE_TO_CENTERS[currentPageName] || [];
