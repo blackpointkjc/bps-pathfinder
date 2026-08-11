@@ -19,7 +19,7 @@ export default function CenterToolSection({ tools, defaultTool }) {
   const fullCanvas = active?.id === 'map';
 
   return (
-    <div className={`w-full ${fullCanvas ? 'flex h-[calc(100vh-250px)] min-h-[560px] flex-col' : ''}`}>
+    <div className={`w-full ${fullCanvas ? 'flex h-[calc(100vh-150px)] min-h-[680px] flex-col' : ''}`}>
       {tools.length > 1 && (
         <div className="sticky top-0 z-20 border-b border-slate-800 bg-[#08111e]/95 px-4 py-2 backdrop-blur md:px-6">
           <div className="flex flex-wrap gap-2">
