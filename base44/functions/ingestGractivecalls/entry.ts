@@ -273,10 +273,16 @@ async function reconcilePropertyAlerts(base44: any) {
   // one real-world call can only create one property alert for a property.
   const alertFingerprint = (call: any, propertyId: any) => [
     String(propertyId || ''),
-    String(call?.time_received || call?.created_date || ''),
+    String(call?.external_call_id || call?.agency_cad_number || call?.bps_reference || call?.call_id || call?.id || ''),
     String(call?.incident || '').trim().toUpperCase(),
     String(call?.location || '').trim().toUpperCase(),
   ].join('|');
+  // callId + propertyId is the strongest guard for the current persisted call row.
+  // This also protects older PropertyAlert rows created before source_key/callTime
+  // were part of the entity schema (those fields were silently discarded).
+  const existingCallPropertyKeys = new Set((existingAlerts || []).map((alert: any) =>
+    `${String(alert?.propertyId || '')}|${String(alert?.callId || '')}`
+  ));
   const existingKeys = new Set((existingAlerts || []).map((alert: any) => {
     if (alert?.source_key) return String(alert.source_key);
     return [
@@ -293,7 +299,8 @@ async function reconcilePropertyAlerts(base44: any) {
       const match = propertyMatch(call, location);
       if (!match) continue;
       const key = alertFingerprint(call, location.id);
-      if (existingKeys.has(key)) continue;
+      const callPropertyKey = `${String(location.id || '')}|${String(call.id || '')}`;
+      if (existingCallPropertyKeys.has(callPropertyKey) || existingKeys.has(key)) continue;
       await base44.asServiceRole.entities.PropertyAlert.create({
         callId: call.id,
         propertyId: location.id,
@@ -310,6 +317,7 @@ async function reconcilePropertyAlerts(base44: any) {
           : `Call is within ${Math.round(Number(match.distanceMeters || 0) / 0.3048)} feet of the ${location.site_name || 'monitored'} property boundary.`,
       });
       existingKeys.add(key);
+      existingCallPropertyKeys.add(callPropertyKey);
       propertyAlertsCreated += 1;
     }
   }
