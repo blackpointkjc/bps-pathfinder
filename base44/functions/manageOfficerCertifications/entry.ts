@@ -35,9 +35,8 @@ Deno.serve(async (req) => {
     if (!target) return Response.json({ error: 'Officer not found' }, { status: 404 });
 
     const targetRoles = new Set((target.additional_roles || []).map((r: string) => String(r).toLowerCase()));
-    const targetType = String(target.user_type || target.account_type || target.portal_type || '').toLowerCase();
-    if (targetRoles.has('client') || targetRoles.has('student') || ['client','student','pending'].includes(targetType)) {
-      return Response.json({ error: 'Certification management is limited to company personnel' }, { status: 403 });
+    if (!targetRoles.has('officer')) {
+      return Response.json({ error: 'Certification management is limited to users with the Officer role' }, { status: 403 });
     }
 
     let certs: any[];
