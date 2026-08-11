@@ -26,7 +26,7 @@ export default function AdminSupportStaffClock() {
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const rank = String(user?.rank || '').toLowerCase();
-  const hasAccess = user?.role === 'admin' || roles.has('hr') || roles.has('trainer') || roles.has('full_access') || roles.has('support_staff') || ['support staff', 'human resources'].includes(rank);
+  const hasAccess = user?.role === 'admin' || roles.has('hr') || roles.has('full_access') || roles.has('support_staff') || roles.has('support') || ['support staff', 'human resources'].includes(rank);
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ['mySupportTimeEntries', user?.email],
