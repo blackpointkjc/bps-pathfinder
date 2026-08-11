@@ -92,8 +92,25 @@ function bannerText(source, record) {
   };
 }
 
+function boloSummary(record) {
+  const party = record?.parties?.[0] || null;
+  const vehicle = record?.vehicles?.[0] || null;
+  const subject = party?.name || record?.subject_name || '';
+  const vehicleText = [vehicle?.year || record?.vehicle_year, vehicle?.color || record?.vehicle_color, vehicle?.make || record?.vehicle_make, vehicle?.model || record?.vehicle_model].filter(Boolean).join(' ');
+  const plate = vehicle?.plate || record?.vehicle_plate || '';
+  const details = [
+    record?.title,
+    subject && `Subject ${subject}`,
+    vehicleText && `Vehicle ${vehicleText}`,
+    plate && `Plate ${plate}`,
+    record?.last_known_location && `Last known location ${record.last_known_location}`,
+    record?.description,
+  ].filter(Boolean);
+  return details.join('. ') || 'Review the active BOLO for details.';
+}
+
 function BannerIcon({ kind }) {
-  if (kind === 'property') return <Siren className="h-5 w-5 text-red-200" />;
+  if (kind === 'property' || kind === 'bolo') return <Siren className="h-5 w-5 text-red-200" />;
   if (kind === 'announcement') return <Bell className="h-5 w-5 text-amber-200" />;
   if (kind === 'mention') return <Bell className="h-5 w-5 animate-pulse text-fuchsia-200" />;
   return <MessageCircle className="h-5 w-5 text-blue-200" />;
@@ -182,21 +199,57 @@ export default function GlobalMessageBanner({ user }) {
       }
     };
 
-    // BOLOs are a separate operational alert source. Announce a newly issued BOLO
-    // with the exact phrase requested by dispatch/officer workflows.
+    // BOLOs use their own global alert path because they must notify every
+    // authorized user, including the person who issued the BOLO.
+    const showBolo = record => {
+      if (!record?.id || record.status !== 'active') return;
+      const key = `BOLOAlert:${record.id}`;
+      if (knownIds.current.has(key)) return;
+      knownIds.current.add(key);
+
+      const summary = boloSummary(record);
+      playNotificationChime(true);
+      speakNotification(`Be on the lookout. ${summary}`, { rate: 0.8, pitch: 0.72 });
+      window.dispatchEvent(new CustomEvent('bps-unread-notification', {
+        detail: { page: 'BOLOAlerts', key },
+      }));
+
+      const banner = {
+        id: key,
+        title: 'BE ON THE LOOKOUT',
+        page: 'BOLOAlerts',
+        kind: 'bolo',
+        persistent: false,
+        recordId: record.id,
+        fingerprint: key,
+        sender: `${String(record.priority || 'medium').toUpperCase()} PRIORITY${record.bolo_number ? ` · ${record.bolo_number}` : ''}`,
+        photo: record.photo_urls?.[0] || '',
+        message: summary,
+      };
+      setBanners(current => [...current.slice(-4), banner]);
+      const timer = window.setTimeout(() => {
+        setBanners(current => current.filter(entry => entry.id !== key));
+        timers.current.delete(key);
+      }, 30000);
+      timers.current.set(key, timer);
+    };
+
     try {
       const boloUnsubscribe = base44.entities.BOLOAlert.subscribe(event => {
         if (event?.type !== 'create' || !event.data?.id) return;
-        const record = event.data;
-        const key = `BOLOAlert:${record.id}`;
-        if (knownIds.current.has(key)) return;
-        knownIds.current.add(key);
-        speakNotification('Be on the lookout. Be on the lookout.', { rate: 0.78, pitch: 0.7 });
-        window.dispatchEvent(new CustomEvent('bps-unread-notification', {
-          detail: { page: 'BOLOAlerts', key },
-        }));
+        showBolo(event.data);
       });
       if (typeof boloUnsubscribe === 'function') unsubscribers.push(boloUnsubscribe);
+
+      // Catch a newly issued BOLO if realtime delivery was missed while the page
+      // was loading or the browser briefly lost its connection.
+      const cutoff = Date.now() - 2 * 60 * 1000;
+      base44.entities.BOLOAlert.list('-created_date', 20).then(records => {
+        (records || []).slice().reverse().forEach(record => {
+          const created = new Date(record.created_date || 0).getTime();
+          if (record.status === 'active' && created >= cutoff) showBolo(record);
+        });
+      }).catch(() => null);
     } catch (error) {
       console.warn('Unable to subscribe to BOLO alerts:', error?.message);
     }
