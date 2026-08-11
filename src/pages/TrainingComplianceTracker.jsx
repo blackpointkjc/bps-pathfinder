@@ -176,7 +176,11 @@ export default function TrainingComplianceTracker() {
         result.push({ id: `profile_exp_${officer.id}_${courseId}`, officer_email: officer.email, officer_name: [officer.rank, officer.last_name].filter(Boolean).join(' ') || officer.email, training_name: name, category: 'certification', expiration_date: expiration, status, compliance_source: 'employee_certification', certificate_number: '', course_id: courseId, is_mandatory: true });
       });
     });
-    assignments.forEach(a => { if (!result.some(r => r.id === a.id)) result.push(a); });
+    const officerEmails = new Set(activeOfficers.map(officer => String(officer.email || '').toLowerCase()));
+    assignments.forEach(a => {
+      if (!officerEmails.has(String(a.officer_email || '').toLowerCase())) return;
+      if (!result.some(r => r.id === a.id)) result.push(a);
+    });
     return result;
   }, [activeOfficers, trainingRequirements, trainingModules, assignments, trainingCompletions]);
 
