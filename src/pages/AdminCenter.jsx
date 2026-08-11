@@ -1,5 +1,5 @@
 import { Activity, Calendar, ClipboardList, MessageCircle, Settings, Users } from 'lucide-react';
-import UnifiedCenter from '@/components/UnifiedCenter';
+import UnifiedCenter, { useDesktopViewport } from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import AdminDashboard from './AdminDashboard';
 import AdminAnalytics from './AdminAnalytics';
@@ -87,6 +87,8 @@ const TOOLS = {
 };
 
 export default function AdminCenter() {
+  const desktop = useDesktopViewport();
+  if (!desktop) return <AdminDashboard />;
   return (
     <UnifiedCenter eyebrow="Administration" title="Admin Center" description="A single desktop workspace for command, scheduling, personnel, reports, communications, system controls, and support clock-in." sections={SECTIONS} defaultSection="command">
       {section => <CenterToolSection key={section} tools={TOOLS[section]} />}
