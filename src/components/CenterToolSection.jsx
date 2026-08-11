@@ -19,7 +19,7 @@ export default function CenterToolSection({ tools, defaultTool }) {
   const fullCanvas = active?.id === 'map';
 
   return (
-    <div className={`w-full ${fullCanvas ? 'h-[calc(100vh-250px)] min-h-[560px]' : ''}`}>
+    <div className={`w-full ${fullCanvas ? 'flex h-[calc(100vh-250px)] min-h-[560px] flex-col' : ''}`}>
       {tools.length > 1 && (
         <div className="sticky top-0 z-20 border-b border-slate-800 bg-[#08111e]/95 px-4 py-2 backdrop-blur md:px-6">
           <div className="flex flex-wrap gap-2">
@@ -33,7 +33,7 @@ export default function CenterToolSection({ tools, defaultTool }) {
         </div>
       )}
       <div className={fullCanvas
-        ? 'h-[calc(100%-49px)] min-h-[510px] min-w-0 overflow-hidden [&>div]:!h-full [&>div]:!min-h-0 [&>div]:!max-w-none [&>div]:!mx-0 [&>div]:!p-0'
+        ? 'min-h-0 min-w-0 flex-1 overflow-hidden [&>div]:!h-full [&>div]:!min-h-0 [&>div]:!max-w-none [&>div]:!mx-0 [&>div]:!p-0'
         : 'min-w-0 [&>div]:!min-h-0 [&>div]:!max-w-none [&>div]:!mx-0 [&>div]:!px-4 [&>div]:!py-5 md:[&>div]:!px-6 md:[&>div]:!py-6 [&>div>div]:!max-w-none [&>div>div]:!mx-0'}>{Component ? <Component embedded /> : null}</div>
     </div>
   );
