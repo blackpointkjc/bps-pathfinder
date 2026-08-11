@@ -264,6 +264,8 @@ const PAGE_TO_CENTERS = Object.entries(CENTER_CONFIG).reduce((map, [center, conf
 }, {});
 
 const DESKTOP_CENTER_PAGE = {
+  cad: 'CADCenter',
+  officer: 'OfficerCenter',
   admin: 'AdminCenter',
   hr: 'HRCenter',
   supervisor: 'SupervisorCenter',
@@ -276,6 +278,8 @@ Object.entries(DESKTOP_CENTER_PAGE).forEach(([center, page]) => {
 });
 
 const DESKTOP_LEGACY_TOOL_ROUTES = {
+  CommandDashboard: ['cad','live','command'], DispatchCenter: ['cad','live','dispatch'], Navigation: ['cad','live','map'], BOLOAlerts: ['cad','alerts','bolo'], CallHistory: ['cad','history','history'], RecordsAssistant: ['cad','history','records'], Personnel: ['cad','admin','personnel'], PathfinderReports: ['cad','admin','reports'], AdminPortal: ['cad','admin','control'],
+  Dashboard: ['officer','today','dashboard'], TimeClock: ['officer','today','clock'], Schedule: ['officer','today','myschedule'], PostOrders: ['officer','field','postorders'], QRPatrolScan: ['officer','field','qr'], ShiftHandover: ['officer','field','handover'], VirginiaFieldLawAssistant: ['officer','field','law'], VATrespassNotices: ['officer','field','trespass'], VACriminalComplaints: ['officer','field','complaint'], Summons: ['officer','field','summons'], DailyActivityReports: ['officer','reports','dar'], IncidentReports: ['officer','reports','incident'], MaintenanceReports: ['officer','reports','maintenance'], OpenDoorReports: ['officer','reports','opendoor'], ConfidentialReport: ['officer','reports','confidential'], ExpenseReports: ['officer','reports','expense'], TimeRequests: ['officer','reports','time'], OfficerAvailability: ['officer','schedule','availability'], OpenShifts: ['officer','schedule','openshifts'], OfficerPayrollDates: ['officer','schedule','payroll'], TeamChat: ['officer','messages','chat'], Announcements: ['officer','messages','announcements'], OfficerProfile: ['officer','profile','profile'], MyPerformanceAnalytics: ['officer','profile','performance'], OfficerTraining: ['officer','profile','training'], RankStructure: ['officer','profile','rank'], RankDuties: ['officer','profile','duties'],
   AdminDashboard: ['admin','command','dashboard'], AdminAnalytics: ['admin','command','analytics'], AdminLocationTracker: ['admin','command','tracker'], AdminGeofenceAlerts: ['admin','command','geofence'],
   AdminScheduling: ['admin','schedule','scheduling'], FleetVehicleAssignments: ['admin','schedule','fleet'], AdminOfficerManagement: ['admin','schedule','availability'], AdminPlannedShifts: ['admin','schedule','planned'], AdminShiftBids: ['admin','schedule','bids'],
   AdminUsers: ['admin','people','users'], AdminPlatoonAssignments: ['admin','people','chain'], AdminLocations: ['admin','people','locations'], AdminEquipment: ['admin','people','equipment'], AdminPostOrders: ['admin','people','postorders'],
