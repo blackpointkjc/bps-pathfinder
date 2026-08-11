@@ -406,7 +406,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Issue Date</Label>
                 <Input type="date" className="mt-1" value={newCert.issue_date} onChange={e => setNewCert(p => ({ ...p, issue_date: e.target.value }))} />
@@ -425,7 +425,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Status</Label>
                 <Select value={newCert.status} onValueChange={v => setNewCert(p => ({ ...p, status: v }))}>
@@ -496,7 +496,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
           <div className="p-4 bg-purple-50 border border-purple-300 rounded-lg space-y-3">
             <h5 className="font-semibold text-purple-900 text-sm">{editingIdx !== null ? "Edit Company Certification" : "Add Company Certification"}</h5>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Course ID (optional)</Label>
                 <Input className="mt-1" placeholder="e.g., CPR-01" value={newCert.course_id}
@@ -509,7 +509,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Issue Date</Label>
                 <Input type="date" className="mt-1" value={newCert.issue_date}
@@ -528,7 +528,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
                 onChange={e => setNewCert(p => ({ ...p, certificate_number: e.target.value }))} />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Status</Label>
                 <Select value={newCert.status} onValueChange={v => setNewCert(p => ({ ...p, status: v }))}>
@@ -607,7 +607,7 @@ export default function OfficerCertificationsTab({ editFormData, setEditFormData
 
               <div className="space-y-4 pt-1">
                 {/* Details summary */}
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm bg-slate-50 rounded-lg p-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm bg-slate-50 rounded-lg p-3">
                   <span className="text-slate-500">Status</span>
                   <span><StatusBadge cert={viewingCert} /></span>
                   {viewingCert.issue_date && <><span className="text-slate-500">Issued</span><span className="font-medium">{format(new Date(viewingCert.issue_date), 'MM/dd/yyyy')}</span></>}
