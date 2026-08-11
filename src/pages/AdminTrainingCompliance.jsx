@@ -20,6 +20,7 @@ import { format, parseISO, addMonths } from "date-fns";
 import { toast } from "sonner";
 import OfficerCertificationCenter from '@/components/training/OfficerCertificationCenter';
 import TrainingComplianceTracker from './TrainingComplianceTracker';
+import AdminCertificationAlerts from './AdminCertificationAlerts';
 import { listTrainingUsers } from '@/lib/trainingDirectory';
 
 const CATEGORIES = [
@@ -869,7 +870,7 @@ export default function AdminTrainingCompliance() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 gap-2 border border-slate-200 bg-white p-2 sm:grid-cols-3 xl:grid-cols-5">
+          <TabsList className="grid w-full grid-cols-2 gap-2 border border-slate-200 bg-white p-2 sm:grid-cols-3 xl:grid-cols-6">
             <TabsTrigger value="officer-records">Officer Records</TabsTrigger>
             <TabsTrigger value="review">
               Pending Review
@@ -878,6 +879,7 @@ export default function AdminTrainingCompliance() {
             <TabsTrigger value="assignments">Assignments</TabsTrigger>
             <TabsTrigger value="templates">Requirements</TabsTrigger>
             <TabsTrigger value="overview">Overview & Reports</TabsTrigger>
+            <TabsTrigger value="alerts">Certification Alerts</TabsTrigger>
           </TabsList>
 
           {/* Pending Review Tab */}
@@ -985,6 +987,10 @@ export default function AdminTrainingCompliance() {
 
           <TabsContent value="overview" className="mt-4">
             <TrainingComplianceTracker />
+          </TabsContent>
+
+          <TabsContent value="alerts" className="mt-4">
+            <AdminCertificationAlerts />
           </TabsContent>
 
           {/* Training Templates Tab */}
