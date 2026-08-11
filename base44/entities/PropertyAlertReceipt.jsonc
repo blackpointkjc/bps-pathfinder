@@ -1,0 +1,69 @@
+{
+  "name": "PropertyAlertReceipt",
+  "type": "object",
+  "properties": {
+    "alert_id": {
+      "type": "string"
+    },
+    "call_id": {
+      "type": "string"
+    },
+    "property_id": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "acknowledged",
+        "silenced"
+      ]
+    },
+    "dismissed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "alert_id",
+    "call_id",
+    "property_id",
+    "user_email",
+    "action",
+    "dismissed_at"
+  ],
+  "rls": {
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "data.user_email": "{{user.email}}"
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
