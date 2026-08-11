@@ -29,6 +29,7 @@ export default function PropertyAlertsBanner() {
             ]);
 
             const dismissedPairs = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
+            const dismissedEventKeys = new Set((receipts || []).map(item => String(item.event_key || '')).filter(Boolean));
             const activeCallById = new Map((calls || [])
                 .filter(call => !['Cleared', 'Cancelled'].includes(call.status))
                 .map(call => [String(call.id), call]));
@@ -37,12 +38,14 @@ export default function PropertyAlertsBanner() {
 
             for (const alert of data || []) {
                 const pair = `${alert.callId}:${alert.propertyId}`;
-                if (seenPairs.has(pair)) continue;
-                seenPairs.add(pair);
-                if (dismissedPairs.has(pair)) continue;
                 const linkedCall = activeCallById.get(String(alert.callId));
                 if (!linkedCall) continue;
-                visible.push({ ...alert, _callTime: linkedCall.time_received || linkedCall.created_date });
+                const stableCallId = linkedCall.external_call_id || linkedCall.agency_cad_number || linkedCall.bps_reference || linkedCall.call_id || linkedCall.id || alert.callId;
+                const eventKey = `${alert.propertyId}|${stableCallId}`;
+                if (seenPairs.has(eventKey)) continue;
+                seenPairs.add(eventKey);
+                if (dismissedPairs.has(pair) || dismissedEventKeys.has(eventKey)) continue;
+                visible.push({ ...alert, _eventKey: eventKey, _callTime: linkedCall.time_received || linkedCall.created_date });
                 if (visible.length >= 10) break;
             }
             setAlerts(visible);
@@ -55,8 +58,8 @@ export default function PropertyAlertsBanner() {
 
     const handleAcknowledge = async (alert) => {
         stopAllAlerts();
-        const pair = `${alert.callId}:${alert.propertyId}`;
-        setAlerts(current => current.filter(item => `${item.callId}:${item.propertyId}` !== pair));
+        const eventKey = alert._eventKey || `${alert.callId}:${alert.propertyId}`;
+        setAlerts(current => current.filter(item => (item._eventKey || `${item.callId}:${item.propertyId}`) !== eventKey));
         try {
             const result = await base44.functions.invoke('acknowledgePropertyAlert', { alert_id: alert.id, action: 'acknowledged' });
             const payload = result?.data || result || {};
