@@ -29,9 +29,9 @@ export default function PropertyAlertsBanner() {
             ]);
 
             const dismissedPairs = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
-            const activeCallIds = new Set((calls || [])
+            const activeCallById = new Map((calls || [])
                 .filter(call => !['Cleared', 'Cancelled'].includes(call.status))
-                .map(call => String(call.id)));
+                .map(call => [String(call.id), call]));
             const seenPairs = new Set();
             const visible = [];
 
@@ -40,8 +40,9 @@ export default function PropertyAlertsBanner() {
                 if (seenPairs.has(pair)) continue;
                 seenPairs.add(pair);
                 if (dismissedPairs.has(pair)) continue;
-                if (!activeCallIds.has(String(alert.callId))) continue;
-                visible.push(alert);
+                const linkedCall = activeCallById.get(String(alert.callId));
+                if (!linkedCall) continue;
+                visible.push({ ...alert, _callTime: linkedCall.time_received || linkedCall.created_date });
                 if (visible.length >= 10) break;
             }
             setAlerts(visible);
@@ -90,7 +91,7 @@ export default function PropertyAlertsBanner() {
                                     <p className="text-slate-300 text-xs font-mono">{alert.callIncident} at {alert.callLocation}</p>
                                     <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-mono text-slate-500">
                                         <span>{alert.distanceMeters}m from property</span>
-                                        <span className="flex items-center gap-1"><Clock3 className="h-3 w-3" />{formatEasternTime(alert.callTime || alert.time_received || alert.created_date)} ET</span>
+                                        <span className="flex items-center gap-1"><Clock3 className="h-3 w-3" />{formatEasternTime(alert._callTime || alert.callTime || alert.time_received || alert.created_date)} ET</span>
                                     </div>
                                 </div>
                                 <Button size="sm" variant="ghost" onClick={() => handleAcknowledge(alert)} className="text-slate-400 hover:text-white" title="Acknowledge for my account">
