@@ -69,7 +69,7 @@ const emptyAssignmentTraining = {
   requires_certificate_number: false, renewal_period_months: 0, renewal_requirement_id: "",
 };
 
-export default function AdminTrainingCompliance() {
+export default function AdminTrainingCompliance({ embedded = false }) {
   const [activeTab, setActiveTab] = useState("officer-records");
   const [showRequirementDialog, setShowRequirementDialog] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
@@ -822,8 +822,8 @@ export default function AdminTrainingCompliance() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className={embedded ? "w-full bg-transparent px-4 py-5 md:px-6 md:py-6" : "min-h-screen bg-slate-50 p-4 md:p-6"}>
+      <div className={embedded ? "w-full space-y-5" : "max-w-7xl mx-auto space-y-6"}>
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
