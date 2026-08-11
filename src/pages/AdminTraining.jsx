@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
+import { Navigate } from 'react-router-dom';
 
 const DCJS_ITEMS = [
   "01I — Introduction to Security",
@@ -68,7 +69,7 @@ const COMPANY_ITEMS = [
   "OSHA Safety Standards",
 ];
 
-export default function AdminTraining({ embedded = false }) {
+function AdminTrainingContent({ embedded = false }) {
   const [showDialog, setShowDialog] = useState(false);
   const [editingModule, setEditingModule] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -939,4 +940,9 @@ export default function AdminTraining({ embedded = false }) {
       </Dialog>
     </div>
   );
+}
+
+export default function AdminTraining(props) {
+  if (!props.embedded) return <Navigate to="/TrainerCenter?section=courses" replace />;
+  return <AdminTrainingContent {...props} />;
 }
