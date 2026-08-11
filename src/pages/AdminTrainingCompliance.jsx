@@ -329,21 +329,26 @@ export default function AdminTrainingCompliance() {
 
         if (finalExpiration) updateData.expiration_date = finalExpiration;
 
-        // Auto-update officer's dcjs_expiration / firearm_expiration
-        if (finalExpiration) {
-          const allUsers = await base44.entities.User.filter({ email: submission.officer_email });
-          const officerUser = allUsers[0];
-          if (officerUser) {
-            const trainingName = (submission.training_name || '').toLowerCase();
-            const isCoreDCJS = trainingName.includes('security officer core subjects') || trainingName.includes('01e') || trainingName.includes('01i');
-            const isFirearm = trainingName.includes('handgun') || trainingName.includes('07e') || trainingName.includes('75e') || trainingName.includes('07r');
-            if (isCoreDCJS) {
-              await base44.entities.User.update(officerUser.id, { dcjs_expiration: finalExpiration }).catch(() => {});
-            } else if (isFirearm) {
-              await base44.entities.User.update(officerUser.id, { firearm_expiration: finalExpiration }).catch(() => {});
-            }
-          }
-        }
+        // Keep the officer certification profile and compliance records in sync.
+        // This is the same source used by Officer Records, so an approved training
+        // never disappears just because it originated from an assignment/submission.
+        const matchedModule = trainingModules.find(m => String(m.title || '').trim().toLowerCase() === String(submission.training_name || '').trim().toLowerCase());
+        await base44.functions.invoke('manageOfficerCertifications', {
+          action: 'upsert',
+          officer_email: submission.officer_email,
+          cert: {
+            course_id: matchedModule?.course_id || '',
+            training_name: submission.training_name,
+            category: matchedModule?.training_category === 'dcjs' ? 'dcjs' : (assignment?.category || 'company'),
+            status: 'active',
+            issue_date: finalIssueDate || new Date().toISOString().split('T')[0],
+            expiration_date: finalExpiration || '',
+            renewal_period_months: assignment?.renewal_period_months || matchedModule?.renewal_period_months || 0,
+            certificate_number: finalCertNumber || '',
+            notes: 'Synced from approved training submission',
+            manually_verified: true,
+          },
+        });
 
         // Schedule 90-day renewal reminder if we have an expiration or renewal due date
         const reminderTarget = approvalDetails.renewal_due_date || finalExpiration;
@@ -448,18 +453,23 @@ export default function AdminTrainingCompliance() {
           version: 1,
         });
 
-        if (entry.expiration_date) {
-          const userList = await base44.entities.User.filter({ email: form.officer_email });
-          const officerUser = userList[0];
-          if (officerUser) {
-            const n = (entry.training_name || '').toLowerCase();
-            if (n.includes('security officer core subjects') || n.includes('01e') || n.includes('01i')) {
-              await base44.entities.User.update(officerUser.id, { dcjs_expiration: entry.expiration_date }).catch(() => {});
-            } else if (n.includes('handgun') || n.includes('07e') || n.includes('75e') || n.includes('07r')) {
-              await base44.entities.User.update(officerUser.id, { firearm_expiration: entry.expiration_date }).catch(() => {});
-            }
-          }
-        }
+        const matchedModule = trainingModules.find(m => String(m.title || '').trim().toLowerCase() === String(entry.training_name || '').trim().toLowerCase());
+        await base44.functions.invoke('manageOfficerCertifications', {
+          action: 'upsert',
+          officer_email: form.officer_email,
+          cert: {
+            course_id: matchedModule?.course_id || '',
+            training_name: entry.training_name,
+            category: matchedModule?.training_category === 'dcjs' ? 'dcjs' : (entry.category || 'company'),
+            status: 'active',
+            issue_date: entry.completed_date,
+            expiration_date: entry.expiration_date || '',
+            renewal_period_months: entry.renewal_period_months || matchedModule?.renewal_period_months || 0,
+            certificate_number: entry.certificate_number || '',
+            notes: entry.notes || 'Manually recorded in Training Compliance',
+            manually_verified: true,
+          },
+        });
 
         if (reminderTargetDate) {
           const targetDate = new Date(reminderTargetDate);
