@@ -351,8 +351,10 @@ export default function AdminCertificationAlerts({ embedded = false }) {
     );
   }
 
-  const activeAlerts = certificationAlerts?.filter(a => !a.completed) || [];
-  const completedAlerts = certificationAlerts?.filter(a => a.completed) || [];
+  const officerEmails = new Set(allUsers.filter(hasOfficerAdditionalRole).map(officer => String(officer.email || '').toLowerCase()));
+  const visibleAlerts = (certificationAlerts || []).filter(alert => officerEmails.has(String(alert.officer_email || '').toLowerCase()));
+  const activeAlerts = visibleAlerts.filter(a => !a.completed);
+  const completedAlerts = visibleAlerts.filter(a => a.completed);
 
   return (
     <div className={embedded ? "w-full" : "p-4 md:p-8 min-h-screen"}>
