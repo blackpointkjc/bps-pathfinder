@@ -19,6 +19,7 @@ import {
 import { format, parseISO, addMonths } from "date-fns";
 import { toast } from "sonner";
 import OfficerCertificationCenter from '@/components/training/OfficerCertificationCenter';
+import TrainingComplianceTracker from './TrainingComplianceTracker';
 import { listTrainingUsers } from '@/lib/trainingDirectory';
 
 const CATEGORIES = [
@@ -68,7 +69,7 @@ const emptyAssignmentTraining = {
 };
 
 export default function AdminTrainingCompliance() {
-  const [activeTab, setActiveTab] = useState("review");
+  const [activeTab, setActiveTab] = useState("officer-records");
   const [showRequirementDialog, setShowRequirementDialog] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showRecordDialog, setShowRecordDialog] = useState(false);
@@ -866,14 +867,15 @@ export default function AdminTrainingCompliance() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-white border">
+          <TabsList className="grid w-full grid-cols-2 gap-2 border border-slate-200 bg-white p-2 sm:grid-cols-3 xl:grid-cols-5">
+            <TabsTrigger value="officer-records">Officer Records</TabsTrigger>
             <TabsTrigger value="review">
               Pending Review
               {pendingSubmissions.length > 0 && <Badge className="ml-2 bg-orange-500 text-white text-xs">{pendingSubmissions.length}</Badge>}
             </TabsTrigger>
-            <TabsTrigger value="officer-records">Officer Records</TabsTrigger>
-            <TabsTrigger value="assignments">All Assignments</TabsTrigger>
-            <TabsTrigger value="templates">Training Types</TabsTrigger>
+            <TabsTrigger value="assignments">Assignments</TabsTrigger>
+            <TabsTrigger value="templates">Requirements</TabsTrigger>
+            <TabsTrigger value="overview">Overview & Reports</TabsTrigger>
           </TabsList>
 
           {/* Pending Review Tab */}
@@ -977,6 +979,10 @@ export default function AdminTrainingCompliance() {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="overview" className="mt-4">
+            <TrainingComplianceTracker />
           </TabsContent>
 
           {/* Training Templates Tab */}
