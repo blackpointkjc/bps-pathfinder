@@ -319,7 +319,7 @@ function hasFullAccess(user) {
 
 const DARK_WORKSPACE_PAGES = new Set([
   'CommandDashboard', 'DispatchCenter', 'CallHistory', 'ClientCallHistory',
-  'BOLOAlerts', 'RecordsAssistant', 'VirginiaFieldLawAssistant', 'Personnel', 'PathfinderReports', 'AdminPortal'
+  'BOLOAlerts', 'RecordsAssistant', 'VirginiaFieldLawAssistant', 'Personnel', 'PathfinderReports', 'AdminPortal', 'CADCenter'
 ]);
 
 function normalizedRoles(user) {
