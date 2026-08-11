@@ -26,7 +26,7 @@ const CLASS_STATUS_COLORS = {
   cancelled: "bg-red-100 text-red-800",
 };
 
-export default function TrainingRecords() {
+export default function TrainingRecords({ embedded = false }) {
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState("classes");
   const [selectedClass, setSelectedClass] = useState(null);
@@ -189,7 +189,7 @@ export default function TrainingRecords() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto">
+    <div className={embedded ? "w-full space-y-5 px-4 py-5 md:px-6 md:py-6" : "p-4 md:p-6 space-y-4 max-w-7xl mx-auto"}>
       <div className="flex items-center gap-3">
         <GraduationCap className="w-7 h-7 text-indigo-600" />
         <div>
