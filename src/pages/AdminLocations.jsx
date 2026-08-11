@@ -82,7 +82,7 @@ function BoundaryPointEditor({ enabled, points, onAddPoint }) {
   );
 }
 
-export default function AdminLocations() {
+export default function AdminLocations({ embedded = false }) {
   const [showDialog, setShowDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   // Removed selectedDivision state as per changes to UI with Tabs
@@ -464,8 +464,8 @@ export default function AdminLocations() {
   const inactiveLocations = locations?.filter(loc => !loc.active) || [];
 
   return (
-    <div className="min-h-screen p-3 pb-24 sm:p-4 md:p-8">
-      <div className="mx-auto max-w-6xl space-y-5 sm:space-y-8">
+    <div className={embedded ? "min-h-0 p-0 pb-8" : "min-h-screen p-3 pb-24 sm:p-4 md:p-8"}>
+      <div className={`${embedded ? 'w-full' : 'mx-auto max-w-6xl'} space-y-5 sm:space-y-8`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <Shield className="w-8 h-8 text-amber-600" />
