@@ -16,8 +16,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Navigate } from 'react-router-dom';
 
-export default function AdminCertificationAlerts({ embedded = false }) {
+function AdminCertificationAlertsContent({ embedded = false }) {
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [notes, setNotes] = useState("");
   const [isRunningCheck, setIsRunningCheck] = useState(false);
@@ -541,4 +542,9 @@ export default function AdminCertificationAlerts({ embedded = false }) {
       )}
     </div>
   );
+}
+
+export default function AdminCertificationAlerts(props) {
+  if (!props.embedded) return <Navigate to="/TrainerCenter?section=compliance" replace />;
+  return <AdminCertificationAlertsContent {...props} />;
 }
