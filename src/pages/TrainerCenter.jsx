@@ -63,10 +63,10 @@ export default function TrainerCenter() {
       </div>
 
       <div className="mx-auto w-full max-w-[1600px] overflow-x-hidden">
-        {section === 'courses' && <AdminTraining />}
-        {section === 'classes' && <TrainingRecords />}
-        {section === 'compliance' && <AdminTrainingCompliance />}
-        {section === 'students' && <ManageStudents />}
+        {section === 'courses' && <AdminTraining embedded />}
+        {section === 'classes' && <TrainingRecords embedded />}
+        {section === 'compliance' && <AdminTrainingCompliance embedded />}
+        {section === 'students' && <ManageStudents embedded />}
       </div>
     </div>
   );
