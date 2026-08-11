@@ -2,6 +2,8 @@
 // This intentionally uses a distinct, deep tactical cadence rather than cloning
 // any named actor or character voice.
 
+import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
+
 let lastText = '';
 let lastAt = 0;
 
@@ -107,15 +109,8 @@ export function announceNavigationInstruction(instruction, distanceFeet) {
 export function announcePropertyCall({ propertyName, incident, location, reference, createdAt }) {
   let timeText = '';
   if (createdAt) {
-    const parsed = new Date(createdAt);
-    if (!Number.isNaN(parsed.getTime())) {
-      timeText = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/New_York',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      }).format(parsed);
-    }
+    const parsed = parseServerTimestamp(createdAt);
+    if (parsed) timeText = formatEasternTime(parsed);
   }
   const parts = [
     'Monitored property call.',
