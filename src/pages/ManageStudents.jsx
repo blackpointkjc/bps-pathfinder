@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { GraduationCap, Users, Edit, ShieldAlert, CheckCircle, Clock, Mail, Save, X, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 
-export default function ManageStudents() {
+export default function ManageStudents({ embedded = false }) {
   const [editingStudent, setEditingStudent] = useState(null);
   const [editForm, setEditForm] = useState({});
   const queryClient = useQueryClient();
@@ -125,7 +125,7 @@ export default function ManageStudents() {
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <div className={embedded ? "w-full px-4 py-5 md:px-6 md:py-6" : "p-4 md:p-8"}>
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-gradient-to-br from-violet-600 to-purple-700 rounded-xl flex items-center justify-center">
