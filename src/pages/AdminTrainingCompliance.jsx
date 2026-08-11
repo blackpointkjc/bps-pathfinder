@@ -756,17 +756,20 @@ function AdminTrainingComplianceContent({ embedded = false }) {
   return (
     <div className={embedded ? "w-full bg-transparent px-4 py-5 md:px-6 md:py-6" : "min-h-screen bg-slate-50 p-4 md:p-6"}>
       <div className={embedded ? "w-full space-y-5" : "max-w-7xl mx-auto space-y-6"}>
-        {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-700 rounded-xl flex items-center justify-center">
-              <GraduationCap className="w-6 h-6 text-white" />
+        {/* Header / action bar */}
+        <div className={embedded ? "flex items-center justify-between flex-wrap gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm" : "flex items-center justify-between flex-wrap gap-4"}>
+          {!embedded && (
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-700 rounded-xl flex items-center justify-center">
+                <GraduationCap className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">Training & Compliance Management</h1>
+                <p className="text-slate-500 text-sm">Assign training, review submissions, manage records</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Training & Compliance Management</h1>
-              <p className="text-slate-500 text-sm">Assign training, review submissions, manage records</p>
-            </div>
-          </div>
+          )}
+          {embedded && <div><div className="text-sm font-bold text-slate-900">Compliance Actions</div><div className="text-xs text-slate-500">Assignments, historical records, reports and compliance rules</div></div>}
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setShowPrintDialog(true)}>
               <Printer className="w-4 h-4 mr-2" />Print Report
