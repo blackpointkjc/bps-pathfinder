@@ -961,6 +961,11 @@ export default function Layout({ children, currentPageName }) {
     return <Navigate to={createPageUrl(defaultPageForUser(user, !isMobileViewport))} replace />;
   }
 
+  if (!isMobileViewport) {
+    const consolidatedTarget = desktopToolRoute(currentPageName);
+    if (consolidatedTarget) return <Navigate to={consolidatedTarget} replace />;
+  }
+
   const mobilePageCenters = PAGE_TO_CENTERS[currentPageName] || [];
   const allowedOnMobile = currentPageName === 'OfficerInbox' || mobilePageCenters.some(center => ['cad', 'officer', 'supervisor', 'admin'].includes(center));
   if (isMobileViewport && !allowedOnMobile) {
