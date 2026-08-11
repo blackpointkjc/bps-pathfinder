@@ -60,10 +60,10 @@ const TOOLS = {
     { id: 'opendoor', label: 'Open Door', component: OpenDoorReports },
     { id: 'confidential', label: 'Confidential', component: ConfidentialReport },
     { id: 'expense', label: 'Expense Report', component: ExpenseReports },
-    { id: 'time', label: 'Time Request', component: TimeRequests },
   ],
   schedule: [
     { id: 'availability', label: 'Availability', component: OfficerAvailability },
+    { id: 'time', label: 'Time Request', component: TimeRequests },
     { id: 'openshifts', label: 'Open Shifts', component: OpenShifts },
     { id: 'payroll', label: 'Payroll Dates', component: OfficerPayrollDates },
   ],
