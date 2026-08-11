@@ -156,13 +156,17 @@ export default function VisualEditAgent() {
 	const handleElementClick = (e) => {
 		if (!isVisualEditModeRef.current) return;
 
-		// Close dropdowns when clicking anywhere in iframe if a dropdown is open
-		if (isDropdownOpenRef.current) {
-			e.preventDefault();
-			e.stopPropagation();
-			e.stopImmediatePropagation();
+		// Never hijack real application controls. Radix renders Select/Dropdown
+		// content in document.body via portals, so a capture-phase visual-editor
+		// handler must explicitly allow those interactions to reach the component.
+		const interactiveTarget = e.target?.closest?.(
+			'button, a, input, textarea, select, option, label, [role="combobox"], [role="listbox"], [role="option"], [role="menu"], [role="menuitem"], [role="dialog"], [data-radix-popper-content-wrapper]'
+		);
+		if (interactiveTarget) return;
 
-			// Send message to parent to close all dropdowns
+		// If the Base44 editor itself has a dropdown open, only ask the parent to
+		// close it for clicks on non-interactive canvas content. Do not consume app UI.
+		if (isDropdownOpenRef.current) {
 			window.parent.postMessage({
 				type: 'close-dropdowns'
 			}, '*');
