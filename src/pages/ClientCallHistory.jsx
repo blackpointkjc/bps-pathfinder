@@ -3,9 +3,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Search, RefreshCw, MapPin, FileText, MessageSquare, ChevronDown, ChevronUp, Radio } from 'lucide-react';
 import { calculateDistance } from '@/utils/alertUtils';
+import { EASTERN_TIME_ZONE, formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 
 const norm = value => String(value || '').toUpperCase().replace(/\bBLOCK\b/g, '').replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
-const fmt = value => value ? new Date(value).toLocaleString('en-US', { timeZone: 'America/New_York', month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+const fmt = value => formatEasternDateTime(value, { year: 'numeric' });
 const compactRef = value => String(value || '').replace(/^(BPS-\d{6}-)0+(\d+)$/i, '$1$2');
 
 function pointInsidePolygon(lat, lng, rawPolygon = []) {
@@ -93,7 +94,7 @@ export default function ClientCallHistory() {
           if (report.status !== 'approved') return false;
           if (identifiers.has(String(report.linked_call_id || '')) || identifiers.has(String(report.linked_call_number || '')) || identifiers.has(String(report.call_number || ''))) return true;
           const sameSite = report.location === matchedSite.site_name;
-          const callDate = new Date(call.time_received || call.created_date || 0).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+          const callDate = parseServerTimestamp(call.time_received || call.created_date)?.toLocaleDateString('en-CA', { timeZone: EASTERN_TIME_ZONE }) || '';
           return sameSite && report.incident_date === callDate;
         });
         return [{ ...call, matchedSite, linkedNotes, linkedReports, propertyVerified: Boolean(verifiedAlert), propertyAlert: verifiedAlert || null }];
@@ -117,7 +118,7 @@ export default function ClientCallHistory() {
     if (agency !== 'ALL' && row.agency !== agency) return false;
     const q = search.toLowerCase();
     return !q || [row.incident, row.location, row.agency, row.call_id, row.bps_reference, row.matchedSite?.site_name].some(v => String(v || '').toLowerCase().includes(q));
-  }).sort((a, b) => new Date(b.time_received || b.created_date) - new Date(a.time_received || a.created_date)), [rows, selectedSite, agency, search]);
+  }).sort((a, b) => (parseServerTimestamp(b.time_received || b.created_date)?.getTime() || 0) - (parseServerTimestamp(a.time_received || a.created_date)?.getTime() || 0)), [rows, selectedSite, agency, search]);
 
   if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white"><div className="text-center"><div className="h-8 w-8 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-3" />Loading client call history…</div></div>;
 
@@ -126,7 +127,7 @@ export default function ClientCallHistory() {
       <div className="border-b-2 border-gold/50 bg-slate-900 px-4 py-3 flex flex-wrap items-center gap-3">
         <Radio className="w-5 h-5 text-gold" />
         <div><h1 className="font-black tracking-widest">CALLS FOR SERVICE</h1><p className="text-[10px] text-slate-400">Only calls matched to your assigned properties</p></div>
-        <div className="ml-auto text-[10px] text-slate-500">UPDATED {lastRefresh.toLocaleTimeString()}</div>
+        <div className="ml-auto text-[10px] text-slate-500">UPDATED {formatEasternTime(lastRefresh)} ET</div>
         <button onClick={() => { setRefreshing(true); load(); }} className="px-3 py-2 border border-slate-600 rounded bg-slate-800 text-xs flex items-center gap-2"><RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />REFRESH</button>
       </div>
 
