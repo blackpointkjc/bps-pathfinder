@@ -34,7 +34,6 @@
     "alert_id",
     "call_id",
     "property_id",
-    "event_key",
     "user_email",
     "action",
     "dismissed_at"
