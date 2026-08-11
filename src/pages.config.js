@@ -57,6 +57,7 @@ import __Layout from './Layout.jsx';
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import AccountingCenter from './pages/AccountingCenter';
 import AccountingInvoices from './pages/AccountingInvoices';
 import AccountingExpenses from './pages/AccountingExpenses';
 import AccountingPayroll from './pages/AccountingPayroll';
@@ -64,6 +65,7 @@ import AccountingProfit from './pages/AccountingProfit';
 import AccountingTaxLiability from './pages/AccountingTaxLiability';
 import AccountingW2Generator from './pages/AccountingW2Generator';
 import ActiveTracker from './pages/ActiveTracker';
+import AdminCenter from './pages/AdminCenter';
 import AdminAnalytics from './pages/AdminAnalytics';
 import AdminAnnouncements from './pages/AdminAnnouncements';
 import AdminCertificationAlerts from './pages/AdminCertificationAlerts';
@@ -110,6 +112,7 @@ import AdminUsers from './pages/AdminUsers';
 import AdminPlatoonAssignments from './pages/AdminPlatoonAssignments';
 import Announcements from './pages/Announcements';
 import CallsForService from './pages/CallsForService';
+import ClientCenter from './pages/ClientCenter';
 import ClientAlerts from './pages/ClientAlerts';
 import ClientCallHistory from './pages/ClientCallHistory';
 import ClientDashboard from './pages/ClientDashboard';
@@ -134,6 +137,7 @@ import MDCriminalComplaints from './pages/MDCriminalComplaints';
 import MDTrespassNotices from './pages/MDTrespassNotices';
 import MaintenanceReports from './pages/MaintenanceReports';
 import ManageClients from './pages/ManageClients';
+import HRCenter from './pages/HRCenter';
 import HRManageCompanyEmployees from './pages/HRManageCompanyEmployees';
 import TrainingManageCompanyEmployees from './pages/TrainingManageCompanyEmployees';
 import ManageCompanyEmployees from './pages/ManageCompanyEmployees';
@@ -158,6 +162,7 @@ import Schedule from './pages/Schedule';
 import ShiftReports from './pages/ShiftReports';
 import ShiftHandover from './pages/ShiftHandover';
 import Summons from './pages/Summons';
+import SupervisorCenter from './pages/SupervisorCenter';
 import SupervisorCallOuts from './pages/SupervisorCallOuts';
 import SupervisorChat from './pages/SupervisorChat';
 import SupervisorDailyCode from './pages/SupervisorDailyCode';
@@ -193,6 +198,7 @@ import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "AccountingCenter": AccountingCenter,
     "AccountingInvoices": AccountingInvoices,
     "AccountingExpenses": AccountingExpenses,
     "AccountingPayroll": AccountingPayroll,
@@ -200,6 +206,7 @@ export const PAGES = {
     "AccountingTaxLiability": AccountingTaxLiability,
     "AccountingW2Generator": AccountingW2Generator,
     "ActiveTracker": ActiveTracker,
+    "AdminCenter": AdminCenter,
     "AdminAnalytics": AdminAnalytics,
     "AdminAnnouncements": AdminAnnouncements,
     "AdminCertificationAlerts": AdminCertificationAlerts,
@@ -246,6 +253,7 @@ export const PAGES = {
     "AdminPlatoonAssignments": AdminPlatoonAssignments,
     "Announcements": Announcements,
     "CallsForService": CallsForService,
+    "ClientCenter": ClientCenter,
     "ClientAlerts": ClientAlerts,
     "ClientCallHistory": ClientCallHistory,
     "ClientDashboard": ClientDashboard,
@@ -270,6 +278,7 @@ export const PAGES = {
     "MDTrespassNotices": MDTrespassNotices,
     "MaintenanceReports": MaintenanceReports,
     "ManageClients": ManageClients,
+    "HRCenter": HRCenter,
     "HRManageCompanyEmployees": HRManageCompanyEmployees,
     "TrainingManageCompanyEmployees": TrainingManageCompanyEmployees,
     "ManageCompanyEmployees": ManageCompanyEmployees,
@@ -294,6 +303,7 @@ export const PAGES = {
     "ShiftReports": ShiftReports,
     "ShiftHandover": ShiftHandover,
     "Summons": Summons,
+    "SupervisorCenter": SupervisorCenter,
     "SupervisorCallOuts": SupervisorCallOuts,
     "SupervisorChat": SupervisorChat,
     "SupervisorDailyCode": SupervisorDailyCode,
