@@ -191,19 +191,16 @@ export default function DivisionDirectory() {
                   className="pl-10"
                 />
               </div>
-              <Select value={selectedDivision} onValueChange={setSelectedDivision}>
-                <SelectTrigger className="w-full md:w-64">
-                  <SelectValue placeholder="Filter by division" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Divisions</SelectItem>
-                  {divisions?.map((div) => (
-                    <SelectItem key={div.id} value={div.division_name}>
-                      {div.division_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <select
+                value={selectedDivision}
+                onChange={(e) => setSelectedDivision(e.target.value)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring md:w-64"
+              >
+                <option value="all">All Divisions</option>
+                {divisions?.filter(div => div.active !== false).map((div) => (
+                  <option key={div.id} value={div.division_name}>{div.division_name}</option>
+                ))}
+              </select>
             </div>
           </CardHeader>
           <CardContent>
