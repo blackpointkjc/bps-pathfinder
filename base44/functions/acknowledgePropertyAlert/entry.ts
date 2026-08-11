@@ -24,20 +24,30 @@ Deno.serve(async (req) => {
 
     const alert = await base44.asServiceRole.entities.PropertyAlert.get(alert_id);
     if (!alert) return Response.json({ error: 'Property alert not found' }, { status: 404 });
+    const call = alert.callId
+      ? await base44.asServiceRole.entities.DispatchCall.get(alert.callId).catch(() => null)
+      : null;
+    const stableCallId = String(call?.external_call_id || call?.agency_cad_number || call?.bps_reference || call?.call_id || alert.callId || '').trim();
+    const eventKey = `${String(alert.propertyId || '')}|${stableCallId}`;
 
     const userEmail = String(user.email || '').trim().toLowerCase();
     if (!userEmail) return Response.json({ error: 'Signed-in user email is required' }, { status: 400 });
 
-    const existing = await base44.asServiceRole.entities.PropertyAlertReceipt.filter({
+    const byEvent = eventKey
+      ? await base44.asServiceRole.entities.PropertyAlertReceipt.filter({ user_email: userEmail, event_key: eventKey }, '-dismissed_at', 10).catch(() => [])
+      : [];
+    const byPair = byEvent.length ? [] : await base44.asServiceRole.entities.PropertyAlertReceipt.filter({
       user_email: userEmail,
       call_id: String(alert.callId || ''),
       property_id: String(alert.propertyId || ''),
     }, '-dismissed_at', 10).catch(() => []);
+    const existing = byEvent.length ? byEvent : byPair;
 
     const data = {
       alert_id,
       call_id: String(alert.callId || ''),
       property_id: String(alert.propertyId || ''),
+      event_key: eventKey,
       user_email: userEmail,
       action,
       dismissed_at: new Date().toISOString(),
