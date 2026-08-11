@@ -396,20 +396,19 @@ function AdminTrainingContent({ embedded = false }) {
   return (
     <div className={embedded ? "w-full bg-transparent px-4 py-5 md:px-6 md:py-6" : "min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 p-4 md:p-8"}>
       <div className={embedded ? "w-full space-y-5" : "max-w-7xl mx-auto space-y-8"}>
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-slate-200">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <GraduationCap className="w-8 h-8 text-white" />
+        <div className={embedded ? "flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm" : "bg-white rounded-2xl shadow-xl p-8 border border-slate-200"}>
+          <div className="flex items-center justify-between flex-wrap gap-4 w-full">
+            <div className="flex items-center gap-3">
+              <div className={embedded ? "w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center" : "w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg"}>
+                <GraduationCap className={embedded ? "w-5 h-5 text-white" : "w-8 h-8 text-white"} />
               </div>
               <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Training Creation</h1>
-                <p className="text-slate-600 mt-1">Create and manage DCJS and company training modules</p>
+                <h1 className={embedded ? "text-lg font-bold text-slate-900" : "text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"}>{embedded ? 'Training Modules' : 'Training Creation'}</h1>
+                <p className="text-slate-600 text-sm">Create and manage DCJS and company training modules</p>
               </div>
             </div>
-            <Button onClick={() => { resetForm(); setShowDialog(true); }} className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg h-12 px-6">
-              <Plus className="w-5 h-5 mr-2" />
-              Create Training Module
+            <Button onClick={() => { resetForm(); setShowDialog(true); }} className={embedded ? "bg-blue-700 hover:bg-blue-800" : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg h-12 px-6"}>
+              <Plus className="w-4 h-4 mr-2" />Create Training Module
             </Button>
           </div>
         </div>
