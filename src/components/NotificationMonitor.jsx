@@ -5,7 +5,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { parseISO } from "date-fns";
-import { announcePropertyCall } from "@/utils/voiceAnnouncer";
 
 export default function NotificationMonitor({ user }) {
   const { toast } = useToast();
@@ -154,12 +153,9 @@ export default function NotificationMonitor({ user }) {
     if (latestCall && latestCall.id !== lastCallId && lastCallId !== null) {
       const propertyAlert = (latestPropertyAlerts || []).find(alert => String(alert.callId) === String(latestCall.id));
       if (propertyAlert) {
-        announcePropertyCall({
-          propertyName: propertyAlert.propertyName,
-          incident: latestCall.incident_type || propertyAlert.callIncident,
-          location: latestCall.address || propertyAlert.callLocation,
-          reference: latestCall.call_number || latestCall.call_id || latestCall.bps_reference || latestCall.id,
-        });
+        // The app shell is the single owner of monitored-property voice alerts.
+        // Keeping voice here as well caused duplicate announcements with different
+        // timestamp sources and made the received time sound inconsistent.
       } else {
         toast({
           title: "🚨 New Call for Service",
