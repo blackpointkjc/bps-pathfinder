@@ -112,6 +112,7 @@ import AdminUsers from './pages/AdminUsers';
 import AdminPlatoonAssignments from './pages/AdminPlatoonAssignments';
 import Announcements from './pages/Announcements';
 import CallsForService from './pages/CallsForService';
+import CADCenter from './pages/CADCenter';
 import ClientCenter from './pages/ClientCenter';
 import ClientAlerts from './pages/ClientAlerts';
 import ClientCallHistory from './pages/ClientCallHistory';
@@ -146,6 +147,7 @@ import ManageTimeEntries from './pages/ManageTimeEntries';
 import MyPerformanceAnalytics from './pages/MyPerformanceAnalytics';
 import OfficerAvailability from './pages/OfficerAvailability';
 import FleetVehicleAssignments from './pages/FleetVehicleAssignments';
+import OfficerCenter from './pages/OfficerCenter';
 import OfficerInbox from './pages/OfficerInbox';
 import OfficerPerformance from './pages/OfficerPerformance';
 import OfficerProfile from './pages/OfficerProfile';
@@ -253,6 +255,7 @@ export const PAGES = {
     "AdminPlatoonAssignments": AdminPlatoonAssignments,
     "Announcements": Announcements,
     "CallsForService": CallsForService,
+    "CADCenter": CADCenter,
     "ClientCenter": ClientCenter,
     "ClientAlerts": ClientAlerts,
     "ClientCallHistory": ClientCallHistory,
@@ -287,6 +290,7 @@ export const PAGES = {
     "MyPerformanceAnalytics": MyPerformanceAnalytics,
     "OfficerAvailability": OfficerAvailability,
     "FleetVehicleAssignments": FleetVehicleAssignments,
+    "OfficerCenter": OfficerCenter,
     "OfficerInbox": OfficerInbox,
     "OfficerPerformance": OfficerPerformance,
     "OfficerProfile": OfficerProfile,
