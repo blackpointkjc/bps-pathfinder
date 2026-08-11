@@ -151,6 +151,11 @@
       "default": false,
       "description": "Whether geo-fencing is enabled for this location"
     },
+    "allow_clock_in_anywhere": {
+      "type": "boolean",
+      "default": false,
+      "description": "Administrative override allowing officers to clock in to this site from any GPS location while still recording their coordinates"
+    },
     "geofence_radius_meters": {
       "type": "number",
       "default": 100,
