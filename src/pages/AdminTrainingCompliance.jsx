@@ -504,21 +504,6 @@ function AdminTrainingComplianceContent({ embedded = false }) {
     },
   });
 
-  // Delete an assignment (removes it from officer's view too)
-  const deleteAssignmentMutation = useMutation({
-    mutationFn: async (assignmentId) => {
-      // Also delete any submissions linked to it
-      const linked = submissions.filter(s => s.assignment_id === assignmentId);
-      await Promise.all(linked.map(s => trainingDelete('TrainingSubmission', s.id)));
-      await trainingDelete('TrainingAssignment', assignmentId);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allTrainingAssignments'] });
-      queryClient.invalidateQueries({ queryKey: ['allTrainingSubmissions'] });
-      toast.success("Assignment removed");
-    },
-  });
-
   // Update an existing approved record (expiration, cert#, etc.)
   const updateRecordMutation = useMutation({
     mutationFn: async ({ assignment, form }) => {
@@ -596,44 +581,6 @@ function AdminTrainingComplianceContent({ embedded = false }) {
     addTrainingToAssign(opt);
   };
 
-  const [uploadingCertFile, setUploadingCertFile] = useState(null); // assignment id being uploaded
-
-  const attachCertFileMutation = useMutation({
-    mutationFn: async ({ assignmentId, file }) => {
-      setUploadingCertFile(assignmentId);
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      // Find the approved submission and update it
-      const subs = await base44.entities.TrainingSubmission.filter({ assignment_id: assignmentId });
-      const approvedSub = subs.filter(s => s.status === 'approved')
-        .sort((a, b) => new Date(b.submission_date) - new Date(a.submission_date))[0];
-      if (approvedSub) {
-        await trainingUpdate('TrainingSubmission', approvedSub.id, { admin_cert_file_url: file_url });
-      }
-    },
-    onSuccess: () => {
-      setUploadingCertFile(null);
-      queryClient.invalidateQueries({ queryKey: ['allTrainingSubmissions'] });
-      toast.success("Certificate file attached");
-    },
-    onError: () => { setUploadingCertFile(null); },
-  });
-
-  const removeCertFileMutation = useMutation({
-    mutationFn: async (assignmentId) => {
-      const subs = await base44.entities.TrainingSubmission.filter({ assignment_id: assignmentId });
-      const approvedSub = subs.filter(s => s.status === 'approved')
-        .sort((a, b) => new Date(b.submission_date) - new Date(a.submission_date))[0];
-      if (approvedSub) {
-        await trainingUpdate('TrainingSubmission', approvedSub.id, { admin_cert_file_url: null });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allTrainingSubmissions'] });
-      toast.success("Certificate file removed");
-    },
-  });
-
-  const [officerSearch, setOfficerSearch] = useState("");
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [printFilter, setPrintFilter] = useState("all");
   const [printOfficerFilter, setPrintOfficerFilter] = useState("all");
@@ -642,23 +589,6 @@ function AdminTrainingComplianceContent({ embedded = false }) {
   const filteredAssignments = assignments.filter(a =>
     !searchTerm || a.officer_name?.toLowerCase().includes(searchTerm.toLowerCase()) || a.training_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Group all assignments by officer for the Officer Records tab
-  const officerRecords = useMemo(() => {
-    const map = {};
-    assignments.forEach(a => {
-      const key = a.officer_email;
-      if (!map[key]) map[key] = { email: key, name: a.officer_name || key, all: [], approved: [], pending: [], overdue: [], other: [] };
-      map[key].all.push(a);
-      if (a.status === 'approved') map[key].approved.push(a);
-      else if (a.status === 'pending_review') map[key].pending.push(a);
-      else if (a.due_date && new Date(a.due_date) < new Date() && a.status !== 'approved') map[key].overdue.push(a);
-      else map[key].other.push(a);
-    });
-    return Object.values(map)
-      .filter(o => !officerSearch || o.name.toLowerCase().includes(officerSearch.toLowerCase()) || o.email.toLowerCase().includes(officerSearch.toLowerCase()))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [assignments, officerSearch]);
 
   const executePrintReport = () => {
     const today = new Date();
