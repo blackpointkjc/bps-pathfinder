@@ -527,36 +527,6 @@ export default function AccountingProfit() {
         </Card>
       </div>
 
-      {/* Profit Formula */}
-      <Card className="mb-6 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50 border-slate-200 shadow-sm">
-        <CardContent className="p-6">
-          <h3 className="font-bold text-slate-900 mb-2">Profit Calculation Formula:</h3>
-          {invoiceRevenue > 0 && (
-            <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded mb-3 border border-amber-200">
-              ℹ️ Using invoice revenue (${invoiceRevenue.toFixed(2)}) from {filteredInvoices.length} invoices
-            </p>
-          )}
-          <p className="text-slate-700">
-            <span className="font-semibold">Revenue</span> (${totalRevenue.toFixed(2)}) 
-            {' - '}
-            <span className="font-semibold">(Payroll</span> (${totalPayroll.toFixed(2)}) 
-            {' + '}
-            <span className="font-semibold">Employer Taxes</span> (${employerTaxes.toFixed(2)})
-            {' + '}
-            <span className="font-semibold">Expenses</span> (${totalExpenses.toFixed(2)})
-            {' + '}
-            <span className="font-semibold">PTO Cost</span> (${ptoCost.toFixed(2)}))
-            {' = '}
-            <span className={`font-bold ${netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-              Net Profit (${netProfit.toFixed(2)})
-            </span>
-          </p>
-          <p className="text-xs text-slate-500 mt-2">
-            * Employer Taxes calculated at 7.65% (Social Security 6.2% + Medicare 1.45%) of total payroll
-          </p>
-        </CardContent>
-      </Card>
-
       {/* Profit by Site */}
       <Card className="mb-6">
         <CardHeader>
