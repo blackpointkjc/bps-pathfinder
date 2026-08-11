@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { Navigate } from 'react-router-dom';
+import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 const DCJS_ITEMS = [
   "01I — Introduction to Security",
@@ -148,7 +149,7 @@ function AdminTrainingContent({ embedded = false }) {
       const newModule = await trainingCreate('TrainingModule', saveData);
       
       // Create notifications for assigned officers (only if allUsers is available)
-      const users = allUsers || [];
+      const users = (allUsers || []).filter(hasOfficerAdditionalRole);
       const assignedOfficers = [];
       
       // Get officers by email
