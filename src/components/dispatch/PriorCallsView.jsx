@@ -8,6 +8,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Search, MapPin, Clock, History } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { formatEasternDateTime, parseServerTimestamp } from '@/lib/easternTime';
 
 export default function PriorCallsView({ currentUser, units }) {
     const [priorCalls, setPriorCalls] = useState([]);
@@ -62,7 +63,7 @@ export default function PriorCallsView({ currentUser, units }) {
         
         const matchesPriority = priorityFilter === 'all' || call.priority === priorityFilter;
         
-        const callDate = new Date(call.time_received || call.created_date);
+        const callDate = parseServerTimestamp(call.time_received || call.created_date) || new Date(0);
         const matchesDateFrom = !dateFrom || callDate >= new Date(dateFrom);
         const matchesDateTo = !dateTo || callDate <= new Date(dateTo);
         
@@ -190,7 +191,7 @@ export default function PriorCallsView({ currentUser, units }) {
                                             <div className="flex items-center justify-between text-xs">
                                                 <div className="flex items-center gap-1 text-slate-400">
                                                     <Clock className="w-3 h-3" />
-                                                    {new Date(call.time_received || call.created_date).toLocaleDateString()}
+                                                    {formatEasternDateTime(call.time_received || call.created_date, { hour: undefined, minute: undefined })}
                                                 </div>
                                                 <Badge variant="outline" className="border-slate-600 text-slate-300 text-xs">
                                                     {call.status}
@@ -271,25 +272,25 @@ export default function PriorCallsView({ currentUser, units }) {
                                         {selectedCall.time_received && (
                                             <div>
                                                 <p className="text-xs text-slate-500">Received</p>
-                                                <p className="text-white">{new Date(selectedCall.time_received).toLocaleString()}</p>
+                                                <p className="text-white">{formatEasternDateTime(selectedCall.time_received)} ET</p>
                                             </div>
                                         )}
                                         {selectedCall.time_dispatched && (
                                             <div>
                                                 <p className="text-xs text-slate-500">Dispatched</p>
-                                                <p className="text-white">{new Date(selectedCall.time_dispatched).toLocaleString()}</p>
+                                                <p className="text-white">{formatEasternDateTime(selectedCall.time_dispatched)} ET</p>
                                             </div>
                                         )}
                                         {selectedCall.time_on_scene && (
                                             <div>
                                                 <p className="text-xs text-slate-500">On Scene</p>
-                                                <p className="text-white">{new Date(selectedCall.time_on_scene).toLocaleString()}</p>
+                                                <p className="text-white">{formatEasternDateTime(selectedCall.time_on_scene)} ET</p>
                                             </div>
                                         )}
                                         {selectedCall.time_cleared && (
                                             <div>
                                                 <p className="text-xs text-slate-500">Cleared</p>
-                                                <p className="text-white">{new Date(selectedCall.time_cleared).toLocaleString()}</p>
+                                                <p className="text-white">{formatEasternDateTime(selectedCall.time_cleared)} ET</p>
                                             </div>
                                         )}
                                     </div>
