@@ -5,6 +5,7 @@ import { AlertTriangle, Bell, CalendarClock, Car, CheckCircle2, ChevronRight, Ma
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { parseServerTimestamp } from '@/lib/easternTime';
 
 const normalized = value => String(value || '').trim().toLowerCase();
 const APP_UPDATE_TYPES = new Set(['app_update', 'system_update', 'release', 'release_notes', 'software_update', 'platform_update']);
@@ -85,13 +86,14 @@ export default function WelcomeBriefing({ user }) {
     const load = async () => {
       try {
         const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-        const [messages, mentions, announcements, receipts, notifications, propertyAlerts, liveUsers, units, schedules, vehicleAssignments, overrides, allUsers, allUnits, allSchedules, timeEntries] = await Promise.all([
+        const [messages, mentions, announcements, receipts, notifications, propertyAlerts, propertyAlertReceipts, liveUsers, units, schedules, vehicleAssignments, overrides, allUsers, allUnits, allSchedules, timeEntries] = await Promise.all([
           base44.entities.Message.filter({ recipient_id: user.id, read: false }, '-created_date', 200).catch(() => []),
           base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200).catch(() => []),
           base44.entities.Announcement.list('-created_date', 100).catch(() => []),
           base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500).catch(() => []),
           base44.entities.Notification.filter({ recipient_email: user.email }, '-created_date', 200).catch(() => []),
           base44.entities.PropertyAlert.list('-created_date', 300).catch(() => []),
+          base44.entities.PropertyAlertReceipt.filter({ user_email: normalized(user.email) }, '-dismissed_at', 500).catch(() => []),
           base44.entities.User.filter({ email: user.email }).catch(() => []),
           base44.entities.Unit.filter({ user_id: user.id }).catch(() => []),
           base44.entities.Schedule.filter({ officer_email: user.email, shift_date: today }).catch(() => []),
@@ -112,9 +114,15 @@ export default function WelcomeBriefing({ user }) {
         const unreadNotifications = (notifications || []).filter(item => item.is_read !== true && item.read !== true);
         const appUpdates = unreadNotifications.filter(item => APP_UPDATE_TYPES.has(normalized(item.type)));
         const otherUpdates = unreadNotifications.filter(item => !APP_UPDATE_TYPES.has(normalized(item.type)));
+        const dismissedPropertyPairs = new Set((propertyAlertReceipts || []).map(item => `${item.call_id}:${item.property_id}`));
+        const seenPropertyPairs = new Set();
         const offlineAlerts = (propertyAlerts || []).filter(item => {
-          if (!offlineSince) return item.acknowledged !== true;
-          return new Date(item.created_date || 0).getTime() > offlineSince;
+          const pair = `${item.callId}:${item.propertyId}`;
+          if (seenPropertyPairs.has(pair) || dismissedPropertyPairs.has(pair)) return false;
+          seenPropertyPairs.add(pair);
+          if (!offlineSince) return true;
+          const created = parseServerTimestamp(item.callTime || item.time_received || item.created_date)?.getTime() || 0;
+          return created > offlineSince;
         });
         const liveUser = liveUsers?.[0] || user;
         const unit = units?.[0] || null;
