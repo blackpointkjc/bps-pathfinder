@@ -81,7 +81,7 @@ export default function OfficerCertificationCenter() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedUser) throw new Error('Select an employee first.');
+      if (!selectedUser) throw new Error('Select an officer first.');
       const result = await base44.functions.invoke('manageOfficerCertifications', {
         user_id: selectedUser.id,
         officer_certifications: editFormData.officer_certifications || [],
@@ -141,7 +141,7 @@ export default function OfficerCertificationCenter() {
     mutationFn: async () => {
       if (!selectedUser || !selectedTraining) throw new Error('Select a training item.');
       const duplicate = assignments.find(a => a.officer_email === selectedUser.email && String(a.training_name).toLowerCase() === String(selectedTraining.name).toLowerCase() && !['approved','rejected'].includes(a.status));
-      if (duplicate) throw new Error('This training is already active for this employee.');
+      if (duplicate) throw new Error('This training is already active for this officer.');
       const due = pushDueDate || format(addDays(new Date(), selectedTraining.dueDays || 30), 'yyyy-MM-dd');
       const fullName = [selectedUser.first_name, selectedUser.last_name].filter(Boolean).join(' ') || selectedUser.email;
       const assignment = await trainingCreate('TrainingAssignment', {
@@ -179,7 +179,7 @@ export default function OfficerCertificationCenter() {
       setPushOpen(false);
       setPushTrainingId('');
       setPushDueDate('');
-      toast.success('Training pushed to employee');
+      toast.success('Training pushed to officer');
     },
     onError: (error) => toast.error(error.message),
   });
@@ -193,10 +193,10 @@ export default function OfficerCertificationCenter() {
         <p className="mt-1 text-xs text-slate-400">Only name, rank/unit, division, training identifiers and certification records are available here. HR, emergency-contact, pay, SSN, address and other personnel fields are not exposed.</p>
       </div>
 
-      <div className="grid min-h-[620px] gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+      <div className="grid min-h-[620px] gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
         <Card className="min-w-0 border-slate-800 bg-slate-900/70">
           <CardContent className="p-3">
-            <div className="relative mb-3"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><Input className="pl-9" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search company personnel…" /></div>
+            <div className="relative mb-3"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><Input className="pl-9" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search officers…" /></div>
             <div className="max-h-[70vh] space-y-2 overflow-y-auto pr-1">
               {filteredUsers.map(officer => {
                 const certs = officer.officer_certifications || [];
@@ -219,7 +219,7 @@ export default function OfficerCertificationCenter() {
         <Card className="min-w-0 border-slate-800 bg-slate-900/70">
           <CardContent className="p-4 md:p-5">
             {!selectedUser ? (
-              <div className="flex min-h-[500px] flex-col items-center justify-center text-center text-slate-500"><UserRound className="mb-3 h-12 w-12 opacity-40" /><p className="font-semibold text-slate-300">Select an employee to view training records</p><p className="mt-1 max-w-md text-xs">Certification records and training assignments are managed here without exposing the employee's HR record.</p></div>
+              <div className="flex min-h-[500px] flex-col items-center justify-center text-center text-slate-500"><UserRound className="mb-3 h-12 w-12 opacity-40" /><p className="font-semibold text-slate-300">Select an officer to view training records</p><p className="mt-1 max-w-md text-xs">Certification records and training assignments are managed here without exposing the officer's HR record.</p></div>
             ) : (
               <div className="space-y-5">
                 <div className="flex flex-col gap-3 border-b border-slate-800 pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -235,9 +235,9 @@ export default function OfficerCertificationCenter() {
 
       <Dialog open={pushOpen} onOpenChange={setPushOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><Send className="h-5 w-5" />Push Training to Employee</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Send className="h-5 w-5" />Push Training to Officer</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm"><span className="font-bold">Employee:</span> {[selectedUser?.first_name, selectedUser?.last_name].filter(Boolean).join(' ') || selectedUser?.email}</div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm"><span className="font-bold">Officer:</span> {[selectedUser?.first_name, selectedUser?.last_name].filter(Boolean).join(' ') || selectedUser?.email}</div>
             <div className="space-y-2"><Label>Training *</Label><Select value={pushTrainingId} onValueChange={value => { setPushTrainingId(value); const option = trainingOptions.find(t => t.key === value); if (option) setPushDueDate(format(addDays(new Date(), option.dueDays || 30), 'yyyy-MM-dd')); }}><SelectTrigger><SelectValue placeholder="Select training…" /></SelectTrigger><SelectContent>{trainingOptions.map(option => <SelectItem key={option.key} value={option.key}>{option.name}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2"><Label>Due Date</Label><Input type="date" value={pushDueDate} onChange={e => setPushDueDate(e.target.value)} /></div>
             {selectedTraining && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900"><div className="font-bold">{selectedTraining.name}</div><div className="mt-1">{selectedTraining.mandatory ? 'Mandatory' : 'Optional'} · {selectedTraining.category?.replace(/_/g, ' ')}</div></div>}
