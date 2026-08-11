@@ -1,5 +1,5 @@
 import { ClipboardCheck, ClipboardList, MessageCircle } from 'lucide-react';
-import UnifiedCenter from '@/components/UnifiedCenter';
+import UnifiedCenter, { useDesktopViewport } from '@/components/UnifiedCenter';
 import CenterToolSection from '@/components/CenterToolSection';
 import SupervisorTasks from './SupervisorTasks';
 import SupervisorDailyCode from './SupervisorDailyCode';
@@ -40,6 +40,8 @@ const TOOLS = {
 };
 
 export default function SupervisorCenter() {
+  const desktop = useDesktopViewport();
+  if (!desktop) return <SupervisorTasks />;
   return (
     <UnifiedCenter eyebrow="Field Leadership" title="Supervisor Center" description="One desktop workspace for today's supervisory work, officer oversight, documentation, and supervisor communication." sections={SECTIONS} defaultSection="today">
       {section => <CenterToolSection key={section} tools={TOOLS[section]} />}
