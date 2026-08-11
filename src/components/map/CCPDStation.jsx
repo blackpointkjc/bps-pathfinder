@@ -49,7 +49,7 @@ export default function CCPDStation({ showStations = true, onNavigateToStation }
                 }
             }}
         >
-            <Popup maxWidth={250}>
+            <Popup autoPan={false} maxWidth={250}>
                 <div className="p-2">
                     <div className="flex items-center gap-2 mb-2">
                         <Shield className="w-5 h-5 text-blue-600" />

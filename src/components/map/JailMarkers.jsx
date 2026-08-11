@@ -69,7 +69,7 @@ export default function JailMarkers({ showJails = true, onNavigateToJail }) {
                         }
                     }}
                 >
-                    <Popup>
+                    <Popup autoPan={false}>
                         <div className="p-2">
                             <p className="font-bold text-red-600 mb-1">{jail.name}</p>
                             <p className="text-xs text-gray-600 mb-1">{jail.address}</p>

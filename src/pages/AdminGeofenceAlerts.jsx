@@ -208,18 +208,18 @@ export default function AdminGeofenceAlerts() {
                               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
                               {locCoords.polygon?.length >= 3 ? (
                                 <Polygon positions={locCoords.polygon} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.12, weight: 3 }}>
-                                  <Popup>Approved property geofence - {alert.location}</Popup>
+                                  <Popup autoPan={false}>Approved property geofence - {alert.location}</Popup>
                                 </Polygon>
                               ) : (
                                 <Circle center={[locCoords.lat, locCoords.lng]} radius={locCoords.radius} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.08 }}>
-                                  <Popup>Shared fallback geofence - {alert.location}</Popup>
+                                  <Popup autoPan={false}>Shared fallback geofence - {alert.location}</Popup>
                                 </Circle>
                               )}
                               <Marker position={[locCoords.lat, locCoords.lng]}>
-                                <Popup>Site Center</Popup>
+                                <Popup autoPan={false}>Site Center</Popup>
                               </Marker>
                               <Marker position={[alert.latitude, alert.longitude]}>
-                                <Popup>{alert.officer_name} - {alert.distance_from_site}m away</Popup>
+                                <Popup autoPan={false}>{alert.officer_name} - {alert.distance_from_site}m away</Popup>
                               </Marker>
                             </MapContainer>
                             <div style={{ position: 'absolute', top: '8px', right: '8px', zIndex: 1000 }} className="bg-white rounded-lg shadow-lg flex flex-col gap-1">

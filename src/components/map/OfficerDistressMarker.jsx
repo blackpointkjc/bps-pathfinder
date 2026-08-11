@@ -106,7 +106,7 @@ export default function OfficerDistressMarker({ autoCenter = false }) {
                             pathOptions={{ color: '#EF4444', fillColor: '#EF4444', fillOpacity: 0.15, weight: 2, dashArray: '6 4' }}
                         />
                         <Marker position={pos} icon={icon}>
-                            <Popup maxWidth={280}>
+                            <Popup autoPan={false} maxWidth={280}>
                                 <div style={{ fontFamily: 'monospace', background: '#1a0505', color: 'white', padding: '12px', borderRadius: '8px', margin: '-10px' }}>
                                     <div style={{ color: '#FCA5A5', fontWeight: 'bold', fontSize: '13px', marginBottom: '8px' }}>🚨 OFFICER IN DISTRESS</div>
                                     <div style={{ color: 'white', fontSize: '12px', fontWeight: 'bold' }}>

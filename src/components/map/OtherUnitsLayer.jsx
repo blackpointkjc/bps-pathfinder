@@ -121,7 +121,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                     icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor, unit.unit_number)}
                     eventHandlers={{ click: () => onUnitClick?.(unit) }}
                 >
-                        <Popup>
+                        <Popup autoPan={false}>
                             <div className="p-3 min-w-[240px]">
                                 <div className="flex items-start gap-3 mb-3 pb-3 border-b">
                                     <div className={`w-10 h-10 rounded-full ${unit.is_supervisor ? 'bg-yellow-100' : 'bg-blue-100'} flex items-center justify-center flex-shrink-0`}>

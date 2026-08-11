@@ -95,7 +95,7 @@ export default function PoliceStationMarkers({ showStations = true, onNavigateTo
                         }
                     }}
                 >
-                    <Popup>
+                    <Popup autoPan={false}>
                         <div className="p-2 min-w-[200px]">
                             <p className="font-bold text-blue-900">{station.name}</p>
                             <p className="text-xs text-blue-600 mb-2">{station.county} County Police</p>

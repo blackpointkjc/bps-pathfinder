@@ -296,7 +296,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             
             {destination && (
                 <Marker position={destination.coords} icon={destinationIcon}>
-                    <Popup>
+                    <Popup autoPan={false}>
                         <span className="font-medium">{destination.name}</span>
                     </Popup>
                 </Marker>

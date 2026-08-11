@@ -76,7 +76,7 @@ export default function PrecinctMarkers({ showStations = true, onNavigateToPreci
                         }
                     }}
                 >
-                    <Popup>
+                    <Popup autoPan={false}>
                         <div className="p-3 min-w-[200px]">
                             <div className="flex items-center gap-2 mb-2">
                                 <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">

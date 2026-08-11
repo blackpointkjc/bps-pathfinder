@@ -156,7 +156,7 @@ export default function GeofenceManager({ location, onSave }) {
                 
                 {location?.latitude && location?.longitude && (
                   <Marker position={[location.latitude, location.longitude]}>
-                    <Popup>{location.site_name}</Popup>
+                    <Popup autoPan={false}>{location.site_name}</Popup>
                   </Marker>
                 )}
 

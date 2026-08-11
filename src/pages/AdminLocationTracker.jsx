@@ -573,7 +573,7 @@ export default function AdminLocationTracker() {
                           key={officer.id} 
                           position={[officer.latitude, officer.longitude]}
                         >
-                          <Popup>
+                          <Popup autoPan={false}>
                             <div className="p-2">
                               <p className="font-bold text-slate-900">{getOfficerName(officer.officer_email)}</p>
                               <p className="text-sm text-slate-600">{officer.current_location}</p>
@@ -732,7 +732,7 @@ export default function AdminLocationTracker() {
                         radius={5}
                         pathOptions={{ color: '#fbbf24', fillColor: '#fbbf24', fillOpacity: 0.9, weight: 2 }}
                       >
-                        <Popup>
+                        <Popup autoPan={false}>
                           <div className="p-2">
                             <p className="font-bold text-slate-900">PING #{index + 1}</p>
                             <p className="text-sm font-semibold">{format(new Date(ping.timestamp), 'h:mm:ss a')}</p>
@@ -749,7 +749,7 @@ export default function AdminLocationTracker() {
                       position={[locationHistory[0].latitude, locationHistory[0].longitude]}
                       icon={clockInIcon}
                     >
-                      <Popup>
+                      <Popup autoPan={false}>
                         <div className="p-2">
                           <p className="font-bold text-green-700 text-lg">🟢 FIRST PING</p>
                           <p className="text-sm font-semibold">{format(new Date(selectedSessionSummary.firstTime), 'h:mm:ss a')}</p>
@@ -770,7 +770,7 @@ export default function AdminLocationTracker() {
                         ]}
                         icon={clockOutIcon}
                       >
-                        <Popup>
+                        <Popup autoPan={false}>
                           <div className="p-2">
                             <p className="font-bold text-red-700 text-lg">🔴 LATEST PING</p>
                             <p className="text-sm font-semibold">{format(new Date(selectedSessionSummary.lastTime), 'h:mm:ss a')}</p>

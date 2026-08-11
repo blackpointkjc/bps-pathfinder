@@ -18,7 +18,7 @@ export default function SearchPinMarker({ position, address, propertyInfo }) {
     
     return (
         <Marker position={position} icon={searchPinIcon}>
-            <Popup maxWidth={300}>
+            <Popup autoPan={false} maxWidth={300}>
                 <div className="p-3 min-w-[250px]">
                     <p className="font-bold text-green-600 mb-2 text-sm">📍 Search Result</p>
                     <p className="text-xs text-gray-700 mb-3 border-b pb-2">{address}</p>
