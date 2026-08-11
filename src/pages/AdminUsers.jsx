@@ -1100,45 +1100,35 @@ export default function AdminUsers() {
 
               <div>
                 <Label htmlFor="division" className="text-xs text-slate-500">Division</Label>
-                <Select
-                  value={editFormData.division || "none"}
-                  onValueChange={(value) => setEditFormData({...editFormData, division: value === "none" ? null : value, subdivision: null})}
+                <select
+                  id="division"
+                  value={editFormData.division || ''}
+                  onChange={(e) => setEditFormData(prev => ({...prev, division: e.target.value || null, subdivision: null}))}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select division..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {divisions?.filter(d => !d.is_subdivision).map((div) => (
-                      <SelectItem key={div.id} value={div.division_name}>
-                        {div.division_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value="">None</option>
+                  {divisions?.filter(d => !d.is_subdivision && d.active !== false).map((div) => (
+                    <option key={div.id} value={div.division_name}>{div.division_name}</option>
+                  ))}
+                </select>
               </div>
 
-              {editFormData.division && divisions?.filter(d => d.is_subdivision && d.parent_division === editFormData.division).length > 0 && (
+              {editFormData.division && divisions?.filter(d => d.is_subdivision && d.parent_division === editFormData.division && d.active !== false).length > 0 && (
                 <div>
                   <Label htmlFor="subdivision" className="text-xs text-slate-500">Subdivision</Label>
-                  <Select
-                    value={editFormData.subdivision || "none"}
-                    onValueChange={(value) => setEditFormData({...editFormData, subdivision: value === "none" ? null : value})}
+                  <select
+                    id="subdivision"
+                    value={editFormData.subdivision || ''}
+                    onChange={(e) => setEditFormData(prev => ({...prev, subdivision: e.target.value || null}))}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select subdivision..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {divisions
-                        ?.filter(d => d.is_subdivision && d.parent_division === editFormData.division)
-                        .map((div) => (
-                          <SelectItem key={div.id} value={div.subdivision || div.division_name}>
-                            {div.subdivision || div.division_name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                    <option value="">None</option>
+                    {divisions
+                      ?.filter(d => d.is_subdivision && d.parent_division === editFormData.division && d.active !== false)
+                      .map((div) => (
+                        <option key={div.id} value={div.subdivision || div.division_name}>{div.subdivision || div.division_name}</option>
+                      ))}
+                  </select>
                 </div>
               )}
 
@@ -1369,22 +1359,17 @@ export default function AdminUsers() {
 
               <div>
                 <Label htmlFor="create_division" className="text-xs text-slate-500">Division</Label>
-                <Select
-                  value={createFormData.division || "none"}
-                  onValueChange={(value) => setCreateFormData({...createFormData, division: value === "none" ? "" : value})}
+                <select
+                  id="create_division"
+                  value={createFormData.division || ''}
+                  onChange={(e) => setCreateFormData(prev => ({...prev, division: e.target.value}))}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select division..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {divisions?.filter(d => !d.is_subdivision).map((div) => (
-                      <SelectItem key={div.id} value={div.division_name}>
-                        {div.division_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value="">None</option>
+                  {divisions?.filter(d => !d.is_subdivision && d.active !== false).map((div) => (
+                    <option key={div.id} value={div.division_name}>{div.division_name}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
