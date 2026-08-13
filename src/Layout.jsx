@@ -918,9 +918,12 @@ export default function Layout({ children, currentPageName }) {
   }, [user?.role, JSON.stringify(user?.additional_roles || [])]);
 
   useEffect(() => {
+    // Every signed-in operational user must receive property alerts. Some legacy
+    // accounts can open CAD through permission flags that are not represented in
+    // role/additional_roles, so a narrow role gate could silently disable alerts.
     const roles = normalizedRoles(user);
-    const canMonitor = user?.role === 'admin' || user?.role === 'dispatch' || roles.has('cad_access') || roles.has('full_access') || roles.has('supervisor') || roles.has('officer');
-    if (!canMonitor) return undefined;
+    const isNonOperational = user?.user_type === 'client' || roles.has('client') || roles.has('student');
+    if (!user?.id || isNonOperational) return undefined;
     let cancelled = false;
 
     const monitor = async () => {
@@ -1006,16 +1009,25 @@ export default function Layout({ children, currentPageName }) {
     };
 
     monitor();
-    const id = setInterval(monitor, 30000);
-    const unsubscribeAlerts = base44.entities.PropertyAlert.subscribe(event => {
-      if (event?.type === 'create' || event?.type === 'update') monitor();
-    });
+    // Realtime payload shapes vary by SDK version, so any property-alert event
+    // triggers a refresh. The short poll and focus hooks cover dropped websocket
+    // events and background-tab suspension without waiting thirty seconds.
+    const id = setInterval(monitor, 5000);
+    const unsubscribeAlerts = base44.entities.PropertyAlert.subscribe(() => monitor());
+    const refreshOnFocus = () => monitor();
+    const refreshOnVisibility = () => {
+      if (document.visibilityState === 'visible') monitor();
+    };
+    window.addEventListener('focus', refreshOnFocus);
+    document.addEventListener('visibilitychange', refreshOnVisibility);
     return () => {
       cancelled = true;
       clearInterval(id);
       unsubscribeAlerts?.();
+      window.removeEventListener('focus', refreshOnFocus);
+      document.removeEventListener('visibilitychange', refreshOnVisibility);
     };
-  }, [user?.role, JSON.stringify(user?.additional_roles || []), propertyAlert?.key]);
+  }, [user?.id, user?.email, user?.role, user?.user_type, JSON.stringify(user?.additional_roles || []), propertyAlert?.key]);
 
   const dismissPropertyAlert = async (action = 'acknowledged') => {
     if (!propertyAlert) return false;
