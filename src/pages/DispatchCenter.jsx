@@ -142,9 +142,55 @@ export default function DispatchCenter() {
 
     const loadUnits = async () => {
         try {
-            const allUsers = await base44.entities.User.list('-last_updated', 500);
-            const eligibleUnits = (allUsers || []).filter(isOperationalOfficer);
-            console.log('📋 Dispatch loaded eligible CAD officers:', eligibleUnits.length);
+            // User profiles are authoritative for assignment IDs; live Unit rows
+            // provide the current radio/unit status. Load both so the dialog does
+            // not go empty when either collection is briefly delayed or restricted.
+            const [allUsers, liveUnitRows] = await Promise.all([
+                base44.entities.User.list('-last_updated', 500).catch(() => []),
+                base44.entities.Unit.list('-last_update_at', 500).catch(() => []),
+            ]);
+            const usersById = new Map((allUsers || []).map(user => [String(user.id), user]));
+            const currentUnitByUser = new Map();
+            for (const unit of liveUnitRows || []) {
+                const userId = String(unit.user_id || '');
+                if (!userId || currentUnitByUser.has(userId)) continue;
+                currentUnitByUser.set(userId, unit);
+            }
+
+            const assignableByUser = new Map();
+            for (const user of (allUsers || []).filter(isOperationalOfficer)) {
+                const live = currentUnitByUser.get(String(user.id));
+                assignableByUser.set(String(user.id), {
+                    ...user,
+                    id: user.id,
+                    status: live?.status || user.status || 'Available',
+                    unit_number: live?.unit_id || live?.unit_number || user.unit_number,
+                    label: live?.label || user.unit_number || user.full_name,
+                });
+            }
+
+            // Fallback for active officers represented by Unit rows before their
+            // profile query is visible to this client session.
+            for (const unit of liveUnitRows || []) {
+                const userId = String(unit.user_id || '');
+                if (!userId || assignableByUser.has(userId) || unit.status === 'Out of Service') continue;
+                const profile = usersById.get(userId);
+                assignableByUser.set(userId, {
+                    ...(profile || {}),
+                    id: userId,
+                    status: unit.status || profile?.status || 'Available',
+                    unit_number: unit.unit_id || unit.unit_number || profile?.unit_number,
+                    label: unit.label || profile?.full_name || 'Active Unit',
+                    rank: unit.rank || profile?.rank,
+                    last_name: unit.last_name || profile?.last_name,
+                    full_name: profile?.full_name || unit.label,
+                });
+            }
+
+            const eligibleUnits = [...assignableByUser.values()]
+                .filter(unit => unit.status !== 'Out of Service')
+                .sort((a, b) => String(a.unit_number || a.label || '').localeCompare(String(b.unit_number || b.label || '')));
+            console.log('📋 Dispatch loaded active assignable users:', eligibleUnits.length);
             setUnits(eligibleUnits);
         } catch (error) {
             console.error('Error loading units:', error);
