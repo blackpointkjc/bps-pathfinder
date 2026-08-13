@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
@@ -9,7 +9,6 @@ import { parseISO } from "date-fns";
 export default function NotificationMonitor({ user }) {
   const { toast } = useToast();
   const [lastChatId, setLastChatId] = useState(null);
-  const knownDispatchCallIdsRef = useRef(null);
   const [lastAnnouncementId, setLastAnnouncementId] = useState(null);
   const [lastScheduleCheck, setLastScheduleCheck] = useState(null);
   const [lastPTOStatusId, setLastPTOStatusId] = useState(null);
@@ -22,22 +21,6 @@ export default function NotificationMonitor({ user }) {
       const messages = await base44.entities.ChatMessage.list('-created_date', 1);
       return messages[0] || null;
     },
-    refetchInterval: 5000,
-    enabled: !!user,
-  });
-
-  // Monitor the actual live CAD feed. CallForService is a separate, currently
-  // unused workflow; operational calls are persisted in DispatchCall.
-  const { data: latestCalls = [] } = useQuery({
-    queryKey: ['latestDispatchCallsForNotifications'],
-    queryFn: () => base44.entities.DispatchCall.list('-created_date', 50),
-    refetchInterval: 5000,
-    enabled: !!user,
-  });
-
-  const { data: latestPropertyAlerts = [] } = useQuery({
-    queryKey: ['latestPropertyAlertsForNotifications'],
-    queryFn: () => base44.entities.PropertyAlert.list('-created_date', 20),
     refetchInterval: 5000,
     enabled: !!user,
   });
@@ -143,58 +126,6 @@ export default function NotificationMonitor({ user }) {
     }
     if (latestChat) setLastChatId(latestChat.id);
   }, [latestChat, user?.email, lastChatId, toast, playNotificationSound, showBrowserNotification]);
-
-  // Monitor newly persisted dispatch calls across every page in the app.
-  // Property calls are owned by the app-shell property popup/voice path.
-  useEffect(() => {
-    const currentCalls = (latestCalls || []).filter(call => !['Cleared', 'Cancelled'].includes(call.status));
-    const currentIds = new Set(currentCalls.map(call => String(call.id)));
-    if (knownDispatchCallIdsRef.current === null) {
-      knownDispatchCallIdsRef.current = currentIds;
-      return;
-    }
-
-    const newCalls = currentCalls.filter(call => !knownDispatchCallIdsRef.current.has(String(call.id)));
-    knownDispatchCallIdsRef.current = currentIds;
-    if (!newCalls.length) return;
-
-    const propertyCallIds = new Set((latestPropertyAlerts || []).map(alert => String(alert.callId)));
-    const generalCalls = newCalls.filter(call => !propertyCallIds.has(String(call.id)));
-    if (!generalCalls.length) return;
-
-    const latestCall = generalCalls[0];
-    const additionalCount = generalCalls.length - 1;
-    toast({
-      title: additionalCount > 0 ? `🚨 ${generalCalls.length} New Calls for Service` : "🚨 New Call for Service",
-      description: `${latestCall.incident || 'Call for service'} at ${latestCall.location || 'location pending'}${additionalCount > 0 ? ` (+${additionalCount} more)` : ''}`,
-      duration: 12000,
-      className: "bg-red-50 border-red-300",
-      action: (
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => window.location.href = createPageUrl("DispatchCenter")}
-          className="hover:bg-red-100"
-        >
-          View
-        </Button>
-      ),
-    });
-    playNotificationSound();
-    showBrowserNotification(
-      additionalCount > 0 ? `${generalCalls.length} New Calls for Service` : 'New Call for Service',
-      `${latestCall.incident || 'Call for service'} at ${latestCall.location || 'location pending'}`,
-      '🚨'
-    );
-    window.dispatchEvent(new CustomEvent('bps-new-call', {
-      detail: {
-        ...latestCall,
-        title: additionalCount > 0
-          ? `${generalCalls.length} new calls — ${latestCall.incident || 'Call for service'}`
-          : `${latestCall.incident || 'New call for service'} — ${latestCall.location || 'location pending'}`,
-      },
-    }));
-  }, [latestCalls, latestPropertyAlerts, toast]);
 
   // Monitor new announcements
   useEffect(() => {
