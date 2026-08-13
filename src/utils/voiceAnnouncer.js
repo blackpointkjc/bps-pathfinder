@@ -58,7 +58,7 @@ function acceptText(clean, dedupeMs) {
 }
 
 export function announceVoice(text, options = {}) {
-  if (!text || !isVoiceSupported() || !isVoiceEnabled()) return false;
+  if (!text || !isVoiceSupported() || (!options.force && !isVoiceEnabled())) return false;
   const clean = String(text).replace(/\s+/g, ' ').trim();
   if (!clean || !acceptText(clean, options.dedupeMs ?? 1800)) return false;
   try {
@@ -120,7 +120,7 @@ export function announcePropertyCall({ propertyName, incident, location, referen
     location ? `Location: ${location}.` : '',
     reference ? `Call reference ${reference}.` : '',
   ].filter(Boolean);
-  announceVoice(parts.join(' '), { dedupeMs: 10000, rate: 0.82, pitch: 0.68 });
+  return announceVoice(parts.join(' '), { dedupeMs: 10000, rate: 0.82, pitch: 0.68, force: true });
 }
 
 export function announceDistressSignal({ unit, name }) {
