@@ -240,11 +240,9 @@ function propertyMatch(call: any, location: any) {
   const polygon = Array.isArray(location.property_monitoring_polygon) ? location.property_monitoring_polygon : [];
   if (String(location.property_monitoring_boundary_type || '').toLowerCase() === 'polygon' && polygon.length >= 3) {
     if (pointInPolygon(lat, lng, polygon)) return { relation: 'inside', distanceMeters: 0 };
-    let edgeDistance = Infinity;
-    for (let i = 0; i < polygon.length; i += 1) {
-      edgeDistance = Math.min(edgeDistance, pointToSegmentMeters(lat, lng, polygon[i], polygon[(i + 1) % polygon.length]));
-    }
-    return edgeDistance <= 30.48 ? { relation: 'nearby', distanceMeters: edgeDistance } : null;
+    // Property monitoring is boundary-only: calls outside the configured polygon
+    // must never produce an alert, even when they are physically close to its edge.
+    return null;
   }
 
   const centerLat = Number(location.latitude);
@@ -253,8 +251,8 @@ function propertyMatch(call: any, location: any) {
   const radius = Number(location.property_monitoring_radius_meters || 500);
   const centerDistance = distanceMeters(lat, lng, centerLat, centerLng);
   if (centerDistance <= radius) return { relation: 'inside', distanceMeters: centerDistance };
-  const edgeDistance = centerDistance - radius;
-  return edgeDistance <= 30.48 ? { relation: 'nearby', distanceMeters: edgeDistance } : null;
+  // Radius-based properties follow the same strict inside-boundary rule.
+  return null;
 }
 
 async function reconcilePropertyAlerts(base44: any) {
