@@ -24,6 +24,7 @@ export default function FieldCallActions({ call, onStatusChange }) {
   const [noteAdded, setNoteAdded] = useState(false);
   const [status, setStatus] = useState(call?.status);
   const [backupSent, setBackupSent] = useState(false);
+  const [assignedToMe, setAssignedToMe] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -38,6 +39,9 @@ export default function FieldCallActions({ call, onStatusChange }) {
   }, []);
 
   useEffect(() => { setStatus(call?.status); }, [call?.id, call?.status]);
+  useEffect(() => {
+    setAssignedToMe(Boolean(user && (call?.assigned_units || []).includes(user.id)));
+  }, [user?.id, call?.id, JSON.stringify(call?.assigned_units || [])]);
 
   const updateCallStatus = async (newStatus) => {
     if (!call) return;
@@ -61,20 +65,22 @@ export default function FieldCallActions({ call, onStatusChange }) {
     } finally { setSaving(false); }
   };
 
-  const isAssignedToCall = Boolean(user && (call?.assigned_units || []).includes(user.id));
-
   const toggleMyAssignment = async () => {
     if (!call || !user || saving) return;
+    const wasAssigned = assignedToMe;
+    const action = wasAssigned ? 'leave' : 'join';
+    setAssignedToMe(!wasAssigned);
     setSaving(true);
     try {
-      const assigned = call.assigned_units || [];
-      const action = assigned.includes(user.id) ? 'leave' : 'join';
-      await base44.functions.invoke('updateMyCallAssignment', { call_id: call.id, action });
+      const result = await base44.functions.invoke('updateMyCallAssignment', { call_id: call.id, action });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
       toast.success(action === 'leave' ? 'You removed yourself from this call' : 'You joined this call');
-      onStatusChange?.(call.status, { assignmentChanged: true });
+      onStatusChange?.(call.status, { assignmentChanged: true, assigned_units: payload.assigned_units });
     } catch (error) {
+      setAssignedToMe(wasAssigned);
       console.error('[FieldCall] assignment change failed:', error);
-      toast.error('Unable to change your call assignment');
+      toast.error(error?.message || 'Unable to change your call assignment');
     } finally { setSaving(false); }
   };
 
@@ -151,8 +157,8 @@ export default function FieldCallActions({ call, onStatusChange }) {
       </div>
 
       <button onClick={toggleMyAssignment} disabled={saving}
-        className={`w-full py-2 border rounded font-mono text-[10px] font-black tracking-widest transition-colors ${isAssignedToCall ? 'border-red-700 bg-red-950/40 text-red-300 hover:bg-red-900/50' : 'border-green-700 bg-green-950/40 text-green-300 hover:bg-green-900/50'}`}>
-        {isAssignedToCall ? 'REMOVE MYSELF FROM CALL' : 'JOIN / ASSIGN MYSELF TO CALL'}
+        className={`w-full py-2 border rounded font-mono text-[10px] font-black tracking-widest transition-colors ${assignedToMe ? 'border-red-700 bg-red-950/40 text-red-300 hover:bg-red-900/50' : 'border-green-700 bg-green-950/40 text-green-300 hover:bg-green-900/50'}`}>
+        {assignedToMe ? 'REMOVE MYSELF FROM CALL' : 'JOIN / ASSIGN MYSELF TO CALL'}
       </button>
 
       <div>
