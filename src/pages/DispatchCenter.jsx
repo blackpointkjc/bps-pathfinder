@@ -173,8 +173,10 @@ export default function DispatchCenter() {
             // profile query is visible to this client session.
             for (const unit of liveUnitRows || []) {
                 const userId = String(unit.user_id || '');
-                if (!userId || assignableByUser.has(userId) || unit.status === 'Out of Service') continue;
                 const profile = usersById.get(userId);
+                const userQueryAvailable = (allUsers || []).length > 0;
+                if (!userId || assignableByUser.has(userId) || unit.status === 'Out of Service') continue;
+                if (userQueryAvailable && (!profile || !isOperationalOfficer(profile))) continue;
                 assignableByUser.set(userId, {
                     ...(profile || {}),
                     id: userId,
