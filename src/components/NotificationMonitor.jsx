@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
@@ -9,7 +9,7 @@ import { parseISO } from "date-fns";
 export default function NotificationMonitor({ user }) {
   const { toast } = useToast();
   const [lastChatId, setLastChatId] = useState(null);
-  const [lastCallId, setLastCallId] = useState(null);
+  const knownDispatchCallIdsRef = useRef(null);
   const [lastAnnouncementId, setLastAnnouncementId] = useState(null);
   const [lastScheduleCheck, setLastScheduleCheck] = useState(null);
   const [lastPTOStatusId, setLastPTOStatusId] = useState(null);
@@ -26,14 +26,11 @@ export default function NotificationMonitor({ user }) {
     enabled: !!user,
   });
 
-  // Monitor calls for service. Property-monitoring calls are handled as spoken
-  // operational alerts instead of the generic notification tone/browser alert.
-  const { data: latestCall } = useQuery({
-    queryKey: ['latestCallForService'],
-    queryFn: async () => {
-      const calls = await base44.entities.CallForService.list('-call_time', 1);
-      return calls[0] || null;
-    },
+  // Monitor the actual live CAD feed. CallForService is a separate, currently
+  // unused workflow; operational calls are persisted in DispatchCall.
+  const { data: latestCalls = [] } = useQuery({
+    queryKey: ['latestDispatchCallsForNotifications'],
+    queryFn: () => base44.entities.DispatchCall.list('-created_date', 50),
     refetchInterval: 5000,
     enabled: !!user,
   });
@@ -147,37 +144,57 @@ export default function NotificationMonitor({ user }) {
     if (latestChat) setLastChatId(latestChat.id);
   }, [latestChat, user?.email, lastChatId, toast, playNotificationSound, showBrowserNotification]);
 
-  // Monitor new calls for service. Property calls are spoken with the actual
-  // incident/property details and do not play the old generic double-beep.
+  // Monitor newly persisted dispatch calls across every page in the app.
+  // Property calls are owned by the app-shell property popup/voice path.
   useEffect(() => {
-    if (latestCall && latestCall.id !== lastCallId && lastCallId !== null) {
-      const propertyAlert = (latestPropertyAlerts || []).find(alert => String(alert.callId) === String(latestCall.id));
-      if (propertyAlert) {
-        // The app shell is the single owner of monitored-property voice alerts.
-        // Keeping voice here as well caused duplicate announcements with different
-        // timestamp sources and made the received time sound inconsistent.
-      } else {
-        toast({
-          title: "🚨 New Call for Service",
-          description: `${latestCall.incident_type} at ${latestCall.address}`,
-          duration: 12000,
-          className: "bg-red-50 border-red-300",
-          action: (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => window.location.href = createPageUrl("CallsForService")}
-              className="hover:bg-red-100"
-            >
-              View
-            </Button>
-          ),
-        });
-        playNotificationSound();
-      }
+    const currentCalls = (latestCalls || []).filter(call => !['Cleared', 'Cancelled'].includes(call.status));
+    const currentIds = new Set(currentCalls.map(call => String(call.id)));
+    if (knownDispatchCallIdsRef.current === null) {
+      knownDispatchCallIdsRef.current = currentIds;
+      return;
     }
-    if (latestCall) setLastCallId(latestCall.id);
-  }, [latestCall, latestPropertyAlerts, lastCallId, toast, playNotificationSound]);
+
+    const newCalls = currentCalls.filter(call => !knownDispatchCallIdsRef.current.has(String(call.id)));
+    knownDispatchCallIdsRef.current = currentIds;
+    if (!newCalls.length) return;
+
+    const propertyCallIds = new Set((latestPropertyAlerts || []).map(alert => String(alert.callId)));
+    const generalCalls = newCalls.filter(call => !propertyCallIds.has(String(call.id)));
+    if (!generalCalls.length) return;
+
+    const latestCall = generalCalls[0];
+    const additionalCount = generalCalls.length - 1;
+    toast({
+      title: additionalCount > 0 ? `🚨 ${generalCalls.length} New Calls for Service` : "🚨 New Call for Service",
+      description: `${latestCall.incident || 'Call for service'} at ${latestCall.location || 'location pending'}${additionalCount > 0 ? ` (+${additionalCount} more)` : ''}`,
+      duration: 12000,
+      className: "bg-red-50 border-red-300",
+      action: (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => window.location.href = createPageUrl("DispatchCenter")}
+          className="hover:bg-red-100"
+        >
+          View
+        </Button>
+      ),
+    });
+    playNotificationSound();
+    showBrowserNotification(
+      additionalCount > 0 ? `${generalCalls.length} New Calls for Service` : 'New Call for Service',
+      `${latestCall.incident || 'Call for service'} at ${latestCall.location || 'location pending'}`,
+      '🚨'
+    );
+    window.dispatchEvent(new CustomEvent('bps-new-call', {
+      detail: {
+        ...latestCall,
+        title: additionalCount > 0
+          ? `${generalCalls.length} new calls — ${latestCall.incident || 'Call for service'}`
+          : `${latestCall.incident || 'New call for service'} — ${latestCall.location || 'location pending'}`,
+      },
+    }));
+  }, [latestCalls, latestPropertyAlerts, toast]);
 
   // Monitor new announcements
   useEffect(() => {
