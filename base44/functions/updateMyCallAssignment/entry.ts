@@ -7,8 +7,8 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const roles = new Set((user.additional_roles || []).map((role: string) => String(role).toLowerCase()));
-    const allowed = user.role === 'admin'
-      || user.role === 'dispatch'
+    const primaryRole = String(user.role || '').toLowerCase();
+    const allowed = ['admin', 'dispatch', 'officer', 'supervisor'].includes(primaryRole)
       || roles.has('officer')
       || roles.has('cad_access')
       || roles.has('supervisor')
