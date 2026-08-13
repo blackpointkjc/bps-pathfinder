@@ -16,6 +16,7 @@ import { stopAllAlerts } from '@/utils/alertUtils';
 import { announcePropertyCall, stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternDateTime } from '@/lib/easternTime';
 import GlobalMessageBanner from '@/components/GlobalMessageBanner';
+import NotificationMonitor from '@/components/NotificationMonitor';
 import MandatoryReadGate from '@/components/MandatoryReadGate';
 import WelcomeBriefing from '@/components/WelcomeBriefing';
 import BackgroundLocationTracker from '@/components/BackgroundLocationTracker';
@@ -927,47 +928,57 @@ export default function Layout({ children, currentPageName }) {
       try {
         // PropertyAlert is a shared event; acknowledgement/silence is stored per user.
         // Dedupe by call+property so legacy duplicate alert rows cannot re-open the popup.
-        const [alerts, receipts, activeCalls] = await Promise.all([
+        const [alerts, receipts, calls, locations] = await Promise.all([
           base44.entities.PropertyAlert.list('-created_date', 100).catch(() => []),
           user?.email ? base44.entities.PropertyAlertReceipt.filter({ user_email: String(user.email).trim().toLowerCase() }, '-dismissed_at', 300).catch(() => []) : Promise.resolve([]),
           base44.entities.DispatchCall.list('-created_date', 300).catch(() => []),
+          base44.entities.Location.list('site_name', 300).catch(() => []),
         ]);
         const dismissedPairs = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
         const dismissedEventKeys = new Set((receipts || []).map(item => String(item.event_key || '')).filter(Boolean));
-        const activeCallById = new Map((activeCalls || [])
-          .filter(call => !['Cleared', 'Cancelled'].includes(call.status))
-          .map(call => [String(call.id), call]));
+        const callById = new Map((calls || []).map(call => [String(call.id), call]));
+        const locationById = new Map((locations || []).map(location => [String(location.id), location]));
+        const recentCutoff = Date.now() - (6 * 60 * 60 * 1000);
         const seenPairs = new Set();
         const record = (alerts || []).find(item => {
           const pair = `${item.callId}:${item.propertyId}`;
-          const linkedCall = activeCallById.get(String(item.callId));
-          const stableCallId = linkedCall?.external_call_id || linkedCall?.agency_cad_number || linkedCall?.bps_reference || linkedCall?.call_id || linkedCall?.id || item.callId;
+          const linkedCall = callById.get(String(item.callId));
+          const stableCallId = linkedCall?.external_call_id || linkedCall?.agency_cad_number || linkedCall?.bps_reference || linkedCall?.call_id || linkedCall?.id || item.source_key || item.callId;
           const eventKey = `${item.propertyId}|${stableCallId}`;
+          const eventTime = new Date(item.callTime || item.time_received || item.created_date || 0).getTime();
           if (seenPairs.has(eventKey)) return false;
           seenPairs.add(eventKey);
-          return Boolean(linkedCall)
+          return Number.isFinite(eventTime)
+            && eventTime >= recentCutoff
             && !dismissedPairs.has(pair)
             && !dismissedEventKeys.has(eventKey)
             && !dismissedPropertyAlertKeysRef.current.has(eventKey)
             && !dismissedPropertyAlertIdsRef.current.has(item.id);
         });
         if (!record || cancelled) return;
-        const locationRows = await base44.entities.Location.filter({ id: record.propertyId }).catch(() => []);
         if (cancelled) return;
-        const call = activeCallById.get(String(record.callId));
-        const location = locationRows?.[0];
-        if (!call || !location) return;
-        const stableCallId = call.external_call_id || call.agency_cad_number || call.bps_reference || call.call_id || call.id;
-        const key = `${location.id}|${stableCallId}`;
+        const linkedCall = callById.get(String(record.callId));
+        const location = locationById.get(String(record.propertyId));
+        const call = linkedCall || {
+          id: record.callId,
+          incident: record.callIncident || 'Unknown incident',
+          location: record.callLocation || location?.address || '',
+          status: 'New',
+          time_received: record.callTime || record.time_received || record.created_date,
+          created_date: record.created_date,
+        };
+        const stableCallId = call.external_call_id || call.agency_cad_number || call.bps_reference || call.call_id || call.id || record.source_key;
+        const propertyId = location?.id || record.propertyId;
+        const key = `${propertyId}|${stableCallId}`;
         const relation = String(record.description || '').toLowerCase().includes('inside') ? 'inside' : 'nearby';
         setPropertyAlert({
           alertId: record.id,
           call,
           property: {
-            id: location.id,
-            location_id: location.id,
-            name: location.site_name || record.propertyName || 'Monitored Property',
-            address: location.address || '',
+            id: location?.id || record.propertyId,
+            location_id: location?.id || record.propertyId,
+            name: location?.site_name || record.propertyName || 'Monitored Property',
+            address: location?.address || '',
           },
           relation,
           distanceFeet: Math.round(Number(record.distanceMeters || 0) / 0.3048),
@@ -982,9 +993,9 @@ export default function Layout({ children, currentPageName }) {
         if (announcedPropertyCallKeyRef.current !== key) {
           announcedPropertyCallKeyRef.current = key;
           announcePropertyCall({
-            propertyName: location.site_name || record.propertyName || 'Monitored Property',
+            propertyName: location?.site_name || record.propertyName || 'Monitored Property',
             incident: call.incident || 'Unknown incident',
-            location: call.location || location.address || '',
+            location: call.location || location?.address || '',
             reference: call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || '',
             createdAt: call.time_received || record.callTime || record.time_received || call.created_date || record.created_date,
           });
@@ -1085,7 +1096,7 @@ export default function Layout({ children, currentPageName }) {
   const criticalOutage = outages.some(item => item.severity === 'outage');
   const centerLabel = CENTER_CONFIG[activeCenter]?.label || 'CAD Center';
 
-  return <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><BackgroundLocationTracker user={user} /><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} /><ForcedOOSOverlay />
+  return <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><BackgroundLocationTracker user={user} /><NotificationMonitor user={user} /><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} /><ForcedOOSOverlay />
     <aside className="relative hidden flex-col border-r border-[#1c3049] md:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
       <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onToggleCollapsed={() => setCollapsed(value => !value)} onLogout={() => logout(true)} />
     </aside>
