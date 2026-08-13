@@ -292,16 +292,24 @@ export default function Navigation() {
         try {
             const alreadyAssigned = selectedCall.assigned_units?.includes(currentUser.id);
             if (!alreadyAssigned) {
-                const result = await base44.functions.invoke('updateMyCallAssignment', { call_id: selectedCall.id, action: 'join' });
-                const payload = result?.data || result || {};
-                if (payload.error) throw new Error(payload.error);
-                const updatedUnits = [...(selectedCall.assigned_units || []), currentUser.id];
+                const previousUnits = selectedCall.assigned_units || [];
+                const updatedUnits = [...previousUnits, currentUser.id];
+                // Reflect assignment immediately; roll it back if the server rejects it.
                 setSelectedCall(prev => ({ ...prev, assigned_units: updatedUnits }));
-                await handleStatusChange('Enroute');
-                toast.success('Assigned to call — status set to Enroute');
+                try {
+                    const result = await base44.functions.invoke('updateMyCallAssignment', { call_id: selectedCall.id, action: 'join' });
+                    const payload = result?.data || result || {};
+                    if (payload.error) throw new Error(payload.error);
+                } catch (error) {
+                    setSelectedCall(prev => ({ ...prev, assigned_units: previousUnits }));
+                    throw error;
+                }
+                setAssigning(false);
+                toast.success('Assigned to call — updating status to Enroute');
+                handleStatusChange('Enroute');
             }
-        } catch {
-            toast.error('Failed to assign');
+        } catch (error) {
+            toast.error(error?.message || 'Failed to assign');
         } finally {
             setAssigning(false);
         }
