@@ -1,4 +1,5 @@
 import React from 'react';
+import { recordRuntimeIssue } from '@/utils/appDiagnostics';
 
 export default class PageErrorBoundary extends React.Component {
   constructor(props) {
@@ -11,7 +12,15 @@ export default class PageErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('Pathfinder page crashed:', this.props.pageName || 'Unknown page', error, info);
+    const pageName = this.props.pageName || 'Unknown page';
+    console.error('Pathfinder page crashed:', pageName, error, info);
+    recordRuntimeIssue({
+      type: 'react_page_crash',
+      page: pageName,
+      message: error,
+      error,
+      stack: `${error?.stack || ''}\n${info?.componentStack || ''}`,
+    });
   }
 
   componentDidUpdate(prevProps) {
