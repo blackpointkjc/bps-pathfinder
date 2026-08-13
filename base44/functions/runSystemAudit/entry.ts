@@ -138,14 +138,21 @@ Deno.serve(async (req) => {
       description: `${badAssignedUsers.length} assignment reference(s) point to users that are missing from the directory.`,
       count: badAssignedUsers.length,
     });
-    const orphanAssignments = assignments.filter(item => !callIds.has(String(item.call_id)) || !userIds.has(String(item.unit_id)));
-    if (orphanAssignments.length) add(findings, {
-      key: 'cad:orphan-assignment',
+    // CallAssignment is also the historical assignment log. A missing live call
+    // is expected after CAD archives/removes that call, so only validate open
+    // assignment rows that still point to a currently live call.
+    const invalidActiveAssignments = assignments.filter(item =>
+      callIds.has(String(item.call_id))
+      && String(item.status || '').toLowerCase() !== 'cleared'
+      && !userIds.has(String(item.unit_id))
+    );
+    if (invalidActiveAssignments.length) add(findings, {
+      key: 'cad:invalid-active-assignment',
       area: 'CAD Assignments',
-      severity: 'maintenance',
-      title: 'Orphaned CAD assignment records found',
-      description: `${orphanAssignments.length} assignment record(s) reference a missing call or user.`,
-      count: orphanAssignments.length,
+      severity: 'degraded',
+      title: 'Active CAD assignment records reference missing users',
+      description: `${invalidActiveAssignments.length} open assignment record(s) on live calls point to users missing from the directory.`,
+      count: invalidActiveAssignments.length,
     });
 
     const monitored = locations.filter(item => item.active !== false && item.property_monitoring_enabled === true);
@@ -162,14 +169,23 @@ Deno.serve(async (req) => {
       description: `${invalidBoundaries.length} monitored property record(s) cannot detect calls because their polygon or coordinates are incomplete.`,
       count: invalidBoundaries.length,
     });
-    const brokenAlerts = alerts.filter(item => !callIds.has(String(item.callId)) || !locationIds.has(String(item.propertyId)));
-    if (brokenAlerts.length) add(findings, {
-      key: 'property:orphan-alert',
+    // PropertyAlert intentionally keeps a self-contained snapshot after its live
+    // DispatchCall is archived. Legacy alerts can also reference the former
+    // MonitoredProperty entity. Neither condition makes the alert unusable.
+    const recentAlertCutoff = Date.now() - (24 * 60 * 60 * 1000);
+    const malformedRecentAlerts = alerts.filter(item => {
+      const created = new Date(item.callTime || item.time_received || item.created_date || 0).getTime();
+      if (!Number.isFinite(created) || created < recentAlertCutoff) return false;
+      return !item.callId || !item.propertyId || !item.propertyName || !item.callIncident
+        || !value(item, 'callTime', 'time_received', 'created_date');
+    });
+    if (malformedRecentAlerts.length) add(findings, {
+      key: 'property:malformed-recent-alert',
       area: 'Property Alerts',
-      severity: 'maintenance',
-      title: 'Property alerts have missing call or property links',
-      description: `${brokenAlerts.length} alert record(s) cannot open their related call or monitored property.`,
-      count: brokenAlerts.length,
+      severity: 'degraded',
+      title: 'Recent property alerts are missing required snapshot data',
+      description: `${malformedRecentAlerts.length} recent alert record(s) cannot display a complete property-call announcement.`,
+      count: malformedRecentAlerts.length,
     });
 
     const schedules = datasets.Schedule || [];
