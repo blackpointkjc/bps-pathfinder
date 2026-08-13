@@ -949,7 +949,8 @@ export default function Layout({ children, currentPageName }) {
           const stableCallId = linkedCall?.external_call_id || linkedCall?.agency_cad_number || linkedCall?.bps_reference || linkedCall?.call_id || linkedCall?.id || item.source_key || item.callId;
           const eventKey = `${item.propertyId}|${stableCallId}`;
           const eventTime = new Date(item.callTime || item.time_received || item.created_date || 0).getTime();
-          if (seenPairs.has(eventKey)) return false;
+          const isInsideBoundary = String(item.description || '').toLowerCase().includes('inside');
+          if (!isInsideBoundary || seenPairs.has(eventKey)) return false;
           seenPairs.add(eventKey);
           return Number.isFinite(eventTime)
             && eventTime >= recentCutoff
