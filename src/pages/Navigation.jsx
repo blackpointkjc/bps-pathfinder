@@ -260,8 +260,24 @@ export default function Navigation() {
                 scheduled_shift_id: shift.id,
                 last_update_at: new Date().toISOString(),
             };
-            if (ownUnits?.[0]?.id) await base44.entities.Unit.update(ownUnits[0].id, unitPayload);
-            else await base44.entities.Unit.create(unitPayload);
+            if (ownUnits?.length) {
+                const sortedOwnUnits = [...ownUnits].sort((a, b) =>
+                    new Date(b.created_date || b.updated_date || 0).getTime() - new Date(a.created_date || a.updated_date || 0).getTime()
+                );
+                const primaryUnit = sortedOwnUnits[0];
+                await Promise.all([
+                    base44.entities.Unit.update(primaryUnit.id, unitPayload),
+                    ...sortedOwnUnits.slice(1)
+                        .filter(unit => unit.status !== 'Out of Service')
+                        .map(unit => base44.entities.Unit.update(unit.id, {
+                            status: 'Out of Service',
+                            description: 'Duplicate unit record retired automatically.',
+                            last_update_at: new Date().toISOString(),
+                        }).catch(() => null)),
+                ]);
+            } else {
+                await base44.entities.Unit.create(unitPayload);
+            }
 
             return { ...user, ...partnership };
         } catch (e) {
