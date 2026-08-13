@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
 import { normalizeRank } from '@/utils/rankDisplay';
-import { isDispatchAlertMuted, monitoredPropertiesFromLocations, playDispatchAlert, setDispatchAlertMuted, shouldAlertForGeofence } from '@/utils/alertUtils';
+import { isDispatchAlertMuted, setDispatchAlertMuted } from '@/utils/alertUtils';
 import { classifyCall } from '@/lib/cadCallTypes';
 import { cleanIncident } from '@/utils/callUtils';
 import OfficerDistressButton from '@/components/dispatch/OfficerDistressButton';
@@ -89,13 +89,11 @@ function CommandDashboardInner() {
     const [currentUser, setCurrentUser]         = useState(null);
     const [soundEnabled, setSoundEnabled]       = useState(() => !isDispatchAlertMuted());
     const [syncStatus, setSyncStatus]           = useState({ state: 'idle', lastSync: null, added: 0, updated: 0, total: 0, error: null });
-    const [monitoredProperties, setMonitoredProperties] = useState([]);
     const [selectedCall, setSelectedCall] = useState(null);
     const [agencyFilter, setAgencyFilter] = useState('ALL');
     const [, setTick]                           = useState(0);
 
     const soundEnabledRef        = useRef(!isDispatchAlertMuted());
-    const knownCallIdsRef        = useRef(null);
 
     // Re-render every second for live elapsed timers
     useEffect(() => {
@@ -111,29 +109,7 @@ function CommandDashboardInner() {
             soundEnabledRef.current = val;
         }).catch(() => {});
 
-        base44.entities.Location.list('site_name').then(locations => {
-            setMonitoredProperties(monitoredPropertiesFromLocations(locations || []));
-        }).catch(() => {});
     }, []);
-
-    // Detect new calls and play alert sound
-    useEffect(() => {
-        if (!calls.length) return;
-        const currentIds = new Set(calls.map(c => c.id));
-        if (knownCallIdsRef.current === null) {
-            knownCallIdsRef.current = currentIds;
-            return;
-        }
-        const newIds = [...currentIds].filter(id => !knownCallIdsRef.current.has(id));
-        if (newIds.length > 0 && soundEnabledRef.current) {
-            const newCall = calls.find(c => c.id === newIds[0]);
-            if (newCall && shouldAlertForGeofence(newCall, currentUser, monitoredProperties)) {
-                playDispatchAlert();
-                window.dispatchEvent(new CustomEvent('bps-new-call', { detail: newCall }));
-            }
-        }
-        knownCallIdsRef.current = currentIds;
-    }, [calls, currentUser, monitoredProperties]);
 
     // Backend automation "Ingest gractivecalls.com" syncs calls every 5 min with geocoding.
     // Frontend just displays data — no redundant LLM polling (was causing rate-limit lockouts).
