@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertTriangle, CheckCircle, RefreshCw, ScanSearch, ServerCrash, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
+import { runClientFunctionalAudit } from '@/utils/appDiagnostics';
 
 const severityConfig = {
   outage: { label: 'Outage', color: 'text-red-300', bg: 'bg-red-950/35 border-red-700', icon: ServerCrash },
@@ -61,14 +62,33 @@ export default function SystemIssuesPanel({ currentUser }) {
     if (scanning) return;
     setScanning(true);
     try {
-      const response = await base44.functions.invoke('runSystemAudit', {});
-      const payload = response?.data || response || {};
-      if (payload.error) throw new Error(payload.error);
-      setAudit(payload);
-      if (payload.summary?.issues_found) {
-        toast.warning(`Full app scan found ${payload.summary.issues_found} issue(s)`);
+      const [serverResponse, clientAudit] = await Promise.all([
+        base44.functions.invoke('runSystemAudit', {}),
+        runClientFunctionalAudit(),
+      ]);
+      const serverAudit = serverResponse?.data || serverResponse || {};
+      if (serverAudit.error) throw new Error(serverAudit.error);
+      const combinedFindings = [...(clientAudit.findings || []), ...(serverAudit.findings || [])];
+      const combined = {
+        ...serverAudit,
+        findings: combinedFindings,
+        client_summary: clientAudit.summary,
+        summary: {
+          ...(serverAudit.summary || {}),
+          areas_checked: (serverAudit.summary?.areas_checked || 0) + 5,
+          issues_found: combinedFindings.length,
+          outages: combinedFindings.filter(item => item.severity === 'outage').length,
+          degraded: combinedFindings.filter(item => item.severity === 'degraded').length,
+          maintenance: combinedFindings.filter(item => item.severity === 'maintenance').length,
+        },
+        duration_ms: Math.max(serverAudit.duration_ms || 0, clientAudit.duration_ms || 0),
+        scanned_at: new Date().toISOString(),
+      };
+      setAudit(combined);
+      if (combined.summary.issues_found) {
+        toast.warning(`Full app scan found ${combined.summary.issues_found} issue(s)`);
       } else {
-        toast.success('Full app scan completed — no issues found');
+        toast.success('Full app functional and code scan completed — no issues found');
       }
       await load();
     } catch (error) {
@@ -107,8 +127,8 @@ export default function SystemIssuesPanel({ currentUser }) {
               FULL APPLICATION SYSTEM AUDIT
             </div>
             <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">
-              Checks the entire app: users and access, CAD, assignments, active units, monitored properties,
-              property alerts, scheduling, timekeeping, reports, training, communications, fleet, BOLO, and data services.
+              Checks every page module for broken code, captured runtime crashes, browser functions, voice and location support,
+              plus users, CAD, assignments, properties, alerts, scheduling, timekeeping, reports, training, communications, fleet, BOLO, and data services.
             </p>
           </div>
           <button
@@ -139,6 +159,7 @@ export default function SystemIssuesPanel({ currentUser }) {
             </div>
             <div className="mt-2 text-[10px] text-slate-500">
               Last full scan: {formatESTTime(audit.scanned_at)} · {audit.duration_ms || 0} ms
+              {audit.client_summary && ` · ${audit.client_summary.page_modules_loaded}/${audit.client_summary.page_modules_checked} page modules loaded · ${audit.client_summary.runtime_errors_24h} runtime errors captured in 24h`}
             </div>
           </div>
         )}
