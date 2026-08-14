@@ -698,7 +698,7 @@ export default function Layout({ children, currentPageName }) {
   const [propertyAlertSilenced, setPropertyAlertSilenced] = useState(false);
   const dismissedPropertyAlertIdsRef = useRef(new Set());
   const dismissedPropertyAlertKeysRef = useRef(new Set());
-  const announcedPropertyCallKeyRef = useRef(null);
+  const announcedPropertyCallKeysRef = useRef(new Set());
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
   const [search, setSearch] = useState('');
@@ -993,8 +993,8 @@ export default function Layout({ children, currentPageName }) {
         // The call's creation timestamp is spoken in Eastern Time, and the same
         // call is announced only once even if duplicate monitoring records arrive.
         stopAllAlerts();
-        if (announcedPropertyCallKeyRef.current !== key) {
-          announcedPropertyCallKeyRef.current = key;
+        if (!announcedPropertyCallKeysRef.current.has(key)) {
+          announcedPropertyCallKeysRef.current.add(key);
           announcePropertyCall({
             propertyName: location?.site_name || record.propertyName || 'Monitored Property',
             incident: call.incident || 'Unknown incident',
