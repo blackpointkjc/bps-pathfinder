@@ -109,6 +109,24 @@ function boloSummary(record) {
   return details.join('. ') || 'Review the active BOLO for details.';
 }
 
+function propertyCallSummary(alert, call = {}) {
+  const details = [
+    alert?.propertyName && `Property ${alert.propertyName}`,
+    (call.incident || alert?.callIncident) && `Call type ${call.incident || alert.callIncident}`,
+    call.priority && `Priority ${call.priority}`,
+    call.status && `Status ${call.status}`,
+    (call.location || alert?.callLocation) && `Address ${call.location || alert.callLocation}`,
+    call.cross_street && `Cross street ${call.cross_street}`,
+    call.landmark && `Landmark ${call.landmark}`,
+    call.agency && `Agency ${call.agency}`,
+    call.zone && `Zone ${call.zone}`,
+    (call.agency_cad_number || call.bps_reference || call.call_id) && `Call reference ${call.agency_cad_number || call.bps_reference || call.call_id}`,
+    call.hazards && `Known hazards ${call.hazards}`,
+    call.description && call.description !== `${call.incident} at ${call.location}` && `Details ${call.description}`,
+  ].filter(Boolean);
+  return details.join('. ') || 'Review the monitored property call for details.';
+}
+
 function BannerIcon({ kind }) {
   if (kind === 'property' || kind === 'bolo') return <Siren className="h-5 w-5 text-red-200" />;
   if (kind === 'announcement') return <Bell className="h-5 w-5 text-amber-200" />;
@@ -234,7 +252,59 @@ export default function GlobalMessageBanner({ user }) {
       timers.current.set(key, timer);
     };
 
+    const showPropertyCall = async record => {
+      if (!record?.id) return;
+      const key = `PropertyAlert:${record.id}`;
+      if (knownIds.current.has(key)) return;
+      knownIds.current.add(key);
+
+      const call = record.callId
+        ? await base44.entities.DispatchCall.get(record.callId).catch(() => null)
+        : null;
+      const summary = propertyCallSummary(record, call || {});
+      playNotificationChime(true);
+      // Use the exact same proven speech path as BOLO announcements.
+      speakNotification(`Attention. New monitored property call. ${summary}`, { rate: 0.8, pitch: 0.72 });
+      window.dispatchEvent(new CustomEvent('bps-unread-notification', {
+        detail: { page: 'DispatchCenter', key },
+      }));
+
+      const banner = {
+        id: key,
+        title: 'MONITORED PROPERTY CALL',
+        page: 'DispatchCenter',
+        kind: 'property',
+        persistent: false,
+        recordId: record.id,
+        fingerprint: key,
+        sender: record.propertyName || 'Monitored Property',
+        photo: '',
+        message: summary,
+      };
+      setBanners(current => [...current.slice(-4), banner]);
+      const timer = window.setTimeout(() => {
+        setBanners(current => current.filter(entry => entry.id !== key));
+        timers.current.delete(key);
+      }, 30000);
+      timers.current.set(key, timer);
+    };
+
     try {
+      const propertyUnsubscribe = base44.entities.PropertyAlert.subscribe(event => {
+        if (event?.type !== 'create' || !event.data?.id) return;
+        showPropertyCall(event.data);
+      });
+      if (typeof propertyUnsubscribe === 'function') unsubscribers.push(propertyUnsubscribe);
+
+      // Match BOLO reliability: recover a call created while realtime was connecting.
+      const propertyCutoff = Date.now() - 2 * 60 * 1000;
+      base44.entities.PropertyAlert.list('-created_date', 20).then(records => {
+        (records || []).slice().reverse().forEach(record => {
+          const created = new Date(record.created_date || 0).getTime();
+          if (created >= propertyCutoff) showPropertyCall(record);
+        });
+      }).catch(() => null);
+
       const boloUnsubscribe = base44.entities.BOLOAlert.subscribe(event => {
         if (event?.type !== 'create' || !event.data?.id) return;
         showBolo(event.data);
