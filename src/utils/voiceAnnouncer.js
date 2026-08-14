@@ -64,6 +64,9 @@ export function announceVoice(text, options = {}) {
   try {
     const utterance = buildUtterance(clean, options);
     if (options.interrupt !== false) window.speechSynthesis.cancel();
+    // Chrome/Android can leave the speech queue paused after a tab is backgrounded.
+    // Resume immediately before speaking so operational announcements are not lost.
+    window.speechSynthesis.resume?.();
     window.speechSynthesis.speak(utterance);
     return true;
   } catch {
@@ -106,19 +109,50 @@ export function announceNavigationInstruction(instruction, distanceFeet) {
   announceVoice(`${instruction}${distanceText ? `, ${distanceText}` : ''}.`, { dedupeMs: 3000, rate: 0.84, pitch: 0.68 });
 }
 
-export function announcePropertyCall({ propertyName, incident, location, reference, createdAt }) {
+export function announcePropertyCall({
+  propertyName,
+  incident,
+  location,
+  reference,
+  createdAt,
+  priority,
+  status,
+  agency,
+  zone,
+  crossStreet,
+  landmark,
+  description,
+  hazards,
+  callerName,
+  callerPhone,
+  assignedUnits,
+}) {
   let timeText = '';
   if (createdAt) {
     const parsed = parseServerTimestamp(createdAt);
     if (parsed) timeText = formatEasternTime(parsed);
   }
+  const units = Array.isArray(assignedUnits) ? assignedUnits.filter(Boolean).join(', ') : String(assignedUnits || '').trim();
+  const detailsDuplicate = String(description || '').trim().toLowerCase()
+    === `${String(incident || '').trim()} at ${String(location || '').trim()}`.toLowerCase();
   const parts = [
-    'Monitored property call.',
-    propertyName ? `${propertyName}.` : '',
+    'Attention. New monitored property call.',
+    propertyName ? `Property: ${propertyName}.` : '',
     incident ? `Call type: ${incident}.` : '',
+    priority ? `Priority: ${priority}.` : '',
+    status ? `Status: ${status}.` : '',
     timeText ? `Call received at ${timeText} Eastern Time.` : '',
     location ? `Location: ${location}.` : '',
-    reference ? `Call reference ${reference}.` : '',
+    crossStreet ? `Cross street: ${crossStreet}.` : '',
+    landmark ? `Landmark: ${landmark}.` : '',
+    agency ? `Agency: ${agency}.` : '',
+    zone ? `Zone: ${zone}.` : '',
+    reference ? `Call reference: ${reference}.` : '',
+    units ? `Assigned units: ${units}.` : 'No units assigned.',
+    hazards ? `Known hazards: ${hazards}.` : '',
+    callerName ? `Caller: ${callerName}.` : '',
+    callerPhone ? `Caller phone: ${callerPhone}.` : '',
+    description && !detailsDuplicate ? `Details: ${description}.` : '',
   ].filter(Boolean);
   return announceVoice(parts.join(' '), { dedupeMs: 10000, rate: 0.82, pitch: 0.68, force: true });
 }
