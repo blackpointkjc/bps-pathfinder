@@ -57,21 +57,74 @@ function acceptText(clean, dedupeMs) {
   return true;
 }
 
+let pendingSpeech = null;
+let speechSequence = 0;
+let unlockListenersInstalled = false;
+
+function speakQueued(clean, options = {}) {
+  if (!isVoiceSupported()) return false;
+  const token = ++speechSequence;
+  let started = false;
+  pendingSpeech = { clean, options };
+  try {
+    const utterance = buildUtterance(clean, options);
+    utterance.onstart = () => {
+      started = true;
+      if (token === speechSequence) pendingSpeech = null;
+      window.dispatchEvent(new CustomEvent('bps-voice-started', { detail: { text: clean } }));
+    };
+    utterance.onend = () => {
+      if (token === speechSequence) pendingSpeech = null;
+    };
+    utterance.onerror = () => {
+      if (token === speechSequence && !started) pendingSpeech = { clean, options };
+    };
+    if (options.interrupt !== false) window.speechSynthesis.cancel();
+    window.speechSynthesis.resume?.();
+    window.speechSynthesis.speak(utterance);
+    window.setTimeout(() => {
+      if (token === speechSequence && !started && !window.speechSynthesis.speaking) {
+        pendingSpeech = { clean, options };
+        window.dispatchEvent(new CustomEvent('bps-voice-blocked'));
+      }
+    }, 1200);
+    return true;
+  } catch {
+    if (token === speechSequence) pendingSpeech = { clean, options };
+    return false;
+  }
+}
+
+function retryPendingSpeech() {
+  if (!pendingSpeech || !isVoiceSupported()) return;
+  const queued = pendingSpeech;
+  window.speechSynthesis.resume?.();
+  speakQueued(queued.clean, { ...queued.options, interrupt: true });
+}
+
+export function installVoiceUnlockListeners() {
+  if (unlockListenersInstalled || typeof window === 'undefined') return;
+  unlockListenersInstalled = true;
+  const retry = () => retryPendingSpeech();
+  window.addEventListener('pointerdown', retry, true);
+  window.addEventListener('touchend', retry, true);
+  window.addEventListener('keydown', retry, true);
+  window.addEventListener('focus', retry);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') retryPendingSpeech();
+  });
+}
+
+export function retryVoiceAnnouncement() {
+  retryPendingSpeech();
+}
+
 export function announceVoice(text, options = {}) {
   if (!text || !isVoiceSupported() || (!options.force && !isVoiceEnabled())) return false;
   const clean = String(text).replace(/\s+/g, ' ').trim();
   if (!clean || !acceptText(clean, options.dedupeMs ?? 1800)) return false;
-  try {
-    const utterance = buildUtterance(clean, options);
-    if (options.interrupt !== false) window.speechSynthesis.cancel();
-    // Chrome/Android can leave the speech queue paused after a tab is backgrounded.
-    // Resume immediately before speaking so operational announcements are not lost.
-    window.speechSynthesis.resume?.();
-    window.speechSynthesis.speak(utterance);
-    return true;
-  } catch {
-    return false;
-  }
+  installVoiceUnlockListeners();
+  return speakQueued(clean, options);
 }
 
 // Promise form used by emergency notifications so a secondary alert tone can
