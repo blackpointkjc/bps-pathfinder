@@ -10,7 +10,7 @@
       "schedule_type": "simple",
       "repeat_unit": "minutes",
       "repeat_interval": 10,
-      "is_active": true,
+      "is_active": false,
       "function_args": {
         "limit": 10,
         "force_retry": true,
