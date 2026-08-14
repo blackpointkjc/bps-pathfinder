@@ -927,7 +927,6 @@ export default function Layout({ children, currentPageName }) {
     let cancelled = false;
 
     const monitor = async () => {
-      if (propertyAlert) return;
       try {
         // PropertyAlert is a shared event; acknowledgement/silence is stored per user.
         // Dedupe by call+property so legacy duplicate alert rows cannot re-open the popup.
@@ -1002,6 +1001,17 @@ export default function Layout({ children, currentPageName }) {
             location: call.location || location?.address || '',
             reference: call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || '',
             createdAt: call.time_received || record.callTime || record.time_received || call.created_date || record.created_date,
+            priority: call.priority,
+            status: call.status,
+            agency: call.agency,
+            zone: call.zone,
+            crossStreet: call.cross_street,
+            landmark: call.landmark,
+            description: call.description,
+            hazards: call.hazards,
+            callerName: call.caller_name,
+            callerPhone: call.caller_phone,
+            assignedUnits: call.assigned_units,
           });
         }
       } catch (error) {
