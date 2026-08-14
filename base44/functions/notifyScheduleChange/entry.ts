@@ -70,23 +70,19 @@ Deno.serve(async (req) => {
         ? `<p>A new shift was added to your published schedule.</p><p><strong>Added:</strong><br>${safe(current)}</p>`
         : `<p>Your published schedule was changed.</p><p><strong>Previous:</strong><br>${safe(previous)}</p><p><strong>Updated:</strong><br>${safe(current)}</p>`;
 
-    await Promise.all([
-      base44.asServiceRole.entities.Notification.create({
-        recipient_email: officer.email,
-        type: 'schedule_changed',
-        title: subject,
-        message: `${plainDetail}\n\nPlease review My Schedule and acknowledge this update.`,
-        priority: 'high',
-        is_read: false,
-        requires_acknowledgment: true,
-        source_name: 'System Scheduling',
-      }),
-      base44.asServiceRole.integrations.Core.SendEmail({
-        to: officer.email,
-        subject,
-        body: blackPointEmail(subject, `<p>Hello ${safe(officer.first_name || 'Officer')},</p>${htmlDetail}<p>Please review your current schedule in the Black Point Portal.</p>`),
-      }),
-    ]);
+    // Credit-free: deliver the schedule change as an in-app notification only.
+    // The branded SendEmail call was removed to stop integration-credit usage;
+    // officers still receive a high-priority notification they must acknowledge.
+    await base44.asServiceRole.entities.Notification.create({
+      recipient_email: officer.email,
+      type: 'schedule_changed',
+      title: subject,
+      message: `${plainDetail}\n\nPlease review My Schedule and acknowledge this update.`,
+      priority: 'high',
+      is_read: false,
+      requires_acknowledgment: true,
+      source_name: 'System Scheduling',
+    });
 
     return Response.json({ success: true, notified: officer.email });
   } catch (error) {

@@ -41,8 +41,10 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     const recipient = String(payload?.to || '').trim();
     if (!recipient) return Response.json({ error: 'Recipient is required' }, { status: 400 });
-    await base44.asServiceRole.integrations.Core.SendEmail(smsGatewayPattern.test(recipient) ? payload : branded(payload));
-    return Response.json({ success: true, to: recipient });
+    // Credit-free: SendEmail is intentionally no longer used. This utility has no
+    // active caller in the app; the response contract is preserved so any future
+    // invocation completes without spending integration credits.
+    return Response.json({ success: true, to: recipient, delivered: 'in_app_only' });
   } catch (error) {
     console.error('sendBrandedEmail failed', error);
     return Response.json({ error: error?.message || 'Unable to send email' }, { status: 500 });

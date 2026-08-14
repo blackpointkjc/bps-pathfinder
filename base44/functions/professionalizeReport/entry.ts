@@ -22,28 +22,28 @@ Deno.serve(async (req) => {
 
     if (!cleanFields.length) return Response.json({ error: 'Add report details before review' }, { status: 400 });
 
-    const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
-      prompt: `Rewrite the following security officer report narrative fields for grammar, clarity, chronological organization, objective professional tone, and educated wording. Preserve every fact and the original meaning. Do not invent facts, names, evidence, actions, legal conclusions, or outcomes. Do not remove important details. Return only JSON matching the schema.\n\n${JSON.stringify(cleanFields)}`,
-      response_json_schema: {
-        type: 'object',
-        properties: {
-          fields: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                index: { type: 'number' },
-                text: { type: 'string' },
-              },
-              required: ['index', 'text'],
-            },
-          },
-        },
-        required: ['fields'],
-      },
-    });
+    // Credit-free deterministic professionalization. The previous InvokeLLM call
+    // spent integration credits on every report review; this rule-based pass
+    // cleans casing, spacing, sentence punctuation, and standalone "I" without
+    // an LLM and never invents or omits facts. The response contract is unchanged.
+    const professionalizeParagraph = (text: string) => {
+      const clean = String(text || '')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\b[iI]\b/g, 'I')
+        .replace(/([.!?])\s*/g, '$1 ')
+        .replace(/(^|[.!?]\s+)([a-z])/g, (_m, p1: string, p2: string) => p1 + p2.toUpperCase())
+        .trim();
+      return clean && !/[.!?]$/.test(clean) ? `${clean}.` : clean;
+    };
 
-    const output = result?.fields || result?.data?.fields || [];
+    const output = cleanFields.map((f: any) => ({
+      index: f.index,
+      text: String(f.text || '')
+        .split(/\n{2,}/)
+        .map((para: string) => professionalizeParagraph(para))
+        .filter(Boolean)
+        .join('\n\n'),
+    }));
     return Response.json({ success: true, fields: output });
   } catch (error) {
     console.error('professionalizeReport failed', error);

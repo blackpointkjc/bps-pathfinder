@@ -205,20 +205,12 @@ Deno.serve(async (req) => {
       assignmentPending = true;
     }
 
-    let emailSent = false;
-    let emailError = '';
-    try {
-      await base44.asServiceRole.integrations.Core.SendEmail({
-        from_name: 'Black Point Protection',
-        to: normalizedEmail,
-        subject: 'Your Black Point Account Has Been Created',
-        body: accountCreatedEmail(first_name, accountType),
-      });
-      emailSent = true;
-    } catch (error) {
-      emailError = error?.message || 'Email delivery failed';
-      console.error('Account created email failed', error);
-    }
+    // The native inviteUser call above already sends the platform invitation /
+    // password-setup email, so a separate branded SendEmail is intentionally
+    // omitted to avoid integration-credit usage. The account is still fully
+    // provisioned and the recipient can set up their password via the invite.
+    const emailSent = invitationSent;
+    const emailError = '';
 
     return Response.json({
       success: true,
