@@ -13,7 +13,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { createPageUrl } from './utils';
 import { stopAllAlerts } from '@/utils/alertUtils';
-import { announcePropertyCall, stopVoice } from '@/utils/voiceAnnouncer';
+import { stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternDateTime } from '@/lib/easternTime';
 import GlobalMessageBanner from '@/components/GlobalMessageBanner';
 import NotificationMonitor from '@/components/NotificationMonitor';
@@ -698,7 +698,6 @@ export default function Layout({ children, currentPageName }) {
   const [propertyAlertSilenced, setPropertyAlertSilenced] = useState(false);
   const dismissedPropertyAlertIdsRef = useRef(new Set());
   const dismissedPropertyAlertKeysRef = useRef(new Set());
-  const announcedPropertyCallKeysRef = useRef(new Set());
   const [outages, setOutages] = useState([]);
   const [clock, setClock] = useState(new Date());
   const [search, setSearch] = useState('');
@@ -988,32 +987,9 @@ export default function Layout({ children, currentPageName }) {
           key,
         });
         setPropertyAlertSilenced(false);
-        // Property-monitoring calls use a spoken operational announcement instead
-        // of the generic alarm noise so the dispatcher immediately knows what came in.
-        // The call's creation timestamp is spoken in Eastern Time, and the same
-        // call is announced only once even if duplicate monitoring records arrive.
-        stopAllAlerts();
-        if (!announcedPropertyCallKeysRef.current.has(key)) {
-          announcedPropertyCallKeysRef.current.add(key);
-          announcePropertyCall({
-            propertyName: location?.site_name || record.propertyName || 'Monitored Property',
-            incident: call.incident || 'Unknown incident',
-            location: call.location || location?.address || '',
-            reference: call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || '',
-            createdAt: call.time_received || record.callTime || record.time_received || call.created_date || record.created_date,
-            priority: call.priority,
-            status: call.status,
-            agency: call.agency,
-            zone: call.zone,
-            crossStreet: call.cross_street,
-            landmark: call.landmark,
-            description: call.description,
-            hazards: call.hazards,
-            callerName: call.caller_name,
-            callerPhone: call.caller_phone,
-            assignedUnits: call.assigned_units,
-          });
-        }
+        // Voice delivery is owned app-wide by GlobalMessageBanner, using the same
+        // subscription and speech path as BOLO announcements. This effect only
+        // owns the persistent property-call popup and acknowledgement state.
       } catch (error) {
         console.warn('Property alert display check failed:', error?.message);
       }
