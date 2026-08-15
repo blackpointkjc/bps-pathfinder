@@ -13,9 +13,21 @@ Deno.serve(async (req) => {
 
     const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
     const { action, client_id } = body;
-    if (!client_id) return Response.json({ error: 'Client is required' }, { status: 400 });
-
     const users = await base44.asServiceRole.entities.User.list(undefined, 1000);
+    const locations = await base44.asServiceRole.entities.Location.list('site_name', 1000);
+
+    if (action === 'sync_all') {
+      for (const entry of users || []) {
+        const entryRoles = rolesOf(entry);
+        const isClient = entryRoles.has('client') || String(entry.user_type || '').toLowerCase() === 'client' || String(entry.rank || '').toLowerCase() === 'client';
+        if (!isClient || !entry.id || !entry.email) continue;
+        const names = (locations || []).filter((location: any) => String(location.assigned_client_email || '').toLowerCase() === String(entry.email).toLowerCase()).map((location: any) => location.site_name).filter(Boolean);
+        await base44.asServiceRole.entities.User.update(entry.id, { assigned_location: names[0] || '', assigned_locations: names, assigned_sites: names });
+      }
+      return Response.json({ success: true });
+    }
+
+    if (!client_id) return Response.json({ error: 'Client is required' }, { status: 400 });
     const client = (users || []).find((entry: any) => String(entry.id) === String(client_id));
     if (!client) return Response.json({ error: 'Client account not found' }, { status: 404 });
     const clientRoles = rolesOf(client);
@@ -23,13 +35,11 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Selected account is not a client account' }, { status: 400 });
     }
 
-    const locations = await base44.asServiceRole.entities.Location.list('site_name', 1000);
-
     if (action === 'update') {
       const data = body.data || {};
-      const propertyName = String(data.property_name || '').trim();
-      if (!data.first_name || !data.last_name || !data.email || !propertyName) {
-        return Response.json({ error: 'First name, last name, email, and property are required' }, { status: 400 });
+      const propertyNames = [...new Set([...(Array.isArray(data.property_names) ? data.property_names : []), ...(Array.isArray(data.assigned_locations) ? data.assigned_locations : []), data.property_name].filter(Boolean).map((name: unknown) => String(name).trim()).filter(Boolean))];
+      if (!data.first_name || !data.last_name || !data.email || !propertyNames.length) {
+        return Response.json({ error: 'First name, last name, email, and at least one property are required' }, { status: 400 });
       }
 
       const oldAssignedNames = new Set([
@@ -44,20 +54,19 @@ Deno.serve(async (req) => {
         email: data.email,
         mobile_phone: data.mobile_phone || '',
         additional_roles: [...new Set([...(client.additional_roles || []).filter((r: string) => String(r).toLowerCase() !== 'client'), 'client'])],
-        assigned_location: propertyName,
-        assigned_locations: [propertyName],
-        assigned_sites: [propertyName],
+        assigned_location: propertyNames[0],
+        assigned_locations: propertyNames,
+        assigned_sites: propertyNames,
       });
 
       for (const location of locations || []) {
         const matchesOld = oldAssignedNames.has(location.site_name) || String(location.assigned_client_email || '').toLowerCase() === String(client.email || '').toLowerCase();
-        if (matchesOld && location.site_name !== propertyName) {
+        if (matchesOld && !propertyNames.includes(location.site_name)) {
           await base44.asServiceRole.entities.Location.update(location.id, { assigned_client_email: null });
         }
-      }
-      const nextLocation = (locations || []).find((location: any) => location.site_name === propertyName);
-      if (nextLocation) {
-        await base44.asServiceRole.entities.Location.update(nextLocation.id, { assigned_client_email: data.email });
+        if (propertyNames.includes(location.site_name)) {
+          await base44.asServiceRole.entities.Location.update(location.id, { assigned_client_email: data.email });
+        }
       }
       return Response.json({ success: true });
     }
