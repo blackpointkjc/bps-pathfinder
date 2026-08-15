@@ -103,10 +103,15 @@ export default function AdminLocationTracker() {
 
   const hasAccess = user?.role === 'admin';
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
-    staleTime: 5 * 60 * 1000,
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['appDirectoryUsers'],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getAppDirectory', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.users || [];
+    },
+    staleTime: 60 * 1000,
   });
 
   const { data: activeOfficerLocations = [] } = useQuery({
@@ -172,9 +177,12 @@ export default function AdminLocationTracker() {
     queryKey: ['locationHistory', selectedOfficerEmail, selectedDate],
     queryFn: async () => {
       if (!selectedOfficerEmail || !selectedDate) return [];
-      const allHistory = await base44.entities.LocationHistory.filter({
-        officer_email: selectedOfficerEmail
-      }, 'timestamp');
+      const result = await base44.functions.invoke('getOnDutyUnits', {
+        history_email: selectedOfficerEmail,
+      });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      const allHistory = payload.history || [];
       const start = new Date(`${selectedDate}T00:00:00`);
       const end = new Date(`${selectedDate}T23:59:59.999`);
       return (allHistory || []).filter(h => {
