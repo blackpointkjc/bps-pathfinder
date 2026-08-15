@@ -21,74 +21,28 @@ export default function AccountingProfit() {
 
   const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access') || user?.role === 'admin';
 
-  const { data: timeEntries } = useQuery({
-    queryKey: ['timeEntries', startDate, endDate],
-    queryFn: () => base44.entities.TimeEntry.list('-clock_in', 1000),
-    enabled: isAccountingRole,
-    initialData: [],
-  });
-
-  const { data: officers } = useQuery({
-    queryKey: ['officers'],
-    queryFn: () => base44.entities.User.list(),
-    initialData: [],
-  });
-
-  const { data: locations } = useQuery({
-    queryKey: ['locations'],
-    queryFn: () => base44.entities.Location.list(),
-    initialData: [],
-  });
-
-  const { data: payrollEntries } = useQuery({
-    queryKey: ['payrollEntries', startDate, endDate],
-    queryFn: () => base44.entities.PayrollEntry.list('-pay_date', 1000),
-    enabled: isAccountingRole,
-    initialData: [],
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchInterval: 10000,
-  });
-
-  const { data: expenseReports } = useQuery({
-    queryKey: ['expenseReports', startDate, endDate],
-    queryFn: () => base44.entities.ExpenseReport.list('-created_date', 1000),
-    enabled: isAccountingRole,
-    initialData: [],
-    staleTime: 0,
-    refetchOnMount: 'always',
-  });
-
-  const { data: companyExpenses = [] } = useQuery({
-    queryKey: ['companyExpenses', startDate, endDate],
-    queryFn: () => base44.entities.CompanyExpense.list('-expense_date', 1000),
+  const { data: accountingData = {}, isLoading: accountingLoading, error: accountingError } = useQuery({
+    queryKey: ['accountingData', 'profit'],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getAccountingData', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
     enabled: isAccountingRole,
     staleTime: 0,
     refetchOnMount: 'always',
-    refetchInterval: 10000,
+    refetchInterval: 30000,
   });
-
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
-    initialData: [],
-  });
-
-  const { data: timeOffRequests } = useQuery({
-    queryKey: ['timeOffRequests', startDate, endDate],
-    queryFn: () => base44.entities.TimeOffRequest.list('-created_date', 1000),
-    initialData: [],
-  });
-
-  const { data: invoices } = useQuery({
-    queryKey: ['invoices', startDate, endDate],
-    queryFn: () => base44.entities.Invoice.list('-created_date', 1000),
-    enabled: isAccountingRole,
-    initialData: [],
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchInterval: 10000,
-  });
+  const timeEntries = accountingData.timeEntries || [];
+  const officers = accountingData.users || [];
+  const locations = accountingData.locations || [];
+  const payrollEntries = accountingData.payrollEntries || [];
+  const expenseReports = accountingData.expenseReports || [];
+  const companyExpenses = accountingData.companyExpenses || [];
+  const allUsers = accountingData.users || [];
+  const timeOffRequests = accountingData.timeOffRequests || [];
+  const invoices = accountingData.invoices || [];
 
   if (!isAccountingRole) {
     return (
