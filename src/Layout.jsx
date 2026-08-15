@@ -309,7 +309,8 @@ function desktopToolRoute(pageName) {
 const FULL_ACCESS_PAGES = new Set(['Personnel', 'PathfinderReports', 'AdminPortal']);
 const ROOT_PAGES = new Set(['CommandDashboard', 'Dashboard', 'OfficerInbox']);
 const CENTER_UNREAD_PAGES = {
-  cad: ['DispatchCenter'],
+  // CAD message counts are shown on the in-workspace MSG control, not the side menu.
+  cad: [],
   officer: ['TeamChat', 'Announcements'],
   supervisor: ['SupervisorChat'],
   admin: ['AdminAnnouncements'],
