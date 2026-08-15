@@ -93,6 +93,7 @@ export default function Navigation() {
     const [streetViewUrl, setStreetViewUrl] = useState('');
     const [fitBounds, setFitBounds] = useState(null);
     const lastSpokenNavStepRef = useRef(-1);
+    const initialOperationalFitRef = useRef(false);
 
     const isSupervisorUser = currentUser?.is_supervisor === true || currentUser?.role === 'admin';
     const isDispatchOrAdmin = currentUser?.role === 'admin' || currentUser?.is_supervisor || currentUser?.dispatch_role;
@@ -155,6 +156,17 @@ export default function Navigation() {
     }, []);
 
 
+
+    useEffect(() => {
+        if (initialOperationalFitRef.current || activeCalls.length === 0) return;
+        const coords = [...activeCalls, ...otherUnits]
+            .map(item => [Number(item.latitude), Number(item.longitude)])
+            .filter(([lat, lng]) => Number.isFinite(lat) && Number.isFinite(lng));
+        if (coords.length === 0) return;
+        initialOperationalFitRef.current = true;
+        setFitBounds(coords);
+        window.setTimeout(() => setFitBounds(null), 1000);
+    }, [activeCalls, otherUnits]);
 
     useEffect(() => { unitStatusRef.current = unitStatus; }, [unitStatus]);
 
@@ -555,11 +567,23 @@ export default function Navigation() {
 
     const fetchOtherUnits = async () => {
         try {
-            const result = await base44.functions.invoke('getOnDutyUnits', {});
-            const payload = result?.data || result || {};
-            if (payload.error) throw new Error(payload.error);
+            let sourceUnits = [];
+            try {
+                const result = await base44.functions.invoke('getOnDutyUnits', {});
+                const payload = result?.data || result || {};
+                if (payload.error) throw new Error(payload.error);
+                sourceUnits = payload.units || [];
+            } catch (functionError) {
+                console.warn('[NAV] on-duty unit function failed; using live GPS rows:', functionError?.message);
+                sourceUnits = await base44.entities.ActiveOfficer.list('-last_update', 500);
+            }
             const currentEmail = currentUser?.email?.toLowerCase();
-            const units = (payload.units || [])
+            const freshCutoff = Date.now() - 15 * 60 * 1000;
+            const units = sourceUnits
+                .filter(unit => {
+                    const updated = new Date(unit.last_update || unit.last_updated || unit.updated_date || unit.created_date || 0).getTime();
+                    return updated >= freshCutoff;
+                })
                 .filter(unit => String(unit.officer_email || unit.email || '').toLowerCase() !== currentEmail)
                 .filter(unit => Number.isFinite(Number(unit.latitude)) && Number.isFinite(Number(unit.longitude)))
                 .map(unit => ({
