@@ -110,21 +110,23 @@ function boloSummary(record) {
 }
 
 function propertyCallSummary(alert, call = {}) {
+  const incident = call.incident || alert?.callIncident || 'Unknown incident';
+  const address = call.location || alert?.callLocation || 'Address unavailable';
   const details = [
-    alert?.propertyName && `Property ${alert.propertyName}`,
-    (call.incident || alert?.callIncident) && `Call type ${call.incident || alert.callIncident}`,
+    `${incident}`,
+    `At ${address}`,
     call.priority && `Priority ${call.priority}`,
     call.status && `Status ${call.status}`,
-    (call.location || alert?.callLocation) && `Address ${call.location || alert.callLocation}`,
+    alert?.propertyName && `Property ${alert.propertyName}`,
     call.cross_street && `Cross street ${call.cross_street}`,
     call.landmark && `Landmark ${call.landmark}`,
     call.agency && `Agency ${call.agency}`,
     call.zone && `Zone ${call.zone}`,
     (call.agency_cad_number || call.bps_reference || call.call_id) && `Call reference ${call.agency_cad_number || call.bps_reference || call.call_id}`,
     call.hazards && `Known hazards ${call.hazards}`,
-    call.description && call.description !== `${call.incident} at ${call.location}` && `Details ${call.description}`,
+    call.description && call.description !== `${call.incident} at ${call.location}` && `Additional information ${call.description}`,
   ].filter(Boolean);
-  return details.join('. ') || 'Review the monitored property call for details.';
+  return details.join('. ');
 }
 
 function BannerIcon({ kind }) {
@@ -262,9 +264,8 @@ export default function GlobalMessageBanner({ user }) {
         ? await base44.entities.DispatchCall.get(record.callId).catch(() => null)
         : null;
       const summary = propertyCallSummary(record, call || {});
-      playNotificationChime(true);
-      // Use the exact same proven speech path as BOLO announcements.
-      speakNotification(`Attention. New monitored property call. ${summary}`, { rate: 0.8, pitch: 0.72 });
+      // Dispatch the incident and address verbally in a concise police-CAD cadence.
+      speakNotification(`Active call for service. ${summary}`, { rate: 0.82, pitch: 0.7 });
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: 'DispatchCenter', key },
       }));
