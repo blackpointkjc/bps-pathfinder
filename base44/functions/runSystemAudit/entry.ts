@@ -29,6 +29,8 @@ Deno.serve(async (req) => {
       ['CAD Calls', 'DispatchCall'],
       ['CAD Assignments', 'CallAssignment'],
       ['Active Units', 'Unit'],
+      ['Live Location Tracking', 'ActiveOfficer'],
+      ['Movement History', 'LocationHistory'],
       ['Properties', 'Location'],
       ['Property Alerts', 'PropertyAlert'],
       ['Scheduling', 'Schedule'],
@@ -37,6 +39,12 @@ Deno.serve(async (req) => {
       ['Incident Reports', 'IncidentReport'],
       ['Maintenance Reports', 'MaintenanceReport'],
       ['Training', 'TrainingAssignment'],
+      ['Company Analytics', 'Division'],
+      ['Company Analytics', 'TrainingCompletion'],
+      ['Company Analytics', 'TrainingModule'],
+      ['Company Analytics', 'CallForService'],
+      ['Company Analytics', 'Commendation'],
+      ['Company Analytics', 'Complaint'],
       ['Announcements', 'Announcement'],
       ['Team Messaging', 'ChatMessage'],
       ['Fleet', 'Vehicle'],
@@ -79,6 +87,16 @@ Deno.serve(async (req) => {
       severity: 'outage',
       title: 'No active operational users found',
       description: 'The app has no users marked with active employment status.',
+    });
+
+    const platoonRanks = new Set(['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer']);
+    const platoonPersonnel = activeOperationalUsers.filter(item => platoonRanks.has(String(item.rank || '').trim().toLowerCase()));
+    if (!platoonPersonnel.length) add(findings, {
+      key: 'platoon:no-personnel',
+      area: 'Platoon & Chain',
+      severity: 'outage',
+      title: 'Platoon has no eligible personnel',
+      description: 'No active operational users with recognized command or officer ranks are available to the Platoon page.',
     });
 
     const usersMissingIdentity = activeOperationalUsers.filter(item => !value(item, 'full_name', 'first_name', 'last_name') || !item.email);
@@ -197,6 +215,34 @@ Deno.serve(async (req) => {
       title: 'Schedule records are incomplete',
       description: `${badSchedules.length} schedule row(s) are missing an officer, site, date, or start time.`,
       count: badSchedules.length,
+    });
+
+    const liveLocations = datasets.ActiveOfficer || [];
+    const movementHistory = datasets.LocationHistory || [];
+    const now = Date.now();
+    const freshLiveLocations = liveLocations.filter(item => {
+      const stamp = new Date(value(item, 'last_update', 'last_updated', 'updated_date', 'created_date') || 0).getTime();
+      return Number.isFinite(stamp) && now - stamp <= 15 * 60 * 1000
+        && Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude));
+    });
+    const recentMovement = movementHistory.filter(item => {
+      const stamp = new Date(value(item, 'timestamp', 'created_date') || 0).getTime();
+      return Number.isFinite(stamp) && now - stamp <= 15 * 60 * 1000
+        && Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude));
+    });
+    if (liveLocations.length && !freshLiveLocations.length) add(findings, {
+      key: 'location:no-fresh-live-units',
+      area: 'Live Location Tracking',
+      severity: 'outage',
+      title: 'No fresh officer locations are reaching the live tracker',
+      description: 'ActiveOfficer records exist, but none contain fresh coordinates from the last 15 minutes.',
+    });
+    if (freshLiveLocations.length && !recentMovement.length) add(findings, {
+      key: 'location:history-not-recording',
+      area: 'Movement History',
+      severity: 'outage',
+      title: 'Historical officer movement is not being recorded',
+      description: 'Fresh live officer locations exist, but LocationHistory has no coordinate records from the last 15 minutes.',
     });
 
     const openEntries = (datasets.TimeEntry || []).filter(item => value(item, 'clock_in', 'clock_in_time') && !value(item, 'clock_out', 'clock_out_time'));
