@@ -48,7 +48,16 @@ export default function AdminPlatoonAssignments() {
   const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState({});
   const { data: me } = useQuery({ queryKey:['currentUser'], queryFn:()=>base44.auth.me() });
-  const { data: users = [], isLoading } = useQuery({ queryKey:['platoonUsers'], queryFn:()=>base44.entities.User.list(), enabled:!!me });
+  const { data: users = [], isLoading } = useQuery({
+    queryKey:['platoonUsers'],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getAppDirectory', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.users || [];
+    },
+    enabled:!!me,
+  });
   const allowed = me?.role === 'admin' || rolesOf(me).has('full_access');
   const operational = useMemo(() => users.filter(isOperational).sort((a,b)=>rankIndex(a.rank)-rankIndex(b.rank)||(Number(a.unit_number)||9999)-(Number(b.unit_number)||9999)), [users]);
   const effective = user => ({
