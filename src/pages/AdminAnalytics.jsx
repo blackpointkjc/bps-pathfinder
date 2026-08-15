@@ -21,58 +21,28 @@ export default function AdminAnalytics() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+  const { data: analyticsData = {}, isLoading: analyticsLoading, error: analyticsError } = useQuery({
+    queryKey: ['companyAnalyticsData'],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('getCompanyAnalyticsData', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
+    enabled: !!user,
     refetchInterval: 30000,
   });
 
-  const { data: divisions } = useQuery({
-    queryKey: ['divisions'],
-    queryFn: () => base44.entities.Division.list('name'),
-  });
-
-  const { data: timeEntries } = useQuery({
-    queryKey: ['allTimeEntries'],
-    queryFn: () => base44.entities.TimeEntry.list('-clock_in'),
-    refetchInterval: 30000,
-  });
-
-  const { data: schedules } = useQuery({
-    queryKey: ['allSchedules'],
-    queryFn: () => base44.entities.Schedule.list('-shift_date'),
-    refetchInterval: 30000,
-  });
-
-  const { data: trainingCompletions } = useQuery({
-    queryKey: ['allTrainingCompletions'],
-    queryFn: () => base44.entities.TrainingCompletion.list(),
-  });
-
-  const { data: allTraining } = useQuery({
-    queryKey: ['allTrainingModules'],
-    queryFn: () => base44.entities.TrainingModule.filter({ active: true }),
-  });
-
-  const { data: incidentReports } = useQuery({
-    queryKey: ['allIncidents'],
-    queryFn: () => base44.entities.IncidentReport.list('-incident_date'),
-  });
-
-  const { data: callsForService } = useQuery({
-    queryKey: ['allCalls'],
-    queryFn: () => base44.entities.CallForService.list('-call_time'),
-  });
-
-  const { data: allCommendations } = useQuery({
-    queryKey: ['allCommendations'],
-    queryFn: () => base44.entities.Commendation.list('-commendation_date'),
-  });
-
-  const { data: allComplaints } = useQuery({
-    queryKey: ['allComplaints'],
-    queryFn: () => base44.entities.Complaint.list('-complaint_date'),
-  });
+  const allUsers = analyticsData.users || [];
+  const divisions = analyticsData.divisions || [];
+  const timeEntries = analyticsData.timeEntries || [];
+  const schedules = analyticsData.schedules || [];
+  const trainingCompletions = analyticsData.trainingCompletions || [];
+  const allTraining = (analyticsData.trainingModules || []).filter(module => module.active !== false);
+  const incidentReports = analyticsData.incidentReports || [];
+  const callsForService = analyticsData.callsForService || [];
+  const allCommendations = analyticsData.commendations || [];
+  const allComplaints = analyticsData.complaints || [];
 
   const filteredUsers = useMemo(() => {
     if (!allUsers) return [];
@@ -354,6 +324,14 @@ export default function AdminAnalytics() {
 
     return { byOfficer, total: byOfficer.reduce((sum, o) => sum + o.count, 0), pending };
   }, [allComplaints, filteredUsers]);
+
+  if (!user || analyticsLoading) {
+    return <div className="min-h-screen bg-slate-950 p-8 text-slate-300">Loading company analytics…</div>;
+  }
+
+  if (analyticsError) {
+    return <div className="min-h-screen bg-slate-950 p-8 text-red-300">Company analytics could not load: {analyticsError.message}</div>;
+  }
 
   if (user?.role !== 'admin') {
     return (
