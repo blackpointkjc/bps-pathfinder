@@ -181,9 +181,11 @@ export default function BackgroundLocationTracker({ user }) {
       lastPositionRef.current = normalizedFix;
       publishLiveLocation(normalizedFix);
 
-      // Reject extremely inaccurate location readings (over 500 meters)
-      if (accuracy > 500) {
-        console.warn(`GPS accuracy too low: ${accuracy.toFixed(0)}m - waiting for better signal`);
+      // CF-33 and similar Windows tablets may use Wi-Fi positioning. Retain
+      // reasonable fixes for live unit movement; geofence alerts remain limited
+      // to high-confidence readings below.
+      if (accuracy > 1500) {
+        console.warn(`Location accuracy too low: ${accuracy.toFixed(0)}m - waiting for a better fix`);
         return;
       }
 
