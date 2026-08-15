@@ -22,35 +22,21 @@ export default function AccountingW2Generator() {
 
   const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access') || user?.role === 'admin';
 
-  const { data: payrollEntries } = useQuery({
-    queryKey: ['payrollEntries'],
-    queryFn: () => base44.entities.PayrollEntry.list('-pay_date', 2000),
-    enabled: isAccountingRole,
-    initialData: [],
-    refetchInterval: 10000,
-  });
-
-  const { data: officers } = useQuery({
-    queryKey: ['officers'],
-    queryFn: () => base44.entities.User.list(),
-    initialData: [],
-  });
-
-  const { data: w2Forms } = useQuery({
-    queryKey: ['w2Forms'],
-    queryFn: () => base44.entities.W2Form.list('-tax_year'),
-    enabled: isAccountingRole,
-    initialData: [],
-  });
-
-  const { data: config } = useQuery({
-    queryKey: ['payrollConfig'],
+  const { data: accountingData = {}, isLoading: accountingLoading, error: accountingError } = useQuery({
+    queryKey: ['accountingData', 'w2'],
     queryFn: async () => {
-      const configs = await base44.entities.PayrollConfig.list();
-      return configs[0] || null;
+      const result = await base44.functions.invoke('getAccountingData', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     enabled: isAccountingRole,
+    refetchInterval: 30000,
   });
+  const payrollEntries = accountingData.payrollEntries || [];
+  const officers = accountingData.users || [];
+  const w2Forms = accountingData.w2Forms || [];
+  const config = accountingData.config || null;
 
   const generateW2Mutation = useMutation({
     mutationFn: async (w2Data) => Promise.all(w2Data.map(data => {
