@@ -265,11 +265,10 @@ export default function GlobalMessageBanner({ user }) {
       const call = record.callId
         ? await base44.entities.DispatchCall.get(record.callId).catch(() => null)
         : null;
-      // A property-alert row can arrive after its linked CAD call has already
-      // cleared. Terminal calls must never be described as active or announced.
-      const currentStatus = call?.status || record.callStatus || record.call_status || record.status;
-      if (isTerminalCallStatus(currentStatus)) return;
-      const summary = propertyCallSummary(record, call || {});
+      // Never announce an orphaned PropertyAlert. Cleared calls may be archived or
+      // deleted before a recently-created alert is recovered during sign-in.
+      if (!call || isTerminalCallStatus(call.status)) return;
+      const summary = propertyCallSummary(record, call);
       // Dispatch the incident and address verbally in a concise police-CAD cadence.
       speakNotification(`Active call for service. ${summary}`, { rate: 0.82, pitch: 0.66, dedupeMs: 10000 });
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
