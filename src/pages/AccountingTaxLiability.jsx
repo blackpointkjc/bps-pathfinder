@@ -20,27 +20,20 @@ export default function AccountingTaxLiability() {
 
   const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access') || user?.role === 'admin';
 
-  const { data: payrollEntries = [] } = useQuery({
-    queryKey: ['payrollEntries'],
-    queryFn: () => base44.entities.PayrollEntry.list('-created_date', 5000),
-    enabled: isAccountingRole,
-    refetchInterval: 10000,
-  });
-
-  const { data: config } = useQuery({
-    queryKey: ['payrollConfig'],
+  const { data: accountingData = {}, isLoading: accountingLoading, error: accountingError } = useQuery({
+    queryKey: ['accountingData', 'tax'],
     queryFn: async () => {
-      const configs = await base44.entities.PayrollConfig.list();
-      return configs[0] || null;
+      const result = await base44.functions.invoke('getAccountingData', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     enabled: isAccountingRole,
+    refetchInterval: 30000,
   });
-
-  const { data: officers = [] } = useQuery({
-    queryKey: ['officers'],
-    queryFn: () => base44.entities.User.list(),
-    enabled: isAccountingRole,
-  });
+  const payrollEntries = accountingData.payrollEntries || [];
+  const config = accountingData.config || null;
+  const officers = accountingData.users || [];
 
   if (!isAccountingRole) {
     return (
