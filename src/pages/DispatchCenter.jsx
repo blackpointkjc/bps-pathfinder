@@ -36,6 +36,7 @@ export default function DispatchCenter() {
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [showPriorCalls, setShowPriorCalls] = useState(false);
     const [showMessaging, setShowMessaging] = useState(false);
+    const [unreadDispatchMessages, setUnreadDispatchMessages] = useState(0);
     const [sortOrder, setSortOrder] = useState('desc');
     const [showMap, setShowMap] = useState(false);
     const [mobileView, setMobileView] = useState('calls');
@@ -104,6 +105,29 @@ export default function DispatchCenter() {
             clearInterval(secondaryInterval);
         };
     }, []);
+
+    useEffect(() => {
+        if (!currentUser?.id) return undefined;
+        let active = true;
+        const loadUnreadDispatchMessages = async () => {
+            try {
+                const records = await base44.entities.Message.filter({ recipient_id: 'dispatch', read: false }, '-created_date', 200);
+                if (!active) return;
+                const unread = (records || []).filter(message => !message.draft && String(message.message || '').trim());
+                setUnreadDispatchMessages(unread.length);
+            } catch {
+                if (active) setUnreadDispatchMessages(0);
+            }
+        };
+        loadUnreadDispatchMessages();
+        const unsubscribe = base44.entities.Message.subscribe(() => loadUnreadDispatchMessages());
+        window.addEventListener('bps-unread-refresh', loadUnreadDispatchMessages);
+        return () => {
+            active = false;
+            unsubscribe?.();
+            window.removeEventListener('bps-unread-refresh', loadUnreadDispatchMessages);
+        };
+    }, [currentUser?.id]);
 
     const loadMonitoredProperties = async () => {
         try {
@@ -422,7 +446,14 @@ export default function DispatchCenter() {
                         navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);
                     }} className="flex items-center gap-1 px-2 py-1 border border-amber-600/60 text-amber-400 hover:text-white rounded text-[10px]"><Megaphone className="w-2.5 h-2.5" /> NEW BOLO</button>
                     <button onClick={() => setShowMessaging(!showMessaging)}
-                        className="flex items-center gap-1 px-2 py-1 border border-slate-600 text-slate-400 hover:text-white rounded text-[10px]"><MessageSquarePlus className="w-2.5 h-2.5" /> MSG</button>
+                        className={`relative flex items-center gap-1 rounded border px-2 py-1 text-[10px] ${showMessaging ? 'border-cyan-500/60 bg-cyan-950/40 text-cyan-200' : 'border-slate-600 text-slate-400 hover:text-white'}`}>
+                        <MessageSquarePlus className="w-2.5 h-2.5" /> MSG
+                        {unreadDispatchMessages > 0 && (
+                            <span className="absolute -right-2 -top-2 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black leading-none text-white shadow-lg ring-2 ring-[#08111d]">
+                                {unreadDispatchMessages > 99 ? '99+' : unreadDispatchMessages}
+                            </span>
+                        )}
+                    </button>
                     {currentUser?.role === 'admin' && (
                         <button onClick={() => navigate(createPageUrl('AdminPortal'))}
                             className="flex items-center gap-1 px-2 py-1 border border-slate-600 text-slate-400 hover:text-white rounded text-[10px]">
