@@ -31,6 +31,42 @@
     "longitude": {
       "type": "number",
       "description": "Current GPS longitude"
+    },
+    "heading": {
+      "type": "number",
+      "description": "Current direction of travel in degrees"
+    },
+    "speed": {
+      "type": "number",
+      "description": "Current speed in miles per hour"
+    },
+    "accuracy": {
+      "type": "number",
+      "description": "GPS fix accuracy in meters"
+    },
+    "unit_number": {
+      "type": "string",
+      "description": "Officer or vehicle unit number"
+    },
+    "status": {
+      "type": "string",
+      "description": "Current duty status"
+    },
+    "user_role": {
+      "type": "string",
+      "description": "Current application role"
+    },
+    "session_active": {
+      "type": "boolean",
+      "description": "Whether this signed-in tracking session is active"
+    },
+    "show_lights": {
+      "type": "boolean",
+      "description": "Whether emergency lights are active"
+    },
+    "current_call_info": {
+      "type": "string",
+      "description": "Current assigned call summary"
     }
   },
   "required": [
