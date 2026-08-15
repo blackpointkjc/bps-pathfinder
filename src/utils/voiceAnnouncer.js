@@ -189,13 +189,13 @@ export function announcePropertyCall({
   const detailsDuplicate = String(description || '').trim().toLowerCase()
     === `${String(incident || '').trim()} at ${String(location || '').trim()}`.toLowerCase();
   const parts = [
-    'Attention. New monitored property call.',
-    propertyName ? `Property: ${propertyName}.` : '',
-    incident ? `Call type: ${incident}.` : '',
-    priority ? `Priority: ${priority}.` : '',
-    status ? `Status: ${status}.` : '',
+    'Active call for service.',
+    incident ? `${incident}.` : 'Unknown incident.',
+    location ? `At ${location}.` : 'Address unavailable.',
+    priority ? `Priority ${priority}.` : '',
+    status ? `Status ${status}.` : '',
+    propertyName ? `Property ${propertyName}.` : '',
     timeText ? `Call received at ${timeText} Eastern Time.` : '',
-    location ? `Location: ${location}.` : '',
     crossStreet ? `Cross street: ${crossStreet}.` : '',
     landmark ? `Landmark: ${landmark}.` : '',
     agency ? `Agency: ${agency}.` : '',
