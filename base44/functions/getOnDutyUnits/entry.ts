@@ -14,6 +14,19 @@ Deno.serve(async (req) => {
     const allowed = me.role === 'admin' || Boolean(me.dispatch_role) || roles.has('full_access') || roles.has('cad_access') || roles.has('officer') || roles.has('supervisor') || roles.has('dispatch');
     if (!allowed) return Response.json({ error: 'Operational access required' }, { status: 403 });
 
+    const input = await req.json().catch(() => ({}));
+    if (input?.history_email) {
+      if (me.role !== 'admin' && !roles.has('full_access') && !roles.has('supervisor')) {
+        return Response.json({ error: 'Location history access required' }, { status: 403 });
+      }
+      const history = await base44.asServiceRole.entities.LocationHistory.filter(
+        { officer_email: String(input.history_email) },
+        'timestamp',
+        5000,
+      );
+      return Response.json({ success: true, history: history || [] });
+    }
+
     const [timeEntries, activeOfficers, users] = await Promise.all([
       base44.asServiceRole.entities.TimeEntry.list('-clock_in', 3000),
       base44.asServiceRole.entities.ActiveOfficer.list('-last_update', 1000),
