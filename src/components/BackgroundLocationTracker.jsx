@@ -96,16 +96,19 @@ export default function BackgroundLocationTracker({ user }) {
     },
   });
 
-  // Mutation to update or create ActiveOfficer record
+  // Persist every accepted GPS fix through one authenticated backend upsert.
+  // This avoids client RLS/duplicate-row races and makes ActiveOfficer the single
+  // authoritative source consumed by both live maps.
   const updateActiveOfficerMutation = useMutation({
     mutationFn: async (data) => {
-      if (activeOfficerRecordRef.current) {
-        return await base44.entities.ActiveOfficer.update(activeOfficerRecordRef.current, data);
-      } else {
-        const newRecord = await base44.entities.ActiveOfficer.create(data);
-        activeOfficerRecordRef.current = newRecord.id;
-        return newRecord;
-      }
+      const response = await base44.functions.invoke('logLocation', data);
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      if (payload.active_officer?.id) activeOfficerRecordRef.current = payload.active_officer.id;
+      return payload.active_officer;
+    },
+    onError: (error) => {
+      console.error('Live location upload failed:', error?.message || error);
     },
   });
 
@@ -198,7 +201,7 @@ export default function BackgroundLocationTracker({ user }) {
         lastLivePushRef.current = now;
 
         // Always update ActiveOfficer for the app-wide authoritative live position.
-        updateActiveOfficerMutation.mutate({
+        await updateActiveOfficerMutation.mutateAsync({
           officer_email: user.email,
           officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
           unit_number: user.unit_number || '',
