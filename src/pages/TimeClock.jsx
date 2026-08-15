@@ -397,7 +397,10 @@ export default function TimeClock() {
     setGeoError(null);
 
     try {
-      const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 12000, maxAccuracyMeters: 200 });
+      // Rugged Windows tablets such as the CF-33 may use Wi-Fi positioning and
+      // report a broader accuracy radius than a phone. Accept that fix, then keep
+      // enforcing the site's actual polygon/radius with verifyAgainstLocationBoundary.
+      const fix = await waitForLiveLocation({ maxAgeMs: 60000, timeoutMs: 25000, maxAccuracyMeters: 1500 });
       const userLat = fix.latitude;
       const userLng = fix.longitude;
       const position = { coords: { latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy }, timestamp: fix.timestamp };
@@ -417,7 +420,7 @@ export default function TimeClock() {
       } else if (error.code === 2) {
         setGeoError("LOCATION UNAVAILABLE - Your browser has permission, but the device has not produced a GPS location. Make sure Windows Location Services is on and try again near a window or outdoors.");
       } else if (error.code === 3 || error.message === 'LIVE_LOCATION_TIMEOUT') {
-        setGeoError("GPS TIMEOUT - Location permission is available, but Pathfinder did not receive an accurate GPS fix in time. Keep Location Services on and try Clock In again.");
+        setGeoError("LOCATION TIMEOUT - Windows did not provide a usable location in time. Confirm Windows Location Services and browser location permission are on, then try Clock In again.");
       } else if (error.message === 'GEOLOCATION_NOT_SUPPORTED') {
         setGeoError("LOCATION NOT SUPPORTED - This browser cannot provide location to Pathfinder. Please use a supported browser with location access enabled.");
       } else {
@@ -586,7 +589,10 @@ export default function TimeClock() {
     setGeoError(null);
 
     try {
-      const fix = await waitForLiveLocation({ maxAgeMs: 10000, timeoutMs: 12000, maxAccuracyMeters: 200 });
+      // Rugged Windows tablets such as the CF-33 may use Wi-Fi positioning and
+      // report a broader accuracy radius than a phone. Accept that fix, then keep
+      // enforcing the site's actual polygon/radius with verifyAgainstLocationBoundary.
+      const fix = await waitForLiveLocation({ maxAgeMs: 60000, timeoutMs: 25000, maxAccuracyMeters: 1500 });
       const currentPosition = { coords: { latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy }, timestamp: fix.timestamp };
       const destination = locations?.find(loc => loc.site_name === selectedNewSite);
       const boundaryCheck = verifyAgainstLocationBoundary(destination, fix.latitude, fix.longitude);
@@ -604,7 +610,7 @@ export default function TimeClock() {
       if (error?.code === 1) {
         errorMessage = "LOCATION PERMISSION DENIED - Cannot switch sites without location access. Please enable location services in your browser.";
       } else if (error?.code === 3 || error?.message === 'TIMEOUT' || error?.message === 'LIVE_LOCATION_TIMEOUT') {
-        errorMessage = "LOCATION TIMEOUT - Pathfinder could not obtain a current, accurate GPS fix. Move where your device has a better GPS signal and try again.";
+        errorMessage = "LOCATION TIMEOUT - Windows did not provide a usable location in time. Confirm Windows Location Services and browser location permission are on, then try again.";
       }
       setGeoError(errorMessage);
     } finally {
