@@ -167,6 +167,52 @@ export async function runClientFunctionalAudit() {
     ));
   }
 
+  const functionalProbes = [
+    {
+      key: 'probe:directory',
+      area: 'Platoon & Directory',
+      title: 'Operational directory failed its functional check',
+      run: async () => {
+        const response = await base44.functions.invoke('getAppDirectory', {});
+        const payload = response?.data || response || {};
+        if (payload.error) throw new Error(payload.error);
+        if (!Array.isArray(payload.users) || payload.users.length === 0) throw new Error('The directory returned no users.');
+      },
+    },
+    {
+      key: 'probe:live-location',
+      area: 'Live Location Tracking',
+      title: 'Live officer tracking failed its functional check',
+      run: async () => {
+        const response = await base44.functions.invoke('getOnDutyUnits', {});
+        const payload = response?.data || response || {};
+        if (payload.error) throw new Error(payload.error);
+        if (!Array.isArray(payload.units)) throw new Error('The live-unit service returned an invalid response.');
+      },
+    },
+    {
+      key: 'probe:analytics',
+      area: 'Company Analytics',
+      title: 'Company Analytics failed its functional check',
+      run: async () => {
+        const response = await base44.functions.invoke('getCompanyAnalyticsData', {});
+        const payload = response?.data || response || {};
+        if (payload.error) throw new Error(payload.error);
+        if (!Array.isArray(payload.users) || !Array.isArray(payload.timeEntries)) throw new Error('The analytics service returned incomplete datasets.');
+        if (payload.service_errors && Object.keys(payload.service_errors).length) {
+          throw new Error(Object.entries(payload.service_errors).map(([name, message]) => `${name}: ${message}`).join('; '));
+        }
+      },
+    },
+  ];
+  await Promise.all(functionalProbes.map(async probe => {
+    try {
+      await probe.run();
+    } catch (error) {
+      findings.push(finding(probe.key, probe.area, 'outage', probe.title, safeMessage(error)));
+    }
+  }));
+
   const cutoff = Date.now() - (24 * 60 * 60 * 1000);
   const recentRuntime = getRuntimeIssues().filter(item => new Date(item.occurred_at || 0).getTime() >= cutoff);
   const groupedRuntime = new Map();
