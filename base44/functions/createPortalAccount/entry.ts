@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const {
-      accountType, first_name, last_name, email, mobile_phone, assigned_location,
+      accountType, first_name, last_name, email, mobile_phone, assigned_location, assigned_locations,
       date_of_birth, badge_number, rank, unit_number, hire_date, division,
       dcjs_number, dcjs_expiration, firearm_expiration
     } = body;
@@ -67,6 +67,9 @@ Deno.serve(async (req) => {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
+    const clientAssignedLocations = accountType === 'client'
+      ? [...new Set([...(Array.isArray(assigned_locations) ? assigned_locations : []), assigned_location].filter(Boolean).map((name: unknown) => String(name).trim()).filter(Boolean))]
+      : [];
     let users: any[] = [];
     let directoryError = '';
     try {
@@ -91,9 +94,9 @@ Deno.serve(async (req) => {
       last_name,
       mobile_phone: mobile_phone || '',
       additional_roles: employeeRoles,
-      assigned_location: accountType === 'client' ? assigned_location || '' : '',
-      assigned_locations: accountType === 'client' && assigned_location ? [assigned_location] : [],
-      assigned_sites: accountType === 'client' && assigned_location ? [assigned_location] : [],
+      assigned_location: clientAssignedLocations[0] || '',
+      assigned_locations: clientAssignedLocations,
+      assigned_sites: clientAssignedLocations,
       rank: accountType === 'pending'
         ? 'Pending Assignment'
         : accountType === 'student'
@@ -181,12 +184,13 @@ Deno.serve(async (req) => {
         console.error('Unable to assign portal profile and roles immediately', error);
       }
 
-      if (!assignmentPending && accountType === 'client' && assigned_location) {
+      if (!assignmentPending && accountType === 'client' && clientAssignedLocations.length) {
         try {
           const locations = await base44.asServiceRole.entities.Location.list();
-          const location = (locations || []).find((l: any) => l.site_name === assigned_location);
-          if (location?.id) {
-            await base44.asServiceRole.entities.Location.update(location.id, { assigned_client_email: normalizedEmail });
+          for (const location of locations || []) {
+            if (clientAssignedLocations.includes(location.site_name) && location.id) {
+              await base44.asServiceRole.entities.Location.update(location.id, { assigned_client_email: normalizedEmail });
+            }
           }
         } catch (error) {
           assignmentError = error?.message || 'Unable to link the client to the selected property';
