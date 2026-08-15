@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, MessageCircle, Siren, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
+import { announceVoice } from '@/utils/voiceAnnouncer';
 
 const SOURCES = [
   { entity: 'ChatMessage', label: 'Team Chat', page: 'TeamChat', kind: 'message' },
@@ -24,18 +25,14 @@ function audioContext() {
   return notificationAudioContext;
 }
 
-function speakNotification(text, { rate = 0.9, pitch = 0.78 } = {}) {
-  try {
-    if (!('speechSynthesis' in window) || !text) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = rate;
-    utterance.pitch = pitch;
-    utterance.volume = 1;
-    window.speechSynthesis.speak(utterance);
-  } catch (error) {
-    console.warn('Notification voice unavailable:', error?.message);
-  }
+function speakNotification(text, { rate = 0.82, pitch = 0.68, dedupeMs = 1800 } = {}) {
+  return announceVoice(text, {
+    rate,
+    pitch,
+    dedupeMs,
+    force: true,
+    interrupt: true,
+  });
 }
 
 function playNotificationChime(urgent = false) {
@@ -184,9 +181,8 @@ export default function GlobalMessageBanner({ user }) {
 
       if (!duplicate) {
         if (source.kind === 'message' && source.direct) {
-          // Deliberately use the familiar phrase the user requested rather than a
-          // generic notification tone. Keep it short so it does not delay the banner.
-          speakNotification('You got mail', { rate: 0.82, pitch: 0.72 });
+          // Use concise CAD radio wording and the shared dispatch voice.
+          speakNotification('Dispatch message received. Check your mobile data terminal.', { rate: 0.82, pitch: 0.68 });
         } else {
           playNotificationChime(source.kind === 'property');
         }
@@ -229,7 +225,7 @@ export default function GlobalMessageBanner({ user }) {
 
       const summary = boloSummary(record);
       playNotificationChime(true);
-      speakNotification(`Be on the lookout. ${summary}`, { rate: 0.8, pitch: 0.72 });
+      speakNotification(`All units. Be on the lookout. ${summary}`, { rate: 0.8, pitch: 0.66, dedupeMs: 10000 });
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: 'BOLOAlerts', key },
       }));
@@ -265,7 +261,7 @@ export default function GlobalMessageBanner({ user }) {
         : null;
       const summary = propertyCallSummary(record, call || {});
       // Dispatch the incident and address verbally in a concise police-CAD cadence.
-      speakNotification(`Active call for service. ${summary}`, { rate: 0.82, pitch: 0.7 });
+      speakNotification(`Active call for service. ${summary}`, { rate: 0.82, pitch: 0.66, dedupeMs: 10000 });
       window.dispatchEvent(new CustomEvent('bps-unread-notification', {
         detail: { page: 'DispatchCenter', key },
       }));
