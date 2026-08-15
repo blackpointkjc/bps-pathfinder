@@ -42,7 +42,7 @@ export default function BackgroundLocationTracker({ user }) {
   const sessionStartedRef = useRef(new Date().toISOString());
   const queryClient = useQueryClient();
 
-  const { data: activeEntry, isLoading: activeEntryLoading } = useQuery({
+  const { data: activeEntry } = useQuery({
     queryKey: ['bgTrackerActiveEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
@@ -77,10 +77,11 @@ export default function BackgroundLocationTracker({ user }) {
     staleTime: 60000,
   });
 
-  // Live officer GPS is duty-only. Being signed into Pathfinder by itself must not
-  // create or preserve an officer marker after the user has clocked out.
-  const shouldTrack = !!user?.email && !!activeEntry;
-  const shouldPublish = !!user?.email && !!activeEntry;
+  // Every authenticated officer is a live map unit. A TimeEntry enriches the
+  // marker with clock-in/site details, but must never gate GPS visibility.
+  // Logout cleanup is handled centrally by enforceOfficerDutyStatus.
+  const shouldTrack = !!user?.email;
+  const shouldPublish = !!user?.email;
 
   // Mutation to create geofence alert
   const createGeofenceAlertMutation = useMutation({
@@ -149,27 +150,6 @@ export default function BackgroundLocationTracker({ user }) {
 
     getActiveOfficerRecord();
   }, [shouldPublish, user?.email, activeEntry?.id]);
-
-  // Clock-out cleanup: once the active TimeEntry query has settled and no open
-  // entry remains, remove every live marker owned by this officer immediately.
-  useEffect(() => {
-    if (!user?.email || activeEntryLoading || activeEntry) return;
-    let cancelled = false;
-    const retireLiveMarker = async () => {
-      try {
-        const records = await base44.entities.ActiveOfficer.filter({ officer_email: user.email });
-        if (cancelled) return;
-        await Promise.all((records || []).map(record => base44.entities.ActiveOfficer.delete(record.id).catch(() => null)));
-        activeOfficerRecordRef.current = null;
-        queryClient.invalidateQueries({ queryKey: ['activeOfficers'] });
-        queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
-      } catch (error) {
-        console.warn('Unable to retire clocked-out officer marker:', error?.message);
-      }
-    };
-    retireLiveMarker();
-    return () => { cancelled = true; };
-  }, [user?.email, activeEntryLoading, activeEntry?.id, queryClient]);
 
   useEffect(() => {
     if (!shouldTrack) {
@@ -368,7 +348,7 @@ export default function BackgroundLocationTracker({ user }) {
     return () => window.clearInterval(heartbeatId);
   }, [shouldTrack, user?.email, user?.role, user?.status, user?.assigned_location, activeEntry?.id, activeEntry?.location, activeEntry?.clock_in]);
 
-  // All signed-in users are tracked, but only clocked-in users get a close warning.
+  // All signed-in users are tracked; only clocked-in users get a close warning.
   useEffect(() => {
     if (!shouldTrack || !activeEntry) return;
 
