@@ -573,6 +573,9 @@ export default function Navigation() {
                 const payload = result?.data || result || {};
                 if (payload.error) throw new Error(payload.error);
                 sourceUnits = payload.units || [];
+                if (sourceUnits.length === 0) {
+                    sourceUnits = await base44.entities.ActiveOfficer.list('-last_update', 500);
+                }
             } catch (functionError) {
                 console.warn('[NAV] on-duty unit function failed; using live GPS rows:', functionError?.message);
                 sourceUnits = await base44.entities.ActiveOfficer.list('-last_update', 500);
