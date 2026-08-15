@@ -42,9 +42,13 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
       });
       const ordered = visible.reverse();
       setMessages(ordered);
-      if (inboxOnly) {
-        const unreadIncoming = ordered.filter(msg => msg.recipient_id === currentUser.id && !msg.read);
-        await Promise.all(unreadIncoming.map(msg => base44.entities.Message.update(msg.id, { read: true }).catch(() => null)));
+      if (inboxOnly || dispatchMode) {
+        const incomingRecipient = inboxOnly ? currentUser.id : 'dispatch';
+        const unreadIncoming = ordered.filter(msg => msg.recipient_id === incomingRecipient && !msg.read);
+        if (unreadIncoming.length) {
+          await Promise.all(unreadIncoming.map(msg => base44.entities.Message.update(msg.id, { read: true }).catch(() => null)));
+          window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
+        }
       }
     } catch (error) {
       console.error('Error loading dispatch messages:', error);
