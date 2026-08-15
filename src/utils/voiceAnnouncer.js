@@ -159,7 +159,7 @@ export function announceNavigationInstruction(instruction, distanceFeet) {
     ? distance < 1000 ? `in ${Math.round(distance)} feet`
       : `in ${(distance / 5280).toFixed(1)} miles`
     : '';
-  announceVoice(`${instruction}${distanceText ? `, ${distanceText}` : ''}.`, { dedupeMs: 3000, rate: 0.84, pitch: 0.68 });
+  announceVoice(`Navigation advisory. ${instruction}${distanceText ? `, ${distanceText}` : ''}.`, { dedupeMs: 3000, rate: 0.84, pitch: 0.68 });
 }
 
 export function announcePropertyCall({
@@ -207,20 +207,20 @@ export function announcePropertyCall({
     callerPhone ? `Caller phone: ${callerPhone}.` : '',
     description && !detailsDuplicate ? `Details: ${description}.` : '',
   ].filter(Boolean);
-  return announceVoice(parts.join(' '), { dedupeMs: 10000, rate: 0.82, pitch: 0.68, force: true });
+  return announceVoice(parts.join(' '), { dedupeMs: 10000, rate: 0.82, pitch: 0.66, force: true });
 }
 
 export function announceDistressSignal({ unit, name }) {
-  announceVoice(`Distress signal 13. ${unit ? `Unit ${unit}.` : ''} ${name ? `${name}.` : ''}`, { dedupeMs: 15000, rate: 0.78, pitch: 0.65 });
+  announceVoice(`Emergency traffic. Officer distress signal. Signal 13. ${unit ? `Unit ${unit}.` : 'Unit unknown.'} ${name ? `Officer ${name}.` : ''} All available units respond.`, { dedupeMs: 15000, rate: 0.76, pitch: 0.62, force: true });
 }
 
 export function announceDistressSignalAsync({ unit, name }) {
-  return announceVoiceAsync(`Distress signal 13. ${unit ? `Unit ${unit}.` : ''} ${name ? `${name}.` : ''}`, { dedupeMs: 15000, rate: 0.78, pitch: 0.65 });
+  return announceVoiceAsync(`Emergency traffic. Officer distress signal. Signal 13. ${unit ? `Unit ${unit}.` : 'Unit unknown.'} ${name ? `Officer ${name}.` : ''} All available units respond.`, { dedupeMs: 15000, rate: 0.76, pitch: 0.62 });
 }
 
 export function announceRecordSearch(results = []) {
   if (!results.length) {
-    announceVoice('Records search complete. No matching records found.', { dedupeMs: 3000 });
+    announceVoice('CAD records response. No matching records located.', { dedupeMs: 3000, rate: 0.82, pitch: 0.68 });
     return;
   }
   const linked = results.find(item => item.linked_call_number || item.call_number || item.call_type || item.incident_type || item.call_incident || item.linked_call_type);
@@ -228,8 +228,8 @@ export function announceRecordSearch(results = []) {
     const callType = linked.linked_call_type || linked.call_type || linked.incident_type || linked.call_incident || 'related call';
     const callNumber = linked.linked_call_number || linked.call_number || '';
     const location = linked.linked_call_location || linked.location || '';
-    announceVoice(`Records search complete. ${results.length} matching records. Related call type: ${callType}${callNumber ? `. Call ${callNumber}` : ''}${location ? `. Location ${location}` : ''}.`, { dedupeMs: 5000, rate: 0.86, pitch: 0.7 });
+    announceVoice(`CAD records response. ${results.length} matches located. Related call, ${callType}${callNumber ? `. Call number ${callNumber}` : ''}${location ? `. Location ${location}` : ''}.`, { dedupeMs: 5000, rate: 0.82, pitch: 0.68 });
   } else {
-    announceVoice(`Records search complete. ${results.length} matching records returned.`, { dedupeMs: 5000, rate: 0.86, pitch: 0.7 });
+    announceVoice(`CAD records response. ${results.length} matching records located.`, { dedupeMs: 5000, rate: 0.82, pitch: 0.68 });
   }
 }
