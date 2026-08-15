@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { listDirectoryLocations } from '@/lib/appDirectory';
 
 export default function AdminDocuments() {
   const [showForm, setShowForm] = useState(false);
@@ -35,10 +36,11 @@ export default function AdminDocuments() {
     enabled: user?.role === 'admin',
   });
 
-  const { data: locations } = useQuery({
-    queryKey: ['locations'],
-    queryFn: () => base44.entities.Location.list(),
+  const { data: locations = [] } = useQuery({
+    queryKey: ['directoryLocations', 'adminDocuments'],
+    queryFn: () => listDirectoryLocations('site_name', 1000),
     enabled: user?.role === 'admin',
+    initialData: [],
   });
 
   const deleteDocMutation = useMutation({
