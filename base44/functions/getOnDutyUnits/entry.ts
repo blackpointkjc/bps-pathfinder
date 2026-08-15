@@ -29,23 +29,17 @@ Deno.serve(async (req) => {
 
     const userByEmail = new Map((users || []).filter((u: any) => u?.email).map((u: any) => [String(u.email).toLowerCase(), u]));
     const newestActiveByEmail = new Map<string, any>();
-    const staleLiveRows: any[] = [];
     for (const active of activeOfficers || []) {
       if (!active?.officer_email) continue;
       const email = String(active.officer_email).toLowerCase();
-      if (!openByEmail.has(email)) {
-        staleLiveRows.push(active);
-        continue;
-      }
       const existing = newestActiveByEmail.get(email);
       const activeTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
       const existingTs = new Date(existing?.last_update || existing?.updated_date || existing?.created_date || 0).getTime();
       if (!existing || activeTs > existingTs) newestActiveByEmail.set(email, active);
     }
 
-    // Retire old rows left by previous app versions so no raw ActiveOfficer view
-    // can resurrect a user who has already clocked out.
-    await Promise.all(staleLiveRows.map((row: any) => base44.asServiceRole.entities.ActiveOfficer.delete(row.id).catch(() => null)));
+    // ActiveOfficer is the live GPS source. Do not delete a fresh location merely
+    // because its time-entry row has not synchronized yet.
 
     const now = Date.now();
     const MAX_STALE_MS = 15 * 60 * 1000;
