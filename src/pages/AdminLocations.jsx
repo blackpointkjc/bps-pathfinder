@@ -183,26 +183,9 @@ export default function AdminLocations({ embedded = false }) {
   const supervisorUsers = directoryUsers.filter(u => (u.additional_roles || []).map(r => String(r).toLowerCase()).includes('supervisor'));
 
   const syncClientLocationAssignments = async () => {
-    // Locations are the source of truth. Rebuild every client account's assigned
-    // site list so reassignment/removal cannot leave stale portal access behind.
-    const [allLocations, allUsers] = await Promise.all([
-      base44.entities.Location.list('site_name', 1000),
-      base44.entities.User.list('last_name', 1000),
-    ]);
-    const clients = (allUsers || []).filter(isClientAccount);
-    await Promise.all(clients.map(async client => {
-      const email = String(client.email || '').trim().toLowerCase();
-      if (!email) return;
-      const assigned = (allLocations || [])
-        .filter(location => String(location.assigned_client_email || '').trim().toLowerCase() === email)
-        .map(location => location.site_name)
-        .filter(Boolean);
-      const uniqueAssigned = [...new Set(assigned)];
-      await base44.entities.User.update(client.id, {
-        assigned_locations: uniqueAssigned,
-        assigned_location: uniqueAssigned[0] || '',
-      });
-    }));
+    const result = await base44.functions.invoke('manageClientAssignments', { action: 'sync_all' });
+    const payload = result?.data || result || {};
+    if (payload.error) throw new Error(payload.error);
   };
 
   const createLocationMutation = useMutation({
