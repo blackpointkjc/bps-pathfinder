@@ -106,6 +106,12 @@ function boloSummary(record) {
   return details.join('. ') || 'Review the active BOLO for details.';
 }
 
+const TERMINAL_CALL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
+
+function isTerminalCallStatus(value) {
+  return TERMINAL_CALL_STATUSES.has(normalized(value));
+}
+
 function propertyCallSummary(alert, call = {}) {
   const incident = call.incident || alert?.callIncident || 'Unknown incident';
   const address = call.location || alert?.callLocation || 'Address unavailable';
@@ -259,6 +265,10 @@ export default function GlobalMessageBanner({ user }) {
       const call = record.callId
         ? await base44.entities.DispatchCall.get(record.callId).catch(() => null)
         : null;
+      // A property-alert row can arrive after its linked CAD call has already
+      // cleared. Terminal calls must never be described as active or announced.
+      const currentStatus = call?.status || record.callStatus || record.call_status || record.status;
+      if (isTerminalCallStatus(currentStatus)) return;
       const summary = propertyCallSummary(record, call || {});
       // Dispatch the incident and address verbally in a concise police-CAD cadence.
       speakNotification(`Active call for service. ${summary}`, { rate: 0.82, pitch: 0.66, dedupeMs: 10000 });
