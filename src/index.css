@@ -970,6 +970,17 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   border-color: #2d4258 !important;
 }
 
+/* Keep every Radix dropdown above dialogs, drawers, and full-screen CAD shells. */
+[data-radix-popper-content-wrapper] {
+  z-index: 2147483646 !important;
+  pointer-events: auto !important;
+}
+
+[role="listbox"],
+[role="option"] {
+  pointer-events: auto !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
