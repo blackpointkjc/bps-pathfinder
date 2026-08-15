@@ -14,13 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { listDirectoryUsers, listDirectoryLocations } from '@/lib/appDirectory';
 import { isClientAccount } from '@/lib/directoryUtils';
 
@@ -30,7 +23,7 @@ export default function ManageClients() {
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
-    property_name: "",
+    property_names: [],
     email: "",
     mobile_phone: "",
     role: "user",
@@ -71,10 +64,12 @@ export default function ManageClients() {
         last_name: data.last_name,
         email: data.email,
         mobile_phone: data.mobile_phone,
-        assigned_location: data.property_name,
+        assigned_location: data.property_names[0] || '',
+        assigned_locations: data.property_names,
       });
-      if (response?.error) throw new Error(response.error);
-      return response;
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['hrClientUsers'] });
@@ -139,7 +134,7 @@ export default function ManageClients() {
     setFormData({
       first_name: "",
       last_name: "",
-      property_name: "",
+      property_names: [],
       email: "",
       mobile_phone: "",
       role: "user",
@@ -151,7 +146,11 @@ export default function ManageClients() {
     setFormData({
       first_name: client.first_name || "",
       last_name: client.last_name || "",
-      property_name: client.assigned_location || "",
+      property_names: [...new Set([
+        ...(client.assigned_locations || []),
+        ...(client.assigned_sites || []),
+        client.assigned_location,
+      ].filter(Boolean))],
       email: client.email || "",
       mobile_phone: client.mobile_phone || "",
       role: client.role || "user",
@@ -161,6 +160,10 @@ export default function ManageClients() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!formData.property_names.length) {
+      alert('Select at least one client property.');
+      return;
+    }
     if (editingClient) {
       updateClientMutation.mutate({ id: editingClient.id, data: formData });
     } else {
@@ -216,10 +219,18 @@ export default function ManageClients() {
                         </Badge>
                       </div>
                       <div className="space-y-1">
-                        {client.assigned_location && (
-                          <p className="text-sm text-slate-600 flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-purple-600" />
-                            <span className="font-medium">{client.assigned_location}</span>
+                        {[...new Set([
+                          ...(client.assigned_locations || []),
+                          ...(client.assigned_sites || []),
+                          client.assigned_location,
+                        ].filter(Boolean))].length > 0 && (
+                          <p className="text-sm text-slate-600 flex items-start gap-2">
+                            <MapPin className="w-4 h-4 mt-0.5 text-purple-600 shrink-0" />
+                            <span className="font-medium">{[...new Set([
+                              ...(client.assigned_locations || []),
+                              ...(client.assigned_sites || []),
+                              client.assigned_location,
+                            ].filter(Boolean))].join(', ')}</span>
                           </p>
                         )}
                         <p className="text-sm text-slate-600 flex items-center gap-2">
@@ -294,23 +305,23 @@ export default function ManageClients() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="property_name">Assigned Client Property *</Label>
-              <Select
-                value={formData.property_name}
-                onValueChange={(value) => setFormData({...formData, property_name: value})}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select property..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations?.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.site_name}>
-                      {loc.site_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Assigned Client Properties *</Label>
+              <div className="max-h-56 overflow-y-auto rounded-md border border-slate-600 bg-slate-950/30 p-2 space-y-1">
+                {locations.map((loc) => {
+                  const checked = formData.property_names.includes(loc.site_name);
+                  return (
+                    <label key={loc.id} className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 hover:bg-slate-800/70">
+                      <Checkbox checked={checked} onCheckedChange={(nextChecked) => setFormData((current) => ({
+                        ...current,
+                        property_names: nextChecked ? [...new Set([...current.property_names, loc.site_name])] : current.property_names.filter((name) => name !== loc.site_name),
+                      }))} />
+                      <span className="text-sm">{loc.site_name}</span>
+                    </label>
+                  );
+                })}
+                {!locations.length && <p className="px-3 py-4 text-sm text-slate-400">No properties are available. Add a property in Admin Locations first.</p>}
+              </div>
+              <p className="text-xs text-slate-400">{formData.property_names.length} propert{formData.property_names.length === 1 ? 'y' : 'ies'} selected</p>
             </div>
             {editingClient && isSystemAdmin && (
               <div className="rounded-lg border border-amber-500/40 bg-amber-950/20 p-4">
