@@ -87,8 +87,20 @@ export default function ClientPayrollReport() {
     return entryDate >= startDate && entryDate <= endDate;
   });
 
-  // Calculate billing by site
+  // Show every current or historical client site, including inactive properties,
+  // so its configured bill rate remains visible even when it has no hours this week.
   const billingSummary = {};
+  locations.forEach(location => {
+    const site = normalizeSiteName(location.site_name);
+    if (!site) return;
+    billingSummary[site] = {
+      hours: 0,
+      billedAmount: 0,
+      billRate: Number(location.site_bill_rate) || 0,
+      shifts: [],
+      active: location.active !== false,
+    };
+  });
 
   filteredEntries.forEach(entry => {
     const entrySite = normalizeSiteName(entry.location);
