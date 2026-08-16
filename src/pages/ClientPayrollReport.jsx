@@ -10,14 +10,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Download } from "lucide-react";
-import { format, startOfWeek, endOfWeek } from "date-fns";
-import { calculateLiveHours, normalizeSiteName, resolveBillingRate } from "@/lib/billingRates";
+import { format } from "date-fns";
+import { calculateLiveHours, getDefaultBillingPeriod, normalizeSiteName, resolveBillingRate } from "@/lib/billingRates";
 
 const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
 
 export default function ClientPayrollReport() {
-  const [startDate, setStartDate] = useState(format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(endOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
+  const defaultPeriod = getDefaultBillingPeriod();
+  const [startDate, setStartDate] = useState(defaultPeriod.startDate);
+  const [endDate, setEndDate] = useState(defaultPeriod.endDate);
   const [showOfficerNames, setShowOfficerNames] = useState(false);
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
   const [liveNow, setLiveNow] = useState(() => new Date());
