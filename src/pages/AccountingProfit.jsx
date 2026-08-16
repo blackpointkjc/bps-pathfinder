@@ -346,8 +346,8 @@ export default function AccountingProfit() {
             Financial intelligence
           </div>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Company Profit Report</h1>
-          <p className="text-slate-300 mt-2">Live revenue, labor, expense, tax, and margin analysis</p>
-          <p className="text-sm text-slate-400 mt-2">Generated {format(new Date(), 'MMM d, yyyy h:mm a')}</p>
+          <p className="text-slate-300 mt-2">Earned billing, accrued wages, operating costs, employer taxes, and margin</p>
+          <p className="text-sm text-slate-400 mt-2">Live as of {format(liveNow, 'MMM d, yyyy h:mm:ss a')}</p>
         </div>
         <Button onClick={openProfitReport} className="bg-white text-slate-950 hover:bg-slate-100 no-print w-full md:w-auto">
           <Download className="w-4 h-4 mr-2" />
@@ -393,7 +393,7 @@ export default function AccountingProfit() {
             <div className="flex items-center justify-between">
               <DollarSign className="w-6 h-6 text-green-500" />
               <div className="text-right">
-                <p className="text-xs text-slate-600 font-medium">Revenue</p>
+                <p className="text-xs text-slate-600 font-medium">Earned Revenue</p>
                 <p className="text-lg font-bold text-slate-900">
                   ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </p>
@@ -407,7 +407,7 @@ export default function AccountingProfit() {
             <div className="flex items-center justify-between">
               <DollarSign className="w-6 h-6 text-red-500" />
               <div className="text-right">
-                <p className="text-xs text-slate-600 font-medium">Payroll</p>
+                <p className="text-xs text-slate-600 font-medium">Accrued Payroll</p>
                 <p className="text-lg font-bold text-slate-900">
                   ${totalPayroll.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </p>
@@ -487,13 +487,20 @@ export default function AccountingProfit() {
               <div className="text-right">
                 <p className="text-xs text-slate-600 font-medium">Employer Taxes</p>
                 <p className="text-lg font-bold text-slate-900">
-                  ${(totalPayroll * 0.0765).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  ${employerTaxes.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mb-6 border-blue-200 bg-blue-50/60">
+        <CardContent className="p-4 text-sm text-slate-700">
+          <p className="font-semibold text-slate-900">How this report calculates profit</p>
+          <p className="mt-1">Earned revenue = each worked hour × that shift’s Normal, Holiday, or Rush client rate. Accrued payroll = the same worked hours × the officer’s rate, with weekly overtime after {overtimeThreshold} hours at {overtimeMultiplier}×. Net profit then subtracts payroll, PTO wages, approved/paid expenses, and 7.65% employer payroll taxes.</p>
+        </CardContent>
+      </Card>
 
       {/* Profit by Site */}
       <Card className="mb-6">
