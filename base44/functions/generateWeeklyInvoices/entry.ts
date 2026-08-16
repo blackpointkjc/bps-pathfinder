@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
         let totalHours = 0;
         let totalAmount = 0;
         const shifts = siteEntries.map((entry: any) => {
-          const hours = hoursBetween(entry.clock_in, entry.clock_out);
+          const hours = Math.round(hoursBetween(entry.clock_in, entry.clock_out) * 100) / 100;
           const shiftRate = rateFor(entry, location, schedules || []);
           totalHours += hours;
           totalAmount += hours * shiftRate.rate;
