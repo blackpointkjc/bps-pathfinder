@@ -136,7 +136,7 @@ export default function AccountingInvoices() {
       const shifts = [];
 
       siteEntries.forEach(entry => {
-        const hours = calculateLiveHours(entry);
+        const hours = Math.round(calculateLiveHours(entry) * 100) / 100;
         const { rate, rateLabel } = resolveBillingRate(entry, location, schedules);
         totalHours += hours;
         totalAmount += hours * rate;
@@ -220,7 +220,7 @@ export default function AccountingInvoices() {
     if (!location || (selectedSite && entrySite !== selectedSite)) return summary;
     const { rate } = resolveBillingRate(entry, location, schedules);
     if (!rate) return summary;
-    const hours = calculateLiveHours(entry, liveNow);
+    const hours = Math.round(calculateLiveHours(entry, liveNow) * 100) / 100;
     summary.hours += hours;
     summary.amount += hours * rate;
     summary.activeShifts += entry.clock_out ? 0 : 1;
@@ -265,7 +265,7 @@ export default function AccountingInvoices() {
         const shifts = [];
 
         siteEntries.forEach(entry => {
-          const hours = calculateLiveHours(entry);
+          const hours = Math.round(calculateLiveHours(entry) * 100) / 100;
           const { rate, rateLabel } = resolveBillingRate(entry, location, schedules);
           totalHours += hours;
           totalAmount += hours * rate;
