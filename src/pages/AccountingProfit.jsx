@@ -202,9 +202,8 @@ export default function AccountingProfit() {
   const reimbursableExpenses = filteredExpenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
   const operatingExpenses = filteredCompanyExpenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
   const totalExpenses = reimbursableExpenses + operatingExpenses;
-  const taxableWages = totalPayroll + ptoCost;
-  const employerTaxes = taxableWages * 0.0765;
-  const totalCosts = taxableWages + totalExpenses + employerTaxes;
+  const totalLaborCost = totalPayroll + ptoCost;
+  const totalCosts = totalLaborCost + totalExpenses;
   const netProfit = totalRevenue - totalCosts;
   const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
@@ -298,7 +297,7 @@ export default function AccountingProfit() {
             <div>
               <div class="eyebrow">Black Point Protection Services</div>
               <h1>Company Profit Report</h1>
-              <div class="subtle">Revenue, labor, expenses, employer taxes, and profitability</div>
+              <div class="subtle">Revenue, gross labor, operating expenses, and profitability</div>
             </div>
             <div class="period">
               <span class="subtle">Report period</span>
@@ -309,19 +308,18 @@ export default function AccountingProfit() {
           <section class="metrics">
             <div class="metric"><div class="label">Revenue</div><div class="value positive">${money(totalRevenue)}</div></div>
             <div class="metric"><div class="label">Payroll</div><div class="value">${money(totalPayroll)}</div></div>
-            <div class="metric"><div class="label">Operating costs</div><div class="value">${money(totalExpenses + ptoCost + employerTaxes)}</div></div>
+            <div class="metric"><div class="label">Operating costs</div><div class="value">${money(totalExpenses + ptoCost)}</div></div>
             <div class="metric"><div class="label">Net profit</div><div class="value ${netProfit >= 0 ? 'positive' : 'negative'}">${money(netProfit)}</div></div>
-            <div class="metric"><div class="label">Employer taxes</div><div class="value">${money(employerTaxes)}</div></div>
             <div class="metric"><div class="label">Expenses</div><div class="value">${money(totalExpenses)}</div></div>
             <div class="metric"><div class="label">PTO cost</div><div class="value">${money(ptoCost)}</div></div>
             <div class="metric"><div class="label">Net margin</div><div class="value">${profitMargin.toFixed(1)}%</div></div>
           </section>
-          <div class="formula"><strong>Profit calculation:</strong> ${money(totalRevenue)} − (${money(totalPayroll)} payroll + ${money(employerTaxes)} employer taxes + ${money(totalExpenses)} expenses + ${money(ptoCost)} PTO) = <strong>${money(netProfit)}</strong></div>
+          <div class="formula"><strong>Profit calculation:</strong> ${money(totalRevenue)} − (${money(totalPayroll)} gross payroll + ${money(totalExpenses)} expenses + ${money(ptoCost)} PTO) = <strong>${money(netProfit)}</strong></div>
           <h2>Profitability by Site</h2>
           <table><thead><tr><th>Site / Cost Center</th><th>Hours</th><th>Revenue</th><th>Payroll</th><th>Site Contribution</th><th>Margin</th></tr></thead><tbody>${siteRows || '<tr><td colspan="6">No site activity for this period.</td></tr>'}</tbody></table>
           <h2>Profitability by Employee</h2>
           <table><thead><tr><th>Employee</th><th>Hours</th><th>Revenue</th><th>Payroll</th><th>Contribution</th><th>Overtime Hours</th></tr></thead><tbody>${officerRows || '<tr><td colspan="6">No employee activity for this period.</td></tr>'}</tbody></table>
-          <footer class="footer"><span>Internal financial report • Confidential</span><span>Employer taxes estimated at 7.65% of payroll</span></footer>
+          <footer class="footer"><span>Internal financial report • Confidential</span><span>Taxes and deductions are processed in the external payroll system</span></footer>
         </main>
       </body>
       </html>
@@ -347,7 +345,7 @@ export default function AccountingProfit() {
             Financial intelligence
           </div>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Company Profit Report</h1>
-          <p className="text-slate-300 mt-2">Earned billing, accrued wages, operating costs, employer taxes, and margin</p>
+          <p className="text-slate-300 mt-2">Earned billing, gross accrued wages, operating costs, and margin</p>
           <p className="text-sm text-slate-400 mt-2">Live as of {format(liveNow, 'MMM d, yyyy h:mm:ss a')}</p>
         </div>
         <Button onClick={openProfitReport} className="bg-white text-slate-950 hover:bg-slate-100 no-print w-full md:w-auto">
@@ -481,25 +479,12 @@ export default function AccountingProfit() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-slate-200 border-l-4 border-l-teal-500 shadow-sm">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between">
-              <DollarSign className="w-6 h-6 text-teal-500" />
-              <div className="text-right">
-                <p className="text-xs text-slate-600 font-medium">Employer Taxes</p>
-                <p className="text-lg font-bold text-slate-900">
-                  ${employerTaxes.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <Card className="mb-6 border-blue-200 bg-blue-50/60">
         <CardContent className="p-4 text-sm text-slate-700">
           <p className="font-semibold text-slate-900">How this report calculates profit</p>
-          <p className="mt-1">Earned revenue = each worked hour × that shift’s Normal, Holiday, or Rush client rate. Accrued payroll = the same worked hours × the officer’s rate, with weekly overtime after {overtimeThreshold} hours at {overtimeMultiplier}×. Net profit then subtracts payroll, PTO wages, approved/paid expenses, and 7.65% employer payroll taxes.</p>
+          <p className="mt-1">Earned revenue = each worked hour × that shift’s Normal, Holiday, or Rush client rate. Accrued payroll = the same worked hours × the officer’s rate, with weekly overtime after {overtimeThreshold} hours at {overtimeMultiplier}×. Net profit then subtracts gross payroll, PTO wages, and approved/paid operating expenses. Taxes and deductions are handled in the external payroll system.</p>
         </CardContent>
       </Card>
 
