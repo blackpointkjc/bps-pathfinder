@@ -182,16 +182,22 @@ export default function BackgroundLocationTracker({ user }) {
         speed: position.coords.speed ? position.coords.speed * 2.237 : 0,
         timestamp: position.timestamp || Date.now(),
       };
-      lastPositionRef.current = normalizedFix;
-      publishLiveLocation(normalizedFix);
-
-      // CF-33 and similar Windows tablets may use Wi-Fi positioning. Retain
-      // reasonable fixes for live unit movement; geofence alerts remain limited
-      // to high-confidence readings below.
-      if (accuracy > 1500) {
-        console.warn(`Location accuracy too low: ${accuracy.toFixed(0)}m - waiting for a better fix`);
+      // Never present a Wi-Fi/IP estimate as an exact live officer position.
+      // Field navigation requires a device fix within 100 meters; poorer readings
+      // remain pending until Android/browser precise-location access produces GPS.
+      if (!Number.isFinite(accuracy) || accuracy > 100) {
+        window.dispatchEvent(new CustomEvent('bps-location-quality', {
+          detail: { state: 'low_accuracy', accuracy: Number.isFinite(accuracy) ? accuracy : null },
+        }));
+        console.warn(`Location accuracy too low for live map: ${Number.isFinite(accuracy) ? accuracy.toFixed(0) : 'unknown'}m`);
         return;
       }
+
+      lastPositionRef.current = normalizedFix;
+      publishLiveLocation(normalizedFix);
+      window.dispatchEvent(new CustomEvent('bps-location-quality', {
+        detail: { state: 'live', accuracy },
+      }));
 
       if (!shouldPublish) return;
 
