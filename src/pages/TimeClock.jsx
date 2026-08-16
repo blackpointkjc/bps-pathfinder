@@ -624,7 +624,7 @@ export default function TimeClock() {
 
 
   const calculateEntryMinutes = (entry) => {
-    if (!entry?.clock_in || !entry?.clock_out) return 0;
+    if (!entry?.clock_in) return 0;
     const grossMs = new Date(entry.clock_out || Date.now()).getTime() - new Date(entry.clock_in).getTime();
     if (!Number.isFinite(grossMs) || grossMs <= 0) return 0;
     const breakMs = (entry.break_periods || []).reduce((total, period) => {
