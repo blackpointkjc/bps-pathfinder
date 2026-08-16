@@ -19,6 +19,12 @@ export default function AccountingInvoices() {
   const [endDate, setEndDate] = useState(format(endOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
   const [invoiceNotes, setInvoiceNotes] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [liveNow, setLiveNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setLiveNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const queryClient = useQueryClient();
 
