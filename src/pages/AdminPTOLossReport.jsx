@@ -43,7 +43,7 @@ export default function AdminPTOLossReport() {
   const hasHRAccess = user?.role === 'admin' || hrRoles.has('hr') || hrRoles.has('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
 
   const { data: allUsers = [] } = useQuery({
-    queryKey: ['appDirectoryUsers', 'ptoLoss'],
+    queryKey: ['officerDirectory', 'ptoLoss'],
     queryFn: () => listOfficerDirectory('last_name', 1000, true),
     enabled: hasHRAccess,
     initialData: [],
