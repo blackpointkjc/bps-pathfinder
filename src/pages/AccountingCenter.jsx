@@ -6,7 +6,6 @@ import PayrollDates from './PayrollDates';
 import AccountingInvoices from './AccountingInvoices';
 import AccountingExpenses from './AccountingExpenses';
 import AccountingProfit from './AccountingProfit';
-import AccountingTaxLiability from './AccountingTaxLiability';
 
 const SECTIONS = [
   { id: 'payroll', label: 'Payroll', description: 'Payroll processing and payroll dates', icon: DollarSign },
@@ -25,7 +24,6 @@ const TOOLS = {
   ],
   overview: [
     { id: 'profit', label: 'Company Profit', component: AccountingProfit },
-    { id: 'tax', label: 'Tax Liability', component: AccountingTaxLiability },
   ],
 };
 
