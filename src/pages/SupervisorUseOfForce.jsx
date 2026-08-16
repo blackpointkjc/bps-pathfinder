@@ -22,8 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { listOfficerDirectory } from '@/lib/appDirectory';
 
 export default function SupervisorUseOfForce() {
   const [showDialog, setShowDialog] = useState(false);
@@ -49,9 +48,9 @@ export default function SupervisorUseOfForce() {
     retry: false,
   });
 
-  const { data: officers = [] } = useQuery({
-    queryKey: ["directoryUsers", "supervisorUseOfForceOfficers"],
-    queryFn: async () => (await listDirectoryUsers('last_name', 1000)).filter(hasOfficerAdditionalRole),
+  const { data: officers = [], isLoading: officersLoading, error: officersError } = useQuery({
+    queryKey: ["officerDirectory", "supervisorUseOfForce"],
+    queryFn: () => listOfficerDirectory('last_name', 1000, true),
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
@@ -300,7 +299,7 @@ export default function SupervisorUseOfForce() {
                       setFormData({
                         ...formData,
                         officer_email: value,
-                        officer_name: officer?.full_name || "",
+                        officer_name: officer ? [officer.rank, officer.last_name].filter(Boolean).join(' ') : "",
                       });
                     }}
                   >
@@ -308,9 +307,15 @@ export default function SupervisorUseOfForce() {
                       <SelectValue placeholder="Select officer..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {officers?.map((officer) => (
+                      {officersLoading ? (
+                        <div className="p-2 text-sm text-slate-500">Loading officers...</div>
+                      ) : officersError ? (
+                        <div className="p-2 text-sm text-red-600">Unable to load officers. Reopen this report to retry.</div>
+                      ) : officers.length === 0 ? (
+                        <div className="p-2 text-sm text-slate-500">No active Officer-role accounts found</div>
+                      ) : officers.map((officer) => (
                         <SelectItem key={officer.email} value={officer.email}>
-                          {officer.full_name || officer.email}
+                          {[officer.rank, officer.last_name].filter(Boolean).join(' ') || officer.email}
                         </SelectItem>
                       ))}
                     </SelectContent>
