@@ -110,7 +110,7 @@ export default function ClientPayrollReport() {
     if (!location) return;
 
     const effectiveClockOut = entry.clock_out ? new Date(entry.clock_out) : liveNow;
-    const hours = calculateLiveHours(entry, liveNow);
+    const hours = Math.round(calculateLiveHours(entry, liveNow) * 100) / 100;
     const { rate: billRate, rateLabel } = resolveBillingRate(entry, location, schedules);
     if (!billRate) return;
     const billedAmount = hours * billRate;
