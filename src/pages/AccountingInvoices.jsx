@@ -211,7 +211,7 @@ export default function AccountingInvoices() {
     if (!selectedClient || !entry.clock_in || entry.archived === true) return summary;
     const entryDate = String(entry.clock_in).slice(0, 10);
     if (entryDate < startDate || entryDate > endDate) return summary;
-    const entrySite = String(entry.location || '').split(':')[0].trim();
+    const entrySite = normalizeSiteName(entry.location);
     const location = clientLocations.find(item => item.site_name === entrySite);
     if (!location || (selectedSite && entrySite !== selectedSite)) return summary;
     const { rate } = resolveBillingRate(entry, location, schedules);
