@@ -10,7 +10,7 @@ import AccountingProfit from './AccountingProfit';
 const SECTIONS = [
   { id: 'payroll', label: 'Payroll', description: 'Payroll processing and payroll dates', icon: DollarSign },
   { id: 'billing', label: 'Billing & Expenses', description: 'Client invoices, bills, expenses and approvals', icon: FileText },
-  { id: 'overview', label: 'Financial Overview', description: 'Company profit and tax liability', icon: BarChart3 },
+  { id: 'overview', label: 'Financial Overview', description: 'Company revenue, labor, expenses, and profit', icon: BarChart3 },
 ];
 
 const TOOLS = {
