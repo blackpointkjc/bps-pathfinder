@@ -39,7 +39,7 @@ export default function Schedule() {
   const allWeekStatuses = scheduleData.weekStatuses || [];
 
   const { data: companyUsers = [] } = useQuery({
-    queryKey: ['companyUsersForFleet'],
+    queryKey: ['officerDirectory', 'scheduleFleet'],
     queryFn: async () => (await listOfficerDirectory('last_name', 1000)).filter(isOperationalOfficer),
     enabled: !!user,
     staleTime: 60000,
