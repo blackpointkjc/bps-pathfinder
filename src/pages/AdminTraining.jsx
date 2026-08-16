@@ -129,6 +129,12 @@ function AdminTrainingContent({ embedded = false }) {
     refetchOnWindowFocus: false,
   });
 
+  const officerLearners = allUsers.filter(entry => hasOfficerAdditionalRole(entry));
+  const studentLearners = allUsers.filter(entry => {
+    const roles = (entry.additional_roles || []).map(role => String(role).toLowerCase());
+    return roles.includes('student') || String(entry.user_type || '').toLowerCase() === 'student' || String(entry.rank || '').toLowerCase() === 'student';
+  });
+
   const { data: divisions } = useQuery({
     queryKey: ['divisions'],
     queryFn: () => listDirectoryDivisions('division_name'),
