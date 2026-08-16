@@ -144,30 +144,18 @@ export default function AdminLocations({ embedded = false }) {
     initialData: [],
   });
 
-  const { data: locations } = useQuery({
-    queryKey: ['locations'],
+  const { data: locations = [], isLoading: locationsLoading, error: locationsError } = useQuery({
+    queryKey: ['adminManagedLocations'],
     queryFn: async () => {
-      const allLocations = await listDirectoryLocations('site_name', 1000);
-      // Check contract dates and auto-deactivate if needed
-      const now = new Date();
-      now.setHours(0, 0, 0, 0); // Normalize 'now' to start of day for comparison
-      const updatedLocations = await Promise.all(allLocations.map(async (loc) => {
-        if (loc.contract_end_date && loc.active) {
-          const endDate = new Date(loc.contract_end_date);
-          endDate.setHours(12, 0, 0, 0); // Set to 12pm on the end date for comparison
-          if (now.getTime() >= endDate.getTime()) {
-            // Auto-deactivate - this will trigger on next page load
-            // Fire and forget the update to the database. The query itself will reflect the inactive state immediately.
-            console.log(`Auto-deactivating location: ${loc.site_name} (ID: ${loc.id}) due to contract end date.`);
-            await base44.entities.Location.update(loc.id, { active: false });
-            return { ...loc, active: false };
-          }
-        }
-        return loc;
-      }));
-      return updatedLocations;
+      const response = await base44.functions.invoke('manageLocations', { action: 'list' });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return Array.isArray(payload.locations) ? payload.locations : [];
     },
     enabled: hasAccess,
+    initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const { data: directoryUsers = [] } = useQuery({
@@ -189,11 +177,16 @@ export default function AdminLocations({ embedded = false }) {
   };
 
   const createLocationMutation = useMutation({
-    mutationFn: (data) => base44.entities.Location.create(data),
+    mutationFn: async (data) => {
+      const response = await base44.functions.invoke('manageLocations', { action: 'create', data });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.location;
+    },
     onSuccess: async () => {
       await syncClientLocationAssignments().catch(error => console.warn('Client location sync failed:', error?.message));
       invalidateAppDirectory();
-      queryClient.invalidateQueries({ queryKey: ['locations'] });
+      queryClient.invalidateQueries({ queryKey: ['adminManagedLocations'] });
       queryClient.invalidateQueries({ queryKey: ['directoryUsers'] });
 
       setShowDialog(false);
@@ -203,11 +196,16 @@ export default function AdminLocations({ embedded = false }) {
   });
 
   const updateLocationMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Location.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      const response = await base44.functions.invoke('manageLocations', { action: 'update', id, data });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.location;
+    },
     onSuccess: async () => {
       await syncClientLocationAssignments().catch(error => console.warn('Client location sync failed:', error?.message));
       invalidateAppDirectory();
-      queryClient.invalidateQueries({ queryKey: ['locations'] });
+      queryClient.invalidateQueries({ queryKey: ['adminManagedLocations'] });
       queryClient.invalidateQueries({ queryKey: ['directoryUsers'] });
 
       setShowDialog(false);
@@ -217,19 +215,29 @@ export default function AdminLocations({ embedded = false }) {
   });
 
   const deleteLocationMutation = useMutation({
-    mutationFn: (id) => base44.entities.Location.delete(id),
+    mutationFn: async (id) => {
+      const response = await base44.functions.invoke('manageLocations', { action: 'delete', id });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
     onSuccess: async () => {
       await syncClientLocationAssignments().catch(error => console.warn('Client location sync failed:', error?.message));
       invalidateAppDirectory();
-      queryClient.invalidateQueries({ queryKey: ['locations'] });
+      queryClient.invalidateQueries({ queryKey: ['adminManagedLocations'] });
       queryClient.invalidateQueries({ queryKey: ['directoryUsers'] });
     },
   });
 
   const toggleActiveMutation = useMutation({
-    mutationFn: ({ id, active }) => base44.entities.Location.update(id, { active }),
+    mutationFn: async ({ id, active }) => {
+      const response = await base44.functions.invoke('manageLocations', { action: 'update', id, data: { active } });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.location;
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['locations'] });
+      queryClient.invalidateQueries({ queryKey: ['adminManagedLocations'] });
     },
   });
 
