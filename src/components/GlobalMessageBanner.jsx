@@ -106,17 +106,19 @@ function boloSummary(record) {
   return details.join('. ') || 'Review the active BOLO for details.';
 }
 
-const TERMINAL_CALL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
+const SILENT_CALL_STATUSES = new Set(['cleared', 'closed', 'completed', 'resolved']);
 
-function isTerminalCallStatus(value) {
-  return TERMINAL_CALL_STATUSES.has(normalized(value));
+function isSilentCallStatus(value) {
+  return SILENT_CALL_STATUSES.has(normalized(value));
 }
 
 function announcedCallStatus(value) {
   const status = normalized(value).replace(/[\s_-]+/g, '');
-  if (status === 'dispatched') return 'Dispatched';
+  if (status === 'dispatched' || status === 'dispatch') return 'Dispatched';
   if (status === 'enroute' || status === 'enroutetoscene') return 'En Route';
+  if (status === 'arrived' || status === 'arrival') return 'Arrived';
   if (status === 'onscene' || status === 'onsite') return 'On Site';
+  if (status === 'cancelled' || status === 'canceled') return 'Canceled';
   return null;
 }
 
@@ -293,7 +295,7 @@ export default function GlobalMessageBanner({ user }) {
       // Property-call speech is allowlisted by an active Property Monitoring site.
       // Never announce an orphaned/stale alert or a call for a disabled property.
       const monitoredProperty = await activeMonitoredPropertyForAlert(record);
-      if (!call || !monitoredProperty || isTerminalCallStatus(call.status)) return;
+      if (!call || !monitoredProperty || isSilentCallStatus(call.status)) return;
       const summary = propertyCallSummary(record, call);
       // Dispatch the incident and address verbally in a concise police-CAD cadence.
       speakNotification(`Active call for service. ${summary}`, { rate: 0.82, pitch: 0.66, dedupeMs: 10000 });
@@ -337,7 +339,7 @@ export default function GlobalMessageBanner({ user }) {
         if (event.type !== 'update' || !previousRaw || previousRaw === nextRaw) return;
 
         const spokenStatus = announcedCallStatus(call.status);
-        if (!spokenStatus || isTerminalCallStatus(call.status)) return;
+        if (!spokenStatus || isSilentCallStatus(call.status)) return;
 
         // A DispatchCall update alone is never enough to speak. Require the call to
         // have a current alert tied to a site that is still enabled in Property Monitoring.
@@ -346,8 +348,11 @@ export default function GlobalMessageBanner({ user }) {
 
         const incident = call.incident || propertyAlert.callIncident || 'Call for service';
         const address = call.location || propertyAlert.callLocation || 'address unavailable';
+        const returnToService = spokenStatus === 'Canceled' && call.assigned_units?.length
+          ? ' Assigned officers on this call, return 10-8.'
+          : '';
         speakNotification(
-          `Monitored property call status update. ${incident}. At ${address}. Now ${spokenStatus}.`,
+          `Monitored property call status update. ${incident}. At ${address}. Now ${spokenStatus}.${returnToService}`,
           { rate: 0.82, pitch: 0.66, dedupeMs: 4000 },
         );
       });
