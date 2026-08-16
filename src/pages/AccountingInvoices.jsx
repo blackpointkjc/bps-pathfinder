@@ -159,9 +159,9 @@ export default function AccountingInvoices() {
       const nextNumber = yearInvoices.length + 1;
       const invoiceNumber = `${currentYear}${nextNumber.toString().padStart(3, '0')}`;
       
-      // Calculate due date (30 days from today)
+      // Net 15: payment is due 15 calendar days after issue.
       const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 30);
+      dueDate.setDate(dueDate.getDate() + 15);
 
       // Send invoice data to client
       await generateInvoiceMutation.mutateAsync({
@@ -287,7 +287,7 @@ export default function AccountingInvoices() {
         const invoiceNumber = `${currentYear}${nextNumber.toString().padStart(3, '0')}`;
         
         const dueDate = new Date();
-        dueDate.setDate(dueDate.getDate() + 30);
+        dueDate.setDate(dueDate.getDate() + 15);
 
         await generateInvoiceMutation.mutateAsync({
           client_email: selectedClient,
