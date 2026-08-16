@@ -28,7 +28,7 @@ export default function AccountingProfit() {
 
   const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access') || user?.role === 'admin';
 
-  const { data: accountingData = {}, isLoading: accountingLoading, error: accountingError } = useQuery({
+  const { data: accountingData = {}, isLoading: accountingLoading, error: accountingError, refetch: refetchProfit } = useQuery({
     queryKey: ['accountingData', 'profit'],
     queryFn: async () => {
       const result = await base44.functions.invoke('getAccountingData', {});
@@ -39,7 +39,7 @@ export default function AccountingProfit() {
     enabled: isAccountingRole,
     staleTime: 0,
     refetchOnMount: 'always',
-    refetchInterval: 3000,
+    refetchInterval: 15000,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
   });
@@ -56,7 +56,7 @@ export default function AccountingProfit() {
 
   useEffect(() => {
     if (!isAccountingRole) return undefined;
-    const refresh = () => window.dispatchEvent(new Event('focus'));
+    const refresh = () => refetchProfit();
     const unsubscribers = [];
     for (const entity of ['TimeEntry', 'Invoice', 'Location', 'Schedule']) {
       try {
@@ -65,7 +65,7 @@ export default function AccountingProfit() {
       } catch { /* three-second polling remains active */ }
     }
     return () => unsubscribers.forEach(unsubscribe => unsubscribe());
-  }, [isAccountingRole]);
+  }, [isAccountingRole, refetchProfit]);
 
   if (!isAccountingRole) {
     return (
@@ -152,7 +152,8 @@ export default function AccountingProfit() {
 
     const siteName = normalizeSiteName(entry.location) || 'Unassigned / Nonbillable';
     const location = locations.find(l => normalizeSiteName(l.site_name) === siteName);
-    const hours = Math.round((entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow)) * 100) / 100;
+    const rawHours = entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow);
+    const hours = entry.clock_out ? Math.round(rawHours * 100) / 100 : rawHours;
     const { rate: billRate } = resolveBillingRate(entry, location, schedules);
     const revenue = hours * billRate;
     const hourlyRate = Number(officer.hourly_rate) || 0;
