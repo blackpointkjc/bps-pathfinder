@@ -12,7 +12,7 @@ export default function OfficerRoster() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
+    queryKey: ['officerDirectory', 'officerRoster'],
     queryFn: () => listOfficerDirectory('last_name', 1000, true),
   });
 
