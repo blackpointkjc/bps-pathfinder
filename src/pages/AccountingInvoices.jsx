@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { accountingCreate } from '@/lib/accountingRecordsApi';
@@ -8,15 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DollarSign, Plus, Send, FileText, Download } from "lucide-react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfWeek, endOfWeek } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 
 export default function AccountingInvoices() {
   const [selectedClient, setSelectedClient] = useState("");
   const [selectedSite, setSelectedSite] = useState("");
-  const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [startDate, setStartDate] = useState(format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(endOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
   const [invoiceNotes, setInvoiceNotes] = useState("");
   const [generating, setGenerating] = useState(false);
 
@@ -30,7 +30,7 @@ export default function AccountingInvoices() {
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const isAccountingRole = user?.role === 'admin' || roles.has('accounting') || roles.has('full_access');
 
-  const { data: accountingData = {}, isLoading: clientsLoading, error: clientsError } = useQuery({
+  const { data: accountingData = {}, isLoading: clientsLoading, error: clientsError, refetch: refetchAccounting } = useQuery({
     queryKey: ['accountingData', 'invoices'],
     queryFn: async () => {
       const result = await base44.functions.invoke('getAccountingData', {});
@@ -41,8 +41,25 @@ export default function AccountingInvoices() {
     enabled: isAccountingRole,
     staleTime: 0,
     refetchOnMount: 'always',
-    refetchOnWindowFocus: false,
+    refetchInterval: 3000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    if (!isAccountingRole) return undefined;
+    const refresh = () => refetchAccounting();
+    const unsubscribers = [];
+    for (const entity of ['TimeEntry', 'Invoice', 'Location']) {
+      try {
+        const unsubscribe = base44.entities[entity].subscribe(refresh);
+        if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+      } catch {
+        // The three-second refresh remains active when realtime is unavailable.
+      }
+    }
+    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
+  }, [isAccountingRole, refetchAccounting]);
   const clients = accountingData.clients || [];
   const locations = accountingData.locations || [];
   const timeEntries = accountingData.timeEntries || [];
