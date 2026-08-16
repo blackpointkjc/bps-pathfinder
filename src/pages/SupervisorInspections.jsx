@@ -44,6 +44,9 @@ export default function SupervisorInspections() {
     initialData: [],
   });
 
+  const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  const hasSupervisorAccess = user?.role === 'admin' || userRoles.has('full_access') || userRoles.has('supervisor');
+
   const { data: filteredUsers = [], isLoading: officersLoading, error: officersError } = useQuery({
     queryKey: ['officerDirectory', 'supervisorInspections'],
     queryFn: () => listOfficerDirectory('last_name', 1000, true),
@@ -53,9 +56,6 @@ export default function SupervisorInspections() {
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
-
-  const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
-  const hasSupervisorAccess = user?.role === 'admin' || userRoles.has('full_access') || userRoles.has('supervisor');
 
   const { data: inspections = [], isLoading: inspectionsLoading, error: inspectionsError } = useQuery({
     queryKey: ['inspectionReports'],
