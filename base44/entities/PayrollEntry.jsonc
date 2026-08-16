@@ -97,11 +97,13 @@
     "status": {
       "type": "string",
       "enum": [
+        "ready",
+        "exported",
         "draft",
         "approved",
         "paid"
       ],
-      "default": "draft"
+      "default": "ready"
     },
     "approved_by": {
       "type": "string"
