@@ -551,7 +551,7 @@ export default function AccountingPayroll() {
     const entryDate = String(entry.clock_in || '').slice(0, 10);
     if (!entry.clock_in || entry.archived === true || entryDate < selectedPeriod.start_date || entryDate > selectedPeriod.end_date) return sum;
     const officer = officers.find(item => String(item.email).toLowerCase() === String(entry.officer_email).toLowerCase());
-    const hours = entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow);
+    const hours = Math.round((entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow)) * 100) / 100;
     return sum + hours * (Number(officer?.hourly_rate) || 0);
   }, 0) : 0;
   const generatedGross = payrollEntries
