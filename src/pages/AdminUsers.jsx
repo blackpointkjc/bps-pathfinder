@@ -164,8 +164,9 @@ export default function AdminUsers() {
         accountType: 'pending',
         ...data,
       });
-      if (response?.error) throw new Error(response.error);
-      return response;
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
