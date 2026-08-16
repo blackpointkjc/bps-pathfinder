@@ -112,6 +112,7 @@ export default function OfficerProfile() {
   const updateProfileMutation = useMutation({
     mutationFn: (data) => base44.auth.updateMe(data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['officerProfileUser'] });
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
     },
   });
