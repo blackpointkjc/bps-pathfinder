@@ -46,7 +46,7 @@ export default function AccountingProfit() {
   const timeEntries = accountingData.timeEntries || [];
   const officers = accountingData.users || [];
   const locations = accountingData.locations || [];
-  const payrollEntries = accountingData.payrollEntries || [];
+  const config = accountingData.config || {};
   const expenseReports = accountingData.expenseReports || [];
   const companyExpenses = accountingData.companyExpenses || [];
   const allUsers = accountingData.users || [];
@@ -92,10 +92,6 @@ export default function AccountingProfit() {
     entry.clock_in && entry.archived !== true && isDateInRange(entry.clock_in)
   );
 
-  const filteredPayroll = payrollEntries.filter(entry =>
-    entry.status === 'paid' && isDateInRange(entry.pay_date)
-  );
-
   const filteredExpenses = expenseReports.filter(expense => {
     const expenseDate = expense.expense_date || expense.date || expense.reimbursed_date || expense.created_date;
     const status = String(expense.status || '').toLowerCase();
@@ -128,7 +124,12 @@ export default function AccountingProfit() {
     return sum + ((Number(pto.hours_requested) || 0) * (Number(officer?.hourly_rate) || 0));
   }, 0);
 
-  const invoiceRevenue = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0);
+  const invoiceRevenueBySite = filteredInvoices.reduce((summary, invoice) => {
+    const site = normalizeSiteName(invoice.site_name) || 'Unassigned / Nonbillable';
+    summary[site] = (summary[site] || 0) + (Number(invoice.total_amount) || 0);
+    return summary;
+  }, {});
+  const invoiceRevenue = Object.values(invoiceRevenueBySite).reduce((sum, amount) => sum + amount, 0);
 
   const revenueByOfficer = {};
   const payrollByOfficer = {};
@@ -137,10 +138,16 @@ export default function AccountingProfit() {
   const payrollBySite = {};
   const hoursBySite = {};
 
-  // Labor is a cost when worked, even before payroll is finalized and even when
-  // the work is office/support time with no client bill rate.
-  filteredEntries.forEach(entry => {
-    const officer = officers.find(o => o.email === entry.officer_email);
+  const payrollBreakdownByOfficer = {};
+  const weeklyHoursByOfficer = {};
+  const overtimeThreshold = Number(config.overtime_threshold_hours) || 40;
+  const overtimeMultiplier = Number(config.overtime_multiplier) || 1.5;
+
+  // Revenue and labor use the same worked-time records. Entries are sorted so
+  // overtime is applied after the weekly threshold and allocated to the site
+  // where those overtime hours were actually worked.
+  [...filteredEntries].sort((a, b) => new Date(a.clock_in) - new Date(b.clock_in)).forEach(entry => {
+    const officer = officers.find(o => String(o.email).toLowerCase() === String(entry.officer_email).toLowerCase());
     if (!officer) return;
 
     const siteName = normalizeSiteName(entry.location) || 'Unassigned / Nonbillable';
@@ -148,8 +155,28 @@ export default function AccountingProfit() {
     const hours = entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow);
     const { rate: billRate } = resolveBillingRate(entry, location, schedules);
     const revenue = hours * billRate;
-    const payrollCost = hours * (Number(officer.hourly_rate) || 0);
+    const hourlyRate = Number(officer.hourly_rate) || 0;
+    const shiftDate = new Date(entry.clock_in);
+    const sunday = new Date(shiftDate);
+    sunday.setHours(0, 0, 0, 0);
+    sunday.setDate(sunday.getDate() - sunday.getDay());
+    const weekKey = `${String(officer.email).toLowerCase()}|${format(sunday, 'yyyy-MM-dd')}`;
+    const priorWeekHours = weeklyHoursByOfficer[weekKey] || 0;
+    const regularHours = Math.min(hours, Math.max(0, overtimeThreshold - priorWeekHours));
+    const overtimeHours = Math.max(0, hours - regularHours);
+    const regularPay = regularHours * hourlyRate;
+    const overtimePay = overtimeHours * hourlyRate * overtimeMultiplier;
+    const payrollCost = regularPay + overtimePay;
+    weeklyHoursByOfficer[weekKey] = priorWeekHours + hours;
     const officerName = `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email;
+    const breakdown = payrollBreakdownByOfficer[officerName] || {
+      regularHours: 0, regularPay: 0, overtimeHours: 0, overtimePay: 0, holidayHours: 0, holidayPay: 0,
+    };
+    breakdown.regularHours += regularHours;
+    breakdown.regularPay += regularPay;
+    breakdown.overtimeHours += overtimeHours;
+    breakdown.overtimePay += overtimePay;
+    payrollBreakdownByOfficer[officerName] = breakdown;
 
     revenueByOfficer[officerName] = (revenueByOfficer[officerName] || 0) + revenue;
     payrollByOfficer[officerName] = (payrollByOfficer[officerName] || 0) + payrollCost;
@@ -161,50 +188,22 @@ export default function AccountingProfit() {
     hoursBySite[siteName] = (hoursBySite[siteName] || 0) + hours;
   });
 
-  const payrollBreakdownByOfficer = {};
-  filteredPayroll.forEach(entry => {
-    const officer = officers.find(o => o.email === entry.officer_email);
-    if (!officer) return;
-    const officerName = `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email;
-    const breakdown = payrollBreakdownByOfficer[officerName] || {
-      regularHours: 0, regularPay: 0, overtimeHours: 0,
-      overtimePay: 0, holidayHours: 0, holidayPay: 0,
-    };
-    breakdown.regularHours += Number(entry.regular_hours) || 0;
-    breakdown.regularPay += Number(entry.regular_pay) || 0;
-    breakdown.overtimeHours += Number(entry.overtime_hours) || 0;
-    breakdown.overtimePay += Number(entry.overtime_pay) || 0;
-    breakdown.holidayHours += Number(entry.holiday_hours) || 0;
-    breakdown.holidayPay += Number(entry.holiday_pay) || 0;
-    payrollBreakdownByOfficer[officerName] = breakdown;
-  });
-
-  // If payroll has not been finalized yet, show the accrued regular hours/pay
-  // from completed time entries instead of misleading zeroes.
-  Object.keys(payrollByOfficer).forEach(officerName => {
-    if (!payrollBreakdownByOfficer[officerName]) {
-      payrollBreakdownByOfficer[officerName] = {
-        regularHours: hoursByOfficer[officerName] || 0,
-        regularPay: payrollByOfficer[officerName] || 0,
-        overtimeHours: 0,
-        overtimePay: 0,
-        holidayHours: 0,
-        holidayPay: 0,
-      };
-    }
+  // If time records are unavailable for an older invoiced site, retain the
+  // finalized invoice amount instead of making that inactive site disappear.
+  Object.entries(invoiceRevenueBySite).forEach(([site, amount]) => {
+    if (!revenueBySite[site]) revenueBySite[site] = amount;
   });
 
   // Accrued service revenue updates immediately; invoices remain the finalized record.
   const accruedRevenue = Object.values(revenueBySite).reduce((sum, amount) => sum + amount, 0);
   const totalRevenue = accruedRevenue || invoiceRevenue;
-  const finalizedPayroll = filteredPayroll.reduce((sum, entry) => sum + (Number(entry.gross_pay) || 0), 0);
-  const accruedPayroll = Object.values(payrollByOfficer).reduce((sum, amount) => sum + amount, 0);
-  const totalPayroll = Math.max(finalizedPayroll, accruedPayroll);
+  const totalPayroll = Object.values(payrollByOfficer).reduce((sum, amount) => sum + amount, 0);
   const reimbursableExpenses = filteredExpenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
   const operatingExpenses = filteredCompanyExpenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
   const totalExpenses = reimbursableExpenses + operatingExpenses;
-  const employerTaxes = totalPayroll * 0.0765;
-  const totalCosts = totalPayroll + totalExpenses + ptoCost + employerTaxes;
+  const taxableWages = totalPayroll + ptoCost;
+  const employerTaxes = taxableWages * 0.0765;
+  const totalCosts = taxableWages + totalExpenses + employerTaxes;
   const netProfit = totalRevenue - totalCosts;
   const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
