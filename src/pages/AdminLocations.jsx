@@ -193,6 +193,7 @@ export default function AdminLocations({ embedded = false }) {
       setEditingLocation(null);
       resetForm();
     },
+    onError: (error) => alert(`Unable to create location: ${error.message}`),
   });
 
   const updateLocationMutation = useMutation({
@@ -212,6 +213,7 @@ export default function AdminLocations({ embedded = false }) {
       setEditingLocation(null);
       resetForm();
     },
+    onError: (error) => alert(`Unable to update location: ${error.message}`),
   });
 
   const deleteLocationMutation = useMutation({
@@ -227,6 +229,7 @@ export default function AdminLocations({ embedded = false }) {
       queryClient.invalidateQueries({ queryKey: ['adminManagedLocations'] });
       queryClient.invalidateQueries({ queryKey: ['directoryUsers'] });
     },
+    onError: (error) => alert(`Unable to delete location: ${error.message}`),
   });
 
   const toggleActiveMutation = useMutation({
@@ -237,8 +240,10 @@ export default function AdminLocations({ embedded = false }) {
       return payload.location;
     },
     onSuccess: () => {
+      invalidateAppDirectory();
       queryClient.invalidateQueries({ queryKey: ['adminManagedLocations'] });
     },
+    onError: (error) => alert(`Unable to change location status: ${error.message}`),
   });
 
   const resetForm = () => {
