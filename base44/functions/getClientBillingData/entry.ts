@@ -27,11 +27,12 @@ Deno.serve(async (req) => {
       ...(target.assigned_location ? [target.assigned_location] : []),
     ].map((value: any) => String(value || '').trim()).filter(Boolean));
 
-    const [entries, locations, invoices, users] = await Promise.all([
+    const [entries, locations, invoices, users, schedules] = await Promise.all([
       base44.asServiceRole.entities.TimeEntry.list('-clock_in', 5000),
       base44.asServiceRole.entities.Location.list('site_name', 1000),
       base44.asServiceRole.entities.Invoice.list('-created_date', 1000),
       base44.asServiceRole.entities.User.list(),
+      base44.asServiceRole.entities.Schedule.list('-shift_date', 5000),
     ]);
 
     const visibleEntries = (entries || []).filter((entry: any) => assigned.has(String(entry.location || '').trim()));
@@ -58,6 +59,7 @@ Deno.serve(async (req) => {
       locations: visibleLocations,
       officers,
       invoices: visibleInvoices,
+      schedules: (schedules || []).filter((shift: any) => assigned.has(String(shift.location || '').trim())),
     });
   } catch (error) {
     console.error('getClientBillingData failed', error);
