@@ -12,6 +12,7 @@ import { format, parseISO, addDays } from "date-fns";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function AdminShiftBids() {
   const queryClient = useQueryClient();
@@ -198,7 +199,7 @@ Please continue to check for other open shifts.`
     const shiftHours = calculateShiftHours(shift.start_time, shift.end_time);
 
     const recommendations = [];
-    const activeOfficers = allUsers.filter(u => !u.termination_date && u.role !== 'admin');
+    const activeOfficers = allUsers.filter(isOperationalOfficer);
 
     for (const officer of activeOfficers) {
       let score = 50;
