@@ -54,7 +54,6 @@ Deno.serve(async (req) => {
     // ActiveOfficer is the live GPS source. Do not delete a fresh location merely
     // because its time-entry row has not synchronized yet.
 
-    const now = Date.now();
     const units: any[] = [];
     for (const [email, active] of newestActiveByEmail.entries()) {
       const last = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
