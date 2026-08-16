@@ -108,7 +108,8 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
             additional_roles: requestedAdditionalRoles,
           },
         });
-        if (roleResult?.error) throw new Error(roleResult.error);
+        const rolePayload = roleResult?.data || roleResult || {};
+        if (rolePayload.error) throw new Error(rolePayload.error);
       }
 
       const profileUpdates = { ...userData };
