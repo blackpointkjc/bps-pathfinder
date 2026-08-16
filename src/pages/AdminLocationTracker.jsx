@@ -320,6 +320,15 @@ export default function AdminLocationTracker() {
           </Button>
         </div>
 
+        {officerDirectoryError && (
+          <Alert className="border-red-300 bg-red-50">
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-900">
+              Unable to load the Officer directory: {officerDirectoryError.message}. Refresh this page to retry.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {locationCheckResults && (
           <Card className="border-none shadow-xl">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b">
