@@ -250,7 +250,7 @@ export default function AdminLocationTracker() {
   const handleCheckAllLocations = async () => {
     try {
       await performLocationCheck();
-    } catch (error) {
+    } catch {
       alert("Failed to check user locations. Please try again.");
     }
   };
