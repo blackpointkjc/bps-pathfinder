@@ -305,7 +305,7 @@ export default function GlobalMessageBanner({ user }) {
 
       const banner = {
         id: key,
-        title: 'MONITORED PROPERTY CALL',
+        title: 'ACTIVE CALL FOR SERVICE',
         page: 'DispatchCenter',
         kind: 'property',
         persistent: false,
