@@ -136,7 +136,7 @@ export default function WelcomeBriefing({ user }) {
           const created = parseServerTimestamp(item.callTime || item.time_received || item.created_date)?.getTime() || 0;
           return created > offlineSince;
         });
-        const liveUser = liveUsers?.[0] || user;
+        const liveUser = allUsers.find(entry => normalized(entry.email) === normalized(user.email)) || user;
         const unit = units?.[0] || null;
         const shift = (schedules || []).find(item => !item.is_open) || null;
         const vehicle = (vehicleAssignments || []).find(item => normalized(item.primary_officer_email) === normalized(user.email) || normalized(item.partner_officer_email) === normalized(user.email)) || null;
