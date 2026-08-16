@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Shield, Search, Phone, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function OfficerRoster() {
@@ -13,7 +13,7 @@ export default function OfficerRoster() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => listDirectoryUsers(),
+    queryFn: () => listOfficerDirectory('last_name', 1000, true),
   });
 
   const { data: rosterEntries } = useQuery({
