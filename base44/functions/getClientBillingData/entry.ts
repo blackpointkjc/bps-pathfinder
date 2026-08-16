@@ -35,8 +35,10 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.Schedule.list('-shift_date', 5000),
     ]);
 
-    const visibleEntries = (entries || []).filter((entry: any) => assigned.has(String(entry.location || '').trim()));
-    const visibleLocations = (locations || []).filter((location: any) => assigned.has(String(location.site_name || '').trim()));
+    const siteOf = (value: any) => String(value || '').split(/\s*(?::|\s-\s)\s*/)[0].trim();
+    const assignedSites = new Set([...assigned].map(siteOf));
+    const visibleEntries = (entries || []).filter((entry: any) => assignedSites.has(siteOf(entry.location)));
+    const visibleLocations = (locations || []).filter((location: any) => assignedSites.has(siteOf(location.site_name)));
     const officerEmails = new Set(visibleEntries.map((entry: any) => String(entry.officer_email || '').toLowerCase()).filter(Boolean));
     const officers = (users || [])
       .filter((entry: any) => officerEmails.has(String(entry.email || '').toLowerCase()))
@@ -59,7 +61,7 @@ Deno.serve(async (req) => {
       locations: visibleLocations,
       officers,
       invoices: visibleInvoices,
-      schedules: (schedules || []).filter((shift: any) => assigned.has(String(shift.location || '').trim())),
+      schedules: (schedules || []).filter((shift: any) => assignedSites.has(siteOf(shift.location))),
     });
   } catch (error) {
     console.error('getClientBillingData failed', error);
