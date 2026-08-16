@@ -589,6 +589,7 @@ export default function Navigation() {
                 })
                 .filter(unit => String(unit.officer_email || unit.email || '').toLowerCase() !== currentEmail)
                 .filter(unit => Number.isFinite(Number(unit.latitude)) && Number.isFinite(Number(unit.longitude)))
+                .filter(unit => Number.isFinite(Number(unit.accuracy)) && Number(unit.accuracy) <= 100)
                 .map(unit => ({
                     ...unit,
                     email: unit.officer_email || unit.email,
