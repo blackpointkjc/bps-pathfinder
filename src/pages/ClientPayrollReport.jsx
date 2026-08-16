@@ -22,7 +22,7 @@ export default function ClientPayrollReport() {
   const [liveNow, setLiveNow] = useState(() => new Date());
 
   useEffect(() => {
-    const timer = window.setInterval(() => setLiveNow(new Date()), 30000);
+    const timer = window.setInterval(() => setLiveNow(new Date()), 1000);
     return () => window.clearInterval(timer);
   }, []);
 
