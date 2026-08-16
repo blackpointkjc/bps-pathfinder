@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { calculateLiveHours, getDefaultBillingPeriod, normalizeSiteName, resolveBillingRate } from "@/lib/billingRates";
 
 const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
+const INVOICE_LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
 export default function ClientPayrollReport() {
   const defaultPeriod = getDefaultBillingPeriod();
@@ -233,33 +234,36 @@ export default function ClientPayrollReport() {
         <style>
           @page { size: 8.5in 11in; margin: 0.5in; }
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; font-size: 10pt; line-height: 1.4; }
-          .invoice-header { background: #1e40af; color: white; padding: 20px; text-align: center; margin-bottom: 20px; }
-          .title { font-size: 24pt; font-weight: bold; }
-          .subtitle { font-size: 12pt; margin-top: 5px; }
-          .info-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-          .info-box { padding: 15px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; }
-          .info-label { font-size: 8pt; color: #64748b; font-weight: bold; text-transform: uppercase; }
-          .info-value { font-size: 11pt; color: #1e293b; margin-top: 4px; }
-          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th { background: #e0e7ff; color: #1e40af; font-weight: bold; text-align: left; padding: 10px; border: 1px solid #cbd5e1; }
-          td { padding: 8px; border: 1px solid #cbd5e1; }
-          .text-right { text-align: right; }
-          .total-row { background: #dbeafe; font-weight: bold; }
-          .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #1e40af; text-align: center; font-size: 9pt; color: #64748b; }
+          body { font-family: Arial, sans-serif; font-size: 9.5pt; line-height: 1.4; color:#111827; }
+          .invoice-header { background:#080b10; color:white; padding:24px 28px; display:flex; justify-content:space-between; align-items:center; border-bottom:6px solid #d4a72c; margin-bottom:22px; }
+          .brand { display:flex; align-items:center; gap:16px; } .brand img { width:72px; height:72px; object-fit:contain; background:#fff; border-radius:10px; padding:4px; }
+          .brand-name { font-size:19pt; font-weight:800; letter-spacing:.4px; } .brand-sub { color:#d4a72c; font-size:8pt; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; margin-top:4px; }
+          .invoice-title { text-align:right; } .title { font-size:23pt; font-weight:800; letter-spacing:1px; } .invoice-number { color:#d4a72c; font-weight:700; margin-top:4px; }
+          .info-section { display:grid; grid-template-columns:1.2fr .8fr; gap:18px; margin-bottom:20px; }
+          .info-box { padding:16px; background:#f8fafc; border:1px solid #d7dce3; border-top:3px solid #d4a72c; border-radius:6px; }
+          .info-label { font-size:7.5pt; color:#6b7280; font-weight:800; text-transform:uppercase; letter-spacing:.8px; }
+          .info-value { font-size:10.5pt; color:#111827; margin-top:4px; }
+          table { width:100%; border-collapse:collapse; margin:20px 0; }
+          th { background:#111827; color:#fff; font-weight:700; text-align:left; padding:9px 7px; border-right:1px solid #374151; font-size:8pt; text-transform:uppercase; }
+          td { padding:8px 7px; border-bottom:1px solid #d7dce3; } tbody tr:nth-child(even) td { background:#f8fafc; }
+          .text-right { text-align:right; } .total-row td { background:#f3e7bd!important; border-top:2px solid #d4a72c; font-weight:800; font-size:10pt; }
+          .payment { display:grid; grid-template-columns:1fr 230px; gap:20px; align-items:start; margin-top:18px; } .terms { border-left:4px solid #d4a72c; padding:12px 14px; background:#fffbeb; }
+          .amount-due { background:#080b10; color:#fff; padding:16px; text-align:right; border-radius:6px; } .amount-due span { display:block; color:#d4a72c; font-size:8pt; text-transform:uppercase; letter-spacing:1px; } .amount-due strong { font-size:20pt; }
+          .footer { margin-top:34px; padding-top:14px; border-top:1px solid #9ca3af; text-align:center; font-size:8pt; color:#4b5563; }
         </style>
       </head>
       <body>
         <style media="print">.invoice-toolbar{display:none!important}</style>
         <div class="invoice-toolbar" style="display:flex;justify-content:flex-end;padding:12px 24px;background:#fff;border-bottom:1px solid #dbe3ee;margin-bottom:20px"><button onclick="window.print()" style="border:0;border-radius:9px;background:#0f172a;color:#fff;padding:10px 18px;font-weight:700;cursor:pointer">Print / Save PDF</button></div>
         <div class="invoice-header">
-          <div class="title">SECURITY SERVICES INVOICE</div>
+          <div class="brand"><img src="${INVOICE_LOGO_URL}" alt="Black Point Protection"><div><div class="brand-name">BLACK POINT PROTECTION</div><div class="brand-sub">KJC Security Solution LLC</div></div></div>
+          <div class="invoice-title"><div class="title">INVOICE</div><div class="invoice-number">#BP-${endDate.replaceAll('-', '')}-${String(user?.id || 'CLIENT').slice(-4).toUpperCase()}</div></div>
         </div>
 
         <div class="info-section">
           <div class="info-box">
             <div class="info-label">Bill To</div>
-            <div class="info-value">${user?.full_name || user?.email}</div>
+            <div class="info-value"><strong>${[user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.full_name || user?.email}</strong></div>
             <div class="info-value">${clientLocations.join(', ')}</div>
           </div>
           <div class="info-box">
@@ -267,6 +271,8 @@ export default function ClientPayrollReport() {
             <div class="info-value">${format(new Date(startDate), 'MMMM d, yyyy')} - ${format(new Date(endDate), 'MMMM d, yyyy')}</div>
             <div class="info-label" style="margin-top: 10px;">Invoice Date</div>
             <div class="info-value">${format(new Date(), 'MMMM d, yyyy')}</div>
+            <div class="info-label" style="margin-top: 10px;">Payment Terms</div>
+            <div class="info-value">Net 30</div>
           </div>
         </div>
 
@@ -297,7 +303,7 @@ export default function ClientPayrollReport() {
                     <td>${format(new Date(shift.clock_in), 'HH:mm')}</td>
                     <td>${format(new Date(shift.clock_out), 'HH:mm')}</td>
                     <td class="text-right">${shift.hours.toFixed(2)}</td>
-                    <td class="text-right">$${data.billRate.toFixed(2)}</td>
+                    <td class="text-right">$${Number(shift.billRate || data.billRate).toFixed(2)}</td>
                     <td class="text-right">$${shift.billedAmount.toFixed(2)}</td>
                   </tr>
                 `;
@@ -311,9 +317,8 @@ export default function ClientPayrollReport() {
           </tbody>
         </table>
 
-        <div class="footer">
-          <p style="margin-top: 10px;">Thank you for your business</p>
-        </div>
+        <div class="payment"><div class="terms"><strong>Payment Information</strong><br>Payment is due within 30 days. Include the invoice number with payment. Contact Black Point Protection with questions about hours, rates, or service locations.</div><div class="amount-due"><span>Total Amount Due</span><strong>$${totalBilled.toFixed(2)}</strong></div></div>
+        <div class="footer"><strong>Black Point Protection</strong> • Professional Security Services<br>${DCJS_ID}<br>Confidential business document • Thank you for your business</div>
 
       </body>
       </html>
