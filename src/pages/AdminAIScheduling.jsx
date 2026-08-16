@@ -28,7 +28,7 @@ export default function AdminAIScheduling() {
   const { data: allUsers } = useQuery({
     queryKey: ['officerDirectory', 'adminAIScheduling'],
     queryFn: async () => {
-      const users = await listDirectoryUsers();
+      const users = await listOfficerDirectory('last_name', 1000, true);
       console.log('AI Scheduling - Fetched users:', users);
       return users;
     },
