@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function AdminPerformanceReviews() {
@@ -45,7 +45,7 @@ export default function AdminPerformanceReviews() {
 
   const { data: directoryUsers = [], error: usersError } = useQuery({
     queryKey: ['directoryUsers', 'performanceReviews'],
-    queryFn: () => listDirectoryUsers('last_name', 1000),
+    queryFn: () => listOfficerDirectory('last_name', 1000, true),
     enabled: hasHRAccess,
     retry: 2,
     staleTime: 0,
