@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { listDirectoryUsers } from '@/lib/appDirectory';
-import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function AdminPerformanceReviews() {
   const [showForm, setShowForm] = useState(false);
@@ -53,7 +53,7 @@ export default function AdminPerformanceReviews() {
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
-  const allUsers = directoryUsers.filter(hasOfficerAdditionalRole);
+  const allUsers = directoryUsers.filter(isOperationalOfficer);
 
   const { data: allReviews } = useQuery({
     queryKey: ['allPerformanceReviews'],
