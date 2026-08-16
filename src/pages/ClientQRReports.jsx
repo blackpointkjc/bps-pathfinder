@@ -19,7 +19,7 @@ export default function ClientQRReports() {
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
-    queryKey: ["currentUser"],
+    queryKey: ["clientPortalUser", "qrReports"],
     queryFn: getClientPortalUser,
   });
 
