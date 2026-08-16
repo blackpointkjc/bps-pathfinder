@@ -33,7 +33,7 @@ const makeCurrentOfficerShield = (heading = null, withLights = false, unitName =
     return new L.DivIcon({
         className: 'custom-marker patrol-shield-marker current-officer-marker',
         html: `
-          <div style="position:relative;width:58px;height:68px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.58));">
+          <div style="position:relative;width:41px;height:48px;transform:scale(.70);transform-origin:bottom center;filter:drop-shadow(0 6px 10px rgba(0,0,0,.58));">
             ${withLights ? `<div style="position:absolute;left:14px;top:0;width:30px;height:7px;border-radius:5px;overflow:hidden;border:1px solid #fff;z-index:4;background:#111827"><span style="position:absolute;left:0;top:0;width:50%;height:100%;background:#ef4444;animation:bpsCurrentFlash .75s infinite"></span><span style="position:absolute;right:0;top:0;width:50%;height:100%;background:#2563eb;animation:bpsCurrentFlash .75s .375s infinite"></span></div>` : ''}
             <svg width="58" height="61" viewBox="0 0 58 61" style="position:absolute;top:6px;left:0;z-index:2;overflow:visible">
               <path d="M29 2 L51 10 V28 C51 43 42 53 29 59 C16 53 7 43 7 28 V10 Z" fill="#06101d" stroke="#67e8f9" stroke-width="2.6"/>
@@ -47,9 +47,9 @@ const makeCurrentOfficerShield = (heading = null, withLights = false, unitName =
           </div>
           <style>@keyframes bpsCurrentFlash{0%,48%{opacity:1}50%,100%{opacity:.18}}</style>
         `,
-        iconSize: [58, 68],
-        iconAnchor: [29, 59],
-        popupAnchor: [0, -54],
+        iconSize: [41, 48],
+        iconAnchor: [20, 44],
+        popupAnchor: [0, -42],
     });
 };
 
