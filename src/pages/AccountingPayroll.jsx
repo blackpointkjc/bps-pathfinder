@@ -50,7 +50,7 @@ export default function AccountingPayroll() {
 
   const isAccountingRole = user?.additional_roles?.includes('accounting') || user?.additional_roles?.includes('full_access') || user?.role === 'admin';
 
-  const { data: accountingData = {}, isLoading: accountingLoading, error: accountingError } = useQuery({
+  const { data: accountingData = {}, isLoading: accountingLoading, error: accountingError, refetch: refetchPayroll } = useQuery({
     queryKey: ['accountingData', 'payroll'],
     queryFn: async () => {
       const result = await base44.functions.invoke('getAccountingData', {});
@@ -61,8 +61,26 @@ export default function AccountingPayroll() {
     enabled: isAccountingRole,
     staleTime: 0,
     refetchOnMount: 'always',
-    refetchOnWindowFocus: false,
+    refetchInterval: 3000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    if (!isAccountingRole) return undefined;
+    const refresh = () => refetchPayroll();
+    const unsubscribers = [];
+    for (const entity of ['PayrollEntry', 'PayrollPeriod', 'TimeEntry']) {
+      try {
+        const unsubscribe = base44.entities[entity].subscribe(refresh);
+        if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+      } catch {
+        // Three-second polling remains active if realtime is unavailable.
+      }
+    }
+    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
+  }, [isAccountingRole, refetchPayroll]);
+
   const payrollEntries = accountingData.payrollEntries || [];
   const officers = accountingData.users || [];
   const timeEntries = accountingData.timeEntries || [];
