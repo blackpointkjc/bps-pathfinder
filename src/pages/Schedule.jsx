@@ -8,6 +8,7 @@ import { format, addDays, startOfDay, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import PullToRefresh from "../components/PullToRefresh";
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function Schedule() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
@@ -39,7 +40,7 @@ export default function Schedule() {
 
   const { data: companyUsers = [] } = useQuery({
     queryKey: ['companyUsersForFleet'],
-    queryFn: () => listDirectoryUsers(),
+    queryFn: async () => (await listDirectoryUsers()).filter(isOperationalOfficer),
     enabled: !!user,
     staleTime: 60000,
   });
