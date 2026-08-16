@@ -77,11 +77,10 @@ export default function BackgroundLocationTracker({ user }) {
     staleTime: 60000,
   });
 
-  // Every authenticated officer is a live map unit. A TimeEntry enriches the
-  // marker with clock-in/site details, but must never gate GPS visibility.
-  // Logout cleanup is handled centrally by enforceOfficerDutyStatus.
-  const shouldTrack = !!user?.email;
-  const shouldPublish = !!user?.email;
+  // Duty-only privacy rule: GPS publishing and one-minute history begin only
+  // after a successful clock-in and stop as soon as the TimeEntry closes.
+  const shouldTrack = !!user?.email && !!activeEntry?.id;
+  const shouldPublish = shouldTrack;
 
   // Mutation to create geofence alert
   const createGeofenceAlertMutation = useMutation({
@@ -305,9 +304,8 @@ export default function BackgroundLocationTracker({ user }) {
     };
   }, [shouldTrack, shouldPublish, activeEntry, user, locations]);
 
-  // Independent one-minute heartbeat. This runs even when the device is stationary
-  // and watchPosition does not emit a new event. It keeps the signed-in session fresh
-  // and writes one historical breadcrumb per minute from the latest valid GPS fix.
+  // Independent one-minute duty heartbeat. This runs only while clocked in,
+  // even when the device is stationary, and records the shift-linked breadcrumb.
   useEffect(() => {
     if (!shouldTrack || !user?.email) return undefined;
 
@@ -353,7 +351,7 @@ export default function BackgroundLocationTracker({ user }) {
     return () => window.clearInterval(heartbeatId);
   }, [shouldTrack, user?.email, user?.role, user?.status, user?.assigned_location, activeEntry?.id, activeEntry?.location, activeEntry?.clock_in]);
 
-  // All signed-in users are tracked; only clocked-in users get a close warning.
+  // Only clocked-in officers are tracked and receive the close warning.
   useEffect(() => {
     if (!shouldTrack || !activeEntry) return;
 
