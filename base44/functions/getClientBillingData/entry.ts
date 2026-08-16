@@ -36,9 +36,23 @@ Deno.serve(async (req) => {
     ]);
 
     const siteOf = (value: any) => String(value || '').split(/\s*(?::|\s-\s)\s*/)[0].trim();
-    const assignedSites = new Set([...assigned].map(siteOf));
+    const clientEmail = String(target.email || '').toLowerCase();
+    const visibleInvoices = (invoices || []).filter((invoice: any) => String(invoice.client_email || '').toLowerCase() === clientEmail);
+    // Keep inactive and previously assigned locations visible when they have client ownership,
+    // invoice history, or time-entry history. Inactivation stops future scheduling; it must not
+    // erase historical billing or the configured rate from the client portal.
+    const assignedSites = new Set([
+      ...[...assigned].map(siteOf),
+      ...(locations || [])
+        .filter((location: any) => String(location.assigned_client_email || '').toLowerCase() === clientEmail)
+        .map((location: any) => siteOf(location.site_name)),
+      ...visibleInvoices.map((invoice: any) => siteOf(invoice.site_name)),
+    ].filter(Boolean));
     const visibleEntries = (entries || []).filter((entry: any) => assignedSites.has(siteOf(entry.location)));
-    const visibleLocations = (locations || []).filter((location: any) => assignedSites.has(siteOf(location.site_name)));
+    const entrySites = new Set(visibleEntries.map((entry: any) => siteOf(entry.location)));
+    const visibleLocations = (locations || []).filter((location: any) =>
+      assignedSites.has(siteOf(location.site_name)) || entrySites.has(siteOf(location.site_name))
+    );
     const officerEmails = new Set(visibleEntries.map((entry: any) => String(entry.officer_email || '').toLowerCase()).filter(Boolean));
     const officers = (users || [])
       .filter((entry: any) => officerEmails.has(String(entry.email || '').toLowerCase()))
@@ -51,12 +65,10 @@ Deno.serve(async (req) => {
         rank: entry.rank || '',
         unit_number: entry.unit_number || '',
       }));
-    const clientEmail = String(target.email || '').toLowerCase();
-    const visibleInvoices = (invoices || []).filter((invoice: any) => String(invoice.client_email || '').toLowerCase() === clientEmail);
 
     return Response.json({
       success: true,
-      assigned_locations: [...assigned],
+      assigned_locations: [...assignedSites],
       time_entries: visibleEntries,
       locations: visibleLocations,
       officers,
