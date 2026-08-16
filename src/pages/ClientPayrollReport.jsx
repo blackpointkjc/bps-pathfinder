@@ -81,8 +81,8 @@ export default function ClientPayrollReport() {
     if (!entry.clock_in) return false;
     const entrySite = String(entry.location || '').split(':')[0].trim();
     if (!clientLocations.includes(entrySite)) return false;
-    const entryDate = new Date(entry.clock_in);
-    return entryDate >= new Date(startDate) && entryDate <= new Date(endDate);
+    const entryDate = String(entry.clock_in).slice(0, 10);
+    return entryDate >= startDate && entryDate <= endDate;
   });
 
   // Calculate billing by site
