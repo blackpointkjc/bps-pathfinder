@@ -8,16 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DollarSign, Plus, Send, FileText, Download } from "lucide-react";
-import { format, startOfWeek, endOfWeek } from "date-fns";
+import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { calculateLiveHours, normalizeSiteName, resolveBillingRate } from "@/lib/billingRates";
+import { calculateLiveHours, getDefaultBillingPeriod, normalizeSiteName, resolveBillingRate } from "@/lib/billingRates";
 
 export default function AccountingInvoices() {
+  const defaultPeriod = getDefaultBillingPeriod();
   const [selectedClient, setSelectedClient] = useState("");
   const [selectedSite, setSelectedSite] = useState("");
-  const [startDate, setStartDate] = useState(format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(endOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
+  const [startDate, setStartDate] = useState(defaultPeriod.startDate);
+  const [endDate, setEndDate] = useState(defaultPeriod.endDate);
   const [invoiceNotes, setInvoiceNotes] = useState("");
   const [generating, setGenerating] = useState(false);
   const [liveNow, setLiveNow] = useState(() => new Date());
