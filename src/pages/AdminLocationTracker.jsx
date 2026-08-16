@@ -12,21 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
 const LIVE_SESSION_FRESH_MS = 2 * 60 * 1000;
 
-function isOperationallyVisibleUser(person) {
-  if (!person) return false;
-  const roles = new Set([person.role, ...(person.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
-  const userType = String(person.user_type || person.account_type || person.portal_type || '').toLowerCase();
-  const status = String(person.account_status || '').toLowerCase();
-  if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
-  if (['client', 'student', 'pending'].includes(userType)) return false;
-  if (status === 'pending') return false;
-  return true;
-}
+const isOperationallyVisibleUser = isOperationalOfficer;
 
 // Custom marker icons
 const clockInIcon = new L.Icon({
