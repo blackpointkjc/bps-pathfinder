@@ -39,7 +39,7 @@ export default function AdminOfficerManagement() {
   });
 
   const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
+    queryKey: ['officerDirectory', 'adminOfficerManagement'],
     queryFn: () => listOfficerDirectory('last_name', 1000, true),
     enabled: user?.role === 'admin',
   });
