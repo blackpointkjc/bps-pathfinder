@@ -894,38 +894,83 @@ function AdminTrainingContent({ embedded = false }) {
               />
             </div>
 
-            <div className="space-y-3 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+            <div className="space-y-4 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
               <div>
-                <Label className="text-sm font-semibold text-indigo-950">Assign to Officers or Students</Label>
-                <p className="text-xs text-indigo-700">Select individual Officer-role or Student-role accounts. Leave all unchecked to make the module available to every training learner.</p>
+                <Label className="text-sm font-semibold text-indigo-950">Assign Training</Label>
+                <p className="text-xs text-indigo-700">Officers and students have separate dropdowns. Leave both blank to make the module available to every training learner.</p>
               </div>
-              <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border border-indigo-200 bg-white p-3">
-                {allUsers.length === 0 ? (
-                  <p className="text-sm text-slate-500">No officers or students are available. Check Manage Students and Officer Management.</p>
-                ) : allUsers.map((learner) => {
-                  const roles = (learner.additional_roles || []).map(role => String(role).toLowerCase());
-                  const isStudent = roles.includes('student') || String(learner.user_type || '').toLowerCase() === 'student' || String(learner.rank || '').toLowerCase() === 'student';
-                  const label = isStudent
-                    ? `Student — ${[learner.first_name, learner.last_name].filter(Boolean).join(' ') || learner.email}`
-                    : `${[learner.rank, learner.last_name].filter(Boolean).join(' ') || learner.full_name || learner.email}`;
-                  return (
-                    <label key={learner.email} className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-indigo-50">
-                      <Checkbox
-                        checked={formData.assigned_to.includes(learner.email)}
-                        onCheckedChange={(checked) => setFormData(prev => ({
-                          ...prev,
-                          assigned_to: checked
-                            ? [...new Set([...prev.assigned_to, learner.email])]
-                            : prev.assigned_to.filter(email => email !== learner.email),
-                        }))}
-                      />
-                      <span className="text-sm text-slate-800">{label}</span>
-                    </label>
-                  );
-                })}
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Assign Training to Officers</Label>
+                  <Select
+                    key={`officers-${formData.assigned_to.length}`}
+                    onValueChange={(email) => setFormData(prev => ({
+                      ...prev,
+                      assigned_to: [...new Set([...prev.assigned_to, email])],
+                    }))}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Choose an officer..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {officerLearners.length === 0 ? (
+                        <SelectItem value="__no_officers" disabled>No Officer-role accounts available</SelectItem>
+                      ) : officerLearners.map(officer => (
+                        <SelectItem key={officer.email} value={officer.email} disabled={formData.assigned_to.includes(officer.email)}>
+                          {[officer.rank, officer.last_name].filter(Boolean).join(' ') || officer.full_name || officer.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Assign Training to Students</Label>
+                  <Select
+                    key={`students-${formData.assigned_to.length}`}
+                    onValueChange={(email) => setFormData(prev => ({
+                      ...prev,
+                      assigned_to: [...new Set([...prev.assigned_to, email])],
+                    }))}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Choose a student..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {studentLearners.length === 0 ? (
+                        <SelectItem value="__no_students" disabled>No Student-role accounts available</SelectItem>
+                      ) : studentLearners.map(student => (
+                        <SelectItem key={student.email} value={student.email} disabled={formData.assigned_to.includes(student.email)}>
+                          {[student.first_name, student.last_name].filter(Boolean).join(' ') || student.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+
               {formData.assigned_to.length > 0 && (
-                <p className="text-xs font-medium text-indigo-800">{formData.assigned_to.length} learner(s) selected</p>
+                <div className="flex flex-wrap gap-2">
+                  {formData.assigned_to.map(email => {
+                    const learner = allUsers.find(entry => entry.email === email);
+                    const name = learner
+                      ? [learner.rank, learner.last_name].filter(Boolean).join(' ') || [learner.first_name, learner.last_name].filter(Boolean).join(' ')
+                      : email;
+                    return (
+                      <Badge key={email} variant="secondary" className="gap-1 bg-white">
+                        {name}
+                        <button
+                          type="button"
+                          aria-label={`Remove ${name}`}
+                          onClick={() => setFormData(prev => ({ ...prev, assigned_to: prev.assigned_to.filter(item => item !== email) }))}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
               )}
             </div>
 
