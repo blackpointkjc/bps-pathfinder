@@ -8,10 +8,7 @@ import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
-
-
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f1b301ffd861a28ee36033/c29aab328_c3ff2618-4412-4498-8923-8f484a9469b8-2533645741.jpeg";
+import { listDirectoryLocations } from '@/lib/appDirectory';
 
 export default function ClientDashboard() {
   const [selectedLocation, setSelectedLocation] = useState("");
@@ -22,7 +19,6 @@ export default function ClientDashboard() {
     staleTime: 0,
   });
 
-  const isClient = user?.additional_roles?.includes('client');
   const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
 
   useEffect(() => {
@@ -32,12 +28,6 @@ export default function ClientDashboard() {
   }, [clientLocations, selectedLocation]);
 
   const effectiveLocation = selectedLocation || clientLocations[0];
-
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => listDirectoryUsers(),
-    initialData: [],
-  });
 
   const { data: location } = useQuery({
     queryKey: ['clientLocation', effectiveLocation],
@@ -54,15 +44,17 @@ export default function ClientDashboard() {
     queryFn: async () => {
       if (!effectiveLocation) return { shift: [], incident: [], trespass: [], parking: [], maintenance: [], opendoor: [], criminal: [] };
       
-      const [shift, incident, trespass, parking, maintenance, opendoor, criminal] = await Promise.all([
+      const [shift, incident, trespass] = await Promise.all([
         base44.entities.ShiftReport.list('-created_date'),
         base44.entities.IncidentReport.list('-created_date'),
         base44.entities.TrespassingNotice.list('-created_date'),
+      ]);
+      const [parking, maintenance, opendoor] = await Promise.all([
         base44.entities.ParkingViolation.list('-created_date'),
         base44.entities.MaintenanceReport.list('-created_date'),
         base44.entities.OpenDoorReport.list('-created_date'),
-        base44.entities.CriminalComplaint.list('-created_date'),
       ]);
+      const criminal = await base44.entities.CriminalComplaint.list('-created_date');
 
       return {
         shift: shift.filter(r => r.location === effectiveLocation && r.status === 'approved'),
