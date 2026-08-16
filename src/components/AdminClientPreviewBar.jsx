@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Eye, ShieldCheck, X } from 'lucide-react';
 import { getClientPreviewId, setClientPreviewId } from '@/utils/clientPreview';
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { isClientAccount } from '@/lib/directoryUtils';
 
 export default function AdminClientPreviewBar({ user, activeCenter }) {
   const [clients, setClients] = useState([]);
@@ -13,11 +15,11 @@ export default function AdminClientPreviewBar({ user, activeCenter }) {
   useEffect(() => {
     if (!canPreview || activeCenter !== 'client') return;
     Promise.all([
-      base44.entities.User.list('-last_updated', 500),
-      base44.entities.Location.list('site_name', 500).catch(() => []),
+      listDirectoryUsers('-last_updated', 1000),
+      listDirectoryLocations('site_name', 1000),
     ]).then(([users, locations]) => {
       const clientUsers = (users || [])
-        .filter(person => (person.additional_roles || []).map(role => String(role).toLowerCase()).includes('client') || String(person.user_type || '').toLowerCase() === 'client')
+        .filter(isClientAccount)
         .map(person => {
           const email = String(person.email || '').toLowerCase();
           const assignedLocations = [...new Set([
