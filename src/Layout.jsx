@@ -216,7 +216,6 @@ const CENTER_CONFIG = {
       ]},
       { label: 'Financial Overview', items: [
         ['Company Profit', 'AccountingProfit', BarChart3],
-        ['Tax Liability', 'AccountingTaxLiability', ClipboardList],
       ]},
     ],
   },
