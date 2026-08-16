@@ -11,6 +11,7 @@ import { Clock, Briefcase, Plus, Trash2, Calendar, MapPin, Shield, Edit, X, Save
 import { format, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { isInternalMember } from '@/lib/directoryUtils';
 
 export default function ManageTimeEntries() {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -246,7 +247,7 @@ export default function ManageTimeEntries() {
   }
 
   const groupedEntries = groupByOfficer(timeEntries);
-  const activeOfficers = allUsers.filter(u => u.email);
+  const activeOfficers = allUsers.filter(isInternalMember);
 
   return (
     <div className="p-4 md:p-8 min-h-screen">
