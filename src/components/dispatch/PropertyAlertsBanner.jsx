@@ -8,6 +8,9 @@ import { toast } from 'sonner';
 import { stopAllAlerts } from '@/utils/alertUtils';
 import { formatEasternTime } from '@/lib/easternTime';
 
+const HIDDEN_CALL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
+const normalizedStatus = value => String(value || '').trim().toLowerCase();
+
 export default function PropertyAlertsBanner() {
     const [alerts, setAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -31,7 +34,7 @@ export default function PropertyAlertsBanner() {
             const dismissedPairs = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
             const dismissedEventKeys = new Set((receipts || []).map(item => String(item.event_key || '')).filter(Boolean));
             const activeCallById = new Map((calls || [])
-                .filter(call => !['Cleared', 'Cancelled'].includes(call.status))
+                .filter(call => !HIDDEN_CALL_STATUSES.has(normalizedStatus(call.status)))
                 .map(call => [String(call.id), call]));
             const seenPairs = new Set();
             const visible = [];
