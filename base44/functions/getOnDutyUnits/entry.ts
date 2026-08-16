@@ -57,7 +57,12 @@ Deno.serve(async (req) => {
     const units: any[] = [];
     for (const [email, active] of newestActiveByEmail.entries()) {
       const activeTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
-      if (active.session_active === false || !Number.isFinite(activeTs) || activeTs < freshCutoff) continue;
+      const accuracy = Number(active.accuracy);
+      const hasReliableGps = Number.isFinite(Number(active.latitude))
+        && Number.isFinite(Number(active.longitude))
+        && Number.isFinite(accuracy)
+        && accuracy <= 100;
+      if (active.session_active === false || !Number.isFinite(activeTs) || activeTs < freshCutoff || !hasReliableGps) continue;
       const entry = openByEmail.get(email) || null;
       const user = userByEmail.get(email) || {};
       units.push({
