@@ -1,7 +1,7 @@
 const dateKey = value => String(value || '').slice(0, 10);
 const emailKey = value => String(value || '').trim().toLowerCase();
 
-export const normalizeSiteName = value => String(value || '').split(':')[0].trim();
+export const normalizeSiteName = value => String(value || '').split(/\s*(?::|\s-\s)\s*/)[0].trim();
 
 export const calculateLiveHours = (entry, now = new Date()) => {
   if (!entry?.clock_in) return 0;
