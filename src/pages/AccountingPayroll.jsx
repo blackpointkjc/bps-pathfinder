@@ -484,7 +484,8 @@ export default function AccountingPayroll() {
           stateTax = 0;
         }
 
-        const netPay = grossPay - federalTax - stateTax - socialSecurity - medicare;
+        // Gross-pay export only. The connected external payroll system calculates all taxes and deductions.
+        const netPay = grossPay;
 
         generatedPayrollEntries.push({
           officer_email: email,
@@ -502,13 +503,13 @@ export default function AccountingPayroll() {
           overtime_pay: parseFloat(overtimePay.toFixed(2)),
           holiday_pay: parseFloat(holidayPay.toFixed(2)),
           gross_pay: parseFloat(grossPay.toFixed(2)),
-          federal_tax: parseFloat(federalTax.toFixed(2)),
-          state_tax: parseFloat(stateTax.toFixed(2)),
-          social_security: parseFloat(socialSecurity.toFixed(2)),
-          medicare: parseFloat(medicare.toFixed(2)),
+          federal_tax: 0,
+          state_tax: 0,
+          social_security: 0,
+          medicare: 0,
           other_deductions: 0,
           net_pay: parseFloat(netPay.toFixed(2)),
-          qualified_overtime_premium: parseFloat(qualifiedOvertimePremium.toFixed(2)),
+          qualified_overtime_premium: 0,
           holidays_worked: JSON.stringify(data.holidaysWorked),
           status: 'draft',
           payment_method: officer.payment_method || 'direct_deposit'
