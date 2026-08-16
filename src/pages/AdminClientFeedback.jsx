@@ -1,4 +1,5 @@
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -45,7 +46,7 @@ export default function AdminClientFeedback() {
     enabled: user?.role === 'admin',
   });
 
-  const officers = allUsers?.filter(u => u.role === 'user' && !u.termination_date) || [];
+  const officers = allUsers?.filter(u => hasOfficerAdditionalRole(u) && !u.termination_date && String(u.employment_status || '').toLowerCase() !== 'terminated') || [];
 
   const assignMutation = useMutation({
     mutationFn: async ({ fb, officerEmail, action }) => {
