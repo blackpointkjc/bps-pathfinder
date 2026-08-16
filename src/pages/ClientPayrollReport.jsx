@@ -10,13 +10,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Download } from "lucide-react";
-import { format, startOfMonth, endOfMonth, startOfWeek } from "date-fns";
+import { format, startOfWeek, endOfWeek } from "date-fns";
 
 const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
 
 export default function ClientPayrollReport() {
-  const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [startDate, setStartDate] = useState(format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(endOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
   const [showOfficerNames, setShowOfficerNames] = useState(false);
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
   const [liveNow, setLiveNow] = useState(() => new Date());
@@ -33,7 +33,7 @@ export default function ClientPayrollReport() {
   });
 
   const previewId = getClientPreviewId();
-  const { data: billingData = {} } = useQuery({
+  const { data: billingData = {}, refetch: refetchBilling } = useQuery({
     queryKey: ['clientBillingData', user?.id || user?.email, previewId],
     queryFn: async () => {
       const result = await base44.functions.invoke('getClientBillingData', previewId ? { client_id: previewId } : {});
@@ -43,9 +43,25 @@ export default function ClientPayrollReport() {
     },
     enabled: !!user,
     initialData: {},
-    refetchInterval: 30000,
+    refetchInterval: 3000,
+    refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    if (!user) return undefined;
+    const refresh = () => refetchBilling();
+    const unsubscribers = [];
+    for (const entity of ['TimeEntry', 'Invoice']) {
+      try {
+        const unsubscribe = base44.entities[entity].subscribe(refresh);
+        if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+      } catch {
+        // The three-second refresh remains as a fallback if realtime is unavailable.
+      }
+    }
+    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
+  }, [user?.id, user?.email, refetchBilling]);
 
   const clientLocations = billingData.assigned_locations || user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
   const timeEntries = billingData.time_entries || [];
@@ -99,7 +115,7 @@ export default function ClientPayrollReport() {
 
   const totalHours = Object.values(billingSummary).reduce((sum, data) => sum + data.hours, 0);
   const totalBilled = Object.values(billingSummary).reduce((sum, data) => sum + data.billedAmount, 0);
-  const weekStart = startOfWeek(liveNow, { weekStartsOn: 1 });
+  const weekStart = startOfWeek(liveNow, { weekStartsOn: 0 });
   const weekToDate = timeEntries.reduce((summary, entry) => {
     if (!entry.clock_in || new Date(entry.clock_in) < weekStart) return summary;
     const entrySite = String(entry.location || '').split(':')[0].trim();
@@ -453,7 +469,7 @@ export default function ClientPayrollReport() {
 
         {/* Summary */}
         <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Live week to date (Monday through now)</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Live week to date (Sunday through now)</p>
           <div className="mt-1 flex flex-wrap gap-x-8 gap-y-1">
             <p className="text-2xl font-bold text-slate-900">{weekToDate.hours.toFixed(2)} hours</p>
             <p className="text-2xl font-bold text-emerald-700">{'$'}{weekToDate.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
