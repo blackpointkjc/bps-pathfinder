@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import PullToRefresh from "../components/PullToRefresh";
@@ -12,7 +11,6 @@ import { format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function CallsForService() {
-  const [selectedCall, setSelectedCall] = useState(null);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
