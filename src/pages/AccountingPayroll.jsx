@@ -115,7 +115,7 @@ export default function AccountingPayroll() {
       queryClient.invalidateQueries({ queryKey: ['payrollEntries'] });
       queryClient.invalidateQueries({ queryKey: ['accountingData'] });
       setGenerating(false);
-      alert('✅ Payroll generated successfully!');
+      alert('✅ Gross payroll generated. Use “Print Master + Itemized Payroll” to print the consolidated report and every officer sheet for transfer to your payroll system.');
     },
     onError: (error) => {
       alert('❌ Failed to generate payroll: ' + error.message);
@@ -567,6 +567,7 @@ export default function AccountingPayroll() {
   }, 0) : 0;
   const selectedPayrollEntries = payrollEntries
     .filter(entry => !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date));
+  const currentReportEntries = selectedPayrollEntries.filter(entry => ['draft', 'approved', 'paid'].includes(entry.status));
   const finalizedNet = selectedPayrollEntries.reduce((sum, entry) => sum + (Number(entry.net_pay) || 0), 0);
   const finalizedEmployeeTaxes = selectedPayrollEntries.reduce((sum, entry) => sum +
     (Number(entry.federal_tax) || 0) + (Number(entry.state_tax) || 0) +
@@ -908,8 +909,8 @@ export default function AccountingPayroll() {
           <p className="text-slate-600">Prepare gross hours and earnings for transfer to your external payroll system</p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          {(approvedEntries.length > 0 || draftEntries.length > 0) && (
-            <Button variant="outline" onClick={() => generateGrossPayrollReport(approvedEntries.length > 0 ? approvedEntries : draftEntries)}>
+          {currentReportEntries.length > 0 && (
+            <Button variant="outline" onClick={() => generateGrossPayrollReport(currentReportEntries)}>
               <Printer className="w-4 h-4 mr-2" />
               Print Master + Itemized Payroll
             </Button>
