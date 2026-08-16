@@ -15,7 +15,8 @@ Deno.serve(async (req) => {
         const entryRoles = new Set((entry.additional_roles || []).map((r: string) => String(r).toLowerCase()));
         const type = String(entry.user_type || entry.account_type || entry.portal_type || '').toLowerCase();
         const rank = String(entry.rank || '').toLowerCase();
-        if (entryRoles.has('client') || entryRoles.has('student') || ['client','student','pending'].includes(type) || ['client','student'].includes(rank)) return false;
+        if (entryRoles.has('client') || ['client','pending'].includes(type) || rank === 'client') return false;
+        if (entryRoles.has('student') || type === 'student' || rank === 'student') return true;
         return entry.role === 'admin' || entryRoles.has('officer') || entryRoles.has('supervisor') || entryRoles.has('hr') || entryRoles.has('support') || entryRoles.has('support_staff') || entryRoles.has('accounting') || entryRoles.has('trainer') || entryRoles.has('full_access') || String(entry.employment_status || '').toLowerCase() === 'active';
       })
       .map((entry: any) => ({
@@ -30,6 +31,7 @@ Deno.serve(async (req) => {
         employment_status: entry.employment_status || '',
         profile_photo_url: entry.profile_photo_url || '',
         additional_roles: entry.additional_roles || [],
+        user_type: entry.user_type || entry.account_type || entry.portal_type || '',
         officer_certifications: Array.isArray(entry.officer_certifications) ? entry.officer_certifications : [],
         dcjs_number: entry.dcjs_number || '',
         dcjs_expiration: entry.dcjs_expiration || '',
