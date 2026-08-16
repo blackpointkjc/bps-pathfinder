@@ -61,7 +61,7 @@ const emptyRequirement = {
 
 const emptyAssignment = {
   trainings: [], // array of { requirement_id, training_name, category, description, required_proof_type, requires_photos, requires_expiration_date, requires_certificate_number, renewal_period_months }
-  officer_emails: [], assign_to_all: false,
+  officer_emails: [], assign_to_all: false, target_type: "officer",
   due_date: "", is_mandatory: true, priority: "normal", admin_notes: "",
 };
 
@@ -203,6 +203,12 @@ function AdminTrainingComplianceContent({ embedded = false }) {
   }, [requirements, trainingModules]);
 
   const officerUsers = allUsers.filter(u => hasOfficerAdditionalRole(u) && u.first_name && u.email && !u.termination_date && String(u.status || '').toLowerCase() !== 'terminated');
+  const studentUsers = allUsers.filter(u => {
+    const roles = (u.additional_roles || []).map(role => String(role).toLowerCase());
+    const type = String(u.user_type || u.account_type || u.portal_type || '').toLowerCase();
+    return u.email && !u.termination_date && String(u.status || '').toLowerCase() !== 'terminated' && (roles.includes('student') || type === 'student' || String(u.rank || '').toLowerCase() === 'student');
+  });
+  const assignmentUsers = assignForm.target_type === 'student' ? studentUsers : officerUsers;
 
   // Save requirement
   const saveRequirementMutation = useMutation({
@@ -234,14 +240,15 @@ function AdminTrainingComplianceContent({ embedded = false }) {
   const assignMutation = useMutation({
     mutationFn: async (form) => {
       const today = new Date().toISOString().split('T')[0];
-      let targetEmails = form.assign_to_all ? officerUsers.map(u => u.email) : form.officer_emails;
+      const eligibleUsers = form.target_type === 'student' ? studentUsers : officerUsers;
+      let targetEmails = form.assign_to_all ? eligibleUsers.map(u => u.email) : form.officer_emails;
       const trainings = form.trainings.length > 0 ? form.trainings : [];
       if (trainings.length === 0) throw new Error("No trainings selected");
 
       const created = [];
       for (const t of trainings) {
         for (const email of targetEmails) {
-          const officer = officerUsers.find(u => u.email === email);
+          const officer = eligibleUsers.find(u => u.email === email);
           const renewalReq = t.renewal_requirement_id ? requirements.find(r => r.id === t.renewal_requirement_id) : null;
           const a = await trainingCreate('TrainingAssignment', {
             requirement_id: t.requirement_id || null,
@@ -1103,7 +1110,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
       <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Assign Training to Officers</DialogTitle>
+            <DialogTitle>Assign Existing Training to Officers or Students</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
 
@@ -1195,26 +1202,31 @@ function AdminTrainingComplianceContent({ embedded = false }) {
               ))}
             </div>
 
-            {/* Officer Selection */}
+            {/* Learner Selection */}
             <div className="space-y-2 border-t pt-3">
+              <Label>Assign To *</Label>
+              <Select value={assignForm.target_type} onValueChange={value => setAssignForm(p => ({ ...p, target_type: value, officer_emails: [], assign_to_all: false }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="officer">Officers</SelectItem><SelectItem value="student">Students</SelectItem></SelectContent>
+              </Select>
               <div className="flex items-center gap-2">
                 <Checkbox checked={assignForm.assign_to_all} onCheckedChange={c => setAssignForm(p => ({ ...p, assign_to_all: !!c, officer_emails: [] }))} />
-                <Label className="font-semibold cursor-pointer">Assign to ALL officers ({officerUsers.length})</Label>
+                <Label className="font-semibold cursor-pointer">Assign to ALL {assignForm.target_type === 'student' ? 'students' : 'officers'} ({assignmentUsers.length})</Label>
               </div>
               {!assignForm.assign_to_all && (
                 <div className="space-y-2">
-                  <Label>Select Officers</Label>
+                  <Label>Select {assignForm.target_type === 'student' ? 'Students' : 'Officers'}</Label>
                   <Select value="" onValueChange={v => { if (!assignForm.officer_emails.includes(v)) setAssignForm(p => ({ ...p, officer_emails: [...p.officer_emails, v] })); }}>
-                    <SelectTrigger><SelectValue placeholder="Add officer..." /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={`Add ${assignForm.target_type === 'student' ? 'student' : 'officer'}...`} /></SelectTrigger>
                     <SelectContent>
-                      {officerUsers.filter(u => !assignForm.officer_emails.includes(u.email)).map(u => (
+                      {assignmentUsers.filter(u => !assignForm.officer_emails.includes(u.email)).map(u => (
                         <SelectItem key={u.id} value={u.email}>{u.first_name} {u.last_name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <div className="flex flex-wrap gap-2">
                     {assignForm.officer_emails.map(email => {
-                      const officer = officerUsers.find(u => u.email === email);
+                      const officer = assignmentUsers.find(u => u.email === email);
                       return (
                         <Badge key={email} className="bg-blue-100 text-blue-800 flex items-center gap-1">
                           {officer ? `${officer.first_name} ${officer.last_name}` : email}
@@ -1234,7 +1246,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                 onClick={() => assignMutation.mutate(assignForm)}
               >
                 <Users className="w-4 h-4 mr-2" />
-                {assignMutation.isPending ? 'Assigning...' : `Assign ${assignForm.trainings.length} Training${assignForm.trainings.length !== 1 ? 's' : ''} to ${assignForm.assign_to_all ? 'All' : assignForm.officer_emails.length} Officer${assignForm.officer_emails.length !== 1 ? 's' : ''}`}
+                {assignMutation.isPending ? 'Assigning...' : `Assign ${assignForm.trainings.length} Training${assignForm.trainings.length !== 1 ? 's' : ''} to ${assignForm.assign_to_all ? 'All' : assignForm.officer_emails.length} ${assignForm.target_type === 'student' ? 'Student' : 'Officer'}${assignForm.officer_emails.length !== 1 ? 's' : ''}`}
               </Button>
             </div>
           </div>
