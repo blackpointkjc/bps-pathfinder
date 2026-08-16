@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     const officers = (users || [])
       .filter((u: any) => {
         const roles = new Set((u.additional_roles || []).map((r: string) => String(r).toLowerCase()));
-        const isOfficer = roles.has('officer') || u.role === 'admin';
+        const isOfficer = roles.has('officer');
         const active = !u.termination_date && u.employment_status !== 'terminated';
         return isOfficer && active && (requested.size === 0 || requested.has(u.email));
       })
