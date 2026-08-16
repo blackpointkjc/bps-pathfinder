@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,10 +9,17 @@ import { Badge } from "@/components/ui/badge";
 import { DollarSign, TrendingUp, TrendingDown, Download } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { calculatePaidHours } from "@/lib/payrollCalculations";
+import { calculateLiveHours, normalizeSiteName, resolveBillingRate } from "@/lib/billingRates";
 
 export default function AccountingProfit() {
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
+  const [liveNow, setLiveNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setLiveNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -32,7 +39,9 @@ export default function AccountingProfit() {
     enabled: isAccountingRole,
     staleTime: 0,
     refetchOnMount: 'always',
-    refetchInterval: 30000,
+    refetchInterval: 3000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });
   const timeEntries = accountingData.timeEntries || [];
   const officers = accountingData.users || [];
@@ -43,6 +52,20 @@ export default function AccountingProfit() {
   const allUsers = accountingData.users || [];
   const timeOffRequests = accountingData.timeOffRequests || [];
   const invoices = accountingData.invoices || [];
+  const schedules = accountingData.schedules || [];
+
+  useEffect(() => {
+    if (!isAccountingRole) return undefined;
+    const refresh = () => window.dispatchEvent(new Event('focus'));
+    const unsubscribers = [];
+    for (const entity of ['TimeEntry', 'Invoice', 'Location', 'Schedule']) {
+      try {
+        const unsubscribe = base44.entities[entity].subscribe(refresh);
+        if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
+      } catch { /* three-second polling remains active */ }
+    }
+    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
+  }, [isAccountingRole]);
 
   if (!isAccountingRole) {
     return (
@@ -64,9 +87,9 @@ export default function AccountingProfit() {
     return dateKey >= startDate && dateKey <= endDate;
   };
 
-  // Include the entire selected end date and only completed shifts.
+  // Accrue completed and currently active shifts throughout the selected period.
   const filteredEntries = timeEntries.filter(entry =>
-    entry.clock_in && entry.clock_out && isDateInRange(entry.clock_in)
+    entry.clock_in && entry.archived !== true && isDateInRange(entry.clock_in)
   );
 
   const filteredPayroll = payrollEntries.filter(entry =>
@@ -106,7 +129,6 @@ export default function AccountingProfit() {
   }, 0);
 
   const invoiceRevenue = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0);
-  const activeInvoiceSites = new Set(filteredInvoices.map(invoice => invoice.site_name).filter(Boolean));
 
   const revenueByOfficer = {};
   const payrollByOfficer = {};
@@ -121,30 +143,22 @@ export default function AccountingProfit() {
     const officer = officers.find(o => o.email === entry.officer_email);
     if (!officer) return;
 
-    const location = locations.find(l => l.site_name === entry.location);
-    const hours = calculatePaidHours(entry);
-    const billRate = Number(location?.site_bill_rate) || 0;
+    const siteName = normalizeSiteName(entry.location) || 'Unassigned / Nonbillable';
+    const location = locations.find(l => normalizeSiteName(l.site_name) === siteName);
+    const hours = entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow);
+    const { rate: billRate } = resolveBillingRate(entry, location, schedules);
     const revenue = hours * billRate;
     const payrollCost = hours * (Number(officer.hourly_rate) || 0);
     const officerName = `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email;
-    const siteName = entry.location || 'Unassigned / Nonbillable';
 
     revenueByOfficer[officerName] = (revenueByOfficer[officerName] || 0) + revenue;
     payrollByOfficer[officerName] = (payrollByOfficer[officerName] || 0) + payrollCost;
     hoursByOfficer[officerName] = (hoursByOfficer[officerName] || 0) + hours;
 
-    // Site profitability is invoice-led: only sites invoiced in this period appear.
-    if (activeInvoiceSites.has(siteName)) {
-      payrollBySite[siteName] = (payrollBySite[siteName] || 0) + payrollCost;
-      hoursBySite[siteName] = (hoursBySite[siteName] || 0) + hours;
-    }
-  });
-
-  // Use the actual invoice amounts, grouped by active site for this period.
-  filteredInvoices.forEach(invoice => {
-    if (invoice.site_name) {
-      revenueBySite[invoice.site_name] = (revenueBySite[invoice.site_name] || 0) + (Number(invoice.total_amount) || 0);
-    }
+    // Site profitability accrues immediately from time worked, including open shifts.
+    revenueBySite[siteName] = (revenueBySite[siteName] || 0) + revenue;
+    payrollBySite[siteName] = (payrollBySite[siteName] || 0) + payrollCost;
+    hoursBySite[siteName] = (hoursBySite[siteName] || 0) + hours;
   });
 
   const payrollBreakdownByOfficer = {};
@@ -180,8 +194,9 @@ export default function AccountingProfit() {
     }
   });
 
-  // Revenue is invoice-based only. No estimated or stale site revenue is substituted.
-  const totalRevenue = invoiceRevenue;
+  // Accrued service revenue updates immediately; invoices remain the finalized record.
+  const accruedRevenue = Object.values(revenueBySite).reduce((sum, amount) => sum + amount, 0);
+  const totalRevenue = accruedRevenue || invoiceRevenue;
   const finalizedPayroll = filteredPayroll.reduce((sum, entry) => sum + (Number(entry.gross_pay) || 0), 0);
   const accruedPayroll = Object.values(payrollByOfficer).reduce((sum, amount) => sum + amount, 0);
   const totalPayroll = Math.max(finalizedPayroll, accruedPayroll);
