@@ -6,14 +6,10 @@ import { Users, Shield, Search, Phone, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function OfficerRoster() {
   const [searchQuery, setSearchQuery] = useState("");
-
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
-  });
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
@@ -31,20 +27,8 @@ export default function OfficerRoster() {
     const filtered = rosterEntries.filter(e => {
       if (e.status !== 'active') return false;
       
-      const userRecord = allUsers.find(u => u.email === e.email);
-      if (!userRecord) return true;
-      
-      // Exclude if user has termination_date
-      if (userRecord.termination_date) return false;
-      
-      // Operational roster never exposes client, student, or pending accounts.
-      const roles = new Set([userRecord.role, ...(userRecord.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
-      const userType = String(userRecord.user_type || userRecord.account_type || userRecord.portal_type || '').toLowerCase();
-      const accountStatus = String(userRecord.account_status || '').toLowerCase();
-      if (roles.has('client') || roles.has('student') || roles.has('pending')) return false;
-      if (['client', 'student', 'pending'].includes(userType) || accountStatus === 'pending') return false;
-      
-      return true;
+      const userRecord = allUsers.find(u => String(u.email || '').toLowerCase() === String(e.email || '').toLowerCase());
+      return isOperationalOfficer(userRecord);
     });
     
     return filtered;
@@ -61,17 +45,6 @@ export default function OfficerRoster() {
       entry.division?.toLowerCase().includes(query)
     );
   });
-
-  const rankOrder = {
-    'Captain': 1,
-    'Lieutenant': 2,
-    'Senior Corporal': 3,
-    'Sergeant': 4,
-    'Corporal': 5,
-    'Senior Officer': 6,
-    'Officer': 7,
-    'Support Staff': 8,
-  };
 
   const groupByDivision = () => {
     const grouped = {};
