@@ -397,6 +397,30 @@ export default function AccountingInvoices() {
             </div>
           </div>
 
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Live Sunday–Saturday invoice preview</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {selectedClient ? (selectedSite || 'All assigned properties') : 'Select a client to view live billing'}
+                </p>
+              </div>
+              <div className="flex gap-6">
+                <div>
+                  <p className="text-xs text-slate-500">Hours</p>
+                  <p className="text-xl font-bold text-slate-900">{liveInvoicePreview.hours.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Current amount</p>
+                  <p className="text-xl font-bold text-emerald-700">{'$'}{liveInvoicePreview.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              Updates every second. {liveInvoicePreview.activeShifts} officer shift(s) currently clocked in.
+            </p>
+          </div>
+
           <div>
             <Label>Invoice Notes (Optional)</Label>
             <Textarea
