@@ -62,15 +62,17 @@ export default function ClientReports() {
     queryFn: async () => {
       if (!effectiveLocation) return null;
 
-      const [allShift, allDAR, allIncident, allTrespass, allParking, allCriminal, allSummons] = await Promise.all([
+      const [allShift, allDAR, allIncident] = await Promise.all([
         base44.entities.ShiftReport.filter({ location: effectiveLocation }),
         base44.entities.DailyActivityReport.filter({ location: effectiveLocation }),
         base44.entities.IncidentReport.filter({ location: effectiveLocation }),
+      ]);
+      const [allTrespass, allParking, allCriminal] = await Promise.all([
         base44.entities.TrespassingNotice.filter({ location: effectiveLocation }),
         base44.entities.ParkingViolation.filter({ location: effectiveLocation }),
         base44.entities.CriminalComplaint.filter({ location: effectiveLocation }),
-        base44.entities.Summons.filter({ location: effectiveLocation }),
       ]);
+      const allSummons = await base44.entities.Summons.filter({ location: effectiveLocation });
 
       const filterByDate = (reportList, dateField) => {
         return reportList.filter(report => {
