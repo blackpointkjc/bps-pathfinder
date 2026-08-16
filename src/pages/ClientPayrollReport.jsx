@@ -120,20 +120,6 @@ export default function ClientPayrollReport() {
 
   const totalHours = Object.values(billingSummary).reduce((sum, data) => sum + data.hours, 0);
   const totalBilled = Object.values(billingSummary).reduce((sum, data) => sum + data.billedAmount, 0);
-  const weekStart = startOfWeek(liveNow, { weekStartsOn: 0 });
-  const weekToDate = timeEntries.reduce((summary, entry) => {
-    if (!entry.clock_in || new Date(entry.clock_in) < weekStart) return summary;
-    const entrySite = normalizeSiteName(entry.location);
-    if (!clientLocations.map(normalizeSiteName).includes(entrySite)) return summary;
-    const location = locations.find(item => normalizeSiteName(item.site_name) === entrySite);
-    const { rate } = resolveBillingRate(entry, location, schedules);
-    if (!rate) return summary;
-    const hours = calculateLiveHours(entry, liveNow);
-    summary.hours += hours;
-    summary.amount += hours * rate;
-    return summary;
-  }, { hours: 0, amount: 0 });
-
   const printStoredInvoice = (invoice) => {
     const shifts = invoice.shifts ? JSON.parse(invoice.shifts) : [];
     const printWindow = window.open('', '_blank', 'width=900,height=1100');
@@ -470,16 +456,6 @@ export default function ClientPayrollReport() {
           </div>
         </CardContent>
       </Card>
-
-        {/* Summary */}
-        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Live week to date (Sunday through now)</p>
-          <div className="mt-1 flex flex-wrap gap-x-8 gap-y-1">
-            <p className="text-2xl font-bold text-slate-900">{weekToDate.hours.toFixed(2)} hours</p>
-            <p className="text-2xl font-bold text-emerald-700">{'$'}{weekToDate.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          </div>
-          <p className="mt-1 text-xs text-slate-600">Updates every 30 seconds and includes officers who are still clocked in.</p>
-        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <Card className="border-l-4 border-l-blue-500">
