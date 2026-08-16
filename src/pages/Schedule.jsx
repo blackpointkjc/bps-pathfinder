@@ -7,6 +7,7 @@ import { Calendar, Clock, MapPin, FileText, ChevronLeft, ChevronRight, Info, Ext
 import { format, addDays, startOfDay, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import PullToRefresh from "../components/PullToRefresh";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function Schedule() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
@@ -38,7 +39,7 @@ export default function Schedule() {
 
   const { data: companyUsers = [] } = useQuery({
     queryKey: ['companyUsersForFleet'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     enabled: !!user,
     staleTime: 60000,
   });

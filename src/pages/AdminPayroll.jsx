@@ -18,6 +18,7 @@ import {
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { calculatePaidHours } from "@/lib/payrollCalculations";
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
@@ -37,13 +38,13 @@ export default function AdminPayroll() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     enabled: user?.role === 'admin' || user?.additional_roles?.includes('accounting'),
   });
 
   const { data: locations } = useQuery({
     queryKey: ['allLocations'],
-    queryFn: () => base44.entities.Location.list('site_name'),
+    queryFn: () => listDirectoryLocations('site_name'),
     enabled: user?.role === 'admin' || user?.additional_roles?.includes('accounting'),
   });
 

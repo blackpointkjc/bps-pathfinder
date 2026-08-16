@@ -12,6 +12,7 @@ import {
   Shield, Eye
 } from "lucide-react";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function AdminMessages() {
   const [selectedConversation, setSelectedConversation] = useState(null);
@@ -31,7 +32,7 @@ export default function AdminMessages() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
   });
 
   const { data: allMessages } = useQuery({

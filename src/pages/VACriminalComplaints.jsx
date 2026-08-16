@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import IDScanner from "../components/IDScanner";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { openVirginiaCriminalComplaintPrint } from '@/utils/virginiaCriminalComplaintPrint';
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function VACriminalComplaints() {
   const [showForm, setShowForm] = useState(false);
@@ -117,7 +118,7 @@ export default function VACriminalComplaints() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations', 'vaCriminalComplaints', user?.division || 'all'],
     queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
+      const allLocations = await listDirectoryLocations('site_name');
       const activeLocations = allLocations.filter(loc => loc.active);
       
       // Filter by division if user has one
@@ -133,7 +134,7 @@ export default function VACriminalComplaints() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     initialData: [],
   });
 

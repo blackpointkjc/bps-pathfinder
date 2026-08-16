@@ -9,6 +9,7 @@ import { Calendar, Sparkles, Loader2, CheckCircle, Shield, Clock } from "lucide-
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function AdminAIScheduling() {
   const [startDate, setStartDate] = useState(format(startOfWeek(addDays(new Date(), 7), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
@@ -27,7 +28,7 @@ export default function AdminAIScheduling() {
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
     queryFn: async () => {
-      const users = await base44.entities.User.list();
+      const users = await listDirectoryUsers();
       console.log('AI Scheduling - Fetched users:', users);
       return users;
     },
@@ -40,7 +41,7 @@ export default function AdminAIScheduling() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const all = await base44.entities.Location.list();
+      const all = await listDirectoryLocations();
       return all.filter(loc => loc.active);
     },
   });

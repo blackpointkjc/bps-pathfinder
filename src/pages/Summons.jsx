@@ -13,6 +13,7 @@ import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function Summons() {
   const [showForm, setShowForm] = useState(false);
@@ -137,7 +138,7 @@ export default function Summons() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     initialData: [],
   });
 

@@ -11,6 +11,7 @@ import {
 import { format, parseISO, addDays } from "date-fns";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function AdminShiftBids() {
   const queryClient = useQueryClient();
@@ -34,7 +35,7 @@ export default function AdminShiftBids() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
   });
 
   const { data: allSchedules } = useQuery({

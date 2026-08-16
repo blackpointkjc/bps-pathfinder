@@ -22,6 +22,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { openTrespassNoticePrint, resolvePoliceDepartment } from "@/utils/trespassNoticePrint";
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function TrespassingNotices() {
   const [showForm, setShowForm] = useState(false);
@@ -58,7 +59,7 @@ export default function TrespassingNotices() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
   });
 
   // Helper to get officer's signature for display
@@ -137,7 +138,7 @@ export default function TrespassingNotices() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
+      const allLocations = await listDirectoryLocations('site_name');
       return allLocations.filter(loc => loc.active);
     },
   });

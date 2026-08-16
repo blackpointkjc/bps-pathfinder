@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Clock, MapPin, Save, Check, Shield, User, Search, Plus, Trash2, Users } from "lucide-react";
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_LABELS = {
@@ -38,7 +39,7 @@ export default function AdminOfficerManagement() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     enabled: user?.role === 'admin',
   });
 
@@ -88,7 +89,7 @@ export default function AdminOfficerManagement() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const locs = await base44.entities.Location.list('site_name');
+      const locs = await listDirectoryLocations('site_name');
       return locs.filter(l => l.active);
     },
   });

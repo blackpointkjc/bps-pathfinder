@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, MapPin, AlertCircle, CheckCircle2, Briefcase, Send, Brain, AlertTriangle, Users } from "lucide-react";
 import { format, parseISO, isPast, startOfDay, addDays } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function OpenShifts() {
   const queryClient = useQueryClient();
@@ -24,7 +25,7 @@ export default function OpenShifts() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
   });
 
   const { data: openShifts, isLoading } = useQuery({

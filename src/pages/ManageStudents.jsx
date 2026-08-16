@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { GraduationCap, Users, Edit, ShieldAlert, CheckCircle, Clock, Mail, Save, X, UserCheck } from "lucide-react";
 import { toast } from "sonner";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function ManageStudents({ embedded = false }) {
   const [editingStudent, setEditingStudent] = useState(null);
@@ -27,7 +28,7 @@ export default function ManageStudents({ embedded = false }) {
   const { data: allUsers = [], isLoading } = useQuery({
     queryKey: ['trainingUsers'],
     queryFn: async () => {
-      const allUsers = await base44.entities.User.list(undefined, 1000) || [];
+      const allUsers = await listDirectoryUsers(undefined, 1000) || [];
       return allUsers.filter(u => !u.termination_date);
     },
     enabled: hasAccess,

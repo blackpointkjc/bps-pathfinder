@@ -10,6 +10,7 @@ import { Shield, Plus, Edit, Trash, Users, Copy, RefreshCw } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function AdminOfficerRoster() {
   const [showDialog, setShowDialog] = useState(false);
@@ -43,7 +44,7 @@ export default function AdminOfficerRoster() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
   });
 
   const saveEntryMutation = useMutation({

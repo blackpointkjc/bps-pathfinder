@@ -18,6 +18,7 @@ import {
 } from "../components/MobileResponsiveDialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function AdminConfidentialReports() {
   const [selectedReport, setSelectedReport] = useState(null);
@@ -39,7 +40,7 @@ export default function AdminConfidentialReports() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     initialData: [],
   });
 

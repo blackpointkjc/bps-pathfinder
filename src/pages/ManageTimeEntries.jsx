@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Clock, Briefcase, Plus, Trash2, Calendar, MapPin, Shield, Edit, X, Save } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function ManageTimeEntries() {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -42,7 +43,7 @@ export default function ManageTimeEntries() {
 
   const { data: allUsers = [], isLoading: usersLoading, error: usersError } = useQuery({
     queryKey: ['appDirectoryUsers', 'manageTimeEntries'],
-    queryFn: () => base44.entities.User.list('last_name', 1000),
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: isAdmin || isHR,
     initialData: [],
     staleTime: 0,
@@ -53,7 +54,7 @@ export default function ManageTimeEntries() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
+      const allLocations = await listDirectoryLocations('site_name');
       return allLocations.filter(loc => loc.active);
     },
     enabled: isAdmin || isHR,

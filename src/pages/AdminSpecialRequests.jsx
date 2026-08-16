@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getRankLastName } from "@/utils/officerDisplay";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function AdminSpecialRequests() {
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -31,7 +32,7 @@ export default function AdminSpecialRequests() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     enabled: user?.role === 'admin',
   });
 

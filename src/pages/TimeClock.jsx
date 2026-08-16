@@ -15,6 +15,7 @@ import { MapContainer, TileLayer, Marker, Circle, Polygon, useMap } from 'react-
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
+import { listDirectoryLocations } from '@/lib/appDirectory';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -181,7 +182,7 @@ export default function TimeClock() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
+      const allLocations = await listDirectoryLocations('site_name');
       return allLocations.filter(loc => loc.active);
     },
     enabled: !!user, // ADDED enabled property

@@ -6,13 +6,14 @@ import{Button}from'@/components/ui/button';
 import{Badge}from'@/components/ui/badge';
 import{Mail,Phone,Printer,Shield,Users,Building2}from'lucide-react';
 import{isOperationalOfficer}from'@/lib/directoryUtils';
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 const OPERATIONAL_RANKS=['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'];
 const rankOrder=r=>{const i=OPERATIONAL_RANKS.indexOf(r);return i<0?99:i};
 const has=(u,r)=>(u.additional_roles||[]).map(x=>String(x).toLowerCase()).includes(r);
 
 export default function VAContactSheet(){
- const{data:users=[],isLoading}=useQuery({queryKey:['vaCompanyContacts'],queryFn:()=>base44.entities.User.list()});
+ const{data:users=[],isLoading}=useQuery({queryKey:['vaCompanyContacts'],queryFn:()=>listDirectoryUsers()});
  const operational=useMemo(()=>users.filter(u=>isOperationalOfficer(u)&&OPERATIONAL_RANKS.includes(u.rank)).sort((a,b)=>rankOrder(a.rank)-rankOrder(b.rank)||String(a.last_name||'').localeCompare(String(b.last_name||''))),[users]);
  const staff=useMemo(()=>users.filter(u=>{if(u.termination_date||isOperationalOfficer(u))return false;return has(u,'hr')||has(u,'support_staff')||has(u,'support')||has(u,'company_staff')||['human resources','support staff','company staff'].includes(String(u.rank||'').toLowerCase())}).sort((a,b)=>String(a.last_name||'').localeCompare(String(b.last_name||''))),[users]);
  const divisionGroups=useMemo(()=>operational.reduce((g,u)=>{const k=u.division||'Unassigned Division';(g[k]??=[]).push(u);return g},{}),[operational]);

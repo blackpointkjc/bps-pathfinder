@@ -10,6 +10,7 @@ import { ShieldCheck, Search, RefreshCw, XCircle, ArrowLeft, ArrowDownToLine, Ar
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function AdminSupervisorCodes() {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export default function AdminSupervisorCodes() {
 
   const { data: allUsers } = useQuery({
     queryKey: ["allUsers"],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
   });
 
   const deactivateCodeMutation = useMutation({

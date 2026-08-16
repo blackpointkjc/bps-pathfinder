@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Shield, Search, Phone, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function OfficerRoster() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -16,7 +17,7 @@ export default function OfficerRoster() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
   });
 
   const { data: rosterEntries } = useQuery({

@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
+import { listDirectoryUsers } from '@/lib/appDirectory';
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -25,7 +26,7 @@ export default function AdminDashboard() {
   const { data: allUsers } = useQuery({
     queryKey: ['adminDashboardActiveUsers'],
     queryFn: async () => {
-      const users = await base44.entities.User.list();
+      const users = await listDirectoryUsers();
       return users.filter(u => !u.termination_date);
     },
     enabled: user?.role === 'admin',

@@ -17,6 +17,7 @@ import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import StructuredPeopleEditor from '@/components/reports/StructuredPeopleEditor';
 import { toast } from 'sonner';
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 // Build an incident description that references the CAD number instead of the
 // upstream GRAC feed tag (e.g. "VANDALISM at ... [GRAC:abc]" -> "VANDALISM at ... [CAD:B1123]").
@@ -145,7 +146,7 @@ export default function IncidentReports() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
+      const allLocations = await listDirectoryLocations('site_name');
       return allLocations.filter(loc => loc.active);
     },
     initialData: [],
@@ -153,7 +154,7 @@ export default function IncidentReports() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     initialData: [],
   });
 
@@ -362,7 +363,7 @@ Provide:
 
         // Alert supervisors if critical
         if (supervisorAlert && !isDraft) {
-          const supervisors = await base44.entities.User.list();
+          const supervisors = await listDirectoryUsers();
           const supervisorList = supervisors.filter(u => u.additional_roles?.includes('supervisor'));
           
           for (const supervisor of supervisorList) {

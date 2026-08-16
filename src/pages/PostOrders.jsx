@@ -7,6 +7,7 @@ import { Shield, MapPin, Phone, Users, AlertTriangle, FileText, Clock, CheckCirc
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 const RANK_ORDER = [
   'Chief of Security',
@@ -34,7 +35,7 @@ export default function PostOrders() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const locs = await base44.entities.Location.list('site_name');
+      const locs = await listDirectoryLocations('site_name');
       return locs.filter(loc => loc.active);
     },
     initialData: [],
@@ -48,7 +49,7 @@ export default function PostOrders() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     initialData: [],
   });
 
@@ -58,7 +59,7 @@ export default function PostOrders() {
     queryKey: ['siteLocation', selectedSite],
     queryFn: async () => {
       if (!selectedSite) return null;
-      const locs = await base44.entities.Location.list();
+      const locs = await listDirectoryLocations();
       return locs.find(loc => loc.site_name === selectedSite);
     },
     enabled: !!selectedSite,

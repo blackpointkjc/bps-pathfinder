@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '../utils';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 const STATUS_CFG = {
     Available:        { dot: 'bg-green-400',  badge: 'bg-green-900/40 text-green-300 border-green-600/50' },
@@ -67,7 +68,7 @@ export default function Personnel() {
 
     const loadPersonnel = async () => {
         try {
-            const response = await base44.entities.User.list();
+            const response = await listDirectoryUsers();
             setPersonnel((response || []).filter(isOperationalOfficer));
             setLastRefresh(new Date());
         } catch (error) { console.error(error); }

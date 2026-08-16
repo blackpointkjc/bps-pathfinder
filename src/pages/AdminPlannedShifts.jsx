@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 const DAYS = [
   { value: "sunday", label: "Sunday" },
@@ -53,14 +54,14 @@ export default function AdminPlannedShifts() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const locs = await base44.entities.Location.list('site_name');
+      const locs = await listDirectoryLocations('site_name');
       return locs.filter(l => l.active);
     },
   });
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     enabled: user?.role === 'admin',
   });
 

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QrCode, MapPin, Clock, CheckCircle2, AlertTriangle, RefreshCw, XCircle } from "lucide-react";
 import { format } from "date-fns";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function AdminQRReports() {
   const [filterSite, setFilterSite] = useState("all");
@@ -21,7 +22,7 @@ export default function AdminQRReports() {
 
   const { data: officers = [] } = useQuery({
     queryKey: ['allOfficersForQR'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     enabled: user?.role === 'admin',
     staleTime: 300000,
   });

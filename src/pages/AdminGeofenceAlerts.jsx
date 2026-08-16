@@ -12,6 +12,7 @@ import { MapContainer, TileLayer, Marker, Circle, Polygon, Popup } from "react-l
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { listDirectoryLocations } from '@/lib/appDirectory';
 
 // Fix leaflet marker
 delete L.Icon.Default.prototype._getIconUrl;
@@ -49,7 +50,7 @@ export default function AdminGeofenceAlerts() {
 
   const { data: locations } = useQuery({
     queryKey: ['locations'],
-    queryFn: () => base44.entities.Location.list(),
+    queryFn: () => listDirectoryLocations(),
     enabled: isAdmin || isSupervisor,
   });
 

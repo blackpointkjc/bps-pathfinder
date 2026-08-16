@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowRightLeft, CheckCircle, MapPin, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 const blank = { location:"", shift_date:format(new Date(),'yyyy-MM-dd'), shift_start:"", shift_end:"", key_updates:"", ongoing_issues:"", pending_tasks:"", equipment_status:"" };
 const shiftTime = s => new Date(`${s.shift_date}T${s.start_time || '00:00'}`).getTime();
@@ -19,8 +20,8 @@ export default function ShiftHandover(){
   const [showForm,setShowForm]=useState(false); const [form,setForm]=useState(blank); const qc=useQueryClient();
   const {data:user}=useQuery({queryKey:['currentUser'],queryFn:()=>base44.auth.me()});
   const {data:schedules=[]}=useQuery({queryKey:['handoverSchedules'],queryFn:()=>base44.entities.Schedule.list('shift_date',1000)});
-  const {data:locations=[]}=useQuery({queryKey:['handoverLocations'],queryFn:()=>base44.entities.Location.list('site_name')});
-  const {data:users=[]}=useQuery({queryKey:['handoverUsers'],queryFn:()=>base44.entities.User.list()});
+  const {data:locations=[]}=useQuery({queryKey:['handoverLocations'],queryFn:()=>listDirectoryLocations('site_name')});
+  const {data:users=[]}=useQuery({queryKey:['handoverUsers'],queryFn:()=>listDirectoryUsers()});
   const {data:handovers=[]}=useQuery({queryKey:['shiftHandovers'],queryFn:()=>base44.entities.ShiftHandover.list('-created_date',100),refetchInterval:10000});
   const mySites=useMemo(()=>{
     const assigned=[

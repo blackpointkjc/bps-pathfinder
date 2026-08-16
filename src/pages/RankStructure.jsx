@@ -5,6 +5,7 @@ import { Shield, GitBranch, Mail, Phone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 const RANKS = ['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'];
 const COMMAND_RANKS = new Set(['Colonel','Lt Colonel','Major']);
@@ -72,7 +73,7 @@ function PlatoonBranch({ letter, users, allUsers, onOpen }) {
 export default function RankStructure(){
   const [selectedPerson,setSelectedPerson]=useState(null);
   const {data:user}=useQuery({queryKey:['currentUser'],queryFn:()=>base44.auth.me()});
-  const {data:users=[]}=useQuery({queryKey:['allUsersRank'],queryFn:()=>base44.entities.User.list()});
+  const {data:users=[]}=useQuery({queryKey:['allUsersRank'],queryFn:()=>listDirectoryUsers()});
   const roles=rolesOf(user);
   const allowed=user?.role==='admin'||roles.has('officer')||roles.has('cad_access')||roles.has('supervisor')||roles.has('full_access');
   const active=useMemo(()=>users.filter(isOperational).sort((a,b)=>rankIndex(a.rank)-rankIndex(b.rank)||(Number(a.unit_number)||9999)-(Number(b.unit_number)||9999)),[users]);

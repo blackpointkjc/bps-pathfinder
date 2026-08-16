@@ -14,6 +14,7 @@ import { QrCode, Plus, Edit, Power, Search, Printer } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
+import { listDirectoryLocations } from '@/lib/appDirectory';
 
 function generateUID() {
   return 'QR-' + Math.random().toString(36).substr(2, 9).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
@@ -45,7 +46,7 @@ export default function AdminQRCheckpoints() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const all = await base44.entities.Location.list('site_name');
+      const all = await listDirectoryLocations('site_name');
       return all.filter(l => l.active);
     },
   });

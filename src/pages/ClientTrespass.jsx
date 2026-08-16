@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { openTrespassNoticePrint, resolvePoliceDepartment } from "@/utils/trespassNoticePrint";
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
@@ -42,13 +43,13 @@ export default function ClientTrespass() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     initialData: [],
   });
 
   const { data: locations = [] } = useQuery({
     queryKey: ['clientTrespassLocations'],
-    queryFn: () => base44.entities.Location.list('site_name'),
+    queryFn: () => listDirectoryLocations('site_name'),
     initialData: [],
   });
 

@@ -10,6 +10,7 @@ import { Shield, Plus, Clock, Printer, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function MDCriminalComplaints() {
   const [showForm, setShowForm] = useState(false);
@@ -98,14 +99,14 @@ export default function MDCriminalComplaints() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     initialData: [],
   });
 
   const { data: locations } = useQuery({
     queryKey: ['activeLocations', 'mdCriminalComplaints', user?.division || 'all'],
     queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
+      const allLocations = await listDirectoryLocations('site_name');
       const activeLocations = allLocations.filter(loc => loc.active);
       
       // Filter by division if user has one

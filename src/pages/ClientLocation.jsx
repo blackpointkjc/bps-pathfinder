@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MapPin, Shield, Save, X } from "lucide-react";
 import { format } from "date-fns";
 import {
+import { listDirectoryLocations } from '@/lib/appDirectory';
   Select,
   SelectContent,
   SelectItem,
@@ -49,7 +50,7 @@ export default function ClientLocation() {
     queryKey: ['clientLocation', effectiveLocation],
     queryFn: async () => {
       if (!effectiveLocation) return null;
-      const allLocations = await base44.entities.Location.list(); // Fetch all to find by site_name
+      const allLocations = await listDirectoryLocations(); // Fetch all to find by site_name
       const loc = allLocations.find(l => l.site_name === effectiveLocation);
       if (loc) {
         setFormData({

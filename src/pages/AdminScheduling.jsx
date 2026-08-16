@@ -26,6 +26,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import LocationHourCard from "../components/scheduling/LocationHourCard";
+import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/857a5f1c1_UntitledProject3.png";
 
 export default function AdminScheduling() {
@@ -80,7 +81,7 @@ export default function AdminScheduling() {
 
   const { data: allUsers = [], isLoading: usersLoading, error: usersError } = useQuery({
     queryKey: ['appDirectoryUsers', 'scheduling'],
-    queryFn: () => base44.entities.User.list('last_name', 1000),
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: !!user,
     staleTime: 0,
     refetchOnMount: 'always',
@@ -90,7 +91,7 @@ export default function AdminScheduling() {
   const { data: divisions } = useQuery({
     queryKey: ['divisions'],
     queryFn: async () => {
-      const allDivisions = await base44.entities.Division.list('division_name');
+      const allDivisions = await listDirectoryDivisions('division_name');
       return allDivisions.filter(d => d.active);
     },
     staleTime: 5 * 60 * 1000,
@@ -99,7 +100,7 @@ export default function AdminScheduling() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
+      const allLocations = await listDirectoryLocations('site_name');
       return allLocations.filter(loc => loc.active !== false);
     },
     enabled: !!user,

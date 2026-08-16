@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function AdminCommendations() {
   const [showForm, setShowForm] = useState(false);
@@ -33,7 +34,7 @@ export default function AdminCommendations() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     enabled: user?.role === 'admin',
   });
 

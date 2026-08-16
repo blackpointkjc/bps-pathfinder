@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function MDTrespassNotices() {
   const [showForm, setShowForm] = useState(false);
@@ -51,7 +52,7 @@ export default function MDTrespassNotices() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     initialData: [],
   });
 
@@ -131,7 +132,7 @@ export default function MDTrespassNotices() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
+      const allLocations = await listDirectoryLocations('site_name');
       return allLocations.filter(loc => loc.active);
     },
     enabled: !!user,

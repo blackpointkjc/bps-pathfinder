@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
+import { listDirectoryUsers } from '@/lib/appDirectory';
   Dialog,
   DialogContent,
   DialogHeader,
@@ -34,7 +35,7 @@ export default function AdminPTOApproval() {
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['appDirectoryUsers', 'ptoApproval'],
-    queryFn: () => base44.entities.User.list('last_name', 1000),
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: hasHRAccess,
     initialData: [],
     staleTime: 0,

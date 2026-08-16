@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function MaintenanceReports() {
   const [showForm, setShowForm] = useState(false);
@@ -71,7 +72,7 @@ export default function MaintenanceReports() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'], // Changed query key to reflect filtering
     queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
+      const allLocations = await listDirectoryLocations('site_name');
       return allLocations.filter(loc => loc.active); // Filter for active locations
     },
     initialData: [], // Provide initial empty array
@@ -79,7 +80,7 @@ export default function MaintenanceReports() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     initialData: [], // Provide initial empty array
   });
 

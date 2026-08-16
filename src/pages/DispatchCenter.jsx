@@ -22,6 +22,7 @@ import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import 'leaflet/dist/leaflet.css';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 
 
@@ -131,7 +132,7 @@ export default function DispatchCenter() {
 
     const loadMonitoredProperties = async () => {
         try {
-            const locations = await base44.entities.Location.list('site_name');
+            const locations = await listDirectoryLocations('site_name');
             setMonitoredProperties(monitoredPropertiesFromLocations(locations || []));
         } catch (error) {
             console.error('Error loading monitored properties:', error);
@@ -170,7 +171,7 @@ export default function DispatchCenter() {
             // provide the current radio/unit status. Load both so the dialog does
             // not go empty when either collection is briefly delayed or restricted.
             const [allUsers, liveUnitRows] = await Promise.all([
-                base44.entities.User.list('-last_updated', 500).catch(() => []),
+                listDirectoryUsers('-last_updated', 500).catch(() => []),
                 base44.entities.Unit.list('-last_update_at', 500).catch(() => []),
             ]);
             const usersById = new Map((allUsers || []).map(user => [String(user.id), user]));

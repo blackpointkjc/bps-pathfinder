@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Package, Plus, Edit, Trash2, User, Search, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function AdminEquipment() {
   const [showDialog, setShowDialog] = useState(false);
@@ -50,7 +51,7 @@ export default function AdminEquipment() {
 
   const { data: users } = useQuery({
     queryKey: ['users'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     initialData: [],
   });
 

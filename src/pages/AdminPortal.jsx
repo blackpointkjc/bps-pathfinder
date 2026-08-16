@@ -11,6 +11,7 @@ import MaintenanceTracking from '@/components/dispatch/MaintenanceTracking';
 import VehicleManagement from '@/components/admin/VehicleManagement';
 
 import SystemIssuesPanel from '@/components/admin/SystemIssuesPanel';
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function AdminPortal() {
     const [currentUser, setCurrentUser] = useState(null);
@@ -114,7 +115,7 @@ export default function AdminPortal() {
 
     const loadUsers = async () => {
         try {
-            const allUsers = await base44.entities.User.list();
+            const allUsers = await listDirectoryUsers();
             setUsers(allUsers || []);
         } catch (error) {
             console.error('Error loading users:', error);

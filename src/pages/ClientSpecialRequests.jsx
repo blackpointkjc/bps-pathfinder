@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, Plus, Shield, Clock, Users, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { listDirectoryLocations } from '@/lib/appDirectory';
 
 export default function ClientSpecialRequests() {
   const [showForm, setShowForm] = useState(false);
@@ -47,7 +48,7 @@ export default function ClientSpecialRequests() {
   const { data: locations } = useQuery({
     queryKey: ['clientLocations'],
     queryFn: async () => {
-      const allLocs = await base44.entities.Location.list();
+      const allLocs = await listDirectoryLocations();
       const clientLocs = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
       return allLocs.filter(loc => clientLocs.includes(loc.site_name));
     },

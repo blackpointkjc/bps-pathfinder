@@ -20,6 +20,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
+import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function AdminUsers() {
   const navigate = useNavigate();
@@ -94,7 +95,7 @@ export default function AdminUsers() {
 
   const { data: users, isLoading, error } = useQuery({
     queryKey: ['portalUsers', user?.role, ...(user?.additional_roles || [])],
-    queryFn: async () => await base44.entities.User.list(undefined, 1000) || [],
+    queryFn: async () => await listDirectoryUsers(undefined, 1000) || [],
     enabled: hasAccess,
     retry: 3,
     staleTime: 0,
@@ -136,7 +137,7 @@ export default function AdminUsers() {
 
   const { data: locations } = useQuery({
     queryKey: ['locations'],
-    queryFn: () => base44.entities.Location.list(),
+    queryFn: () => listDirectoryLocations(),
     enabled: hasAccess,
     initialData: [],
   });
@@ -144,7 +145,7 @@ export default function AdminUsers() {
   const { data: divisions } = useQuery({
     queryKey: ['activeDivisions'],
     queryFn: async () => {
-      const allDivisions = await base44.entities.Division.list('division_name');
+      const allDivisions = await listDirectoryDivisions('division_name');
       return allDivisions.filter(div => div.active);
     },
     enabled: hasAccess,

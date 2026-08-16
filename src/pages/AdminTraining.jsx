@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { Navigate } from 'react-router-dom';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
+import { listDirectoryDivisions } from '@/lib/appDirectory';
 
 const DCJS_ITEMS = [
   "01I — Introduction to Security",
@@ -130,7 +131,7 @@ function AdminTrainingContent({ embedded = false }) {
 
   const { data: divisions } = useQuery({
     queryKey: ['divisions'],
-    queryFn: () => base44.entities.Division.list('division_name'),
+    queryFn: () => listDirectoryDivisions('division_name'),
   });
 
   const { data: completions } = useQuery({

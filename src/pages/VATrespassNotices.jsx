@@ -26,6 +26,7 @@ import IDScanner from "../components/IDScanner";
 import SignaturePad from "../components/SignaturePad";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { openTrespassNoticePrint, resolvePoliceDepartment } from '@/utils/trespassNoticePrint';
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function VATrespassNotices() {
   // Same implementation as TrespassingNotices.js but with VA-specific title
@@ -89,7 +90,7 @@ export default function VATrespassNotices() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     initialData: [],
   });
 
@@ -191,7 +192,7 @@ export default function VATrespassNotices() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
+      const allLocations = await listDirectoryLocations('site_name');
       return allLocations.filter(loc => loc.active);
     },
     enabled: !!user,

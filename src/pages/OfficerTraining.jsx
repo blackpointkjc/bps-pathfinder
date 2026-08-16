@@ -19,6 +19,7 @@ import {
 import { format, isPast } from "date-fns";
 import { toast } from "sonner";
 import TrainingModuleViewer from "../components/training/TrainingModuleViewer";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 const STATUS_CONFIG = {
   assigned: { label: "Assigned", color: "bg-blue-100 text-blue-800", icon: Clock },
@@ -141,7 +142,7 @@ export default function OfficerTraining() {
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
       const submission = payload.submission;
-      const admins = await base44.entities.User.list();
+      const admins = await listDirectoryUsers();
       await Promise.all(admins.filter(u => u.role === 'admin').map(admin =>
         base44.entities.Notification.create({
           recipient_email: admin.email,

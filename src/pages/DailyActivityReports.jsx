@@ -20,6 +20,7 @@ import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import SignaturePad from "../components/SignaturePad";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { getLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function DailyActivityReports() {
   const navigate = useNavigate();
@@ -104,14 +105,14 @@ export default function DailyActivityReports() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
+      const allLocations = await listDirectoryLocations('site_name');
       return allLocations.filter(loc => loc.active);
     },
   });
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
   });
 
   const { data: rosterEntries } = useQuery({

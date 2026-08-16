@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format } from "date-fns";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
@@ -42,7 +43,7 @@ export default function AdminPTOLossReport() {
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['appDirectoryUsers', 'ptoLoss'],
-    queryFn: () => base44.entities.User.list('last_name', 1000),
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: hasHRAccess,
     initialData: [],
     staleTime: 0,

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Car, ChevronLeft, ChevronRight, Users, Wrench, CheckCircle2, Trash2 } from 'lucide-react';
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 const minutes = value => {
   const [h = 0, m = 0] = String(value || '00:00').split(':').map(Number);
@@ -33,7 +34,7 @@ export default function FleetVehicleAssignments() {
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
   const isAdmin = user?.role === 'admin' || (user?.additional_roles || []).includes('full_access');
-  const { data: users = [] } = useQuery({ queryKey: ['fleetUsers'], queryFn: () => base44.entities.User.list() });
+  const { data: users = [] } = useQuery({ queryKey: ['fleetUsers'], queryFn: () => listDirectoryUsers() });
   const { data: vehicles = [] } = useQuery({ queryKey: ['fleetVehicles'], queryFn: () => base44.entities.Vehicle.list('vehicle_id') });
   const { data: schedules = [] } = useQuery({ queryKey: ['fleetSchedules'], queryFn: () => base44.entities.Schedule.list('-shift_date') });
   const { data: assignments = [] } = useQuery({ queryKey: ['fleetAssignments'], queryFn: () => base44.entities.VehicleAssignment.list('-assignment_date') });

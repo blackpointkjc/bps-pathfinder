@@ -10,6 +10,7 @@ import { Shield, Printer, FileText, Clock, MapPin, Phone, Mail } from "lucide-re
 import { format, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { brandEmailPayload } from "@/utils/blackPointEmail";
 import {
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
   Select,
   SelectContent,
   SelectItem,
@@ -33,13 +34,13 @@ export default function AdminClientReports() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     enabled: user?.role === 'admin' || user?.additional_roles?.includes('support'),
   });
 
   const { data: locations } = useQuery({
     queryKey: ['allLocations'],
-    queryFn: () => base44.entities.Location.list('site_name'),
+    queryFn: () => listDirectoryLocations('site_name'),
     enabled: user?.role === 'admin' || user?.additional_roles?.includes('support'),
   });
 

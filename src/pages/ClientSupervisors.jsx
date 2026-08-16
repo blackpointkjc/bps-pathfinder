@@ -7,6 +7,7 @@ import { Shield, UserCheck, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function ClientSupervisors() {
   const [selectedLocation, setSelectedLocation] = React.useState("");
@@ -31,7 +32,7 @@ export default function ClientSupervisors() {
     queryKey: ['clientLocation', effectiveLocation],
     queryFn: async () => {
       if (!effectiveLocation) return null;
-      const locations = await base44.entities.Location.list();
+      const locations = await listDirectoryLocations();
       return locations.find(loc => loc.site_name === effectiveLocation);
     },
     enabled: !!effectiveLocation,
@@ -39,7 +40,7 @@ export default function ClientSupervisors() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     initialData: [],
   });
 

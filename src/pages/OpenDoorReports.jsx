@@ -12,6 +12,7 @@ import { DoorOpen, Plus, Clock, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 
 export default function OpenDoorReports() {
@@ -68,7 +69,7 @@ export default function OpenDoorReports() {
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
-      const allLocations = await base44.entities.Location.list('site_name');
+      const allLocations = await listDirectoryLocations('site_name');
       return allLocations.filter(loc => loc.active);
     },
     initialData: [], // Provide initial empty array
@@ -76,7 +77,7 @@ export default function OpenDoorReports() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     initialData: [], // Provide initial empty array
   });
 

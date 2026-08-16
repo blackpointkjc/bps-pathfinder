@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+import { listDirectoryUsers } from '@/lib/appDirectory';
   Select,
   SelectContent,
   SelectItem,
@@ -40,7 +41,7 @@ export default function AdminClientFeedback() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
     enabled: user?.role === 'admin',
   });
 

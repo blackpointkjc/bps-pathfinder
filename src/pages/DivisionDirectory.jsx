@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Users, Search, Phone, Mail, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { listDirectoryDivisions, listDirectoryUsers } from '@/lib/appDirectory';
 
 
 
@@ -19,13 +20,13 @@ export default function DivisionDirectory() {
 
   const { data: allUsers, isLoading } = useQuery({
     queryKey: ['allUsersDirectory'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
   });
 
   const { data: divisions } = useQuery({
     queryKey: ['activeDivisions'],
     queryFn: async () => {
-      const allDivisions = await base44.entities.Division.list('division_name');
+      const allDivisions = await listDirectoryDivisions('division_name');
       return allDivisions.filter(div => div.active);
     },
   });

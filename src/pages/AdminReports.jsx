@@ -22,6 +22,7 @@ import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
 import { openVirginiaCriminalComplaintPrint } from "@/utils/virginiaCriminalComplaintPrint";
 import { openTrespassNoticePrint, resolvePoliceDepartment } from "@/utils/trespassNoticePrint";
 import {
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
   MobileResponsiveDialog,
   MobileResponsiveDialogContent,
   MobileResponsiveDialogHeader,
@@ -48,12 +49,12 @@ export default function AdminReports() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => listDirectoryUsers(),
   });
 
   const { data: locations } = useQuery({
     queryKey: ['allLocations'],
-    queryFn: () => base44.entities.Location.list('site_name'),
+    queryFn: () => listDirectoryLocations('site_name'),
   });
 
   const { data: reports } = useQuery({
