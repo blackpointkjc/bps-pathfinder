@@ -62,7 +62,7 @@ export default function AccountingProfit() {
       try {
         const unsubscribe = base44.entities[entity].subscribe(refresh);
         if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
-      } catch { /* three-second polling remains active */ }
+      } catch { /* Fifteen-second polling remains active. */ }
     }
     return () => unsubscribers.forEach(unsubscribe => unsubscribe());
   }, [isAccountingRole, refetchProfit]);
