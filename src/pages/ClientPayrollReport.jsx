@@ -134,6 +134,7 @@ export default function ClientPayrollReport() {
     });
   });
 
+  const activeShiftCount = filteredEntries.filter(entry => !entry.clock_out).length;
   const totalHours = Object.values(billingSummary).reduce((sum, data) => sum + data.hours, 0);
   const totalBilled = Object.values(billingSummary).reduce((sum, data) => sum + data.billedAmount, 0);
   const printStoredInvoice = (invoice) => {
@@ -483,7 +484,8 @@ export default function ClientPayrollReport() {
             <CardTitle className="text-sm font-medium text-slate-600">Total Hours</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-slate-900">{totalHours.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-slate-900">{totalHours.toFixed(activeShiftCount ? 4 : 2)}</p>
+            <p className="mt-1 text-xs text-slate-500">{activeShiftCount ? `${activeShiftCount} active shift(s) accruing now` : 'Completed hours'}</p>
           </CardContent>
         </Card>
 
@@ -495,6 +497,7 @@ export default function ClientPayrollReport() {
             <p className="text-3xl font-bold text-slate-900">
               ${totalBilled.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </p>
+            <p className="mt-1 text-xs text-slate-500">Live as of {format(liveNow, 'h:mm:ss a')} • data sync every 15 seconds</p>
           </CardContent>
         </Card>
       </div>
