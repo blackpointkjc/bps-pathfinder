@@ -560,6 +560,11 @@ export default function AccountingPayroll() {
     .filter(entry => !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date))
     .reduce((sum, entry) => sum + (Number(entry.gross_pay) || 0), 0);
   const totalGross = Math.max(generatedGross, accruedGross);
+  const totalPayrollHours = selectedPeriod ? timeEntries.reduce((sum, entry) => {
+    const entryDate = String(entry.clock_in || '').slice(0, 10);
+    if (!entry.clock_in || entry.archived === true || entryDate < selectedPeriod.start_date || entryDate > selectedPeriod.end_date) return sum;
+    return sum + (entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow));
+  }, 0) : 0;
   const selectedPayrollEntries = payrollEntries
     .filter(entry => !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date));
   const finalizedNet = selectedPayrollEntries.reduce((sum, entry) => sum + (Number(entry.net_pay) || 0), 0);
@@ -900,13 +905,13 @@ export default function AccountingPayroll() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Payroll Center</h1>
-          <p className="text-slate-600">Process payroll, review calculations, approve payments, and maintain payroll history</p>
+          <p className="text-slate-600">Prepare gross hours and earnings for transfer to your external payroll system</p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           {(approvedEntries.length > 0 || draftEntries.length > 0) && (
-            <Button variant="outline" onClick={() => generatePayrollReport(approvedEntries.length > 0 ? approvedEntries : draftEntries)}>
+            <Button variant="outline" onClick={() => generateGrossPayrollReport(approvedEntries.length > 0 ? approvedEntries : draftEntries)}>
               <Printer className="w-4 h-4 mr-2" />
-              Print Payroll Report
+              Print Master + Itemized Payroll
             </Button>
           )}
         </div>
@@ -957,9 +962,9 @@ export default function AccountingPayroll() {
               <li>Overtime: {config?.overtime_multiplier || 1.5}x after {config?.overtime_threshold_hours || 40} hrs per week (Sunday-Saturday)</li>
               <li>Holiday Pay: {config?.holiday_multiplier || 1.25}x for 6 federal holidays</li>
               <li>Federal Holidays: New Year's, MLK Jr. Day, Juneteenth, July 4th, Thanksgiving, Christmas</li>
-              <li>2026 Qualified Overtime tracking for employee tax deductions</li>
               <li>Officer-specific rate overrides when configured</li>
-              <li>Accurate 2026 federal & state tax withholding (W-4 Step 1-4c)</li>
+              <li>Itemized clock-in and clock-out records for every officer</li>
+              <li>Gross earnings only; taxes and deductions are handled in your external payroll system</li>
             </ul>
           </div>
         </CardContent>
@@ -988,7 +993,7 @@ export default function AccountingPayroll() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-slate-600">Live Accrued Gross</CardTitle>
@@ -1003,22 +1008,11 @@ export default function AccountingPayroll() {
 
         <Card className="border-l-4 border-l-blue-500">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-slate-600">Total Net</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-600">Total Hours</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-slate-900">
-              ${totalNet.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-red-500">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-slate-600">Employee Taxes (Live)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-slate-900">${liveEmployeeTaxes.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-            <p className="mt-1 text-xs text-slate-500">Live FICA accrual; federal/state finalize with payroll</p>
+            <p className="text-2xl font-bold text-slate-900">{totalPayrollHours.toFixed(2)}</p>
+            <p className="mt-1 text-xs text-slate-500">Completed and active hours in selected period</p>
           </CardContent>
         </Card>
 
@@ -1087,10 +1081,13 @@ export default function AccountingPayroll() {
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="text-right">
-                              <p className="text-sm text-slate-600">Gross: ${(entry.gross_pay || 0).toFixed(2)}</p>
-                              <p className="text-lg font-bold text-slate-900">Net: ${(entry.net_pay || 0).toFixed(2)}</p>
+                              <p className="text-sm text-slate-600">Total hours: {(entry.hours_worked || 0).toFixed(2)}</p>
+                              <p className="text-lg font-bold text-slate-900">Gross pay: ${(entry.gross_pay || 0).toFixed(2)}</p>
                             </div>
                             <div className="flex gap-2">
+                              <Button size="sm" variant="outline" onClick={() => generateGrossPayrollReport([entry])}>
+                                <Printer className="w-4 h-4 mr-2" />Itemized Sheet
+                              </Button>
                               {showApprove && (
                                 <Button size="sm" onClick={() => approveMutation.mutate(entry.id)} className="bg-green-600">
                                   <CheckCircle className="w-4 h-4 mr-2" />
