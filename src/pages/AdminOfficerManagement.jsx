@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Clock, MapPin, Save, Check, Shield, User, Search, Plus, Trash2, Users } from "lucide-react";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_LABELS = {
@@ -94,8 +95,7 @@ export default function AdminOfficerManagement() {
     },
   });
 
-  // Show all users including admins for profile viewing
-  const activeOfficers = allUsers?.filter(u => !u.termination_date) || [];
+  const activeOfficers = allUsers?.filter(isOperationalOfficer) || [];
   const filteredOfficers = activeOfficers.filter(o => {
     const name = `${o.first_name || ''} ${o.last_name || ''}`.toLowerCase();
     return name.includes(searchTerm.toLowerCase()) || o.email.toLowerCase().includes(searchTerm.toLowerCase());
