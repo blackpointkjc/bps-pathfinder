@@ -352,7 +352,7 @@ export default function GlobalMessageBanner({ user }) {
           ? ' Assigned officers on this call, return 10-8.'
           : '';
         speakNotification(
-          `Monitored property call status update. ${incident}. At ${address}. Now ${spokenStatus}.${returnToService}`,
+          `Active call for service status update. ${incident}. At ${address}. Now ${spokenStatus}.${returnToService}`,
           { rate: 0.82, pitch: 0.66, dedupeMs: 4000 },
         );
       });
