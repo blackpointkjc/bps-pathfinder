@@ -203,6 +203,23 @@ export default function AccountingInvoices() {
     ? locations.filter(location => location.assigned_client_email === selectedClient || assignedSiteNames.has(location.site_name))
     : [];
 
+  const liveInvoicePreview = timeEntries.reduce((summary, entry) => {
+    if (!selectedClient || !entry.clock_in || entry.archived === true) return summary;
+    const entryDate = String(entry.clock_in).slice(0, 10);
+    if (entryDate < startDate || entryDate > endDate) return summary;
+    const entrySite = String(entry.location || '').split(':')[0].trim();
+    const location = clientLocations.find(item => item.site_name === entrySite);
+    if (!location || (selectedSite && entrySite !== selectedSite)) return summary;
+    const rate = Number(location.site_bill_rate || 0);
+    if (!rate) return summary;
+    const end = entry.clock_out ? new Date(entry.clock_out) : liveNow;
+    const hours = Math.max(0, (end - new Date(entry.clock_in)) / 3600000);
+    summary.hours += hours;
+    summary.amount += hours * rate;
+    summary.activeShifts += entry.clock_out ? 0 : 1;
+    return summary;
+  }, { hours: 0, amount: 0, activeShifts: 0 });
+
   const generateAllSitesInvoices = async () => {
     if (!selectedClient) {
       alert('Please select a client first');
@@ -217,19 +234,19 @@ export default function AccountingInvoices() {
 
     setGenerating(true);
     try {
-      for (const site of clientSites) {
-        const location = locations.find(l => l.site_name === site);
-        const billRate = location?.site_bill_rate;
+      for (const location of clientSites) {
+        const siteName = location.site_name;
+        const billRate = Number(location.site_bill_rate || 0);
 
         if (!billRate) {
-          console.warn(`Skipping ${site} - no bill rate set`);
+          console.warn(`Skipping ${siteName} - no bill rate set`);
           continue;
         }
 
         const siteEntries = timeEntries.filter(entry => {
           if (!entry.clock_in || !entry.clock_out) return false;
           const entrySite = String(entry.location || '').split(':')[0].trim();
-          if (entrySite !== site) return false;
+          if (entrySite !== siteName) return false;
           const entryDate = String(entry.clock_in).slice(0, 10);
           return entryDate >= startDate && entryDate <= endDate;
         });
@@ -266,7 +283,7 @@ export default function AccountingInvoices() {
         await generateInvoiceMutation.mutateAsync({
           client_email: selectedClient,
           invoice_number: invoiceNumber,
-          site_name: site,
+          site_name: siteName,
           period_start: startDate,
           period_end: endDate,
           total_hours: totalHours,
