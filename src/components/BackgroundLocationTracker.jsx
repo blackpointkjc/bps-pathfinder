@@ -287,18 +287,30 @@ export default function BackgroundLocationTracker({ user }) {
       }
     };
 
-    // Use watchPosition for continuous tracking with maximum accuracy settings
+    const gpsOptions = {
+      enableHighAccuracy: true,
+      timeout: 30000,
+      maximumAge: 0,
+    };
+
+    // Keep the passive stream, but also request a genuinely fresh device fix every
+    // five seconds. Some Windows/tablet browsers leave watchPosition pinned to a
+    // cached Wi-Fi coordinate even while the officer is moving.
     watchIdRef.current = navigator.geolocation.watchPosition(
       saveLocation,
-      (error) => console.error('Geolocation error:', error),
-      {
-        enableHighAccuracy: true, // Force GPS, not cell tower
-        timeout: 30000,
-        maximumAge: 2000, // Permit only a very recent fix; never reuse old city-level cache
-      }
+      (error) => console.error('Geolocation watch error:', error),
+      gpsOptions,
     );
+    const requestFreshPosition = () => navigator.geolocation.getCurrentPosition(
+      saveLocation,
+      (error) => console.warn('Fresh GPS request unavailable:', error?.message || error),
+      gpsOptions,
+    );
+    requestFreshPosition();
+    const freshPositionId = window.setInterval(requestFreshPosition, 5000);
 
     return () => {
+      window.clearInterval(freshPositionId);
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
