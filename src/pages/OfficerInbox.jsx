@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import UniversalInbox from '@/components/chat/UniversalInbox';
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { listOfficerDirectory } from '@/lib/appDirectory';
 
 export default function OfficerInbox() {
   const { data: currentUser, isLoading: loadingUser } = useQuery({
@@ -11,7 +11,7 @@ export default function OfficerInbox() {
 
   const { data: units = [] } = useQuery({
     queryKey: ['dispatchMessageUnits'],
-    queryFn: () => listDirectoryUsers('-last_name', 500),
+    queryFn: () => listOfficerDirectory('-last_name', 500),
     enabled: !!currentUser,
     staleTime: 60000,
   });
