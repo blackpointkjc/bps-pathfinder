@@ -963,8 +963,13 @@ export default function Layout({ children, currentPageName }) {
             && !dismissedPropertyAlertKeysRef.current.has(eventKey)
             && !dismissedPropertyAlertIdsRef.current.has(item.id);
         });
-        if (!record || cancelled) return;
-        if (cancelled) return;
+        if (!record || cancelled) {
+          if (!cancelled) {
+            setPropertyAlert(null);
+            setPropertyAlertSilenced(false);
+          }
+          return;
+        }
         const linkedCall = callById.get(String(record.callId));
         const location = locationById.get(String(record.propertyId));
         const call = linkedCall || {
