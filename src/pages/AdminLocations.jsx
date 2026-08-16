@@ -34,7 +34,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { format } from 'date-fns';
-import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { invalidateAppDirectory, listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { isClientAccount } from '@/lib/directoryUtils';
 
 // Fix leaflet default marker icon
@@ -192,6 +192,7 @@ export default function AdminLocations({ embedded = false }) {
     mutationFn: (data) => base44.entities.Location.create(data),
     onSuccess: async () => {
       await syncClientLocationAssignments().catch(error => console.warn('Client location sync failed:', error?.message));
+      invalidateAppDirectory();
       queryClient.invalidateQueries({ queryKey: ['locations'] });
       queryClient.invalidateQueries({ queryKey: ['directoryUsers'] });
 
@@ -205,6 +206,7 @@ export default function AdminLocations({ embedded = false }) {
     mutationFn: ({ id, data }) => base44.entities.Location.update(id, data),
     onSuccess: async () => {
       await syncClientLocationAssignments().catch(error => console.warn('Client location sync failed:', error?.message));
+      invalidateAppDirectory();
       queryClient.invalidateQueries({ queryKey: ['locations'] });
       queryClient.invalidateQueries({ queryKey: ['directoryUsers'] });
 
@@ -218,6 +220,7 @@ export default function AdminLocations({ embedded = false }) {
     mutationFn: (id) => base44.entities.Location.delete(id),
     onSuccess: async () => {
       await syncClientLocationAssignments().catch(error => console.warn('Client location sync failed:', error?.message));
+      invalidateAppDirectory();
       queryClient.invalidateQueries({ queryKey: ['locations'] });
       queryClient.invalidateQueries({ queryKey: ['directoryUsers'] });
     },
