@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Download } from "lucide-react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfWeek } from "date-fns";
 
 const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
 
@@ -19,6 +19,12 @@ export default function ClientPayrollReport() {
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [showOfficerNames, setShowOfficerNames] = useState(false);
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
+  const [liveNow, setLiveNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setLiveNow(new Date()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const { data: user } = useQuery({
     queryKey: ['clientPortalUser', getClientPreviewId()],
@@ -37,6 +43,8 @@ export default function ClientPayrollReport() {
     },
     enabled: !!user,
     initialData: {},
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
   });
 
   const clientLocations = billingData.assigned_locations || user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
@@ -55,7 +63,8 @@ export default function ClientPayrollReport() {
   // Filter to only client's locations
   const filteredEntries = timeEntries.filter(entry => {
     if (!entry.clock_in) return false;
-    if (!clientLocations.includes(entry.location)) return false;
+    const entrySite = String(entry.location || '').split(':')[0].trim();
+    if (!clientLocations.includes(entrySite)) return false;
     const entryDate = new Date(entry.clock_in);
     return entryDate >= new Date(startDate) && entryDate <= new Date(endDate);
   });
@@ -64,28 +73,25 @@ export default function ClientPayrollReport() {
   const billingSummary = {};
 
   filteredEntries.forEach(entry => {
-    if (!entry.clock_out) return;
+    const entrySite = String(entry.location || '').split(':')[0].trim();
+    const location = locations.find(l => l.site_name === entrySite);
+    if (!location || !location.site_bill_rate) return;
 
-    const location = locations.find(l => l.site_name === entry.location);
-    if (!location || !location.site_bill_rate) return; // Skip if no bill rate set
-
-    const hours = (new Date(entry.clock_out) - new Date(entry.clock_in)) / (1000 * 60 * 60);
-    const billRate = location.site_bill_rate;
+    const effectiveClockOut = entry.clock_out ? new Date(entry.clock_out) : liveNow;
+    const hours = Math.max(0, (effectiveClockOut - new Date(entry.clock_in)) / (1000 * 60 * 60));
+    const billRate = Number(location.site_bill_rate);
     const billedAmount = hours * billRate;
 
-    if (!billingSummary[entry.location]) {
-      billingSummary[entry.location] = {
-        hours: 0,
-        billedAmount: 0,
-        billRate: billRate,
-        shifts: []
-      };
+    if (!billingSummary[entrySite]) {
+      billingSummary[entrySite] = { hours: 0, billedAmount: 0, billRate, shifts: [] };
     }
 
-    billingSummary[entry.location].hours += hours;
-    billingSummary[entry.location].billedAmount += billedAmount;
-    billingSummary[entry.location].shifts.push({
+    billingSummary[entrySite].hours += hours;
+    billingSummary[entrySite].billedAmount += billedAmount;
+    billingSummary[entrySite].shifts.push({
       ...entry,
+      clock_out: entry.clock_out || effectiveClockOut.toISOString(),
+      live: !entry.clock_out,
       hours,
       billedAmount
     });
@@ -93,6 +99,20 @@ export default function ClientPayrollReport() {
 
   const totalHours = Object.values(billingSummary).reduce((sum, data) => sum + data.hours, 0);
   const totalBilled = Object.values(billingSummary).reduce((sum, data) => sum + data.billedAmount, 0);
+  const weekStart = startOfWeek(liveNow, { weekStartsOn: 1 });
+  const weekToDate = timeEntries.reduce((summary, entry) => {
+    if (!entry.clock_in || new Date(entry.clock_in) < weekStart) return summary;
+    const entrySite = String(entry.location || '').split(':')[0].trim();
+    if (!clientLocations.includes(entrySite)) return summary;
+    const location = locations.find(item => item.site_name === entrySite);
+    const rate = Number(location?.site_bill_rate || 0);
+    if (!rate) return summary;
+    const end = entry.clock_out ? new Date(entry.clock_out) : liveNow;
+    const hours = Math.max(0, (end - new Date(entry.clock_in)) / 3600000);
+    summary.hours += hours;
+    summary.amount += hours * rate;
+    return summary;
+  }, { hours: 0, amount: 0 });
 
   const printStoredInvoice = (invoice) => {
     const shifts = invoice.shifts ? JSON.parse(invoice.shifts) : [];
@@ -432,6 +452,15 @@ export default function ClientPayrollReport() {
       </Card>
 
         {/* Summary */}
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Live week to date (Monday through now)</p>
+          <div className="mt-1 flex flex-wrap gap-x-8 gap-y-1">
+            <p className="text-2xl font-bold text-slate-900">{weekToDate.hours.toFixed(2)} hours</p>
+            <p className="text-2xl font-bold text-emerald-700">{'$'}{weekToDate.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+          <p className="mt-1 text-xs text-slate-600">Updates every 30 seconds and includes officers who are still clocked in.</p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <Card className="border-l-4 border-l-blue-500">
           <CardHeader className="pb-3">
