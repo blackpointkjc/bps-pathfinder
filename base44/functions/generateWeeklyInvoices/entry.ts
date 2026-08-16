@@ -7,6 +7,29 @@ const hoursBetween = (start: unknown, end: unknown) => {
   const ms = new Date(String(end)).getTime() - new Date(String(start)).getTime();
   return Number.isFinite(ms) && ms > 0 ? ms / 3600000 : 0;
 };
+const scheduleFor = (entry: any, schedules: any[]) => (schedules || []).find((shift: any) =>
+  shift.archived !== true &&
+  String(shift.officer_email || '').toLowerCase() === String(entry.officer_email || '').toLowerCase() &&
+  siteOf(shift.location) === siteOf(entry.location) &&
+  String(shift.shift_date || '').slice(0, 10) === String(entry.clock_in || '').slice(0, 10)
+);
+const rateFor = (entry: any, location: any, schedules: any[]) => {
+  const shift = scheduleFor(entry, schedules);
+  const shiftType = String(shift?.shift_type || 'normal').toLowerCase();
+  const details = `${shift?.site_details || ''} ${shift?.special_instructions || ''}`.toLowerCase();
+  const unarmed = /\\bunarmed\\b/.test(details);
+  let field = unarmed ? 'site_bill_rate_unarmed' : 'site_bill_rate';
+  let label = unarmed ? 'Standard unarmed' : 'Standard armed';
+  if (shiftType === 'holiday_coverage') {
+    field = unarmed ? 'site_bill_rate_holiday_unarmed' : 'site_bill_rate_holiday_armed';
+    label = unarmed ? 'Holiday unarmed' : 'Holiday armed';
+  } else if (shiftType === 'rush_coverage') {
+    field = unarmed ? 'site_bill_rate_rush_unarmed' : 'site_bill_rate_rush_armed';
+    label = unarmed ? 'Rush unarmed' : 'Rush armed';
+  }
+  const base = Number(location?.[unarmed ? 'site_bill_rate_unarmed' : 'site_bill_rate']) || Number(location?.site_bill_rate) || 0;
+  return { rate: Number(location?.[field]) || base, label };
+};
 
 Deno.serve(async (req) => {
   try {
@@ -32,11 +55,12 @@ Deno.serve(async (req) => {
     const periodStart = dateOnly(periodStartDate);
     const periodEnd = dateOnly(periodEndDate);
 
-    const [entries, locations, users, invoices] = await Promise.all([
+    const [entries, locations, users, invoices, schedules] = await Promise.all([
       base44.asServiceRole.entities.TimeEntry.list('-clock_in', 10000),
       base44.asServiceRole.entities.Location.list('site_name', 2000),
       base44.asServiceRole.entities.User.list(),
       base44.asServiceRole.entities.Invoice.list('-created_date', 5000),
+      base44.asServiceRole.entities.Schedule.list('-shift_date', 10000),
     ]);
 
     const clients = (users || []).filter((user: any) => {
@@ -80,9 +104,12 @@ Deno.serve(async (req) => {
         if (!siteEntries.length) continue;
 
         let totalHours = 0;
+        let totalAmount = 0;
         const shifts = siteEntries.map((entry: any) => {
           const hours = hoursBetween(entry.clock_in, entry.clock_out);
+          const shiftRate = rateFor(entry, location, schedules || []);
           totalHours += hours;
+          totalAmount += hours * shiftRate.rate;
           const officer = officers.get(String(entry.officer_email || '').toLowerCase()) as any;
           return {
             date: String(entry.clock_in).slice(0, 10),
@@ -90,8 +117,9 @@ Deno.serve(async (req) => {
             clockIn: String(entry.clock_in),
             clockOut: String(entry.clock_out),
             hours: hours.toFixed(2),
-            rate: rate.toFixed(2),
-            amount: (hours * rate).toFixed(2),
+            rate: shiftRate.rate.toFixed(2),
+            rateType: shiftRate.label,
+            amount: (hours * shiftRate.rate).toFixed(2),
           };
         });
 
@@ -106,7 +134,7 @@ Deno.serve(async (req) => {
           period_end: periodEnd,
           total_hours: totalHours,
           bill_rate: rate,
-          total_amount: totalHours * rate,
+          total_amount: totalAmount,
           shifts: JSON.stringify(shifts),
           notes: 'Automatically generated weekly invoice.',
           due_date: dateOnly(due),
@@ -118,7 +146,7 @@ Deno.serve(async (req) => {
           type: 'invoice',
           priority: 'normal',
           title: `New Invoice - ${invoiceNumber}`,
-          message: `Your weekly invoice for ${siteName} is available. Total: $${(totalHours * rate).toFixed(2)}.`,
+          message: `Your weekly invoice for ${siteName} is available. Total: $${totalAmount.toFixed(2)}.`,
           action_url: '/ClientCenter?section=requests&tool=payroll',
           read: false,
         });
