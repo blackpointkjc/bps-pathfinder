@@ -232,10 +232,37 @@ function pointToSegmentMeters(lat: number, lng: number, a: any, b: any) {
   return Math.sqrt(x * x + y * y);
 }
 
+function normalizedStreet(value: unknown) {
+  const cleaned = String(value || '')
+    .toUpperCase()
+    .replace(/\bNORTH\b/g, 'N').replace(/\bSOUTH\b/g, 'S')
+    .replace(/\bEAST\b/g, 'E').replace(/\bWEST\b/g, 'W')
+    .replace(/\bSTREET\b/g, 'ST').replace(/\bAVENUE\b/g, 'AVE')
+    .replace(/\bROAD\b/g, 'RD').replace(/\bBOULEVARD\b/g, 'BLVD')
+    .replace(/\bLANE\b/g, 'LN').replace(/\bDRIVE\b/g, 'DR')
+    .replace(/\b(\d+)(ST|ND|RD|TH)\b/g, '$1')
+    .replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const number = Number(cleaned.match(/^\d+/)?.[0]);
+  const street = cleaned.replace(/^\d+\s*/, '').replace(/\b(?:RICHMOND|VA|VIRGINIA)\b.*$/, '').trim();
+  return { number, street };
+}
+
+function sameStreetBlock(callLocation: unknown, propertyAddress: unknown) {
+  const call = normalizedStreet(callLocation);
+  const property = normalizedStreet(propertyAddress);
+  if (!Number.isFinite(call.number) || !Number.isFinite(property.number) || !call.street || !property.street) return false;
+  const callStreet = call.street.replace(/\b(?:ST|AVE|RD|BLVD|LN|DR)\b$/, '').trim();
+  const propertyStreet = property.street.replace(/\b(?:ST|AVE|RD|BLVD|LN|DR)\b$/, '').trim();
+  return callStreet === propertyStreet && Math.floor(call.number / 100) === Math.floor(property.number / 100);
+}
+
 function propertyMatch(call: any, location: any) {
+  if (location?.active === false || location?.property_monitoring_enabled !== true) return null;
   const lat = Number(call?.latitude);
   const lng = Number(call?.longitude);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng) || location?.active === false || location?.property_monitoring_enabled !== true) return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return sameStreetBlock(call?.location, location?.address) ? { relation: 'inside', distanceMeters: 0 } : null;
+  }
 
   const polygon = Array.isArray(location.property_monitoring_polygon) ? location.property_monitoring_polygon : [];
   if (String(location.property_monitoring_boundary_type || '').toLowerCase() === 'polygon' && polygon.length >= 3) {
