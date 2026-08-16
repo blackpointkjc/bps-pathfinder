@@ -128,7 +128,7 @@ export default function ActiveTracker() {
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-900">
-            <strong>Note:</strong> Officer locations are updated automatically every 30 seconds while they are clocked in. 
+            <strong>Note:</strong> Officer locations update automatically while they are signed into the app. 
             This page refreshes every 5 seconds to show real-time status.
           </p>
         </div>
