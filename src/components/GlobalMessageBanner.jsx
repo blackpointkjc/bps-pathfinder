@@ -107,6 +107,7 @@ function boloSummary(record) {
 }
 
 const SILENT_CALL_STATUSES = new Set(['cleared', 'closed', 'completed', 'resolved']);
+const HIDDEN_EXISTING_CALL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 
 function isSilentCallStatus(value) {
   return SILENT_CALL_STATUSES.has(normalized(value));
@@ -295,7 +296,9 @@ export default function GlobalMessageBanner({ user }) {
       // Property-call speech is allowlisted by an active Property Monitoring site.
       // Never announce an orphaned/stale alert or a call for a disabled property.
       const monitoredProperty = await activeMonitoredPropertyForAlert(record);
-      if (!call || !monitoredProperty || isSilentCallStatus(call.status)) return;
+      // Canceled calls may announce once through the live status-change listener,
+      // but they must never be replayed or displayed as an existing active call.
+      if (!call || !monitoredProperty || HIDDEN_EXISTING_CALL_STATUSES.has(normalized(call.status))) return;
       const summary = propertyCallSummary(record, call);
       // Dispatch the incident and address verbally in a concise police-CAD cadence.
       speakNotification(`Active call for service. ${summary}`, { rate: 0.82, pitch: 0.66, dedupeMs: 10000 });
