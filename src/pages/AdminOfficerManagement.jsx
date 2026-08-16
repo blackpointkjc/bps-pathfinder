@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Clock, MapPin, Save, Check, Shield, User, Search, Plus, Trash2, Users } from "lucide-react";
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { listDirectoryLocations, listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -40,7 +40,7 @@ export default function AdminOfficerManagement() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => listDirectoryUsers(),
+    queryFn: () => listOfficerDirectory('last_name', 1000, true),
     enabled: user?.role === 'admin',
   });
 
