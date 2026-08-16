@@ -26,7 +26,7 @@ export default function ManageStudents({ embedded = false }) {
   const hasAccess = isSystemAdmin || currentUser?.additional_roles?.includes('full_access') || currentUser?.additional_roles?.includes('trainer');
 
   const { data: allUsers = [], isLoading } = useQuery({
-    queryKey: ['trainingUsers'],
+    queryKey: ['trainingUsers', 'manageStudents'],
     queryFn: async () => {
       const allUsers = await listTrainingUsers(true) || [];
       return allUsers.filter(u => !u.termination_date);
