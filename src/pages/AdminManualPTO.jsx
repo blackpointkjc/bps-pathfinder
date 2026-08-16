@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar, AlertCircle, Plus } from "lucide-react";
 import { format } from "date-fns";
+import { listDirectoryUsers } from '@/lib/appDirectory';
+import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 export default function AdminManualPTO() {
   const [showDialog, setShowDialog] = useState(false);
@@ -30,15 +32,17 @@ export default function AdminManualPTO() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: activeUsers = [] } = useQuery({
-    queryKey: ['appDirectoryUsers', 'manualPTO'],
-    queryFn: () => base44.entities.User.list('last_name', 1000),
+  const { data: directoryUsers = [] } = useQuery({
+    queryKey: ['directoryUsers', 'manualPTO'],
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access') || String(user?.rank || '').toLowerCase() === 'human resources',
     initialData: [],
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
+
+  const activeUsers = directoryUsers.filter(hasOfficerAdditionalRole);
 
   const { data: schedules } = useQuery({
     queryKey: ['schedules'],
