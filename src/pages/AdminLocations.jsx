@@ -34,7 +34,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { format } from 'date-fns';
-import { invalidateAppDirectory, listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { invalidateAppDirectory, listDirectoryDivisions, listDirectoryUsers } from '@/lib/appDirectory';
 import { isClientAccount } from '@/lib/directoryUtils';
 
 // Fix leaflet default marker icon
@@ -480,6 +480,19 @@ export default function AdminLocations({ embedded = false }) {
             Add Location
           </Button>
         </div>
+
+        {locationsLoading && (
+          <Card className="border border-blue-200 bg-blue-50">
+            <CardContent className="p-4 text-sm text-blue-900">Loading locations...</CardContent>
+          </Card>
+        )}
+        {locationsError && (
+          <Card className="border border-red-300 bg-red-50">
+            <CardContent className="p-4 text-sm text-red-800">
+              Unable to load locations: {locationsError.message}. Refresh this page to retry.
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="active" className="space-y-6">
           <TabsList className="grid h-auto w-full grid-cols-1 gap-1 border border-slate-200 bg-white p-1 sm:grid-cols-2">
