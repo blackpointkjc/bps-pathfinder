@@ -1,0 +1,17 @@
+{
+  "name": "generateWeeklyInvoices",
+  "entrypoint": "entry.ts",
+  "automations": [
+    {
+      "name": "Generate weekly client invoices",
+      "description": "Creates idempotent invoices for the completed Monday-Sunday billing week every Sunday at 8:00 AM Eastern.",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "0 8 * * 0",
+      "timezone": "America/New_York",
+      "is_active": true,
+      "function_args": {}
+    }
+  ]
+}
