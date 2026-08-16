@@ -568,15 +568,6 @@ export default function AccountingPayroll() {
   const selectedPayrollEntries = payrollEntries
     .filter(entry => !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date));
   const currentReportEntries = selectedPayrollEntries.filter(entry => ['draft', 'approved', 'paid'].includes(entry.status));
-  const finalizedNet = selectedPayrollEntries.reduce((sum, entry) => sum + (Number(entry.net_pay) || 0), 0);
-  const finalizedEmployeeTaxes = selectedPayrollEntries.reduce((sum, entry) => sum +
-    (Number(entry.federal_tax) || 0) + (Number(entry.state_tax) || 0) +
-    (Number(entry.social_security) || 0) + (Number(entry.medicare) || 0), 0);
-  // FICA accrues immediately while officers work. Federal/state withholding is
-  // added from the finalized payroll calculation once the period is generated.
-  const liveEmployeeTaxes = finalizedEmployeeTaxes || (totalGross * 0.0765);
-  const totalNet = finalizedNet || Math.max(0, totalGross - liveEmployeeTaxes);
-
   // Generate Gusto-compatible payroll report
   const generatePayrollReport = (entriesToReport) => {
     const reportWindow = window.open('', '_blank');
