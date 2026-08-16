@@ -265,6 +265,22 @@ export default function GlobalMessageBanner({ user }) {
       timers.current.set(key, timer);
     };
 
+    const activeMonitoredPropertyForAlert = async record => {
+      if (!record?.callId || !record?.propertyId) return null;
+      const location = await base44.entities.Location.get(record.propertyId).catch(() => null);
+      if (!location || location.active === false || location.property_monitoring_enabled !== true) return null;
+      return location;
+    };
+
+    const findActivePropertyAlertForCall = async callId => {
+      if (!callId) return null;
+      const alerts = await base44.entities.PropertyAlert.filter({ callId }, '-created_date', 20).catch(() => []);
+      for (const alert of alerts || []) {
+        if (await activeMonitoredPropertyForAlert(alert)) return alert;
+      }
+      return null;
+    };
+
     const showPropertyCall = async record => {
       if (!record?.id) return;
       const key = `PropertyAlert:${record.id}`;
@@ -274,9 +290,10 @@ export default function GlobalMessageBanner({ user }) {
       const call = record.callId
         ? await base44.entities.DispatchCall.get(record.callId).catch(() => null)
         : null;
-      // Never announce an orphaned PropertyAlert. Cleared calls may be archived or
-      // deleted before a recently-created alert is recovered during sign-in.
-      if (!call || isTerminalCallStatus(call.status)) return;
+      // Property-call speech is allowlisted by an active Property Monitoring site.
+      // Never announce an orphaned/stale alert or a call for a disabled property.
+      const monitoredProperty = await activeMonitoredPropertyForAlert(record);
+      if (!call || !monitoredProperty || isTerminalCallStatus(call.status)) return;
       const summary = propertyCallSummary(record, call);
       // Dispatch the incident and address verbally in a concise police-CAD cadence.
       speakNotification(`Active call for service. ${summary}`, { rate: 0.82, pitch: 0.66, dedupeMs: 10000 });
@@ -311,7 +328,7 @@ export default function GlobalMessageBanner({ user }) {
         (calls || []).forEach(call => callStatuses.current.set(call.id, normalized(call.status)));
       }).catch(() => null);
 
-      const callStatusUnsubscribe = base44.entities.DispatchCall.subscribe(event => {
+      const callStatusUnsubscribe = base44.entities.DispatchCall.subscribe(async event => {
         const call = event?.data;
         if (!call?.id) return;
         const nextRaw = normalized(call.status);
@@ -321,10 +338,16 @@ export default function GlobalMessageBanner({ user }) {
 
         const spokenStatus = announcedCallStatus(call.status);
         if (!spokenStatus || isTerminalCallStatus(call.status)) return;
-        const incident = call.incident || 'Call for service';
-        const address = call.location || 'address unavailable';
+
+        // A DispatchCall update alone is never enough to speak. Require the call to
+        // have a current alert tied to a site that is still enabled in Property Monitoring.
+        const propertyAlert = await findActivePropertyAlertForCall(call.id);
+        if (!propertyAlert) return;
+
+        const incident = call.incident || propertyAlert.callIncident || 'Call for service';
+        const address = call.location || propertyAlert.callLocation || 'address unavailable';
         speakNotification(
-          `Call status update. ${incident}. At ${address}. Now ${spokenStatus}.`,
+          `Monitored property call status update. ${incident}. At ${address}. Now ${spokenStatus}.`,
           { rate: 0.82, pitch: 0.66, dedupeMs: 4000 },
         );
       });
