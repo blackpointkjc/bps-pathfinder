@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Package, Plus, Edit, Trash2, User, Search, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function AdminEquipment() {
   const [showDialog, setShowDialog] = useState(false);
@@ -149,7 +150,7 @@ export default function AdminEquipment() {
     return matchesSearch && matchesType && matchesStatus;
   });
 
-  const activeOfficers = users.filter(u => !u.termination_date);
+  const activeOfficers = users.filter(isOperationalOfficer);
 
   const getStatusColor = (status) => {
     switch (status) {
