@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { listOfficerDirectory } from '@/lib/appDirectory';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
@@ -95,15 +96,12 @@ export default function AdminLocationTracker() {
 
   const hasAccess = user?.role === 'admin';
 
-  const { data: allUsers = [] } = useQuery({
-    queryKey: ['appDirectoryUsers'],
-    queryFn: async () => {
-      const result = await base44.functions.invoke('getAppDirectory', {});
-      const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload.users || [];
-    },
-    staleTime: 60 * 1000,
+  const { data: allUsers = [], error: officerDirectoryError } = useQuery({
+    queryKey: ['officerDirectory', 'adminLocationTracker'],
+    queryFn: () => listOfficerDirectory('last_name', 1000, true),
+    enabled: hasAccess,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const { data: activeOfficerLocations = [] } = useQuery({
