@@ -4,7 +4,7 @@
   "automations": [
     {
       "name": "Generate payroll after configured period end",
-      "description": "Checks hourly and generates duplicate-safe draft payroll at 8:00 AM Eastern the day after a PayrollPeriod end date.",
+      "description": "Checks hourly and automatically finalizes duplicate-safe gross payroll reports at 8:00 AM Eastern the day after a PayrollPeriod end date.",
       "type": "scheduled",
       "schedule_mode": "recurring",
       "schedule_type": "cron",
