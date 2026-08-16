@@ -52,7 +52,7 @@ export default function AccountingInvoices() {
     enabled: isAccountingRole,
     staleTime: 0,
     refetchOnMount: 'always',
-    refetchInterval: 3000,
+    refetchInterval: 15000,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
   });
@@ -66,7 +66,7 @@ export default function AccountingInvoices() {
         const unsubscribe = base44.entities[entity].subscribe(refresh);
         if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
       } catch {
-        // The three-second refresh remains active when realtime is unavailable.
+        // Fifteen-second polling remains active when realtime is unavailable.
       }
     }
     return () => unsubscribers.forEach(unsubscribe => unsubscribe());
@@ -220,7 +220,8 @@ export default function AccountingInvoices() {
     if (!location || (selectedSite && entrySite !== selectedSite)) return summary;
     const { rate } = resolveBillingRate(entry, location, schedules);
     if (!rate) return summary;
-    const hours = Math.round(calculateLiveHours(entry, liveNow) * 100) / 100;
+    const rawHours = calculateLiveHours(entry, liveNow);
+    const hours = entry.clock_out ? Math.round(rawHours * 100) / 100 : rawHours;
     summary.hours += hours;
     summary.amount += hours * rate;
     summary.activeShifts += entry.clock_out ? 0 : 1;
