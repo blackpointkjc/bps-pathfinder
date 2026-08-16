@@ -63,11 +63,11 @@ export default function ClientCallHistory() {
       const assignedNames = me?.assigned_locations || (me?.assigned_location ? [me.assigned_location] : []);
       const [allLocations, active, archived, notes, reports, propertyAlerts] = await Promise.all([
         base44.entities.Location.list(),
-        base44.entities.DispatchCall.list('-time_received', 500),
-        base44.entities.CallHistory.list('-archived_date', 500),
-        base44.entities.CallNote.list('-created_date', 1000),
-        base44.entities.IncidentReport.list('-created_date', 1000),
-        base44.entities.PropertyAlert.list('-created_date', 1000).catch(() => []),
+        base44.entities.DispatchCall.list('-time_received', 200),
+        base44.entities.CallHistory.list('-archived_date', 200),
+        base44.entities.CallNote.list('-created_date', 500),
+        base44.entities.IncidentReport.list('-created_date', 500),
+        base44.entities.PropertyAlert.list('-created_date', 500).catch(() => []),
       ]);
       const assignedSites = (allLocations || []).filter(site => assignedNames.includes(site.site_name) || String(site.assigned_client_email || '').toLowerCase() === String(me?.email || '').toLowerCase());
       setSites(assignedSites);
@@ -109,8 +109,12 @@ export default function ClientCallHistory() {
 
   useEffect(() => {
     load();
-    const timer = setInterval(load, 15000);
-    return () => clearInterval(timer);
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') load();
+    }, 60000);
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
 
   const filtered = useMemo(() => rows.filter(row => {

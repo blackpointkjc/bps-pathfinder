@@ -1,0 +1,121 @@
+{
+  "name": "DirectMessage",
+  "type": "object",
+  "properties": {
+    "subject": {
+      "type": "string",
+      "description": "Conversation subject"
+    },
+    "message": {
+      "type": "string",
+      "description": "Message body"
+    },
+    "message_type": {
+      "type": "string",
+      "enum": [
+        "general",
+        "urgent",
+        "announcement"
+      ],
+      "default": "general"
+    },
+    "recipient_type": {
+      "type": "string",
+      "enum": [
+        "individual",
+        "group"
+      ],
+      "default": "individual"
+    },
+    "recipients": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Recipient email addresses"
+    },
+    "sender_email": {
+      "type": "string",
+      "description": "Sender email address"
+    },
+    "sender_name": {
+      "type": "string",
+      "description": "Sender display name"
+    },
+    "read_by": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Email addresses that have read the message"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "high",
+        "urgent"
+      ],
+      "default": "normal"
+    }
+  },
+  "required": [
+    "message",
+    "recipients",
+    "sender_email",
+    "sender_name"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.sender_email": "{{user.email}}"
+        },
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
