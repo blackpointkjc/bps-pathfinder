@@ -77,9 +77,10 @@ export default function BackgroundLocationTracker({ user }) {
     staleTime: 60000,
   });
 
-  // Duty-only privacy rule: GPS publishing and one-minute history begin only
-  // after a successful clock-in and stop as soon as the TimeEntry closes.
-  const shouldTrack = !!user?.email && !!activeEntry?.id;
+  // Signed-in tracking rule: GPS publishing and one-minute movement history run
+  // whenever the officer is logged into the app. An open TimeEntry adds site/shift
+  // context, but it does not control whether live navigation tracking is active.
+  const shouldTrack = !!user?.email;
   const shouldPublish = shouldTrack;
 
   // Mutation to create geofence alert
@@ -304,8 +305,8 @@ export default function BackgroundLocationTracker({ user }) {
     };
   }, [shouldTrack, shouldPublish, activeEntry, user, locations]);
 
-  // Independent duty heartbeat. Live GPS is refreshed every 15 seconds while
-  // clocked in, even when watchPosition is quiet; history remains one-minute.
+  // Independent signed-in heartbeat. Live GPS is refreshed every 15 seconds even
+  // when watchPosition is quiet; movement history remains one-minute.
   useEffect(() => {
     if (!shouldTrack || !user?.email) return undefined;
 
@@ -336,7 +337,7 @@ export default function BackgroundLocationTracker({ user }) {
         }
         if (fix && Date.now() - lastSaveRef.current >= 55000) {
           await base44.entities.LocationHistory.create({
-            time_entry_id: activeEntry?.id || '',
+            time_entry_id: activeEntry?.id || `login-session:${sessionStartedRef.current}`,
             officer_email: user.email,
             officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
             location: activeEntry?.location || user?.current_location || user?.assigned_location || `Signed In · ${user?.role || 'user'}`,
@@ -359,13 +360,13 @@ export default function BackgroundLocationTracker({ user }) {
     return () => window.clearInterval(heartbeatId);
   }, [shouldTrack, user?.email, user?.role, user?.status, user?.assigned_location, activeEntry?.id, activeEntry?.location, activeEntry?.clock_in]);
 
-  // Only clocked-in officers are tracked and receive the close warning.
+  // Signed-in officers are tracked and receive the close warning.
   useEffect(() => {
-    if (!shouldTrack || !activeEntry) return;
+    if (!shouldTrack) return;
 
     const handleBeforeUnload = (e) => {
       e.preventDefault();
-      e.returnValue = '⚠️ WARNING: You are currently clocked in. Closing this tab will stop location tracking. Are you sure you want to close?';
+      e.returnValue = '⚠️ Closing this tab will stop live location tracking. Are you sure you want to close?';
       return e.returnValue;
     };
 
@@ -382,7 +383,7 @@ export default function BackgroundLocationTracker({ user }) {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [shouldTrack, activeEntry]);
+  }, [shouldTrack]);
 
   // Add pagehide event for iOS/mobile browsers
   useEffect(() => {
