@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { publishLiveLocation } from '@/lib/liveLocationService';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 // Calculate distance between two GPS coordinates in meters
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
@@ -80,7 +81,7 @@ export default function BackgroundLocationTracker({ user }) {
   // Signed-in tracking rule: GPS publishing and one-minute movement history run
   // whenever the officer is logged into the app. An open TimeEntry adds site/shift
   // context, but it does not control whether live navigation tracking is active.
-  const shouldTrack = !!user?.email;
+  const shouldTrack = !!user?.email && isOperationalOfficer(user);
   const shouldPublish = shouldTrack;
 
   // Mutation to create geofence alert
