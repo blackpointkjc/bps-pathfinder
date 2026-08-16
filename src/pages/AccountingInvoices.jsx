@@ -11,6 +11,7 @@ import { DollarSign, Plus, Send, FileText, Download } from "lucide-react";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { calculateLiveHours, normalizeSiteName, resolveBillingRate } from "@/lib/billingRates";
 
 export default function AccountingInvoices() {
   const [selectedClient, setSelectedClient] = useState("");
@@ -56,7 +57,7 @@ export default function AccountingInvoices() {
     if (!isAccountingRole) return undefined;
     const refresh = () => refetchAccounting();
     const unsubscribers = [];
-    for (const entity of ['TimeEntry', 'Invoice', 'Location']) {
+    for (const entity of ['TimeEntry', 'Invoice', 'Location', 'Schedule']) {
       try {
         const unsubscribe = base44.entities[entity].subscribe(refresh);
         if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
@@ -72,6 +73,7 @@ export default function AccountingInvoices() {
   const officers = accountingData.users || [];
   const config = accountingData.config || null;
   const invoices = accountingData.invoices || [];
+  const schedules = accountingData.schedules || [];
 
   const generateInvoiceMutation = useMutation({
     mutationFn: async (invoiceData) => {
@@ -107,8 +109,8 @@ export default function AccountingInvoices() {
     setGenerating(true);
 
     try {
-      const location = locations.find(l => l.site_name === selectedSite);
-      const billRate = location?.site_bill_rate;
+      const location = locations.find(l => normalizeSiteName(l.site_name) === normalizeSiteName(selectedSite));
+      const billRate = Number(location?.site_bill_rate || 0);
 
       if (!billRate) {
         alert('Site has no bill rate set. Please set the bill rate in Manage Locations.');
@@ -119,18 +121,21 @@ export default function AccountingInvoices() {
       // Filter time entries for this site and date range
       const siteEntries = timeEntries.filter(entry => {
         if (!entry.clock_in || !entry.clock_out) return false;
-        const entrySite = String(entry.location || '').split(':')[0].trim();
+        const entrySite = normalizeSiteName(entry.location);
         if (entrySite !== selectedSite) return false;
         const entryDate = String(entry.clock_in).slice(0, 10);
         return entryDate >= startDate && entryDate <= endDate;
       });
 
       let totalHours = 0;
+      let totalAmount = 0;
       const shifts = [];
 
       siteEntries.forEach(entry => {
-        const hours = (new Date(entry.clock_out) - new Date(entry.clock_in)) / (1000 * 60 * 60);
+        const hours = calculateLiveHours(entry);
+        const { rate, rateLabel } = resolveBillingRate(entry, location, schedules);
         totalHours += hours;
+        totalAmount += hours * rate;
         const officer = officers.find(o => o.email === entry.officer_email);
         shifts.push({
           date: format(new Date(entry.clock_in), 'MMM d, yyyy'),
@@ -138,12 +143,11 @@ export default function AccountingInvoices() {
           clockIn: format(new Date(entry.clock_in), 'HH:mm'),
           clockOut: format(new Date(entry.clock_out), 'HH:mm'),
           hours: hours.toFixed(2),
-          rate: billRate.toFixed(2),
-          amount: (hours * billRate).toFixed(2)
+          rate: rate.toFixed(2),
+          rateType: rateLabel,
+          amount: (hours * rate).toFixed(2)
         });
       });
-
-      const totalAmount = totalHours * billRate;
       
       // Generate invoice number: YY + sequential number
       const currentYear = new Date().getFullYear().toString().slice(-2);
@@ -210,10 +214,9 @@ export default function AccountingInvoices() {
     const entrySite = String(entry.location || '').split(':')[0].trim();
     const location = clientLocations.find(item => item.site_name === entrySite);
     if (!location || (selectedSite && entrySite !== selectedSite)) return summary;
-    const rate = Number(location.site_bill_rate || 0);
+    const { rate } = resolveBillingRate(entry, location, schedules);
     if (!rate) return summary;
-    const end = entry.clock_out ? new Date(entry.clock_out) : liveNow;
-    const hours = Math.max(0, (end - new Date(entry.clock_in)) / 3600000);
+    const hours = calculateLiveHours(entry, liveNow);
     summary.hours += hours;
     summary.amount += hours * rate;
     summary.activeShifts += entry.clock_out ? 0 : 1;
@@ -245,7 +248,7 @@ export default function AccountingInvoices() {
 
         const siteEntries = timeEntries.filter(entry => {
           if (!entry.clock_in || !entry.clock_out) return false;
-          const entrySite = String(entry.location || '').split(':')[0].trim();
+          const entrySite = normalizeSiteName(entry.location);
           if (entrySite !== siteName) return false;
           const entryDate = String(entry.clock_in).slice(0, 10);
           return entryDate >= startDate && entryDate <= endDate;
@@ -254,11 +257,14 @@ export default function AccountingInvoices() {
         if (siteEntries.length === 0) continue;
 
         let totalHours = 0;
+        let totalAmount = 0;
         const shifts = [];
 
         siteEntries.forEach(entry => {
-          const hours = (new Date(entry.clock_out) - new Date(entry.clock_in)) / (1000 * 60 * 60);
+          const hours = calculateLiveHours(entry);
+          const { rate, rateLabel } = resolveBillingRate(entry, location, schedules);
           totalHours += hours;
+          totalAmount += hours * rate;
           const officer = officers.find(o => o.email === entry.officer_email);
           shifts.push({
             date: format(new Date(entry.clock_in), 'MMM d, yyyy'),
@@ -266,12 +272,11 @@ export default function AccountingInvoices() {
             clockIn: format(new Date(entry.clock_in), 'HH:mm'),
             clockOut: format(new Date(entry.clock_out), 'HH:mm'),
             hours: hours.toFixed(2),
-            rate: billRate.toFixed(2),
-            amount: (hours * billRate).toFixed(2)
+            rate: rate.toFixed(2),
+            rateType: rateLabel,
+            amount: (hours * rate).toFixed(2)
           });
         });
-
-        const totalAmount = totalHours * billRate;
         const currentYear = new Date().getFullYear().toString().slice(-2);
         const yearInvoices = invoices.filter(inv => inv.invoice_number?.startsWith(currentYear));
         const nextNumber = yearInvoices.length + 1;
