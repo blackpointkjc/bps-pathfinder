@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
       const user = userByEmail.get(email) || {};
       units.push({
         id: active.id || entry.id,
-        officer_email: active.officer_email,
+        officer_email: active.officer_email || entry.officer_email,
         full_name: active.officer_name || user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' '),
         officer_name: active.officer_name || user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' '),
         first_name: user.first_name || '',
