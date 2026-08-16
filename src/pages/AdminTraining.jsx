@@ -182,45 +182,38 @@ function AdminTrainingContent({ embedded = false }) {
         assignedOfficers.push(...users.filter(u => u.email && u.first_name));
       }
       
-      // Create notifications
-      const notificationPromises = assignedOfficers.map(officer => {
-        const notification = {
-          recipient_email: officer.email,
-          recipient_name: `${officer.first_name} ${officer.last_name}`,
+      // Send in small sequential batches. Large Promise.all bursts can exceed the
+      // Base44 rate limit when a module is assigned company-wide.
+      for (const learner of assignedOfficers) {
+        await base44.entities.Notification.create({
+          recipient_email: learner.email,
+          recipient_name: `${learner.first_name || ''} ${learner.last_name || ''}`.trim(),
           type: 'training_assigned',
           priority: data.required ? 'high' : 'normal',
           title: `New Training: ${data.title}`,
-          message: data.required 
+          message: data.required
             ? `Required training "${data.title}" has been assigned. ${data.due_after_days ? `Complete within ${data.due_after_days} days.` : 'Please complete as soon as possible.'}`
             : `New training "${data.title}" is now available.`,
-          action_url: (officer.additional_roles || []).map(role => String(role).toLowerCase()).includes('student') ? '/StudentPortal' : '/officer-training',
+          action_url: (learner.additional_roles || []).map(role => String(role).toLowerCase()).includes('student') ? '/StudentPortal' : '/officer-training',
           read: false,
-        };
-        
-        return base44.entities.Notification.create(notification);
-      });
-      
-      // Send email notifications for required training
-      if (data.required) {
-        const emailPromises = assignedOfficers.map(officer => 
-          base44.integrations.Core.SendEmail({
-            to: officer.email,
+        });
+
+        if (data.required) {
+          await base44.integrations.Core.SendEmail({
+            to: learner.email,
             subject: `[REQUIRED] New Training Assignment: ${data.title}`,
             body: `
               <h2>Required Training Assignment</h2>
-              <p>Dear ${officer.first_name},</p>
+              <p>Dear ${learner.first_name || 'Learner'},</p>
               <p>You have been assigned a <strong>required training module</strong>:</p>
               <h3>${data.title}</h3>
-              <p>${data.description}</p>
+              <p>${data.description || ''}</p>
               ${data.due_after_days ? `<p><strong>Deadline:</strong> Complete within ${data.due_after_days} days of assignment</p>` : ''}
-              <p>Please log in to the Black Point Portal portal to complete this training.</p>
+              <p>Please log in to the Black Point Portal to complete this training.</p>
               <p>Best regards,<br/>Black Point Protection Training Team</p>
-            `
-          }).catch(err => console.error('Email failed:', err))
-        );
-        await Promise.all([...notificationPromises, ...emailPromises]);
-      } else {
-        await Promise.all(notificationPromises);
+            `,
+          }).catch(err => console.error('Training email failed:', err));
+        }
       }
       
       return newModule;
