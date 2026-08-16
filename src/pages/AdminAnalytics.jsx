@@ -554,7 +554,7 @@ export default function AdminAnalytics() {
               {complaintStats.byOfficer.length > 0 ? (
                 <div className="space-y-2 max-h-80 overflow-y-auto">
                   {complaintStats.byOfficer.slice(0, 10).map((officer) => (
-                    <div key={officer.email} className="flex items-center justify-between p-2 bg-red-50 rounded-lg">
+                    <div key={officer.email} className="flex items-center justify-between p-2 border border-red-900 bg-slate-800 rounded-lg">
                       <span className="text-sm font-medium text-white">{officer.name}</span>
                       <Badge className={officer.sustained > 0 ? 'bg-red-600' : 'bg-amber-600'}>
                         {officer.count} ({officer.sustained} sustained)
