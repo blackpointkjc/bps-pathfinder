@@ -1,3 +1,4 @@
+import { listDirectoryLocations } from '@/lib/appDirectory';
 import { getClientPortalUser, getClientPreviewId } from '@/utils/clientPreview';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
@@ -10,7 +11,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { MapPin, Shield, Save, X } from "lucide-react";
 import { format } from "date-fns";
 import {
-import { listDirectoryLocations } from '@/lib/appDirectory';
   Select,
   SelectContent,
   SelectItem,

@@ -1,4 +1,5 @@
 
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -10,7 +11,6 @@ import { Shield, Printer, FileText, Clock, MapPin, Phone, Mail } from "lucide-re
 import { format, startOfWeek, endOfWeek, parseISO } from "date-fns";
 import { brandEmailPayload } from "@/utils/blackPointEmail";
 import {
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
   Select,
   SelectContent,
   SelectItem,
