@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DollarSign, CheckCircle, Trash2, Zap, AlertTriangle, Printer } from "lucide-react";
 import { format, isValid, parseISO, startOfWeek } from "date-fns";
 import { calculatePaidHours } from "@/lib/payrollCalculations";
+import { calculateLiveHours } from "@/lib/billingRates";
 
 const safeFormatDate = (dateStr, formatStr = 'MMM d, yyyy') => {
   if (!dateStr) return 'N/A';
@@ -30,6 +31,12 @@ export default function AccountingPayroll() {
   const [generating, setGenerating] = useState(false);
   const [validationIssues, setValidationIssues] = useState([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
+  const [liveNow, setLiveNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setLiveNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [configData, setConfigData] = useState({
     employer_ein: "",
     company_legal_name: "Black Point Protection Services",
@@ -539,8 +546,21 @@ export default function AccountingPayroll() {
   const approvedEntries = payrollEntries.filter(e => e.status === 'approved');
   const paidEntries = payrollEntries.filter(e => e.status === 'paid');
 
-  const totalGross = payrollEntries.reduce((sum, e) => sum + (e.gross_pay || 0), 0);
-  const totalNet = payrollEntries.reduce((sum, e) => sum + (e.net_pay || 0), 0);
+  const selectedPeriod = payrollPeriods.find(period => period.id === selectedPeriodId);
+  const accruedGross = selectedPeriod ? timeEntries.reduce((sum, entry) => {
+    const entryDate = String(entry.clock_in || '').slice(0, 10);
+    if (!entry.clock_in || entry.archived === true || entryDate < selectedPeriod.start_date || entryDate > selectedPeriod.end_date) return sum;
+    const officer = officers.find(item => String(item.email).toLowerCase() === String(entry.officer_email).toLowerCase());
+    const hours = entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow);
+    return sum + hours * (Number(officer?.hourly_rate) || 0);
+  }, 0) : 0;
+  const generatedGross = payrollEntries
+    .filter(entry => !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date))
+    .reduce((sum, entry) => sum + (Number(entry.gross_pay) || 0), 0);
+  const totalGross = Math.max(generatedGross, accruedGross);
+  const totalNet = payrollEntries
+    .filter(entry => !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date))
+    .reduce((sum, entry) => sum + (Number(entry.net_pay) || 0), 0);
 
   // Generate Gusto-compatible payroll report
   const generatePayrollReport = (entriesToReport) => {
@@ -904,7 +924,7 @@ export default function AccountingPayroll() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-slate-600">Total Gross</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-600">Live Accrued Gross</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-slate-900">
