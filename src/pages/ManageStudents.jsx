@@ -60,7 +60,13 @@ export default function ManageStudents({ embedded = false }) {
       }
       const profileData = { ...data };
       delete profileData.role;
-      return base44.entities.User.update(id, profileData);
+      profileData.full_name = [profileData.first_name, profileData.last_name].filter(Boolean).join(' ');
+      const profileResult = await base44.functions.invoke('updateUser', {
+        userId: id,
+        updates: profileData,
+      });
+      if (profileResult?.error) throw new Error(profileResult.error);
+      return profileResult;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
@@ -73,8 +79,16 @@ export default function ManageStudents({ embedded = false }) {
 
   const convertToOfficerMutation = useMutation({
     mutationFn: async (student) => {
-      const roles = (student.additional_roles || []).filter(r => r !== 'student');
-      return base44.entities.User.update(student.id, { additional_roles: roles });
+      const roles = [...new Set([
+        ...(student.additional_roles || []).filter(r => r !== 'student'),
+        'officer',
+      ])];
+      const result = await base44.functions.invoke('updateUser', {
+        userId: student.id,
+        updates: { additional_roles: roles },
+      });
+      if (result?.error) throw new Error(result.error);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
