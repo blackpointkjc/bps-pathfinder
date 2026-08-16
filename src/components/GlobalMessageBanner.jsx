@@ -156,6 +156,7 @@ export default function GlobalMessageBanner({ user }) {
   const recentFingerprints = useRef(new Map());
   const timers = useRef(new Map());
   const callStatuses = useRef(new Map());
+  const announcedPropertyCallStatuses = useRef(new Map());
 
   useEffect(() => {
     if (!user?.id && !user?.email) return undefined;
@@ -299,6 +300,14 @@ export default function GlobalMessageBanner({ user }) {
       // Canceled calls may announce once through the live status-change listener,
       // but they must never be replayed or displayed as an existing active call.
       if (!call || !monitoredProperty || HIDDEN_EXISTING_CALL_STATUSES.has(normalized(call.status))) return;
+
+      // PropertyAlert can contain duplicate rows for the same CAD call/property.
+      // Announce once per call+status, regardless of how many alert rows arrive.
+      const callKey = String(call.id || record.callId);
+      const currentStatus = normalized(call.status || 'new');
+      if (announcedPropertyCallStatuses.current.get(callKey) === currentStatus) return;
+      announcedPropertyCallStatuses.current.set(callKey, currentStatus);
+
       const summary = propertyCallSummary(record, call);
       // Dispatch the incident and address verbally in a concise police-CAD cadence.
       speakNotification(`Active call for service. ${summary}`, { rate: 0.82, pitch: 0.66, dedupeMs: 10000 });
@@ -348,6 +357,10 @@ export default function GlobalMessageBanner({ user }) {
         // have a current alert tied to a site that is still enabled in Property Monitoring.
         const propertyAlert = await findActivePropertyAlertForCall(call.id);
         if (!propertyAlert) return;
+
+        const callKey = String(call.id);
+        if (announcedPropertyCallStatuses.current.get(callKey) === nextRaw) return;
+        announcedPropertyCallStatuses.current.set(callKey, nextRaw);
 
         const incident = call.incident || propertyAlert.callIncident || 'Call for service';
         const address = call.location || propertyAlert.callLocation || 'address unavailable';
