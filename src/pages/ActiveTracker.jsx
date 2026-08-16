@@ -7,23 +7,6 @@ import { format } from "date-fns";
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/857a5f1c1_UntitledProject3.png";
 
 export default function ActiveTracker() {
-  const getOfficerDisplayName = (officer) => {
-    // This function assumes the officer object from base44.entities.ActiveOfficer might have officer_name, 
-    // but the `user` object (which is also an 'officer' in a broader sense) might have first_name/last_name.
-    // For ActiveOfficer records, 'officer_name' is usually set directly.
-    // However, if we were to display a `user` object directly here, this function would be useful.
-    // For the ActiveOfficer entity, the 'officer_name' field is already the combined name or email.
-    // This function can be adapted or used elsewhere if `ActiveOfficer` records were to store first_name/last_name separately.
-    // As per the current implementation, 'officer.officer_name' already holds the display name.
-    // If the intention was to derive display name from the 'user' object for the logged-in user,
-    // it would be used like `getOfficerDisplayName(user)`.
-    if (officer.first_name && officer.last_name) {
-      return `${officer.first_name} ${officer.last_name}`;
-    }
-    // Fallback to officer_name or email if first/last names are not present
-    return officer.officer_name || officer.email;
-  };
-
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => base44.auth.me(),
