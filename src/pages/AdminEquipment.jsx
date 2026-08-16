@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Package, Plus, Edit, Trash2, User, Search, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function AdminEquipment() {
@@ -52,7 +52,7 @@ export default function AdminEquipment() {
 
   const { data: users } = useQuery({
     queryKey: ['users'],
-    queryFn: () => listDirectoryUsers(),
+    queryFn: () => listOfficerDirectory('last_name', 1000, true),
     initialData: [],
   });
 
