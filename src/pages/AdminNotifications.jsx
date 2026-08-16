@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Bell, Plus, Send, Shield, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { listDirectoryDivisions, listDirectoryUsers } from '@/lib/appDirectory';
+import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 export default function AdminNotifications() {
   const [showDialog, setShowDialog] = useState(false);
@@ -31,16 +33,20 @@ export default function AdminNotifications() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+  const { data: directoryUsers = [] } = useQuery({
+    queryKey: ['directoryUsers', 'adminNotifications'],
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: user?.role === 'admin',
   });
 
-  const { data: divisions } = useQuery({
-    queryKey: ['divisions'],
-    queryFn: () => base44.entities.Division.list('division_name'),
+  const { data: divisions = [] } = useQuery({
+    queryKey: ['directoryDivisions', 'adminNotifications'],
+    queryFn: () => listDirectoryDivisions('division_name', 1000),
+    enabled: user?.role === 'admin',
+    initialData: [],
   });
+
+  const allUsers = directoryUsers.filter(hasOfficerAdditionalRole);
 
   const sendNotificationMutation = useMutation({
     mutationFn: async (data) => {
@@ -67,7 +73,7 @@ export default function AdminNotifications() {
         })
       );
       
-      await Promise.all(notificationPromises);
+      for (const createNotification of notificationPromises) await createNotification;
       
       // Send emails if requested
       if (data.send_email) {
@@ -84,7 +90,7 @@ export default function AdminNotifications() {
             `
           }).catch(err => console.error('Email failed to:', recipient.email, err))
         );
-        await Promise.all(emailPromises);
+        for (const sendEmail of emailPromises) await sendEmail;
       }
       
       return recipients.length;
