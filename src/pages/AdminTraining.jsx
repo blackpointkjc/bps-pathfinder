@@ -149,8 +149,11 @@ function AdminTrainingContent({ embedded = false }) {
       }
       const newModule = await trainingCreate('TrainingModule', saveData);
       
-      // Create notifications for assigned officers (only if allUsers is available)
-      const users = (allUsers || []).filter(hasOfficerAdditionalRole);
+      // Notify both Officer-role and Student-role learners assigned to this module.
+      const users = (allUsers || []).filter(entry => {
+        const roles = (entry.additional_roles || []).map(role => String(role).toLowerCase());
+        return hasOfficerAdditionalRole(entry) || roles.includes('student') || String(entry.user_type || '').toLowerCase() === 'student' || String(entry.rank || '').toLowerCase() === 'student';
+      });
       const assignedOfficers = [];
       
       // Get officers by email
@@ -190,7 +193,7 @@ function AdminTrainingContent({ embedded = false }) {
           message: data.required 
             ? `Required training "${data.title}" has been assigned. ${data.due_after_days ? `Complete within ${data.due_after_days} days.` : 'Please complete as soon as possible.'}`
             : `New training "${data.title}" is now available.`,
-          action_url: '/officer-training',
+          action_url: (officer.additional_roles || []).map(role => String(role).toLowerCase()).includes('student') ? '/StudentPortal' : '/officer-training',
           read: false,
         };
         
@@ -890,6 +893,41 @@ function AdminTrainingContent({ embedded = false }) {
                 value={formData.duration_minutes}
                 onChange={(e) => setFormData({...formData, duration_minutes: e.target.value})}
               />
+            </div>
+
+            <div className="space-y-3 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+              <div>
+                <Label className="text-sm font-semibold text-indigo-950">Assign to Officers or Students</Label>
+                <p className="text-xs text-indigo-700">Select individual Officer-role or Student-role accounts. Leave all unchecked to make the module available to every training learner.</p>
+              </div>
+              <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border border-indigo-200 bg-white p-3">
+                {allUsers.length === 0 ? (
+                  <p className="text-sm text-slate-500">No officers or students are available. Check Manage Students and Officer Management.</p>
+                ) : allUsers.map((learner) => {
+                  const roles = (learner.additional_roles || []).map(role => String(role).toLowerCase());
+                  const isStudent = roles.includes('student') || String(learner.user_type || '').toLowerCase() === 'student' || String(learner.rank || '').toLowerCase() === 'student';
+                  const label = isStudent
+                    ? `Student — ${[learner.first_name, learner.last_name].filter(Boolean).join(' ') || learner.email}`
+                    : `${[learner.rank, learner.last_name].filter(Boolean).join(' ') || learner.full_name || learner.email}`;
+                  return (
+                    <label key={learner.email} className="flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-indigo-50">
+                      <Checkbox
+                        checked={formData.assigned_to.includes(learner.email)}
+                        onCheckedChange={(checked) => setFormData(prev => ({
+                          ...prev,
+                          assigned_to: checked
+                            ? [...new Set([...prev.assigned_to, learner.email])]
+                            : prev.assigned_to.filter(email => email !== learner.email),
+                        }))}
+                      />
+                      <span className="text-sm text-slate-800">{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {formData.assigned_to.length > 0 && (
+                <p className="text-xs font-medium text-indigo-800">{formData.assigned_to.length} learner(s) selected</p>
+              )}
             </div>
 
             <div className="space-y-2">
