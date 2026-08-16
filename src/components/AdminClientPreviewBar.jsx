@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Eye, ShieldCheck, X } from 'lucide-react';
 import { getClientPreviewId, setClientPreviewId } from '@/utils/clientPreview';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
