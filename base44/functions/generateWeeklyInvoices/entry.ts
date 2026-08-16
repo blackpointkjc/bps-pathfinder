@@ -12,7 +12,21 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const now = new Date();
-    // The Sunday run closes the Monday-Sunday week that ended immediately before it.
+    const easternParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      weekday: 'short',
+      hour: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(now);
+    const easternWeekday = easternParts.find(part => part.type === 'weekday')?.value;
+    const easternHour = Number(easternParts.find(part => part.type === 'hour')?.value);
+    // The automation checks hourly on Sunday so this guard remains correct through
+    // daylight-saving changes while still running exactly once at 8 AM Eastern.
+    if (easternWeekday !== 'Sun' || easternHour !== 8) {
+      return Response.json({ success: true, skipped: true, reason: 'Outside Sunday 8 AM Eastern billing window' });
+    }
+
+    // The Sunday run closes the Sunday-Saturday week that ended the day before.
     const periodEndDate = new Date(now.getTime() - DAY_MS);
     const periodStartDate = new Date(periodEndDate.getTime() - 6 * DAY_MS);
     const periodStart = dateOnly(periodStartDate);
