@@ -81,16 +81,6 @@
     "read": {
       "$or": [
         {
-          "data.sender_email": "{{user.email}}"
-        },
-        {
-          "data.recipients": {
-            "$in": [
-              "{{user.email}}"
-            ]
-          }
-        },
-        {
           "created_by_id": "{{user.id}}"
         },
         {
@@ -102,16 +92,6 @@
     },
     "update": {
       "$or": [
-        {
-          "data.sender_email": "{{user.email}}"
-        },
-        {
-          "data.recipients": {
-            "$in": [
-              "{{user.email}}"
-            ]
-          }
-        },
         {
           "created_by_id": "{{user.id}}"
         },
