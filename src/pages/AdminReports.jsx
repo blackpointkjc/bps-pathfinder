@@ -60,15 +60,17 @@ export default function AdminReports() {
   const { data: reports } = useQuery({
     queryKey: ['allReportsForReview', startDate, endDate, selectedLocation],
     queryFn: async () => {
-      const [allShift, allDAR, allIncident, allTrespass, allParking, allCriminal, allSummons] = await Promise.all([
+      const [allShift, allDAR, allIncident] = await Promise.all([
         base44.entities.ShiftReport.list('-created_date'),
         base44.entities.DailyActivityReport.list('-created_date'),
         base44.entities.IncidentReport.list('-created_date'),
+      ]);
+      const [allTrespass, allParking, allCriminal] = await Promise.all([
         base44.entities.TrespassingNotice.list('-created_date'),
         base44.entities.ParkingViolation.list('-created_date'),
         base44.entities.CriminalComplaint.list('-created_date'),
-        base44.entities.Summons.list('-created_date'),
       ]);
+      const allSummons = await base44.entities.Summons.list('-created_date');
 
       const filterData = (reportList, dateField, reviewStatuses, archiveStatuses) => {
         const review = [];
