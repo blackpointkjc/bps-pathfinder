@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { listDirectoryLocations, listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 const DAYS = [
@@ -62,7 +62,7 @@ export default function AdminPlannedShifts() {
 
   const { data: allUsers } = useQuery({
     queryKey: ['allUsers'],
-    queryFn: () => listDirectoryUsers(),
+    queryFn: () => listOfficerDirectory('last_name', 1000, true),
     enabled: user?.role === 'admin',
   });
 
