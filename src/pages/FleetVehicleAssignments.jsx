@@ -33,16 +33,17 @@ export default function FleetVehicleAssignments() {
   const [savingShiftId, setSavingShiftId] = useState('');
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
-  const isAdmin = user?.role === 'admin' || (user?.additional_roles || []).includes('full_access');
+  const normalizedRoles = (user?.additional_roles || []).map(role => String(role).toLowerCase());
+  const isAdmin = user?.role === 'admin' || normalizedRoles.includes('full_access') || normalizedRoles.includes('fleet_manager');
   const { data: users = [] } = useQuery({ queryKey: ['fleetUsers'], queryFn: () => listDirectoryUsers() });
-  const { data: vehicles = [] } = useQuery({ queryKey: ['fleetVehicles'], queryFn: () => base44.entities.Vehicle.list('vehicle_id') });
-  const { data: schedules = [] } = useQuery({ queryKey: ['fleetSchedules'], queryFn: () => base44.entities.Schedule.list('-shift_date') });
-  const { data: assignments = [] } = useQuery({ queryKey: ['fleetAssignments'], queryFn: () => base44.entities.VehicleAssignment.list('-assignment_date') });
+  const { data: vehicles = [], error: vehicleError } = useQuery({ queryKey: ['fleetVehicles'], queryFn: () => base44.entities.Vehicle.list('vehicle_id', 500), refetchInterval: 30000 });
+  const { data: schedules = [], error: scheduleError } = useQuery({ queryKey: ['fleetSchedules'], queryFn: () => base44.entities.Schedule.list('-shift_date', 5000), refetchInterval: 30000 });
+  const { data: assignments = [], error: assignmentError } = useQuery({ queryKey: ['fleetAssignments'], queryFn: () => base44.entities.VehicleAssignment.list('-assignment_date', 5000), refetchInterval: 30000 });
 
   const windowStart = addDays(startOfDay(new Date()), dayOffset);
   const dates = Array.from({ length: 3 }, (_, i) => format(addDays(windowStart, i), 'yyyy-MM-dd'));
-  const availableVehicles = vehicles.filter(v => v.status === 'Active');
-  const maintenanceVehicles = vehicles.filter(v => v.status === 'Maintenance' || v.status === 'Out of Service');
+  const availableVehicles = vehicles.filter(v => String(v.status || 'Active').toLowerCase() === 'active');
+  const maintenanceVehicles = vehicles.filter(v => ['maintenance', 'out of service'].includes(String(v.status || '').toLowerCase()));
 
   const getName = email => {
     const person = users.find(item => item.email === email);
@@ -52,7 +53,7 @@ export default function FleetVehicleAssignments() {
   const visibleShifts = useMemo(() => {
     const rows = schedules.filter(shift =>
       shift?.archived !== true &&
-      dates.includes(shift.shift_date) &&
+      dates.includes(String(shift.shift_date || '').slice(0, 10)) &&
       shift.officer_email &&
       shift.officer_email !== 'OPEN' &&
       shift.is_open !== true &&
@@ -70,7 +71,7 @@ export default function FleetVehicleAssignments() {
   }, [schedules, dates, isAdmin, user?.email]);
 
   const assignmentForShift = shift => assignments.find(a =>
-    a.assignment_date === shift.shift_date &&
+    String(a.assignment_date || '').slice(0, 10) === String(shift.shift_date || '').slice(0, 10) &&
     a.start_time === shift.start_time &&
     a.end_time === shift.end_time &&
     (a.primary_officer_email === shift.officer_email || a.partner_officer_email === shift.officer_email)
@@ -103,7 +104,7 @@ export default function FleetVehicleAssignments() {
     const conflict = assignments.find(a =>
       a.id !== currentAssignment?.id &&
       a.vehicle_id === chosenVehicleId &&
-      a.assignment_date === shift.shift_date &&
+      String(a.assignment_date || '').slice(0, 10) === String(shift.shift_date || '').slice(0, 10) &&
       a.status !== 'cancelled' &&
       overlaps(a.start_time, a.end_time, shift.start_time, shift.end_time)
     );
@@ -135,6 +136,9 @@ export default function FleetVehicleAssignments() {
       setVehicleChoice(prev => ({ ...prev, [shift.id]: vehicle.id }));
       await qc.invalidateQueries({ queryKey: ['fleetAssignments'] });
       await qc.invalidateQueries({ queryKey: ['myVehicleAssignments'] });
+    } catch (error) {
+      console.error('Fleet assignment failed', error);
+      alert(error?.response?.data?.error || error?.message || 'Vehicle assignment could not be saved.');
     } finally {
       setSavingShiftId('');
     }
@@ -163,6 +167,8 @@ export default function FleetVehicleAssignments() {
           <Button variant="outline" size="sm" onClick={() => setDayOffset(v => v + 3)}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </div>
+
+      {(vehicleError || scheduleError || assignmentError) && <div className="rounded-lg border border-red-700 bg-red-950/40 p-3 text-sm text-red-200">Fleet data could not be fully loaded. Refresh the page; if the message remains, verify fleet and scheduling access.</div>}
 
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <Card className="border-slate-800 bg-slate-900 text-white">
@@ -212,7 +218,7 @@ export default function FleetVehicleAssignments() {
                     </div>}
                   </div>;
                 })}
-                {dayShifts.length === 0 && <div className="rounded border border-dashed border-slate-800 py-12 text-center text-xs text-slate-600">NO SCHEDULED SHIFTS</div>}
+                {dayShifts.length === 0 && <div className="rounded border border-dashed border-slate-800 py-12 text-center text-xs text-slate-500">NO SCHEDULED SHIFTS FOR THIS DATE</div>}
               </CardContent>
             </Card>;
           })}
