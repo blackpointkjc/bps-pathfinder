@@ -1124,7 +1124,7 @@ export default function Layout({ children, currentPageName }) {
               <Siren className="h-7 w-7 animate-pulse text-red-300" />
             </div>
             <div>
-              <div className="text-xs font-black uppercase tracking-[0.25em] text-red-300">Property Monitoring Alert</div>
+              <div className="text-xs font-black uppercase tracking-[0.25em] text-red-300">Active Call for Service</div>
               <div className="text-xl font-black text-white">{propertyAlert.property.name}</div>
             </div>
             <div className="ml-auto rounded border border-red-500/60 bg-red-950 px-3 py-1 font-mono text-sm font-black text-red-200">
