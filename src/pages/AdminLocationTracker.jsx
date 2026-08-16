@@ -214,27 +214,26 @@ export default function AdminLocationTracker() {
       }
       const results = { total: 0, withLocation: [], withoutLocation: [], staleLocation: [], timestamp: new Date().toISOString() };
       const now = Date.now();
-      for (const profile of freshUsers.filter(isOperationallyVisibleUser)) {
-        const email = String(profile.email || '').toLowerCase();
-        if (!email) continue;
-        const locationData = latestByEmail.get(email);
-        const stamp = locationData ? new Date(locationData.last_update || locationData.updated_date || locationData.created_date || 0).getTime() : NaN;
+      for (const locationData of latestByEmail.values()) {
+        const profile = freshUsers.find(u => String(u.email || '').toLowerCase() === String(locationData.officer_email || '').toLowerCase());
+        if (!isOperationallyVisibleUser(profile)) continue;
+        const stamp = new Date(locationData.last_update || locationData.updated_date || locationData.created_date || 0).getTime();
         const ageMs = Number.isFinite(stamp) ? now - stamp : Infinity;
         const name = profile.first_name && profile.last_name ? `${profile.first_name} ${profile.last_name}` : (profile.full_name || profile.email);
+        const hasGps = Number.isFinite(Number(locationData.latitude)) && Number.isFinite(Number(locationData.longitude));
         const item = {
           name,
           email: profile.email,
-          location: locationData?.current_location || profile.assigned_location || 'No current location',
-          role: locationData?.user_role || profile.rank || profile.role || 'officer',
-          lastUpdate: locationData?.last_update || locationData?.updated_date || locationData?.created_date || null,
+          location: locationData.current_location || 'Clocked in - GPS pending',
+          role: profile.rank || profile.role || 'officer',
+          lastUpdate: locationData.last_update || null,
           minutesSinceUpdate: Number.isFinite(ageMs) ? Math.max(0, Math.floor(ageMs / 60000)) : null,
-          trackingState: !locationData ? 'No tracking record' : ageMs <= LIVE_SESSION_FRESH_MS ? 'Live' : 'Last known',
+          trackingState: hasGps && ageMs <= LIVE_SESSION_FRESH_MS ? 'Live' : hasGps ? 'Last known' : 'Clocked in - GPS unavailable',
         };
         results.total += 1;
-        if (!locationData) results.withoutLocation.push(item);
-        else if (ageMs <= LIVE_SESSION_FRESH_MS && Number.isFinite(Number(locationData.latitude)) && Number.isFinite(Number(locationData.longitude))) results.withLocation.push(item);
-        else if (ageMs <= LIVE_SESSION_FRESH_MS) results.withoutLocation.push(item);
-        else results.staleLocation.push(item);
+        if (hasGps && ageMs <= LIVE_SESSION_FRESH_MS) results.withLocation.push(item);
+        else if (hasGps) results.staleLocation.push(item);
+        else results.withoutLocation.push(item);
       }
       setLocationCheckResults(results);
       setLastAutoCheck(new Date());
@@ -294,10 +293,10 @@ export default function AdminLocationTracker() {
               <Activity className="w-8 h-8 text-green-600" />
               User Location Tracker
             </h1>
-            <p className="text-slate-600">Live GPS and one-minute movement history for every signed-in user</p>
+            <p className="text-slate-600">Live GPS and one-minute movement history only while officers are clocked in</p>
             {lastAutoCheck && (
               <p className="text-xs text-slate-500 mt-1">
-                Last session check: {format(lastAutoCheck, 'h:mm:ss a')} • User heartbeat: every 60 seconds
+                Last duty check: {format(lastAutoCheck, 'h:mm:ss a')} • Clocked-in GPS heartbeat: every 60 seconds
               </p>
             )}
           </div>
