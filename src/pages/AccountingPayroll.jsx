@@ -938,6 +938,7 @@ export default function AccountingPayroll() {
             <p className="text-2xl font-bold text-slate-900">
               ${totalGross.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </p>
+            <p className="mt-1 text-xs text-slate-500">Accruing every second • {format(liveNow, 'h:mm:ss a')}</p>
           </CardContent>
         </Card>
 
