@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Search, RefreshCw, MapPin, FileText, MessageSquare, ChevronDown, ChevronUp, Radio } from 'lucide-react';
 import { calculateDistance } from '@/utils/alertUtils';
 import { EASTERN_TIME_ZONE, formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
+import { listDirectoryLocations } from '@/lib/appDirectory';
 
 const norm = value => String(value || '').toUpperCase().replace(/\bBLOCK\b/g, '').replace(/[^A-Z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
 const fmt = value => formatEasternDateTime(value, { year: 'numeric' });
@@ -61,14 +62,14 @@ export default function ClientCallHistory() {
       const me = user || await getClientPortalUser();
       if (!user) setUser(me);
       const assignedNames = me?.assigned_locations || (me?.assigned_location ? [me.assigned_location] : []);
-      const [allLocations, active, archived, notes, reports, propertyAlerts] = await Promise.all([
-        base44.entities.Location.list(),
-        base44.entities.DispatchCall.list('-time_received', 200),
-        base44.entities.CallHistory.list('-archived_date', 200),
-        base44.entities.CallNote.list('-created_date', 500),
-        base44.entities.IncidentReport.list('-created_date', 500),
-        base44.entities.PropertyAlert.list('-created_date', 500).catch(() => []),
-      ]);
+      // Load sequentially to avoid the Base44 per-user burst limit that was
+      // previously hit by six simultaneous list requests on this page.
+      const allLocations = await listDirectoryLocations('site_name', 500);
+      const active = await base44.entities.DispatchCall.list('-time_received', 150);
+      const archived = await base44.entities.CallHistory.list('-archived_date', 150);
+      const notes = await base44.entities.CallNote.list('-created_date', 300);
+      const reports = await base44.entities.IncidentReport.list('-created_date', 300);
+      const propertyAlerts = await base44.entities.PropertyAlert.list('-created_date', 300).catch(() => []);
       const assignedSites = (allLocations || []).filter(site => assignedNames.includes(site.site_name) || String(site.assigned_client_email || '').toLowerCase() === String(me?.email || '').toLowerCase());
       setSites(assignedSites);
 
