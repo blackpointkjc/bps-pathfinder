@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { accountingBulkCreate, accountingCreate, accountingDelete, accountingUpdate } from '@/lib/accountingRecordsApi';
+import { accountingBulkCreate, accountingCreate, accountingUpdate } from '@/lib/accountingRecordsApi';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DollarSign, CheckCircle, Trash2, Zap, AlertTriangle, Printer } from "lucide-react";
+import { DollarSign, Zap, AlertTriangle, Printer } from "lucide-react";
 import { format, isValid, parseISO, startOfWeek } from "date-fns";
 import { calculatePaidHours } from "@/lib/payrollCalculations";
 import { calculateLiveHours } from "@/lib/billingRates";
@@ -126,38 +126,6 @@ export default function AccountingPayroll() {
       alert('❌ Failed to generate payroll: ' + error.message);
       setGenerating(false);
     }
-  });
-
-  const approveMutation = useMutation({
-    mutationFn: (id) => accountingUpdate('PayrollEntry', id, {
-      status: 'approved',
-      approved_by: user.email,
-      approved_date: new Date().toISOString()
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['payrollEntries'] });
-      queryClient.invalidateQueries({ queryKey: ['accountingData'] });
-    },
-  });
-
-  const markPaidMutation = useMutation({
-    mutationFn: (id) => accountingUpdate('PayrollEntry', id, {
-      status: 'paid',
-      pay_date: format(new Date(), 'yyyy-MM-dd')
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['payrollEntries'] });
-      queryClient.invalidateQueries({ queryKey: ['accountingData'] });
-      queryClient.invalidateQueries({ queryKey: ['w2Forms'] });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id) => accountingDelete('PayrollEntry', id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['payrollEntries'] });
-      queryClient.invalidateQueries({ queryKey: ['accountingData'] });
-    },
   });
 
   const saveConfigMutation = useMutation({
