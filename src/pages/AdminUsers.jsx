@@ -136,7 +136,7 @@ export default function AdminUsers() {
   });
 
   const { data: locations } = useQuery({
-    queryKey: ['locations'],
+    queryKey: ['directoryLocations', 'adminUsers'],
     queryFn: () => listDirectoryLocations(),
     enabled: hasAccess,
     initialData: [],
