@@ -96,10 +96,15 @@ export default function AccountingPayroll() {
 
   useEffect(() => {
     if (selectedPeriodId || payrollPeriods.length === 0) return;
+    // Open the newest generated payroll report first so the 8 AM report is ready to print.
+    const newestPayroll = [...payrollEntries].sort((a, b) => String(b.created_date || '').localeCompare(String(a.created_date || '')))[0];
+    const generatedPeriod = newestPayroll && payrollPeriods.find(period => period.start_date === newestPayroll.pay_period_start && period.end_date === newestPayroll.pay_period_end);
+    if (generatedPeriod) {
+      setSelectedPeriodId(generatedPeriod.id);
+      return;
+    }
     const today = format(new Date(), 'yyyy-MM-dd');
-    const current = payrollPeriods.find(period =>
-      period.status === 'current' || (period.start_date <= today && period.end_date >= today)
-    );
+    const current = payrollPeriods.find(period => period.status === 'current' || (period.start_date <= today && period.end_date >= today));
     if (current) {
       setSelectedPeriodId(current.id);
       return;
@@ -107,7 +112,7 @@ export default function AccountingPayroll() {
     const completedDates = timeEntries.filter(entry => entry.clock_in && entry.clock_out).map(entry => String(entry.clock_in).slice(0, 10));
     const matching = payrollPeriods.find(period => completedDates.some(date => date >= period.start_date && date <= period.end_date));
     setSelectedPeriodId((matching || payrollPeriods[0]).id);
-  }, [payrollPeriods, selectedPeriodId, timeEntries]);
+  }, [payrollPeriods, payrollEntries, selectedPeriodId, timeEntries]);
 
   const createPayrollMutation = useMutation({
     mutationFn: (entries) => accountingBulkCreate('PayrollEntry', entries),
@@ -511,7 +516,7 @@ export default function AccountingPayroll() {
           net_pay: parseFloat(netPay.toFixed(2)),
           qualified_overtime_premium: 0,
           holidays_worked: JSON.stringify(data.holidaysWorked),
-          status: 'draft',
+          status: 'ready',
           payment_method: officer.payment_method || 'direct_deposit'
         });
       }
@@ -543,9 +548,7 @@ export default function AccountingPayroll() {
     );
   }
 
-  const draftEntries = payrollEntries.filter(e => e.status === 'draft');
-  const approvedEntries = payrollEntries.filter(e => e.status === 'approved');
-  const paidEntries = payrollEntries.filter(e => e.status === 'paid');
+  const readyEntries = payrollEntries.filter(e => ['ready', 'exported', 'draft', 'approved', 'paid'].includes(e.status));
 
   const selectedPeriod = payrollPeriods.find(period => period.id === selectedPeriodId);
   const accruedGross = selectedPeriod ? timeEntries.reduce((sum, entry) => {
@@ -940,13 +943,9 @@ export default function AccountingPayroll() {
             </Select>
           </div>
 
-          <Button
-            onClick={generatePayroll}
-            disabled={generating}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-lg py-6"
-          >
-            {generating ? 'Generating...' : 'Generate Payroll'}
-          </Button>
+          <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900">
+            Payroll runs automatically at <strong>8:00 AM Eastern on the day after the selected payroll period ends</strong>. No draft, approval, or manual generation is required. When processing finishes, the master report and every officer’s itemized sheet are ready to print.
+          </div>
 
           <div className="bg-purple-100 border border-purple-300 rounded p-3 text-xs text-purple-900">
             <p className="font-semibold mb-1">Calculations Include:</p>
@@ -1010,42 +1009,38 @@ export default function AccountingPayroll() {
 
         <Card className="border-l-4 border-l-amber-500">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-slate-600">Draft</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-600">Reports Ready</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-slate-900">{draftEntries.length}</p>
+            <p className="text-2xl font-bold text-slate-900">{currentReportEntries.length}</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-purple-500">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-slate-600">Approved</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-600">All Payroll Records</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-slate-900">{approvedEntries.length}</p>
+            <p className="text-2xl font-bold text-slate-900">{readyEntries.length}</p>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="draft" className="space-y-6">
+      <Tabs defaultValue="ready" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="draft">Draft ({draftEntries.length})</TabsTrigger>
-          <TabsTrigger value="approved">Approved ({approvedEntries.length})</TabsTrigger>
-          <TabsTrigger value="paid">Paid ({paidEntries.length})</TabsTrigger>
+          <TabsTrigger value="ready">Payroll Reports ({currentReportEntries.length})</TabsTrigger>
         </TabsList>
 
         {[
-          { key: 'draft', entries: draftEntries, showApprove: true, showMarkPaid: false },
-          { key: 'approved', entries: approvedEntries, showApprove: false, showMarkPaid: true },
-          { key: 'paid', entries: paidEntries, showApprove: false, showMarkPaid: false }
-        ].map(({ key, entries, showApprove, showMarkPaid }) => (
+          { key: 'ready', entries: currentReportEntries }
+        ].map(({ key, entries }) => (
           <TabsContent key={key} value={key}>
             <Card>
               <CardContent className="p-6">
                 {entries.length === 0 ? (
                   <div className="text-center py-12">
                     <DollarSign className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                    <p className="text-slate-600">No {key} payroll entries</p>
+                    <p className="text-slate-600">No payroll report has been generated for this period yet.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1080,32 +1075,7 @@ export default function AccountingPayroll() {
                               <Button size="sm" variant="outline" onClick={() => generateGrossPayrollReport([entry])}>
                                 <Printer className="w-4 h-4 mr-2" />Itemized Sheet
                               </Button>
-                              {showApprove && (
-                                <Button size="sm" onClick={() => approveMutation.mutate(entry.id)} className="bg-green-600">
-                                  <CheckCircle className="w-4 h-4 mr-2" />
-                                  Approve
-                                </Button>
-                              )}
-                              {showMarkPaid && (
-                                <Button size="sm" onClick={() => markPaidMutation.mutate(entry.id)} className="bg-blue-600">
-                                  <CheckCircle className="w-4 h-4 mr-2" />
-                                  Mark Paid
-                                </Button>
-                              )}
-                              {key === 'draft' && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    if (confirm('Delete this payroll entry?')) {
-                                      deleteMutation.mutate(entry.id);
-                                    }
-                                  }}
-                                  className="text-red-600"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              )}
+
                             </div>
                           </div>
                         </div>
