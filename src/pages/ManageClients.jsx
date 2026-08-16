@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { listDirectoryUsers, listDirectoryLocations } from '@/lib/appDirectory';
+import { invalidateAppDirectory, listDirectoryUsers, listDirectoryLocations } from '@/lib/appDirectory';
 import { isClientAccount } from '@/lib/directoryUtils';
 
 export default function ManageClients() {
@@ -55,6 +55,7 @@ export default function ManageClients() {
     initialData: [],
   });
   const clientUsers = directoryUsers.filter(isClientAccount);
+  const availableLocations = locations.filter(location => location.active !== false);
 
   const createClientMutation = useMutation({
     mutationFn: async (data) => {
@@ -109,6 +110,9 @@ export default function ManageClients() {
       return payload;
     },
     onSuccess: () => {
+      invalidateAppDirectory();
+      queryClient.invalidateQueries({ queryKey: ['directoryUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['directoryLocations'] });
       queryClient.invalidateQueries({ queryKey: ['hrClientUsers'] });
       queryClient.invalidateQueries({ queryKey: ['activeLocations'] });
       setShowDialog(false);
@@ -125,6 +129,9 @@ export default function ManageClients() {
       return payload;
     },
     onSuccess: () => {
+      invalidateAppDirectory();
+      queryClient.invalidateQueries({ queryKey: ['directoryUsers'] });
+      queryClient.invalidateQueries({ queryKey: ['directoryLocations'] });
       queryClient.invalidateQueries({ queryKey: ['hrClientUsers'] });
       queryClient.invalidateQueries({ queryKey: ['activeLocations'] });
     },
@@ -307,7 +314,7 @@ export default function ManageClients() {
             <div className="space-y-2">
               <Label>Assigned Client Properties *</Label>
               <div className="max-h-56 overflow-y-auto rounded-md border border-slate-600 bg-slate-950/30 p-2 space-y-1">
-                {locations.map((loc) => {
+                {availableLocations.map((loc) => {
                   const checked = formData.property_names.includes(loc.site_name);
                   return (
                     <label key={loc.id} className="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 hover:bg-slate-800/70">
@@ -319,7 +326,7 @@ export default function ManageClients() {
                     </label>
                   );
                 })}
-                {!locations.length && <p className="px-3 py-4 text-sm text-slate-400">No properties are available. Add a property in Admin Locations first.</p>}
+                {!availableLocations.length && <p className="px-3 py-4 text-sm text-slate-400">No active properties are available. Check Admin Locations or reload the directory.</p>}
               </div>
               <p className="text-xs text-slate-400">{formData.property_names.length} propert{formData.property_names.length === 1 ? 'y' : 'ies'} selected</p>
             </div>
