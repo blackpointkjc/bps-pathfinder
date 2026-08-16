@@ -51,16 +51,18 @@ Deno.serve(async (req) => {
       if (!existing || activeTs > existingTs) newestActiveByEmail.set(email, active);
     }
 
-    // ActiveOfficer is the live GPS source. Do not delete a fresh location merely
-    // because its time-entry row has not synchronized yet.
-
+    // ActiveOfficer is the signed-in live GPS source. TimeEntry is optional context;
+    // it must never gate whether a logged-in officer appears on the live map.
+    const freshCutoff = Date.now() - 2 * 60 * 1000;
     const units: any[] = [];
-    for (const [email, entry] of openByEmail.entries()) {
-      const active = newestActiveByEmail.get(email) || {};
+    for (const [email, active] of newestActiveByEmail.entries()) {
+      const activeTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
+      if (active.session_active === false || !Number.isFinite(activeTs) || activeTs < freshCutoff) continue;
+      const entry = openByEmail.get(email) || null;
       const user = userByEmail.get(email) || {};
       units.push({
-        id: active.id || entry.id,
-        officer_email: active.officer_email || entry.officer_email,
+        id: active.id || entry?.id,
+        officer_email: active.officer_email || entry?.officer_email,
         full_name: active.officer_name || user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' '),
         officer_name: active.officer_name || user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' '),
         first_name: user.first_name || '',
@@ -76,8 +78,8 @@ Deno.serve(async (req) => {
         current_call_info: active.current_call_info || user.current_call_info || '',
         current_location: active.current_location || entry?.location || '',
         clock_in_time: entry?.clock_in || active.clock_in_time || '',
-        last_update: active.last_update || active.updated_date || active.created_date || entry.clock_in,
-        last_updated: active.last_update || active.updated_date || active.created_date || entry.clock_in,
+        last_update: active.last_update || active.updated_date || active.created_date || entry?.clock_in,
+        last_updated: active.last_update || active.updated_date || active.created_date || entry?.clock_in,
         is_supervisor: roleSet(user).has('supervisor') || String(user.rank || '').toLowerCase().includes('sergeant') || String(user.rank || '').toLowerCase().includes('lieutenant') || String(user.rank || '').toLowerCase().includes('captain') || String(user.rank || '').toLowerCase().includes('major') || String(user.rank || '').toLowerCase().includes('colonel'),
         time_entry_id: entry?.id || '',
       });
@@ -106,7 +108,7 @@ Deno.serve(async (req) => {
         };
       });
 
-    return Response.json({ success: true, units, users: onDutyUsers, open_count: openByEmail.size });
+    return Response.json({ success: true, units, users: onDutyUsers, open_count: openByEmail.size, signed_in_count: units.length });
   } catch (error) {
     console.error('getOnDutyUnits failed', error);
     return Response.json({ error: error?.message || 'Unable to load on-duty units', units: [], users: [] }, { status: 500 });
