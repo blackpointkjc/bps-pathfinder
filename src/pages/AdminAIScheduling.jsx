@@ -68,8 +68,7 @@ export default function AdminAIScheduling() {
     setGenerating(true);
     try {
       const activeOfficers = allUsers?.filter(u => 
-        !u.termination_date && 
-        u.role !== 'admin' &&
+        !u.termination_date &&
         !u.additional_roles?.includes('support_staff') &&
         !excludedOfficers.includes(u.email)
       ) || [];
