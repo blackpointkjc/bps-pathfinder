@@ -204,9 +204,12 @@ export default function TimeClock() {
     queryKey: ['recentTimeEntries', user?.email, startDate, endDate, selectedLocation],
     queryFn: async () => {
       if (!user?.email) return [];
-      const entries = await base44.entities.TimeEntry.filter({ officer_email: user.email }, '-clock_in');
-      return (entries || []).filter(entry => {
-        if (!entry.clock_in || !entry.clock_out || entry.archived === true) return false;
+      const result = await base44.functions.invoke('getMyTimeEntries', {});
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      const entries = payload.entries || [];
+      return entries.filter(entry => {
+        if (!entry.clock_in || entry.archived === true) return false;
         const entryDate = getEasternDateKey(entry.clock_in);
         if (!entryDate || entryDate < startDate || entryDate > endDate) return false;
         return !selectedLocation || String(entry.location || '').includes(selectedLocation);
@@ -622,7 +625,7 @@ export default function TimeClock() {
 
   const calculateEntryMinutes = (entry) => {
     if (!entry?.clock_in || !entry?.clock_out) return 0;
-    const grossMs = new Date(entry.clock_out).getTime() - new Date(entry.clock_in).getTime();
+    const grossMs = new Date(entry.clock_out || Date.now()).getTime() - new Date(entry.clock_in).getTime();
     if (!Number.isFinite(grossMs) || grossMs <= 0) return 0;
     const breakMs = (entry.break_periods || []).reduce((total, period) => {
       if (!period?.start || !period?.end) return total;
@@ -1002,7 +1005,7 @@ export default function TimeClock() {
                   variant="outline"
                   size="sm"
                   onClick={setThisWeek}
-                  className="text-xs"
+                  className="border-[#36516b] bg-[#091522] text-xs text-slate-100 hover:bg-[#16304a] hover:text-white"
                 >
                   This Week
                 </Button>
@@ -1010,7 +1013,7 @@ export default function TimeClock() {
                   variant="outline"
                   size="sm"
                   onClick={setLastWeek}
-                  className="text-xs"
+                  className="border-[#36516b] bg-[#091522] text-xs text-slate-100 hover:bg-[#16304a] hover:text-white"
                 >
                   Last Week
                 </Button>
@@ -1018,7 +1021,7 @@ export default function TimeClock() {
                   variant="outline"
                   size="sm"
                   onClick={setLast2Weeks}
-                  className="text-xs"
+                  className="border-[#36516b] bg-[#091522] text-xs text-slate-100 hover:bg-[#16304a] hover:text-white"
                 >
                   Last 2 Weeks
                 </Button>
@@ -1085,7 +1088,7 @@ export default function TimeClock() {
         {!isAdmin && (
           <div className="rounded-xl border border-blue-500/25 bg-blue-500/10 p-4">
             <p className="text-sm leading-6 text-blue-200">
-              <strong>Live Tracking:</strong> Pathfinder uses one shared device-location service while you are signed in. Current GPS is used for clock-in/geofence verification, and historical location points are recorded on the centralized tracking heartbeat when location permission is available.
+              <strong>Duty Tracking:</strong> Pathfinder begins live GPS and one-minute history only after you clock in and stops tracking when you clock out. Location permission must remain available during the shift.
             </p>
           </div>
         )}
