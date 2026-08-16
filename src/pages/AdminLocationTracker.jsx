@@ -396,12 +396,12 @@ export default function AdminLocationTracker() {
                 <div className="mb-6">
                   <h3 className="font-bold text-amber-900 mb-3 flex items-center gap-2">
                     <AlertTriangle className="w-5 h-5" />
-                    Recently Stale User Sessions
+                    Officers with Last-Known Tracking
                   </h3>
                   <Alert className="bg-amber-50 border-amber-300 mb-3">
                     <AlertTriangle className="h-4 w-4 text-amber-600" />
                     <AlertDescription className="text-amber-900">
-                      These users were recently signed in, but their session heartbeat has not updated in over 2 minutes. The app may have been closed or suspended.
+                      These officers have a previous tracker record, but it is not currently live. Their last-known time and location remain available for review.
                     </AlertDescription>
                   </Alert>
                   <div className="space-y-2">
@@ -414,7 +414,7 @@ export default function AdminLocationTracker() {
                         <div className="text-right">
                           <p className="text-xs text-amber-600">Last Update</p>
                           <p className="text-sm font-medium text-amber-900">
-                            {officer.minutesSinceUpdate} min ago
+                            {officer.minutesSinceUpdate === null ? 'No recorded update' : `${officer.minutesSinceUpdate} min ago`}
                           </p>
                         </div>
                       </div>
@@ -427,12 +427,12 @@ export default function AdminLocationTracker() {
                 <div>
                   <h3 className="font-bold text-red-900 mb-3 flex items-center gap-2">
                     <XCircle className="w-5 h-5" />
-                    Signed-In Users Without GPS Data
+                    Officers Without Live GPS
                   </h3>
                   <Alert className="bg-red-50 border-red-300 mb-3">
                     <XCircle className="h-4 w-4 text-red-600" />
                     <AlertDescription className="text-red-900">
-                      These users have a current signed-in session heartbeat but no usable GPS fix. Location permission may be disabled, denied, or unavailable.
+                      These officers have no tracker record or have a current session without a usable GPS fix. Check device location permission and Pathfinder sign-in.
                     </AlertDescription>
                   </Alert>
                   <div className="space-y-2">
@@ -443,8 +443,8 @@ export default function AdminLocationTracker() {
                           <p className="text-sm text-red-700">{officer.location}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs text-red-600">Session Role</p>
-                          <p className="text-sm font-medium text-red-900">{String(officer.role || 'user').toUpperCase()}</p>
+                          <p className="text-xs text-red-600">Tracking Status</p>
+                          <p className="text-sm font-medium text-red-900">{officer.trackingState} • {String(officer.role || 'officer').toUpperCase()}</p>
                         </div>
                       </div>
                     ))}
