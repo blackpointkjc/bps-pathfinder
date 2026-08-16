@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 
 function rolesOf(user: any) {
   return new Set((user?.additional_roles || []).map((role: string) => String(role).toLowerCase()));

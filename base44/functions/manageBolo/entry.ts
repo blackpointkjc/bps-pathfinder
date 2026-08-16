@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const EDITABLE_FIELDS = [
   'alert_type','priority','title','description','subject_name','subject_dob','subject_race','subject_sex',

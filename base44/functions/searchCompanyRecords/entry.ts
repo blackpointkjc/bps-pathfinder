@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const SOURCES = [
   ['DispatchCall', 'CAD / Dispatch Calls', 'CallHistory'],

@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const lower = (v: any) => String(v || '').trim().toLowerCase();
 const sameEmail = (row: any, field: string, email: string) => lower(row?.[field]) === email;

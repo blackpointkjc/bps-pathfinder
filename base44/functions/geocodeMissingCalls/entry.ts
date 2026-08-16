@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 

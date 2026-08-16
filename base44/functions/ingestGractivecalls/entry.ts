@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const GRAC_API_URL = 'https://gractivecalls.com/api/active';
 const HENRICO_ACTIVE_URL = 'https://activecalls.henrico.gov/';

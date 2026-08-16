@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 // Runs daily — finds training_renewal_reminder notifications whose scheduled_send_date is today or past
 // and marks them as unread/visible (they're already created; this just ensures they surface on the right day)
 // This job is credit-free: it only identifies in-app reminders that are due.

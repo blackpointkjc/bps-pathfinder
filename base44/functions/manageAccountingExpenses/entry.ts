@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const categoryMap: Record<string,string> = {
   fuel: 'fuel', equipment: 'equipment', supplies: 'supplies', training: 'professional_services',

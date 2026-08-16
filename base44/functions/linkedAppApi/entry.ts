@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const BRIDGE_URL = 'https://bpsc.base44.app/api/functions/linkedAppBridge';
 

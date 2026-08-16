@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const ARCHIVE_AFTER_MS = 60 * 60 * 1000;
 

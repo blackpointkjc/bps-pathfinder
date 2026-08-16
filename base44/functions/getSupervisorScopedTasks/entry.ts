@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const COMMAND_RANKS = new Set(['Colonel','Lt Colonel','Major']);
 const OPERATIONAL_RANKS = new Set(['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer']);

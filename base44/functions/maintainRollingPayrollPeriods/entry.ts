@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const DAY = 24 * 60 * 60 * 1000;
 const parseDate = (value: string) => new Date(`${value}T12:00:00Z`);

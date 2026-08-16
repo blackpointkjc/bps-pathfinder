@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.4';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 
 // Calculate distance between two coordinates in meters using Haversine formula
 function getDistanceInMeters(lat1, lon1, lat2, lon2) {

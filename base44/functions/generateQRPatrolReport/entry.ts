@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 /**
  * generateQRPatrolReport
  * Runs as a scheduled automation (or can be called manually).

@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.41';
+import { createClientFromRequest } from 'npm:@base44/sdk';
 
 function lowerRoles(user: any) {
   return new Set((user?.additional_roles || []).map((r: string) => String(r).toLowerCase()));
