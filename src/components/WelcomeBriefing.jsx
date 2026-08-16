@@ -10,6 +10,7 @@ import { listDirectoryUsers } from '@/lib/appDirectory';
 
 const normalized = value => String(value || '').trim().toLowerCase();
 const APP_UPDATE_TYPES = new Set(['app_update', 'system_update', 'release', 'release_notes', 'software_update', 'platform_update']);
+const HIDDEN_CALL_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
 
 function activeAnnouncement(announcement) {
   const created = new Date(announcement?.created_date || 0).getTime();
@@ -111,11 +112,12 @@ export default function WelcomeBriefing({ user }) {
           base44.entities.Unit.list('-last_update_at', 500).catch(() => []),
           base44.entities.Schedule.filter({ shift_date: today }).catch(() => []),
           base44.entities.TimeEntry.list('-clock_in', 1000).catch(() => []),
+          base44.entities.DispatchCall.list('-created_date', 500).catch(() => []),
         ]);
         const [messages, mentions, announcements, receipts] = first;
         const [notifications, propertyAlerts, propertyAlertReceipts, units] = second;
         const [schedules, vehicleAssignments, overrides, allUsers] = third;
-        const [allUnits, allSchedules, timeEntries] = fourth;
+        const [allUnits, allSchedules, timeEntries, dispatchCalls] = fourth;
         if (!active) return;
         const receiptIds = new Set((receipts || []).map(item => item.announcement_id));
         const accountCreated = user.created_date ? new Date(user.created_date).getTime() : 0;
@@ -127,9 +129,12 @@ export default function WelcomeBriefing({ user }) {
         const appUpdates = unreadNotifications.filter(item => APP_UPDATE_TYPES.has(normalized(item.type)));
         const otherUpdates = unreadNotifications.filter(item => !APP_UPDATE_TYPES.has(normalized(item.type)));
         const dismissedPropertyPairs = new Set((propertyAlertReceipts || []).map(item => `${item.call_id}:${item.property_id}`));
+        const callById = new Map((dispatchCalls || []).map(call => [String(call.id), call]));
         const seenPropertyPairs = new Set();
         const offlineAlerts = (propertyAlerts || []).filter(item => {
           const pair = `${item.callId}:${item.propertyId}`;
+          const linkedCall = callById.get(String(item.callId));
+          if (!linkedCall || HIDDEN_CALL_STATUSES.has(normalized(linkedCall.status))) return false;
           if (seenPropertyPairs.has(pair) || dismissedPropertyPairs.has(pair)) return false;
           seenPropertyPairs.add(pair);
           if (!offlineSince) return true;
