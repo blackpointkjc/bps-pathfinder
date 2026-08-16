@@ -337,7 +337,7 @@ export default function AdminAnalytics() {
     return (
       <div className="p-8 text-center">
         <Shield className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-        <h2 className="text-2xl font-bold text-slate-900">Admin Access Required</h2>
+        <h2 className="text-2xl font-bold text-white">Admin Access Required</h2>
       </div>
     );
   }
@@ -462,7 +462,7 @@ export default function AdminAnalytics() {
                   <div key={officer.email} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
                     <div className="flex items-center gap-3">
                       <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                        idx === 0 ? 'bg-amber-500 text-white' : idx === 1 ? 'bg-slate-400 text-white' : idx === 2 ? 'bg-amber-700 text-white' : 'bg-slate-200 text-slate-600'
+                        idx === 0 ? 'bg-amber-500 text-white' : idx === 1 ? 'bg-slate-400 text-white' : idx === 2 ? 'bg-amber-700 text-white' : 'bg-slate-200 text-slate-300'
                       }`}>{idx + 1}</span>
                       <span className="text-sm font-medium text-black">{officer.name}</span>
                     </div>
@@ -491,7 +491,7 @@ export default function AdminAnalytics() {
                     <div key={officer.email} className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
                       <div className="flex items-center gap-3">
                         <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                          idx === 0 ? 'bg-amber-500 text-white' : idx === 1 ? 'bg-slate-400 text-white' : idx === 2 ? 'bg-amber-700 text-white' : 'bg-slate-200 text-slate-600'
+                          idx === 0 ? 'bg-amber-500 text-white' : idx === 1 ? 'bg-slate-400 text-white' : idx === 2 ? 'bg-amber-700 text-white' : 'bg-slate-200 text-slate-300'
                         }`}>{idx + 1}</span>
                         <span className="text-sm font-medium">{officer.name}</span>
                       </div>
@@ -520,7 +520,7 @@ export default function AdminAnalytics() {
               {trainingByOfficer.length === 0 ? (
                 <div className="text-center py-8">
                   <CheckCircle2 className="w-12 h-12 mx-auto mb-2 text-green-600" />
-                  <p className="text-slate-600">All officers up to date!</p>
+                  <p className="text-slate-300">All officers up to date!</p>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-80 overflow-y-auto">
@@ -534,7 +534,7 @@ export default function AdminAnalytics() {
                             style={{ width: `${officer.percentage}%` }}
                           />
                         </div>
-                        <span className="text-xs text-slate-600 w-16">{officer.completed}/{officer.total}</span>
+                        <span className="text-xs text-slate-300 w-16">{officer.completed}/{officer.total}</span>
                       </div>
                     </div>
                   ))}
