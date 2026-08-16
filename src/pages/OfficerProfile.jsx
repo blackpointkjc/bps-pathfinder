@@ -71,7 +71,7 @@ export default function OfficerProfile() {
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
-    queryKey: ['currentUser'],
+    queryKey: ['officerProfileUser'],
     queryFn: async () => {
       const authUser = await base44.auth.me();
       if (!authUser?.email) return authUser;
