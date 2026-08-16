@@ -296,7 +296,7 @@ export default function AdminLocationTracker() {
             <p className="text-slate-600">Live GPS and one-minute movement history while officers are signed into the app</p>
             {lastAutoCheck && (
               <p className="text-xs text-slate-500 mt-1">
-                Last duty check: {format(lastAutoCheck, 'h:mm:ss a')} • Clocked-in GPS heartbeat: every 60 seconds
+                Last live check: {format(lastAutoCheck, 'h:mm:ss a')} • Signed-in GPS heartbeat: every 15 seconds
               </p>
             )}
           </div>
