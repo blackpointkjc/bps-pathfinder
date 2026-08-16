@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 const DAYS = [
   { value: "sunday", label: "Sunday" },
@@ -582,7 +583,7 @@ export default function AdminPlannedShifts() {
               <Label>Assigned Officers (Optional - Select up to 3)</Label>
               <p className="text-xs text-slate-500 mb-2">Select officers to assign. Leave empty to create OPEN shifts for bidding.</p>
               <div className="max-h-48 overflow-y-auto border rounded-lg p-3 space-y-2 bg-slate-50">
-                {allUsers?.filter(u => !u.termination_date).sort((a, b) => {
+                {allUsers?.filter(isOperationalOfficer).sort((a, b) => {
                   const unitA = a.unit_number ? parseInt(a.unit_number) : 9999;
                   const unitB = b.unit_number ? parseInt(b.unit_number) : 9999;
                   if (unitA !== unitB) return unitA - unitB;
