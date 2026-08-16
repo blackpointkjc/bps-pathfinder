@@ -112,7 +112,7 @@ export default function AdminLocationTracker() {
       if (payload.error) throw new Error(payload.error);
       return payload.units || [];
     },
-    refetchInterval: 15000,
+    refetchInterval: 5000,
     refetchOnWindowFocus: false,
     enabled: hasAccess && !!allUsers,
   });
@@ -548,8 +548,8 @@ export default function AdminLocationTracker() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">60 sec</div>
-                   <p className="text-xs text-slate-500 mt-1">History + session heartbeat</p>
+                  <div className="text-3xl font-bold text-slate-900">5 sec</div>
+                   <p className="text-xs text-slate-500 mt-1">Live map refresh · history every 60 sec</p>
                 </CardContent>
               </Card>
             </div>
@@ -576,7 +576,7 @@ export default function AdminLocationTracker() {
                       <MapUpdater officers={officersWithLocation} historicalPath={null} />
                       {officersWithLocation.map((officer) => (
                         <Marker 
-                          key={officer.id} 
+                          key={`${officer.id}-${Number(officer.latitude).toFixed(6)}-${Number(officer.longitude).toFixed(6)}-${officer.last_update || ''}`} 
                           position={[officer.latitude, officer.longitude]}
                         >
                           <Popup autoPan={false}>
