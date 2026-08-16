@@ -56,7 +56,8 @@ export default function ManageStudents({ embedded = false }) {
           userId: id,
           updates: { role: requestedRole },
         });
-        if (roleResult?.error) throw new Error(roleResult.error);
+        const rolePayload = roleResult?.data || roleResult || {};
+        if (rolePayload.error) throw new Error(rolePayload.error);
       }
       const profileData = { ...data };
       delete profileData.role;
@@ -65,8 +66,9 @@ export default function ManageStudents({ embedded = false }) {
         userId: id,
         updates: profileData,
       });
-      if (profileResult?.error) throw new Error(profileResult.error);
-      return profileResult;
+      const profilePayload = profileResult?.data || profileResult || {};
+      if (profilePayload.error) throw new Error(profilePayload.error);
+      return profilePayload;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
@@ -87,8 +89,9 @@ export default function ManageStudents({ embedded = false }) {
         userId: student.id,
         updates: { additional_roles: roles },
       });
-      if (result?.error) throw new Error(result.error);
-      return result;
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
