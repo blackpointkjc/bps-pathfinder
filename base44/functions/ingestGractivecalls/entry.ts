@@ -258,11 +258,12 @@ function sameStreetBlock(callLocation: unknown, propertyAddress: unknown) {
 
 function propertyMatch(call: any, location: any) {
   if (location?.active === false || location?.property_monitoring_enabled !== true) return null;
+  // A CAD point can be the block centroid rather than the property parcel. A
+  // confirmed same-street, same-hundred-block address is therefore authoritative.
+  if (sameStreetBlock(call?.location, location?.address)) return { relation: 'inside', distanceMeters: 0 };
   const lat = Number(call?.latitude);
   const lng = Number(call?.longitude);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return sameStreetBlock(call?.location, location?.address) ? { relation: 'inside', distanceMeters: 0 } : null;
-  }
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
   const polygon = Array.isArray(location.property_monitoring_polygon) ? location.property_monitoring_polygon : [];
   if (String(location.property_monitoring_boundary_type || '').toLowerCase() === 'polygon' && polygon.length >= 3) {
