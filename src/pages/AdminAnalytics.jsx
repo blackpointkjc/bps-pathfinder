@@ -443,7 +443,7 @@ export default function AdminAnalytics() {
               </div>
               </div>
             ) : (
-              <p className="text-center text-slate-500 py-8">No data available</p>
+              <p className="text-center text-slate-300 py-8">No data available</p>
             )}
           </CardContent>
         </Card>
@@ -459,19 +459,19 @@ export default function AdminAnalytics() {
             <CardContent>
               <div className="space-y-2 max-h-80 overflow-y-auto">
                 {companyOnTimeStats.byOfficer && companyOnTimeStats.byOfficer.length > 0 ? companyOnTimeStats.byOfficer.slice(0, 10).map((officer, idx) => (
-                  <div key={officer.email} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                  <div key={officer.email} className="flex items-center justify-between p-2 border border-slate-700 bg-slate-800 rounded-lg">
                     <div className="flex items-center gap-3">
                       <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                         idx === 0 ? 'bg-amber-500 text-white' : idx === 1 ? 'bg-slate-400 text-white' : idx === 2 ? 'bg-amber-700 text-white' : 'bg-slate-200 text-slate-300'
                       }`}>{idx + 1}</span>
-                      <span className="text-sm font-medium text-black">{officer.name}</span>
+                      <span className="text-sm font-medium text-white">{officer.name}</span>
                     </div>
                     <Badge className={`${officer.rate >= 90 ? 'bg-green-600' : officer.rate >= 75 ? 'bg-amber-600' : 'bg-red-600'} text-white`}>
                       {officer.rate}%
                     </Badge>
                   </div>
                 )) : (
-                  <p className="text-center text-slate-500 py-4">No time entries for current month</p>
+                  <p className="text-center text-slate-300 py-4">No time entries for current month</p>
                 )}
               </div>
             </CardContent>
@@ -488,12 +488,12 @@ export default function AdminAnalytics() {
               {commendationStats.byOfficer.length > 0 ? (
                 <div className="space-y-2 max-h-80 overflow-y-auto">
                   {commendationStats.byOfficer.slice(0, 10).map((officer, idx) => (
-                    <div key={officer.email} className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
+                    <div key={officer.email} className="flex items-center justify-between p-2 border border-emerald-800 bg-slate-800 rounded-lg">
                       <div className="flex items-center gap-3">
                         <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                           idx === 0 ? 'bg-amber-500 text-white' : idx === 1 ? 'bg-slate-400 text-white' : idx === 2 ? 'bg-amber-700 text-white' : 'bg-slate-200 text-slate-300'
                         }`}>{idx + 1}</span>
-                        <span className="text-sm font-medium">{officer.name}</span>
+                        <span className="text-sm font-medium text-white">{officer.name}</span>
                       </div>
                       <Badge className="bg-green-600 text-white">
                         {officer.count} ({officer.points} pts)
@@ -502,7 +502,7 @@ export default function AdminAnalytics() {
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-slate-500 py-8">No commendations this month</p>
+                <p className="text-center text-slate-300 py-8">No commendations this month</p>
               )}
             </CardContent>
           </Card>
@@ -525,8 +525,8 @@ export default function AdminAnalytics() {
               ) : (
                 <div className="space-y-2 max-h-80 overflow-y-auto">
                   {trainingByOfficer.slice(0, 10).map((officer) => (
-                    <div key={officer.email} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                      <span className="text-sm font-medium">{officer.name}</span>
+                    <div key={officer.email} className="flex items-center justify-between p-2 border border-slate-700 bg-slate-800 rounded-lg">
+                      <span className="text-sm font-medium text-white">{officer.name}</span>
                       <div className="flex items-center gap-2">
                         <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
                           <div 
@@ -555,7 +555,7 @@ export default function AdminAnalytics() {
                 <div className="space-y-2 max-h-80 overflow-y-auto">
                   {complaintStats.byOfficer.slice(0, 10).map((officer) => (
                     <div key={officer.email} className="flex items-center justify-between p-2 bg-red-50 rounded-lg">
-                      <span className="text-sm font-medium">{officer.name}</span>
+                      <span className="text-sm font-medium text-white">{officer.name}</span>
                       <Badge className={officer.sustained > 0 ? 'bg-red-600' : 'bg-amber-600'}>
                         {officer.count} ({officer.sustained} sustained)
                       </Badge>
@@ -568,7 +568,7 @@ export default function AdminAnalytics() {
                   )}
                 </div>
               ) : (
-                <p className="text-center text-slate-500 py-8">No complaints this month</p>
+                <p className="text-center text-slate-300 py-8">No complaints this month</p>
               )}
             </CardContent>
           </Card>
