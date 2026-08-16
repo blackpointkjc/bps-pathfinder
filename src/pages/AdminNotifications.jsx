@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Bell, Plus, Send, Shield, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { listDirectoryDivisions, listDirectoryUsers } from '@/lib/appDirectory';
+import { listDirectoryDivisions, listOfficerDirectory } from '@/lib/appDirectory';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 export default function AdminNotifications() {
@@ -35,7 +35,7 @@ export default function AdminNotifications() {
 
   const { data: directoryUsers = [] } = useQuery({
     queryKey: ['directoryUsers', 'adminNotifications'],
-    queryFn: () => listDirectoryUsers('last_name', 1000),
+    queryFn: () => listOfficerDirectory('last_name', 1000, true),
     enabled: user?.role === 'admin',
   });
 
