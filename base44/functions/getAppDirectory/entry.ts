@@ -27,6 +27,7 @@ function safeUser(entry: any, full = false) {
     employment_status: entry.employment_status || '',
     termination_date: entry.termination_date || '',
     assigned_sites: entry.assigned_sites || [],
+    assigned_locations: entry.assigned_locations || [],
     assigned_location: entry.assigned_location || '',
     status: entry.status,
     last_updated: entry.last_updated || entry.updated_date || '',
@@ -80,13 +81,16 @@ Deno.serve(async (req) => {
       users = (rawUsers || []).filter(isInternal).map((u: any) => safeUser(u, internalPrivileged));
     }
 
-    let locations = (rawLocations || []).filter((l: any) => l.active !== false);
+    let locations = rawLocations || [];
     if (clientOnly) {
+      locations = locations.filter((l: any) => l.active !== false);
       const allowed = new Set([...(me.assigned_sites || []), me.assigned_location].filter(Boolean).map(String));
       locations = locations.filter((l: any) => allowed.has(String(l.site_name)) || String(l.assigned_client_email || '').toLowerCase() === String(me.email || '').toLowerCase());
     }
 
-    const divisions = (rawDivisions || []).filter((d: any) => d.active !== false);
+    const divisions = clientOnly
+      ? (rawDivisions || []).filter((d: any) => d.active !== false)
+      : (rawDivisions || []);
 
     users.sort((a: any, b: any) => `${a.last_name || ''} ${a.first_name || ''}`.localeCompare(`${b.last_name || ''} ${b.first_name || ''}`));
 
