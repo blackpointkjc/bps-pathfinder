@@ -68,7 +68,7 @@ export default function AccountingPayroll() {
     enabled: isAccountingRole,
     staleTime: 0,
     refetchOnMount: 'always',
-    refetchInterval: 3000,
+    refetchInterval: 15000,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
   });
@@ -82,7 +82,7 @@ export default function AccountingPayroll() {
         const unsubscribe = base44.entities[entity].subscribe(refresh);
         if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
       } catch {
-        // Three-second polling remains active if realtime is unavailable.
+        // Fifteen-second polling remains active if realtime is unavailable.
       }
     }
     return () => unsubscribers.forEach(unsubscribe => unsubscribe());
@@ -551,7 +551,8 @@ export default function AccountingPayroll() {
     const entryDate = String(entry.clock_in || '').slice(0, 10);
     if (!entry.clock_in || entry.archived === true || entryDate < selectedPeriod.start_date || entryDate > selectedPeriod.end_date) return sum;
     const officer = officers.find(item => String(item.email).toLowerCase() === String(entry.officer_email).toLowerCase());
-    const hours = Math.round((entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow)) * 100) / 100;
+    const rawHours = entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow);
+    const hours = entry.clock_out ? Math.round(rawHours * 100) / 100 : rawHours;
     return sum + hours * (Number(officer?.hourly_rate) || 0);
   }, 0) : 0;
   const generatedGross = payrollEntries
