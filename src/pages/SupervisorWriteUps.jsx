@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { listDirectoryUsers, listDirectoryLocations } from '@/lib/appDirectory';
+import { listOfficerDirectory, listDirectoryLocations } from '@/lib/appDirectory';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 export default function SupervisorWriteUps() {
@@ -48,7 +48,7 @@ export default function SupervisorWriteUps() {
   // Re-introducing allUsers query as `getOfficerIdentifier` function requires it.
   const { data: allUsers = [] } = useQuery({
     queryKey: ['directoryUsers', 'supervisorWriteUps'],
-    queryFn: () => listDirectoryUsers('last_name', 1000),
+    queryFn: () => listOfficerDirectory('last_name', 1000, true),
     initialData: [],
     staleTime: 0,
     refetchOnMount: 'always',
