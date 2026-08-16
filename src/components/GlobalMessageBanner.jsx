@@ -112,6 +112,14 @@ function isTerminalCallStatus(value) {
   return TERMINAL_CALL_STATUSES.has(normalized(value));
 }
 
+function announcedCallStatus(value) {
+  const status = normalized(value).replace(/[\s_-]+/g, '');
+  if (status === 'dispatched') return 'Dispatched';
+  if (status === 'enroute' || status === 'enroutetoscene') return 'En Route';
+  if (status === 'onscene' || status === 'onsite') return 'On Site';
+  return null;
+}
+
 function propertyCallSummary(alert, call = {}) {
   const incident = call.incident || alert?.callIncident || 'Unknown incident';
   const address = call.location || alert?.callLocation || 'Address unavailable';
@@ -144,6 +152,7 @@ export default function GlobalMessageBanner({ user }) {
   const knownIds = useRef(new Set());
   const recentFingerprints = useRef(new Map());
   const timers = useRef(new Map());
+  const callStatuses = useRef(new Map());
 
   useEffect(() => {
     if (!user?.id && !user?.email) return undefined;
@@ -296,6 +305,31 @@ export default function GlobalMessageBanner({ user }) {
     };
 
     try {
+      // Seed current statuses before subscribing so a page refresh does not replay
+      // every active call. Only meaningful changes are spoken.
+      base44.entities.DispatchCall.list('-created_date', 500).then(calls => {
+        (calls || []).forEach(call => callStatuses.current.set(call.id, normalized(call.status)));
+      }).catch(() => null);
+
+      const callStatusUnsubscribe = base44.entities.DispatchCall.subscribe(event => {
+        const call = event?.data;
+        if (!call?.id) return;
+        const nextRaw = normalized(call.status);
+        const previousRaw = callStatuses.current.get(call.id);
+        callStatuses.current.set(call.id, nextRaw);
+        if (event.type !== 'update' || !previousRaw || previousRaw === nextRaw) return;
+
+        const spokenStatus = announcedCallStatus(call.status);
+        if (!spokenStatus || isTerminalCallStatus(call.status)) return;
+        const incident = call.incident || 'Call for service';
+        const address = call.location || 'address unavailable';
+        speakNotification(
+          `Call status update. ${incident}. At ${address}. Now ${spokenStatus}.`,
+          { rate: 0.82, pitch: 0.66, dedupeMs: 4000 },
+        );
+      });
+      if (typeof callStatusUnsubscribe === 'function') unsubscribers.push(callStatusUnsubscribe);
+
       const propertyUnsubscribe = base44.entities.PropertyAlert.subscribe(event => {
         if (event?.type !== 'create' || !event.data?.id) return;
         showPropertyCall(event.data);
