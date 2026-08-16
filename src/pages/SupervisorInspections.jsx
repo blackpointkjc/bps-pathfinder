@@ -11,8 +11,7 @@ import { ClipboardCheck, Plus, UserCheck, CheckCircle, XCircle, Pencil } from "l
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { listDirectoryUsers, listDirectoryLocations } from '@/lib/appDirectory';
-import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
+import { listOfficerDirectory, listDirectoryLocations } from '@/lib/appDirectory';
 
 export default function SupervisorInspections() {
   const [showForm, setShowForm] = useState(false);
@@ -45,16 +44,15 @@ export default function SupervisorInspections() {
     initialData: [],
   });
 
-  const { data: allUsers = [] } = useQuery({
-    queryKey: ['directoryUsers', 'supervisorInspections'],
-    queryFn: () => listDirectoryUsers('last_name', 1000),
+  const { data: filteredUsers = [], isLoading: officersLoading, error: officersError } = useQuery({
+    queryKey: ['officerDirectory', 'supervisorInspections'],
+    queryFn: () => listOfficerDirectory('last_name', 1000, true),
+    enabled: hasSupervisorAccess,
     initialData: [],
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
   });
-
-  const filteredUsers = allUsers.filter(hasOfficerAdditionalRole);
 
   const userRoles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
   const hasSupervisorAccess = user?.role === 'admin' || userRoles.has('full_access') || userRoles.has('supervisor');
@@ -209,8 +207,8 @@ export default function SupervisorInspections() {
                     <Select
                       value={formData.officer_email}
                       onValueChange={(value) => {
-                        const officer = allUsers?.find(u => u.email === value);
-                        const officerName = officer ? `${officer.first_name} ${officer.last_name}` : value;
+                        const officer = filteredUsers.find(u => u.email === value);
+                        const officerName = officer ? [officer.rank, officer.last_name].filter(Boolean).join(' ') : value;
                         setFormData({
                           ...formData, 
                           officer_inspected: officerName,
@@ -223,12 +221,16 @@ export default function SupervisorInspections() {
                         <SelectValue placeholder="Select officer..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {filteredUsers.length === 0 ? (
-                          <div className="p-2 text-sm text-slate-500">No officers found</div>
+                        {officersLoading ? (
+                          <div className="p-2 text-sm text-slate-500">Loading officers...</div>
+                        ) : officersError ? (
+                          <div className="p-2 text-sm text-red-600">Unable to load officers. Close and reopen this form to retry.</div>
+                        ) : filteredUsers.length === 0 ? (
+                          <div className="p-2 text-sm text-slate-500">No active Officer-role accounts found</div>
                         ) : (
                           filteredUsers.map((officer) => (
                             <SelectItem key={officer.email} value={officer.email}>
-                              {officer.first_name} {officer.last_name} - {officer.rank || 'Officer'}
+                              {[officer.rank, officer.last_name].filter(Boolean).join(' ') || officer.email}
                             </SelectItem>
                           ))
                         )}
