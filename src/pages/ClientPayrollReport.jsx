@@ -502,8 +502,11 @@ export default function ClientPayrollReport() {
               <div key={site} className="p-4 bg-slate-50 rounded-lg">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <p className="font-bold text-slate-900">{site}</p>
-                    <p className="text-sm text-slate-600">Rate: ${data.billRate.toFixed(2)}/hour</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-slate-900">{site}</p>
+                      {data.active === false && <Badge variant="secondary">Inactive • history retained</Badge>}
+                    </div>
+                    <p className="text-sm text-slate-600">Standard rate: ${data.billRate.toFixed(2)}/hour</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-slate-600">{data.hours.toFixed(2)} hours</p>
@@ -525,7 +528,7 @@ export default function ClientPayrollReport() {
                             {format(new Date(shift.clock_in), 'MMM d, HH:mm')} - {format(new Date(shift.clock_out), 'HH:mm')}
                           </span>
                           <span className="font-medium">
-                            {shift.hours.toFixed(2)}h × ${data.billRate.toFixed(2)} = ${shift.billedAmount.toFixed(2)}
+                            {shift.hours.toFixed(2)}h × ${Number(shift.billRate || data.billRate).toFixed(2)}{shift.rateLabel ? ` (${shift.rateLabel})` : ''} = ${shift.billedAmount.toFixed(2)}
                           </span>
                         </div>
                       );
