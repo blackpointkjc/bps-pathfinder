@@ -835,6 +835,64 @@ export default function AccountingPayroll() {
     reportWindow.document.close();
   };
 
+  // Gross-pay transfer report: master totals first, then a printable itemized
+  // clock-in/clock-out sheet for every officer. Taxes stay in the external system.
+  const generateGrossPayrollReport = (entriesToReport) => {
+    if (!entriesToReport?.length) return;
+    const reportWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!reportWindow) {
+      alert('Allow pop-ups to open the payroll report.');
+      return;
+    }
+    const esc = value => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const money = value => Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const period = selectedPeriod || payrollPeriods.find(p => entriesToReport.some(e => e.pay_period_start === p.start_date && e.pay_period_end === p.end_date));
+    const start = period?.start_date || entriesToReport[0]?.pay_period_start || '';
+    const end = period?.end_date || entriesToReport[0]?.pay_period_end || '';
+    const entryForOfficer = payrollEntry => timeEntries
+      .filter(item => item.archived !== true && item.clock_in && item.clock_out &&
+        String(item.officer_email || '').toLowerCase() === String(payrollEntry.officer_email || '').toLowerCase() &&
+        String(item.clock_in).slice(0, 10) >= payrollEntry.pay_period_start &&
+        String(item.clock_in).slice(0, 10) <= payrollEntry.pay_period_end)
+      .sort((a, b) => new Date(a.clock_in) - new Date(b.clock_in));
+
+    const masterRows = entriesToReport.map(entry => {
+      const officer = officers.find(o => String(o.email).toLowerCase() === String(entry.officer_email).toLowerCase());
+      const name = [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || entry.officer_email;
+      return `<tr><td>${esc(name)}</td><td>${esc(entry.officer_email)}</td><td class="num">${Number(entry.regular_hours || 0).toFixed(2)}</td><td class="num">${Number(entry.overtime_hours || 0).toFixed(2)}</td><td class="num">${Number(entry.holiday_hours || 0).toFixed(2)}</td><td class="num">${Number(entry.hours_worked || 0).toFixed(2)}</td><td class="num">$${money(entry.hourly_rate)}</td><td class="num">$${money(entry.gross_pay)}</td></tr>`;
+    }).join('');
+
+    const detailSections = entriesToReport.map(entry => {
+      const officer = officers.find(o => String(o.email).toLowerCase() === String(entry.officer_email).toLowerCase());
+      const name = [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || entry.officer_email;
+      const shifts = entryForOfficer(entry);
+      const shiftRows = shifts.map(shift => {
+        const hours = calculatePaidHours(shift);
+        return `<tr><td>${safeFormatDate(shift.clock_in, 'EEE, MMM d, yyyy')}</td><td>${esc(shift.location || 'Unassigned')}</td><td>${safeFormatDate(shift.clock_in, 'h:mm a')}</td><td>${safeFormatDate(shift.clock_out, 'h:mm a')}</td><td class="num">${hours.toFixed(2)}</td></tr>`;
+      }).join('');
+      return `<section class="employee-sheet"><div class="employee-head"><div><h2>${esc(name)}</h2><div>${esc(entry.officer_email)}</div></div><div><strong>Pay period:</strong> ${esc(entry.pay_period_start)} through ${esc(entry.pay_period_end)}</div></div>
+        <table><thead><tr><th>Date</th><th>Location</th><th>Clock In</th><th>Clock Out</th><th class="num">Hours</th></tr></thead><tbody>${shiftRows || '<tr><td colspan="5">No completed time entries found for this payroll record.</td></tr>'}</tbody></table>
+        <div class="earnings"><div>Regular: <strong>${Number(entry.regular_hours || 0).toFixed(2)} hrs × $${money(entry.hourly_rate)} = $${money(entry.regular_pay)}</strong></div><div>Overtime: <strong>${Number(entry.overtime_hours || 0).toFixed(2)} hrs × $${money(entry.overtime_rate)} = $${money(entry.overtime_pay)}</strong></div><div>Holiday: <strong>${Number(entry.holiday_hours || 0).toFixed(2)} hrs × $${money(entry.holiday_rate)} = $${money(entry.holiday_pay)}</strong></div><div class="gross">Gross pay to enter in payroll system: $${money(entry.gross_pay)}</div></div>
+        <div class="signatures"><span>Reviewed by: ____________________</span><span>Date: ____________</span></div></section>`;
+    }).join('');
+
+    const csvRows = [
+      ['Employee','Email','Period Start','Period End','Regular Hours','Regular Rate','Regular Pay','Overtime Hours','Overtime Rate','Overtime Pay','Holiday Hours','Holiday Rate','Holiday Pay','Total Hours','Gross Pay'],
+      ...entriesToReport.map(entry => {
+        const officer = officers.find(o => String(o.email).toLowerCase() === String(entry.officer_email).toLowerCase());
+        const name = [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || entry.officer_email;
+        return [name,entry.officer_email,entry.pay_period_start,entry.pay_period_end,entry.regular_hours,entry.hourly_rate,entry.regular_pay,entry.overtime_hours,entry.overtime_rate,entry.overtime_pay,entry.holiday_hours,entry.holiday_rate,entry.holiday_pay,entry.hours_worked,entry.gross_pay];
+      })
+    ].map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const totalHours = entriesToReport.reduce((sum, e) => sum + Number(e.hours_worked || 0), 0);
+    const totalGrossReport = entriesToReport.reduce((sum, e) => sum + Number(e.gross_pay || 0), 0);
+
+    reportWindow.document.write(`<!doctype html><html><head><title>Payroll Transfer Report</title><style>
+      @page{size:landscape;margin:.45in}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#172033;margin:0;padding:24px}.toolbar{display:flex;gap:10px;justify-content:flex-end;margin-bottom:20px}.toolbar button{border:0;border-radius:8px;padding:10px 16px;background:#172033;color:white;font-weight:700}.brand{background:#07111f;color:white;padding:22px;border-radius:14px}.brand h1{margin:0;font-size:25px}.brand p{margin:7px 0 0;color:#cbd5e1}.summary{display:flex;gap:16px;margin:18px 0}.chip{border:1px solid #cbd5e1;border-radius:10px;padding:12px 18px;min-width:170px}.chip strong{display:block;font-size:22px;margin-top:4px}table{width:100%;border-collapse:collapse;margin-top:14px}th{background:#e8eef6;text-align:left;font-size:11px;text-transform:uppercase}th,td{border:1px solid #cbd5e1;padding:8px}.num{text-align:right}.employee-sheet{page-break-before:always}.employee-head{display:flex;justify-content:space-between;align-items:end;border-bottom:3px solid #172033;padding-bottom:10px}.employee-head h2{margin:0}.earnings{margin-top:16px;margin-left:auto;width:480px;border:1px solid #cbd5e1;border-radius:10px;padding:14px}.earnings div{display:flex;justify-content:space-between;padding:5px}.earnings .gross{border-top:2px solid #172033;margin-top:8px;padding-top:12px;font-size:17px;font-weight:800}.signatures{display:flex;gap:80px;margin-top:35px}@media print{.toolbar{display:none}.brand{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+    </style></head><body><div class="toolbar"><button onclick="window.print()">Print Master + Officer Sheets</button><button onclick="downloadCSV()">Download Payroll CSV</button></div><div class="brand"><h1>Black Point Protection — Payroll Transfer Report</h1><p>${esc(start)} through ${esc(end)} • Gross hours and earnings only • Taxes and deductions are processed in the external payroll system.</p></div><div class="summary"><div class="chip">Officers<strong>${entriesToReport.length}</strong></div><div class="chip">Total Hours<strong>${totalHours.toFixed(2)}</strong></div><div class="chip">Total Gross<strong>$${money(totalGrossReport)}</strong></div></div><h2>Master Payroll Summary</h2><table><thead><tr><th>Officer</th><th>Email</th><th class="num">Regular</th><th class="num">OT</th><th class="num">Holiday</th><th class="num">Total Hours</th><th class="num">Base Rate</th><th class="num">Gross Pay</th></tr></thead><tbody>${masterRows}</tbody></table>${detailSections}<script>function downloadCSV(){const csv=${JSON.stringify(csvRows)};const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='payroll-transfer-${esc(start)}-${esc(end)}.csv';a.click();URL.revokeObjectURL(url)}<\/script></body></html>`);
+    reportWindow.document.close();
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-7xl">
       {accountingLoading && <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">Loading payroll hours and periods…</div>}
