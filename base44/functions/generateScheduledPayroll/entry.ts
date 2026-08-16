@@ -1,0 +1,235 @@
+import { createClientFromRequest } from 'npm:@base44/sdk';
+
+const round = (value: number, digits = 2) => Number(Number(value || 0).toFixed(digits));
+const dateOnly = (value: unknown) => String(value || '').slice(0, 10);
+
+function paidHours(entry: any) {
+  const start = new Date(entry.clock_in).getTime();
+  const end = new Date(entry.clock_out).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0;
+  const breakMs = (Array.isArray(entry.break_periods) ? entry.break_periods : []).reduce((total: number, period: any) => {
+    const breakStart = new Date(period?.start).getTime();
+    const breakEnd = new Date(period?.end).getTime();
+    if (!Number.isFinite(breakStart) || !Number.isFinite(breakEnd) || breakEnd <= breakStart) return total;
+    return total + Math.max(0, Math.min(end, breakEnd) - Math.max(start, breakStart));
+  }, 0);
+  return Math.max(0, (end - start - breakMs) / 3600000);
+}
+
+function sundayKey(value: unknown) {
+  const date = new Date(String(value));
+  const sunday = new Date(date);
+  sunday.setUTCDate(sunday.getUTCDate() - sunday.getUTCDay());
+  return sunday.toISOString().slice(0, 10);
+}
+
+function holidayName(value: unknown) {
+  const date = new Date(String(value));
+  const month = date.getUTCMonth() + 1;
+  const day = date.getUTCDate();
+  const weekday = date.getUTCDay();
+  const week = Math.ceil(day / 7);
+  if (month === 1 && day === 1) return "New Year's Day";
+  if (month === 1 && weekday === 1 && week === 3) return 'Martin Luther King Jr. Day';
+  if (month === 6 && day === 19) return 'Juneteenth';
+  if (month === 7 && day === 4) return 'Independence Day';
+  if (month === 11 && weekday === 4 && week === 4) return 'Thanksgiving Day';
+  if (month === 12 && day === 25) return 'Christmas Day';
+  return '';
+}
+
+function annualFederalTax(taxable: number, status: string) {
+  if (status === 'married_joint') {
+    if (taxable <= 23200) return taxable * .10;
+    if (taxable <= 94300) return 2320 + (taxable - 23200) * .12;
+    if (taxable <= 201050) return 10852 + (taxable - 94300) * .22;
+    if (taxable <= 383900) return 34337 + (taxable - 201050) * .24;
+    if (taxable <= 487450) return 78221 + (taxable - 383900) * .32;
+    if (taxable <= 731200) return 111357 + (taxable - 487450) * .35;
+    return 196669.5 + (taxable - 731200) * .37;
+  }
+  if (status === 'head_of_household') {
+    if (taxable <= 16550) return taxable * .10;
+    if (taxable <= 63100) return 1655 + (taxable - 16550) * .12;
+    if (taxable <= 100500) return 7241 + (taxable - 63100) * .22;
+    if (taxable <= 191950) return 15469 + (taxable - 100500) * .24;
+    if (taxable <= 243700) return 37417 + (taxable - 191950) * .32;
+    if (taxable <= 609350) return 53977 + (taxable - 243700) * .35;
+    return 181954.5 + (taxable - 609350) * .37;
+  }
+  if (taxable <= 11600) return taxable * .10;
+  if (taxable <= 47150) return 1160 + (taxable - 11600) * .12;
+  if (taxable <= 100525) return 5426 + (taxable - 47150) * .22;
+  if (taxable <= 191950) return 17168.5 + (taxable - 100525) * .24;
+  if (taxable <= 243725) return 39110.5 + (taxable - 191950) * .32;
+  if (taxable <= 609350) return 55678.5 + (taxable - 243725) * .35;
+  return 183647.25 + (taxable - 609350) * .37;
+}
+
+function withholding(gross: number, officer: any, payPeriods: number) {
+  let annualWages = gross * payPeriods + Number(officer.w4_step4a_other_income || 0);
+  annualWages = Math.max(0, annualWages - Number(officer.w4_step4b_deductions || 0));
+  const filing = officer.tax_filing_status || 'single';
+  const standard = filing === 'married_joint' ? 29200 : filing === 'head_of_household' ? 21900 : 14600;
+  let federal = Math.max(0, annualFederalTax(Math.max(0, annualWages - standard), filing) - Number(officer.w4_step3_dependents_amount || 0));
+  federal = federal / payPeriods + Number(officer.w4_step4c_extra_withholding || 0);
+  if (officer.exempt_from_federal_tax) federal = 0;
+
+  let state = 0;
+  if (officer.work_state === 'VA') {
+    state = gross <= 3000 ? gross * .02 : gross <= 5000 ? 60 + (gross - 3000) * .03 : gross <= 17000 ? 120 + (gross - 5000) * .05 : 720 + (gross - 17000) * .0575;
+  } else if (officer.work_state === 'MD') state = gross * .0575;
+  else if (officer.work_state === 'DC') state = gross * .065;
+  else if (officer.work_state === 'NC') state = gross * .0475;
+  state = Math.max(0, state - Number(officer.state_withholding_allowances || 0) * 38.46);
+  if (officer.exempt_from_state_tax) state = 0;
+  return { federal, state };
+}
+
+Deno.serve(async (req) => {
+  try {
+    const base44 = createClientFromRequest(req);
+    const now = new Date();
+    const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York', hour: '2-digit', hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(now);
+    const part = (type: string) => parts.find(item => item.type === type)?.value || '';
+    const easternHour = Number(part('hour'));
+    const easternToday = `${part('year')}-${part('month')}-${part('day')}`;
+    const yesterday = new Date(`${easternToday}T12:00:00Z`);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const endedDate = yesterday.toISOString().slice(0, 10);
+
+    if (!body.force && easternHour !== 8) {
+      return Response.json({ success: true, skipped: true, reason: 'Outside 8 AM Eastern payroll window' });
+    }
+
+    const [periods, entries, users, existingPayroll, configs] = await Promise.all([
+      base44.asServiceRole.entities.PayrollPeriod.list('start_date', 1000),
+      base44.asServiceRole.entities.TimeEntry.list('-clock_in', 10000),
+      base44.asServiceRole.entities.User.list(),
+      base44.asServiceRole.entities.PayrollEntry.list('-created_date', 5000),
+      base44.asServiceRole.entities.PayrollConfig.list(undefined, 20),
+    ]);
+    const period = body.period_id
+      ? (periods || []).find((item: any) => item.id === body.period_id)
+      : (periods || []).find((item: any) => item.end_date === endedDate);
+    if (!period) return Response.json({ success: true, skipped: true, reason: `No payroll period ended on ${endedDate}` });
+
+    const config = configs?.[0] || {};
+    const payPeriods = config.pay_schedule === 'weekly' ? 52 : config.pay_schedule === 'semimonthly' ? 24 : config.pay_schedule === 'monthly' ? 12 : 26;
+    const threshold = Number(config.overtime_threshold_hours || 40);
+    const overtimeMultiplier = Number(config.overtime_multiplier || 1.5);
+    const holidayMultiplier = Number(config.holiday_multiplier || 2);
+    const usersByEmail = new Map((users || []).map((user: any) => [String(user.email || '').toLowerCase(), user]));
+    const existingKeys = new Set((existingPayroll || []).map((item: any) =>
+      `${String(item.officer_email || '').toLowerCase()}|${item.pay_period_start}|${item.pay_period_end}`
+    ));
+    const grouped = new Map<string, any>();
+
+    for (const timeEntry of entries || []) {
+      const day = dateOnly(timeEntry.clock_in);
+      if (!timeEntry.clock_in || !timeEntry.clock_out || timeEntry.archived === true || day < period.start_date || day > period.end_date) continue;
+      const email = String(timeEntry.officer_email || '').toLowerCase();
+      const officer = usersByEmail.get(email) as any;
+      if (!officer || Number(officer.hourly_rate || 0) <= 0) continue;
+      if (!grouped.has(email)) grouped.set(email, { officer, weekly: {}, holidays: [] });
+      const data = grouped.get(email);
+      const hours = paidHours(timeEntry);
+      const holiday = holidayName(timeEntry.clock_in);
+      if (holiday) data.holidays.push({ date: day, name: holiday, hours });
+      else {
+        const week = sundayKey(timeEntry.clock_in);
+        data.weekly[week] = Number(data.weekly[week] || 0) + hours;
+      }
+    }
+
+    let created = 0;
+    let duplicates = 0;
+    const skippedNoRate: string[] = [];
+    for (const [email, data] of grouped.entries()) {
+      const key = `${email}|${period.start_date}|${period.end_date}`;
+      if (existingKeys.has(key)) { duplicates += 1; continue; }
+      const officer = data.officer;
+      const baseRate = Number(officer.hourly_rate);
+      const overtimeRate = Number(officer.overtime_rate_override || baseRate * overtimeMultiplier);
+      const holidayRate = Number(officer.holiday_rate_override || baseRate * holidayMultiplier);
+      let regularHours = 0;
+      let overtimeHours = 0;
+      Object.values(data.weekly).forEach((hours: any) => {
+        regularHours += Math.min(Number(hours), threshold);
+        overtimeHours += Math.max(0, Number(hours) - threshold);
+      });
+      const holidayHours = data.holidays.reduce((sum: number, item: any) => sum + item.hours, 0);
+      const regularPay = regularHours * baseRate;
+      const overtimePay = overtimeHours * overtimeRate;
+      const holidayPay = holidayHours * holidayRate;
+      const gross = regularPay + overtimePay + holidayPay;
+      const taxes = withholding(gross, officer, payPeriods);
+      const socialSecurity = Math.min(gross * .062, 10453.20);
+      const medicare = gross * .0145;
+      const net = gross - taxes.federal - taxes.state - socialSecurity - medicare;
+
+      await base44.asServiceRole.entities.PayrollEntry.create({
+        officer_email: email,
+        pay_period_start: period.start_date,
+        pay_period_end: period.end_date,
+        pay_date: period.deposit_date || period.end_date,
+        regular_hours: round(regularHours, 4),
+        overtime_hours: round(overtimeHours, 4),
+        holiday_hours: round(holidayHours, 4),
+        hours_worked: round(regularHours + overtimeHours + holidayHours, 4),
+        hourly_rate: baseRate,
+        overtime_rate: overtimeRate,
+        holiday_rate: holidayRate,
+        regular_pay: round(regularPay),
+        overtime_pay: round(overtimePay),
+        holiday_pay: round(holidayPay),
+        gross_pay: round(gross),
+        federal_tax: round(taxes.federal),
+        state_tax: round(taxes.state),
+        social_security: round(socialSecurity),
+        medicare: round(medicare),
+        other_deductions: 0,
+        net_pay: round(net),
+        qualified_overtime_premium: round(overtimeHours * (overtimeRate - baseRate)),
+        qualified_tips: 0,
+        tip_occupation_code: '000',
+        holidays_worked: JSON.stringify(data.holidays),
+        status: 'draft',
+        payment_method: officer.payment_method || 'direct_deposit',
+        notes: `Automatically generated at 8 AM Eastern after ${period.period_name || 'payroll period'} ended.`,
+      });
+      created += 1;
+    }
+
+    if (period.status !== 'closed') await base44.asServiceRole.entities.PayrollPeriod.update(period.id, { status: 'closed' });
+    const next = (periods || []).filter((item: any) => item.start_date > period.end_date).sort((a: any, b: any) => a.start_date.localeCompare(b.start_date))[0];
+    if (next && next.status !== 'current') await base44.asServiceRole.entities.PayrollPeriod.update(next.id, { status: 'current' });
+
+    const accountingUsers = (users || []).filter((user: any) => {
+      const roles = (user.additional_roles || []).map((role: unknown) => String(role).toLowerCase());
+      return user.role === 'admin' || roles.includes('accounting') || roles.includes('full_access');
+    });
+    for (const user of accountingUsers) {
+      if (!user.email) continue;
+      await base44.asServiceRole.entities.Notification.create({
+        recipient_email: user.email,
+        recipient_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+        type: 'payroll',
+        priority: 'high',
+        title: `Payroll ready: ${period.period_name}`,
+        message: `${created} draft payroll record(s) were generated for ${period.start_date} through ${period.end_date}. Review and approve payroll before payment.`,
+        action_url: '/AccountingCenter?section=payroll',
+        read: false,
+      });
+    }
+
+    return Response.json({ success: true, period_id: period.id, period_name: period.period_name, created, duplicates, skipped_no_rate: skippedNoRate });
+  } catch (error) {
+    console.error('generateScheduledPayroll failed', error);
+    return Response.json({ error: error?.message || 'Unable to generate scheduled payroll' }, { status: 500 });
+  }
+});
