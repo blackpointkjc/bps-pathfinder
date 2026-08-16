@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
         });
 
         sequence += 1;
-        const due = new Date(now.getTime() + 30 * DAY_MS);
+        const due = new Date(now.getTime() + 15 * DAY_MS);
         const invoiceNumber = `${yearPrefix}${String(sequence).padStart(3, '0')}`;
         await base44.asServiceRole.entities.Invoice.create({
           invoice_number: invoiceNumber,
