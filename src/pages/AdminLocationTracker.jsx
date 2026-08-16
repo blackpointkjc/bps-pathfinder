@@ -138,8 +138,8 @@ export default function AdminLocationTracker() {
     return map;
   }, [activeOfficerLocations]);
 
-  // The live feed is already restricted server-side to officers with an open
-  // TimeEntry and a fresh ActiveOfficer ping. This client-side freshness check is
+  // The live feed is restricted server-side to signed-in officers with a fresh
+  // ActiveOfficer ping. This client-side freshness check is
   // only a final display safeguard.
   const currentlyActiveOfficers = React.useMemo(() => {
     const now = Date.now();
@@ -224,11 +224,11 @@ export default function AdminLocationTracker() {
         const item = {
           name,
           email: profile.email,
-          location: locationData.current_location || 'Clocked in - GPS pending',
+          location: locationData.current_location || 'Signed in - GPS pending',
           role: profile.rank || profile.role || 'officer',
           lastUpdate: locationData.last_update || null,
           minutesSinceUpdate: Number.isFinite(ageMs) ? Math.max(0, Math.floor(ageMs / 60000)) : null,
-          trackingState: hasGps && ageMs <= LIVE_SESSION_FRESH_MS ? 'Live' : hasGps ? 'Last known' : 'Clocked in - GPS unavailable',
+          trackingState: hasGps && ageMs <= LIVE_SESSION_FRESH_MS ? 'Live' : hasGps ? 'Last known' : 'Signed in - GPS unavailable',
         };
         results.total += 1;
         if (hasGps && ageMs <= LIVE_SESSION_FRESH_MS) results.withLocation.push(item);
@@ -293,7 +293,7 @@ export default function AdminLocationTracker() {
               <Activity className="w-8 h-8 text-green-600" />
               User Location Tracker
             </h1>
-            <p className="text-slate-600">Live GPS and one-minute movement history only while officers are clocked in</p>
+            <p className="text-slate-600">Live GPS and one-minute movement history while officers are signed into the app</p>
             {lastAutoCheck && (
               <p className="text-xs text-slate-500 mt-1">
                 Last duty check: {format(lastAutoCheck, 'h:mm:ss a')} • Clocked-in GPS heartbeat: every 60 seconds
