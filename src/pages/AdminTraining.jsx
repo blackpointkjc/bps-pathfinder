@@ -121,7 +121,7 @@ function AdminTrainingContent({ embedded = false }) {
   const hasTrainingAccess = user?.role === 'admin' || userRoles.has('trainer') || userRoles.has('full_access');
 
   const { data: allUsers = [] } = useQuery({
-    queryKey: ['trainingUsers'],
+    queryKey: ['trainingUsers', 'moduleAssignments'],
     queryFn: () => listTrainingUsers(true),
     enabled: hasTrainingAccess,
     staleTime: 15000,
@@ -577,7 +577,7 @@ function AdminTrainingContent({ embedded = false }) {
              </Label>
              <div className="flex gap-2">
                <Select
-                 value=""
+                 key={formData.training_category + '-' + formData.training_items.length}
                  onValueChange={(value) => {
                    if (value && !formData.training_items.includes(value)) {
                      setFormData({...formData, training_items: [...formData.training_items, value]});
