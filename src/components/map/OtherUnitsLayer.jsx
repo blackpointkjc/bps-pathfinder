@@ -34,7 +34,7 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
     return new L.DivIcon({
         className: 'custom-marker patrol-shield-marker',
         html: `
-          <div style="position:relative;width:54px;height:64px;filter:drop-shadow(0 5px 8px rgba(0,0,0,.55));">
+          <div style="position:relative;width:38px;height:46px;transform:scale(.70);transform-origin:bottom center;filter:drop-shadow(0 5px 8px rgba(0,0,0,.55));">
             ${emergency ? `<div style="position:absolute;left:13px;top:0;width:28px;height:6px;border-radius:5px;overflow:hidden;border:1px solid rgba(255,255,255,.9);z-index:4;background:#111827"><span style="position:absolute;left:0;top:0;width:50%;height:100%;background:#ef4444;animation:bpsPoliceFlash .8s infinite"></span><span style="position:absolute;right:0;top:0;width:50%;height:100%;background:#2563eb;animation:bpsPoliceFlash .8s .4s infinite"></span></div>` : ''}
             <svg width="54" height="58" viewBox="0 0 54 58" style="position:absolute;top:5px;left:0;z-index:2;overflow:visible">
               <path d="M27 2 L47 9 V26 C47 40 39 50 27 56 C15 50 7 40 7 26 V9 Z" fill="#081a2d" stroke="${isSupervisor ? '#facc15' : '#dbeafe'}" stroke-width="2.2"/>
@@ -50,9 +50,9 @@ const createOtherUnitIcon = (status, heading, showLights, isSupervisor, unitNumb
           </div>
           <style>@keyframes bpsPoliceFlash{0%,48%{opacity:1}50%,100%{opacity:.2}}</style>
         `,
-        iconSize: [54, 64],
-        iconAnchor: [27, 56],
-        popupAnchor: [0, -50],
+        iconSize: [38, 46],
+        iconAnchor: [19, 42],
+        popupAnchor: [0, -40],
     });
 };
 
@@ -70,8 +70,8 @@ const getStatusColor = (status) => {
 export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     if (!units || units.length === 0) return null;
     
-    // Officer-safety view: every officer remains an individual marker.
-    // Never collapse union/group members into a single lead-unit icon.
+    // Keep every officer represented, but merge markers that are physically within
+    // 25 feet so overlapping icons never hide one another.
     const unitsToShow = units.filter(unit => unit.id !== currentUserId);
 
     if (unitsToShow.length === 0) return null;
@@ -93,7 +93,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
         panel.style.minWidth = '220px';
 
         const heading = document.createElement('div');
-        heading.textContent = `${officerNames.length} officer${officerNames.length === 1 ? '' : 's'} at this location`;
+        heading.textContent = `${officerNames.length} officer${officerNames.length === 1 ? '' : 's'} within 25 feet`;
         heading.style.fontWeight = '800';
         heading.style.fontSize = '14px';
         heading.style.marginBottom = '8px';
@@ -120,12 +120,17 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
         <MarkerClusterGroup
             key={locationSignature}
             chunkedLoading
-            maxClusterRadius={45}
+            maxClusterRadius={(zoom) => {
+                // Web Mercator ground resolution near central Virginia. This keeps
+                // the cluster threshold at about 25 feet instead of a fixed pixel radius.
+                const metersPerPixel = (156543.03392 * Math.cos(37.54 * Math.PI / 180)) / (2 ** zoom);
+                return Math.max(1, 7.62 / metersPerPixel);
+            }}
             spiderfyOnMaxZoom={false}
-            disableClusteringAtZoom={18}
             showCoverageOnHover={false}
             zoomToBoundsOnClick={false}
             onClick={handleClusterClick}
+            onMouseOver={handleClusterClick}
             iconCreateFunction={(cluster) => {
                 const count = cluster.getChildCount();
                 return L.divIcon({
@@ -133,18 +138,18 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                         background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
                         color: white;
                         border-radius: 50%;
-                        width: 40px;
-                        height: 40px;
+                        width: 28px;
+                        height: 28px;
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         font-weight: bold;
-                        font-size: 14px;
-                        border: 3px solid white;
+                        font-size: 11px;
+                        border: 2px solid white;
                         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                     ">${count}</div>`,
                     className: 'custom-cluster-icon',
-                    iconSize: [40, 40]
+                    iconSize: [28, 28]
                 });
             }}
         >
