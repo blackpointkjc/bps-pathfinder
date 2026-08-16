@@ -55,11 +55,9 @@ Deno.serve(async (req) => {
     // because its time-entry row has not synchronized yet.
 
     const now = Date.now();
-    const MAX_STALE_MS = 15 * 60 * 1000;
     const units: any[] = [];
     for (const [email, active] of newestActiveByEmail.entries()) {
       const last = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
-      if (!last || now - last > MAX_STALE_MS) continue;
       const user = userByEmail.get(email) || {};
       const entry = openByEmail.get(email);
       units.push({
