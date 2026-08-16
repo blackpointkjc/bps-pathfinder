@@ -51,7 +51,7 @@ export default function AdminEquipment() {
   });
 
   const { data: users } = useQuery({
-    queryKey: ['users'],
+    queryKey: ['officerDirectory', 'adminEquipment'],
     queryFn: () => listOfficerDirectory('last_name', 1000, true),
     initialData: [],
   });
