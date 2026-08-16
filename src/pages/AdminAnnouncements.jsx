@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { listOfficerDirectory } from '@/lib/appDirectory';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 export default function AdminAnnouncements() {
@@ -39,7 +39,7 @@ export default function AdminAnnouncements() {
 
   const { data: directoryUsers = [] } = useQuery({
     queryKey: ['directoryUsers', 'adminAnnouncements'],
-    queryFn: () => listDirectoryUsers('last_name', 1000),
+    queryFn: () => listOfficerDirectory('last_name', 1000, true),
     enabled: user?.role === 'admin',
   });
 
