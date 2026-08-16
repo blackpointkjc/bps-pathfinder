@@ -272,7 +272,7 @@ export default function ClientPayrollReport() {
             <div class="info-label" style="margin-top: 10px;">Invoice Date</div>
             <div class="info-value">${format(new Date(), 'MMMM d, yyyy')}</div>
             <div class="info-label" style="margin-top: 10px;">Payment Terms</div>
-            <div class="info-value">Net 30</div>
+            <div class="info-value">Net 15</div>
           </div>
         </div>
 
@@ -317,7 +317,7 @@ export default function ClientPayrollReport() {
           </tbody>
         </table>
 
-        <div class="payment"><div class="terms"><strong>Payment Information</strong><br>Payment is due within 30 days. Include the invoice number with payment. Contact Black Point Protection with questions about hours, rates, or service locations.</div><div class="amount-due"><span>Total Amount Due</span><strong>$${totalBilled.toFixed(2)}</strong></div></div>
+        <div class="payment"><div class="terms"><strong>Payment Information</strong><br>Payment is due within 15 days. Include the invoice number with payment. Contact Black Point Protection with questions about hours, rates, or service locations.</div><div class="amount-due"><span>Total Amount Due</span><strong>$${totalBilled.toFixed(2)}</strong></div></div>
         <div class="footer"><strong>Black Point Protection</strong> • Professional Security Services<br>${DCJS_ID}<br>Confidential business document • Thank you for your business</div>
 
       </body>
