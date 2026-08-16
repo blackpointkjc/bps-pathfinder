@@ -4,12 +4,11 @@
   "automations": [
     {
       "name": "Generate weekly client invoices",
-      "description": "Creates idempotent invoices for the completed Monday-Sunday billing week every Sunday at 8:00 AM Eastern.",
+      "description": "Checks hourly on Sunday and creates idempotent invoices only at 8:00 AM Eastern, including daylight-saving changes.",
       "type": "scheduled",
       "schedule_mode": "recurring",
       "schedule_type": "cron",
-      "cron_expression": "0 8 * * 0",
-      "timezone": "America/New_York",
+      "cron_expression": "0 * * * 0",
       "is_active": true,
       "function_args": {}
     }
