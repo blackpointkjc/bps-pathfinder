@@ -152,7 +152,7 @@ export default function AccountingProfit() {
 
     const siteName = normalizeSiteName(entry.location) || 'Unassigned / Nonbillable';
     const location = locations.find(l => normalizeSiteName(l.site_name) === siteName);
-    const hours = entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow);
+    const hours = Math.round((entry.clock_out ? calculatePaidHours(entry) : calculateLiveHours(entry, liveNow)) * 100) / 100;
     const { rate: billRate } = resolveBillingRate(entry, location, schedules);
     const revenue = hours * billRate;
     const hourlyRate = Number(officer.hourly_rate) || 0;
