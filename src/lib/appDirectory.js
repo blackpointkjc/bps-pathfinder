@@ -3,6 +3,9 @@ import { base44 } from '@/api/base44Client';
 let cache = null;
 let cacheAt = 0;
 let pending = null;
+let officerCache = null;
+let officerCacheAt = 0;
+let officerPending = null;
 const TTL_MS = 15_000;
 
 export async function getAppDirectory(force = false) {
@@ -27,6 +30,26 @@ export async function getAppDirectory(force = false) {
 export function invalidateAppDirectory() {
   cache = null;
   cacheAt = 0;
+  officerCache = null;
+  officerCacheAt = 0;
+}
+
+export async function listOfficerDirectory(sort = 'last_name', limit = 1000, force = false) {
+  const now = Date.now();
+  if (!force && officerCache && now - officerCacheAt < TTL_MS) {
+    return sortRows(officerCache, sort).slice(0, Number(limit) || 1000);
+  }
+  if (!officerPending) {
+    officerPending = base44.functions.invoke('getOfficerDirectory', {}).then(result => {
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      officerCache = Array.isArray(payload.officers) ? payload.officers : [];
+      officerCacheAt = Date.now();
+      return officerCache;
+    }).finally(() => { officerPending = null; });
+  }
+  const officers = await officerPending;
+  return sortRows(officers, sort).slice(0, Number(limit) || 1000);
 }
 
 function sortRows(rows, sort) {
