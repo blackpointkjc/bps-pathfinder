@@ -98,7 +98,8 @@ export default function ManageClients() {
           userId: id,
           updates: { role: requestedRole },
         });
-        if (roleResult?.error) throw new Error(roleResult.error);
+        const rolePayload = roleResult?.data || roleResult || {};
+        if (rolePayload.error) throw new Error(rolePayload.error);
       }
       const result = await base44.functions.invoke('manageClientAssignments', {
         action: 'update',
