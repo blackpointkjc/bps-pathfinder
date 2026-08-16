@@ -61,7 +61,7 @@ export default function AdminPlannedShifts() {
   });
 
   const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
+    queryKey: ['officerDirectory', 'adminPlannedShifts'],
     queryFn: () => listOfficerDirectory('last_name', 1000, true),
     enabled: user?.role === 'admin',
   });
