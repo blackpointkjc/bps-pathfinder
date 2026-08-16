@@ -301,11 +301,22 @@ export default function BackgroundLocationTracker({ user }) {
       (error) => console.error('Geolocation watch error:', error),
       gpsOptions,
     );
-    const requestFreshPosition = () => navigator.geolocation.getCurrentPosition(
-      saveLocation,
-      (error) => console.warn('Fresh GPS request unavailable:', error?.message || error),
-      gpsOptions,
-    );
+    let freshRequestPending = false;
+    const requestFreshPosition = () => {
+      if (freshRequestPending) return;
+      freshRequestPending = true;
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          freshRequestPending = false;
+          saveLocation(position);
+        },
+        (error) => {
+          freshRequestPending = false;
+          console.warn('Fresh GPS request unavailable:', error?.message || error);
+        },
+        { ...gpsOptions, timeout: 4500 },
+      );
+    };
     requestFreshPosition();
     const freshPositionId = window.setInterval(requestFreshPosition, 5000);
 
