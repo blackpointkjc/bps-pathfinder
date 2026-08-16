@@ -9,7 +9,7 @@ import { Calendar, Sparkles, Loader2, CheckCircle, Shield, Clock } from "lucide-
 import { format, parseISO, addDays, startOfWeek } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { listDirectoryLocations, listOfficerDirectory } from '@/lib/appDirectory';
 
 export default function AdminAIScheduling() {
   const [startDate, setStartDate] = useState(format(startOfWeek(addDays(new Date(), 7), { weekStartsOn: 0 }), 'yyyy-MM-dd'));
