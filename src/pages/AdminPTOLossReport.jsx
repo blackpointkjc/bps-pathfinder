@@ -17,6 +17,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
@@ -164,6 +165,7 @@ export default function AdminPTOLossReport() {
     const { start, end } = getDateRange();
     
     return allUsers
+      .filter(isOperationalOfficer)
       .filter(u => u.first_name && u.last_name && u.email)
       .filter(u => selectedOfficerEmail === "all" || u.email === selectedOfficerEmail)
       .map(u => {
@@ -617,7 +619,7 @@ export default function AdminPTOLossReport() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Officers</SelectItem>
-                    {allUsers?.filter(u => u.first_name && u.last_name).map(u => (
+                    {allUsers?.filter(isOperationalOfficer).filter(u => u.first_name && u.last_name).map(u => (
                       <SelectItem key={u.email} value={u.email}>
                         {u.first_name} {u.last_name}
                       </SelectItem>
