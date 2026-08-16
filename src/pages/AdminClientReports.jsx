@@ -74,19 +74,37 @@ export default function AdminClientReports() {
     queryKey: ['allClientReports', selectedLocation, selectedOfficer, startDate, endDate, selectedReportType, locations, allUsers],
     queryFn: async () => {
       if (!selectedLocation || !locations || !allUsers) return []; 
-      const reports = await base44.entities.ClientReport.list('-created_date');
-      const locationId = locations.find(loc => loc.site_name === selectedLocation)?.id;
-      if (!locationId) return [];
+      const [shiftReports, incidentReports, trespassNotices, parkingViolations, maintenanceReports] = await Promise.all([
+        base44.entities.ShiftReport.list('-created_date', 2000),
+        base44.entities.IncidentReport.list('-created_date', 2000),
+        base44.entities.TrespassingNotice.list('-created_date', 2000),
+        base44.entities.ParkingViolation.list('-created_date', 2000),
+        base44.entities.MaintenanceReport.list('-created_date', 2000),
+      ]);
+      const normalize = (report, type, date) => ({
+        ...report,
+        type,
+        date: date || report.created_date,
+        officer_email: report.officer_email || report.created_by || '',
+      });
+      const reports = [
+        ...(shiftReports || []).map(report => normalize(report, 'shift', report.shift_date)),
+        ...(incidentReports || []).map(report => normalize(report, 'incident', report.incident_date)),
+        ...(trespassNotices || []).map(report => normalize(report, 'trespass', report.notice_date)),
+        ...(parkingViolations || []).map(report => normalize(report, 'parking', report.violation_date)),
+        ...(maintenanceReports || []).map(report => normalize(report, 'maintenance', report.report_date)),
+      ];
+      const selectedSite = selectedLocation.trim().toLowerCase();
       return reports.filter(report => {
-        const reportDate = format(parseISO(report.created_date), 'yyyy-MM-dd');
+        const reportDate = String(report.date || '').slice(0, 10);
+        const reportSite = String(report.location || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
         const dateMatch = reportDate >= startDate && reportDate <= endDate;
-        const locationMatch = report.location_id === locationId;
+        const locationMatch = reportSite === selectedSite;
         const officerMatch = selectedOfficer === 'all' || report.officer_email === selectedOfficer;
         const typeMatch = selectedReportType === 'all' || report.type === selectedReportType;
         return dateMatch && locationMatch && officerMatch && typeMatch;
       }).map(report => ({
         ...report,
-        date: report.created_date,
         location: selectedLocation,
         officer_name: getOfficerName(report.officer_email),
       }));
