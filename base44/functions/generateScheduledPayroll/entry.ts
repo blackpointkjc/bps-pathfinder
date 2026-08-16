@@ -119,7 +119,6 @@ Deno.serve(async (req) => {
     if (!period) return Response.json({ success: true, skipped: true, reason: `No payroll period ended on ${endedDate}` });
 
     const config = configs?.[0] || {};
-    const payPeriods = config.pay_schedule === 'weekly' ? 52 : config.pay_schedule === 'semimonthly' ? 24 : config.pay_schedule === 'monthly' ? 12 : 26;
     const threshold = Number(config.overtime_threshold_hours || 40);
     const overtimeMultiplier = Number(config.overtime_multiplier || 1.5);
     const holidayMultiplier = Number(config.holiday_multiplier || 2);
@@ -167,10 +166,8 @@ Deno.serve(async (req) => {
       const overtimePay = overtimeHours * overtimeRate;
       const holidayPay = holidayHours * holidayRate;
       const gross = regularPay + overtimePay + holidayPay;
-      const taxes = withholding(gross, officer, payPeriods);
-      const socialSecurity = Math.min(gross * .062, 10453.20);
-      const medicare = gross * .0145;
-      const net = gross - taxes.federal - taxes.state - socialSecurity - medicare;
+      // Gross payroll only. Taxes, deductions, and net pay are handled externally.
+      const net = gross;
 
       await base44.asServiceRole.entities.PayrollEntry.create({
         officer_email: email,
@@ -188,17 +185,17 @@ Deno.serve(async (req) => {
         overtime_pay: round(overtimePay),
         holiday_pay: round(holidayPay),
         gross_pay: round(gross),
-        federal_tax: round(taxes.federal),
-        state_tax: round(taxes.state),
-        social_security: round(socialSecurity),
-        medicare: round(medicare),
+        federal_tax: 0,
+        state_tax: 0,
+        social_security: 0,
+        medicare: 0,
         other_deductions: 0,
         net_pay: round(net),
-        qualified_overtime_premium: round(overtimeHours * (overtimeRate - baseRate)),
+        qualified_overtime_premium: 0,
         qualified_tips: 0,
         tip_occupation_code: '000',
         holidays_worked: JSON.stringify(data.holidays),
-        status: 'draft',
+        status: 'ready',
         payment_method: officer.payment_method || 'direct_deposit',
         notes: `Automatically generated at 8 AM Eastern after ${period.period_name || 'payroll period'} ended.`,
       });
@@ -221,7 +218,7 @@ Deno.serve(async (req) => {
         type: 'payroll',
         priority: 'high',
         title: `Payroll ready: ${period.period_name}`,
-        message: `${created} draft payroll record(s) were generated for ${period.start_date} through ${period.end_date}. Review and approve payroll before payment.`,
+        message: `${created} payroll report record(s) are ready for ${period.start_date} through ${period.end_date}. Open Payroll and print the master and itemized officer sheets.`, 
         action_url: '/AccountingCenter?section=payroll',
         read: false,
       });
