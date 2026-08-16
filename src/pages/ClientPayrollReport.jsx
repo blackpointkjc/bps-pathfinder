@@ -46,7 +46,7 @@ export default function ClientPayrollReport() {
     },
     enabled: !!user,
     initialData: {},
-    refetchInterval: 3000,
+    refetchInterval: 15000,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
   });
@@ -60,7 +60,7 @@ export default function ClientPayrollReport() {
         const unsubscribe = base44.entities[entity].subscribe(refresh);
         if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
       } catch {
-        // The three-second refresh remains as a fallback if realtime is unavailable.
+        // Fifteen-second polling remains as a fallback if realtime is unavailable.
       }
     }
     return () => unsubscribers.forEach(unsubscribe => unsubscribe());
@@ -110,7 +110,9 @@ export default function ClientPayrollReport() {
     if (!location) return;
 
     const effectiveClockOut = entry.clock_out ? new Date(entry.clock_out) : liveNow;
-    const hours = Math.round(calculateLiveHours(entry, liveNow) * 100) / 100;
+    const rawHours = calculateLiveHours(entry, liveNow);
+    // Open shifts accrue continuously; completed shifts reconcile to invoice precision.
+    const hours = entry.clock_out ? Math.round(rawHours * 100) / 100 : rawHours;
     const { rate: billRate, rateLabel } = resolveBillingRate(entry, location, schedules);
     if (!billRate) return;
     const billedAmount = hours * billRate;
