@@ -9,28 +9,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
-const RANK_ORDER = [
-  'Chief of Security',
-  'Assistant Chief',
-  'Operations Manager',
-  'Division Captain',
-  'Division Lieutenant',
-  'Division Sergeant',
-  'Sergeant',
-  'Corporal',
-  'Officer III',
-  'Officer II',
-  'Officer I',
-  'Officer'
-];
-
 export default function PostOrders() {
   const [selectedSite, setSelectedSite] = useState("");
-
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
-  });
 
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
