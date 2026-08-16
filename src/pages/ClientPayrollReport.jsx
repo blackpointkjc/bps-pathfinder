@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Download } from "lucide-react";
 import { format, startOfWeek, endOfWeek } from "date-fns";
+import { calculateLiveHours, normalizeSiteName, resolveBillingRate } from "@/lib/billingRates";
 
 const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
 
@@ -52,7 +53,7 @@ export default function ClientPayrollReport() {
     if (!user) return undefined;
     const refresh = () => refetchBilling();
     const unsubscribers = [];
-    for (const entity of ['TimeEntry', 'Invoice']) {
+    for (const entity of ['TimeEntry', 'Invoice', 'Location', 'Schedule']) {
       try {
         const unsubscribe = base44.entities[entity].subscribe(refresh);
         if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
@@ -68,6 +69,7 @@ export default function ClientPayrollReport() {
   const officers = billingData.officers || [];
   const locations = billingData.locations || [];
   const clientInvoices = billingData.invoices || [];
+  const schedules = billingData.schedules || [];
 
   // Show invoice popup on first load
   useEffect(() => {
@@ -79,8 +81,8 @@ export default function ClientPayrollReport() {
   // Filter to only client's locations
   const filteredEntries = timeEntries.filter(entry => {
     if (!entry.clock_in) return false;
-    const entrySite = String(entry.location || '').split(':')[0].trim();
-    if (!clientLocations.includes(entrySite)) return false;
+    const entrySite = normalizeSiteName(entry.location);
+    if (!clientLocations.map(normalizeSiteName).includes(entrySite)) return false;
     const entryDate = String(entry.clock_in).slice(0, 10);
     return entryDate >= startDate && entryDate <= endDate;
   });
@@ -89,13 +91,14 @@ export default function ClientPayrollReport() {
   const billingSummary = {};
 
   filteredEntries.forEach(entry => {
-    const entrySite = String(entry.location || '').split(':')[0].trim();
-    const location = locations.find(l => l.site_name === entrySite);
-    if (!location || !location.site_bill_rate) return;
+    const entrySite = normalizeSiteName(entry.location);
+    const location = locations.find(l => normalizeSiteName(l.site_name) === entrySite);
+    if (!location) return;
 
     const effectiveClockOut = entry.clock_out ? new Date(entry.clock_out) : liveNow;
-    const hours = Math.max(0, (effectiveClockOut - new Date(entry.clock_in)) / (1000 * 60 * 60));
-    const billRate = Number(location.site_bill_rate);
+    const hours = calculateLiveHours(entry, liveNow);
+    const { rate: billRate, rateLabel } = resolveBillingRate(entry, location, schedules);
+    if (!billRate) return;
     const billedAmount = hours * billRate;
 
     if (!billingSummary[entrySite]) {
@@ -109,7 +112,9 @@ export default function ClientPayrollReport() {
       clock_out: entry.clock_out || effectiveClockOut.toISOString(),
       live: !entry.clock_out,
       hours,
-      billedAmount
+      billedAmount,
+      billRate,
+      rateLabel
     });
   });
 
@@ -118,13 +123,12 @@ export default function ClientPayrollReport() {
   const weekStart = startOfWeek(liveNow, { weekStartsOn: 0 });
   const weekToDate = timeEntries.reduce((summary, entry) => {
     if (!entry.clock_in || new Date(entry.clock_in) < weekStart) return summary;
-    const entrySite = String(entry.location || '').split(':')[0].trim();
-    if (!clientLocations.includes(entrySite)) return summary;
-    const location = locations.find(item => item.site_name === entrySite);
-    const rate = Number(location?.site_bill_rate || 0);
+    const entrySite = normalizeSiteName(entry.location);
+    if (!clientLocations.map(normalizeSiteName).includes(entrySite)) return summary;
+    const location = locations.find(item => normalizeSiteName(item.site_name) === entrySite);
+    const { rate } = resolveBillingRate(entry, location, schedules);
     if (!rate) return summary;
-    const end = entry.clock_out ? new Date(entry.clock_out) : liveNow;
-    const hours = Math.max(0, (end - new Date(entry.clock_in)) / 3600000);
+    const hours = calculateLiveHours(entry, liveNow);
     summary.hours += hours;
     summary.amount += hours * rate;
     return summary;
