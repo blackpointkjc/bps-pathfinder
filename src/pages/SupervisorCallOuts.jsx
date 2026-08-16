@@ -11,7 +11,7 @@ import { UserX, Clock, AlertTriangle, Plus, Shield } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
-import { listDirectoryUsers, listDirectoryLocations } from '@/lib/appDirectory';
+import { listOfficerDirectory, listDirectoryLocations } from '@/lib/appDirectory';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 export default function SupervisorCallOuts() {
@@ -34,7 +34,7 @@ export default function SupervisorCallOuts() {
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['directoryUsers', 'supervisorCallOuts'],
-    queryFn: () => listDirectoryUsers('last_name', 1000),
+    queryFn: () => listOfficerDirectory('last_name', 1000, true),
     initialData: [],
     staleTime: 0,
     refetchOnMount: 'always',
