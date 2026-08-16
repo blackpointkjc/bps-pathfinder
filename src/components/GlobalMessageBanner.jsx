@@ -113,8 +113,12 @@ function isSilentCallStatus(value) {
   return SILENT_CALL_STATUSES.has(normalized(value));
 }
 
+function callStatusKey(value) {
+  return normalized(value).replace(/[\s_-]+/g, '');
+}
+
 function announcedCallStatus(value) {
-  const status = normalized(value).replace(/[\s_-]+/g, '');
+  const status = callStatusKey(value);
   if (status === 'dispatched' || status === 'dispatch') return 'Dispatched';
   if (status === 'enroute' || status === 'enroutetoscene') return 'En Route';
   if (status === 'arrived' || status === 'arrival') return 'Arrived';
@@ -304,7 +308,7 @@ export default function GlobalMessageBanner({ user }) {
       // PropertyAlert can contain duplicate rows for the same CAD call/property.
       // Announce once per call+status, regardless of how many alert rows arrive.
       const callKey = String(call.id || record.callId);
-      const currentStatus = normalized(call.status || 'new');
+      const currentStatus = callStatusKey(call.status || 'new');
       if (announcedPropertyCallStatuses.current.get(callKey) === currentStatus) return;
       announcedPropertyCallStatuses.current.set(callKey, currentStatus);
 
@@ -339,13 +343,13 @@ export default function GlobalMessageBanner({ user }) {
       // Seed current statuses before subscribing so a page refresh does not replay
       // every active call. Only meaningful changes are spoken.
       base44.entities.DispatchCall.list('-created_date', 500).then(calls => {
-        (calls || []).forEach(call => callStatuses.current.set(call.id, normalized(call.status)));
+        (calls || []).forEach(call => callStatuses.current.set(call.id, callStatusKey(call.status)));
       }).catch(() => null);
 
       const callStatusUnsubscribe = base44.entities.DispatchCall.subscribe(async event => {
         const call = event?.data;
         if (!call?.id) return;
-        const nextRaw = normalized(call.status);
+        const nextRaw = callStatusKey(call.status);
         const previousRaw = callStatuses.current.get(call.id);
         callStatuses.current.set(call.id, nextRaw);
         if (event.type !== 'update' || !previousRaw || previousRaw === nextRaw) return;
