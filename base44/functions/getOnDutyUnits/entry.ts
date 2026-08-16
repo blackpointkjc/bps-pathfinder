@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
         'timestamp',
         5000,
       );
-      return Response.json({ success: true, history: history || [] });
+      return Response.json({ success: true, history: (history || []).filter((point: any) => Boolean(point.time_entry_id)) });
     }
 
     const [timeEntries, activeOfficers, users] = await Promise.all([
@@ -55,12 +55,11 @@ Deno.serve(async (req) => {
     // because its time-entry row has not synchronized yet.
 
     const units: any[] = [];
-    for (const [email, active] of newestActiveByEmail.entries()) {
-      const last = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
+    for (const [email, entry] of openByEmail.entries()) {
+      const active = newestActiveByEmail.get(email) || {};
       const user = userByEmail.get(email) || {};
-      const entry = openByEmail.get(email);
       units.push({
-        id: active.id,
+        id: active.id || entry.id,
         officer_email: active.officer_email,
         full_name: active.officer_name || user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' '),
         officer_name: active.officer_name || user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' '),
@@ -77,8 +76,8 @@ Deno.serve(async (req) => {
         current_call_info: active.current_call_info || user.current_call_info || '',
         current_location: active.current_location || entry?.location || '',
         clock_in_time: entry?.clock_in || active.clock_in_time || '',
-        last_update: active.last_update || active.updated_date || active.created_date,
-        last_updated: active.last_update || active.updated_date || active.created_date,
+        last_update: active.last_update || active.updated_date || active.created_date || entry.clock_in,
+        last_updated: active.last_update || active.updated_date || active.created_date || entry.clock_in,
         is_supervisor: roleSet(user).has('supervisor') || String(user.rank || '').toLowerCase().includes('sergeant') || String(user.rank || '').toLowerCase().includes('lieutenant') || String(user.rank || '').toLowerCase().includes('captain') || String(user.rank || '').toLowerCase().includes('major') || String(user.rank || '').toLowerCase().includes('colonel'),
         time_entry_id: entry?.id || '',
       });
