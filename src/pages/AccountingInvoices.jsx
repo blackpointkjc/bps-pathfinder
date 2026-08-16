@@ -775,7 +775,7 @@ export default function AccountingInvoices() {
 
                                 <div class="footer">
                                   <p>Thank you for your business!</p>
-                                  <p>Payment is due within 30 days. Please remit payment to the address above.</p>
+                                  <p>Payment is due within 15 days. Please remit payment to the address above.</p>
                                   <p><strong>${config?.company_legal_name || 'Black Point Protection Services'}</strong> • Professional Security Services</p>
                                   <p>${DCJS_ID}</p>
                                 </div>
