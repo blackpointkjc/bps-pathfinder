@@ -112,7 +112,7 @@ export default function BackgroundLocationTracker({ user }) {
     },
   });
 
-  // Establish exactly one live-duty record while the officer is clocked in.
+  // Establish exactly one live session record while the officer is signed in.
   useEffect(() => {
     if (!shouldPublish) return;
 
