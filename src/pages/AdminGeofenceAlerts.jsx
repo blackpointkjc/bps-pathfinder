@@ -49,7 +49,7 @@ export default function AdminGeofenceAlerts() {
   });
 
   const { data: locations } = useQuery({
-    queryKey: ['locations'],
+    queryKey: ['directoryLocations', 'geofenceAlerts'],
     queryFn: () => listDirectoryLocations(),
     enabled: isAdmin || isSupervisor,
   });
