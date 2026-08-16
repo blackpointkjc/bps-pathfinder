@@ -349,7 +349,7 @@ export default function GlobalMessageBanner({ user }) {
         const incident = call.incident || propertyAlert.callIncident || 'Call for service';
         const address = call.location || propertyAlert.callLocation || 'address unavailable';
         const returnToService = spokenStatus === 'Canceled' && call.assigned_units?.length
-          ? ' Assigned officers on this call, return 10-8.'
+          ? ' Assigned officers on this call, return 10, 8.'
           : '';
         speakNotification(
           `Active call for service status update. ${incident}. At ${address}. Now ${spokenStatus}.${returnToService}`,
