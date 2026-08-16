@@ -558,9 +558,15 @@ export default function AccountingPayroll() {
     .filter(entry => !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date))
     .reduce((sum, entry) => sum + (Number(entry.gross_pay) || 0), 0);
   const totalGross = Math.max(generatedGross, accruedGross);
-  const totalNet = payrollEntries
-    .filter(entry => !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date))
-    .reduce((sum, entry) => sum + (Number(entry.net_pay) || 0), 0);
+  const selectedPayrollEntries = payrollEntries
+    .filter(entry => !selectedPeriod || (entry.pay_period_start === selectedPeriod.start_date && entry.pay_period_end === selectedPeriod.end_date));
+  const totalNet = selectedPayrollEntries.reduce((sum, entry) => sum + (Number(entry.net_pay) || 0), 0);
+  const finalizedEmployeeTaxes = selectedPayrollEntries.reduce((sum, entry) => sum +
+    (Number(entry.federal_tax) || 0) + (Number(entry.state_tax) || 0) +
+    (Number(entry.social_security) || 0) + (Number(entry.medicare) || 0), 0);
+  // FICA accrues immediately while officers work. Federal/state withholding is
+  // added from the finalized payroll calculation once the period is generated.
+  const liveEmployeeTaxes = finalizedEmployeeTaxes || (totalGross * 0.0765);
 
   // Generate Gusto-compatible payroll report
   const generatePayrollReport = (entriesToReport) => {
@@ -921,7 +927,7 @@ export default function AccountingPayroll() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-8">
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-slate-600">Live Accrued Gross</CardTitle>
@@ -941,6 +947,16 @@ export default function AccountingPayroll() {
             <p className="text-2xl font-bold text-slate-900">
               ${totalNet.toLocaleString('en-US', { minimumFractionDigits: 2 })}
             </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-red-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-slate-600">Employee Taxes (Live)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-slate-900">${liveEmployeeTaxes.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+            <p className="mt-1 text-xs text-slate-500">Live FICA accrual; federal/state finalize with payroll</p>
           </CardContent>
         </Card>
 
