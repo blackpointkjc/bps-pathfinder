@@ -13,6 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { calculateLiveHours, getDefaultBillingPeriod, normalizeSiteName, resolveBillingRate } from "@/lib/billingRates";
 
+const INVOICE_LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
+const DCJS_ID = "DCJS ID: 11-30423 • KJC Security Solution LLC DBA Black Point Protection";
+
 export default function AccountingInvoices() {
   const defaultPeriod = getDefaultBillingPeriod();
   const [selectedClient, setSelectedClient] = useState("");
@@ -530,9 +533,9 @@ export default function AccountingInvoices() {
                                   padding: 24px;
                                   margin-bottom: 30px;
                                 }
-                                .company-info {
-                                  flex: 1;
-                                }
+                                .company-info { flex: 1; display:flex; gap:15px; align-items:center; }
+                                .company-logo { width:72px; height:72px; object-fit:contain; background:#fff; border-radius:10px; padding:4px; }
+                                .company-copy { flex:1; }
                                 .company-name {
                                   font-size: 24px;
                                   font-weight: bold;
@@ -641,7 +644,7 @@ export default function AccountingInvoices() {
                                   color: #1e293b;
                                 }
                                 .grand-total {
-                                  border-top: 2px solid #3b82f6;
+                                  border-top: 2px solid #d4a72c;
                                   padding-top: 10px;
                                   margin-top: 10px;
                                 }
@@ -689,13 +692,13 @@ export default function AccountingInvoices() {
                               <div class="invoice-container">
                                 <div class="invoice-header">
                                   <div class="company-info">
-                                    <div class="company-name">${config?.company_legal_name || 'Black Point Protection Services'}</div>
-                                    <div class="company-details">
+                                    <img class="company-logo" src="${INVOICE_LOGO_URL}" alt="Black Point Protection">
+                                    <div class="company-copy"><div class="company-name">${config?.company_legal_name || 'Black Point Protection Services'}</div>
+                                    <div class="company-details" style="color:#cbd5e1">
                                       ${config?.company_address || '1971 University Blvd, Lynchburg, VA 24515'}<br>
-                                      Email: ${config?.payroll_email || 'admin@blackpointkjs.com'}<br>
-                                      Phone: ${config?.company_phone || '(555) 123-4567'}<br>
-                                      EIN: ${config?.employer_ein || '54-0946734'}
-                                    </div>
+                                      Email: ${config?.payroll_email || 'admin@blackpointkjs.com'} • Phone: ${config?.company_phone || 'Not provided'}<br>
+                                      EIN: ${config?.employer_ein || 'Not provided'}
+                                    </div></div>
                                   </div>
                                   <div class="invoice-title">
                                     <div class="invoice-number">#${invoice.invoice_number}</div>
@@ -773,7 +776,8 @@ export default function AccountingInvoices() {
                                 <div class="footer">
                                   <p>Thank you for your business!</p>
                                   <p>Payment is due within 30 days. Please remit payment to the address above.</p>
-                                  <p>${config?.company_legal_name || 'Black Point Protection Services'} • EIN: ${config?.employer_ein || '54-0946734'}</p>
+                                  <p><strong>${config?.company_legal_name || 'Black Point Protection Services'}</strong> • Professional Security Services</p>
+                                  <p>${DCJS_ID}</p>
                                 </div>
                               </div>
                             </body>
