@@ -35,7 +35,7 @@ export default function AdminShiftBids() {
   });
 
   const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
+    queryKey: ['officerDirectory', 'adminShiftBids'],
     queryFn: () => listOfficerDirectory('last_name', 1000, true),
   });
 
