@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const DAY_MS = 86400000;
 const dateOnly = (date: Date) => date.toISOString().slice(0, 10);
-const siteOf = (value: unknown) => String(value || '').split(':')[0].trim();
+const siteOf = (value: unknown) => String(value || '').split(/\s*(?::|\s-\s)\s*/)[0].trim();
 const hoursBetween = (start: unknown, end: unknown) => {
   const ms = new Date(String(end)).getTime() - new Date(String(start)).getTime();
   return Number.isFinite(ms) && ms > 0 ? ms / 3600000 : 0;
