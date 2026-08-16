@@ -6,6 +6,7 @@ import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { parseServerTimestamp } from '@/lib/easternTime';
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 const normalized = value => String(value || '').trim().toLowerCase();
 const APP_UPDATE_TYPES = new Set(['app_update', 'system_update', 'release', 'release_notes', 'software_update', 'platform_update']);
@@ -86,24 +87,35 @@ export default function WelcomeBriefing({ user }) {
     const load = async () => {
       try {
         const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-        const [messages, mentions, announcements, receipts, notifications, propertyAlerts, propertyAlertReceipts, liveUsers, units, schedules, vehicleAssignments, overrides, allUsers, allUnits, allSchedules, timeEntries] = await Promise.all([
+        // Keep each burst below the Base44 per-user request threshold. This
+        // briefing used to launch sixteen reads simultaneously during sign-in.
+        const first = await Promise.all([
           base44.entities.Message.filter({ recipient_id: user.id, read: false }, '-created_date', 200).catch(() => []),
           base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200).catch(() => []),
           base44.entities.Announcement.list('-created_date', 100).catch(() => []),
           base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500).catch(() => []),
+        ]);
+        const second = await Promise.all([
           base44.entities.Notification.filter({ recipient_email: user.email }, '-created_date', 200).catch(() => []),
           base44.entities.PropertyAlert.list('-created_date', 300).catch(() => []),
           base44.entities.PropertyAlertReceipt.filter({ user_email: normalized(user.email) }, '-dismissed_at', 500).catch(() => []),
-          base44.entities.User.filter({ email: user.email }).catch(() => []),
           base44.entities.Unit.filter({ user_id: user.id }).catch(() => []),
+        ]);
+        const third = await Promise.all([
           base44.entities.Schedule.filter({ officer_email: user.email, shift_date: today }).catch(() => []),
           base44.entities.VehicleAssignment.filter({ assignment_date: today }).catch(() => []),
           base44.entities.OfficerStatusOverride.filter({ officer_id: user.id, active: true }).catch(() => []),
-          base44.entities.User.list().catch(() => []),
+          listDirectoryUsers('last_name', 1000).catch(() => []),
+        ]);
+        const fourth = await Promise.all([
           base44.entities.Unit.list('-last_update_at', 500).catch(() => []),
           base44.entities.Schedule.filter({ shift_date: today }).catch(() => []),
           base44.entities.TimeEntry.list('-clock_in', 1000).catch(() => []),
         ]);
+        const [messages, mentions, announcements, receipts] = first;
+        const [notifications, propertyAlerts, propertyAlertReceipts, units] = second;
+        const [schedules, vehicleAssignments, overrides, allUsers] = third;
+        const [allUnits, allSchedules, timeEntries] = fourth;
         if (!active) return;
         const receiptIds = new Set((receipts || []).map(item => item.announcement_id));
         const accountCreated = user.created_date ? new Date(user.created_date).getTime() : 0;
