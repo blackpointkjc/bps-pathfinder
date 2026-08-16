@@ -81,15 +81,51 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
         .sort()
         .join('|');
 
+    const handleClusterClick = (event) => {
+        const cluster = event?.layer;
+        const childMarkers = cluster?.getAllChildMarkers?.() || [];
+        const officerNames = [...new Set(childMarkers
+            .map(marker => marker?.options?.title)
+            .filter(Boolean))]
+            .sort((a, b) => a.localeCompare(b));
+
+        const panel = document.createElement('div');
+        panel.style.minWidth = '220px';
+
+        const heading = document.createElement('div');
+        heading.textContent = `${officerNames.length} officer${officerNames.length === 1 ? '' : 's'} at this location`;
+        heading.style.fontWeight = '800';
+        heading.style.fontSize = '14px';
+        heading.style.marginBottom = '8px';
+        heading.style.color = '#0f172a';
+        panel.appendChild(heading);
+
+        officerNames.forEach((name) => {
+            const row = document.createElement('div');
+            row.textContent = name;
+            row.style.padding = '7px 8px';
+            row.style.marginTop = '4px';
+            row.style.borderRadius = '7px';
+            row.style.background = '#eff6ff';
+            row.style.color = '#1e3a8a';
+            row.style.fontSize = '13px';
+            row.style.fontWeight = '700';
+            panel.appendChild(row);
+        });
+
+        cluster.bindPopup(L.popup({ closeButton: true, autoPan: true }).setContent(panel)).openPopup();
+    };
+
     return (
         <MarkerClusterGroup
             key={locationSignature}
             chunkedLoading
-            maxClusterRadius={8}
-            spiderfyOnMaxZoom={true}
-            disableClusteringAtZoom={14}
+            maxClusterRadius={45}
+            spiderfyOnMaxZoom={false}
+            disableClusteringAtZoom={18}
             showCoverageOnHover={false}
-            zoomToBoundsOnClick={true}
+            zoomToBoundsOnClick={false}
+            onClick={handleClusterClick}
             iconCreateFunction={(cluster) => {
                 const count = cluster.getChildCount();
                 return L.divIcon({
@@ -118,6 +154,7 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
                 <Marker
                     key={markerKey}
                     position={[unit.latitude, unit.longitude]}
+                    title={unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name || unit.officer_name || unit.email || 'Officer'}
                     icon={createOtherUnitIcon(unit.status, unit.heading, unit.show_lights, unit.is_supervisor, unit.unit_number)}
                     eventHandlers={{ click: () => onUnitClick?.(unit) }}
                 >
