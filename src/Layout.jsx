@@ -319,6 +319,9 @@ function hasFullAccess(user) {
   return user?.role === 'admin' || normalizedRoles(user).has('full_access');
 }
 
+const HIDDEN_PROPERTY_ALERT_STATUSES = new Set(['cleared', 'cancelled', 'canceled', 'closed', 'completed', 'resolved']);
+const normalizedCallStatus = value => String(value || '').trim().toLowerCase();
+
 const DARK_WORKSPACE_PAGES = new Set([
   'CommandDashboard', 'DispatchCenter', 'CallHistory', 'ClientCallHistory',
   'BOLOAlerts', 'RecordsAssistant', 'VirginiaFieldLawAssistant', 'Personnel', 'PathfinderReports', 'AdminPortal', 'CADCenter'
@@ -947,8 +950,11 @@ export default function Layout({ children, currentPageName }) {
           const stableCallId = linkedCall?.external_call_id || linkedCall?.agency_cad_number || linkedCall?.bps_reference || linkedCall?.call_id || linkedCall?.id || item.source_key || item.callId;
           const eventKey = `${item.propertyId}|${stableCallId}`;
           const eventTime = new Date(item.callTime || item.time_received || item.created_date || 0).getTime();
+          const location = locationById.get(String(item.propertyId));
           const isInsideBoundary = String(item.description || '').toLowerCase().includes('inside');
-          if (!isInsideBoundary || seenPairs.has(eventKey)) return false;
+          const inactiveProperty = !location || location.active === false || location.property_monitoring_enabled !== true;
+          const inactiveCall = !linkedCall || HIDDEN_PROPERTY_ALERT_STATUSES.has(normalizedCallStatus(linkedCall.status));
+          if (!isInsideBoundary || inactiveProperty || inactiveCall || seenPairs.has(eventKey)) return false;
           seenPairs.add(eventKey);
           return Number.isFinite(eventTime)
             && eventTime >= recentCutoff
