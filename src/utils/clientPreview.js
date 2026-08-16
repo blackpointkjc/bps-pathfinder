@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 const KEY = 'bps-client-preview-user-id';
 const PROFILE_KEY = 'bps-client-preview-profile';
@@ -17,11 +18,11 @@ export async function getClientPortalUser() {
     if (stored?.id === selectedId) return stored;
   } catch (_) {}
 
-  const users = await base44.entities.User.list('-last_updated', 500);
+  const users = await listDirectoryUsers('-last_updated', 1000);
   const selectedUser = users.find(user => user.id === selectedId);
   if (!selectedUser) return authUser;
 
-  const locations = await base44.entities.Location.list('site_name', 500).catch(() => []);
+  const locations = await listDirectoryLocations('site_name', 1000);
   const email = String(selectedUser.email || '').toLowerCase();
   const assignedLocations = [...new Set([
     ...(Array.isArray(selectedUser.assigned_locations) ? selectedUser.assigned_locations : []),
