@@ -7,7 +7,7 @@ import { Calendar, Clock, MapPin, FileText, ChevronLeft, ChevronRight, Info, Ext
 import { format, addDays, startOfDay, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import PullToRefresh from "../components/PullToRefresh";
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function Schedule() {
@@ -40,7 +40,7 @@ export default function Schedule() {
 
   const { data: companyUsers = [] } = useQuery({
     queryKey: ['companyUsersForFleet'],
-    queryFn: async () => (await listDirectoryUsers()).filter(isOperationalOfficer),
+    queryFn: async () => (await listOfficerDirectory('last_name', 1000)).filter(isOperationalOfficer),
     enabled: !!user,
     staleTime: 60000,
   });
