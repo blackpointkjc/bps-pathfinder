@@ -304,8 +304,8 @@ export default function BackgroundLocationTracker({ user }) {
     };
   }, [shouldTrack, shouldPublish, activeEntry, user, locations]);
 
-  // Independent one-minute duty heartbeat. This runs only while clocked in,
-  // even when the device is stationary, and records the shift-linked breadcrumb.
+  // Independent duty heartbeat. Live GPS is refreshed every 15 seconds while
+  // clocked in, even when watchPosition is quiet; history remains one-minute.
   useEffect(() => {
     if (!shouldTrack || !user?.email) return undefined;
 
@@ -313,18 +313,26 @@ export default function BackgroundLocationTracker({ user }) {
       const nowIso = new Date().toISOString();
       const fix = lastPositionRef.current;
       try {
-        if (activeOfficerRecordRef.current) {
-          await base44.entities.ActiveOfficer.update(activeOfficerRecordRef.current, {
+        if (fix && Date.now() - lastLivePushRef.current >= 10000) {
+          const response = await base44.functions.invoke('logLocation', {
             officer_email: user.email,
             officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+            unit_number: user.unit_number || '',
             current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
             clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
-            last_update: nowIso,
-            ...(fix ? { latitude: fix.latitude, longitude: fix.longitude, accuracy: fix.accuracy } : {}),
+            latitude: fix.latitude,
+            longitude: fix.longitude,
+            heading: Number.isFinite(Number(fix.heading)) ? Number(fix.heading) : 0,
+            speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : 0,
+            accuracy: fix.accuracy,
             status: user?.status || 'Signed In',
             user_role: user?.role || 'user',
             session_active: true,
           });
+          const payload = response?.data || response || {};
+          if (payload.error) throw new Error(payload.error);
+          if (payload.active_officer?.id) activeOfficerRecordRef.current = payload.active_officer.id;
+          lastLivePushRef.current = Date.now();
         }
         if (fix && Date.now() - lastSaveRef.current >= 55000) {
           await base44.entities.LocationHistory.create({
@@ -347,7 +355,7 @@ export default function BackgroundLocationTracker({ user }) {
     };
 
     heartbeat();
-    const heartbeatId = window.setInterval(heartbeat, 60000);
+    const heartbeatId = window.setInterval(heartbeat, 15000);
     return () => window.clearInterval(heartbeatId);
   }, [shouldTrack, user?.email, user?.role, user?.status, user?.assigned_location, activeEntry?.id, activeEntry?.location, activeEntry?.clock_in]);
 
