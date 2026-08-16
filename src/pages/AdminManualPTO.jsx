@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar, AlertCircle, Plus } from "lucide-react";
 import { format } from "date-fns";
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { listOfficerDirectory } from '@/lib/appDirectory';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 export default function AdminManualPTO() {
@@ -34,7 +34,7 @@ export default function AdminManualPTO() {
 
   const { data: directoryUsers = [] } = useQuery({
     queryKey: ['directoryUsers', 'manualPTO'],
-    queryFn: () => listDirectoryUsers('last_name', 1000),
+    queryFn: () => listOfficerDirectory('last_name', 1000, true),
     enabled: user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access') || String(user?.rank || '').toLowerCase() === 'human resources',
     initialData: [],
     staleTime: 0,
