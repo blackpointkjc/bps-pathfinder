@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { listDirectoryUsers } from '@/lib/appDirectory';
+import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 export default function AdminAnnouncements() {
   const [showForm, setShowForm] = useState(false);
@@ -35,9 +37,9 @@ export default function AdminAnnouncements() {
     queryFn: () => base44.auth.me(),
   });
 
-  const { data: allUsers } = useQuery({
-    queryKey: ['allUsers'],
-    queryFn: () => base44.entities.User.list(),
+  const { data: directoryUsers = [] } = useQuery({
+    queryKey: ['directoryUsers', 'adminAnnouncements'],
+    queryFn: () => listDirectoryUsers('last_name', 1000),
     enabled: user?.role === 'admin',
   });
 
@@ -121,8 +123,10 @@ export default function AdminAnnouncements() {
     createAnnouncementMutation.mutate(formData);
   };
 
+  const activeOfficers = directoryUsers.filter(hasOfficerAdditionalRole);
+
   const getUserName = (email) => {
-    const userData = allUsers?.find(u => u.email === email);
+    const userData = activeOfficers.find(u => u.email === email);
     if (userData?.first_name && userData?.last_name) {
       return `${userData.first_name} ${userData.last_name}`;
     }
@@ -162,8 +166,6 @@ export default function AdminAnnouncements() {
     important: "bg-amber-100 text-amber-800 border-amber-300",
     normal: "bg-blue-100 text-blue-800 border-blue-300",
   };
-
-  const activeOfficers = allUsers?.filter(u => !u.termination_date) || [];
 
   const getReadStats = (announcement) => {
     const total = activeOfficers.length;
