@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Shield, Layers, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { listDirectoryDivisions } from '@/lib/appDirectory';
 import {
   Dialog,
   DialogContent,
@@ -40,10 +41,16 @@ export default function AdminDivisions() {
   const { data: divisions = [] } = useQuery({
     queryKey: ['divisions'],
     queryFn: async () => {
-      const result = await base44.functions.invoke('manageHRDivisions', { action: 'list' });
-      const payload = result?.data || result || {};
-      if (payload.error) throw new Error(payload.error);
-      return payload.divisions || [];
+      try {
+        const result = await base44.functions.invoke('manageHRDivisions', { action: 'list' });
+        const payload = result?.data || result || {};
+        if (payload.error) throw new Error(payload.error);
+        return payload.divisions || [];
+      } catch (error) {
+        const fallback = await listDirectoryDivisions('division_name', 1000);
+        if (fallback.length) return fallback;
+        throw error;
+      }
     },
     enabled: hasAccess,
     initialData: [],
