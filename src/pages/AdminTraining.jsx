@@ -407,11 +407,11 @@ function AdminTrainingContent({ embedded = false }) {
               </div>
               <div>
                 <h1 className={embedded ? "text-lg font-bold text-slate-900" : "text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"}>{embedded ? 'Training Modules' : 'Training Creation'}</h1>
-                <p className="text-slate-600 text-sm">Create and manage DCJS and company training modules</p>
+                <p className="text-slate-600 text-sm">Create DCJS or company training classes and assign them directly to officers or students</p>
               </div>
             </div>
             <Button onClick={() => { resetForm(); setShowDialog(true); }} className={embedded ? "bg-blue-700 hover:bg-blue-800" : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg h-12 px-6"}>
-              <Plus className="w-4 h-4 mr-2" />Create Training Module
+              <Plus className="w-4 h-4 mr-2" />Create Training Class
             </Button>
           </div>
         </div>
@@ -542,7 +542,7 @@ function AdminTrainingContent({ embedded = false }) {
       <Dialog open={showDialog} onOpenChange={(open) => { if (!open) { resetForm(); } setShowDialog(open); }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingModule ? 'Edit Training Module' : 'Create Training Module'}</DialogTitle>
+            <DialogTitle>{editingModule ? 'Edit Training Module' : 'Create Training Class'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); saveModuleMutation.mutate(formData); }} className="space-y-4">
 
@@ -897,7 +897,7 @@ function AdminTrainingContent({ embedded = false }) {
             <div className="space-y-4 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
               <div>
                 <Label className="text-sm font-semibold text-indigo-950">Assign Training</Label>
-                <p className="text-xs text-indigo-700">Officers and students have separate dropdowns. Leave both blank to make the module available to every training learner.</p>
+                <p className="text-xs text-indigo-700">Officers and students have separate dropdowns. Choose officers, students, or both. Leave both blank to make the class available to every training learner.</p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -1015,7 +1015,7 @@ function AdminTrainingContent({ embedded = false }) {
                 Cancel
               </Button>
               <Button type="submit" disabled={saveModuleMutation.isPending || uploading}>
-                {editingModule ? 'Update Module' : 'Create Module'}
+                {editingModule ? 'Update Class' : 'Create Class'}
               </Button>
             </div>
           </form>
