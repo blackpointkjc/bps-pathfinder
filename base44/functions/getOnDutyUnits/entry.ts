@@ -79,6 +79,7 @@ Deno.serve(async (req) => {
         longitude: active.longitude,
         heading: active.heading,
         speed: active.speed,
+        accuracy: active.accuracy,
         show_lights: active.show_lights,
         current_call_info: active.current_call_info || user.current_call_info || '',
         current_location: active.current_location || entry?.location || '',
