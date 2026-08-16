@@ -47,9 +47,14 @@ export default function AdminShiftBids() {
     queryFn: () => base44.entities.OfficerAvailability.list(),
   });
 
-  const { data: siteAssignments } = useQuery({
-    queryKey: ['siteAssignments'],
-    queryFn: () => base44.entities.SiteAssignment.list(),
+  const siteAssignments = (allUsers || []).flatMap((officer) => {
+    const assignedSites = [
+      ...(Array.isArray(officer.assigned_locations) ? officer.assigned_locations : []),
+      ...(Array.isArray(officer.assigned_sites) ? officer.assigned_sites : []),
+      ...(officer.assigned_location ? [officer.assigned_location] : []),
+    ];
+    return [...new Set(assignedSites.map(site => String(site || '').split(' - ')[0].split(':')[0].trim()).filter(Boolean))]
+      .map(site_name => ({ officer_email: officer.email, site_name, active: true }));
   });
 
   const acceptBidMutation = useMutation({
