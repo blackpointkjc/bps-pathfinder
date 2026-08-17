@@ -391,18 +391,24 @@ export function calculateJobDutyCompliance({
       });
     }
 
-    const propertyCheckpoints = qrCheckpoints.filter(cp => cp.is_active !== false && siteKey(cp.property_site) === site);
-    const explicitIds = new Set((rule?.required_checkpoint_ids || []).map(String));
-    const mandatoryLabels = new Set((rule?.mandatory_location_labels || []).map(v => String(v).trim().toLowerCase()));
+    const ruleCreatedMs = rule?.created_date ? new Date(rule.created_date).getTime() : NaN;
+    const effectiveQrRule = rule && (!Number.isFinite(ruleCreatedMs) || ruleCreatedMs <= shiftEndMs) ? rule : null;
+    const propertyCheckpoints = qrCheckpoints.filter(cp => {
+      if (cp.is_active === false || siteKey(cp.property_site) !== site) return false;
+      const created = cp.created_date ? new Date(cp.created_date).getTime() : NaN;
+      return !Number.isFinite(created) || created <= shiftEndMs;
+    });
+    const explicitIds = new Set((effectiveQrRule?.required_checkpoint_ids || []).map(String));
+    const mandatoryLabels = new Set((effectiveQrRule?.mandatory_location_labels || []).map(v => String(v).trim().toLowerCase()));
     let requiredCheckpoints = propertyCheckpoints.filter(cp => {
       if (explicitIds.size) return explicitIds.has(String(cp.id));
       if (mandatoryLabels.size) return mandatoryLabels.has(String(cp.location_label || '').trim().toLowerCase());
       return cp.is_required !== false;
     });
-    const qrIsRequired = rule ? rule.qr_required === true : requiredCheckpoints.length > 0;
+    const qrIsRequired = effectiveQrRule ? effectiveQrRule.qr_required === true : requiredCheckpoints.length > 0;
     if (qrIsRequired && requiredCheckpoints.length > 0) {
-      const frequency = Math.max(1, Number(rule?.qr_frequency_minutes || 60));
-      const windowMinutes = Math.max(1, Number(rule?.qr_window_minutes || 30));
+      const frequency = Math.max(1, Number(effectiveQrRule?.qr_frequency_minutes || 60));
+      const windowMinutes = Math.max(1, Number(effectiveQrRule?.qr_window_minutes || 30));
       const successful = eligibleQrScans.filter(scan => {
         const stamp = new Date(scan.scanned_at).getTime();
         return Number.isFinite(stamp) && stamp >= shiftStartMs && stamp <= shiftEndMs && siteKey(scan.property_site) === site;
@@ -411,7 +417,8 @@ export function calculateJobDutyCompliance({
       let obligationCount = 0;
       let obligationCompleted = 0;
       const missedObligations = [];
-      let windowStartMs = shiftStartMs;
+      const activationMs = Number.isFinite(ruleCreatedMs) && effectiveQrRule ? Math.max(shiftStartMs, ruleCreatedMs) : shiftStartMs;
+      let windowStartMs = activationMs;
       let roundNumber = 1;
       while (windowStartMs < shiftEndMs && roundNumber <= 48) {
         const naturalWindowEndMs = windowStartMs + windowMinutes * 60000;
@@ -419,6 +426,8 @@ export function calculateJobDutyCompliance({
         // On an active shift, the current open QR window is pending rather than missed.
         if (isActiveShift && naturalWindowEndMs > Date.now()) break;
         for (const cp of requiredCheckpoints) {
+          const cpCreatedMs = cp.created_date ? new Date(cp.created_date).getTime() : NaN;
+          if (Number.isFinite(cpCreatedMs) && cpCreatedMs > windowEndMs) continue;
           obligationCount++;
           const scan = successful.find(item => {
             const stamp = new Date(item.scanned_at).getTime();
@@ -437,7 +446,8 @@ export function calculateJobDutyCompliance({
         roundNumber++;
       }
 
-      const minimumPerShift = isActiveShift ? 0 : Math.max(0, Number(rule?.qr_scans_per_shift || 0));
+      const ruleCoveredWholeShift = !Number.isFinite(ruleCreatedMs) || ruleCreatedMs <= shiftStartMs;
+      const minimumPerShift = isActiveShift || !ruleCoveredWholeShift ? 0 : Math.max(0, Number(effectiveQrRule?.qr_scans_per_shift || 0));
       const requiredCount = Math.max(obligationCount, minimumPerShift);
       // Any successful site scan can satisfy only the extra minimum above the checkpoint/window obligations.
       const extraRequired = Math.max(0, minimumPerShift - obligationCount);
