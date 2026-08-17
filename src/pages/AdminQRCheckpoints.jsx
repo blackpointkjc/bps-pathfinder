@@ -240,7 +240,7 @@ export default function AdminQRCheckpoints() {
             {allSites.map(site => {
               const rule = dutyRules.find(item => item.property_site === site);
               return (
-                <button key={site} type="button" onClick={() => openRule(site)} className="rounded-lg border border-slate-700 bg-slate-800 p-3 text-left transition hover:border-cyan-500 hover:bg-slate-750">
+                <button key={site} type="button" onClick={() => openRule(site)} className="rounded-lg border border-slate-700 bg-slate-800 p-3 text-left transition hover:border-cyan-500 hover:bg-slate-700">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold text-white">{site}</span>
                     <Badge className={rule ? 'bg-cyan-100 text-cyan-800' : 'bg-slate-100 text-slate-600'}>{rule ? 'Configured' : 'Default rules'}</Badge>
@@ -255,27 +255,27 @@ export default function AdminQRCheckpoints() {
       </Card>
 
       {/* Table */}
-      <Card>
+      <Card className="border-slate-700 bg-slate-900 text-white shadow-lg">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b">
+              <thead className="border-b border-slate-700 bg-slate-800">
                 <tr>
-                  <th className="text-left p-3 font-semibold text-slate-700">Checkpoint</th>
-                  <th className="text-left p-3 font-semibold text-slate-700 hidden md:table-cell">Location</th>
-                  <th className="text-left p-3 font-semibold text-slate-700 hidden lg:table-cell">Site</th>
-                  <th className="text-left p-3 font-semibold text-slate-700 hidden lg:table-cell">QR ID</th>
-                  <th className="text-center p-3 font-semibold text-slate-700">Status</th>
-                  <th className="text-center p-3 font-semibold text-slate-700">Required</th>
-                  <th className="text-right p-3 font-semibold text-slate-700">Actions</th>
+                  <th className="text-left p-3 font-semibold text-slate-200">Checkpoint</th>
+                  <th className="text-left p-3 font-semibold text-slate-200 hidden md:table-cell">Location</th>
+                  <th className="text-left p-3 font-semibold text-slate-200 hidden lg:table-cell">Site</th>
+                  <th className="text-left p-3 font-semibold text-slate-200 hidden lg:table-cell">QR ID</th>
+                  <th className="text-center p-3 font-semibold text-slate-200">Status</th>
+                  <th className="text-center p-3 font-semibold text-slate-200">Required</th>
+                  <th className="text-right p-3 font-semibold text-slate-200">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-slate-800">
                 {filtered.map(cp => (
-                  <tr key={cp.id} className="hover:bg-slate-50">
-                    <td className="p-3 font-medium text-slate-900">{cp.checkpoint_name}</td>
-                    <td className="p-3 text-slate-600 hidden md:table-cell">{cp.location_label}</td>
-                    <td className="p-3 text-slate-600 hidden lg:table-cell">{cp.property_site}</td>
+                  <tr key={cp.id} className="hover:bg-slate-800/80">
+                    <td className="p-3 font-medium text-white">{cp.checkpoint_name}</td>
+                    <td className="p-3 text-slate-300 hidden md:table-cell">{cp.location_label}</td>
+                    <td className="p-3 text-slate-300 hidden lg:table-cell">{cp.property_site}</td>
                     <td className="p-3 font-mono text-xs text-slate-400 hidden lg:table-cell">{cp.qr_unique_id}</td>
                     <td className="p-3 text-center">
                       <Badge className={cp.is_active !== false ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}>
@@ -314,17 +314,17 @@ export default function AdminQRCheckpoints() {
       </Card>
 
       <Dialog open={showRuleForm} onOpenChange={setShowRuleForm}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto border-slate-700 bg-slate-950 text-white">
           <DialogHeader><DialogTitle>Job Duty Rules — {ruleForm.property_site}</DialogTitle></DialogHeader>
           <div className="space-y-5">
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="flex items-center justify-between rounded-lg border p-3"><Label>Daily Activity Report required every worked shift</Label><Switch checked={ruleForm.daily_activity_report_required} onCheckedChange={v => setRuleForm(p => ({...p, daily_activity_report_required: v}))} /></div>
-              <div className="flex items-center justify-between rounded-lg border p-3"><Label>Incident Report required for property calls</Label><Switch checked={ruleForm.incident_report_required_for_property_calls} onCheckedChange={v => setRuleForm(p => ({...p, incident_report_required_for_property_calls: v}))} /></div>
-              <div className="flex items-center justify-between rounded-lg border p-3 sm:col-span-2"><Label>QR compliance required</Label><Switch checked={ruleForm.qr_required} onCheckedChange={v => setRuleForm(p => ({...p, qr_required: v}))} /></div>
+              <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-900 p-3"><Label>Daily Activity Report required every worked shift</Label><Switch checked={ruleForm.daily_activity_report_required} onCheckedChange={v => setRuleForm(p => ({...p, daily_activity_report_required: v}))} /></div>
+              <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-900 p-3"><Label>Incident Report required for property calls</Label><Switch checked={ruleForm.incident_report_required_for_property_calls} onCheckedChange={v => setRuleForm(p => ({...p, incident_report_required_for_property_calls: v}))} /></div>
+              <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-900 p-3 sm:col-span-2"><Label>QR compliance required</Label><Switch checked={ruleForm.qr_required} onCheckedChange={v => setRuleForm(p => ({...p, qr_required: v}))} /></div>
             </div>
 
             {ruleForm.qr_required && (
-              <div className="space-y-4 rounded-xl border border-cyan-200 bg-cyan-50 p-4">
+              <div className="space-y-4 rounded-xl border border-cyan-900 bg-slate-900 p-4">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div><Label>Frequency (minutes)</Label><Input type="number" min="1" value={ruleForm.qr_frequency_minutes} onChange={e => setRuleForm(p => ({...p, qr_frequency_minutes: Number(e.target.value || 60)}))} /></div>
                   <div><Label>Scan window (minutes)</Label><Input type="number" min="1" value={ruleForm.qr_window_minutes} onChange={e => setRuleForm(p => ({...p, qr_window_minutes: Number(e.target.value || 30)}))} /></div>
@@ -332,13 +332,13 @@ export default function AdminQRCheckpoints() {
                 </div>
                 <div>
                   <Label className="mb-2 block">Required QR codes for this property</Label>
-                  <div className="space-y-2 rounded-lg border bg-white p-3">
+                  <div className="space-y-2 rounded-lg border border-slate-700 bg-slate-950 p-3">
                     {checkpoints.filter(cp => cp.property_site === ruleForm.property_site && cp.is_active !== false).length === 0 ? (
                       <p className="text-sm text-slate-500">No active checkpoints exist for this property yet.</p>
                     ) : checkpoints.filter(cp => cp.property_site === ruleForm.property_site && cp.is_active !== false).map(cp => {
                       const checked = ruleForm.required_checkpoint_ids.includes(cp.id);
                       return (
-                        <label key={cp.id} className="flex items-center gap-3 text-sm text-slate-700">
+                        <label key={cp.id} className="flex items-center gap-3 text-sm text-slate-200">
                           <input type="checkbox" checked={checked} onChange={e => setRuleForm(p => ({...p, required_checkpoint_ids: e.target.checked ? [...p.required_checkpoint_ids, cp.id] : p.required_checkpoint_ids.filter(id => id !== cp.id)}))} />
                           <span><strong>{cp.checkpoint_name}</strong> — {cp.location_label}</span>
                         </label>
