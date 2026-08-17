@@ -291,21 +291,14 @@ export default function MyPerformanceAnalytics() {
       });
     }
 
-    const monthlyCallOuts = (myCallOuts || []).filter(item => {
-      if (item.call_out_type === 'reassigned') return false;
-      const raw = item.call_out_date || item.created_date;
-      if (!raw) return false;
-      const date = format(parseISO(raw), 'yyyy-MM-dd');
-      return date >= currentMonthStart && date <= currentMonthEnd;
+    factors.push({
+      metric: 'Call-Out Attendance',
+      value: `${callOutAttendance.score}%`,
+      severity: callOutAttendance.count > 0 ? 'negative' : 'positive',
+      reason: callOutAttendance.count > 0
+        ? `${callOutAttendance.count} officer call-out${callOutAttendance.count === 1 ? '' : 's'} against ${callOutAttendance.scheduled || callOutAttendance.count} scheduled shift${(callOutAttendance.scheduled || callOutAttendance.count) === 1 ? '' : 's'} this month. This category is 15% of the overall grade. Sent-home and reassignment records do not lower this attendance score.`
+        : 'No officer call-outs this month. Full credit is applied to the 15% Call-Out Attendance portion of the grade.'
     });
-    if (monthlyCallOuts.length > 0) {
-      factors.push({
-        metric: 'Attendance Record',
-        value: `${monthlyCallOuts.length} call-out${monthlyCallOuts.length === 1 ? '' : 's'}`,
-        severity: 'negative',
-        reason: `${monthlyCallOuts.length} attendance/call-out record${monthlyCallOuts.length === 1 ? ' is' : 's are'} recorded this month and shown as a performance factor.`
-      });
-    }
 
     const sustainedThisMonth = (myComplaints || []).filter(item => {
       if (item.exclude_from_performance_review === true || item.investigation_status !== 'sustained') return false;
@@ -354,7 +347,7 @@ export default function MyPerformanceAnalytics() {
     }
 
     return factors;
-  }, [onTimeStats, trainingStats, qrPatrolStats, qrPatrolRate, bidStats, myBids, myCallOuts, myComplaints, allTraining, trainingCompletions, myAssignments, user, clientFeedbackStats, supervisorRatingStats, recognitionStats, jobDutyStats, currentMonthStart, currentMonthEnd]);
+  }, [onTimeStats, trainingStats, qrPatrolStats, qrPatrolRate, bidStats, myBids, myCallOuts, myComplaints, allTraining, trainingCompletions, myAssignments, user, clientFeedbackStats, supervisorRatingStats, recognitionStats, jobDutyStats, callOutAttendance, currentMonthStart, currentMonthEnd]);
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -408,18 +401,18 @@ export default function MyPerformanceAnalytics() {
               <span className="flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Overall Performance Score</span>
               <span className="text-4xl font-black">{overallPerformance.score !== null ? `${overallPerformance.score}%` : '—'}</span>
             </CardTitle>
-            <p className="text-xs text-blue-100">Equal average of every scored category that currently has enough data. Categories with no scored events are excluded instead of being counted as 0%.</p>
+            <p className="text-xs text-blue-100">Weighted grade: 55% On-Time Arrival • 15% Job Duty / Performance • 15% Call-Out Attendance • remaining 15% split evenly across Training, Bid Standing, Client Feedback, Supervisor Rating, and Recognition (3% each). No-data in those five categories is neutral/full-credit, not a penalty.</p>
           </CardHeader>
           <CardContent className="p-4">
             {overallPerformance.categories.length > 0 ? (
               <div className="space-y-2">
                 {overallPerformance.categories.map(category => (
                   <div key={category.label} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                    <span className="text-sm font-semibold text-slate-700">{category.label}</span>
-                    <span className="font-bold text-slate-900">{category.score}%</span>
+                    <span className="text-sm font-semibold text-slate-700">{category.label} <span className="font-normal text-slate-500">({category.weight}% weight)</span>{category.neutral ? <span className="ml-1 text-[10px] text-slate-400">neutral/no data</span> : null}</span>
+                    <span className="font-bold text-slate-900">{category.score}% → {category.contribution.toFixed(1)} pts</span>
                   </div>
                 ))}
-                <p className="pt-1 text-xs text-slate-500">Formula: ({overallPerformance.categories.map(category => `${category.score}%`).join(' + ')}) ÷ {overallPerformance.categories.length} = {overallPerformance.score}%</p>
+                <p className="pt-1 text-xs text-slate-500">Weighted total: {overallPerformance.categories.map(category => `${category.contribution.toFixed(1)}`).join(' + ')} = {overallPerformance.score}%</p>
               </div>
             ) : (
               <p className="text-sm text-slate-500">No scored performance categories have enough data yet.</p>
