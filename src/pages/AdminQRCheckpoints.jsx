@@ -134,7 +134,7 @@ export default function AdminQRCheckpoints() {
       active: existing?.active !== false,
       daily_activity_report_required: existing?.daily_activity_report_required !== false,
       incident_report_required_for_property_calls: existing?.incident_report_required_for_property_calls !== false,
-      qr_required: existing?.qr_required === true,
+      qr_required: existing ? existing.qr_required === true : checkpoints.some(cp => cp.property_site === site && cp.is_active !== false && cp.is_required !== false),
       qr_frequency_minutes: Number(existing?.qr_frequency_minutes || 60),
       qr_window_minutes: Number(existing?.qr_window_minutes || 30),
       qr_scans_per_shift: Number(existing?.qr_scans_per_shift || 0),
@@ -246,7 +246,7 @@ export default function AdminQRCheckpoints() {
                     <Badge className={rule ? 'bg-cyan-100 text-cyan-800' : 'bg-slate-100 text-slate-600'}>{rule ? 'Configured' : 'Default rules'}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-slate-300">DAR: {rule?.daily_activity_report_required === false ? 'Not required' : 'Required'} • Incident: {rule?.incident_report_required_for_property_calls === false ? 'Not required' : 'Required'}</p>
-                  <p className="text-xs text-slate-300">QR: {rule?.qr_required ? `Required every ${rule.qr_frequency_minutes || 60} min • ${rule.required_checkpoint_ids?.length || checkpoints.filter(cp => cp.property_site === site && cp.is_required !== false && cp.is_active !== false).length} checkpoint(s)` : 'Not required by property rule'}</p>
+                  <p className="text-xs text-slate-300">QR: {rule ? (rule.qr_required ? `Required every ${rule.qr_frequency_minutes || 60} min • ${rule.required_checkpoint_ids?.length || checkpoints.filter(cp => cp.property_site === site && cp.is_required !== false && cp.is_active !== false).length} checkpoint(s)` : 'Disabled by property rule') : (checkpoints.some(cp => cp.property_site === site && cp.is_required !== false && cp.is_active !== false) ? `Required by existing checkpoint defaults • ${checkpoints.filter(cp => cp.property_site === site && cp.is_required !== false && cp.is_active !== false).length} checkpoint(s)` : 'No QR requirement configured')}</p>
                 </button>
               );
             })}
