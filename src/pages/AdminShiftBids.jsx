@@ -84,32 +84,45 @@ export default function AdminShiftBids() {
         });
       }
 
-      // Send email notification
-      await base44.integrations.Core.SendEmail({
-        to: bid.officer_email,
-        subject: `✅ Shift Bid Accepted - ${shift.location}`,
-        body: `Your bid for the following shift has been accepted:
+      // Notifications are best-effort only. A mail/provider problem must never
+      // roll back or make a successfully assigned shift look like it failed.
+      try {
+        await base44.integrations.Core.SendEmail({
+          to: bid.officer_email,
+          subject: `✅ Shift Bid Accepted - ${shift.location}`,
+          body: `Your bid for the following shift has been accepted:
 
   Date: ${format(parseISO(shift.shift_date), 'MMMM d, yyyy')}
   Time: ${shift.start_time} - ${shift.end_time}
   Location: ${shift.location}
 
   This shift has been added to your schedule.`
-      });
+        });
+      } catch (error) {
+        console.warn('Shift assignment saved but acceptance email failed:', error?.message || error);
+      }
 
-      // Create notification
-      await base44.entities.Notification.create({
-        recipient_email: bid.officer_email,
-        type: 'bid_accepted',
-        title: '✅ Shift Bid Accepted',
-        message: `Your bid for ${format(parseISO(shift.shift_date), 'MMM d')} at ${shift.location.split(':')[0]} was accepted!`,
-        priority: 'high',
-        related_id: shift.id,
-      });
+      try {
+        await base44.entities.Notification.create({
+          recipient_email: bid.officer_email,
+          type: 'bid_accepted',
+          title: '✅ Shift Bid Accepted',
+          message: `Your bid for ${format(parseISO(shift.shift_date), 'MMM d')} at ${shift.location.split(':')[0]} was accepted!`,
+          priority: 'high',
+          related_id: shift.id,
+        });
+      } catch (error) {
+        console.warn('Shift assignment saved but in-app acceptance notification failed:', error?.message || error);
+      }
 
-      // Invalidate schedules for the assigned officer
+      // Refresh every schedule/bid view that can still show the old open shift.
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      queryClient.invalidateQueries({ queryKey: ['mySchedules'] });
       queryClient.invalidateQueries({ queryKey: ['allSchedules'] });
+      queryClient.invalidateQueries({ queryKey: ['openShifts'] });
+      queryClient.invalidateQueries({ queryKey: ['openShiftsAdmin'] });
+      queryClient.invalidateQueries({ queryKey: ['myBids'] });
+      queryClient.invalidateQueries({ queryKey: ['allShiftBids'] });
     },
     onMutate: async ({ bid, shift }) => {
       // Cancel pending queries
@@ -134,12 +147,14 @@ export default function AdminShiftBids() {
       if (context?.previousBids) {
         queryClient.setQueryData(['allShiftBids'], context.previousBids);
       }
+      alert(`Unable to accept bid: ${err?.message || 'Unknown error'}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allShiftBids'] });
       queryClient.invalidateQueries({ queryKey: ['openShiftsAdmin'] });
       queryClient.invalidateQueries({ queryKey: ['openShifts'] });
-      alert('Bid accepted and shift assigned!');
+      queryClient.invalidateQueries({ queryKey: ['allSchedules'] });
+      alert('Bid accepted. The open shift is now assigned to that officer and removed from the other bidders.');
     },
   });
 
