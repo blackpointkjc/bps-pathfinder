@@ -483,6 +483,33 @@ export default function MyPerformanceAnalytics() {
           </Card>
         </div>
 
+        <Card className="overflow-hidden border border-cyan-200 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-cyan-700 to-blue-700 text-white">
+            <CardTitle className="flex flex-wrap items-center justify-between gap-2">
+              <span>Job Duty Compliance</span>
+              <span className="text-3xl font-black">{jobDutyStats.score != null ? `${jobDutyStats.score}%` : '—'}</span>
+            </CardTitle>
+            <p className="text-xs text-cyan-100">Required reports and QR duties are evaluated against the exact worked shift and property. Reassignment exceptions are excluded automatically.</p>
+          </CardHeader>
+          <CardContent className="grid gap-3 p-4 md:grid-cols-3">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase text-slate-500">Daily Activity Reports</p>
+              <p className="mt-1 text-xl font-bold text-slate-900">{jobDutyStats.dailyActivity.completed}/{jobDutyStats.dailyActivity.required}</p>
+              <p className="text-xs text-slate-600">{jobDutyStats.dailyActivity.missed} missed • {jobDutyStats.dailyActivity.score != null ? `${jobDutyStats.dailyActivity.score}%` : 'Not scored'}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase text-slate-500">Incident Reports</p>
+              <p className="mt-1 text-xl font-bold text-slate-900">{jobDutyStats.incidentReports.completed}/{jobDutyStats.incidentReports.required}</p>
+              <p className="text-xs text-slate-600">{jobDutyStats.incidentReports.missed} missed • {jobDutyStats.incidentReports.excluded} excluded by call-out/reassignment</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase text-slate-500">QR Compliance</p>
+              <p className="mt-1 text-xl font-bold text-slate-900">{jobDutyStats.qrCompliance.completed}/{jobDutyStats.qrCompliance.required}</p>
+              <p className="text-xs text-slate-600">{jobDutyStats.qrCompliance.missed} missed • {jobDutyStats.qrCompliance.score != null ? `${jobDutyStats.qrCompliance.score}%` : 'Not scored'}</p>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="overflow-hidden border border-slate-200 shadow-lg">
           <CardHeader className="bg-slate-900 text-white">
             <CardTitle className="flex flex-wrap items-center justify-between gap-2">
