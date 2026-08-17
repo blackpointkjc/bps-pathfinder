@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { QrCode, Plus, Edit, Power, Search, Printer } from "lucide-react";
+import { QrCode, Plus, Edit, Power, Search, Printer, Settings2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
@@ -25,6 +25,21 @@ export default function AdminQRCheckpoints() {
   const [editingItem, setEditingItem] = useState(null);
   const [search, setSearch] = useState("");
   const [filterSite, setFilterSite] = useState("all");
+  const [showRuleForm, setShowRuleForm] = useState(false);
+  const [editingRule, setEditingRule] = useState(null);
+  const [ruleForm, setRuleForm] = useState({
+    property_site: "",
+    active: true,
+    daily_activity_report_required: true,
+    incident_report_required_for_property_calls: true,
+    qr_required: false,
+    qr_frequency_minutes: 60,
+    qr_window_minutes: 30,
+    qr_scans_per_shift: 0,
+    require_all_required_checkpoints: true,
+    required_checkpoint_ids: [],
+    notes: "",
+  });
   const [formData, setFormData] = useState({
     checkpoint_name: "",
     location_label: "",
@@ -38,17 +53,35 @@ export default function AdminQRCheckpoints() {
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
 
-  const { data: checkpoints } = useQuery({
+  const { data: checkpoints = [] } = useQuery({
     queryKey: ['qrCheckpoints'],
     queryFn: () => base44.entities.QRCheckpoint.list('-created_date'),
+    initialData: [],
   });
 
-  const { data: locations } = useQuery({
+  const { data: dutyRules = [] } = useQuery({
+    queryKey: ['jobDutyRules'],
+    queryFn: () => base44.entities.JobDutyRule.list('property_site', 1000),
+    initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+
+  const { data: locations = [] } = useQuery({
     queryKey: ['activeLocations'],
     queryFn: async () => {
+      try {
+        const direct = await base44.entities.Location.list('site_name', 1000);
+        if (Array.isArray(direct) && direct.length) return direct.filter(l => l.active !== false);
+      } catch (error) {
+        console.warn('Direct Location list failed:', error?.message);
+      }
       const all = await listDirectoryLocations('site_name');
-      return all.filter(l => l.active);
+      return (all || []).filter(l => l.active !== false);
     },
+    initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const saveMutation = useMutation({
@@ -76,6 +109,40 @@ export default function AdminQRCheckpoints() {
     mutationFn: ({ id, is_active }) => base44.entities.QRCheckpoint.update(id, { is_active }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['qrCheckpoints'] }),
   });
+
+  const saveRuleMutation = useMutation({
+    mutationFn: async (data) => {
+      const payload = { ...data, updated_by: user?.email || '' };
+      return editingRule
+        ? base44.entities.JobDutyRule.update(editingRule.id, payload)
+        : base44.entities.JobDutyRule.create(payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobDutyRules'] });
+      setShowRuleForm(false);
+      setEditingRule(null);
+      toast.success('Property job duty rules updated');
+    },
+  });
+
+  const openRule = (site) => {
+    const existing = dutyRules.find(rule => rule.property_site === site);
+    setEditingRule(existing || null);
+    setRuleForm({
+      property_site: site,
+      active: existing?.active !== false,
+      daily_activity_report_required: existing?.daily_activity_report_required !== false,
+      incident_report_required_for_property_calls: existing?.incident_report_required_for_property_calls !== false,
+      qr_required: existing?.qr_required === true,
+      qr_frequency_minutes: Number(existing?.qr_frequency_minutes || 60),
+      qr_window_minutes: Number(existing?.qr_window_minutes || 30),
+      qr_scans_per_shift: Number(existing?.qr_scans_per_shift || 0),
+      require_all_required_checkpoints: existing?.require_all_required_checkpoints !== false,
+      required_checkpoint_ids: existing?.required_checkpoint_ids || [],
+      notes: existing?.notes || '',
+    });
+    setShowRuleForm(true);
+  };
 
   const resetForm = () => {
     setShowForm(false);
