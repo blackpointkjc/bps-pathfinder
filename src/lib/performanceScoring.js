@@ -280,8 +280,8 @@ export function calculateJobDutyCompliance({
   monthEnd,
 } = {}) {
   const officerEmail = emailKey(officer?.email);
-  const completedShifts = timeEntries.filter(entry => {
-    if (!entry?.clock_in || !entry?.clock_out) return false;
+  const evaluatedShifts = timeEntries.filter(entry => {
+    if (!entry?.clock_in) return false;
     if (officerEmail && emailKey(entry.officer_email) !== officerEmail) return false;
     const d = easternDateKey(entry.clock_in);
     return d && (!monthStart || d >= monthStart) && (!monthEnd || d <= monthEnd);
@@ -311,23 +311,25 @@ export function calculateJobDutyCompliance({
   let incidentRequired = 0, incidentCompleted = 0, incidentExcluded = 0;
   let qrRequired = 0, qrCompleted = 0;
 
-  completedShifts.forEach(entry => {
+  evaluatedShifts.forEach(entry => {
     const shiftDate = easternDateKey(entry.clock_in);
     const site = siteKey(entry.location);
     if (!site) return;
     const rule = ruleFor(site);
     const shiftStartMs = new Date(entry.clock_in).getTime();
-    const shiftEndMs = new Date(entry.clock_out).getTime();
+    const isActiveShift = !entry.clock_out;
+    const shiftEndMs = entry.clock_out ? new Date(entry.clock_out).getTime() : Date.now();
     const detail = {
       shift_id: entry.id,
       shift_date: shiftDate,
+      active: isActiveShift,
       property: propertyForSite(site, locations)?.site_name || String(entry.location || '').split(' - ')[0].split(':')[0],
       daily_activity: { required: false, completed: false, report_id: null },
       incidents: { required: 0, completed: 0, excluded: 0, items: [] },
       qr: { required: 0, completed: 0, missed: 0, required_checkpoint_names: [] },
     };
 
-    const requiresDar = rule ? rule.daily_activity_report_required !== false : true;
+    const requiresDar = !isActiveShift && (rule ? rule.daily_activity_report_required !== false : true);
     if (requiresDar) {
       darRequired++;
       detail.daily_activity.required = true;
@@ -412,7 +414,10 @@ export function calculateJobDutyCompliance({
       let windowStartMs = shiftStartMs;
       let roundNumber = 1;
       while (windowStartMs < shiftEndMs && roundNumber <= 48) {
-        const windowEndMs = Math.min(shiftEndMs, windowStartMs + windowMinutes * 60000);
+        const naturalWindowEndMs = windowStartMs + windowMinutes * 60000;
+        const windowEndMs = Math.min(shiftEndMs, naturalWindowEndMs);
+        // On an active shift, the current open QR window is pending rather than missed.
+        if (isActiveShift && naturalWindowEndMs > Date.now()) break;
         for (const cp of requiredCheckpoints) {
           obligationCount++;
           const scan = successful.find(item => {
