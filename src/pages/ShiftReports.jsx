@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 
 export default function ShiftReports() {
   const [showForm, setShowForm] = useState(false);
@@ -25,6 +26,10 @@ export default function ShiftReports() {
   const [editingTodoId, setEditingTodoId] = useState(null); // Added for tracking which todo is being addressed
   const [formData, setFormData] = useState({
     shift_date: format(new Date(), 'yyyy-MM-dd'),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
     start_time: "",
     end_time: "",
     location: "",
@@ -285,6 +290,10 @@ export default function ShiftReports() {
         setEditingTodoId(null);
         setFormData({
           shift_date: format(new Date(), 'yyyy-MM-dd'),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
           start_time: "",
           end_time: "",
           location: "",
@@ -625,6 +634,10 @@ export default function ShiftReports() {
               if (!showForm) { // When opening the form for a NEW report
                 setFormData({
                   shift_date: format(new Date(), 'yyyy-MM-dd'),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
                   start_time: "",
                   end_time: "",
                   // If admin and not clocked in, start with empty location for selection.
@@ -682,6 +695,7 @@ export default function ShiftReports() {
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4">
+                <ActiveCallLinkField formData={formData} setFormData={setFormData} />
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="shift_date">Shift Date *</Label>
