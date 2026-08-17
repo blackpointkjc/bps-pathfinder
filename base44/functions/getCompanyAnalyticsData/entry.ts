@@ -25,18 +25,24 @@ Deno.serve(async (req) => {
       }
     };
 
-    const [users, divisions, timeEntries, schedules, trainingCompletions, trainingModules, incidentReports, callsForService, dispatchCalls, commendations, complaints] = await Promise.all([
+    const [users, divisions, timeEntries, schedules, bids, trainingCompletions, trainingAssignments, trainingModules, qrScans, qrCheckpoints, incidentReports, callsForService, dispatchCalls, commendations, complaints, clientFeedback, performanceReviews] = await Promise.all([
       list('User', '-updated_date'),
       list('Division', 'division_name'),
       list('TimeEntry', '-clock_in'),
       list('Schedule', '-shift_date'),
+      list('ShiftBid', '-created_date'),
       list('TrainingCompletion', '-completion_date'),
+      list('TrainingAssignment', '-assigned_date'),
       list('TrainingModule', '-created_date'),
+      list('QRScanEvent', '-scanned_at'),
+      list('QRCheckpoint', 'property_site'),
       list('IncidentReport', '-incident_date'),
       list('CallForService', '-call_time'),
       list('DispatchCall', '-time_received'),
       list('Commendation', '-commendation_date'),
       list('Complaint', '-complaint_date'),
+      list('ClientFeedback', '-feedback_date'),
+      list('PerformanceReview', '-review_date'),
     ]);
 
     return Response.json({
@@ -45,13 +51,19 @@ Deno.serve(async (req) => {
       divisions,
       timeEntries,
       schedules,
+      bids,
       trainingCompletions,
+      trainingAssignments,
       trainingModules,
+      qrScans,
+      qrCheckpoints,
       incidentReports,
       callsForService,
       dispatchCalls,
       commendations,
       complaints,
+      clientFeedback,
+      performanceReviews,
       service_errors: errors,
     });
   } catch (error) {
