@@ -68,14 +68,12 @@ export default function DailyActivityReports() {
     queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
-      const entries = await base44.entities.TimeEntry.filter(
-        { officer_email: user.email },
-        '-clock_in',
-        100
-      );
-      return entries.find(e => !e.clock_out) || null;
+      const email = String(user.email).trim().toLowerCase();
+      const entries = await base44.entities.TimeEntry.list('-clock_in', 500);
+      return entries.find(e => !e.clock_out && String(e.officer_email || '').trim().toLowerCase() === email) || null;
     },
     enabled: !!user?.email,
+    refetchInterval: 30000,
   });
 
   const { data: reports } = useQuery({
