@@ -2,6 +2,18 @@
   "name": "CallHistory",
   "type": "object",
   "properties": {
+    "original_call_id": {
+      "type": "string",
+      "description": "Original DispatchCall record ID retained after archiving"
+    },
+    "call_id": {
+      "type": "string",
+      "description": "Visible/upstream CAD or BPS call identifier"
+    },
+    "external_call_id": {
+      "type": "string",
+      "description": "Optional upstream external call identifier"
+    },
     "time_received": {
       "type": "string",
       "description": "Time the call was received"
