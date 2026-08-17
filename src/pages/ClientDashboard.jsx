@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { listDirectoryLocations } from '@/lib/appDirectory';
 
 export default function ClientDashboard() {
-  const [selectedLocation, setSelectedLocation] = useState("");
   
   const { data: user } = useQuery({
     queryKey: ['clientPortalUser', getClientPreviewId()],
@@ -21,28 +20,18 @@ export default function ClientDashboard() {
 
   const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
 
-  useEffect(() => {
-    if (clientLocations.length > 0 && !selectedLocation) {
-      setSelectedLocation(clientLocations[0]);
-    }
-  }, [clientLocations, selectedLocation]);
-
-  const effectiveLocation = selectedLocation || clientLocations[0];
-
-  const { data: location } = useQuery({
-    queryKey: ['clientLocation', effectiveLocation],
-    queryFn: async () => {
-      if (!effectiveLocation) return null;
-      const locations = await listDirectoryLocations();
-      return locations.find(loc => loc.site_name === effectiveLocation);
-    },
-    enabled: !!effectiveLocation,
+  const siteKey = (value) => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
+  const assignedKeys = new Set(clientLocations.map(siteKey));
+  const { data: assignedLocations = [] } = useQuery({
+    queryKey: ['clientLocationsPortfolio', clientLocations.join('|')],
+    queryFn: async () => (await listDirectoryLocations()).filter(loc => assignedKeys.has(siteKey(loc.site_name))),
+    enabled: clientLocations.length > 0,
   });
 
   const { data: reports } = useQuery({
-    queryKey: ['clientReports', effectiveLocation],
+    queryKey: ['clientDashboardReports', clientLocations.join('|')],
     queryFn: async () => {
-      if (!effectiveLocation) return { shift: [], incident: [], trespass: [], parking: [], maintenance: [], opendoor: [], criminal: [] };
+      if (!clientLocations.length) return { shift: [], incident: [], trespass: [], parking: [], maintenance: [], opendoor: [], criminal: [] };
       
       const [shift, incident, trespass] = await Promise.all([
         base44.entities.ShiftReport.list('-created_date'),
@@ -57,16 +46,16 @@ export default function ClientDashboard() {
       const criminal = await base44.entities.CriminalComplaint.list('-created_date');
 
       return {
-        shift: shift.filter(r => r.location === effectiveLocation && r.status === 'approved'),
-        incident: incident.filter(r => r.location === effectiveLocation && r.status === 'approved'),
-        trespass: trespass.filter(r => r.location === effectiveLocation && r.status === 'approved'),
-        parking: parking.filter(r => r.location === effectiveLocation && r.status === 'approved'),
-        maintenance: maintenance.filter(r => r.location === effectiveLocation),
-        opendoor: opendoor.filter(r => r.location === effectiveLocation),
-        criminal: criminal.filter(r => r.location === effectiveLocation && r.status === 'approved'),
+        shift: shift.filter(r => assignedKeys.has(siteKey(r.location)) && r.status === 'approved'),
+        incident: incident.filter(r => assignedKeys.has(siteKey(r.location)) && r.status === 'approved'),
+        trespass: trespass.filter(r => assignedKeys.has(siteKey(r.location)) && r.status === 'approved'),
+        parking: parking.filter(r => assignedKeys.has(siteKey(r.location)) && r.status === 'approved'),
+        maintenance: maintenance.filter(r => assignedKeys.has(siteKey(r.location))),
+        opendoor: opendoor.filter(r => assignedKeys.has(siteKey(r.location))),
+        criminal: criminal.filter(r => assignedKeys.has(siteKey(r.location)) && r.status === 'approved'),
       };
     },
-    enabled: !!effectiveLocation,
+    enabled: clientLocations.length > 0,
   });
 
   if (clientLocations.length === 0) {
@@ -84,42 +73,13 @@ export default function ClientDashboard() {
   return (
     <div className="p-4 md:p-8 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-8">
-        {clientLocations.length > 1 && (
-          <Card className="border-none shadow-lg bg-gradient-to-r from-purple-50 to-blue-50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <MapPin className="w-8 h-8 text-purple-600" />
-                <div className="flex-1">
-                  <Label className="text-sm font-semibold text-purple-900 mb-2 block">
-                    Select Location to View
-                  </Label>
-                  <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="Select a location to view..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clientLocations.map((locName) => (
-                        <SelectItem key={locName} value={locName}>
-                          {locName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            Welcome, {user?.first_name || 'Client'}!
-          </h1>
-          <div className="flex items-center gap-2 text-lg text-slate-600">
-            <MapPin className="w-5 h-5" />
-            {location?.site_name}
+        <div className="rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 to-slate-950 p-5 shadow-xl sm:p-6">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-300">Client Security Portal</p>
+          <h1 className="mt-1 text-2xl font-black text-white sm:text-3xl">Welcome, {user?.first_name || 'Client'}</h1>
+          <p className="mt-2 text-sm text-slate-400">A unified view of security operations across all properties assigned to your account.</p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {assignedLocations.map(location => <div key={location.id} className="rounded-xl border border-slate-700 bg-slate-800/70 p-3"><div className="flex items-center gap-2 font-bold text-white"><MapPin className="h-4 w-4 text-cyan-400" />{location.site_name}</div><p className="mt-1 text-xs text-slate-400">{location.address || 'Address not listed'}</p></div>)}
           </div>
-          <p className="text-sm text-slate-500 mt-1">{location?.address}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -193,7 +153,7 @@ export default function ClientDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4">
-                <p className="text-slate-600 text-sm">Access all approved reports for your location</p>
+                <p className="text-slate-600 text-sm">Access approved reports across all of your assigned sites</p>
               </CardContent>
             </Card>
           </Link>
