@@ -11,12 +11,17 @@ import { DollarSign, Plus, Calendar, FileText, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
+import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 
 export default function ExpenseReports() {
   const [showDialog, setShowDialog] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     expense_date: format(new Date(), 'yyyy-MM-dd'),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
     category: "travel",
     amount: "",
     description: "",
@@ -64,6 +69,10 @@ export default function ExpenseReports() {
   const resetForm = () => {
     setFormData({
       expense_date: format(new Date(), 'yyyy-MM-dd'),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
       category: "travel",
       amount: "",
       description: "",
@@ -254,6 +263,7 @@ export default function ExpenseReports() {
             <DialogTitle>Submit Expense Report</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <ActiveCallLinkField formData={formData} setFormData={setFormData} />
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Expense Date *</Label>
