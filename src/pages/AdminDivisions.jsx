@@ -42,15 +42,20 @@ export default function AdminDivisions() {
     queryKey: ['divisions'],
     queryFn: async () => {
       try {
+        const direct = await base44.entities.Division.list('division_name', 1000);
+        if (Array.isArray(direct) && direct.length) return direct;
+      } catch (directError) {
+        console.warn('Direct Division list failed, trying service role function:', directError?.message);
+      }
+      try {
         const result = await base44.functions.invoke('manageHRDivisions', { action: 'list' });
         const payload = result?.data || result || {};
         if (payload.error) throw new Error(payload.error);
-        return payload.divisions || [];
+        if (Array.isArray(payload.divisions) && payload.divisions.length) return payload.divisions;
       } catch (error) {
-        const fallback = await listDirectoryDivisions('division_name', 1000);
-        if (fallback.length) return fallback;
-        throw error;
+        console.warn('manageHRDivisions list failed:', error?.message);
       }
+      return await listDirectoryDivisions('division_name', 1000);
     },
     enabled: hasAccess,
     initialData: [],
@@ -204,8 +209,14 @@ export default function AdminDivisions() {
             <Button
               onClick={() => {
                 setEditingDivision(null);
-                resetForm();
-                setFormData({ ...formData, is_subdivision: true });
+                setFormData({
+                  division_name: "",
+                  subdivision: "",
+                  parent_division: "",
+                  is_subdivision: true,
+                  active: true,
+                  notes: ""
+                });
                 setShowDialog(true);
               }}
               variant="outline"
