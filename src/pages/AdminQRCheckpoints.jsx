@@ -112,7 +112,8 @@ export default function AdminQRCheckpoints() {
 
   const saveRuleMutation = useMutation({
     mutationFn: async (data) => {
-      const payload = { ...data, updated_by: user?.email || '' };
+      const validSiteCheckpointIds = new Set(checkpoints.filter(cp => cp.property_site === data.property_site && cp.is_active !== false).map(cp => cp.id));
+      const payload = { ...data, required_checkpoint_ids: (data.required_checkpoint_ids || []).filter(id => validSiteCheckpointIds.has(id)), updated_by: user?.email || '' };
       return editingRule
         ? base44.entities.JobDutyRule.update(editingRule.id, payload)
         : base44.entities.JobDutyRule.create(payload);
@@ -138,7 +139,7 @@ export default function AdminQRCheckpoints() {
       qr_window_minutes: Number(existing?.qr_window_minutes || 30),
       qr_scans_per_shift: Number(existing?.qr_scans_per_shift || 0),
       require_all_required_checkpoints: existing?.require_all_required_checkpoints !== false,
-      required_checkpoint_ids: existing?.required_checkpoint_ids || [],
+      required_checkpoint_ids: (existing?.required_checkpoint_ids || []).filter(id => checkpoints.some(cp => cp.id === id && cp.property_site === site && cp.is_active !== false)),
       notes: existing?.notes || '',
     });
     setShowRuleForm(true);
@@ -186,15 +187,15 @@ export default function AdminQRCheckpoints() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-white max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen max-w-6xl mx-auto space-y-6 p-4 md:p-8 text-slate-100">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="bg-blue-600 p-2 rounded-xl">
             <QrCode className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">QR Checkpoint Management</h1>
-            <p className="text-sm text-slate-500">{checkpoints?.length || 0} checkpoints total</p>
+            <h1 className="text-2xl font-bold text-white">QR Checkpoint Management</h1>
+            <p className="text-sm text-slate-400">{checkpoints?.length || 0} checkpoints total • existing checkpoint records are preserved</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -226,26 +227,26 @@ export default function AdminQRCheckpoints() {
         </Select>
       </div>
 
-      <Card className="border-cyan-200 bg-cyan-50/40">
+      <Card className="border-slate-700 bg-slate-900 text-white shadow-lg">
         <CardContent className="p-4">
           <div className="mb-3 flex items-center gap-2">
             <Settings2 className="h-5 w-5 text-cyan-700" />
             <div>
-              <p className="font-bold text-slate-900">Property Job Duty & QR Rules</p>
-              <p className="text-xs text-slate-600">Set DAR, incident-report, QR frequency, minimum scans, and required checkpoints by property.</p>
+              <p className="font-bold text-white">Property Duty Rules</p>
+              <p className="text-xs text-slate-400">Configure report duties and QR requirements for each property using the same rules enforced in Officer and Company Analytics.</p>
             </div>
           </div>
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
             {allSites.map(site => {
               const rule = dutyRules.find(item => item.property_site === site);
               return (
-                <button key={site} type="button" onClick={() => openRule(site)} className="rounded-lg border border-slate-200 bg-white p-3 text-left hover:border-cyan-400">
+                <button key={site} type="button" onClick={() => openRule(site)} className="rounded-lg border border-slate-700 bg-slate-800 p-3 text-left transition hover:border-cyan-500 hover:bg-slate-750">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-slate-900">{site}</span>
+                    <span className="font-semibold text-white">{site}</span>
                     <Badge className={rule ? 'bg-cyan-100 text-cyan-800' : 'bg-slate-100 text-slate-600'}>{rule ? 'Configured' : 'Default rules'}</Badge>
                   </div>
-                  <p className="mt-1 text-xs text-slate-600">DAR: {rule?.daily_activity_report_required === false ? 'Not required' : 'Required'} • Incident: {rule?.incident_report_required_for_property_calls === false ? 'Not required' : 'Required'}</p>
-                  <p className="text-xs text-slate-600">QR: {rule?.qr_required ? `Required every ${rule.qr_frequency_minutes || 60} min` : 'Uses checkpoint defaults unless enabled'}</p>
+                  <p className="mt-1 text-xs text-slate-300">DAR: {rule?.daily_activity_report_required === false ? 'Not required' : 'Required'} • Incident: {rule?.incident_report_required_for_property_calls === false ? 'Not required' : 'Required'}</p>
+                  <p className="text-xs text-slate-300">QR: {rule?.qr_required ? `Required every ${rule.qr_frequency_minutes || 60} min • ${rule.required_checkpoint_ids?.length || checkpoints.filter(cp => cp.property_site === site && cp.is_required !== false && cp.is_active !== false).length} checkpoint(s)` : 'Not required by property rule'}</p>
                 </button>
               );
             })}
