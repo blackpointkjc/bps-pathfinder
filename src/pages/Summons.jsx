@@ -14,12 +14,17 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 
 export default function Summons() {
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     summons_date: new Date().toISOString(),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
     case_number: "",
     hearing_date: "",
     hearing_time: "",
@@ -208,6 +213,10 @@ export default function Summons() {
     
     setFormData({
       summons_date: new Date().toISOString(),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
       case_number: "",
       hearing_date: "",
       hearing_time: "",
@@ -351,6 +360,7 @@ export default function Summons() {
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
+                <ActiveCallLinkField formData={formData} setFormData={setFormData} />
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-900 font-medium">
                     Complete all required fields. This form creates an official Virginia Uniform Summons.
