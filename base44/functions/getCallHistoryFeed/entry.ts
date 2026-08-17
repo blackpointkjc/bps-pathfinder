@@ -24,7 +24,14 @@ Deno.serve(async (req) => {
       if (row?.original_call_id) archivedByOriginalId.set(String(row.original_call_id), row);
     }
 
+    const propertyFingerprint = (time: any, incident: any, location: any) => [
+      String(time || ''),
+      String(incident || '').trim().toUpperCase(),
+      String(location || '').trim().toUpperCase(),
+    ].join('|');
+
     const alertByCallId = new Map<string, any>();
+    const alertByFingerprint = new Map<string, any>();
     for (const alert of alerts || []) {
       if (!alert?.callId) continue;
       const key = String(alert.callId);
@@ -32,13 +39,25 @@ Deno.serve(async (req) => {
       const currentStamp = new Date(alert.created_date || 0).getTime();
       const priorStamp = new Date(prior?.created_date || 0).getTime();
       if (!prior || currentStamp > priorStamp) alertByCallId.set(key, alert);
+      const fp = propertyFingerprint(alert.callTime || alert.time_received, alert.callIncident, alert.callLocation);
+      if (fp && !fp.startsWith('|')) {
+        const priorFp = alertByFingerprint.get(fp);
+        const priorFpStamp = new Date(priorFp?.created_date || 0).getTime();
+        if (!priorFp || currentStamp > priorFpStamp) alertByFingerprint.set(fp, alert);
+      }
     }
 
     const decorate = (row: any, source: 'active' | 'archived') => {
-      const originalId = source === 'archived' ? String(row.original_call_id || '') : String(row.id || '');
-      const alert = originalId ? alertByCallId.get(originalId) : null;
+      const directOriginalId = source === 'archived' ? String(row.original_call_id || '') : String(row.id || '');
+      const fingerprintAlert = source === 'archived'
+        ? alertByFingerprint.get(propertyFingerprint(row.time_received || row.created_date, row.incident, row.location))
+        : null;
+      const alert = directOriginalId ? alertByCallId.get(directOriginalId) : fingerprintAlert;
+      const originalId = directOriginalId || String(fingerprintAlert?.callId || '');
       return {
         ...row,
+        original_call_id: source === 'archived' ? (originalId || row.original_call_id || '') : row.original_call_id,
+        call_id: row.call_id || fingerprintAlert?.callId || row.id,
         _source: source,
         _propertyCall: Boolean(alert),
         _propertyAlert: alert || null,
