@@ -133,7 +133,10 @@ export default function ClientPayrollReport() {
     });
   });
 
-  const activeEntries = filteredEntries.filter(entry => !entry.clock_out);
+  const activeEntries = timeEntries.filter(entry => {
+    if (!entry?.clock_in || entry.clock_out) return false;
+    return clientLocations.map(normalizeSiteName).includes(normalizeSiteName(entry.location));
+  });
   const activeShiftCount = activeEntries.length;
   const totalHours = Object.values(billingSummary).reduce((sum, data) => sum + data.hours, 0);
   const totalBilled = Object.values(billingSummary).reduce((sum, data) => sum + data.billedAmount, 0);
