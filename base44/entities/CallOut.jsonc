@@ -14,9 +14,10 @@
       "type": "string",
       "enum": [
         "called_out",
-        "sent_home"
+        "sent_home",
+        "reassigned"
       ],
-      "description": "Type of call out"
+      "description": "Type of call out, including reassignment to another property"
     },
     "call_out_date": {
       "type": "string",
@@ -41,7 +42,24 @@
     },
     "location": {
       "type": "string",
-      "description": "Location/site where this occurred"
+      "description": "Primary location/site where this occurred"
+    },
+    "original_location": {
+      "type": "string",
+      "description": "Property the officer was originally working when reassigned"
+    },
+    "destination_location": {
+      "type": "string",
+      "description": "Property or assignment the officer was called out/reassigned to"
+    },
+    "original_shift_id": {
+      "type": "string",
+      "description": "TimeEntry or schedule identifier for the original shift"
+    },
+    "exclude_original_incident_metric": {
+      "type": "boolean",
+      "default": false,
+      "description": "Exclude property-call incident-report requirements at the original property after reassignment"
     },
     "affects_pto": {
       "type": "boolean",
