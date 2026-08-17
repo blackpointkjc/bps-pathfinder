@@ -309,7 +309,7 @@ export function calculateJobDutyCompliance({
   const usedDarIds = new Set();
   let darRequired = 0, darCompleted = 0;
   let incidentRequired = 0, incidentCompleted = 0, incidentExcluded = 0;
-  let qrRequired = 0, qrCompleted = 0;
+  let qrRequired = 0, qrCompleted = 0, qrExcludedInvalid = 0;
 
   evaluatedShifts.forEach(entry => {
     const shiftDate = easternDateKey(entry.clock_in);
@@ -326,7 +326,7 @@ export function calculateJobDutyCompliance({
       property: propertyForSite(site, locations)?.site_name || String(entry.location || '').split(' - ')[0].split(':')[0],
       daily_activity: { required: false, completed: false, report_id: null },
       incidents: { required: 0, completed: 0, excluded: 0, items: [] },
-      qr: { required: 0, completed: 0, missed: 0, required_checkpoint_names: [] },
+      qr: { required: 0, completed: 0, missed: 0, excluded_invalid: 0, excluded_items: [], required_checkpoint_names: [] },
     };
 
     const requiresDar = !isActiveShift && (rule ? rule.daily_activity_report_required !== false : true);
@@ -409,10 +409,27 @@ export function calculateJobDutyCompliance({
     if (qrIsRequired && requiredCheckpoints.length > 0) {
       const frequency = Math.max(1, Number(effectiveQrRule?.qr_frequency_minutes || 60));
       const windowMinutes = Math.max(1, Number(effectiveQrRule?.qr_window_minutes || 30));
-      const successful = eligibleQrScans.filter(scan => {
+      const siteSuccessfulScans = qrScans.filter(scan => {
         const stamp = new Date(scan.scanned_at).getTime();
-        return Number.isFinite(stamp) && stamp >= shiftStartMs && stamp <= shiftEndMs && siteKey(scan.property_site) === site;
+        return scan.scan_status === 'success' && Number.isFinite(stamp) && stamp >= shiftStartMs && stamp <= shiftEndMs && siteKey(scan.property_site) === site;
       });
+      const successful = siteSuccessfulScans.filter(scan => {
+        const stamp = new Date(scan.scanned_at).getTime();
+        return scannerWasWorkingAtSite(scan, site, stamp);
+      });
+      const excludedInvalid = siteSuccessfulScans.filter(scan => {
+        const stamp = new Date(scan.scanned_at).getTime();
+        return !scannerWasWorkingAtSite(scan, site, stamp);
+      });
+      qrExcludedInvalid += excludedInvalid.length;
+      detail.qr.excluded_invalid = excludedInvalid.length;
+      detail.qr.excluded_items = excludedInvalid.map(scan => ({
+        scan_id: scan.id,
+        officer_email: scan.officer_email,
+        checkpoint_name: scan.checkpoint_name_snapshot || scan.location_label_snapshot || scan.checkpoint_id,
+        scanned_at: scan.scanned_at,
+        reason: 'Scanner was not clocked in at this property when the scan occurred',
+      }));
 
       let obligationCount = 0;
       let obligationCompleted = 0;
@@ -477,7 +494,7 @@ export function calculateJobDutyCompliance({
     score,
     dailyActivity: { required: darRequired, completed: darCompleted, missed: Math.max(0, darRequired - darCompleted), score: darScore },
     incidentReports: { required: incidentRequired, completed: incidentCompleted, missed: Math.max(0, incidentRequired - incidentCompleted), excluded: incidentExcluded, score: incidentScore },
-    qrCompliance: { required: qrRequired, completed: qrCompleted, missed: Math.max(0, qrRequired - qrCompleted), score: qrScore },
+    qrCompliance: { required: qrRequired, completed: qrCompleted, missed: Math.max(0, qrRequired - qrCompleted), excludedInvalid: qrExcludedInvalid, score: qrScore },
     shifts: shiftDetails,
   };
 }
