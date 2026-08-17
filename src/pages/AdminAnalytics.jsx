@@ -12,7 +12,7 @@ import { format, parseISO, differenceInMinutes, startOfWeek, addDays, startOfMon
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer, isInternalMember } from '@/lib/directoryUtils';
-import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateQrPatrol, calculateJobDutyCompliance, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
+import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateJobDutyCompliance, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 
@@ -221,7 +221,6 @@ export default function AdminAnalytics() {
 
     const punctuality = calculatePunctuality(officerTimeEntries, officerSchedules, currentMonthStart, currentMonthEnd);
     const training = calculateTrainingScore(officer, allTraining, officerCompletions, officerAssignments);
-    const qr = calculateQrPatrol(officerTimeEntries, allQrScans, allQrCheckpoints, currentMonthStart, currentMonthEnd);
     const bidStanding = calculateBidStanding(officerBids, currentMonthStart, currentMonthEnd);
     const clientFeedback = calculateClientFeedback(officerFeedback, currentMonthStart, currentMonthEnd);
     const supervisorRating = calculateSupervisorRating(officerReviews, currentMonthStart, currentMonthEnd);
@@ -251,7 +250,6 @@ export default function AdminAnalytics() {
       overall,
       punctuality,
       training,
-      qr,
       bidStanding,
       clientFeedback,
       supervisorRating,
