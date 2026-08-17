@@ -48,7 +48,7 @@ const TOOLS = {
 
 export default function ClientCenter() {
   return (
-    <UnifiedCenter eyebrow="Client Services" title="Client Center" description="Your secure portfolio view for site operations, verified reporting, service requests, billing, and communication across every assigned property." sections={SECTIONS} defaultSection="overview">
+    <UnifiedCenter eyebrow="Client Services" title="Client Center" description="Your secure portfolio view for site operations, verified reporting, service requests, billing, and communication across every assigned property." sections={SECTIONS} defaultSection="overview" contentClassName="client-portal-shell bg-[#070d17] text-slate-100">
       {section => <CenterToolSection key={section} tools={TOOLS[section]} />}
     </UnifiedCenter>
   );
