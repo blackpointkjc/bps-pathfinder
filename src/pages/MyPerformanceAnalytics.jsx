@@ -13,6 +13,16 @@ import { format, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMon
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+const emailKey = (value) => String(value || '').trim().toLowerCase();
+
+function breakMinutes(entry) {
+  return (entry?.break_periods || []).reduce((total, period) => {
+    const start = period?.start ? new Date(period.start).getTime() : NaN;
+    const end = period?.end ? new Date(period.end).getTime() : NaN;
+    return total + (Number.isFinite(start) && Number.isFinite(end) && end > start ? (end - start) / 60000 : 0);
+  }, 0);
+}
+
 export default function MyPerformanceAnalytics() {
   // Define month boundaries first — used in query keys below
   const currentMonthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
@@ -99,8 +109,8 @@ export default function MyPerformanceAnalytics() {
       const clockInTime = format(parseISO(entry.clock_in), 'HH:mm');
       
       const matchingSchedule = schedules.find(s => 
-        s.shift_date === clockInDate && 
-        s.officer_email === entry.officer_email
+        s.shift_date === clockInDate &&
+        emailKey(s.officer_email) === emailKey(entry.officer_email)
       );
 
       if (matchingSchedule) {
@@ -140,7 +150,8 @@ export default function MyPerformanceAnalytics() {
       const weekStart = new Date(date);
       weekStart.setDate(weekStart.getDate() - daysSinceFriday);
       const weekKey = format(weekStart, 'yyyy-MM-dd');
-      const hours = Math.max(0, (new Date(entry.clock_out) - new Date(entry.clock_in)) / 3600000 - Number(entry.lunch_duration || entry.lunch_minutes || 0) / 60);
+      const grossMinutes = (new Date(entry.clock_out).getTime() - new Date(entry.clock_in).getTime()) / 60000;
+      const hours = Math.max(0, (grossMinutes - breakMinutes(entry)) / 60);
 
       if (!weeklyHours[weekKey]) weeklyHours[weekKey] = 0;
       weeklyHours[weekKey] += hours;
@@ -164,24 +175,29 @@ export default function MyPerformanceAnalytics() {
 
   // Training completion
   const trainingStats = React.useMemo(() => {
-    if (!allTraining || !user) return { completed: 0, total: 0, percentage: 0, pending: 0, complianceApproved: 0, compliancePending: 0 };
+    if (!user) return { completed: 0, total: 0, percentage: 0, pending: 0, complianceApproved: 0, compliancePending: 0 };
 
-    const assignedTraining = allTraining.filter(t => 
-      t.assigned_to?.includes(user.email) || 
-      t.assigned_divisions?.includes(user.division) ||
-      t.assigned_ranks?.includes(user.rank)
+    const assignedModules = (allTraining || []).filter(module =>
+      (module.assigned_to || []).some(email => emailKey(email) === emailKey(user.email)) ||
+      (module.assigned_divisions || []).includes(user.division) ||
+      (module.assigned_ranks || []).includes(user.rank) ||
+      module.required === true
     );
+    const completedIds = new Set((trainingCompletions || []).filter(tc => tc.completed).map(tc => String(tc.training_module_id)));
+    const moduleCompleted = assignedModules.filter(module => completedIds.has(String(module.id))).length;
 
-    const completedIds = (trainingCompletions || []).filter(tc => tc.completed).map(tc => tc.training_module_id);
-    const completed = assignedTraining.filter(t => completedIds.includes(t.id)).length;
-    const total = assignedTraining.length;
-    const pending = total - completed;
+    // TrainingAssignment is the authoritative compliance workflow. Count every
+    // assignment, including certification/renewal items that do not map to a module.
+    const assignmentApproved = (myAssignments || []).filter(a => a.status === 'approved').length;
+    const assignmentPending = (myAssignments || []).filter(a => a.status !== 'approved').length;
+    const assignmentTotal = assignmentApproved + assignmentPending;
+
+    const completed = moduleCompleted + assignmentApproved;
+    const total = assignedModules.length + assignmentTotal;
+    const pending = Math.max(0, total - completed);
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 100;
 
-    const complianceApproved = (myAssignments || []).filter(a => a.status === 'approved').length;
-    const compliancePending = (myAssignments || []).filter(a => !['approved'].includes(a.status)).length;
-
-    return { completed, total, percentage, pending, complianceApproved, compliancePending };
+    return { completed, total, percentage, pending, complianceApproved: assignmentApproved, compliancePending: assignmentPending };
   }, [allTraining, trainingCompletions, user, myAssignments]);
 
   // Bid history - MONTHLY RESET
@@ -288,9 +304,12 @@ export default function MyPerformanceAnalytics() {
   };
 
   const calculateShiftHours = (start, end) => {
-    const s = parseInt(start.replace(':', ''));
-    const e = parseInt(end.replace(':', ''));
-    return e < s ? ((2400 - s) + e) / 100 : (e - s) / 100;
+    const [sh = 0, sm = 0] = String(start || '00:00').split(':').map(Number);
+    const [eh = 0, em = 0] = String(end || '00:00').split(':').map(Number);
+    const startMinutes = sh * 60 + sm;
+    let endMinutes = eh * 60 + em;
+    if (endMinutes <= startMinutes) endMinutes += 1440;
+    return Math.max(0, (endMinutes - startMinutes) / 60);
   };
 
   return (
