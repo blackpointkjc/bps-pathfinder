@@ -55,16 +55,16 @@ Deno.serve(async (req) => {
       if (!Number.isFinite(stamp) || scan?.scan_status !== 'success') return false;
       const scanSite = siteKey(scan.property_site);
       const overlapsMyShift = myTimeEntries.some((entry:any) => {
-        if (!entry?.clock_in || !entry?.clock_out || siteKey(entry.location) !== scanSite) return false;
+        if (!entry?.clock_in || siteKey(entry.location) !== scanSite) return false;
         const start = new Date(entry.clock_in).getTime();
-        const end = new Date(entry.clock_out).getTime();
+        const end = entry.clock_out ? new Date(entry.clock_out).getTime() : Date.now();
         return Number.isFinite(start) && Number.isFinite(end) && stamp >= start && stamp <= end;
       });
       if (!overlapsMyShift) return false;
       return timeEntriesAll.some((entry:any) => {
-        if (!entry?.clock_in || !entry?.clock_out || lower(entry.officer_email) !== lower(scan.officer_email) || siteKey(entry.location) !== scanSite) return false;
+        if (!entry?.clock_in || lower(entry.officer_email) !== lower(scan.officer_email) || siteKey(entry.location) !== scanSite) return false;
         const start = new Date(entry.clock_in).getTime();
-        const end = new Date(entry.clock_out).getTime();
+        const end = entry.clock_out ? new Date(entry.clock_out).getTime() : Date.now();
         return Number.isFinite(start) && Number.isFinite(end) && stamp >= start && stamp <= end;
       });
     }).map((scan:any) => ({
@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
       scan_status: scan.scan_status,
     }));
     const relevantSiteKeys = new Set(myTimeEntries.map((entry:any) => siteKey(entry.location)).filter(Boolean));
-    const partnerTimeEntries = timeEntriesAll.filter((entry:any) => relevantSiteKeys.has(siteKey(entry.location)) && entry.clock_in && entry.clock_out).map((entry:any) => ({ id: entry.id, officer_email: entry.officer_email, clock_in: entry.clock_in, clock_out: entry.clock_out, location: entry.location }));
+    const partnerTimeEntries = timeEntriesAll.filter((entry:any) => relevantSiteKeys.has(siteKey(entry.location)) && entry.clock_in).map((entry:any) => ({ id: entry.id, officer_email: entry.officer_email, clock_in: entry.clock_in, clock_out: entry.clock_out, location: entry.location }));
     const myIncidents = incidentsAll.filter((r:any) => sameEmail(r, 'officer_email', email) || sameEmail(r, 'created_by', email) || String(r?.created_by_id || '') === String(me.id || ''));
     const myCommendations = commendationsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
     const myComplaints = complaintsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
