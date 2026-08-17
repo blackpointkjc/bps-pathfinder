@@ -217,9 +217,10 @@ function propertyForSite(site, locations = []) {
 
 function callMatchesProperty(call, site, locations = []) {
   const property = propertyForSite(site, locations);
-  const haystack = `${call?.location || ''} ${call?.address || ''}`.toLowerCase();
+  const haystack = `${call?.location || ''} ${call?.address || ''}`.trim().toLowerCase();
+  if (!haystack) return false;
   const names = [siteKey(site), property?.site_name, property?.address].filter(Boolean).map(v => String(v).trim().toLowerCase());
-  return names.some(name => name && (haystack.includes(name) || name.includes(haystack)));
+  return names.some(name => name && (haystack.includes(name) || (haystack.length >= 5 && name.includes(haystack))));
 }
 
 function localWallMinute(dateKey, timeKey) {
@@ -256,6 +257,7 @@ export function calculateJobDutyCompliance({
   const officerQrScans = qrScans.filter(scan => !officer || emailKey(scan.officer_email) === officerEmail);
 
   const shiftDetails = [];
+  const usedDarIds = new Set();
   let darRequired = 0, darCompleted = 0;
   let incidentRequired = 0, incidentCompleted = 0, incidentExcluded = 0;
   let qrRequired = 0, qrCompleted = 0;
@@ -281,11 +283,12 @@ export function calculateJobDutyCompliance({
       darRequired++;
       detail.daily_activity.required = true;
       const matchingDar = officerDailyReports.find(report => {
-        if (report.status === 'draft') return false;
+        if (report.status === 'draft' || usedDarIds.has(String(report.id))) return false;
         if (report.shift_id && String(report.shift_id) === String(entry.id)) return true;
-        return report.report_date === shiftDate && siteKey(report.location) === site;
+        return !report.shift_id && report.report_date === shiftDate && siteKey(report.location) === site;
       });
       if (matchingDar) {
+        usedDarIds.add(String(matchingDar.id));
         darCompleted++;
         detail.daily_activity.completed = true;
         detail.daily_activity.report_id = matchingDar.id;
