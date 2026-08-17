@@ -107,9 +107,10 @@ export function calculateBidStanding(bids = [], monthStart, monthEnd) {
   const rejected = monthly.filter(b => b.status === 'rejected').length;
   const pending = monthly.filter(b => b.status === 'pending').length;
   const withdrawn = monthly.filter(b => b.status === 'withdrawn').length;
-  const scoredTotal = accepted + rejected + pending;
-  // Pending means management has not decided the bid. It is neutral, not a failure.
-  const score = scoredTotal ? Math.round(((accepted + pending) / scoredTotal) * 100) : null;
+  // Only a bid that actually results in the officer receiving the shift is scoreable.
+  // Pending bids and admin non-selection/rejection are neutral and do not lower performance.
+  const scoredTotal = accepted;
+  const score = accepted > 0 ? 100 : null;
   return { total: monthly.length, scoredTotal, accepted, rejected, pending, withdrawn, score };
 }
 
@@ -351,7 +352,7 @@ export function calculateJobDutyCompliance({
 
     if (requireIncident) {
       calls.forEach(call => {
-        const callType = String(call.incident_type || call.call_type || call.type || '').toLowerCase();
+        const callType = String(call.incident || call.incident_type || call.call_type || call.type || '').toLowerCase();
         if (allowedTypes.length && !allowedTypes.includes(callType)) return;
         const callDate = easternDateKey(call.time_received || call.created_date);
         const callTime = easternTimeKey(call.time_received || call.created_date);
@@ -482,8 +483,14 @@ export function calculateJobDutyCompliance({
   const darScore = darRequired ? Math.round((darCompleted / darRequired) * 100) : null;
   const incidentScore = incidentRequired ? Math.round((incidentCompleted / incidentRequired) * 100) : null;
   const qrScore = qrRequired ? Math.round((qrCompleted / qrRequired) * 100) : null;
-  const scored = [darScore, incidentScore, qrScore].filter(v => v != null);
-  const score = scored.length ? Math.round(scored.reduce((sum, value) => sum + value, 0) / scored.length) : null;
+  const totalRequired = darRequired + incidentRequired + qrRequired;
+  const totalMissed = Math.max(0, darRequired - darCompleted)
+    + Math.max(0, incidentRequired - incidentCompleted)
+    + Math.max(0, qrRequired - qrCompleted);
+  // Job Duty must move when additional required duties are missed. A pure completion
+  // ratio makes 0/8 and 0/15 both equal 0%, which hides the difference in performance.
+  // Each missed required duty lowers Job Duty by 5 points, capped at zero.
+  const score = totalRequired > 0 ? Math.max(0, 100 - (totalMissed * 5)) : null;
 
   return {
     score,
