@@ -13,7 +13,6 @@ const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/pub
 
 export default function ClientSchedule() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
-  const [selectedLocation, setSelectedLocation] = useState("");
 
   const { data: user } = useQuery({
     queryKey: ['clientPortalUser', getClientPreviewId()],
@@ -28,28 +27,18 @@ export default function ClientSchedule() {
     ...(user?.assigned_location ? [user.assigned_location] : []),
   ].filter(Boolean))];
 
-  useEffect(() => {
-    if (clientLocations.length > 0 && !selectedLocation) {
-      setSelectedLocation(clientLocations[0]);
-    }
-  }, [clientLocations, selectedLocation]);
-
-  const effectiveLocation = selectedLocation || clientLocations[0];
+  const siteKey = (value) => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
+  const assignedSiteKeys = useMemo(() => new Set(clientLocations.map(siteKey)), [clientLocations.join('|')]);
+  const effectiveLocation = clientLocations.length > 1 ? 'All Assigned Sites' : clientLocations[0];
 
   const { data: schedules, isLoading: schedulesLoading } = useQuery({
-    queryKey: ['clientSchedules', effectiveLocation],
+    queryKey: ['clientSchedules', clientLocations.join('|')],
     queryFn: async () => {
-      if (!effectiveLocation) return [];
+      if (!clientLocations.length) return [];
       const allSchedules = await base44.entities.Schedule.list('shift_date');
-      return allSchedules.filter(s => {
-        const schedLoc = s.location || '';
-        return schedLoc === effectiveLocation || 
-               schedLoc.startsWith(effectiveLocation + ':') || 
-               schedLoc.startsWith(effectiveLocation + ' -') ||
-               schedLoc.split(' - ')[0].trim() === effectiveLocation.trim();
-      });
+      return allSchedules.filter(s => assignedSiteKeys.has(siteKey(s.location)));
     },
-    enabled: !!effectiveLocation,
+    enabled: clientLocations.length > 0,
     staleTime: 30000,
   });
 
@@ -171,38 +160,13 @@ export default function ClientSchedule() {
   return (
     <div className="client-schedule-page min-h-screen w-full min-w-0 overflow-x-hidden p-3 sm:p-4 md:p-6">
       <div className="mx-auto w-full min-w-0 max-w-[1500px] space-y-5 sm:space-y-6">
-        {clientLocations.length > 1 && (
-          <Card className="border-none shadow-lg bg-gradient-to-r from-purple-50 to-blue-50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <MapPin className="w-8 h-8 text-purple-600" />
-                <div className="flex-1">
-                  <Label htmlFor="location-select" className="text-sm font-semibold text-purple-900 mb-2 block">
-                    Select Location to View
-                  </Label>
-                  <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                    <SelectTrigger id="location-select" className="bg-white">
-                      <SelectValue placeholder="Select a location to view..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clientLocations.map((locName) => (
-                        <SelectItem key={locName} value={locName}>
-                          {locName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="min-w-0">
-          <h1 className="mb-2 text-2xl font-bold text-white sm:text-3xl">Site Schedule</h1>
-          <div className="flex min-w-0 items-center gap-2 text-slate-300">
+        <div className="min-w-0 rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-xl">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-violet-300">Site Operations</p>
+          <h1 className="mb-2 mt-1 text-2xl font-bold text-white sm:text-3xl">Site Schedule</h1>
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-slate-300">
             <MapPin className="w-5 h-5" />
-            {effectiveLocation}
+            <span>{effectiveLocation}</span>
+            {clientLocations.length > 1 && <span className="text-xs text-slate-500">• {clientLocations.length} properties combined</span>}
           </div>
         </div>
 
@@ -293,6 +257,7 @@ export default function ClientSchedule() {
                               {daySchedules.map((schedule) => (
                                 <div key={schedule.id} className="min-w-0 rounded border border-violet-700/60 bg-violet-950/70 p-2 text-center text-[10px] font-bold leading-4 text-violet-100">
                                   <div>{schedule.start_time}-{schedule.end_time}</div>
+                                  {clientLocations.length > 1 && <div className="mt-1 text-[9px] font-medium text-violet-300">{String(schedule.location || '').split(' - ')[0].split(':')[0]}</div>}
                                 </div>
                               ))}
                             </div>
