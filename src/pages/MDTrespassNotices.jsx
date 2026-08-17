@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 
 export default function MDTrespassNotices() {
   const [showForm, setShowForm] = useState(false);
@@ -37,6 +38,10 @@ export default function MDTrespassNotices() {
     duration: "Permanent",
     police_notified: false,
     police_report_number: "",
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
     photo_url: "",
   });
   const [uploading, setUploading] = useState(false);
@@ -172,6 +177,10 @@ export default function MDTrespassNotices() {
       duration: "Permanent",
       police_notified: false,
       police_report_number: "",
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
       photo_url: "",
     });
   };
@@ -556,6 +565,7 @@ export default function MDTrespassNotices() {
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4">
+                <ActiveCallLinkField formData={formData} setFormData={setFormData} />
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="notice_date">Date & Time *</Label>
