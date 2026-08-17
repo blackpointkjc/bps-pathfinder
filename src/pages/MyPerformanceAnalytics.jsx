@@ -56,6 +56,7 @@ export default function MyPerformanceAnalytics() {
   const myAssignments = performanceData.trainingAssignments || [];
   const notifications = performanceData.notifications || [];
   const myCallOuts = performanceData.callOuts || [];
+  const myComplaints = performanceData.complaints || [];
   const qrScanEvents = performanceData.qrScanEvents || [];
   const allCheckpoints = performanceData.checkpoints || [];
 
@@ -271,6 +272,121 @@ export default function MyPerformanceAnalytics() {
     return { totalScans, successScans, completedRounds, missedRounds };
   }, [qrScanEvents, allCheckpoints, timeEntries, currentMonthStart, currentMonthEnd]);
 
+  const performanceFactors = useMemo(() => {
+    const factors = [];
+
+    if (onTimeStats.total === 0) {
+      factors.push({
+        metric: 'On-Time Arrival',
+        value: 'Not scored yet',
+        severity: 'neutral',
+        reason: 'No clock-in has been matched to a scheduled shift this month. This is not a deduction; there is simply no punctuality event to score yet.'
+      });
+    } else if (onTimeStats.late > 0) {
+      factors.push({
+        metric: 'On-Time Arrival',
+        value: `${onTimeStats.rate}%`,
+        severity: 'negative',
+        reason: `${onTimeStats.late} of ${onTimeStats.total} matched shift${onTimeStats.total === 1 ? '' : 's'} were clocked in more than 5 minutes after the scheduled start time.`
+      });
+    } else {
+      factors.push({
+        metric: 'On-Time Arrival',
+        value: '100%',
+        severity: 'positive',
+        reason: `All ${onTimeStats.total} matched scheduled shift${onTimeStats.total === 1 ? '' : 's'} were on time within the 5-minute grace period.`
+      });
+    }
+
+    if (trainingStats.pending > 0) {
+      factors.push({
+        metric: 'Training Completion',
+        value: `${trainingStats.percentage}%`,
+        severity: 'negative',
+        reason: `${trainingStats.pending} assigned training/compliance item${trainingStats.pending === 1 ? ' is' : 's are'} still pending. Complete or obtain approval for those items to reach 100%.`
+      });
+    } else {
+      factors.push({
+        metric: 'Training Completion',
+        value: '100%',
+        severity: 'positive',
+        reason: trainingStats.total > 0 ? 'All assigned training and compliance items are complete.' : 'No training or compliance items are currently assigned.'
+      });
+    }
+
+    if (qrPatrolStats.missedRounds > 0) {
+      factors.push({
+        metric: 'QR Patrol',
+        value: `${qrPatrolStats.missedRounds} missed`,
+        severity: 'negative',
+        reason: `${qrPatrolStats.missedRounds} required patrol round${qrPatrolStats.missedRounds === 1 ? ' was' : 's were'} not completed during the required scan window while clocked in.`
+      });
+    } else if (qrPatrolStats.completedRounds > 0) {
+      factors.push({
+        metric: 'QR Patrol',
+        value: 'No misses',
+        severity: 'positive',
+        reason: `All ${qrPatrolStats.completedRounds} evaluated patrol round${qrPatrolStats.completedRounds === 1 ? '' : 's'} were completed.`
+      });
+    }
+
+    if (bidStats.rejected > 0) {
+      factors.push({
+        metric: 'Bid Acceptance',
+        value: `${bidStats.acceptanceRate}%`,
+        severity: 'negative',
+        reason: `${bidStats.rejected} decided shift bid${bidStats.rejected === 1 ? ' was' : 's were'} rejected. Pending bids do not lower the acceptance rate until a decision is made.`
+      });
+    } else if (bidStats.accepted > 0) {
+      factors.push({
+        metric: 'Bid Acceptance',
+        value: '100%',
+        severity: 'positive',
+        reason: `All ${bidStats.accepted} decided bid${bidStats.accepted === 1 ? '' : 's'} this month were accepted. Pending bids are not counted against you.`
+      });
+    } else {
+      factors.push({
+        metric: 'Bid Acceptance',
+        value: 'Not scored yet',
+        severity: 'neutral',
+        reason: bidStats.pending > 0 ? `${bidStats.pending} bid${bidStats.pending === 1 ? ' is' : 's are'} still pending. Pending bids do not lower your percentage.` : 'There are no decided shift bids this month, so there is no acceptance percentage to score.'
+      });
+    }
+
+    const monthlyCallOuts = (myCallOuts || []).filter(item => {
+      const raw = item.call_out_date || item.created_date;
+      if (!raw) return false;
+      const date = format(parseISO(raw), 'yyyy-MM-dd');
+      return date >= currentMonthStart && date <= currentMonthEnd;
+    });
+    if (monthlyCallOuts.length > 0) {
+      factors.push({
+        metric: 'Attendance Record',
+        value: `${monthlyCallOuts.length} call-out${monthlyCallOuts.length === 1 ? '' : 's'}`,
+        severity: 'negative',
+        reason: `${monthlyCallOuts.length} attendance/call-out record${monthlyCallOuts.length === 1 ? ' is' : 's are'} recorded this month and shown as a performance factor.`
+      });
+    }
+
+    const sustainedThisMonth = (myComplaints || []).filter(item => {
+      if (item.exclude_from_performance_review === true || item.investigation_status !== 'sustained') return false;
+      const raw = item.complaint_date || item.created_date;
+      if (!raw) return false;
+      const date = format(parseISO(raw), 'yyyy-MM-dd');
+      return date >= currentMonthStart && date <= currentMonthEnd;
+    });
+    if (sustainedThisMonth.length > 0) {
+      factors.push({
+        metric: 'Complaint Record',
+        value: `${sustainedThisMonth.length} sustained`,
+        severity: 'negative',
+        reason: `${sustainedThisMonth.length} sustained complaint${sustainedThisMonth.length === 1 ? ' is' : 's are'} included in performance review this month. Pending, unfounded, exonerated, or excluded complaints are not shown here as deductions.`
+      });
+    }
+
+    return factors;
+  }, [onTimeStats, trainingStats, qrPatrolStats, bidStats, myCallOuts, myComplaints, currentMonthStart, currentMonthEnd]);
+
   const getNotificationIcon = (type) => {
     switch (type) {
       case 'shift_posted': return <Calendar className="w-4 h-4 text-blue-600" />;
@@ -322,8 +438,11 @@ export default function MyPerformanceAnalytics() {
           <Card className="border-none shadow-lg bg-gradient-to-br from-green-50 to-emerald-100">
             <CardContent className="p-3 sm:p-4">
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
-              <p className="text-2xl font-bold text-green-600 sm:text-3xl">{onTimeStats.rate}%</p>
-              <p className="text-xs text-slate-600">On-Time Arrival</p>
+              <p className="text-2xl font-bold text-green-600 sm:text-3xl">{onTimeStats.total > 0 ? `${onTimeStats.rate}%` : '—'}</p>
+              <p className="text-xs font-semibold text-slate-700">On-Time Arrival</p>
+              <p className="mt-1 text-[11px] text-slate-600">
+                {onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.total} matched shifts` : 'No matched scheduled clock-ins yet'}
+              </p>
             </CardContent>
           </Card>
 
@@ -338,19 +457,45 @@ export default function MyPerformanceAnalytics() {
           <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-violet-100">
             <CardContent className="p-3 sm:p-4">
               <Award className="w-6 h-6 text-purple-600 mb-2" />
-              <p className="text-2xl font-bold text-purple-600 sm:text-3xl">{trainingStats.pending}</p>
-              <p className="text-xs text-slate-600">Training Pending</p>
+              <p className="text-2xl font-bold text-purple-600 sm:text-3xl">{trainingStats.percentage}%</p>
+              <p className="text-xs font-semibold text-slate-700">Training Completion</p>
+              <p className="mt-1 text-[11px] text-slate-600">{trainingStats.completed} complete • {trainingStats.pending} pending • {trainingStats.total} assigned</p>
             </CardContent>
           </Card>
 
           <Card className="border-none shadow-lg bg-gradient-to-br from-amber-50 to-orange-100">
             <CardContent className="p-3 sm:p-4">
               <Star className="w-6 h-6 text-amber-600 mb-2" />
-              <p className="text-2xl font-bold text-amber-600 sm:text-3xl">{bidStats.acceptanceRate}%</p>
-              <p className="text-xs text-slate-600">Bid Acceptance Rate</p>
+              <p className="text-2xl font-bold text-amber-600 sm:text-3xl">{(bidStats.accepted + bidStats.rejected) > 0 ? `${bidStats.acceptanceRate}%` : '—'}</p>
+              <p className="text-xs font-semibold text-slate-700">Bid Acceptance Rate</p>
+              <p className="mt-1 text-[11px] text-slate-600">{bidStats.accepted} accepted • {bidStats.rejected} rejected • {bidStats.pending} pending</p>
             </CardContent>
           </Card>
         </div>
+
+        <Card className="overflow-hidden border border-slate-200 shadow-lg">
+          <CardHeader className="bg-slate-900 text-white">
+            <CardTitle className="flex flex-wrap items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-400" />
+                What’s Affecting My Performance?
+              </span>
+              <Badge className="bg-blue-600 text-white">Exact reasons</Badge>
+            </CardTitle>
+            <p className="text-xs text-slate-300">These are the records that explain each performance metric. New shift notices, messages, announcements, and routine alerts do not lower your performance numbers.</p>
+          </CardHeader>
+          <CardContent className="space-y-2 p-4">
+            {performanceFactors.map((factor, index) => (
+              <div key={`${factor.metric}-${index}`} className={`rounded-lg border p-3 ${factor.severity === 'negative' ? 'border-red-200 bg-red-50' : factor.severity === 'positive' ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-semibold text-slate-900">{factor.metric}</p>
+                  <Badge className={factor.severity === 'negative' ? 'bg-red-600 text-white' : factor.severity === 'positive' ? 'bg-green-600 text-white' : 'bg-slate-600 text-white'}>{factor.value}</Badge>
+                </div>
+                <p className="mt-1 text-sm text-slate-700">{factor.reason}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
 
         {/* QR Patrol Stats */}
         {(qrPatrolStats.totalScans > 0 || qrPatrolStats.missedRounds > 0) && (
@@ -398,6 +543,7 @@ export default function MyPerformanceAnalytics() {
                 <div className="flex items-center gap-2">
                   <Bell className="w-5 h-5 text-red-600" />
                   Recent Alerts
+                  <Badge className="ml-2 bg-slate-600 text-white">Informational only</Badge>
                 </div>
                 {recentNotifications.length > 0 && (
                   <Badge className="bg-red-600 text-white">{recentNotifications.length}</Badge>
@@ -415,9 +561,10 @@ export default function MyPerformanceAnalytics() {
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm">{n.title}</p>
                             <p className="text-xs text-slate-600 line-clamp-2">{n.message}</p>
-                            <p className="text-xs text-slate-400 mt-1">
-                              {format(parseISO(n.created_date), 'MMM d, h:mm a')}
-                            </p>
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                              <p className="text-xs text-slate-400">{format(parseISO(n.created_date), 'MMM d, h:mm a')}</p>
+                              <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">No performance impact</span>
+                            </div>
                           </div>
                         </div>
                       </div>
