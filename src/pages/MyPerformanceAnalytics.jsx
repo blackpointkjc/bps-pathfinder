@@ -47,6 +47,7 @@ export default function MyPerformanceAnalytics() {
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
+    refetchInterval: 30000,
   });
 
   const timeEntries = performanceData.timeEntries || [];
