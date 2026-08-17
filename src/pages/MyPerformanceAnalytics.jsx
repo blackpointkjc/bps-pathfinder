@@ -12,7 +12,7 @@ import {
 import { format, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateQrPatrol, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
+import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateQrPatrol, calculateJobDutyCompliance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 
@@ -61,6 +61,10 @@ export default function MyPerformanceAnalytics() {
   const myCommendations = performanceData.commendations || [];
   const myClientFeedback = performanceData.clientFeedback || [];
   const myPerformanceReviews = performanceData.performanceReviews || [];
+  const myDailyActivityReports = performanceData.dailyActivityReports || [];
+  const dispatchCalls = performanceData.dispatchCalls || [];
+  const jobDutyRules = performanceData.jobDutyRules || [];
+  const performanceLocations = performanceData.locations || [];
   const qrScanEvents = performanceData.qrScanEvents || [];
   const allCheckpoints = performanceData.checkpoints || [];
 
@@ -160,16 +164,31 @@ export default function MyPerformanceAnalytics() {
   const clientFeedbackStats = useMemo(() => calculateClientFeedback(myClientFeedback, currentMonthStart, currentMonthEnd), [myClientFeedback, currentMonthStart, currentMonthEnd]);
   const supervisorRatingStats = useMemo(() => calculateSupervisorRating(myPerformanceReviews, currentMonthStart, currentMonthEnd), [myPerformanceReviews, currentMonthStart, currentMonthEnd]);
   const recognitionStats = useMemo(() => calculateRecognition(myCommendations, myClientFeedback, currentMonthStart, currentMonthEnd), [myCommendations, myClientFeedback, currentMonthStart, currentMonthEnd]);
+  const jobDutyStats = useMemo(() => calculateJobDutyCompliance({
+    officer: user,
+    timeEntries,
+    dailyReports: myDailyActivityReports,
+    incidentReports: performanceData.incidents || [],
+    dispatchCalls,
+    callOuts: myCallOuts,
+    qrScans: qrScanEvents,
+    qrCheckpoints: allCheckpoints,
+    dutyRules: jobDutyRules,
+    locations: performanceLocations,
+    monthStart: currentMonthStart,
+    monthEnd: currentMonthEnd,
+  }), [user, timeEntries, myDailyActivityReports, performanceData.incidents, dispatchCalls, myCallOuts, qrScanEvents, allCheckpoints, jobDutyRules, performanceLocations, currentMonthStart, currentMonthEnd]);
 
   const overallPerformance = useMemo(() => buildOverallPerformance({
     punctuality: onTimeStats,
     trainingScore: trainingStats.total > 0 ? trainingStats.percentage : null,
     qrScore: qrPatrolRate,
+    jobDuty: jobDutyStats,
     bidStanding: bidStats,
     clientFeedback: clientFeedbackStats,
     supervisorRating: supervisorRatingStats,
     recognition: recognitionStats,
-  }), [onTimeStats, trainingStats, qrPatrolRate, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
+  }), [onTimeStats, trainingStats, qrPatrolRate, jobDutyStats, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
 
   const performanceFactors = useMemo(() => {
     const factors = [];
