@@ -36,7 +36,7 @@ export default function ClientPayrollReport() {
   });
 
   const previewId = getClientPreviewId();
-  const { data: billingData = {}, refetch: refetchBilling } = useQuery({
+  const { data: billingData = {}, refetch: refetchBilling, isLoading: billingLoading, isError: billingError, error: billingLoadError } = useQuery({
     queryKey: ['clientBillingData', user?.id || user?.email, previewId],
     queryFn: async () => {
       const result = await base44.functions.invoke('getClientBillingData', previewId ? { client_id: previewId } : {});
@@ -73,12 +73,6 @@ export default function ClientPayrollReport() {
   const clientInvoices = billingData.invoices || [];
   const schedules = billingData.schedules || [];
 
-  // Show invoice popup on first load
-  useEffect(() => {
-    if (clientInvoices.length > 0) {
-      setShowInvoiceDialog(true);
-    }
-  }, [clientInvoices.length]);
 
   // Filter to only client's locations
   const filteredEntries = timeEntries.filter(entry => {
@@ -332,13 +326,35 @@ export default function ClientPayrollReport() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Timesheet Report</h1>
-          <p className="text-slate-600">View timesheets and billing for your sites</p>
+    <div className="client-billing-page mx-auto w-full min-w-0 max-w-[1500px] space-y-5 p-3 sm:p-4 md:p-6">
+      <div className="rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 to-slate-950 p-5 shadow-xl sm:p-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">Client Financial Center</p>
+            <h1 className="mt-1 text-2xl font-black text-white sm:text-3xl">Billing & Invoices</h1>
+            <p className="mt-1 text-sm text-slate-400">Current service activity and issued invoices across all assigned properties.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">{clientLocations.map(site => <Badge key={site} className="border border-slate-600 bg-slate-800 text-slate-200">{site}</Badge>)}</div>
         </div>
       </div>
+
+      {billingLoading && <div className="rounded-xl border border-blue-800 bg-blue-950/40 p-4 text-sm text-blue-200">Loading billing activity and invoices…</div>}
+      {billingError && <div className="rounded-xl border border-red-800 bg-red-950/40 p-4 text-sm text-red-200">Billing data could not be loaded: {billingLoadError?.message || 'Unknown error'}</div>}
+
+      {!billingLoading && !billingError && (
+        <Card className="border border-slate-700 bg-slate-900 shadow-lg">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Issued Invoices</p>
+                <p className="mt-1 text-2xl font-black text-white">{clientInvoices.length}</p>
+                <p className="text-sm text-slate-400">{clientInvoices.length ? 'Invoices issued to your account are ready to review.' : 'No issued invoices yet. Current service activity is still shown below.'}</p>
+              </div>
+              {clientInvoices.length > 0 && <Button onClick={() => setShowInvoiceDialog(true)} className="bg-blue-600 hover:bg-blue-700">View Issued Invoices</Button>}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Invoice Notification Dialog */}
       <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
@@ -432,12 +448,12 @@ export default function ClientPayrollReport() {
         </DialogContent>
       </Dialog>
 
-      <div className="space-y-6">
+      <div className="space-y-5">
 
         {/* Date Range & Options */}
-        <Card className="mb-6">
-        <CardContent className="p-6">
-          <div className="grid grid-cols-3 gap-4 mb-4">
+        <Card className="border border-slate-700 bg-slate-900 shadow-lg">
+        <CardContent className="p-4 sm:p-5">
+          <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]">
             <div>
               <Label>Start Date</Label>
               <Input
@@ -457,7 +473,8 @@ export default function ClientPayrollReport() {
             <div className="flex items-end">
               <Button
                 onClick={generateInvoice}
-                className="w-full bg-green-600 hover:bg-green-700"
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Card className="border border-slate-700 border-l-4 border-l-blue-500 bg-slate-900">
               >
                 <Download className="w-4 h-4 mr-2" />
                 Generate Invoice
@@ -489,7 +506,7 @@ export default function ClientPayrollReport() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-green-500">
+        <Card className="border border-slate-700 border-l-4 border-l-green-500 bg-slate-900">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-slate-600">Total Billed</CardTitle>
           </CardHeader>
@@ -503,18 +520,18 @@ export default function ClientPayrollReport() {
       </div>
 
         {/* Breakdown by Site */}
-        <Card>
+        <Card className="border border-slate-700 bg-slate-900 shadow-lg">
         <CardHeader>
-          <CardTitle>Billing Breakdown by Site</CardTitle>
+          <CardTitle className="text-white">Service Activity by Property</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {Object.entries(billingSummary).map(([site, data]) => (
-              <div key={site} className="p-4 bg-slate-50 rounded-lg">
+              <div key={site} className="rounded-xl border border-slate-700 bg-slate-800 p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="font-bold text-slate-900">{site}</p>
+                      <p className="font-bold text-white">{site}</p>
                       {data.active === false && <Badge variant="secondary">Inactive • history retained</Badge>}
                     </div>
                     <p className="text-sm text-slate-600">Standard rate: ${data.billRate.toFixed(2)}/hour</p>
@@ -533,7 +550,7 @@ export default function ClientPayrollReport() {
                     {data.shifts.map(shift => {
                       const officer = officers.find(o => o.email === shift.officer_email);
                       return (
-                        <div key={shift.id} className="text-xs p-2 bg-white rounded border flex justify-between">
+                        <div key={shift.id} className="flex flex-col justify-between gap-1 rounded border border-slate-700 bg-slate-900 p-2 text-xs sm:flex-row">
                           <span>
                             {showOfficerNames && officer && `${officer.first_name} ${officer.last_name} • `}
                             {format(new Date(shift.clock_in), 'MMM d, HH:mm')} - {format(new Date(shift.clock_out), 'HH:mm')}
