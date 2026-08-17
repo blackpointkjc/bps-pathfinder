@@ -557,21 +557,15 @@ export function buildOverallPerformance({ punctuality, trainingScore = null, job
   const scoreable = configured.filter(item => item.score != null);
   const activeWeight = scoreable.reduce((sum, item) => sum + item.baseWeight, 0);
   if (!activeWeight) return { score: null, categories: [], omitted: configured.map(item => item.label) };
-  const categories = scoreable.map(item => {
-    const effectiveWeight = (item.baseWeight / activeWeight) * 100;
-    return {
-      label: item.label,
-      score: item.score,
-      baseWeight: item.baseWeight,
-      weight: effectiveWeight,
-      contribution: item.score * (effectiveWeight / 100),
-    };
-  });
-  const score = Math.round(categories.reduce((sum, item) => sum + item.contribution, 0));
+  const score = Math.round(scoreable.reduce((sum, item) => {
+    return sum + (item.score * (item.baseWeight / activeWeight));
+  }, 0));
+  // Do not expose normalized decimal weights/contribution math to the UI. The
+  // performance screens only need the final score and each scoreable metric.
+  const categories = scoreable.map(item => ({ label: item.label, score: item.score }));
   return {
     score,
     categories,
     omitted: configured.filter(item => item.score == null).map(item => item.label),
-    activeWeight,
   };
 }
