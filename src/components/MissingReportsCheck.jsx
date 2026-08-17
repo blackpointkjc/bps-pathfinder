@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Clock3, FileText, AlertTriangle } from "lucide-react";
-import { format, parseISO, startOfWeek, endOfWeek } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const normalizeSite = value => String(value || '').split(':')[0].trim().toLowerCase();
@@ -14,43 +14,38 @@ const officerLabel = officer => {
 };
 
 export default function MissingReportsCheck({ schedules, allUsers = [], filteredUsers = [], weekStart, weekEnd }) {
-  const currentWeekStart = weekStart || startOfWeek(new Date(), { weekStartsOn: 0 });
-  const currentWeekEnd = weekEnd || endOfWeek(new Date(), { weekStartsOn: 0 });
+  const periodStart = weekStart || startOfMonth(new Date());
+  const periodEnd = weekEnd || endOfMonth(new Date());
 
-  const { data: reports = [], isLoading } = useQuery({
-    queryKey: ['allDailyActivityReports', format(currentWeekStart, 'yyyy-MM-dd'), format(currentWeekEnd, 'yyyy-MM-dd')],
+  const { data: reports = [], isLoading: reportsLoading } = useQuery({
+    queryKey: ['allDailyActivityReports', format(periodStart, 'yyyy-MM-dd'), format(periodEnd, 'yyyy-MM-dd')],
     queryFn: () => base44.entities.DailyActivityReport.list('-report_date'),
+    refetchInterval: 15000,
+  });
+  const { data: timeEntries = [], isLoading: timeLoading } = useQuery({
+    queryKey: ['missingReportTimeEntries', format(periodStart, 'yyyy-MM-dd'), format(periodEnd, 'yyyy-MM-dd')],
+    queryFn: () => base44.entities.TimeEntry.list('-clock_in', 2000),
     refetchInterval: 15000,
   });
 
   const checks = useMemo(() => {
-    if (!schedules) return [];
-    const start = format(currentWeekStart, 'yyyy-MM-dd');
-    const end = format(currentWeekEnd, 'yyyy-MM-dd');
+    const start = format(periodStart, 'yyyy-MM-dd');
+    const end = format(periodEnd, 'yyyy-MM-dd');
     const usersByEmail = new Map((allUsers.length ? allUsers : filteredUsers).map(user => [String(user.email || '').toLowerCase(), user]));
 
-    const shiftHasEnded = shift => {
-      if (!shift?.shift_date || !shift?.start_time || !shift?.end_time) return false;
-      const [startHour = 0, startMinute = 0] = String(shift.start_time).split(':').map(Number);
-      const [endHour = 0, endMinute = 0] = String(shift.end_time).split(':').map(Number);
-      const startDateTime = new Date(`${shift.shift_date}T${String(startHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')}:00`);
-      const endDateTime = new Date(`${shift.shift_date}T${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}:00`);
-      const overnight = endHour * 60 + endMinute <= startHour * 60 + startMinute;
-      if (overnight) endDateTime.setDate(endDateTime.getDate() + 1);
-      return Number.isFinite(startDateTime.getTime()) && Number.isFinite(endDateTime.getTime()) && Date.now() >= endDateTime.getTime();
-    };
-
-    return schedules
-      .filter(shift => shift.shift_date >= start && shift.shift_date <= end && shiftHasEnded(shift) && shift.officer_email && shift.officer_email !== 'OPEN')
-      .map(shift => {
-        const email = String(shift.officer_email || '').toLowerCase();
+    return timeEntries
+      .filter(entry => entry.clock_in && entry.clock_out && entry.officer_email)
+      .map(entry => ({ ...entry, worked_date: format(parseISO(entry.clock_in), 'yyyy-MM-dd') }))
+      .filter(entry => entry.worked_date >= start && entry.worked_date <= end)
+      .map(entry => {
+        const email = String(entry.officer_email || '').toLowerCase();
         const officer = usersByEmail.get(email);
         const matching = reports
           .filter(report => {
-            const sameOfficer = officer?.id
-              ? String(report.created_by_id || '') === String(officer.id)
-              : false;
-            return sameOfficer && report.report_date === shift.shift_date && normalizeSite(report.location) === normalizeSite(shift.location);
+            const sameOfficer = String(report.officer_email || '').toLowerCase() === email || (officer?.id && String(report.created_by_id || '') === String(officer.id));
+            const exactShift = report.shift_id && String(report.shift_id) === String(entry.id);
+            const legacyMatch = !report.shift_id && report.report_date === entry.worked_date && normalizeSite(report.location) === normalizeSite(entry.location);
+            return sameOfficer && (exactShift || legacyMatch);
           })
           .sort((a, b) => new Date(b.updated_date || b.created_date || 0) - new Date(a.updated_date || a.created_date || 0))[0];
 
@@ -66,25 +61,25 @@ export default function MissingReportsCheck({ schedules, allUsers = [], filtered
                 : 'pending';
 
         return {
-          id: `${email}-${shift.shift_date}-${shift.location}-${shift.start_time}`,
-          officer: officerLabel(officer),
+          id: String(entry.id),
+          officer: officerLabel(officer) || email,
           email,
-          date: shift.shift_date,
-          location: String(shift.location || '').split(':')[0],
-          time: `${shift.start_time || ''}-${shift.end_time || ''}`,
+          date: entry.worked_date,
+          location: String(entry.location || '').split(':')[0],
+          time: `${format(parseISO(entry.clock_in), 'HH:mm')}-${format(parseISO(entry.clock_out), 'HH:mm')}`,
           status,
           reportId: matching?.id,
         };
       })
       .sort((a, b) => b.date.localeCompare(a.date) || a.officer.localeCompare(b.officer));
-  }, [schedules, allUsers, filteredUsers, reports, currentWeekStart, currentWeekEnd]);
+  }, [timeEntries, allUsers, filteredUsers, reports, periodStart, periodEnd]);
 
   const counts = checks.reduce((acc, item) => {
     acc[item.status] = (acc[item.status] || 0) + 1;
     return acc;
   }, {});
 
-  if (isLoading) return <div className="py-8 text-center text-sm text-slate-500">Checking scheduled shifts and reports…</div>;
+  if (reportsLoading || timeLoading) return <div className="py-8 text-center text-sm text-slate-500">Checking worked shifts and reports…</div>;
 
   return (
     <div className="space-y-4">
@@ -95,7 +90,7 @@ export default function MissingReportsCheck({ schedules, allUsers = [], filtered
       </div>
 
       {checks.length === 0 ? (
-        <div className="py-8 text-center"><FileText className="mx-auto mb-3 h-10 w-10 text-green-500" /><p className="font-semibold text-green-700">No completed scheduled shifts require review for this week.</p></div>
+        <div className="py-8 text-center"><FileText className="mx-auto mb-3 h-10 w-10 text-green-500" /><p className="font-semibold text-green-700">No completed worked shifts require report review for this period.</p></div>
       ) : (
         <ScrollArea className="h-80">
           <div className="space-y-2 pr-2">
