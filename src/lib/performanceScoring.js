@@ -239,6 +239,7 @@ function pointInPolygon(lat, lng, polygon = []) {
 }
 
 function callMatchesProperty(call, site, locations = []) {
+  if (call?.property_site && siteKey(call.property_site) === siteKey(site)) return true;
   const property = propertyForSite(site, locations);
   if (!property) return false;
   const lat = Number(call?.latitude);
