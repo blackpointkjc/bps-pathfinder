@@ -473,7 +473,16 @@ export function calculateJobDutyCompliance({
 }
 
 export function calculateCallOutAttendance(callOuts = [], schedules = [], monthStart, monthEnd) {
-  const monthlySchedules = schedules.filter(schedule => schedule.archived !== true && schedule.is_open !== true && schedule.shift_date && (!monthStart || schedule.shift_date >= monthStart) && (!monthEnd || schedule.shift_date <= monthEnd));
+  const today = easternDateKey(new Date());
+  const nowTime = easternTimeKey(new Date());
+  const nowWall = wallClockMinute(today, nowTime);
+  const monthlySchedules = schedules.filter(schedule => {
+    if (schedule.archived === true || schedule.is_open === true || !schedule.shift_date || !schedule.start_time) return false;
+    if (monthStart && schedule.shift_date < monthStart) return false;
+    if (monthEnd && schedule.shift_date > monthEnd) return false;
+    const startWall = wallClockMinute(schedule.shift_date, schedule.start_time);
+    return startWall != null && nowWall != null && startWall <= nowWall;
+  });
   const applicable = callOuts.filter(item => {
     if (item.call_out_type !== 'called_out') return false;
     const date = item.call_out_date || easternDateKey(item.created_date);
