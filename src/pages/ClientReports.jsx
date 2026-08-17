@@ -36,7 +36,7 @@ export default function ClientReports() {
   const [selectedArchiveType, setSelectedArchiveType] = useState("shift");
   const [viewingReport, setViewingReport] = useState(null);
   const [viewReportType, setViewReportType] = useState(null);
-  const [selectedClientLocation, setSelectedClientLocation] = useState("");
+
 
   const { data: user } = useQuery({
     queryKey: ['clientPortalUser', getClientPreviewId()],
@@ -55,29 +55,31 @@ export default function ClientReports() {
   });
 
   const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
-  const effectiveLocation = selectedClientLocation || clientLocations[0] || "";
+  const assignedSiteKeys = useMemo(() => new Set(clientLocations.map(loc => String(loc || '').split(' - ')[0].split(':')[0].trim().toLowerCase()).filter(Boolean)), [clientLocations.join('|')]);
+  const isClientSite = (value) => assignedSiteKeys.has(String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase());
+  const effectiveLocation = clientLocations.length > 1 ? 'All Assigned Sites' : (clientLocations[0] || '');
 
   const { data: reports } = useQuery({
-    queryKey: ['clientReports', effectiveLocation, startDate, endDate],
+    queryKey: ['clientReports', clientLocations.join('|'), startDate, endDate],
     queryFn: async () => {
-      if (!effectiveLocation) return null;
+      if (!clientLocations.length) return null;
 
       const [allShift, allDAR, allIncident] = await Promise.all([
-        base44.entities.ShiftReport.filter({ location: effectiveLocation }),
-        base44.entities.DailyActivityReport.filter({ location: effectiveLocation }),
-        base44.entities.IncidentReport.filter({ location: effectiveLocation }),
+        base44.entities.ShiftReport.list('-created_date', 1000),
+        base44.entities.DailyActivityReport.list('-created_date', 1000),
+        base44.entities.IncidentReport.list('-created_date', 1000),
       ]);
       const [allTrespass, allParking, allCriminal] = await Promise.all([
-        base44.entities.TrespassingNotice.filter({ location: effectiveLocation }),
-        base44.entities.ParkingViolation.filter({ location: effectiveLocation }),
-        base44.entities.CriminalComplaint.filter({ location: effectiveLocation }),
+        base44.entities.TrespassingNotice.list('-created_date', 1000),
+        base44.entities.ParkingViolation.list('-created_date', 1000),
+        base44.entities.CriminalComplaint.list('-created_date', 1000),
       ]);
-      const allSummons = await base44.entities.Summons.filter({ location: effectiveLocation });
+      const allSummons = await base44.entities.Summons.list('-created_date', 1000);
 
       const filterByDate = (reportList, dateField) => {
         return reportList.filter(report => {
           const reportDate = report[dateField] ? (report[dateField].split('T')[0] || report[dateField]) : null;
-          return reportDate && reportDate >= startDate && reportDate <= endDate && report.status === 'approved';
+          return reportDate && reportDate >= startDate && reportDate <= endDate && report.status === 'approved' && isClientSite(report.location);
         });
       };
 
@@ -91,7 +93,7 @@ export default function ClientReports() {
         summons: filterByDate(allSummons, 'offense_date'),
       };
     },
-    enabled: !!effectiveLocation,
+    enabled: clientLocations.length > 0,
   });
 
   const reportOfficerEmails = useMemo(() => {
@@ -144,7 +146,7 @@ export default function ClientReports() {
             <h3>Client Information</h3>
             <p><strong>Name:</strong> ${user?.full_name || 'N/A'}<br>
             <strong>Email:</strong> ${user?.email}<br>
-            <strong>Location:</strong> ${effectiveLocation}</p>
+            <strong>Location:</strong> ${report.location || effectiveLocation}</p>
             <h3>Requested Report</h3>
             <p><strong>Type:</strong> ${reportTypeName}<br>
             <strong>Date:</strong> ${reportDate ? format(new Date(reportDate), 'MMMM d, yyyy') : 'N/A'}<br>
@@ -734,41 +736,20 @@ export default function ClientReports() {
   return (
     <div className="p-4 md:p-8 min-h-screen">
       <div className="max-w-6xl mx-auto space-y-8">
-        {clientLocations.length > 1 && (
-          <Card className="border-none shadow-lg bg-gradient-to-r from-purple-50 to-blue-50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <MapPin className="w-6 h-6 text-purple-600" />
-                <div className="flex-1">
-                  <Label className="text-sm font-semibold text-purple-900 mb-2 block">
-                    Select Location to View Reports
-                  </Label>
-                  <Select value={selectedClientLocation} onValueChange={setSelectedClientLocation}>
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="Select a location..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clientLocations.map((locName) => (
-                        <SelectItem key={locName} value={locName}>
-                          {locName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">All Reports</h1>
-          <p className="text-slate-600">View approved security reports for {effectiveLocation}</p>
+        <div className="rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 to-slate-950 p-5 shadow-xl sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-300">Security Records</p>
+              <h1 className="mt-1 text-2xl font-black text-white sm:text-3xl">All Reports</h1>
+              <p className="mt-1 text-sm text-slate-400">Approved reports across {clientLocations.length > 1 ? `all ${clientLocations.length} assigned sites` : effectiveLocation}.</p>
+            </div>
+            {clientLocations.length > 1 && <div className="flex flex-wrap gap-2">{clientLocations.map(site => <Badge key={site} className="border border-slate-600 bg-slate-800 text-slate-200">{site}</Badge>)}</div>}
+          </div>
         </div>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="grid md:grid-cols-2 gap-4">
+        <Card className="border border-slate-700 bg-slate-900 shadow-lg">
+          <CardContent className="p-4 sm:p-5">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Start Date</Label>
                 <Input
@@ -789,66 +770,58 @@ export default function ClientReports() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-purple-600" />
+        <Card className="border border-slate-700 bg-slate-900 shadow-lg">
+          <CardHeader className="border-b border-slate-700">
+            <CardTitle className="flex items-center gap-2 text-white">
+              <FileText className="w-5 h-5 text-blue-400" />
               Security Reports
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-5">
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Report Type</Label>
-                <Select value={selectedArchiveType} onValueChange={setSelectedArchiveType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {archiveTypes.map(type => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label} ({reports?.[type.value]?.length || 0})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {archiveTypes.map(type => {
+                  const Icon = type.icon;
+                  const active = selectedArchiveType === type.value;
+                  return <button key={type.value} type="button" onClick={() => setSelectedArchiveType(type.value)} className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition ${active ? 'border-blue-400 bg-blue-600 text-white' : 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-500'}`}><Icon className="h-4 w-4" />{type.label}<span className="rounded-full bg-black/20 px-1.5 py-0.5">{reports?.[type.value]?.length || 0}</span></button>;
+                })}
               </div>
 
               <div className="space-y-3">
                 {currentArchiveData.map((report) => (
-                  <div key={report.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <div key={report.id} className="rounded-xl border border-slate-700 bg-slate-800 p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900">{getOfficerName(getReportOfficerEmail(report))}</h4>
-                        <p className="text-sm text-slate-600">
+                        <div className="mb-1 flex flex-wrap items-center gap-2"><h4 className="font-semibold text-white">{getOfficerName(getReportOfficerEmail(report))}</h4><Badge className="border border-blue-800 bg-blue-950 text-blue-200">{report.location}</Badge></div>
+                        <p className="text-sm text-slate-400">
                           {format(new Date(
                             report.shift_date || report.incident_date || report.notice_date || 
                             report.violation_date || report.complaint_date || report.offense_date
                           ), 'MMMM d, yyyy')}
                         </p>
                         {report.incident_type && (
-                          <p className="text-sm text-slate-600 mt-1">
+                          <p className="text-sm text-slate-300 mt-1">
                             Type: {report.incident_type.replace(/_/g, ' ').toUpperCase()}
                           </p>
                         )}
                         {report.subject_name && (
-                          <p className="text-sm text-slate-600 mt-1">
+                          <p className="text-sm text-slate-300 mt-1">
                             Subject: {report.subject_name}
                           </p>
                         )}
                         {report.license_plate && (
-                          <p className="text-sm text-slate-600 mt-1">
+                          <p className="text-sm text-slate-300 mt-1">
                             Vehicle: {report.license_plate}
                           </p>
                         )}
                         {report.violator_first_name && (
-                          <p className="text-sm text-slate-600 mt-1">
+                          <p className="text-sm text-slate-300 mt-1">
                             Defendant: {report.violator_first_name} {report.violator_last_name}
                           </p>
                         )}
                         <Badge className="mt-2 bg-green-100 text-green-800">Approved</Badge>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Button 
                           variant="outline" 
                           size="sm" 
