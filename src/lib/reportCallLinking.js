@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { cleanIncident } from '@/utils/callUtils';
 
 const TERMINAL_CALL_STATUSES = new Set([
   'cleared', 'clear', 'cancelled', 'canceled', 'resolved', 'closed', 'complete', 'completed'
@@ -41,7 +42,7 @@ export function applyDispatchCallToForm(prev, call) {
     ...prev,
     linked_call_id: call.id || '',
     linked_call_number: callDisplayNumber(call),
-    linked_call_type: call.incident || '',
+    linked_call_type: cleanIncident(call),
     linked_call_location: call.location || '',
     location: prev.location || call.location || '',
   };
