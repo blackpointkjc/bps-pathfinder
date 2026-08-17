@@ -144,6 +144,9 @@ Deno.serve(async (req) => {
     }
     const myWorkedSites = new Set(myTimeEntries.map((entry:any) => siteKey(entry.location)).filter(Boolean));
     const myPropertyCalls = combinedPropertyCalls.filter((call:any) => myWorkedSites.has(siteKey(call.property_site)));
+    const relevantCallIds = new Set(myPropertyCalls.flatMap((call:any) => [call.id, call.original_call_id, call.call_id, call.agency_cad_number, call.bps_reference].filter(Boolean).map(String)));
+    const linkedPropertyIncidents = incidentsAll.filter((report:any) => relevantCallIds.has(String(report.linked_call_id || '')) || relevantCallIds.has(String(report.linked_call_number || '')) || relevantCallIds.has(String(report.call_number || '')));
+    const relevantIncidents = [...new Map([...myIncidents, ...linkedPropertyIncidents].map((report:any) => [String(report.id), report])).values()];
 
     return Response.json({
       success: true,
@@ -159,7 +162,7 @@ Deno.serve(async (req) => {
       partnerTimeEntries,
       checkpoints: checkpointsAll.filter((r:any) => r.is_active !== false),
       trainingModules: modulesAll.filter((r:any) => r.active !== false),
-      incidents: myIncidents,
+      incidents: relevantIncidents,
       commendations: myCommendations,
       complaints: myComplaints,
       clientFeedback: myFeedback,
@@ -176,7 +179,7 @@ Deno.serve(async (req) => {
         trainingAssignments: myAssignments.length,
         qrScans: myScans.length,
         sharedQrScans: sharedQrScans.length,
-        incidents: myIncidents.length,
+        incidents: relevantIncidents.length,
         commendations: myCommendations.length,
         clientFeedback: myFeedback.length,
         performanceReviews: myReviews.length,
