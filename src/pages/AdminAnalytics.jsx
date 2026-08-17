@@ -464,7 +464,7 @@ export default function AdminAnalytics() {
               <BarChart3 className="h-5 w-5 text-cyan-400" />
               Officer Overall Performance — Current Month
             </CardTitle>
-            <p className="text-xs text-slate-400">Weighted exactly like My Performance: 55% On-Time • 15% Job Duty / Performance • 15% Call-Out Attendance • 3% each for Training, Bid Standing, Client Feedback, Supervisor Rating, and Recognition. No-data in the five 3% categories is neutral/full-credit.</p>
+            <p className="text-xs text-slate-400">Uses the same scoring engine as Officer My Performance. Metrics without scoreable records are omitted from the grade.</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -482,14 +482,14 @@ export default function AdminAnalytics() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {officer.overall.categories.map(category => (
                       <span key={category.label} className="rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-200">
-                        {category.label}: <strong>{category.score}%</strong> · {category.weight}% weight · {category.contribution.toFixed(1)} pts{category.neutral ? ' · neutral/no data' : ''}
+                        {category.label}: <strong>{category.score}%</strong>
                       </span>
                     ))}
                     {officer.overall.categories.length === 0 && <span className="text-xs text-slate-500">No scoreable records this month.</span>}
                   </div>
                   <div className="mt-2 grid gap-2 text-xs text-slate-400 md:grid-cols-4">
                     <span>Job Duty: {officer.jobDuty.score != null ? `${officer.jobDuty.score}%` : 'Not scored'} • DAR {officer.jobDuty.dailyActivity.completed}/{officer.jobDuty.dailyActivity.required} • Incident {officer.jobDuty.incidentReports.completed}/{officer.jobDuty.incidentReports.required} • QR {officer.jobDuty.qrCompliance.completed}/{officer.jobDuty.qrCompliance.required}</span>
-                    <span>Call-Out Attendance: {officer.callOutAttendance.score}% ({officer.callOutAttendance.count} call-out{officer.callOutAttendance.count === 1 ? '' : 's'})</span>
+                    <span>Call-Out Attendance: {officer.callOutAttendance.score != null ? `${officer.callOutAttendance.score}% (${officer.callOutAttendance.count} call-out${officer.callOutAttendance.count === 1 ? '' : 's'})` : 'Not scored'}</span>
                     <span>Bid Standing: {officer.bidStanding.score != null ? `${officer.bidStanding.score}%` : 'Not scored'} ({officer.bidStanding.accepted} accepted, {officer.bidStanding.pending} pending, {officer.bidStanding.rejected} rejected)</span>
                     <span>Client Feedback: {officer.clientFeedback.score != null ? `${officer.clientFeedback.score}% (${officer.clientFeedback.avgRating.toFixed(1)}/5)` : 'No ratings'}</span>
                     <span>Recognition: {officer.recognition.count} record{officer.recognition.count === 1 ? '' : 's'} • Supervisor Rating: {officer.supervisorRating.score != null ? `${officer.supervisorRating.score}%` : 'No review'}</span>
@@ -500,8 +500,9 @@ export default function AdminAnalytics() {
                       {officer.jobDuty.shifts.flatMap(shift => {
                         const rows = [];
                         if (shift.daily_activity.required && !shift.daily_activity.completed) rows.push(`${shift.shift_date} ${shift.property}: DAR missing`);
-                        shift.incidents.items.filter(item => item.status === 'missing').forEach(item => rows.push(`${shift.shift_date} ${shift.property}: Incident Report missing for call ${item.call_number || item.call_id}`));
+                        shift.incidents.items.filter(item => item.status === 'missing').forEach(item => rows.push(`${shift.shift_date} ${shift.property}: Incident Report missing for ${item.call_type || 'property call'} ${item.call_number || item.call_id}`));
                         if (shift.qr.missed > 0) rows.push(`${shift.shift_date} ${shift.property}: QR ${shift.qr.completed}/${shift.qr.required}, ${shift.qr.missed} missed`);
+                        (shift.qr.excluded_items || []).forEach(item => rows.push(`${shift.shift_date} ${shift.property}: QR scan at ${item.checkpoint_name || 'checkpoint'} by ${item.officer_email || 'another user'} excluded — scanner was not clocked in at this property`));
                         return rows;
                       }).slice(0, 8).map((reason, index) => <p key={index}>• {reason}</p>)}
                     </div>
