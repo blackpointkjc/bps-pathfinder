@@ -83,9 +83,46 @@ export default function ClientCallHistory() {
         if (!current || current._source === 'archived') unique.set(key, call);
       }
 
+      // PropertyAlert is the durable monitored-property history. Older CAD rows can be
+      // archived or lack their original call id, so preserve one client-visible row per
+      // monitored call even when the live/archive CAD record can no longer be rebuilt.
+      const assignedSiteNames = new Set(assignedSites.map(site => norm(site.site_name)));
+      const alertByCall = new Map();
+      for (const alert of propertyAlerts || []) {
+        if (!assignedSiteNames.has(norm(alert.propertyName))) continue;
+        const key = String(alert.callId || alert.source_key || `${alert.propertyName}|${alert.callTime || alert.time_received || alert.created_date}|${alert.callIncident}|${alert.callLocation}`);
+        const current = alertByCall.get(key);
+        const currentTime = parseServerTimestamp(current?.callTime || current?.time_received || current?.created_date)?.getTime() || 0;
+        const nextTime = parseServerTimestamp(alert.callTime || alert.time_received || alert.created_date)?.getTime() || 0;
+        if (!current || nextTime > currentTime) alertByCall.set(key, alert);
+      }
+      const representedIds = new Set();
+      for (const call of unique.values()) {
+        [call.id, call.external_call_id, call.original_call_id, call.call_id, call.agency_cad_number, call.bps_reference].filter(Boolean).forEach(id => representedIds.add(String(id)));
+      }
+      for (const [key, alert] of alertByCall.entries()) {
+        if (alert.callId && representedIds.has(String(alert.callId))) continue;
+        const rawId = String(alert.callId || '');
+        const prefix = rawId.toLowerCase();
+        const agencyFromId = prefix.startsWith('rfd-') ? 'RFD' : prefix.startsWith('rpd-') ? 'RPD' : prefix.startsWith('hpd-') ? 'HPD' : prefix.startsWith('ccpd-') ? 'CCPD' : prefix.startsWith('ccfd-') ? 'CCFD' : '';
+        unique.set(`property-alert:${key}`, {
+          id: `property-alert-${alert.id}`,
+          call_id: alert.callId || '',
+          original_call_id: alert.callId || '',
+          time_received: alert.callTime || alert.time_received || alert.created_date,
+          created_date: alert.created_date,
+          location: alert.callLocation || alert.propertyName,
+          incident: alert.callIncident || 'Call for Service',
+          agency: agencyFromId,
+          description: alert.description || '',
+          _source: 'property_alert',
+          _propertyAlert: alert,
+        });
+      }
+
       const clientRows = [...unique.values()].flatMap(call => {
         const callIdentifiers = new Set([call.id, call.original_call_id, call.call_id, call.agency_cad_number, call.bps_reference].filter(Boolean).map(String));
-        const verifiedAlert = (propertyAlerts || []).find(alert => callIdentifiers.has(String(alert.callId || '')) && assignedSites.some(site => norm(alert.propertyName) === norm(site.site_name)));
+        const verifiedAlert = call._propertyAlert || (propertyAlerts || []).find(alert => callIdentifiers.has(String(alert.callId || '')) && assignedSites.some(site => norm(alert.propertyName) === norm(site.site_name)));
         const monitoredMatch = !verifiedAlert ? assignedSites.find(site => site.property_monitoring_enabled && callMatchesSite(call, site)) : null;
         const matchedSite = verifiedAlert
           ? assignedSites.find(site => norm(site.site_name) === norm(verifiedAlert.propertyName))
@@ -166,7 +203,7 @@ export default function ClientCallHistory() {
               {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
             {open && <div className="border-t border-slate-700 p-4 grid md:grid-cols-2 gap-4 bg-slate-950/60">
-              <div><h3 className="text-[10px] tracking-widest text-slate-500 mb-2">CALL DETAILS</h3><div className="space-y-2 text-xs"><p><span className="text-slate-500">Status:</span> {row.status || 'Unknown'}</p><p><span className="text-slate-500">Source:</span> {row._source === 'active' ? 'Active Calls Feed' : 'Archived Call History'}</p><p><span className="text-slate-500">Property match:</span> {row.propertyVerified ? `Verified by monitoring queue${row.propertyAlert?.relation ? ` · ${row.propertyAlert.relation}` : ''}` : 'Matched by assigned property address/GPS'}</p>{row.propertyAlert?.description && <p className="text-green-300">{row.propertyAlert.description}</p>}{row.description && <p className="leading-relaxed text-slate-300">{row.description}</p>}</div></div>
+              <div><h3 className="text-[10px] tracking-widest text-slate-500 mb-2">CALL DETAILS</h3><div className="space-y-2 text-xs"><p><span className="text-slate-500">Status:</span> {row.status || 'Unknown'}</p><p><span className="text-slate-500">Source:</span> {row._source === 'active' ? 'Active Calls Feed' : row._source === 'property_alert' ? 'Monitored Property History' : 'Archived Call History'}</p><p><span className="text-slate-500">Property match:</span> {row.propertyVerified ? `Verified by monitoring queue${row.propertyAlert?.relation ? ` · ${row.propertyAlert.relation}` : ''}` : 'Matched by assigned property address/GPS'}</p>{row.propertyAlert?.description && <p className="text-green-300">{row.propertyAlert.description}</p>}{row.description && <p className="leading-relaxed text-slate-300">{row.description}</p>}</div></div>
               <div><h3 className="text-[10px] tracking-widest text-slate-500 mb-2">NOTES & INCIDENT REPORTS</h3>{row.linkedNotes.length === 0 && row.linkedReports.length === 0 ? <p className="text-xs text-slate-500">No linked note or approved incident report.</p> : <div className="space-y-2">{row.linkedNotes.map(note => <div key={note.id} className="border border-slate-700 rounded p-2"><div className="text-[10px] text-slate-500">NOTE · {fmt(note.created_date)}</div><div className="text-xs mt-1">{note.note}</div></div>)}{row.linkedReports.map(report => <div key={report.id} className="border border-green-700/50 bg-green-950/20 rounded p-2"><div className="text-[10px] text-green-400">APPROVED INCIDENT REPORT · {report.report_number || report.linked_call_number || ''}</div><div className="text-xs font-bold mt-1">{String(report.incident_type || 'Incident').replace(/_/g, ' ')}</div><div className="text-xs text-slate-300 mt-1">{report.description}</div></div>)}</div>}</div>
             </div>}
           </div>;
