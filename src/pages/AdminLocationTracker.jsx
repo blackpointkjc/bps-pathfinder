@@ -12,14 +12,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { isInternalMember } from '@/lib/directoryUtils';
 import { listOfficerDirectory } from '@/lib/appDirectory';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
 const LIVE_SESSION_FRESH_MS = 2 * 60 * 1000;
 
-const isOperationallyVisibleUser = isOperationalOfficer;
+const isOperationallyVisibleUser = isInternalMember;
 
 // Custom marker icons
 const clockInIcon = new L.Icon({
