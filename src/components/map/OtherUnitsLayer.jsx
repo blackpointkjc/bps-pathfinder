@@ -72,7 +72,13 @@ export default function OtherUnitsLayer({ units, currentUserId, onUnitClick }) {
     
     // Keep every officer represented, but merge markers that are physically within
     // 25 feet so overlapping icons never hide one another.
-    const unitsToShow = units.filter(unit => unit.id !== currentUserId);
+    const unitsToShow = units.filter(unit =>
+        unit.id !== currentUserId &&
+        Number.isFinite(Number(unit.latitude)) &&
+        Number.isFinite(Number(unit.longitude)) &&
+        Number(unit.latitude) !== 0 &&
+        Number(unit.longitude) !== 0
+    ).map(unit => ({ ...unit, latitude: Number(unit.latitude), longitude: Number(unit.longitude) }));
 
     if (unitsToShow.length === 0) return null;
     
