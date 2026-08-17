@@ -374,7 +374,6 @@ export default function MyPerformanceAnalytics() {
       });
     }
 
-    return factors;
     if (clientFeedbackStats.count > 0) {
       factors.push({ metric: 'Client Feedback', value: `${clientFeedbackStats.score}%`, severity: clientFeedbackStats.score >= 80 ? 'positive' : 'negative', reason: `${clientFeedbackStats.count} client rating${clientFeedbackStats.count === 1 ? '' : 's'} average ${clientFeedbackStats.avgRating.toFixed(1)} of 5 stars.`, details: clientFeedbackStats.items.map(item => `${item.shift_date || 'Shift'} at ${String(item.location || '').split(':')[0]}: ${Number(item.rating).toFixed(1)}/5${item.comments ? ` — ${item.comments}` : ''}`) });
     }
