@@ -379,22 +379,14 @@ export default function MyPerformanceAnalytics() {
               <span className="flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Overall Performance Score</span>
               <span className="text-4xl font-black">{overallPerformance.score !== null ? `${overallPerformance.score}%` : '—'}</span>
             </CardTitle>
-            <p className="text-xs text-blue-100">Weighted grade: 55% On-Time Arrival • 15% Job Duty / Performance • 15% Call-Out Attendance • remaining 15% split evenly across Training, Bid Standing, Client Feedback, Supervisor Rating, and Recognition (3% each). No-data in those five categories is neutral/full-credit, not a penalty.</p>
+            <p className="text-xs text-blue-100">Based only on metrics that have actual scoreable records this month. Metrics with no data are omitted from the grade.</p>
           </CardHeader>
           <CardContent className="p-4">
-            {overallPerformance.categories.length > 0 ? (
-              <div className="space-y-2">
-                {overallPerformance.categories.map(category => (
-                  <div key={category.label} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                    <span className="text-sm font-semibold text-slate-700">{category.label} <span className="font-normal text-slate-500">({category.weight}% weight)</span>{category.neutral ? <span className="ml-1 text-[10px] text-slate-400">neutral/no data</span> : null}</span>
-                    <span className="font-bold text-slate-900">{category.score}% → {category.contribution.toFixed(1)} pts</span>
-                  </div>
-                ))}
-                <p className="pt-1 text-xs text-slate-500">Weighted total: {overallPerformance.categories.map(category => `${category.contribution.toFixed(1)}`).join(' + ')} = {overallPerformance.score}%</p>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500">No scored performance categories have enough data yet.</p>
-            )}
+            <p className="text-sm text-slate-600">
+              {overallPerformance.categories.length > 0
+                ? `${overallPerformance.categories.length} performance metric${overallPerformance.categories.length === 1 ? '' : 's'} currently contribute to this score.`
+                : 'No performance metrics have enough data to calculate a grade yet.'}
+            </p>
           </CardContent>
         </Card>
 
