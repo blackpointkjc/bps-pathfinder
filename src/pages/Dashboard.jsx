@@ -42,6 +42,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Link, useNavigate } from "react-router-dom";
+import { listDirectoryUsers } from '@/lib/appDirectory';
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
@@ -74,6 +75,19 @@ export default function Dashboard() {
     queryKey: ['currentUser'],
     queryFn: () => base44.auth.me(),
   });
+
+  const { data: directoryProfile } = useQuery({
+    queryKey: ['dashboardDirectoryProfile', user?.email],
+    queryFn: async () => {
+      const rows = await listDirectoryUsers();
+      const email = String(user?.email || '').trim().toLowerCase();
+      return rows.find(row => String(row.email || '').trim().toLowerCase() === email) || null;
+    },
+    enabled: !!user?.email,
+    staleTime: 15000,
+  });
+
+  const profile = directoryProfile || user;
 
   const { data: activeEntry } = useQuery({
     queryKey: ['activeTimeEntry'],
@@ -194,9 +208,12 @@ export default function Dashboard() {
   }
 
   const getDisplayName = () => {
-    if (user?.first_name) return user.first_name;
-    if (user?.full_name) return user.full_name.split(' ')[0];
-    return 'Officer';
+    const first = String(profile?.first_name || '').trim();
+    if (first) return first;
+    const full = String(profile?.full_name || '').trim();
+    if (full) return full.split(/\s+/)[0];
+    const emailName = String(profile?.email || user?.email || '').split('@')[0].replace(/[._-]+/g, ' ').trim();
+    return emailName ? emailName.replace(/\b\w/g, c => c.toUpperCase()) : 'Officer';
   };
 
   const allQuickActions = [
@@ -246,23 +263,23 @@ export default function Dashboard() {
         className="relative max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8 space-y-5 md:space-y-6"
       >
         {/* Cinematic Hero */}
-        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/80 via-slate-900/60 to-slate-800/40 backdrop-blur-xl p-6 md:p-8 lg:p-10">
+        <motion.div variants={itemVariants} className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/90 via-slate-900/75 to-slate-800/50 p-5 backdrop-blur-xl md:p-7">
           {/* Glow accents */}
           <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-blue-500/20 blur-3xl" />
           <div className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full bg-violet-500/20 blur-3xl" />
           
-          <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div className="flex items-center gap-4 md:gap-5">
-              <div className="hidden md:flex relative">
-                <div className="absolute inset-0 bg-blue-500/30 blur-xl rounded-2xl" />
-                <img src={LOGO_URL} alt="Black Point Protection" className="relative w-16 h-16 object-contain" />
+          <div className="relative flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="relative hidden shrink-0 md:flex">
+                <div className="absolute inset-0 rounded-2xl bg-blue-500/25 blur-xl" />
+                <img src={LOGO_URL} alt="Black Point Protection" className="relative h-14 w-14 object-contain" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="w-4 h-4 text-blue-400" />
                   <span className="text-xs font-medium uppercase tracking-[0.2em] text-blue-400">{format(new Date(), 'EEEE')}</span>
                 </div>
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight">
+                <h1 className="break-words text-3xl font-bold tracking-tight text-white md:text-4xl">
                   Welcome back, <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-emerald-400 bg-clip-text text-transparent">{getDisplayName()}</span>
                 </h1>
                 <p className="text-sm md:text-base text-slate-400 mt-2">
