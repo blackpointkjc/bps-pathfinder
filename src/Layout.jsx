@@ -15,6 +15,7 @@ import { createPageUrl } from './utils';
 import { stopAllAlerts } from '@/utils/alertUtils';
 import { stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternDateTime } from '@/lib/easternTime';
+import { cleanIncident } from '@/utils/callUtils';
 import GlobalMessageBanner from '@/components/GlobalMessageBanner';
 import NotificationMonitor from '@/components/NotificationMonitor';
 import MandatoryReadGate from '@/components/MandatoryReadGate';
@@ -1147,7 +1148,7 @@ export default function Layout({ children, currentPageName }) {
               <div className={`text-sm font-black uppercase tracking-wider ${propertyAlert.relation === 'inside' ? 'text-red-300' : 'text-amber-300'}`}>
                 {propertyAlert.relation === 'inside' ? 'Call inside property boundary' : `Call ${propertyAlert.distanceFeet} feet from property boundary`}
               </div>
-              <div className="mt-2 text-2xl font-black text-white">{propertyAlert.call.incident || 'Unknown incident'}</div>
+              <div className="mt-2 text-2xl font-black text-white">{cleanIncident(propertyAlert.call)}</div>
               <div className="mt-1 flex items-start gap-2 text-sm text-slate-300"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" />{propertyAlert.call.location}</div>
               <div className="mt-2 text-xs font-bold uppercase tracking-wider text-slate-400">Call received {formatEasternDateTime(propertyAlert.call.time_received || propertyAlert.call.created_date)} ET</div>
             </div>
