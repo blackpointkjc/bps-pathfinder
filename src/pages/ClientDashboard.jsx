@@ -18,7 +18,7 @@ export default function ClientDashboard() {
     staleTime: 0,
   });
 
-  const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
+  const clientLocations = [...new Set([...(Array.isArray(user?.assigned_locations) ? user.assigned_locations : []), ...(Array.isArray(user?.assigned_sites) ? user.assigned_sites : []), ...(user?.assigned_location ? [user.assigned_location] : [])].filter(Boolean))];
 
   const siteKey = (value) => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
   const assignedKeys = new Set(clientLocations.map(siteKey));
