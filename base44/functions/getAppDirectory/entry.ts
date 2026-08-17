@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     let locations = rawLocations || [];
     if (clientOnly) {
       locations = locations.filter((l: any) => l.active !== false);
-      const allowed = new Set([...(me.assigned_sites || []), me.assigned_location].filter(Boolean).map(String));
+      const allowed = new Set([...(me.assigned_sites || []), ...(me.assigned_locations || []), me.assigned_location].filter(Boolean).map(String));
       locations = locations.filter((l: any) => allowed.has(String(l.site_name)) || String(l.assigned_client_email || '').toLowerCase() === String(me.email || '').toLowerCase());
     }
 
