@@ -12,7 +12,7 @@ import { format, parseISO, differenceInMinutes, startOfWeek, addDays, startOfMon
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer, isInternalMember } from '@/lib/directoryUtils';
-import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateQrPatrol, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
+import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateQrPatrol, calculateJobDutyCompliance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 
@@ -59,6 +59,10 @@ export default function AdminAnalytics() {
   const dispatchCalls = analyticsData.dispatchCalls || [];
   const allCommendations = analyticsData.commendations || [];
   const allComplaints = analyticsData.complaints || [];
+  const allDailyActivityReports = analyticsData.dailyActivityReports || [];
+  const allCallOuts = analyticsData.callOuts || [];
+  const allDutyRules = analyticsData.dutyRules || [];
+  const allLocations = analyticsData.locations || [];
   const allClientFeedback = analyticsData.clientFeedback || [];
   const allPerformanceReviews = analyticsData.performanceReviews || [];
 
@@ -222,7 +226,21 @@ export default function AdminAnalytics() {
     const clientFeedback = calculateClientFeedback(officerFeedback, currentMonthStart, currentMonthEnd);
     const supervisorRating = calculateSupervisorRating(officerReviews, currentMonthStart, currentMonthEnd);
     const recognition = calculateRecognition(officerCommendations, officerFeedback, currentMonthStart, currentMonthEnd);
-    const overall = buildOverallPerformance({ punctuality, trainingScore: training.percentage, qrScore: qr.score, bidStanding, clientFeedback, supervisorRating, recognition });
+    const jobDuty = calculateJobDutyCompliance({
+      officer,
+      timeEntries: officerTimeEntries,
+      dailyReports: allDailyActivityReports,
+      incidentReports,
+      dispatchCalls,
+      callOuts: allCallOuts,
+      qrScans: officerScans,
+      qrCheckpoints: allQrCheckpoints,
+      dutyRules: allDutyRules,
+      locations: allLocations,
+      monthStart: currentMonthStart,
+      monthEnd: currentMonthEnd,
+    });
+    const overall = buildOverallPerformance({ punctuality, trainingScore: training.percentage, qrScore: qr.score, jobDuty, bidStanding, clientFeedback, supervisorRating, recognition });
 
     return {
       email: officer.email,
@@ -235,8 +253,9 @@ export default function AdminAnalytics() {
       clientFeedback,
       supervisorRating,
       recognition,
+      jobDuty,
     };
-  }).sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1)), [filteredUsers, timeEntries, schedules, allBids, trainingCompletions, trainingAssignments, allTraining, allQrScans, allQrCheckpoints, allClientFeedback, allPerformanceReviews, allCommendations, currentMonthStart, currentMonthEnd]);
+  }).sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1)), [filteredUsers, timeEntries, schedules, allBids, trainingCompletions, trainingAssignments, allTraining, allQrScans, allQrCheckpoints, allClientFeedback, allPerformanceReviews, allCommendations, allDailyActivityReports, incidentReports, dispatchCalls, allCallOuts, allDutyRules, allLocations, currentMonthStart, currentMonthEnd]);
 
   const companyOverallScore = useMemo(() => {
     const scored = overallByOfficer.filter(item => item.overall.score != null);
