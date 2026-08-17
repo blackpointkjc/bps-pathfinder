@@ -28,7 +28,7 @@ export function cleanIncident(call) {
 
     // If what's left is just a status word, it's not a real incident type
     if (!name || STATUS_WORDS.has(name.toUpperCase())) {
-        if (isRfdCall(call)) return 'Fire Response';
+        if (isRfdCall(call)) return 'Fire Service';
         // Try description (skip if it also looks like garbage)
         const desc = (call.description || '').split('\n')[0].trim();
         const descClean = desc.replace(/\s+\d{1,2}:\d{2}(\s*(AM|PM))?\s*$/i, '').trim();
