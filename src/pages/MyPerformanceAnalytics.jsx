@@ -409,7 +409,7 @@ export default function MyPerformanceAnalytics() {
             <CardContent className="p-3 sm:p-4">
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
               <p className="text-2xl font-bold text-green-600 sm:text-3xl">{onTimeStats.total > 0 ? `${onTimeStats.rate}%` : '—'}</p>
-              <p className="text-xs font-semibold text-slate-700">On-Time Arrival</p>
+              <p className="text-xs font-semibold text-slate-700">On-Time Arrival <span className="font-normal text-slate-500">(55%)</span></p>
               <p className="mt-1 text-[11px] text-slate-600">
                 {onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.total} matched shifts` : 'No matched scheduled clock-ins yet'}
               </p>
@@ -443,24 +443,31 @@ export default function MyPerformanceAnalytics() {
           </Card>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="border border-rose-200 bg-rose-50 shadow-sm">
+            <CardContent className="p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Call-Out Attendance (15%)</p>
+              <p className="mt-1 text-2xl font-bold text-rose-900">{callOutAttendance.score}%</p>
+              <p className="text-xs text-slate-600">{callOutAttendance.count > 0 ? `${callOutAttendance.count} officer call-out${callOutAttendance.count === 1 ? '' : 's'} across ${callOutAttendance.scheduled || callOutAttendance.count} elapsed scheduled shifts` : 'No officer call-outs • full 15.0/15 pts'}</p>
+            </CardContent>
+          </Card>
           <Card className="border border-blue-200 bg-blue-50 shadow-sm">
             <CardContent className="p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Client Feedback</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Client Feedback (3%)</p>
               <p className="mt-1 text-2xl font-bold text-blue-900">{clientFeedbackStats.score != null ? `${clientFeedbackStats.score}%` : '100%'}</p>
               <p className="text-xs text-slate-600">{clientFeedbackStats.count > 0 ? `${clientFeedbackStats.avgRating.toFixed(1)}/5 average from ${clientFeedbackStats.count} rating${clientFeedbackStats.count === 1 ? '' : 's'}` : 'Neutral full credit — no client ratings • 3.0/3 pts'}</p>
             </CardContent>
           </Card>
           <Card className="border border-violet-200 bg-violet-50 shadow-sm">
             <CardContent className="p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">Supervisor Rating</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">Supervisor Rating (3%)</p>
               <p className="mt-1 text-2xl font-bold text-violet-900">{supervisorRatingStats.score != null ? `${supervisorRatingStats.score}%` : '100%'}</p>
               <p className="text-xs text-slate-600">{supervisorRatingStats.count > 0 ? `${supervisorRatingStats.avgRating.toFixed(1)}/5 average from ${supervisorRatingStats.count} review${supervisorRatingStats.count === 1 ? '' : 's'}` : 'Neutral full credit — no supervisor review • 3.0/3 pts'}</p>
             </CardContent>
           </Card>
           <Card className="border border-emerald-200 bg-emerald-50 shadow-sm">
             <CardContent className="p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Recognition</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Recognition (3%)</p>
               <p className="mt-1 text-2xl font-bold text-emerald-900">{recognitionStats.score != null ? `${recognitionStats.score}%` : '100%'}</p>
               <p className="text-xs text-slate-600">{recognitionStats.count > 0 ? `${recognitionStats.commendations.length} commendation${recognitionStats.commendations.length === 1 ? '' : 's'} • ${recognitionStats.positiveFeedback.length} positive client recognition` : 'Neutral full credit — no recognition records • 3.0/3 pts'}</p>
             </CardContent>
@@ -470,7 +477,7 @@ export default function MyPerformanceAnalytics() {
         <Card className="overflow-hidden border border-cyan-200 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-cyan-700 to-blue-700 text-white">
             <CardTitle className="flex flex-wrap items-center justify-between gap-2">
-              <span>Job Duty Compliance</span>
+              <span>Job Duty / Performance (15%)</span>
               <span className="text-3xl font-black">{jobDutyStats.score != null ? `${jobDutyStats.score}%` : '—'}</span>
             </CardTitle>
             <p className="text-xs text-cyan-100">Required reports and QR duties are evaluated against the exact worked shift and property. Reassignment exceptions are excluded automatically.</p>
