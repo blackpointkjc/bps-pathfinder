@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
       }
     };
 
-    const [timeEntriesAll, schedulesAll, bidsAll, completionsAll, assignmentsAll, notificationsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll] = await Promise.all([
+    const [timeEntriesAll, schedulesAll, bidsAll, completionsAll, assignmentsAll, notificationsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll] = await Promise.all([
       safeList('TimeEntry', '-clock_in'),
       safeList('Schedule', '-shift_date'),
       safeList('ShiftBid', '-created_date'),
@@ -33,7 +33,8 @@ Deno.serve(async (req) => {
       safeList('IncidentReport', '-incident_date'),
       safeList('Commendation', '-commendation_date'),
       safeList('Complaint', '-complaint_date'),
-      safeList('ClientFeedback', '-created_date'),
+      safeList('ClientFeedback', '-feedback_date'),
+      safeList('PerformanceReview', '-review_date'),
     ]);
 
     const myTimeEntries = timeEntriesAll.filter((r:any) => sameEmail(r, 'officer_email', email) || String(r?.created_by_id || '') === String(me.id || ''));
@@ -48,6 +49,7 @@ Deno.serve(async (req) => {
     const myCommendations = commendationsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
     const myComplaints = complaintsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
     const myFeedback = feedbackAll.filter((r:any) => sameEmail(r, 'officer_email', email));
+    const myReviews = reviewsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
 
     return Response.json({
       success: true,
@@ -65,6 +67,7 @@ Deno.serve(async (req) => {
       commendations: myCommendations,
       complaints: myComplaints,
       clientFeedback: myFeedback,
+      performanceReviews: myReviews,
       meta: {
         timeEntries: myTimeEntries.length,
         schedules: mySchedules.length,
@@ -73,6 +76,9 @@ Deno.serve(async (req) => {
         trainingAssignments: myAssignments.length,
         qrScans: myScans.length,
         incidents: myIncidents.length,
+        commendations: myCommendations.length,
+        clientFeedback: myFeedback.length,
+        performanceReviews: myReviews.length,
       },
     });
   } catch (error) {
