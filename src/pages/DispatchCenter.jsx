@@ -23,6 +23,7 @@ import 'leaflet/dist/leaflet.css';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { formatEasternDateTime, formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { cleanIncident } from '@/utils/callUtils';
 
 
 
@@ -561,7 +562,7 @@ export default function DispatchCenter() {
                                     </div>
                                     <div className="col-span-5">
                                         <div className={`text-[9px] font-mono font-bold truncate ${call.official_cad_verified ? 'text-[#7ec1ff]' : 'text-[#f5c451]'}`}>{call.agency_cad_number || (call.official_cad_verified ? call.call_id : '') || call.bps_reference || call.call_id || 'ASSIGNING…'}</div>
-                                        <div className="truncate text-[11px] font-bold leading-tight text-white group-hover:text-cyan-100">{call.incident}</div>
+                                        <div className="truncate text-[11px] font-bold leading-tight text-white group-hover:text-cyan-100">{cleanIncident(call)}</div>
                                         <div className="mt-1 truncate text-[9px] text-slate-400">{call.location}</div>
                                         <div className="mt-1 text-[8px] font-semibold tracking-wide text-slate-600">{call.agency || 'AGENCY N/A'}</div>
                                     </div>
@@ -594,7 +595,7 @@ export default function DispatchCenter() {
                                         </span>
                                     </div>
                                     <div className="px-3 md:px-4 py-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-[10px]">
-                                        <div><span className="text-slate-500">INCIDENT: </span><span className="text-white font-bold">{selectedCall.incident}</span></div>
+                                        <div><span className="text-slate-500">INCIDENT: </span><span className="text-white font-bold">{cleanIncident(selectedCall)}</span></div>
                                         <div><span className="text-slate-500">AGENCY: </span><span className="text-white">{selectedCall.agency || '—'}</span></div>
                                         <div><span className="text-slate-500">PRIORITY: </span><span className="text-white">{selectedCall.priority ? selectedCall.priority.charAt(0).toUpperCase() + selectedCall.priority.slice(1).toLowerCase() : '—'}</span></div>
                                         <div className="col-span-2"><span className="text-slate-500">LOCATION: </span><span className="text-white">{selectedCall.location}</span></div>
