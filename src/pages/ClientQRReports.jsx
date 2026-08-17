@@ -427,7 +427,7 @@ function ScanDetailView({ group, allCheckpoints }) {
       {hourlyRounds.length > 0 ? (
         <div>
           <p className="font-semibold text-slate-800 mb-3 flex items-center gap-1">
-            <Clock className="w-4 h-4" /> Hourly Patrol Rounds
+            <Clock className="w-4 h-4" /> Required Patrol Windows ({group.rule?.qr_frequency_minutes || 60}-min frequency / {group.rule?.qr_window_minutes || 30}-min window)
           </p>
           <div className="space-y-3">
             {hourlyRounds.map((round, idx) => (
