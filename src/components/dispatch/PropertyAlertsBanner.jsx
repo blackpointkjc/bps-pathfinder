@@ -33,6 +33,13 @@ export default function PropertyAlertsBanner() {
 
             const dismissedPairs = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
             const dismissedEventKeys = new Set((receipts || []).map(item => String(item.event_key || '')).filter(Boolean));
+            const localDismissKey = `bps:property-alert-dismissed:${email || String(me?.id || '').trim().toLowerCase()}`;
+            let locallyDismissed = new Set();
+            try {
+                locallyDismissed = new Set(JSON.parse(window.localStorage.getItem(localDismissKey) || '[]'));
+            } catch {
+                locallyDismissed = new Set();
+            }
             const activeCallById = new Map((calls || [])
                 .filter(call => !HIDDEN_CALL_STATUSES.has(normalizedStatus(call.status)))
                 .map(call => [String(call.id), call]));
@@ -47,7 +54,7 @@ export default function PropertyAlertsBanner() {
                 const eventKey = `${alert.propertyId}|${stableCallId}`;
                 if (seenPairs.has(eventKey)) continue;
                 seenPairs.add(eventKey);
-                if (dismissedPairs.has(pair) || dismissedEventKeys.has(eventKey)) continue;
+                if (dismissedPairs.has(pair) || dismissedEventKeys.has(eventKey) || locallyDismissed.has(pair) || locallyDismissed.has(eventKey)) continue;
                 visible.push({ ...alert, _eventKey: eventKey, _callTime: linkedCall.time_received || linkedCall.created_date });
                 if (visible.length >= 10) break;
             }
@@ -62,7 +69,19 @@ export default function PropertyAlertsBanner() {
     const handleAcknowledge = async (alert) => {
         stopAllAlerts();
         const eventKey = alert._eventKey || `${alert.callId}:${alert.propertyId}`;
+        const rawPair = `${alert.callId}:${alert.propertyId}`;
         setAlerts(current => current.filter(item => (item._eventKey || `${item.callId}:${item.propertyId}`) !== eventKey));
+        try {
+            const me = await base44.auth.me();
+            const email = String(me?.email || me?.id || '').trim().toLowerCase();
+            const localDismissKey = `bps:property-alert-dismissed:${email}`;
+            const saved = new Set(JSON.parse(window.localStorage.getItem(localDismissKey) || '[]'));
+            saved.add(eventKey);
+            saved.add(rawPair);
+            window.localStorage.setItem(localDismissKey, JSON.stringify([...saved].slice(-1000)));
+        } catch {
+            // PropertyAlertReceipt still provides durable cross-device dismissal.
+        }
         try {
             const result = await base44.functions.invoke('acknowledgePropertyAlert', { alert_id: alert.id, action: 'acknowledged' });
             const payload = result?.data || result || {};
