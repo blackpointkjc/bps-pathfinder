@@ -18,6 +18,7 @@ import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview'
 import StructuredPeopleEditor from '@/components/reports/StructuredPeopleEditor';
 import { toast } from 'sonner';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { listActiveDispatchCalls } from '@/lib/reportCallLinking';
 
 // Build an incident description that references the CAD number instead of the
 // upstream GRAC feed tag (e.g. "VANDALISM at ... [GRAC:abc]" -> "VANDALISM at ... [CAD:B1123]").
@@ -180,15 +181,10 @@ export default function IncidentReports() {
 
   const { data: activeDispatchCalls } = useQuery({
     queryKey: ['activeDispatchCallsForReports'],
-    queryFn: async () => {
-      const calls = await base44.entities.DispatchCall.list('-time_received');
-      return calls.filter(call => {
-        const receivedAt = new Date(call.time_received || call.created_date).getTime();
-        return Number.isFinite(receivedAt) && Date.now() - receivedAt < 61 * 60 * 1000 && !['Cleared', 'Cancelled'].includes(call.status);
-      });
-    },
+    queryFn: () => listActiveDispatchCalls(500),
     initialData: [],
-    refetchInterval: 15000,
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
   });
 
   const selectDispatchCall = (callId) => {
