@@ -12,7 +12,7 @@ import {
 import { format, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { calculatePunctuality, calculateBidStanding, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
+import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateQrPatrol, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 
@@ -140,32 +140,10 @@ export default function MyPerformanceAnalytics() {
     return { regular: Math.round(regular * 10) / 10, overtime: Math.round(overtime * 10) / 10, total: Math.round((regular + overtime) * 10) / 10, weeklyData };
   }, [timeEntries, currentMonthStart, currentMonthEnd]);
 
-  // Training completion
-  const trainingStats = React.useMemo(() => {
-    if (!user) return { completed: 0, total: 0, percentage: 0, pending: 0, complianceApproved: 0, compliancePending: 0 };
-
-    const assignedModules = (allTraining || []).filter(module =>
-      (module.assigned_to || []).some(email => emailKey(email) === emailKey(user.email)) ||
-      (module.assigned_divisions || []).includes(user.division) ||
-      (module.assigned_ranks || []).includes(user.rank) ||
-      module.required === true
-    );
-    const completedIds = new Set((trainingCompletions || []).filter(tc => tc.completed).map(tc => String(tc.training_module_id)));
-    const moduleCompleted = assignedModules.filter(module => completedIds.has(String(module.id))).length;
-
-    // TrainingAssignment is the authoritative compliance workflow. Count every
-    // assignment, including certification/renewal items that do not map to a module.
-    const assignmentApproved = (myAssignments || []).filter(a => a.status === 'approved').length;
-    const assignmentPending = (myAssignments || []).filter(a => a.status !== 'approved').length;
-    const assignmentTotal = assignmentApproved + assignmentPending;
-
-    const completed = moduleCompleted + assignmentApproved;
-    const total = assignedModules.length + assignmentTotal;
-    const pending = Math.max(0, total - completed);
-    const percentage = total > 0 ? Math.round((completed / total) * 100) : 100;
-
-    return { completed, total, percentage, pending, complianceApproved: assignmentApproved, compliancePending: assignmentPending };
-  }, [allTraining, trainingCompletions, user, myAssignments]);
+  const trainingStats = React.useMemo(
+    () => calculateTrainingScore(user, allTraining, trainingCompletions, myAssignments),
+    [user, allTraining, trainingCompletions, myAssignments]
+  );
 
   // Bid Standing: unanswered/pending bids are neutral, not failures. Only rejected
   // bids reduce the percentage; withdrawn bids are excluded from the score.
@@ -174,61 +152,11 @@ export default function MyPerformanceAnalytics() {
     [myBids, currentMonthStart, currentMonthEnd]
   );
 
-  // QR Patrol stats for the current month. A scan counts only while the officer is
-  // inside an actual completed TimeEntry, and round windows stop at clock-out.
-  const qrPatrolStats = useMemo(() => {
-    if (!qrScanEvents || !allCheckpoints || !timeEntries) return { totalScans: 0, successScans: 0, missedRounds: 0, completedRounds: 0 };
-
-    const completedEntries = timeEntries.filter(entry => entry.clock_in && entry.clock_out);
-    const monthlyScans = qrScanEvents.filter(scan => scan.scanned_date >= currentMonthStart && scan.scanned_date <= currentMonthEnd);
-    const scansInWorkedTime = monthlyScans.filter(scan => {
-      const stamp = new Date(scan.scanned_at).getTime();
-      return Number.isFinite(stamp) && completedEntries.some(entry => {
-        const start = new Date(entry.clock_in).getTime();
-        const end = new Date(entry.clock_out).getTime();
-        return stamp >= start && stamp <= end;
-      });
-    });
-
-    const totalScans = scansInWorkedTime.length;
-    const successScans = scansInWorkedTime.filter(scan => scan.scan_status === 'success').length;
-    let completedRounds = 0;
-    let missedRounds = 0;
-
-    const siteKey = value => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
-    completedEntries.forEach(entry => {
-      const entryDate = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
-      if (entryDate < currentMonthStart || entryDate > currentMonthEnd) return;
-      const start = new Date(entry.clock_in);
-      const end = new Date(entry.clock_out);
-      const site = siteKey(entry.location);
-      const required = allCheckpoints.filter(cp => siteKey(cp.property_site) === site && cp.is_active !== false && cp.is_required !== false);
-      if (!required.length) return;
-
-      const shiftScans = scansInWorkedTime.filter(scan => {
-        const stamp = new Date(scan.scanned_at);
-        return stamp >= start && stamp <= end && siteKey(scan.property_site) === site;
-      });
-      let windowStart = new Date(start);
-      let guard = 0;
-      while (windowStart < end && guard < 24) {
-        guard++;
-        const windowEnd = new Date(Math.min(end.getTime(), windowStart.getTime() + 30 * 60 * 1000));
-        const scannedIds = new Set(shiftScans
-          .filter(scan => scan.scan_status === 'success' && new Date(scan.scanned_at) >= windowStart && new Date(scan.scanned_at) <= windowEnd)
-          .map(scan => String(scan.checkpoint_id)));
-        if (required.every(cp => scannedIds.has(String(cp.id)))) completedRounds++;
-        else missedRounds++;
-        windowStart = new Date(windowStart.getTime() + 60 * 60 * 1000);
-      }
-    });
-
-    return { totalScans, successScans, completedRounds, missedRounds };
-  }, [qrScanEvents, allCheckpoints, timeEntries, currentMonthStart, currentMonthEnd]);
-
-  const qrPatrolRate = (qrPatrolStats.completedRounds + qrPatrolStats.missedRounds) > 0
-    ? Math.round((qrPatrolStats.completedRounds / (qrPatrolStats.completedRounds + qrPatrolStats.missedRounds)) * 100)
-    : null;
+  const qrPatrolStats = useMemo(
+    () => calculateQrPatrol(timeEntries, qrScanEvents, allCheckpoints, currentMonthStart, currentMonthEnd),
+    [timeEntries, qrScanEvents, allCheckpoints, currentMonthStart, currentMonthEnd]
+  );
+  const qrPatrolRate = qrPatrolStats.score;
   const clientFeedbackStats = useMemo(() => calculateClientFeedback(myClientFeedback, currentMonthStart, currentMonthEnd), [myClientFeedback, currentMonthStart, currentMonthEnd]);
   const supervisorRatingStats = useMemo(() => calculateSupervisorRating(myPerformanceReviews, currentMonthStart, currentMonthEnd), [myPerformanceReviews, currentMonthStart, currentMonthEnd]);
   const recognitionStats = useMemo(() => calculateRecognition(myCommendations, myClientFeedback, currentMonthStart, currentMonthEnd), [myCommendations, myClientFeedback, currentMonthStart, currentMonthEnd]);
