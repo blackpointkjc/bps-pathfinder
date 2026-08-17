@@ -64,7 +64,7 @@ const itemVariants = {
   },
 };
 
-export default function Dashboard() {
+export default function Dashboard({ embedded = false }) {
   const queryClient = useQueryClient();
 
   const handleRefresh = async () => {
@@ -252,7 +252,7 @@ export default function Dashboard() {
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-    <div className="relative min-h-screen overflow-hidden bg-slate-950">
+    <div className={`relative overflow-hidden bg-slate-950 ${embedded ? 'min-h-0' : 'min-h-screen'}`}>
       {/* Cinematic animated gradient mesh background */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-blue-600/20 blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
