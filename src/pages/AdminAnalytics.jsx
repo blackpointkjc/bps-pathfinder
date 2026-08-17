@@ -12,6 +12,7 @@ import { format, parseISO, differenceInMinutes, startOfWeek, addDays, startOfMon
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer, isInternalMember } from '@/lib/directoryUtils';
+import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateQrPatrol, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 
@@ -47,13 +48,19 @@ export default function AdminAnalytics() {
   const divisions = analyticsData.divisions || [];
   const timeEntries = analyticsData.timeEntries || [];
   const schedules = analyticsData.schedules || [];
+  const allBids = analyticsData.bids || [];
   const trainingCompletions = analyticsData.trainingCompletions || [];
+  const trainingAssignments = analyticsData.trainingAssignments || [];
   const allTraining = (analyticsData.trainingModules || []).filter(module => module.active !== false);
+  const allQrScans = analyticsData.qrScans || [];
+  const allQrCheckpoints = analyticsData.qrCheckpoints || [];
   const incidentReports = analyticsData.incidentReports || [];
   const callsForService = analyticsData.callsForService || [];
   const dispatchCalls = analyticsData.dispatchCalls || [];
   const allCommendations = analyticsData.commendations || [];
   const allComplaints = analyticsData.complaints || [];
+  const allClientFeedback = analyticsData.clientFeedback || [];
+  const allPerformanceReviews = analyticsData.performanceReviews || [];
 
   const filteredUsers = useMemo(() => {
     if (!allUsers) return [];
