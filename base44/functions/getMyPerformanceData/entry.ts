@@ -23,12 +23,12 @@ Deno.serve(async (req) => {
       safeList('TimeEntry', '-clock_in'),
       safeList('Schedule', '-shift_date'),
       safeList('ShiftBid', '-created_date'),
-      safeList('TrainingCompletion', '-completed_date'),
+      safeList('TrainingCompletion', '-completion_date'),
       safeList('TrainingAssignment', '-assigned_date'),
       safeList('Notification', '-created_date'),
       safeList('CallOut', '-call_out_date'),
       safeList('QRScanEvent', '-scanned_at'),
-      safeList('QRCheckpoint', 'site_name'),
+      safeList('QRCheckpoint', 'property_site'),
       safeList('TrainingModule', '-created_date'),
       safeList('IncidentReport', '-incident_date'),
       safeList('Commendation', '-commendation_date'),
@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       safeList('ClientFeedback', '-created_date'),
     ]);
 
-    const myTimeEntries = timeEntriesAll.filter((r:any) => sameEmail(r, 'officer_email', email) || sameEmail(r, 'created_by', email));
+    const myTimeEntries = timeEntriesAll.filter((r:any) => sameEmail(r, 'officer_email', email) || String(r?.created_by_id || '') === String(me.id || ''));
     const mySchedules = schedulesAll.filter((r:any) => sameEmail(r, 'officer_email', email));
     const myBids = bidsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
     const myCompletions = completionsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
