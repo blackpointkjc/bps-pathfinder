@@ -32,7 +32,8 @@ export default function ClientSupervisors() {
     queryFn: async () => {
       if (!effectiveLocation) return null;
       const locations = await listDirectoryLocations();
-      return locations.find(loc => loc.site_name === effectiveLocation);
+      const key = String(effectiveLocation || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
+      return locations.find(loc => String(loc.site_name || '').trim().toLowerCase() === key) || null;
     },
     enabled: !!effectiveLocation,
   });
@@ -44,9 +45,10 @@ export default function ClientSupervisors() {
   });
 
   // Get site supervisors from location's assigned_supervisors field ONLY
+  const assignedSupervisorEmails = new Set((location?.assigned_supervisors || []).map(email => String(email || '').trim().toLowerCase()));
   const siteSupervisors = allUsers?.filter(u => 
     !u.termination_date &&
-    location?.assigned_supervisors?.includes(u.email)
+    assignedSupervisorEmails.has(String(u.email || '').trim().toLowerCase())
   ) || [];
 
   // Get division command (Senior Corporal to Captain ranks from the same division)
@@ -77,8 +79,8 @@ export default function ClientSupervisors() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="client-supervisors-page min-h-screen w-full min-w-0 overflow-x-hidden p-3 sm:p-4 md:p-6">
+      <div className="mx-auto w-full min-w-0 max-w-[1400px] space-y-5 sm:space-y-6">
         {clientLocations.length > 1 && (
           <Card className="border-none shadow-lg bg-gradient-to-r from-purple-50 to-blue-50">
             <CardContent className="p-6">
@@ -106,30 +108,30 @@ export default function ClientSupervisors() {
           </Card>
         )}
 
-        <div className="flex items-center gap-3">
-          <UserCheck className="w-8 h-8 text-purple-600" />
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Your Site Supervisors</h1>
-            <p className="text-slate-600 flex items-center gap-2 mt-1">
+        <div className="flex min-w-0 items-start gap-3">
+          <UserCheck className="h-8 w-8 shrink-0 text-violet-400" />
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-white sm:text-3xl">Your Site Supervisors</h1>
+            <p className="mt-1 flex min-w-0 items-center gap-2 break-words text-slate-300">
               <MapPin className="w-4 h-4" />
               {effectiveLocation}
             </p>
           </div>
         </div>
 
-        <Card className="border-none shadow-xl bg-gradient-to-r from-green-50 to-emerald-50">
+        <Card className="w-full min-w-0 overflow-hidden border border-slate-700 bg-slate-900 shadow-xl">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-900">
+            <CardTitle className="flex items-center gap-2 text-emerald-300">
               <UserCheck className="w-6 h-6" />
               Site Supervisors
             </CardTitle>
-            <p className="text-sm text-green-700">Your on-site Corporal and Senior Corporal supervisors</p>
+            <p className="text-sm text-slate-400">Supervisors assigned directly to this client location</p>
           </CardHeader>
           <CardContent className="space-y-4">
             {siteSupervisors.length > 0 ? (
               <div className="grid md:grid-cols-2 gap-4">
                 {siteSupervisors.map((supervisor) => (
-                  <div key={supervisor.id} className="bg-white p-4 rounded-lg border border-green-200 shadow-sm">
+                  <div key={supervisor.id} className="min-w-0 rounded-lg border border-slate-700 bg-slate-800 p-4 shadow-sm">
                     <div className="flex items-center gap-3 mb-3">
                       {supervisor.profile_photo_url ? (
                         <img
@@ -143,7 +145,7 @@ export default function ClientSupervisors() {
                         </div>
                       )}
                       <div className="flex-1">
-                        <p className="font-bold text-slate-900">
+                        <p className="break-words font-bold text-white">
                           {supervisor.first_name} {supervisor.last_name}
                         </p>
                         <Badge className={`${getRankColor(supervisor.rank)} text-xs`}>
@@ -152,7 +154,7 @@ export default function ClientSupervisors() {
                       </div>
                     </div>
                     {supervisor.unit_number && (
-                      <p className="text-sm text-slate-600">
+                      <p className="text-sm text-slate-300">
                         <span className="font-semibold">Unit:</span> #{supervisor.unit_number}
                       </p>
                     )}
@@ -160,24 +162,24 @@ export default function ClientSupervisors() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-500 italic">No site supervisors currently assigned to this location.</p>
+              <div className="rounded-lg border border-slate-700 bg-slate-800 p-4 text-sm text-slate-300">No site supervisors are assigned to {effectiveLocation}. If this location should have supervisors, update the location's Assigned Supervisors field in Admin.</div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-xl bg-gradient-to-r from-yellow-50 to-amber-50">
+        <Card className="w-full min-w-0 overflow-hidden border border-slate-700 bg-slate-900 shadow-xl">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-yellow-900">
+            <CardTitle className="flex items-center gap-2 text-amber-300">
               <Shield className="w-6 h-6" />
               Division Command
             </CardTitle>
-            <p className="text-sm text-yellow-700">Senior Corporals through Captains for {location?.division}</p>
+            <p className="text-sm text-slate-400">Senior Corporals through Captains for {location?.division || 'this location'}</p>
           </CardHeader>
           <CardContent className="space-y-4">
             {divisionCommand.length > 0 ? (
               <div className="grid md:grid-cols-2 gap-4">
                 {divisionCommand.map((supervisor) => (
-                  <div key={supervisor.id} className="bg-white p-4 rounded-lg border border-yellow-200 shadow-sm">
+                  <div key={supervisor.id} className="min-w-0 rounded-lg border border-slate-700 bg-slate-800 p-4 shadow-sm">
                     <div className="flex items-center gap-3 mb-3">
                       {supervisor.profile_photo_url ? (
                         <img
@@ -191,7 +193,7 @@ export default function ClientSupervisors() {
                         </div>
                       )}
                       <div className="flex-1">
-                        <p className="font-bold text-slate-900">
+                        <p className="break-words font-bold text-white">
                           {supervisor.first_name} {supervisor.last_name}
                         </p>
                         <Badge className={`${getRankColor(supervisor.rank)} text-xs`}>
@@ -200,7 +202,7 @@ export default function ClientSupervisors() {
                       </div>
                     </div>
                     {supervisor.unit_number && (
-                      <p className="text-sm text-slate-600">
+                      <p className="text-sm text-slate-300">
                         <span className="font-semibold">Unit:</span> #{supervisor.unit_number}
                       </p>
                     )}
@@ -208,18 +210,18 @@ export default function ClientSupervisors() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-500 italic">No division command officers available.</p>
+              <p className="text-sm text-slate-400 italic">No division command officers are available for this location.</p>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-blue-50">
+        <Card className="w-full min-w-0 border border-slate-700 bg-slate-900 shadow-lg">
           <CardContent className="p-6">
-            <h3 className="font-bold text-blue-900 mb-3">Chain of Command</h3>
-            <div className="space-y-2 text-sm text-blue-800">
+            <h3 className="mb-3 font-bold text-blue-300">Chain of Command</h3>
+            <div className="space-y-2 text-sm text-slate-300">
               <p><strong>For immediate site issues:</strong> Contact your Site Supervisor</p>
               <p><strong>For escalated concerns:</strong> Contact Division Command (Senior Corporal through Captain)</p>
-              <p className="text-xs text-blue-600 mt-3">
+              <p className="mt-3 text-xs text-slate-400">
                 Note: Contact information is not displayed for security and privacy reasons. For urgent matters, please contact Black Point Protection dispatch.
               </p>
             </div>
