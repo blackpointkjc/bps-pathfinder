@@ -267,6 +267,8 @@ export default function DailyActivityReports() {
           device_timezone: deviceTimezone,
           gps_latitude: gpsLat,
           gps_longitude: gpsLng,
+          shift_id: activeEntry?.id || editingReport?.shift_id || '',
+          officer_email: user?.email || editingReport?.officer_email || '',
         });
 
         if (!isDraft) {
@@ -295,6 +297,8 @@ export default function DailyActivityReports() {
           device_timezone: deviceTimezone,
           gps_latitude: gpsLat,
           gps_longitude: gpsLng,
+          shift_id: activeEntry?.id || '',
+          officer_email: user?.email || '',
         });
         return report;
       }
