@@ -66,7 +66,7 @@ export default function ClientPayrollReport() {
     return () => unsubscribers.forEach(unsubscribe => unsubscribe());
   }, [user?.id, user?.email, refetchBilling]);
 
-  const clientLocations = billingData.assigned_locations || user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
+  const clientLocations = billingData.assigned_locations?.length ? billingData.assigned_locations : [...new Set([...(Array.isArray(user?.assigned_locations) ? user.assigned_locations : []), ...(Array.isArray(user?.assigned_sites) ? user.assigned_sites : []), ...(user?.assigned_location ? [user.assigned_location] : [])].filter(Boolean))];
   const timeEntries = billingData.time_entries || [];
   const officers = billingData.officers || [];
   const locations = billingData.locations || [];
