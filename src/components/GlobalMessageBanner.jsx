@@ -4,6 +4,7 @@ import { Bell, MessageCircle, Siren, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
 import { announceVoice } from '@/utils/voiceAnnouncer';
+import { cleanIncident } from '@/utils/callUtils';
 
 const SOURCES = [
   { entity: 'ChatMessage', label: 'Team Chat', page: 'TeamChat', kind: 'message' },
@@ -128,7 +129,7 @@ function announcedCallStatus(value) {
 }
 
 function propertyCallSummary(alert, call = {}) {
-  const incident = call.incident || alert?.callIncident || 'Unknown incident';
+  const incident = cleanIncident({ ...call, incident: call.incident || alert?.callIncident || '', agency: call.agency || alert?.agency || '' });
   const address = call.location || alert?.callLocation || 'Address unavailable';
   const details = [
     `${incident}`,
