@@ -113,6 +113,65 @@ export function calculateBidStanding(bids = [], monthStart, monthEnd) {
   return { total: monthly.length, scoredTotal, accepted, rejected, pending, withdrawn, score };
 }
 
+export function calculateTrainingScore(user, modules = [], completions = [], assignments = []) {
+  if (!user?.email) return { completed: 0, pending: 0, total: 0, percentage: null, pendingNames: [] };
+  const assignedModules = modules.filter(module => module.active !== false && (
+    (module.assigned_to || []).some(email => emailKey(email) === emailKey(user.email)) ||
+    (module.assigned_divisions || []).includes(user.division) ||
+    (module.assigned_ranks || []).includes(user.rank) ||
+    module.required === true
+  ));
+  const completedIds = new Set(completions.filter(item => item.completed && emailKey(item.officer_email) === emailKey(user.email)).map(item => String(item.training_module_id)));
+  const moduleCompleted = assignedModules.filter(module => completedIds.has(String(module.id))).length;
+  const officerAssignments = assignments.filter(item => emailKey(item.officer_email) === emailKey(user.email));
+  const assignmentApproved = officerAssignments.filter(item => item.status === 'approved').length;
+  const assignmentPending = officerAssignments.filter(item => item.status !== 'approved').length;
+  const completed = moduleCompleted + assignmentApproved;
+  const total = assignedModules.length + officerAssignments.length;
+  const pending = Math.max(0, total - completed);
+  const pendingNames = [
+    ...assignedModules.filter(module => !completedIds.has(String(module.id))).map(module => module.title || 'Training module'),
+    ...officerAssignments.filter(item => item.status !== 'approved').map(item => `${item.training_name || 'Compliance item'} (${String(item.status || 'pending').replaceAll('_', ' ')})`),
+  ];
+  return { completed, pending, total, percentage: total ? Math.round((completed / total) * 100) : null, assignmentApproved, assignmentPending, pendingNames };
+}
+
+export function calculateQrPatrol(timeEntries = [], scans = [], checkpoints = [], monthStart, monthEnd) {
+  const completedEntries = timeEntries.filter(entry => entry.clock_in && entry.clock_out && (!monthStart || easternDateKey(entry.clock_in) >= monthStart) && (!monthEnd || easternDateKey(entry.clock_in) <= monthEnd));
+  const siteKey = value => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
+  const scansInWorkedTime = scans.filter(scan => {
+    const stamp = new Date(scan.scanned_at).getTime();
+    const localDate = scan.scanned_date || easternDateKey(scan.scanned_at);
+    if (!Number.isFinite(stamp) || (monthStart && localDate < monthStart) || (monthEnd && localDate > monthEnd)) return false;
+    return completedEntries.some(entry => stamp >= new Date(entry.clock_in).getTime() && stamp <= new Date(entry.clock_out).getTime());
+  });
+
+  let completedRounds = 0;
+  let missedRounds = 0;
+  completedEntries.forEach(entry => {
+    const start = new Date(entry.clock_in);
+    const end = new Date(entry.clock_out);
+    const site = siteKey(entry.location);
+    const required = checkpoints.filter(cp => cp.is_active !== false && cp.is_required !== false && siteKey(cp.property_site) === site);
+    if (!required.length) return;
+    const shiftScans = scansInWorkedTime.filter(scan => {
+      const stamp = new Date(scan.scanned_at);
+      return stamp >= start && stamp <= end && siteKey(scan.property_site) === site;
+    });
+    let windowStart = new Date(start);
+    let guard = 0;
+    while (windowStart < end && guard < 24) {
+      guard++;
+      const windowEnd = new Date(Math.min(end.getTime(), windowStart.getTime() + 30 * 60 * 1000));
+      const scannedIds = new Set(shiftScans.filter(scan => scan.scan_status === 'success' && new Date(scan.scanned_at) >= windowStart && new Date(scan.scanned_at) <= windowEnd).map(scan => String(scan.checkpoint_id)));
+      if (required.every(cp => scannedIds.has(String(cp.id)))) completedRounds++; else missedRounds++;
+      windowStart = new Date(windowStart.getTime() + 60 * 60 * 1000);
+    }
+  });
+  const totalRounds = completedRounds + missedRounds;
+  return { totalScans: scansInWorkedTime.length, successScans: scansInWorkedTime.filter(scan => scan.scan_status === 'success').length, completedRounds, missedRounds, score: totalRounds ? Math.round((completedRounds / totalRounds) * 100) : null };
+}
+
 export function calculateClientFeedback(feedback = [], monthStart, monthEnd) {
   const monthly = feedback.filter(item => {
     const date = item.shift_date || easternDateKey(item.feedback_date || item.created_date);
