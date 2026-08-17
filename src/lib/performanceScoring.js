@@ -300,11 +300,6 @@ export function calculateJobDutyCompliance({
     const end = work.clock_out ? new Date(work.clock_out).getTime() : Date.now();
     return Number.isFinite(start) && Number.isFinite(end) && stamp >= start && stamp <= end && siteKey(work.location) === site;
   });
-  const eligibleQrScans = qrScans.filter(scan => {
-    const stamp = new Date(scan.scanned_at).getTime();
-    return Number.isFinite(stamp) && scan.scan_status === 'success' && scannerWasWorkingAtSite(scan, siteKey(scan.property_site), stamp);
-  });
-
   const shiftDetails = [];
   const usedDarIds = new Set();
   let darRequired = 0, darCompleted = 0;
