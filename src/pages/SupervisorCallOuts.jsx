@@ -318,7 +318,7 @@ export default function SupervisorCallOuts() {
                   </SelectContent>
                 </Select>
               </div>
-            )
+            )}
 
             <div className="space-y-2">
               <Label>Reason *</Label>
