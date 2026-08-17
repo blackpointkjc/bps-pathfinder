@@ -165,8 +165,7 @@ export default function ClientSchedule() {
           <h1 className="mb-2 mt-1 text-2xl font-bold text-white sm:text-3xl">Site Schedule</h1>
           <div className="flex min-w-0 flex-wrap items-center gap-2 text-slate-300">
             <MapPin className="w-5 h-5" />
-            <span>{effectiveLocation}</span>
-            {clientLocations.length > 1 && <span className="text-xs text-slate-500">• {clientLocations.length} properties combined</span>}
+            <span>{clientLocations.length > 1 ? `${clientLocations.length} Assigned Properties` : effectiveLocation}</span>
           </div>
         </div>
 
@@ -207,7 +206,36 @@ export default function ClientSchedule() {
           </div>
         )}
 
-        <div className="client-schedule-table w-full min-w-0 overflow-x-auto rounded-xl border border-slate-700 bg-slate-900 shadow-lg">
+        <div className="space-y-5">
+          {clientLocations.map((site) => {
+            const siteSchedules = visibleSchedules.filter(schedule => siteKey(schedule.location) === siteKey(site));
+            return (
+              <section key={site} className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-lg">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 bg-slate-800 px-4 py-4 sm:px-5">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-violet-400" /><h2 className="truncate text-base font-black text-white sm:text-lg">{site}</h2></div>
+                    <p className="mt-1 text-xs text-slate-400">Published security coverage for this property</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-600 bg-slate-950 px-3 py-1.5 text-xs font-bold text-slate-300">{siteSchedules.length} shift{siteSchedules.length === 1 ? '' : 's'}</div>
+                </div>
+                <div className="grid gap-px bg-slate-700 sm:grid-cols-2 xl:grid-cols-7">
+                  {weekDays.map(day => {
+                    const dateStr = format(day, 'yyyy-MM-dd');
+                    const daySchedules = siteSchedules.filter(schedule => schedule.shift_date === dateStr).sort((a, b) => String(a.start_time || '').localeCompare(String(b.start_time || '')));
+                    return (
+                      <div key={`${site}-${dateStr}`} className="min-h-[118px] bg-slate-900 p-3">
+                        <div className="mb-3 border-b border-slate-800 pb-2"><div className="text-[10px] font-black uppercase tracking-widest text-violet-300">{format(day, 'EEE')}</div><div className="text-sm font-bold text-white">{format(day, 'MMM d')}</div></div>
+                        {daySchedules.length ? <div className="space-y-2">{daySchedules.map(schedule => <div key={schedule.id} className="rounded-lg border border-violet-800/60 bg-violet-950/40 p-2.5"><div className="text-sm font-black text-violet-100">{schedule.start_time} – {schedule.end_time}</div><div className="mt-1 text-xs font-medium text-slate-300">{getOfficerFullDisplay(schedule.officer_email)}</div>{getOfficerUnitNumber(schedule.officer_email) && <div className="mt-0.5 text-[10px] text-slate-500">Unit #{getOfficerUnitNumber(schedule.officer_email)}</div>}</div>)}</div> : <div className="py-4 text-center text-xs text-slate-600">No scheduled coverage</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+
+        <div className="hidden client-schedule-table w-full min-w-0 overflow-x-auto rounded-xl border border-slate-700 bg-slate-900 shadow-lg">
           <table className="w-full min-w-[900px] table-fixed border-collapse text-xs text-slate-100 xl:min-w-0">
             <thead>
               <tr className="bg-slate-800">
