@@ -22,7 +22,11 @@ export default function ClientSchedule() {
   });
 
 
-  const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
+  const clientLocations = [...new Set([
+    ...(Array.isArray(user?.assigned_locations) ? user.assigned_locations : []),
+    ...(Array.isArray(user?.assigned_sites) ? user.assigned_sites : []),
+    ...(user?.assigned_location ? [user.assigned_location] : []),
+  ].filter(Boolean))];
 
   useEffect(() => {
     if (clientLocations.length > 0 && !selectedLocation) {
@@ -240,14 +244,14 @@ export default function ClientSchedule() {
         )}
 
         <div className="client-schedule-table w-full min-w-0 overflow-x-auto rounded-xl border border-slate-700 bg-slate-900 shadow-lg">
-          <table className="w-full min-w-[1050px] border-collapse text-xs text-slate-100">
+          <table className="w-full min-w-[900px] table-fixed border-collapse text-xs text-slate-100 xl:min-w-0">
             <thead>
               <tr className="bg-slate-800">
-                <th className="sticky left-0 z-10 min-w-[220px] border border-slate-600 bg-slate-800 p-3 text-left">
+                <th className="sticky left-0 z-10 w-[190px] border border-slate-600 bg-slate-800 p-3 text-left">
                     <div className="font-bold text-white">Officer / Unit</div>
                   </th>
                 {weekDays.map((day) => (
-                  <th key={day.toString()} className="min-w-[120px] border border-slate-600 bg-slate-800 p-3 text-center">
+                  <th key={day.toString()} className="border border-slate-600 bg-slate-800 p-2 text-center sm:p-3">
                     <div className="text-white font-bold">{format(day, 'EEE')}</div>
                     <div className="text-white text-[10px]">{format(day, 'M/d')}</div>
                   </th>
@@ -283,11 +287,11 @@ export default function ClientSchedule() {
                       const daySchedules = officerSchedules[officerEmail].filter(s => s.shift_date === dateStr);
 
                       return (
-                        <td key={day.toString()} className="border border-slate-600 bg-inherit p-2">
+                        <td key={day.toString()} className="min-w-0 border border-slate-600 bg-inherit p-1.5 sm:p-2">
                           {daySchedules.length > 0 ? (
                             <div className="space-y-1">
                               {daySchedules.map((schedule) => (
-                                <div key={schedule.id} className="rounded border border-violet-700/60 bg-violet-950/70 p-2 text-center text-[10px] font-semibold text-violet-200">
+                                <div key={schedule.id} className="min-w-0 rounded border border-violet-700/60 bg-violet-950/70 p-2 text-center text-[10px] font-bold leading-4 text-violet-100">
                                   <div>{schedule.start_time}-{schedule.end_time}</div>
                                 </div>
                               ))}
