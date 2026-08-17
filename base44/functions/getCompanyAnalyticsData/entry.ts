@@ -25,15 +25,16 @@ Deno.serve(async (req) => {
       }
     };
 
-    const [users, divisions, timeEntries, schedules, trainingCompletions, trainingModules, incidentReports, callsForService, commendations, complaints] = await Promise.all([
+    const [users, divisions, timeEntries, schedules, trainingCompletions, trainingModules, incidentReports, callsForService, dispatchCalls, commendations, complaints] = await Promise.all([
       list('User', '-updated_date'),
-      list('Division', 'name'),
+      list('Division', 'division_name'),
       list('TimeEntry', '-clock_in'),
       list('Schedule', '-shift_date'),
-      list('TrainingCompletion', '-completed_date'),
+      list('TrainingCompletion', '-completion_date'),
       list('TrainingModule', '-created_date'),
       list('IncidentReport', '-incident_date'),
       list('CallForService', '-call_time'),
+      list('DispatchCall', '-time_received'),
       list('Commendation', '-commendation_date'),
       list('Complaint', '-complaint_date'),
     ]);
@@ -48,6 +49,7 @@ Deno.serve(async (req) => {
       trainingModules,
       incidentReports,
       callsForService,
+      dispatchCalls,
       commendations,
       complaints,
       service_errors: errors,
