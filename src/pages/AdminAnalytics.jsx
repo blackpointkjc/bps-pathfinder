@@ -12,7 +12,7 @@ import { format, parseISO, differenceInMinutes, startOfWeek, addDays, startOfMon
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer, isInternalMember } from '@/lib/directoryUtils';
-import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateQrPatrol, calculateJobDutyCompliance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
+import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateQrPatrol, calculateJobDutyCompliance, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 
@@ -221,7 +221,7 @@ export default function AdminAnalytics() {
 
     const punctuality = calculatePunctuality(officerTimeEntries, officerSchedules, currentMonthStart, currentMonthEnd);
     const training = calculateTrainingScore(officer, allTraining, officerCompletions, officerAssignments);
-    const qr = calculateQrPatrol(officerTimeEntries, officerScans, allQrCheckpoints, currentMonthStart, currentMonthEnd);
+    const qr = calculateQrPatrol(officerTimeEntries, allQrScans, allQrCheckpoints, currentMonthStart, currentMonthEnd);
     const bidStanding = calculateBidStanding(officerBids, currentMonthStart, currentMonthEnd);
     const clientFeedback = calculateClientFeedback(officerFeedback, currentMonthStart, currentMonthEnd);
     const supervisorRating = calculateSupervisorRating(officerReviews, currentMonthStart, currentMonthEnd);
@@ -233,14 +233,17 @@ export default function AdminAnalytics() {
       incidentReports,
       dispatchCalls,
       callOuts: allCallOuts,
-      qrScans: officerScans,
+      qrScans: allQrScans,
+      allTimeEntries: timeEntries,
       qrCheckpoints: allQrCheckpoints,
       dutyRules: allDutyRules,
       locations: allLocations,
       monthStart: currentMonthStart,
       monthEnd: currentMonthEnd,
     });
-    const overall = buildOverallPerformance({ punctuality, trainingScore: training.percentage, qrScore: qr.score, jobDuty, bidStanding, clientFeedback, supervisorRating, recognition });
+    const officerCallOuts = allCallOuts.filter(item => emailKey(item.officer_email) === key);
+    const callOutAttendance = calculateCallOutAttendance(officerCallOuts, officerSchedules, currentMonthStart, currentMonthEnd);
+    const overall = buildOverallPerformance({ punctuality, trainingScore: training.total > 0 ? training.percentage : null, jobDuty, callOutAttendance, bidStanding, clientFeedback, supervisorRating, recognition });
 
     return {
       email: officer.email,
@@ -254,6 +257,7 @@ export default function AdminAnalytics() {
       supervisorRating,
       recognition,
       jobDuty,
+      callOutAttendance,
     };
   }).sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1)), [filteredUsers, timeEntries, schedules, allBids, trainingCompletions, trainingAssignments, allTraining, allQrScans, allQrCheckpoints, allClientFeedback, allPerformanceReviews, allCommendations, allDailyActivityReports, incidentReports, dispatchCalls, allCallOuts, allDutyRules, allLocations, currentMonthStart, currentMonthEnd]);
 
@@ -462,7 +466,7 @@ export default function AdminAnalytics() {
               <BarChart3 className="h-5 w-5 text-cyan-400" />
               Officer Overall Performance — Current Month
             </CardTitle>
-            <p className="text-xs text-slate-400">Same scoring engine as the officer My Performance page. Categories with no records are excluded instead of counted as zero.</p>
+            <p className="text-xs text-slate-400">Weighted exactly like My Performance: 55% On-Time • 15% Job Duty / Performance • 15% Call-Out Attendance • 3% each for Training, Bid Standing, Client Feedback, Supervisor Rating, and Recognition. No-data in the five 3% categories is neutral/full-credit.</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -480,13 +484,14 @@ export default function AdminAnalytics() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {officer.overall.categories.map(category => (
                       <span key={category.label} className="rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-200">
-                        {category.label}: <strong>{category.score}%</strong>
+                        {category.label}: <strong>{category.score}%</strong> · {category.weight}% weight · {category.contribution.toFixed(1)} pts{category.neutral ? ' · neutral/no data' : ''}
                       </span>
                     ))}
                     {officer.overall.categories.length === 0 && <span className="text-xs text-slate-500">No scoreable records this month.</span>}
                   </div>
                   <div className="mt-2 grid gap-2 text-xs text-slate-400 md:grid-cols-4">
                     <span>Job Duty: {officer.jobDuty.score != null ? `${officer.jobDuty.score}%` : 'Not scored'} • DAR {officer.jobDuty.dailyActivity.completed}/{officer.jobDuty.dailyActivity.required} • Incident {officer.jobDuty.incidentReports.completed}/{officer.jobDuty.incidentReports.required} • QR {officer.jobDuty.qrCompliance.completed}/{officer.jobDuty.qrCompliance.required}</span>
+                    <span>Call-Out Attendance: {officer.callOutAttendance.score}% ({officer.callOutAttendance.count} call-out{officer.callOutAttendance.count === 1 ? '' : 's'})</span>
                     <span>Bid Standing: {officer.bidStanding.score != null ? `${officer.bidStanding.score}%` : 'Not scored'} ({officer.bidStanding.accepted} accepted, {officer.bidStanding.pending} pending, {officer.bidStanding.rejected} rejected)</span>
                     <span>Client Feedback: {officer.clientFeedback.score != null ? `${officer.clientFeedback.score}% (${officer.clientFeedback.avgRating.toFixed(1)}/5)` : 'No ratings'}</span>
                     <span>Recognition: {officer.recognition.count} record{officer.recognition.count === 1 ? '' : 's'} • Supervisor Rating: {officer.supervisorRating.score != null ? `${officer.supervisorRating.score}%` : 'No review'}</span>
