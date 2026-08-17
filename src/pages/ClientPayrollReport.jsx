@@ -473,8 +473,7 @@ export default function ClientPayrollReport() {
             <div className="flex items-end">
               <Button
                 onClick={generateInvoice}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card className="border border-slate-700 border-l-4 border-l-blue-500 bg-slate-900">
+                className="w-full bg-emerald-600 hover:bg-emerald-700"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Generate Invoice
@@ -495,8 +494,8 @@ export default function ClientPayrollReport() {
         </CardContent>
       </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Card className="border-l-4 border-l-blue-500">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Card className="border border-slate-700 border-l-4 border-l-blue-500 bg-slate-900">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-slate-600">Total Hours</CardTitle>
           </CardHeader>
