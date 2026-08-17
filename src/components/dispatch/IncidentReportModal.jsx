@@ -121,6 +121,36 @@ export default function IncidentReportModal({ call, currentUser, onClose }) {
             const res = await base44.functions.invoke('sendReportToLinkedApp', payload);
 
             if (res.data?.success) {
+                const linkedCallId = call?.original_call_id || call?.id || '';
+                const linkedCallNumber = call?.call_id || call?.agency_cad_number || call?.bps_reference || linkedCallId;
+                try {
+                    const existing = linkedCallId
+                        ? await base44.entities.IncidentReport.filter({ linked_call_id: linkedCallId }, '-created_date', 10)
+                        : [];
+                    if (!existing.some(report => report.status !== 'draft')) {
+                        await base44.entities.IncidentReport.create({
+                            report_number: form.report_number,
+                            call_number: linkedCallNumber || form.call_number,
+                            linked_call_id: linkedCallId,
+                            linked_call_number: linkedCallNumber,
+                            incident_date: form.incident_date,
+                            incident_time: form.incident_time,
+                            location: form.location,
+                            incident_type: 'other',
+                            description: form.description || `${call?.incident || 'Property call'} incident report`,
+                            action_taken: form.action_taken || '',
+                            police_notified: !!form.police_notified,
+                            ems_notified: !!form.ems_notified,
+                            fire_notified: !!form.fire_notified,
+                            status: 'submitted',
+                            primary_officer_id: currentUser?.id || '',
+                            primary_officer_name: form.reporting_officer || currentUser?.full_name || '',
+                        });
+                    }
+                } catch (localLinkError) {
+                    console.error('Linked app report succeeded but local IncidentReport link failed:', localLinkError);
+                    toast.warning('Report was sent, but local performance linkage could not be confirmed.');
+                }
                 setSubmitted(true);
                 toast.success('Incident Report submitted successfully');
             } else {
