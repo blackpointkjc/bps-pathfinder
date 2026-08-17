@@ -57,12 +57,15 @@ Deno.serve(async (req) => {
     const units: any[] = [];
     for (const [email, active] of newestActiveByEmail.entries()) {
       const activeTs = new Date(active.last_update || active.updated_date || active.created_date || 0).getTime();
+      if (active.session_active === false || !Number.isFinite(activeTs) || activeTs < freshCutoff) continue;
+      const gpsTs = new Date(active.gps_updated_at || 0).getTime();
       const accuracy = Number(active.accuracy);
-      const hasReliableGps = Number.isFinite(Number(active.latitude))
+      const hasReliableGps = Number.isFinite(gpsTs)
+        && gpsTs >= freshCutoff
+        && Number.isFinite(Number(active.latitude))
         && Number.isFinite(Number(active.longitude))
         && Number.isFinite(accuracy)
         && accuracy <= 100;
-      if (active.session_active === false || !Number.isFinite(activeTs) || activeTs < freshCutoff || !hasReliableGps) continue;
       const entry = openByEmail.get(email) || null;
       const user = userByEmail.get(email) || {};
       units.push({
@@ -75,11 +78,13 @@ Deno.serve(async (req) => {
         rank: user.rank || '',
         unit_number: active.unit_number || user.unit_number || '',
         status: active.status || user.status || 'Available',
-        latitude: active.latitude,
-        longitude: active.longitude,
-        heading: active.heading,
-        speed: active.speed,
-        accuracy: active.accuracy,
+        latitude: hasReliableGps ? active.latitude : null,
+        longitude: hasReliableGps ? active.longitude : null,
+        heading: hasReliableGps ? active.heading : null,
+        speed: hasReliableGps ? active.speed : 0,
+        accuracy: hasReliableGps ? active.accuracy : null,
+        gps_updated_at: hasReliableGps ? active.gps_updated_at : null,
+        gps_pending: !hasReliableGps,
         show_lights: active.show_lights,
         current_call_info: active.current_call_info || user.current_call_info || '',
         current_location: active.current_location || entry?.location || '',
