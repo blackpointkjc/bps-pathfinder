@@ -52,19 +52,16 @@ Deno.serve(async (req) => {
     const myCallOuts = callOutsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
     const myScans = scansAll.filter((r:any) => sameEmail(r, 'officer_email', email));
     const siteKey = (value:any) => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
+    // Return every successful scan that occurred at the officer's property while
+    // the officer was working there. The scoring engine itself determines whether
+    // the scanner was also clocked in at that property, so invalid partner scans
+    // can be explained instead of silently disappearing from the analytics.
     const sharedQrScans = scansAll.filter((scan:any) => {
       const stamp = new Date(scan?.scanned_at || 0).getTime();
       if (!Number.isFinite(stamp) || scan?.scan_status !== 'success') return false;
       const scanSite = siteKey(scan.property_site);
-      const overlapsMyShift = myTimeEntries.some((entry:any) => {
+      return myTimeEntries.some((entry:any) => {
         if (!entry?.clock_in || siteKey(entry.location) !== scanSite) return false;
-        const start = new Date(entry.clock_in).getTime();
-        const end = entry.clock_out ? new Date(entry.clock_out).getTime() : Date.now();
-        return Number.isFinite(start) && Number.isFinite(end) && stamp >= start && stamp <= end;
-      });
-      if (!overlapsMyShift) return false;
-      return timeEntriesAll.some((entry:any) => {
-        if (!entry?.clock_in || lower(entry.officer_email) !== lower(scan.officer_email) || siteKey(entry.location) !== scanSite) return false;
         const start = new Date(entry.clock_in).getTime();
         const end = entry.clock_out ? new Date(entry.clock_out).getTime() : Date.now();
         return Number.isFinite(start) && Number.isFinite(end) && stamp >= start && stamp <= end;
