@@ -71,7 +71,7 @@ export default function ClientCallHistory() {
       const archived = await base44.entities.CallHistory.list('-archived_date', 500);
       const notes = await base44.entities.CallNote.list('-created_date', 300);
       const reports = await base44.entities.IncidentReport.list('-created_date', 300);
-      const propertyAlerts = await base44.entities.PropertyAlert.list('-created_date', 300).catch(() => []);
+      const propertyAlerts = await base44.entities.PropertyAlert.list('-created_date', 1000).catch(() => []);
       const assignedSites = (allLocations || []).filter(site => assignedNames.includes(site.site_name) || String(site.assigned_client_email || '').toLowerCase() === String(me?.email || '').toLowerCase());
       setSites(assignedSites);
 
@@ -92,9 +92,14 @@ export default function ClientCallHistory() {
         if (!assignedSiteNames.has(norm(alert.propertyName))) continue;
         const key = String(alert.callId || alert.source_key || `${alert.propertyName}|${alert.callTime || alert.time_received || alert.created_date}|${alert.callIncident}|${alert.callLocation}`);
         const current = alertByCall.get(key);
+        const currentHasCallTime = Boolean(current?.callTime || current?.time_received);
+        const nextHasCallTime = Boolean(alert.callTime || alert.time_received);
         const currentTime = parseServerTimestamp(current?.callTime || current?.time_received || current?.created_date)?.getTime() || 0;
         const nextTime = parseServerTimestamp(alert.callTime || alert.time_received || alert.created_date)?.getTime() || 0;
-        if (!current || nextTime > currentTime) alertByCall.set(key, alert);
+        // Prefer the alert record that preserved the actual call timestamp. For repeated
+        // monitoring snapshots without callTime, keep the earliest observation instead
+        // of moving the call forward every time the monitor refreshed.
+        if (!current || (!currentHasCallTime && nextHasCallTime) || (currentHasCallTime === nextHasCallTime && nextTime < currentTime)) alertByCall.set(key, alert);
       }
       const representedIds = new Set();
       for (const call of unique.values()) {
