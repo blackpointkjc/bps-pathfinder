@@ -21,6 +21,7 @@ import SignaturePad from "../components/SignaturePad";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { getLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 
 export default function DailyActivityReports() {
   const navigate = useNavigate();
@@ -29,6 +30,10 @@ export default function DailyActivityReports() {
   const [editingTodoId, setEditingTodoId] = useState(null);
   const [formData, setFormData] = useState({
     report_date: format(new Date(), 'yyyy-MM-dd'),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
     start_time: "",
     end_time: "",
     location: "",
@@ -308,6 +313,10 @@ export default function DailyActivityReports() {
         setShowSignaturePad(false);
         setFormData({
           report_date: format(new Date(), 'yyyy-MM-dd'),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
           start_time: "",
           end_time: "",
           location: "",
@@ -675,6 +684,10 @@ export default function DailyActivityReports() {
               if (!showForm) {
                 setFormData({
                   report_date: format(new Date(), 'yyyy-MM-dd'),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
                   start_time: "",
                   end_time: "",
                   location: isAdmin && !activeEntry
@@ -724,6 +737,7 @@ export default function DailyActivityReports() {
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4">
+                <ActiveCallLinkField formData={formData} setFormData={setFormData} />
                         <div className="grid md:grid-cols-3 gap-4">
                            <div className="space-y-2">
                              <Label htmlFor="report_date">Report Date *</Label>
