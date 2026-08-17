@@ -346,23 +346,53 @@ export function calculateJobDutyCompliance({
     const qrIsRequired = rule ? rule.qr_required === true : requiredCheckpoints.length > 0;
     if (qrIsRequired && requiredCheckpoints.length > 0) {
       const frequency = Math.max(1, Number(rule?.qr_frequency_minutes || 60));
-      const shiftMinutes = Math.max(1, Math.ceil((shiftEndMs - shiftStartMs) / 60000));
-      const intervals = Math.max(1, Math.ceil(shiftMinutes / frequency));
-      const derivedRequired = requiredCheckpoints.length * intervals;
-      const requiredCount = Math.max(derivedRequired, Number(rule?.qr_scans_per_shift || 0));
+      const windowMinutes = Math.max(1, Number(rule?.qr_window_minutes || 30));
       const successful = officerQrScans.filter(scan => {
         const stamp = new Date(scan.scanned_at).getTime();
-        if (!Number.isFinite(stamp) || stamp < shiftStartMs || stamp > shiftEndMs || scan.scan_status !== 'success') return false;
-        if (siteKey(scan.property_site) !== site) return false;
-        return requiredCheckpoints.some(cp => String(cp.id) === String(scan.checkpoint_id));
+        return Number.isFinite(stamp) && stamp >= shiftStartMs && stamp <= shiftEndMs && scan.scan_status === 'success' && siteKey(scan.property_site) === site;
       });
-      const completedCount = Math.min(requiredCount, successful.length);
+
+      let obligationCount = 0;
+      let obligationCompleted = 0;
+      const missedObligations = [];
+      let windowStartMs = shiftStartMs;
+      let roundNumber = 1;
+      while (windowStartMs < shiftEndMs && roundNumber <= 48) {
+        const windowEndMs = Math.min(shiftEndMs, windowStartMs + windowMinutes * 60000);
+        for (const cp of requiredCheckpoints) {
+          obligationCount++;
+          const scan = successful.find(item => {
+            const stamp = new Date(item.scanned_at).getTime();
+            return String(item.checkpoint_id) === String(cp.id) && stamp >= windowStartMs && stamp <= windowEndMs;
+          });
+          if (scan) obligationCompleted++;
+          else missedObligations.push({
+            round: roundNumber,
+            checkpoint_id: cp.id,
+            checkpoint_name: cp.checkpoint_name || cp.location_label || cp.id,
+            window_start: new Date(windowStartMs).toISOString(),
+            window_end: new Date(windowEndMs).toISOString(),
+          });
+        }
+        windowStartMs += frequency * 60000;
+        roundNumber++;
+      }
+
+      const minimumPerShift = Math.max(0, Number(rule?.qr_scans_per_shift || 0));
+      const requiredCount = Math.max(obligationCount, minimumPerShift);
+      // Any successful site scan can satisfy only the extra minimum above the checkpoint/window obligations.
+      const extraRequired = Math.max(0, minimumPerShift - obligationCount);
+      const extraAvailable = Math.max(0, successful.length - obligationCompleted);
+      const completedCount = Math.min(requiredCount, obligationCompleted + Math.min(extraRequired, extraAvailable));
       qrRequired += requiredCount;
       qrCompleted += completedCount;
       detail.qr.required = requiredCount;
       detail.qr.completed = completedCount;
       detail.qr.missed = Math.max(0, requiredCount - completedCount);
       detail.qr.required_checkpoint_names = requiredCheckpoints.map(cp => cp.checkpoint_name || cp.location_label || cp.id);
+      detail.qr.missed_obligations = missedObligations;
+      detail.qr.frequency_minutes = frequency;
+      detail.qr.window_minutes = windowMinutes;
     }
 
     shiftDetails.push(detail);
