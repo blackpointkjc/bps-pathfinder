@@ -13,12 +13,17 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 
 export default function MaintenanceReports() {
   const [showForm, setShowForm] = useState(false);
   const [editingReportId, setEditingReportId] = useState(null);
   const [formData, setFormData] = useState({
     report_date: new Date().toISOString(),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
     location: "",
     specific_location: "",
     issue_type: "other",
@@ -123,6 +128,10 @@ export default function MaintenanceReports() {
       setEditingReportId(null); // Reset editing state
       setFormData({
         report_date: new Date().toISOString(),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
         location: "",
         specific_location: "",
         issue_type: "other",
@@ -163,6 +172,10 @@ export default function MaintenanceReports() {
       setEditingReportId(null); // Reset editing state
       setFormData({
         report_date: new Date().toISOString(),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
         location: "",
         issue_type: "other",
         description: "",
@@ -440,6 +453,10 @@ export default function MaintenanceReports() {
                 setEditingReportId(null);
                 setFormData({
                     report_date: new Date().toISOString(),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
                     location: "",
                     specific_location: "",
                     issue_type: "other",
@@ -455,6 +472,10 @@ export default function MaintenanceReports() {
                 setEditingReportId(null); // Ensure not in editing mode when starting a new report
                 setFormData({
                     report_date: new Date().toISOString(),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
                     location: "",
                     specific_location: "",
                     issue_type: "other",
@@ -494,6 +515,7 @@ export default function MaintenanceReports() {
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4">
+                <ActiveCallLinkField formData={formData} setFormData={setFormData} />
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="report_date">Date & Time *</Label>
@@ -673,6 +695,10 @@ export default function MaintenanceReports() {
                         setEditingReportId(null); // Reset editing state on cancel
                         setFormData({
                             report_date: new Date().toISOString(),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
                             location: "",
                             specific_location: "",
                             issue_type: "other",
