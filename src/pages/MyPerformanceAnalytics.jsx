@@ -505,44 +505,6 @@ export default function MyPerformanceAnalytics() {
           </CardContent>
         </Card>
 
-        {/* QR Patrol Stats */}
-        {(qrPatrolStats.totalScans > 0 || qrPatrolStats.missedRounds > 0) && (
-          <Card className="border-none shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-teal-600" />
-                QR Patrol Performance — {currentMonthName}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-                <div className="p-3 bg-teal-50 rounded-lg">
-                  <p className="text-2xl font-bold text-teal-700">{qrPatrolStats.totalScans}</p>
-                  <p className="text-xs text-slate-600">Total Scans</p>
-                </div>
-                <div className="p-3 bg-green-50 rounded-lg">
-                  <p className="text-2xl font-bold text-green-700">{qrPatrolStats.successScans}</p>
-                  <p className="text-xs text-slate-600">Successful</p>
-                </div>
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <p className="text-2xl font-bold text-blue-700">{qrPatrolStats.completedRounds}</p>
-                  <p className="text-xs text-slate-600">Rounds Complete</p>
-                </div>
-                <div className={`p-3 rounded-lg ${qrPatrolStats.missedRounds > 0 ? 'bg-red-50' : 'bg-slate-50'}`}>
-                  <p className={`text-2xl font-bold ${qrPatrolStats.missedRounds > 0 ? 'text-red-600' : 'text-slate-400'}`}>{qrPatrolStats.missedRounds}</p>
-                  <p className="text-xs text-slate-600">Rounds Missed</p>
-                </div>
-              </div>
-              {qrPatrolStats.missedRounds > 0 && (
-                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-sm text-red-700">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                  {qrPatrolStats.missedRounds} patrol round{qrPatrolStats.missedRounds !== 1 ? 's' : ''} missed this month — ensure all checkpoints are scanned within the 30-min window each hour.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Notification Feed */}
           <Card className="border-none shadow-lg">
