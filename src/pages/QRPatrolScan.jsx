@@ -13,8 +13,8 @@ import { format, addMinutes } from "date-fns";
 import { Html5Qrcode } from "html5-qrcode";
 import { subscribeLiveLocation } from '@/lib/liveLocationService';
 
-// Build hourly round slots from shift start — one slot per hour, 30-min window to complete all checkpoints
-function getHourlySlots(shiftStart) {
+// Build rule-driven round slots from shift start.
+function getHourlySlots(shiftStart, frequencyMinutes = 60, windowMinutes = 30) {
   const slots = [];
   const now = new Date();
   // First round starts at clock-in time, subsequent rounds every hour after that
@@ -22,7 +22,7 @@ function getHourlySlots(shiftStart) {
   let safetyCount = 0;
   while (cursor <= now && safetyCount < 24) {
     safetyCount++;
-    const windowEnd = addMinutes(cursor, 30); // 30 min to complete all checkpoints
+    const windowEnd = addMinutes(cursor, Math.max(1, Number(windowMinutes || 30)));
     slots.push({
       roundStart: new Date(cursor),
       windowEnd,
@@ -31,19 +31,26 @@ function getHourlySlots(shiftStart) {
       isPast: now > windowEnd,
       isFuture: now < cursor,
     });
-    cursor = new Date(cursor.getTime() + 60 * 60 * 1000);
+    cursor = new Date(cursor.getTime() + Math.max(1, Number(frequencyMinutes || 60)) * 60 * 1000);
   }
   return slots;
 }
 
-function HourlyRoundsTracker({ siteCheckpoints, todayScans, shiftStart, activeSiteName }) {
+function HourlyRoundsTracker({ siteCheckpoints, todayScans, shiftStart, activeSiteName, dutyRule }) {
   const [expanded, setExpanded] = useState(true);
 
   if (!shiftStart) return null;
 
   const now = new Date();
-  const slots = getHourlySlots(shiftStart);
-  const requiredCps = (siteCheckpoints || []).filter(c => c.is_required);
+  const frequencyMinutes = Number(dutyRule?.qr_frequency_minutes || 60);
+  const windowMinutes = Number(dutyRule?.qr_window_minutes || 30);
+  const slots = getHourlySlots(shiftStart, frequencyMinutes, windowMinutes);
+  const explicitIds = new Set((dutyRule?.required_checkpoint_ids || []).map(String));
+  const requiredCps = dutyRule
+    ? (dutyRule.qr_required === true
+        ? (siteCheckpoints || []).filter(c => explicitIds.size ? explicitIds.has(String(c.id)) : c.is_required !== false)
+        : [])
+    : (siteCheckpoints || []).filter(c => c.is_required !== false);
   const totalRequired = requiredCps.length;
 
   // For each slot: which required checkpoints were scanned within the 30-min window?
@@ -75,7 +82,7 @@ function HourlyRoundsTracker({ siteCheckpoints, todayScans, shiftStart, activeSi
           </span>
           {expanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
         </CardTitle>
-        <p className="text-xs text-slate-500 mt-0.5 pl-6">Scan all {totalRequired} checkpoint{totalRequired !== 1 ? 's' : ''} within 30 min of each hour</p>
+        <p className="text-xs text-slate-500 mt-0.5 pl-6">{totalRequired > 0 ? `Scan ${totalRequired} required checkpoint${totalRequired !== 1 ? 's' : ''} every ${frequencyMinutes} min within a ${windowMinutes}-min window` : 'No QR duty is currently required by this property rule'}</p>
       </CardHeader>
       {expanded && (
         <CardContent className="p-0">
@@ -193,6 +200,18 @@ export default function QRPatrolScan() {
         ? activeEntry.location.split(': ')[0].trim()
         : activeEntry.location.split(' - ')[0].trim())
     : null;
+
+  const { data: dutyRule = null } = useQuery({
+    queryKey: ['jobDutyRule', activeSiteName],
+    queryFn: async () => {
+      if (!activeSiteName) return null;
+      const rules = await base44.entities.JobDutyRule.filter({ property_site: activeSiteName }, '-updated_date', 20);
+      return rules.find(rule => rule.active !== false) || null;
+    },
+    enabled: !!activeSiteName,
+    staleTime: 0,
+    refetchInterval: 30000,
+  });
 
   const { data: siteCheckpoints = [] } = useQuery({
     queryKey: ['siteCheckpoints', activeSiteName],
@@ -471,6 +490,7 @@ export default function QRPatrolScan() {
           todayScans={todayScans}
           shiftStart={activeEntry.clock_in}
           activeSiteName={activeSiteName}
+          dutyRule={dutyRule}
         />
       )}
 
