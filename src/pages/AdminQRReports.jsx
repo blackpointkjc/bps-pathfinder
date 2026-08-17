@@ -47,12 +47,20 @@ export default function AdminQRReports() {
     placeholderData: (prev) => prev,
   });
 
-  // Fetch all required checkpoints to know what's missing
+  // Fetch active checkpoints and property duty rules so this report follows QR Manager.
   const { data: allCheckpoints = [] } = useQuery({
     queryKey: ['allQRCheckpoints'],
-    queryFn: () => base44.entities.QRCheckpoint.filter({ is_active: true, is_required: true }),
+    queryFn: () => base44.entities.QRCheckpoint.filter({ is_active: true }),
     enabled: user?.role === 'admin',
-    staleTime: 120000,
+    staleTime: 30000,
+  });
+
+  const { data: dutyRules = [] } = useQuery({
+    queryKey: ['jobDutyRules', 'adminQRReports'],
+    queryFn: () => base44.entities.JobDutyRule.list('property_site', 1000),
+    enabled: user?.role === 'admin',
+    refetchInterval: 30000,
+    staleTime: 0,
   });
 
   // Real-time push: append new scans to cache instead of triggering a full refetch
@@ -94,7 +102,9 @@ export default function AdminQRReports() {
 
   // Enrich each group with checkpoint completion data
   const groups = Object.values(groupMap).map(g => {
-    const siteCheckpoints = allCheckpoints.filter(cp => cp.property_site === g.property_site);
+    const rule = dutyRules.find(item => item.active !== false && item.property_site === g.property_site);
+    const explicitIds = new Set((rule?.required_checkpoint_ids || []).map(String));
+    const siteCheckpoints = allCheckpoints.filter(cp => cp.property_site === g.property_site && (explicitIds.size ? explicitIds.has(String(cp.id)) : cp.is_required !== false));
     const successScans = g.scans.filter(s => s.scan_status === 'success');
     const scannedIds = new Set(successScans.map(s => s.checkpoint_id));
     const missedCheckpoints = siteCheckpoints.filter(cp => !scannedIds.has(cp.id));
@@ -103,8 +113,9 @@ export default function AdminQRReports() {
       ...g,
       successCount: successScans.length,
       duplicates,
-      totalRequired: siteCheckpoints.length,
-      missedCheckpoints,
+      totalRequired: rule?.qr_required === false ? 0 : siteCheckpoints.length,
+      missedCheckpoints: rule?.qr_required === false ? [] : missedCheckpoints,
+      rule,
       lastScan: g.scans[0],
     };
   });
