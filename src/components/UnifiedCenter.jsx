@@ -60,7 +60,7 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
           </div>
         </div>
       </header>
-      <main className={`mx-auto min-h-[calc(100vh-190px)] w-full max-w-[1700px] overflow-x-hidden border-x border-slate-800/70 ${contentClassName}`}>{children(section)}</main>
+      <main className={`mx-auto min-h-[calc(100vh-190px)] w-full max-w-[1700px] min-w-0 overflow-x-hidden border-x border-slate-800/70 ${contentClassName}`}><div className="w-full min-w-0 max-w-full overflow-x-hidden">{children(section)}</div></main>
     </div>
   );
 }
