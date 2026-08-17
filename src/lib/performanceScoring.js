@@ -200,7 +200,7 @@ export function calculateRecognition(commendations = [], feedback = [], monthSta
   });
   const positiveFeedback = feedback.filter(item => {
     const date = item.shift_date || easternDateKey(item.feedback_date || item.created_date);
-    return date && (!monthStart || date >= monthStart) && (!monthEnd || date <= monthEnd) && (item.commendation === true || Number(item.rating) >= 4);
+    return date && (!monthStart || date >= monthStart) && (!monthEnd || date <= monthEnd) && item.commendation === true;
   });
   const points = monthlyCommendations.reduce((sum, item) => sum + Number(item.points_awarded || 1), 0);
   const count = monthlyCommendations.length + positiveFeedback.length;
