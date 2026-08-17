@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 
 export default function CriminalComplaints() {
   const [showForm, setShowForm] = useState(false);
@@ -45,6 +46,10 @@ export default function CriminalComplaints() {
     authorization_given_by: "",
     authorization_date: null,
     status: "draft",
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
   });
 
   const queryClient = useQueryClient();
@@ -214,6 +219,10 @@ export default function CriminalComplaints() {
       authorization_given_by: "",
       authorization_date: null,
       status: "draft",
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
     });
   };
 
@@ -612,6 +621,7 @@ export default function CriminalComplaints() {
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
+                <ActiveCallLinkField formData={formData} setFormData={setFormData} />
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <p className="text-sm text-blue-900 font-medium">
                     This form creates an official criminal complaint for Commonwealth of Virginia prosecution.
