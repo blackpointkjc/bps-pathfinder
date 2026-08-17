@@ -487,12 +487,15 @@ export default function AdminAnalytics() {
                     ))}
                     {officer.overall.categories.length === 0 && <span className="text-xs text-slate-500">No scoreable records this month.</span>}
                   </div>
-                  <div className="mt-2 grid gap-2 text-xs text-slate-400 md:grid-cols-4">
-                    <span>Job Duty: {officer.jobDuty.score != null ? `${officer.jobDuty.score}%` : 'Not scored'} • DAR {officer.jobDuty.dailyActivity.completed}/{officer.jobDuty.dailyActivity.required} • Incident {officer.jobDuty.incidentReports.completed}/{officer.jobDuty.incidentReports.required} • QR {officer.jobDuty.qrCompliance.completed}/{officer.jobDuty.qrCompliance.required}</span>
-                    <span>Call-Out Attendance: {officer.callOutAttendance.score != null ? `${officer.callOutAttendance.score}% (${officer.callOutAttendance.count} call-out${officer.callOutAttendance.count === 1 ? '' : 's'})` : 'Not scored'}</span>
-                    <span>Bid Standing: {officer.bidStanding.score != null ? `${officer.bidStanding.score}%` : 'Not scored'} ({officer.bidStanding.accepted} accepted, {officer.bidStanding.pending} pending, {officer.bidStanding.rejected} rejected)</span>
-                    <span>Client Feedback: {officer.clientFeedback.score != null ? `${officer.clientFeedback.score}% (${officer.clientFeedback.avgRating.toFixed(1)}/5)` : 'No ratings'}</span>
-                    <span>Recognition: {officer.recognition.count} record{officer.recognition.count === 1 ? '' : 's'} • Supervisor Rating: {officer.supervisorRating.score != null ? `${officer.supervisorRating.score}%` : 'No review'}</span>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-400">
+                    {officer.jobDuty.score != null && (
+                      <span>Job Duty: {officer.jobDuty.score}%{officer.jobDuty.dailyActivity.required > 0 ? ` • DAR ${officer.jobDuty.dailyActivity.completed}/${officer.jobDuty.dailyActivity.required}` : ''}{officer.jobDuty.incidentReports.required > 0 ? ` • Incident ${officer.jobDuty.incidentReports.completed}/${officer.jobDuty.incidentReports.required}` : ''}{officer.jobDuty.qrCompliance.required > 0 ? ` • QR ${officer.jobDuty.qrCompliance.completed}/${officer.jobDuty.qrCompliance.required}` : ''}</span>
+                    )}
+                    {officer.callOutAttendance.score != null && <span>Call-Out Attendance: {officer.callOutAttendance.score}% ({officer.callOutAttendance.count} call-out{officer.callOutAttendance.count === 1 ? '' : 's'})</span>}
+                    {officer.bidStanding.score != null && <span>Bid Standing: {officer.bidStanding.score}% ({officer.bidStanding.accepted} assigned bid{officer.bidStanding.accepted === 1 ? '' : 's'})</span>}
+                    {officer.clientFeedback.score != null && <span>Client Feedback: {officer.clientFeedback.score}% ({officer.clientFeedback.avgRating.toFixed(1)}/5)</span>}
+                    {officer.recognition.score != null && <span>Recognition: {officer.recognition.count} record{officer.recognition.count === 1 ? '' : 's'}</span>}
+                    {officer.supervisorRating.score != null && <span>Supervisor Rating: {officer.supervisorRating.score}%</span>}
                   </div>
                   {officer.jobDuty.score != null && officer.jobDuty.score < 100 && (
                     <div className="mt-3 rounded-lg border border-red-900/60 bg-red-950/20 p-2 text-xs text-red-200">
