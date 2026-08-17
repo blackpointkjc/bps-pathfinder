@@ -410,6 +410,79 @@ body::-webkit-scrollbar-button,
   }
 }
 
+/* Client portal polish: keep legacy client tools visually consistent with the
+   modern portfolio shell without requiring a property selector on every page. */
+.client-portal-shell {
+  background:
+    radial-gradient(circle at top right, rgba(37,99,235,.10), transparent 34%),
+    #070d17;
+}
+
+.client-portal-shell > div,
+.client-portal-shell > div > div {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.client-portal-shell [class*="max-w-"] {
+  width: 100%;
+}
+
+.client-portal-shell .bg-white,
+.client-portal-shell .bg-slate-50,
+.client-portal-shell .bg-slate-100,
+.client-portal-shell [class*="from-purple-50"],
+.client-portal-shell [class*="from-blue-50"],
+.client-portal-shell [class*="from-green-50"],
+.client-portal-shell [class*="from-yellow-50"],
+.client-portal-shell [class*="from-amber-50"],
+.client-portal-shell [class*="from-red-50"],
+.client-portal-shell [class*="from-orange-50"] {
+  background-color: #111d2b !important;
+  background-image: none !important;
+  border-color: #2c4359 !important;
+}
+
+.client-portal-shell .text-slate-900,
+.client-portal-shell .text-slate-800,
+.client-portal-shell .text-slate-700 {
+  color: #f8fafc !important;
+}
+
+.client-portal-shell .text-slate-600,
+.client-portal-shell .text-slate-500,
+.client-portal-shell .text-slate-400 {
+  color: #b5c4d3 !important;
+}
+
+.client-portal-shell input,
+.client-portal-shell textarea,
+.client-portal-shell select,
+.client-portal-shell [role="combobox"] {
+  background: #0d1825 !important;
+  color: #f8fafc !important;
+  border-color: #3a526b !important;
+}
+
+.client-portal-shell [class*="shadow"] {
+  box-shadow: 0 14px 32px rgba(0,0,0,.20) !important;
+}
+
+.client-portal-shell table {
+  border-color: #344b61 !important;
+}
+
+.client-portal-shell td,
+.client-portal-shell th {
+  border-color: #344b61 !important;
+}
+
+@media (max-width: 767px) {
+  .client-portal-shell [class*="p-8"] { padding: .875rem !important; }
+  .client-portal-shell [class*="p-6"] { padding: .875rem !important; }
+  .client-portal-shell h1 { font-size: 1.5rem !important; line-height: 1.2 !important; }
+}
+
 /* Officer weekly schedule — high-contrast CAD theme */
 .schedule-dark .bg-white,
 .schedule-dark .bg-slate-50,
