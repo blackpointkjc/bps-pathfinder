@@ -85,7 +85,7 @@ export default function ClientSupervisors() {
               <UserCheck className="w-6 h-6" />
               Site Supervisors
             </CardTitle>
-            <p className="text-sm text-slate-400">Supervisors assigned directly to this client location</p>
+            <p className="text-sm text-slate-400">Direct site supervisors organized by each property in your portfolio</p>
           </CardHeader>
           <CardContent className="space-y-4">
             {siteSupervisorGroups.map(({ location, supervisors }) => (
