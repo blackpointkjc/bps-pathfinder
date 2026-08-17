@@ -67,15 +67,12 @@ export default function OpenShifts() {
   });
 
   const calculateShiftHours = (startTime, endTime) => {
-    const start = parseInt(startTime.replace(':', ''));
-    const end = parseInt(endTime.replace(':', ''));
-    let hours = 0;
-    if (end < start) {
-      hours = ((2400 - start) + end) / 100;
-    } else {
-      hours = (end - start) / 100;
-    }
-    return hours;
+    const [startHour = 0, startMinute = 0] = String(startTime || '00:00').split(':').map(Number);
+    const [endHour = 0, endMinute = 0] = String(endTime || '00:00').split(':').map(Number);
+    const startMinutes = startHour * 60 + startMinute;
+    let endMinutes = endHour * 60 + endMinute;
+    if (endMinutes <= startMinutes) endMinutes += 24 * 60;
+    return Math.max(0, (endMinutes - startMinutes) / 60);
   };
 
   const getAIAnalysis = (shift) => {
@@ -234,13 +231,13 @@ Review in Admin > Shift Bids.`
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-950 p-4 text-slate-100 md:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         <div className="flex items-center gap-3">
-          <Briefcase className="w-8 h-8 text-green-600" />
+          <Briefcase className="h-8 w-8 text-emerald-400" />
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Open Shifts</h1>
-            <p className="text-slate-600">Bid on available shifts based on your preferences</p>
+            <h1 className="text-3xl font-bold text-white">Open Shifts</h1>
+            <p className="text-slate-400">Bid on available shifts based on your preferences</p>
           </div>
         </div>
 
@@ -287,13 +284,13 @@ Review in Admin > Shift Bids.`
               const bidCount = getBidCountForShift(shift.id);
 
               return (
-                <Card key={shift.id} className={`border-none shadow-lg ${isToday ? 'ring-2 ring-orange-400' : ''}`}>
-                  <CardHeader className={`${isToday ? 'bg-gradient-to-r from-orange-50 to-red-50' : 'bg-gradient-to-r from-green-50 to-blue-50'}`}>
+                <Card key={shift.id} className={`overflow-hidden border border-slate-700 bg-slate-900 text-slate-100 shadow-xl ${isToday ? 'ring-2 ring-orange-400/80' : ''}`}>
+                  <CardHeader className={`${isToday ? 'bg-gradient-to-r from-orange-950/70 to-red-950/40' : 'bg-gradient-to-r from-emerald-950/60 to-blue-950/50'} border-b border-slate-700`}>
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <CardTitle className="flex items-center gap-3">
                         <Calendar className="w-5 h-5 text-green-600" />
                         <div>
-                          <span className="text-slate-900">{format(shiftDate, 'EEEE, MMM d, yyyy')}</span>
+                          <span className="text-white">{format(shiftDate, 'EEEE, MMM d, yyyy')}</span>
                           {isToday && <Badge className="ml-2 bg-orange-600 text-white">TODAY</Badge>}
                           {isTomorrow && <Badge className="ml-2 bg-blue-600 text-white">TOMORROW</Badge>}
                         </div>
@@ -315,23 +312,23 @@ Review in Admin > Shift Bids.`
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-6">
+                  <CardContent className="bg-slate-900 p-6">
                     <div className="space-y-4">
                       <div className="grid md:grid-cols-2 gap-4">
                         <div className="flex items-center gap-3">
                           <Clock className="w-5 h-5 text-blue-600" />
                           <div>
-                            <p className="text-sm text-slate-600 font-medium">Shift Time</p>
-                            <p className="text-lg font-bold text-slate-900">{shift.start_time} - {shift.end_time}</p>
+                            <p className="text-sm font-medium text-slate-400">Shift Time</p>
+                            <p className="text-lg font-bold text-white">{shift.start_time} - {shift.end_time}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
                           <MapPin className="w-5 h-5 text-blue-600" />
                           <div>
-                            <p className="text-sm text-slate-600 font-medium">Location</p>
+                            <p className="text-sm font-medium text-slate-400">Location</p>
                             <button
                               onClick={() => openInMaps(shift.location)}
-                              className="text-lg font-bold text-blue-900 hover:text-blue-700 underline decoration-dotted text-left"
+                              className="text-left text-lg font-bold text-blue-300 underline decoration-dotted hover:text-blue-200"
                             >
                               {shift.location.split(':')[0]}
                             </button>
@@ -339,7 +336,7 @@ Review in Admin > Shift Bids.`
                         </div>
                       </div>
 
-                      <div className={`p-3 rounded-lg border ${analysis.score >= 80 ? 'bg-green-50 border-green-200' : analysis.score >= 50 ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>
+                      <div className={`rounded-lg border p-3 ${analysis.score >= 80 ? 'border-emerald-700 bg-emerald-950/40 text-emerald-100' : analysis.score >= 50 ? 'border-amber-700 bg-amber-950/40 text-amber-100' : 'border-red-700 bg-red-950/40 text-red-100'}`}>
                         <p className="text-sm font-medium mb-1 flex items-center gap-1">
                           <Brain className="w-4 h-4" />
                           AI Analysis
