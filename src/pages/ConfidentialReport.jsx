@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ShieldCheck, Lock, AlertCircle, CheckCircle, FileText, Loader2 } from "lucide-react"; // Added FileText, Loader2
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
+import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 
 export default function ConfidentialReport() {
   const queryClient = useQueryClient();
@@ -20,6 +21,10 @@ export default function ConfidentialReport() {
     description: "",
     preferred_contact_method: "email",
     anonymous: false,
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
   });
   const [submitted, setSubmitted] = useState(false);
 
@@ -51,6 +56,10 @@ export default function ConfidentialReport() {
           description: "",
           preferred_contact_method: "email",
           anonymous: false,
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
         });
       }, 3000);
     },
@@ -164,6 +173,7 @@ export default function ConfidentialReport() {
           </CardHeader>
           <CardContent className="p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
+              <ActiveCallLinkField formData={formData} setFormData={setFormData} />
               <div className="space-y-2">
                 <Label htmlFor="report_type">Type of Concern *</Label>
                 <Select
@@ -255,6 +265,10 @@ export default function ConfidentialReport() {
                     description: "",
                     preferred_contact_method: "email",
                     anonymous: false,
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
                   })}
                 >
                   Clear Form
