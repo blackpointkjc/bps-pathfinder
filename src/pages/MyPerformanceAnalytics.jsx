@@ -414,18 +414,18 @@ export default function MyPerformanceAnalytics() {
           <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-violet-100">
             <CardContent className="p-3 sm:p-4">
               <Award className="w-6 h-6 text-purple-600 mb-2" />
-              <p className="text-2xl font-bold text-purple-600 sm:text-3xl">{trainingStats.percentage != null ? `${trainingStats.percentage}%` : '100%'}</p>
-              <p className="text-xs font-semibold text-slate-700">Training Completion <span className="font-normal text-slate-500">(3%)</span></p>
-              <p className="mt-1 text-[11px] text-slate-600">{trainingStats.total > 0 ? `${trainingStats.completed} complete • ${trainingStats.pending} pending • ${trainingStats.total} assigned` : 'Neutral full credit — nothing assigned • 3.0/3 pts'}</p>
+              <p className="text-2xl font-bold text-purple-600 sm:text-3xl">{trainingStats.percentage != null ? `${trainingStats.percentage}%` : '—'}</p>
+              <p className="text-xs font-semibold text-slate-700">Training Completion</p>
+              <p className="mt-1 text-[11px] text-slate-600">{trainingStats.total > 0 ? `${trainingStats.completed} complete • ${trainingStats.pending} pending • ${trainingStats.total} assigned` : 'No assigned training — omitted from grade'}</p>
             </CardContent>
           </Card>
 
           <Card className="border-none shadow-lg bg-gradient-to-br from-amber-50 to-orange-100">
             <CardContent className="p-3 sm:p-4">
               <Star className="w-6 h-6 text-amber-600 mb-2" />
-              <p className="text-2xl font-bold text-amber-600 sm:text-3xl">{bidStats.score != null ? `${bidStats.score}%` : '100%'}</p>
-              <p className="text-xs font-semibold text-slate-700">Bid Standing <span className="font-normal text-slate-500">(3%)</span></p>
-              <p className="mt-1 text-[11px] text-slate-600">{bidStats.total > 0 ? `${bidStats.accepted} accepted • ${bidStats.pending} pending • ${bidStats.rejected} rejected` : 'Neutral full credit — no bids • 3.0/3 pts'}</p>
+              <p className="text-2xl font-bold text-amber-600 sm:text-3xl">{bidStats.score != null ? `${bidStats.score}%` : '—'}</p>
+              <p className="text-xs font-semibold text-slate-700">Bid Standing</p>
+              <p className="mt-1 text-[11px] text-slate-600">{bidStats.total > 0 ? `${bidStats.accepted} accepted • ${bidStats.pending} pending • ${bidStats.rejected} rejected` : 'No bid records — omitted from grade'}</p>
             </CardContent>
           </Card>
         </div>
@@ -434,29 +434,29 @@ export default function MyPerformanceAnalytics() {
           <Card className="border border-rose-200 bg-rose-50 shadow-sm">
             <CardContent className="p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Call-Out Attendance (15%)</p>
-              <p className="mt-1 text-2xl font-bold text-rose-900">{callOutAttendance.score}%</p>
-              <p className="text-xs text-slate-600">{callOutAttendance.count > 0 ? `${callOutAttendance.count} officer call-out${callOutAttendance.count === 1 ? '' : 's'} across ${callOutAttendance.scheduled || callOutAttendance.count} elapsed scheduled shifts` : 'No officer call-outs • full 15.0/15 pts'}</p>
+              <p className="mt-1 text-2xl font-bold text-rose-900">{callOutAttendance.score != null ? `${callOutAttendance.score}%` : '—'}</p>
+              <p className="text-xs text-slate-600">{callOutAttendance.score == null ? 'No elapsed scheduled shifts — omitted from grade' : callOutAttendance.count > 0 ? `${callOutAttendance.count} officer call-out${callOutAttendance.count === 1 ? '' : 's'} across ${callOutAttendance.scheduled} elapsed scheduled shifts` : `0 call-outs across ${callOutAttendance.scheduled} elapsed scheduled shifts`}</p>
             </CardContent>
           </Card>
           <Card className="border border-blue-200 bg-blue-50 shadow-sm">
             <CardContent className="p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Client Feedback (3%)</p>
-              <p className="mt-1 text-2xl font-bold text-blue-900">{clientFeedbackStats.score != null ? `${clientFeedbackStats.score}%` : '100%'}</p>
-              <p className="text-xs text-slate-600">{clientFeedbackStats.count > 0 ? `${clientFeedbackStats.avgRating.toFixed(1)}/5 average from ${clientFeedbackStats.count} rating${clientFeedbackStats.count === 1 ? '' : 's'}` : 'Neutral full credit — no client ratings • 3.0/3 pts'}</p>
+              <p className="mt-1 text-2xl font-bold text-blue-900">{clientFeedbackStats.score != null ? `${clientFeedbackStats.score}%` : '—'}</p>
+              <p className="text-xs text-slate-600">{clientFeedbackStats.count > 0 ? `${clientFeedbackStats.avgRating.toFixed(1)}/5 average from ${clientFeedbackStats.count} rating${clientFeedbackStats.count === 1 ? '' : 's'}` : 'No client ratings — omitted from grade'}</p>
             </CardContent>
           </Card>
           <Card className="border border-violet-200 bg-violet-50 shadow-sm">
             <CardContent className="p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">Supervisor Rating (3%)</p>
-              <p className="mt-1 text-2xl font-bold text-violet-900">{supervisorRatingStats.score != null ? `${supervisorRatingStats.score}%` : '100%'}</p>
-              <p className="text-xs text-slate-600">{supervisorRatingStats.count > 0 ? `${supervisorRatingStats.avgRating.toFixed(1)}/5 average from ${supervisorRatingStats.count} review${supervisorRatingStats.count === 1 ? '' : 's'}` : 'Neutral full credit — no supervisor review • 3.0/3 pts'}</p>
+              <p className="mt-1 text-2xl font-bold text-violet-900">{supervisorRatingStats.score != null ? `${supervisorRatingStats.score}%` : '—'}</p>
+              <p className="text-xs text-slate-600">{supervisorRatingStats.count > 0 ? `${supervisorRatingStats.avgRating.toFixed(1)}/5 average from ${supervisorRatingStats.count} review${supervisorRatingStats.count === 1 ? '' : 's'}` : 'No supervisor review — omitted from grade'}</p>
             </CardContent>
           </Card>
           <Card className="border border-emerald-200 bg-emerald-50 shadow-sm">
             <CardContent className="p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Recognition (3%)</p>
-              <p className="mt-1 text-2xl font-bold text-emerald-900">{recognitionStats.score != null ? `${recognitionStats.score}%` : '100%'}</p>
-              <p className="text-xs text-slate-600">{recognitionStats.count > 0 ? `${recognitionStats.commendations.length} commendation${recognitionStats.commendations.length === 1 ? '' : 's'} • ${recognitionStats.positiveFeedback.length} positive client recognition` : 'Neutral full credit — no recognition records • 3.0/3 pts'}</p>
+              <p className="mt-1 text-2xl font-bold text-emerald-900">{recognitionStats.score != null ? `${recognitionStats.score}%` : '—'}</p>
+              <p className="text-xs text-slate-600">{recognitionStats.count > 0 ? `${recognitionStats.commendations.length} commendation${recognitionStats.commendations.length === 1 ? '' : 's'} • ${recognitionStats.positiveFeedback.length} positive client recognition` : 'No recognition records — omitted from grade'}</p>
             </CardContent>
           </Card>
         </div>
