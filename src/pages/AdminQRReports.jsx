@@ -264,7 +264,8 @@ export default function AdminQRReports() {
 }
 
 function ScanDetailView({ group, allCheckpoints }) {
-  const siteCheckpoints = allCheckpoints.filter(cp => cp.property_site === group.property_site);
+  const explicitIds = new Set((group.rule?.required_checkpoint_ids || []).map(String));
+  const siteCheckpoints = group.rule?.qr_required === false ? [] : allCheckpoints.filter(cp => cp.property_site === group.property_site && (explicitIds.size ? explicitIds.has(String(cp.id)) : cp.is_required !== false));
   const successScans = group.scans.filter(s => s.scan_status === 'success');
   const allScannedIds = new Set(successScans.map(s => s.checkpoint_id));
   const totalMissed = siteCheckpoints.filter(cp => !allScannedIds.has(cp.id)).length;
@@ -277,16 +278,17 @@ function ScanDetailView({ group, allCheckpoints }) {
     const earliest = new Date(sortedScans[0].scanned_at);
     const latest = new Date(sortedScans[sortedScans.length - 1].scanned_at);
 
-    // Align to the start of the hour of the earliest scan
+    const frequencyMinutes = Math.max(1, Number(group.rule?.qr_frequency_minutes || 60));
+    const windowMinutes = Math.max(1, Number(group.rule?.qr_window_minutes || 30));
+    // This drill-down starts from the first observed scan; performance scoring uses the exact TimeEntry shift start.
     const cursor = new Date(earliest);
-    cursor.setMinutes(0, 0, 0);
 
     const rounds = [];
     const now = new Date();
 
     while (cursor <= latest || rounds.length === 0) {
       const windowStart = new Date(cursor);
-      const windowEnd = new Date(cursor.getTime() + 60 * 60 * 1000); // 1 hour window
+      const windowEnd = new Date(cursor.getTime() + windowMinutes * 60 * 1000);
 
       // All scans in this hour window
       const windowScans = group.scans.filter(s => {
@@ -322,7 +324,7 @@ function ScanDetailView({ group, allCheckpoints }) {
         windowScans,
       });
 
-      cursor.setTime(cursor.getTime() + 60 * 60 * 1000);
+      cursor.setTime(cursor.getTime() + frequencyMinutes * 60 * 1000);
 
       // Stop if we've passed the latest scan and covered at least one round
       if (cursor > latest && rounds.length > 0) break;
@@ -353,7 +355,7 @@ function ScanDetailView({ group, allCheckpoints }) {
       {hourlyRounds.length > 0 ? (
         <div>
           <p className="font-semibold text-slate-800 mb-3 flex items-center gap-1">
-            <Clock className="w-4 h-4" /> Hourly Patrol Rounds
+            <Clock className="w-4 h-4" /> Required Patrol Windows ({group.rule?.qr_frequency_minutes || 60}-min frequency / {group.rule?.qr_window_minutes || 30}-min window)
           </p>
           <div className="space-y-3">
             {hourlyRounds.map((round, idx) => (
