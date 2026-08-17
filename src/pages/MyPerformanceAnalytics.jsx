@@ -12,6 +12,7 @@ import {
 import { format, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { calculatePunctuality, calculateBidStanding, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 
@@ -57,6 +58,9 @@ export default function MyPerformanceAnalytics() {
   const notifications = performanceData.notifications || [];
   const myCallOuts = performanceData.callOuts || [];
   const myComplaints = performanceData.complaints || [];
+  const myCommendations = performanceData.commendations || [];
+  const myClientFeedback = performanceData.clientFeedback || [];
+  const myPerformanceReviews = performanceData.performanceReviews || [];
   const qrScanEvents = performanceData.qrScanEvents || [];
   const allCheckpoints = performanceData.checkpoints || [];
 
@@ -90,67 +94,12 @@ export default function MyPerformanceAnalytics() {
       .slice(0, 5);
   }, [notifications, user?.email]);
 
-  // Calculate on-time rate - MONTHLY RESET
-  const onTimeStats = React.useMemo(() => {
-    if (!timeEntries || !schedules) return { rate: 0, onTime: 0, late: 0, total: 0, details: [] };
-
-    let onTime = 0;
-    let late = 0;
-    const details = [];
-
-    // Filter to current month only
-    const monthlyEntries = timeEntries.filter(entry => {
-      if (!entry.clock_in) return false;
-      const entryDate = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
-      return entryDate >= currentMonthStart && entryDate <= currentMonthEnd;
-    });
-
-    monthlyEntries.forEach(entry => {
-      if (!entry.clock_in) return;
-      const clockInDate = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
-      const clockInTime = format(parseISO(entry.clock_in), 'HH:mm');
-      
-      const matchingSchedule = schedules.find(s => 
-        s.shift_date === clockInDate &&
-        emailKey(s.officer_email) === emailKey(entry.officer_email)
-      );
-
-      if (matchingSchedule) {
-        const scheduledStart = matchingSchedule.start_time;
-        
-        const scheduledMinutes = parseInt(scheduledStart.split(':')[0]) * 60 + parseInt(scheduledStart.split(':')[1]);
-        const actualMinutes = parseInt(clockInTime.split(':')[0]) * 60 + parseInt(clockInTime.split(':')[1]);
-        
-        // Allow 5 minute grace period
-        if (actualMinutes <= scheduledMinutes + 5) {
-          onTime++;
-          details.push({
-            status: 'on_time',
-            shift_date: clockInDate,
-            scheduled_start: scheduledStart,
-            actual_clock_in: clockInTime,
-            minutes_late: Math.max(0, actualMinutes - scheduledMinutes),
-            location: matchingSchedule.location || entry.location || ''
-          });
-        } else {
-          late++;
-          details.push({
-            status: 'late',
-            shift_date: clockInDate,
-            scheduled_start: scheduledStart,
-            actual_clock_in: clockInTime,
-            minutes_late: actualMinutes - scheduledMinutes,
-            location: matchingSchedule.location || entry.location || ''
-          });
-        }
-      }
-    });
-
-    const total = onTime + late;
-    const rate = total > 0 ? Math.round((onTime / total) * 100) : 0;
-
-    return { rate, onTime, late, total, details };
-  }, [timeEntries, schedules, currentMonthStart, currentMonthEnd]);
+  // Punctuality is calculated in Eastern Time and each punch is matched to the
+  // correct scheduled shift window, not simply the first shift on the same date.
+  const onTimeStats = React.useMemo(
+    () => calculatePunctuality(timeEntries, schedules, currentMonthStart, currentMonthEnd),
+    [timeEntries, schedules, currentMonthStart, currentMonthEnd]
+  );
 
   // Calculate actual worked hours from completed time entries - MONTHLY RESET
   const hoursData = React.useMemo(() => {
@@ -218,24 +167,12 @@ export default function MyPerformanceAnalytics() {
     return { completed, total, percentage, pending, complianceApproved: assignmentApproved, compliancePending: assignmentPending };
   }, [allTraining, trainingCompletions, user, myAssignments]);
 
-  // Bid history - MONTHLY RESET
-  const bidStats = React.useMemo(() => {
-    if (!myBids) return { total: 0, accepted: 0, rejected: 0, pending: 0, acceptanceRate: 0 };
-
-    // Filter to current month only
-    const monthlyBids = myBids.filter(b => {
-      const bidDate = format(parseISO(b.created_date), 'yyyy-MM-dd');
-      return bidDate >= currentMonthStart && bidDate <= currentMonthEnd;
-    });
-
-    const accepted = monthlyBids.filter(b => b.status === 'accepted').length;
-    const rejected = monthlyBids.filter(b => b.status === 'rejected').length;
-    const pending = monthlyBids.filter(b => b.status === 'pending').length;
-    const total = monthlyBids.length;
-    const acceptanceRate = (accepted + rejected) > 0 ? Math.round((accepted / (accepted + rejected)) * 100) : 0;
-
-    return { total, accepted, rejected, pending, acceptanceRate };
-  }, [myBids, currentMonthStart, currentMonthEnd]);
+  // Bid Standing: unanswered/pending bids are neutral, not failures. Only rejected
+  // bids reduce the percentage; withdrawn bids are excluded from the score.
+  const bidStats = React.useMemo(
+    () => calculateBidStanding(myBids, currentMonthStart, currentMonthEnd),
+    [myBids, currentMonthStart, currentMonthEnd]
+  );
 
   // QR Patrol stats for the current month. A scan counts only while the officer is
   // inside an actual completed TimeEntry, and round windows stop at clock-out.
@@ -292,21 +229,19 @@ export default function MyPerformanceAnalytics() {
   const qrPatrolRate = (qrPatrolStats.completedRounds + qrPatrolStats.missedRounds) > 0
     ? Math.round((qrPatrolStats.completedRounds / (qrPatrolStats.completedRounds + qrPatrolStats.missedRounds)) * 100)
     : null;
-  const decidedBidCount = bidStats.accepted + bidStats.rejected;
+  const clientFeedbackStats = useMemo(() => calculateClientFeedback(myClientFeedback, currentMonthStart, currentMonthEnd), [myClientFeedback, currentMonthStart, currentMonthEnd]);
+  const supervisorRatingStats = useMemo(() => calculateSupervisorRating(myPerformanceReviews, currentMonthStart, currentMonthEnd), [myPerformanceReviews, currentMonthStart, currentMonthEnd]);
+  const recognitionStats = useMemo(() => calculateRecognition(myCommendations, myClientFeedback, currentMonthStart, currentMonthEnd), [myCommendations, myClientFeedback, currentMonthStart, currentMonthEnd]);
 
-  const overallPerformance = useMemo(() => {
-    const categories = [];
-    if (onTimeStats.total > 0) categories.push({ label: 'On-Time Arrival', score: onTimeStats.rate });
-    if (trainingStats.total > 0) categories.push({ label: 'Training Completion', score: trainingStats.percentage });
-    if (qrPatrolRate !== null) categories.push({ label: 'QR Patrol Completion', score: qrPatrolRate });
-    if (decidedBidCount > 0) categories.push({ label: 'Bid Acceptance', score: bidStats.acceptanceRate });
-
-    const score = categories.length > 0
-      ? Math.round(categories.reduce((sum, category) => sum + category.score, 0) / categories.length)
-      : null;
-
-    return { score, categories };
-  }, [onTimeStats, trainingStats, qrPatrolRate, decidedBidCount, bidStats.acceptanceRate]);
+  const overallPerformance = useMemo(() => buildOverallPerformance({
+    punctuality: onTimeStats,
+    trainingScore: trainingStats.total > 0 ? trainingStats.percentage : null,
+    qrScore: qrPatrolRate,
+    bidStanding: bidStats,
+    clientFeedback: clientFeedbackStats,
+    supervisorRating: supervisorRatingStats,
+    recognition: recognitionStats,
+  }), [onTimeStats, trainingStats, qrPatrolRate, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
 
   const performanceFactors = useMemo(() => {
     const factors = [];
@@ -386,25 +321,25 @@ export default function MyPerformanceAnalytics() {
     if (bidStats.rejected > 0) {
       const rejectedBidDetails = (myBids || []).filter(b => b.status === 'rejected').map(b => `${format(parseISO(b.created_date), 'MMM d')}: priority ${b.bid_priority || 1} bid was rejected`);
       factors.push({
-        metric: 'Bid Acceptance',
-        value: `${bidStats.acceptanceRate}%`,
+        metric: 'Bid Standing',
+        value: `${bidStats.score}%`,
         severity: 'negative',
-        reason: `${bidStats.rejected} decided shift bid${bidStats.rejected === 1 ? ' was' : 's were'} rejected. Pending bids do not lower the acceptance rate until a decision is made.`,
+        reason: `${bidStats.rejected} bid${bidStats.rejected === 1 ? ' was' : 's were'} rejected. Accepted and still-pending bids remain in good standing; unanswered bids are not treated as failures.`, 
         details: rejectedBidDetails
       });
     } else if (bidStats.accepted > 0) {
       factors.push({
-        metric: 'Bid Acceptance',
-        value: '100%',
+        metric: 'Bid Standing',
+        value: `${bidStats.score}%`,
         severity: 'positive',
-        reason: `All ${bidStats.accepted} decided bid${bidStats.accepted === 1 ? '' : 's'} this month were accepted. Pending bids are not counted against you.`
+        reason: `${bidStats.accepted} accepted and ${bidStats.pending} pending bid${bidStats.scoredTotal === 1 ? '' : 's'} are in good standing. Pending bids do not count against you.`
       });
     } else {
       factors.push({
-        metric: 'Bid Acceptance',
-        value: 'Not scored yet',
-        severity: 'neutral',
-        reason: bidStats.pending > 0 ? `${bidStats.pending} bid${bidStats.pending === 1 ? ' is' : 's are'} still pending. Pending bids do not lower your percentage.` : 'There are no decided shift bids this month, so there is no acceptance percentage to score.'
+        metric: 'Bid Standing',
+        value: bidStats.score != null ? `${bidStats.score}%` : 'Not scored yet',
+        severity: bidStats.score != null ? 'positive' : 'neutral',
+        reason: bidStats.pending > 0 ? `${bidStats.pending} bid${bidStats.pending === 1 ? ' is' : 's are'} still pending. Because management has not answered them, they remain neutral/good standing and do not lower the score.` : 'No shift bids were submitted this month, so this category is not included in the overall score.'
       });
     }
 
@@ -440,7 +375,18 @@ export default function MyPerformanceAnalytics() {
     }
 
     return factors;
-  }, [onTimeStats, trainingStats, qrPatrolStats, qrPatrolRate, bidStats, myBids, myCallOuts, myComplaints, allTraining, trainingCompletions, myAssignments, user, currentMonthStart, currentMonthEnd]);
+    if (clientFeedbackStats.count > 0) {
+      factors.push({ metric: 'Client Feedback', value: `${clientFeedbackStats.score}%`, severity: clientFeedbackStats.score >= 80 ? 'positive' : 'negative', reason: `${clientFeedbackStats.count} client rating${clientFeedbackStats.count === 1 ? '' : 's'} average ${clientFeedbackStats.avgRating.toFixed(1)} of 5 stars.`, details: clientFeedbackStats.items.map(item => `${item.shift_date || 'Shift'} at ${String(item.location || '').split(':')[0]}: ${Number(item.rating).toFixed(1)}/5${item.comments ? ` — ${item.comments}` : ''}`) });
+    }
+    if (supervisorRatingStats.count > 0) {
+      factors.push({ metric: 'Supervisor Rating', value: `${supervisorRatingStats.score}%`, severity: supervisorRatingStats.score >= 80 ? 'positive' : 'negative', reason: `${supervisorRatingStats.count} supervisor performance review${supervisorRatingStats.count === 1 ? '' : 's'} average ${supervisorRatingStats.avgRating.toFixed(1)} of 5.`, details: supervisorRatingStats.items.map(item => `${item.review_date}: ${Number(item.overall_rating).toFixed(1)}/5${item.reviewer_name ? ` by ${item.reviewer_name}` : ''}`) });
+    }
+    if (recognitionStats.count > 0) {
+      factors.push({ metric: 'Recognition', value: 'Positive', severity: 'positive', reason: `${recognitionStats.count} commendation/positive client recognition record${recognitionStats.count === 1 ? '' : 's'} this month. Recognition contributes positively to the overall score; having none does not lower it.`, details: [...recognitionStats.commendations.map(item => `${item.commendation_type?.replaceAll('_', ' ') || 'Commendation'}: ${item.description}`), ...recognitionStats.positiveFeedback.map(item => `Client feedback ${Number(item.rating || 0).toFixed(1)}/5 at ${String(item.location || '').split(':')[0]}`)] });
+    }
+
+    return factors;
+  }, [onTimeStats, trainingStats, qrPatrolStats, qrPatrolRate, bidStats, myBids, myCallOuts, myComplaints, allTraining, trainingCompletions, myAssignments, user, clientFeedbackStats, supervisorRatingStats, recognitionStats, currentMonthStart, currentMonthEnd]);
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -546,9 +492,9 @@ export default function MyPerformanceAnalytics() {
           <Card className="border-none shadow-lg bg-gradient-to-br from-amber-50 to-orange-100">
             <CardContent className="p-3 sm:p-4">
               <Star className="w-6 h-6 text-amber-600 mb-2" />
-              <p className="text-2xl font-bold text-amber-600 sm:text-3xl">{(bidStats.accepted + bidStats.rejected) > 0 ? `${bidStats.acceptanceRate}%` : '—'}</p>
-              <p className="text-xs font-semibold text-slate-700">Bid Acceptance Rate</p>
-              <p className="mt-1 text-[11px] text-slate-600">{bidStats.accepted} accepted • {bidStats.rejected} rejected • {bidStats.pending} pending</p>
+              <p className="text-2xl font-bold text-amber-600 sm:text-3xl">{bidStats.score != null ? `${bidStats.score}%` : '—'}</p>
+              <p className="text-xs font-semibold text-slate-700">Bid Standing</p>
+              <p className="mt-1 text-[11px] text-slate-600">{bidStats.accepted} accepted • {bidStats.pending} pending • {bidStats.rejected} rejected</p>
             </CardContent>
           </Card>
         </div>
