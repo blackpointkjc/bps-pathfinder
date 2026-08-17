@@ -36,7 +36,7 @@ export default function ClientLocation() {
     staleTime: 0,
   });
 
-  const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
+  const clientLocations = [...new Set([...(Array.isArray(user?.assigned_locations) ? user.assigned_locations : []), ...(Array.isArray(user?.assigned_sites) ? user.assigned_sites : []), ...(user?.assigned_location ? [user.assigned_location] : [])].filter(Boolean))];
 
   useEffect(() => {
     if (clientLocations.length > 0 && !selectedLocation) {
@@ -57,8 +57,8 @@ export default function ClientLocation() {
     queryKey: ['clientLocation', effectiveLocation],
     queryFn: async () => {
       if (!effectiveLocation) return null;
-      const allLocations = await listDirectoryLocations(); // Fetch all to find by site_name
-      const loc = allLocations.find(l => l.site_name === effectiveLocation);
+      const allLocations = await listDirectoryLocations();
+      const loc = allLocations.find(l => siteKey(l.site_name) === siteKey(effectiveLocation));
       if (loc) {
         setFormData({
           address: loc.address || "",
