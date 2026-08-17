@@ -34,7 +34,7 @@ export default function CenterToolSection({ tools, defaultTool }) {
       )}
       <div className={fullCanvas
         ? 'min-h-0 min-w-0 flex-1 overflow-hidden [&>div]:!h-full [&>div]:!min-h-0 [&>div]:!max-w-none [&>div]:!mx-0 [&>div]:!p-0'
-        : 'min-w-0 [&>div]:!min-h-0 [&>div]:!max-w-none [&>div]:!mx-0 [&>div]:!px-4 [&>div]:!py-5 md:[&>div]:!px-6 md:[&>div]:!py-6 [&>div>div]:!max-w-none [&>div>div]:!mx-0'}>{Component ? <Component embedded /> : null}</div>
+        : 'min-w-0 overflow-x-hidden'}>{Component ? <Component embedded /> : null}</div>
     </div>
   );
 }
