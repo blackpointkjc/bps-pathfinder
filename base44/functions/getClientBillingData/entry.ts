@@ -37,7 +37,16 @@ Deno.serve(async (req) => {
 
     const siteOf = (value: any) => String(value || '').split(/\s*(?::|\s-\s)\s*/)[0].trim();
     const clientEmail = String(target.email || '').toLowerCase();
-    const visibleInvoices = (invoices || []).filter((invoice: any) => String(invoice.client_email || '').toLowerCase() === clientEmail);
+    const targetId = String(target.id || '');
+    const initialAssignedSites = new Set([...assigned].map(siteOf).filter(Boolean));
+    const visibleInvoices = (invoices || []).filter((invoice: any) => {
+      const invoiceEmail = String(invoice.client_email || '').toLowerCase();
+      const invoiceClientId = String(invoice.client_id || invoice.client_user_id || '');
+      const invoiceSite = siteOf(invoice.site_name || invoice.location);
+      return (clientEmail && invoiceEmail === clientEmail)
+        || (targetId && invoiceClientId === targetId)
+        || (invoiceSite && initialAssignedSites.has(invoiceSite));
+    });
     // Keep inactive and previously assigned locations visible when they have client ownership,
     // invoice history, or time-entry history. Inactivation stops future scheduling; it must not
     // erase historical billing or the configured rate from the client portal.
