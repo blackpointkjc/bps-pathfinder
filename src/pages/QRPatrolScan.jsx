@@ -82,7 +82,7 @@ function HourlyRoundsTracker({ siteCheckpoints, todayScans, shiftStart, activeSi
           </span>
           {expanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
         </CardTitle>
-        <p className="text-xs text-slate-500 mt-0.5 pl-6">{totalRequired > 0 ? `Scan ${totalRequired} required checkpoint${totalRequired !== 1 ? 's' : ''} every ${frequencyMinutes} min within a ${windowMinutes}-min window` : 'No QR duty is currently required by this property rule'}</p>
+        <p className="text-xs text-slate-500 mt-0.5 pl-6">{totalRequired > 0 ? `Scan ${totalRequired} required checkpoint${totalRequired !== 1 ? 's' : ''} every ${frequencyMinutes} min within a ${windowMinutes}-min window${Number(dutyRule?.qr_scans_per_shift || 0) > 0 ? ` • minimum ${Number(dutyRule.qr_scans_per_shift)} successful scans this shift` : ''}` : 'No QR duty is currently required by this property rule'}</p>
       </CardHeader>
       {expanded && (
         <CardContent className="p-0">
