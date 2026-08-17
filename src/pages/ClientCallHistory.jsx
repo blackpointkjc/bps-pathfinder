@@ -52,6 +52,8 @@ export default function ClientCallHistory() {
   const [rows, setRows] = useState([]);
   const [search, setSearch] = useState('');
   const [agency, setAgency] = useState('ALL');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [expanded, setExpanded] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -61,12 +63,12 @@ export default function ClientCallHistory() {
     try {
       const me = user || await getClientPortalUser();
       if (!user) setUser(me);
-      const assignedNames = me?.assigned_locations || (me?.assigned_location ? [me.assigned_location] : []);
+      const assignedNames = [...new Set([...(Array.isArray(me?.assigned_locations) ? me.assigned_locations : []), ...(Array.isArray(me?.assigned_sites) ? me.assigned_sites : []), ...(me?.assigned_location ? [me.assigned_location] : [])].filter(Boolean))];
       // Load sequentially to avoid the Base44 per-user burst limit that was
       // previously hit by six simultaneous list requests on this page.
       const allLocations = await listDirectoryLocations('site_name', 500);
-      const active = await base44.entities.DispatchCall.list('-time_received', 150);
-      const archived = await base44.entities.CallHistory.list('-archived_date', 150);
+      const active = await base44.entities.DispatchCall.list('-time_received', 500);
+      const archived = await base44.entities.CallHistory.list('-archived_date', 500);
       const notes = await base44.entities.CallNote.list('-created_date', 300);
       const reports = await base44.entities.IncidentReport.list('-created_date', 300);
       const propertyAlerts = await base44.entities.PropertyAlert.list('-created_date', 300).catch(() => []);
@@ -121,9 +123,13 @@ export default function ClientCallHistory() {
   const filtered = useMemo(() => rows.filter(row => {
     if (selectedSite !== 'ALL' && row.matchedSite?.site_name !== selectedSite) return false;
     if (agency !== 'ALL' && row.agency !== agency) return false;
+    const callDate = parseServerTimestamp(row.time_received || row.created_date);
+    const easternDate = callDate?.toLocaleDateString('en-CA', { timeZone: EASTERN_TIME_ZONE }) || '';
+    if (startDate && easternDate < startDate) return false;
+    if (endDate && easternDate > endDate) return false;
     const q = search.toLowerCase();
     return !q || [row.incident, row.location, row.agency, row.call_id, row.bps_reference, row.matchedSite?.site_name].some(v => String(v || '').toLowerCase().includes(q));
-  }).sort((a, b) => (parseServerTimestamp(b.time_received || b.created_date)?.getTime() || 0) - (parseServerTimestamp(a.time_received || a.created_date)?.getTime() || 0)), [rows, selectedSite, agency, search]);
+  }).sort((a, b) => (parseServerTimestamp(b.time_received || b.created_date)?.getTime() || 0) - (parseServerTimestamp(a.time_received || a.created_date)?.getTime() || 0)), [rows, selectedSite, agency, search, startDate, endDate]);
 
   if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white"><div className="text-center"><div className="h-8 w-8 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-3" />Loading client call history…</div></div>;
 
@@ -136,10 +142,13 @@ export default function ClientCallHistory() {
         <button onClick={() => { setRefreshing(true); load(); }} className="px-3 py-2 border border-slate-600 rounded bg-slate-800 text-xs flex items-center gap-2"><RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />REFRESH</button>
       </div>
 
-      <div className="p-3 md:p-4 border-b border-slate-800 bg-slate-900/70 flex flex-wrap gap-2">
-        <div className="relative flex-1 min-w-[220px]"><Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search incident, address, agency or reference" className="w-full bg-slate-800 border border-slate-700 rounded pl-9 pr-3 py-2 text-xs" /></div>
+      <div className="p-3 md:p-4 border-b border-slate-800 bg-slate-900/70 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_180px_160px_150px_150px_auto] gap-2">
+        <div className="relative min-w-0"><Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search incident, address, agency or reference" className="w-full bg-slate-800 border border-slate-700 rounded pl-9 pr-3 py-2 text-xs" /></div>
         <select value={selectedSite} onChange={e => setSelectedSite(e.target.value)} className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-xs"><option value="ALL">ALL PROPERTIES</option>{sites.map(site => <option key={site.id} value={site.site_name}>{site.site_name}</option>)}</select>
         <select value={agency} onChange={e => setAgency(e.target.value)} className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-xs"><option value="ALL">ALL AGENCIES</option>{[...new Set(rows.map(r => r.agency).filter(Boolean))].sort().map(a => <option key={a}>{a}</option>)}</select>
+        <input aria-label="Start date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-xs" />
+        <input aria-label="End date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-xs" />
+        <button onClick={() => { setSearch(''); setSelectedSite('ALL'); setAgency('ALL'); setStartDate(''); setEndDate(''); }} className="px-3 py-2 border border-slate-600 rounded bg-slate-800 text-xs">CLEAR FILTERS</button>
       </div>
 
       <div className="p-3 md:p-4 space-y-2">
