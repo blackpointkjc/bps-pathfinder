@@ -92,10 +92,11 @@ export default function MyPerformanceAnalytics() {
 
   // Calculate on-time rate - MONTHLY RESET
   const onTimeStats = React.useMemo(() => {
-    if (!timeEntries || !schedules) return { rate: 0, onTime: 0, late: 0, total: 0 };
+    if (!timeEntries || !schedules) return { rate: 0, onTime: 0, late: 0, total: 0, details: [] };
 
     let onTime = 0;
     let late = 0;
+    const details = [];
 
     // Filter to current month only
     const monthlyEntries = timeEntries.filter(entry => {
@@ -123,8 +124,24 @@ export default function MyPerformanceAnalytics() {
         // Allow 5 minute grace period
         if (actualMinutes <= scheduledMinutes + 5) {
           onTime++;
+          details.push({
+            status: 'on_time',
+            shift_date: clockInDate,
+            scheduled_start: scheduledStart,
+            actual_clock_in: clockInTime,
+            minutes_late: Math.max(0, actualMinutes - scheduledMinutes),
+            location: matchingSchedule.location || entry.location || ''
+          });
         } else {
           late++;
+          details.push({
+            status: 'late',
+            shift_date: clockInDate,
+            scheduled_start: scheduledStart,
+            actual_clock_in: clockInTime,
+            minutes_late: actualMinutes - scheduledMinutes,
+            location: matchingSchedule.location || entry.location || ''
+          });
         }
       }
     });
@@ -132,7 +149,7 @@ export default function MyPerformanceAnalytics() {
     const total = onTime + late;
     const rate = total > 0 ? Math.round((onTime / total) * 100) : 0;
 
-    return { rate, onTime, late, total };
+    return { rate, onTime, late, total, details };
   }, [timeEntries, schedules, currentMonthStart, currentMonthEnd]);
 
   // Calculate actual worked hours from completed time entries - MONTHLY RESET
@@ -272,6 +289,25 @@ export default function MyPerformanceAnalytics() {
     return { totalScans, successScans, completedRounds, missedRounds };
   }, [qrScanEvents, allCheckpoints, timeEntries, currentMonthStart, currentMonthEnd]);
 
+  const qrPatrolRate = (qrPatrolStats.completedRounds + qrPatrolStats.missedRounds) > 0
+    ? Math.round((qrPatrolStats.completedRounds / (qrPatrolStats.completedRounds + qrPatrolStats.missedRounds)) * 100)
+    : null;
+  const decidedBidCount = bidStats.accepted + bidStats.rejected;
+
+  const overallPerformance = useMemo(() => {
+    const categories = [];
+    if (onTimeStats.total > 0) categories.push({ label: 'On-Time Arrival', score: onTimeStats.rate });
+    if (trainingStats.total > 0) categories.push({ label: 'Training Completion', score: trainingStats.percentage });
+    if (qrPatrolRate !== null) categories.push({ label: 'QR Patrol Completion', score: qrPatrolRate });
+    if (decidedBidCount > 0) categories.push({ label: 'Bid Acceptance', score: bidStats.acceptanceRate });
+
+    const score = categories.length > 0
+      ? Math.round(categories.reduce((sum, category) => sum + category.score, 0) / categories.length)
+      : null;
+
+    return { score, categories };
+  }, [onTimeStats, trainingStats, qrPatrolRate, decidedBidCount, bidStats.acceptanceRate]);
+
   const performanceFactors = useMemo(() => {
     const factors = [];
 
@@ -283,11 +319,15 @@ export default function MyPerformanceAnalytics() {
         reason: 'No clock-in has been matched to a scheduled shift this month. This is not a deduction; there is simply no punctuality event to score yet.'
       });
     } else if (onTimeStats.late > 0) {
+      const lateDetails = onTimeStats.details
+        .filter(detail => detail.status === 'late')
+        .map(detail => `${format(parseISO(detail.shift_date), 'MMM d')}: scheduled ${detail.scheduled_start}, clocked in ${detail.actual_clock_in} (${detail.minutes_late} min late)${detail.location ? ` at ${detail.location.split(':')[0]}` : ''}`);
       factors.push({
         metric: 'On-Time Arrival',
         value: `${onTimeStats.rate}%`,
         severity: 'negative',
-        reason: `${onTimeStats.late} of ${onTimeStats.total} matched shift${onTimeStats.total === 1 ? '' : 's'} were clocked in more than 5 minutes after the scheduled start time.`
+        reason: `${onTimeStats.late} of ${onTimeStats.total} matched shift${onTimeStats.total === 1 ? '' : 's'} were clocked in more than 5 minutes after the scheduled start time.`,
+        details: lateDetails
       });
     } else {
       factors.push({
@@ -299,11 +339,23 @@ export default function MyPerformanceAnalytics() {
     }
 
     if (trainingStats.pending > 0) {
+      const pendingNames = [
+        ...(allTraining || []).filter(module => {
+          const assigned = (module.assigned_to || []).some(email => emailKey(email) === emailKey(user?.email)) ||
+            (module.assigned_divisions || []).includes(user?.division) ||
+            (module.assigned_ranks || []).includes(user?.rank) ||
+            module.required === true;
+          const completedIds = new Set((trainingCompletions || []).filter(tc => tc.completed).map(tc => String(tc.training_module_id)));
+          return assigned && !completedIds.has(String(module.id));
+        }).map(module => module.title),
+        ...(myAssignments || []).filter(a => a.status !== 'approved').map(a => `${a.training_name || 'Compliance item'} (${String(a.status || 'pending').replaceAll('_', ' ')})`)
+      ];
       factors.push({
         metric: 'Training Completion',
         value: `${trainingStats.percentage}%`,
         severity: 'negative',
-        reason: `${trainingStats.pending} assigned training/compliance item${trainingStats.pending === 1 ? ' is' : 's are'} still pending. Complete or obtain approval for those items to reach 100%.`
+        reason: `${trainingStats.pending} assigned training/compliance item${trainingStats.pending === 1 ? ' is' : 's are'} still pending. Complete or obtain approval for those items to reach 100%.`,
+        details: pendingNames
       });
     } else {
       factors.push({
@@ -317,9 +369,10 @@ export default function MyPerformanceAnalytics() {
     if (qrPatrolStats.missedRounds > 0) {
       factors.push({
         metric: 'QR Patrol',
-        value: `${qrPatrolStats.missedRounds} missed`,
+        value: `${qrPatrolRate}%`,
         severity: 'negative',
-        reason: `${qrPatrolStats.missedRounds} required patrol round${qrPatrolStats.missedRounds === 1 ? ' was' : 's were'} not completed during the required scan window while clocked in.`
+        reason: `${qrPatrolStats.missedRounds} required patrol round${qrPatrolStats.missedRounds === 1 ? ' was' : 's were'} missed out of ${qrPatrolStats.completedRounds + qrPatrolStats.missedRounds} evaluated rounds.`,
+        details: [`${qrPatrolStats.completedRounds} completed round${qrPatrolStats.completedRounds === 1 ? '' : 's'}`, `${qrPatrolStats.missedRounds} missed round${qrPatrolStats.missedRounds === 1 ? '' : 's'}`]
       });
     } else if (qrPatrolStats.completedRounds > 0) {
       factors.push({
@@ -331,11 +384,13 @@ export default function MyPerformanceAnalytics() {
     }
 
     if (bidStats.rejected > 0) {
+      const rejectedBidDetails = (myBids || []).filter(b => b.status === 'rejected').map(b => `${format(parseISO(b.created_date), 'MMM d')}: priority ${b.bid_priority || 1} bid was rejected`);
       factors.push({
         metric: 'Bid Acceptance',
         value: `${bidStats.acceptanceRate}%`,
         severity: 'negative',
-        reason: `${bidStats.rejected} decided shift bid${bidStats.rejected === 1 ? ' was' : 's were'} rejected. Pending bids do not lower the acceptance rate until a decision is made.`
+        reason: `${bidStats.rejected} decided shift bid${bidStats.rejected === 1 ? ' was' : 's were'} rejected. Pending bids do not lower the acceptance rate until a decision is made.`,
+        details: rejectedBidDetails
       });
     } else if (bidStats.accepted > 0) {
       factors.push({
@@ -385,7 +440,7 @@ export default function MyPerformanceAnalytics() {
     }
 
     return factors;
-  }, [onTimeStats, trainingStats, qrPatrolStats, bidStats, myCallOuts, myComplaints, currentMonthStart, currentMonthEnd]);
+  }, [onTimeStats, trainingStats, qrPatrolStats, qrPatrolRate, bidStats, myBids, myCallOuts, myComplaints, allTraining, trainingCompletions, myAssignments, user, currentMonthStart, currentMonthEnd]);
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -432,6 +487,31 @@ export default function MyPerformanceAnalytics() {
             Loaded {performanceData.meta.timeEntries || 0} time entries, {performanceData.meta.schedules || 0} schedules, {performanceData.meta.trainingAssignments || 0} training assignments, and {performanceData.meta.qrScans || 0} QR scans for your account.
           </div>
         )}
+
+        <Card className="overflow-hidden border border-blue-200 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white">
+            <CardTitle className="flex flex-wrap items-center justify-between gap-3">
+              <span className="flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Overall Performance Score</span>
+              <span className="text-4xl font-black">{overallPerformance.score !== null ? `${overallPerformance.score}%` : '—'}</span>
+            </CardTitle>
+            <p className="text-xs text-blue-100">Equal average of every scored category that currently has enough data. Categories with no scored events are excluded instead of being counted as 0%.</p>
+          </CardHeader>
+          <CardContent className="p-4">
+            {overallPerformance.categories.length > 0 ? (
+              <div className="space-y-2">
+                {overallPerformance.categories.map(category => (
+                  <div key={category.label} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <span className="text-sm font-semibold text-slate-700">{category.label}</span>
+                    <span className="font-bold text-slate-900">{category.score}%</span>
+                  </div>
+                ))}
+                <p className="pt-1 text-xs text-slate-500">Formula: ({overallPerformance.categories.map(category => `${category.score}%`).join(' + ')}) ÷ {overallPerformance.categories.length} = {overallPerformance.score}%</p>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">No scored performance categories have enough data yet.</p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Quick Stats */}
         <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
@@ -492,6 +572,13 @@ export default function MyPerformanceAnalytics() {
                   <Badge className={factor.severity === 'negative' ? 'bg-red-600 text-white' : factor.severity === 'positive' ? 'bg-green-600 text-white' : 'bg-slate-600 text-white'}>{factor.value}</Badge>
                 </div>
                 <p className="mt-1 text-sm text-slate-700">{factor.reason}</p>
+                {factor.details?.length > 0 && (
+                  <div className="mt-2 space-y-1 border-t border-slate-200 pt-2">
+                    {factor.details.map((detail, detailIndex) => (
+                      <p key={detailIndex} className="text-xs font-medium text-slate-700">• {detail}</p>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </CardContent>
