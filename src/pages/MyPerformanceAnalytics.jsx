@@ -287,6 +287,7 @@ export default function MyPerformanceAnalytics() {
     }
 
     const monthlyCallOuts = (myCallOuts || []).filter(item => {
+      if (item.call_out_type === 'reassigned') return false;
       const raw = item.call_out_date || item.created_date;
       if (!raw) return false;
       const date = format(parseISO(raw), 'yyyy-MM-dd');
@@ -327,8 +328,25 @@ export default function MyPerformanceAnalytics() {
       factors.push({ metric: 'Recognition', value: 'Positive', severity: 'positive', reason: `${recognitionStats.count} commendation/positive client recognition record${recognitionStats.count === 1 ? '' : 's'} this month. Recognition contributes positively to the overall score; having none does not lower it.`, details: [...recognitionStats.commendations.map(item => `${item.commendation_type?.replaceAll('_', ' ') || 'Commendation'}: ${item.description}`), ...recognitionStats.positiveFeedback.map(item => `Client feedback ${Number(item.rating || 0).toFixed(1)}/5 at ${String(item.location || '').split(':')[0]}`)] });
     }
 
+    if (jobDutyStats.score != null) {
+      const dutyDetails = [];
+      jobDutyStats.shifts.forEach(shift => {
+        if (shift.daily_activity.required && !shift.daily_activity.completed) dutyDetails.push(`${shift.shift_date} • ${shift.property}: Daily Activity Report missing for this worked shift.`);
+        shift.incidents.items.filter(item => item.status === 'missing').forEach(item => dutyDetails.push(`${shift.shift_date} • ${shift.property}: Incident Report missing for call ${item.call_number || item.call_id} (${item.call_type || 'call for service'}).`));
+        shift.incidents.items.filter(item => item.status === 'excluded_reassignment').forEach(item => dutyDetails.push(`${shift.shift_date} • ${shift.property}: Call ${item.call_number || item.call_id} excluded — ${item.reason}.`));
+        if (shift.qr.missed > 0) dutyDetails.push(`${shift.shift_date} • ${shift.property}: ${shift.qr.completed}/${shift.qr.required} required QR scans completed; ${shift.qr.missed} missed.`);
+      });
+      factors.push({
+        metric: 'Job Duty Compliance',
+        value: `${jobDutyStats.score}%`,
+        severity: jobDutyStats.score === 100 ? 'positive' : 'negative',
+        reason: `DAR ${jobDutyStats.dailyActivity.completed}/${jobDutyStats.dailyActivity.required || 0} • Incident Reports ${jobDutyStats.incidentReports.completed}/${jobDutyStats.incidentReports.required || 0} (${jobDutyStats.incidentReports.excluded || 0} call-out exception${jobDutyStats.incidentReports.excluded === 1 ? '' : 's'}) • QR ${jobDutyStats.qrCompliance.completed}/${jobDutyStats.qrCompliance.required || 0}.`,
+        details: dutyDetails.length ? dutyDetails : ['All required job duties were completed for evaluated shifts.']
+      });
+    }
+
     return factors;
-  }, [onTimeStats, trainingStats, qrPatrolStats, qrPatrolRate, bidStats, myBids, myCallOuts, myComplaints, allTraining, trainingCompletions, myAssignments, user, clientFeedbackStats, supervisorRatingStats, recognitionStats, currentMonthStart, currentMonthEnd]);
+  }, [onTimeStats, trainingStats, qrPatrolStats, qrPatrolRate, bidStats, myBids, myCallOuts, myComplaints, allTraining, trainingCompletions, myAssignments, user, clientFeedbackStats, supervisorRatingStats, recognitionStats, jobDutyStats, currentMonthStart, currentMonthEnd]);
 
   const getNotificationIcon = (type) => {
     switch (type) {
