@@ -204,7 +204,7 @@ export default function MyPerformanceAnalytics() {
         reason: `${onTimeStats.late} of ${onTimeStats.total} matched shift${onTimeStats.total === 1 ? '' : 's'} were clocked in more than 5 minutes after the scheduled start time.`,
         details: lateDetails
       });
-    } else {
+    } else if (onTimeStats.total > 0) {
       factors.push({
         metric: 'On-Time Arrival',
         value: '100%',
@@ -221,7 +221,7 @@ export default function MyPerformanceAnalytics() {
         reason: `${trainingStats.pending} assigned training/compliance item${trainingStats.pending === 1 ? ' is' : 's are'} still pending. Complete or obtain approval for those items to reach 100%.`,
         details: trainingStats.pendingNames
       });
-    } else {
+    } else if (trainingStats.total > 0) {
       factors.push({
         metric: 'Training Completion',
         value: '100%',
@@ -300,6 +300,7 @@ export default function MyPerformanceAnalytics() {
           dutyDetails.push(`${shift.shift_date} • ${shift.property}: ${shift.qr.completed}/${shift.qr.required} required QR scans completed; ${shift.qr.missed} missed.`);
           (shift.qr.missed_obligations || []).slice(0, 8).forEach(item => dutyDetails.push(`${shift.shift_date} • ${shift.property}: ${item.checkpoint_name} missed in QR round ${item.round} (${new Date(item.window_start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}–${new Date(item.window_end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}).`));
         }
+        (shift.qr.excluded_items || []).slice(0, 8).forEach(item => dutyDetails.push(`${shift.shift_date} • ${shift.property}: ${item.checkpoint_name || 'QR scan'} by ${item.officer_email || 'another user'} did not count because the scanner was not clocked in at this property.`));
       });
       factors.push({
         metric: 'Job Duty Compliance',
@@ -458,18 +459,18 @@ export default function MyPerformanceAnalytics() {
           <CardContent className="grid gap-3 p-4 md:grid-cols-3">
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
               <p className="text-xs font-semibold uppercase text-slate-500">Daily Activity Reports</p>
-              <p className="mt-1 text-xl font-bold text-slate-900">{jobDutyStats.dailyActivity.completed}/{jobDutyStats.dailyActivity.required}</p>
-              <p className="text-xs text-slate-600">{jobDutyStats.dailyActivity.missed} missed • {jobDutyStats.dailyActivity.score != null ? `${jobDutyStats.dailyActivity.score}%` : 'Not scored'}</p>
+              <p className="mt-1 text-xl font-bold text-slate-900">{jobDutyStats.dailyActivity.required > 0 ? `${jobDutyStats.dailyActivity.completed}/${jobDutyStats.dailyActivity.required}` : '—'}</p>
+              <p className="text-xs text-slate-600">{jobDutyStats.dailyActivity.required > 0 ? `${jobDutyStats.dailyActivity.missed} missed • ${jobDutyStats.dailyActivity.score}%` : 'No completed worked shifts requiring a DAR yet'}</p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
               <p className="text-xs font-semibold uppercase text-slate-500">Incident Reports</p>
-              <p className="mt-1 text-xl font-bold text-slate-900">{jobDutyStats.incidentReports.completed}/{jobDutyStats.incidentReports.required}</p>
-              <p className="text-xs text-slate-600">{jobDutyStats.incidentReports.missed} missed • {jobDutyStats.incidentReports.excluded} excluded by call-out/reassignment</p>
+              <p className="mt-1 text-xl font-bold text-slate-900">{jobDutyStats.incidentReports.required > 0 ? `${jobDutyStats.incidentReports.completed}/${jobDutyStats.incidentReports.required}` : '—'}</p>
+              <p className="text-xs text-slate-600">{jobDutyStats.incidentReports.required > 0 ? `${jobDutyStats.incidentReports.missed} missed • ${jobDutyStats.incidentReports.excluded} excluded by call-out/reassignment` : 'No monitored property calls occurred during this officer’s evaluated shifts'}</p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
               <p className="text-xs font-semibold uppercase text-slate-500">QR Compliance</p>
-              <p className="mt-1 text-xl font-bold text-slate-900">{jobDutyStats.qrCompliance.completed}/{jobDutyStats.qrCompliance.required}</p>
-              <p className="text-xs text-slate-600">{jobDutyStats.qrCompliance.missed} missed • {jobDutyStats.qrCompliance.score != null ? `${jobDutyStats.qrCompliance.score}%` : 'Not scored'}</p>
+              <p className="mt-1 text-xl font-bold text-slate-900">{jobDutyStats.qrCompliance.required > 0 ? `${jobDutyStats.qrCompliance.completed}/${jobDutyStats.qrCompliance.required}` : '—'}</p>
+              <p className="text-xs text-slate-600">{jobDutyStats.qrCompliance.required > 0 ? `${jobDutyStats.qrCompliance.missed} missed • ${jobDutyStats.qrCompliance.excludedInvalid || 0} invalid/excluded • ${jobDutyStats.qrCompliance.score}%` : `${jobDutyStats.qrCompliance.excludedInvalid || 0} invalid/excluded scan${jobDutyStats.qrCompliance.excludedInvalid === 1 ? '' : 's'} • no QR obligation window has been scored yet`}</p>
             </div>
           </CardContent>
         </Card>
