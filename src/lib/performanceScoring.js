@@ -437,7 +437,7 @@ export function calculateJobDutyCompliance({
         roundNumber++;
       }
 
-      const minimumPerShift = Math.max(0, Number(rule?.qr_scans_per_shift || 0));
+      const minimumPerShift = isActiveShift ? 0 : Math.max(0, Number(rule?.qr_scans_per_shift || 0));
       const requiredCount = Math.max(obligationCount, minimumPerShift);
       // Any successful site scan can satisfy only the extra minimum above the checkpoint/window obligations.
       const extraRequired = Math.max(0, minimumPerShift - obligationCount);
