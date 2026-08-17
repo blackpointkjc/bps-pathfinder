@@ -242,6 +242,34 @@ export default function QRPatrolScan() {
     placeholderData: (prev) => prev ?? [],
   });
 
+  const { data: teamScans = [] } = useQuery({
+    queryKey: ['teamQRScans', activeSiteName, today],
+    queryFn: async () => {
+      if (!activeSiteName) return [];
+      const [siteScans, workEntries] = await Promise.all([
+        base44.entities.QRScanEvent.filter({ property_site: activeSiteName, scanned_date: today }, '-scanned_at', 500),
+        base44.entities.TimeEntry.list('-clock_in', 500),
+      ]);
+      const siteKey = value => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
+      const activeSiteKey = siteKey(activeSiteName);
+      return (siteScans || []).filter(scan => {
+        const stamp = new Date(scan.scanned_at).getTime();
+        if (!Number.isFinite(stamp) || scan.scan_status !== 'success') return false;
+        return (workEntries || []).some(entry => {
+          if (!entry?.clock_in || String(entry.officer_email || '').trim().toLowerCase() !== String(scan.officer_email || '').trim().toLowerCase()) return false;
+          if (siteKey(entry.location) !== activeSiteKey) return false;
+          const start = new Date(entry.clock_in).getTime();
+          const end = entry.clock_out ? new Date(entry.clock_out).getTime() : Date.now();
+          return Number.isFinite(start) && Number.isFinite(end) && stamp >= start && stamp <= end;
+        });
+      });
+    },
+    enabled: !!activeSiteName,
+    refetchInterval: 30000,
+    staleTime: 0,
+    placeholderData: (prev) => prev ?? [],
+  });
+
   useEffect(() => subscribeLiveLocation((fix) => {
     setGps({ lat: fix.latitude, lng: fix.longitude });
   }), []);
@@ -250,6 +278,9 @@ export default function QRPatrolScan() {
   useEffect(() => {
     if (!user?.email) return;
     const unsub = base44.entities.QRScanEvent.subscribe((event) => {
+      if (event.data?.property_site === activeSiteName) {
+        queryClient.invalidateQueries({ queryKey: ['teamQRScans', activeSiteName, today] });
+      }
       if (event.data?.officer_email !== user.email) return;
       const key = ['todayQRScans', user.email, today];
       if (event.type === 'create') {
@@ -266,7 +297,7 @@ export default function QRPatrolScan() {
       }
     });
     return unsub;
-  }, [user?.email, today, queryClient]);
+  }, [user?.email, activeSiteName, today, queryClient]);
 
   const logScanMutation = useMutation({
     mutationFn: async ({ checkpoint, status, note }) => {
@@ -487,7 +518,7 @@ export default function QRPatrolScan() {
       {activeEntry && activeSiteName && siteCheckpoints.length > 0 && (
         <HourlyRoundsTracker
           siteCheckpoints={siteCheckpoints}
-          todayScans={todayScans}
+          todayScans={teamScans}
           shiftStart={activeEntry.clock_in}
           activeSiteName={activeSiteName}
           dutyRule={dutyRule}
