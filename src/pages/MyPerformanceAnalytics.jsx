@@ -201,31 +201,27 @@ export default function MyPerformanceAnalytics() {
       });
     }
 
-    if (trainingStats.pending > 0) {
-      const pendingNames = [
-        ...(allTraining || []).filter(module => {
-          const assigned = (module.assigned_to || []).some(email => emailKey(email) === emailKey(user?.email)) ||
-            (module.assigned_divisions || []).includes(user?.division) ||
-            (module.assigned_ranks || []).includes(user?.rank) ||
-            module.required === true;
-          const completedIds = new Set((trainingCompletions || []).filter(tc => tc.completed).map(tc => String(tc.training_module_id)));
-          return assigned && !completedIds.has(String(module.id));
-        }).map(module => module.title),
-        ...(myAssignments || []).filter(a => a.status !== 'approved').map(a => `${a.training_name || 'Compliance item'} (${String(a.status || 'pending').replaceAll('_', ' ')})`)
-      ];
+    if (trainingStats.total === 0) {
+      factors.push({
+        metric: 'Training Completion',
+        value: 'Not scored yet',
+        severity: 'neutral',
+        reason: 'No training or compliance items are currently assigned, so this category is excluded from the overall score.'
+      });
+    } else if (trainingStats.pending > 0) {
       factors.push({
         metric: 'Training Completion',
         value: `${trainingStats.percentage}%`,
         severity: 'negative',
         reason: `${trainingStats.pending} assigned training/compliance item${trainingStats.pending === 1 ? ' is' : 's are'} still pending. Complete or obtain approval for those items to reach 100%.`,
-        details: pendingNames
+        details: trainingStats.pendingNames
       });
     } else {
       factors.push({
         metric: 'Training Completion',
         value: '100%',
         severity: 'positive',
-        reason: trainingStats.total > 0 ? 'All assigned training and compliance items are complete.' : 'No training or compliance items are currently assigned.'
+        reason: 'All assigned training and compliance items are complete.'
       });
     }
 
@@ -410,9 +406,9 @@ export default function MyPerformanceAnalytics() {
           <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-violet-100">
             <CardContent className="p-3 sm:p-4">
               <Award className="w-6 h-6 text-purple-600 mb-2" />
-              <p className="text-2xl font-bold text-purple-600 sm:text-3xl">{trainingStats.percentage}%</p>
+              <p className="text-2xl font-bold text-purple-600 sm:text-3xl">{trainingStats.percentage != null ? `${trainingStats.percentage}%` : '—'}</p>
               <p className="text-xs font-semibold text-slate-700">Training Completion</p>
-              <p className="mt-1 text-[11px] text-slate-600">{trainingStats.completed} complete • {trainingStats.pending} pending • {trainingStats.total} assigned</p>
+              <p className="mt-1 text-[11px] text-slate-600">{trainingStats.total > 0 ? `${trainingStats.completed} complete • ${trainingStats.pending} pending • ${trainingStats.total} assigned` : 'Not scored — nothing assigned'}</p>
             </CardContent>
           </Card>
 
@@ -422,6 +418,30 @@ export default function MyPerformanceAnalytics() {
               <p className="text-2xl font-bold text-amber-600 sm:text-3xl">{bidStats.score != null ? `${bidStats.score}%` : '—'}</p>
               <p className="text-xs font-semibold text-slate-700">Bid Standing</p>
               <p className="mt-1 text-[11px] text-slate-600">{bidStats.accepted} accepted • {bidStats.pending} pending • {bidStats.rejected} rejected</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <Card className="border border-blue-200 bg-blue-50 shadow-sm">
+            <CardContent className="p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Client Feedback</p>
+              <p className="mt-1 text-2xl font-bold text-blue-900">{clientFeedbackStats.score != null ? `${clientFeedbackStats.score}%` : '—'}</p>
+              <p className="text-xs text-slate-600">{clientFeedbackStats.count > 0 ? `${clientFeedbackStats.avgRating.toFixed(1)}/5 average from ${clientFeedbackStats.count} rating${clientFeedbackStats.count === 1 ? '' : 's'}` : 'No client ratings this month'}</p>
+            </CardContent>
+          </Card>
+          <Card className="border border-violet-200 bg-violet-50 shadow-sm">
+            <CardContent className="p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">Supervisor Rating</p>
+              <p className="mt-1 text-2xl font-bold text-violet-900">{supervisorRatingStats.score != null ? `${supervisorRatingStats.score}%` : '—'}</p>
+              <p className="text-xs text-slate-600">{supervisorRatingStats.count > 0 ? `${supervisorRatingStats.avgRating.toFixed(1)}/5 average from ${supervisorRatingStats.count} review${supervisorRatingStats.count === 1 ? '' : 's'}` : 'No supervisor review this month'}</p>
+            </CardContent>
+          </Card>
+          <Card className="border border-emerald-200 bg-emerald-50 shadow-sm">
+            <CardContent className="p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Recognition</p>
+              <p className="mt-1 text-2xl font-bold text-emerald-900">{recognitionStats.count}</p>
+              <p className="text-xs text-slate-600">{recognitionStats.count > 0 ? `${recognitionStats.commendations.length} commendation${recognitionStats.commendations.length === 1 ? '' : 's'} • ${recognitionStats.positiveFeedback.length} positive client recognition` : 'No recognition records this month — no penalty'}</p>
             </CardContent>
           </Card>
         </div>
