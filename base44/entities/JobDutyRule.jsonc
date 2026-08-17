@@ -1,0 +1,93 @@
+{
+  "name": "JobDutyRule",
+  "type": "object",
+  "properties": {
+    "property_site": {
+      "type": "string",
+      "description": "Property/site this duty rule applies to"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "daily_activity_report_required": {
+      "type": "boolean",
+      "default": true
+    },
+    "incident_report_required_for_property_calls": {
+      "type": "boolean",
+      "default": true
+    },
+    "incident_required_call_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Optional call types that specifically require an incident report; empty means any property call"
+    },
+    "qr_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "qr_frequency_minutes": {
+      "type": "number",
+      "default": 60,
+      "description": "How often required QR checkpoints must be completed during a shift"
+    },
+    "qr_window_minutes": {
+      "type": "number",
+      "default": 30,
+      "description": "Allowed scan window after each required interval begins"
+    },
+    "qr_scans_per_shift": {
+      "type": "number",
+      "default": 0,
+      "description": "Minimum total successful scans per shift; 0 means derive from checkpoint/frequency rules"
+    },
+    "require_all_required_checkpoints": {
+      "type": "boolean",
+      "default": true
+    },
+    "required_checkpoint_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Explicit required QR checkpoint IDs for this property"
+    },
+    "mandatory_location_labels": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Location labels that must be represented by required checkpoints"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "updated_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "property_site"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": null,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
