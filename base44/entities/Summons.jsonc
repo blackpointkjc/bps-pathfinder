@@ -10,6 +10,22 @@
       "type": "string",
       "description": "Black Point tracking number"
     },
+    "linked_call_id": {
+      "type": "string",
+      "description": "Linked DispatchCall record ID"
+    },
+    "linked_call_number": {
+      "type": "string",
+      "description": "Linked CAD call number"
+    },
+    "linked_call_type": {
+      "type": "string",
+      "description": "Linked CAD incident type"
+    },
+    "linked_call_location": {
+      "type": "string",
+      "description": "Linked CAD call location"
+    },
     "summons_date": {
       "type": "string",
       "format": "date-time",
