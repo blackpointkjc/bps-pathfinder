@@ -70,41 +70,12 @@ export default function ClientSupervisors() {
   return (
     <div className="client-supervisors-page min-h-screen w-full min-w-0 overflow-x-hidden p-3 sm:p-4 md:p-6">
       <div className="mx-auto w-full min-w-0 max-w-[1400px] space-y-5 sm:space-y-6">
-        {clientLocations.length > 1 && (
-          <Card className="border-none shadow-lg bg-gradient-to-r from-purple-50 to-blue-50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <MapPin className="w-8 h-8 text-purple-600" />
-                <div className="flex-1">
-                  <Label className="text-sm font-semibold text-purple-900 mb-2 block">
-                    Select Location to View
-                  </Label>
-                  <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="Select a location to view..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clientLocations.map((locName) => (
-                        <SelectItem key={locName} value={locName}>
-                          {locName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="flex min-w-0 items-start gap-3">
+        <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-xl">
           <UserCheck className="h-8 w-8 shrink-0 text-violet-400" />
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-white sm:text-3xl">Your Site Supervisors</h1>
-            <p className="mt-1 flex min-w-0 items-center gap-2 break-words text-slate-300">
-              <MapPin className="w-4 h-4" />
-              {effectiveLocation}
-            </p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-violet-300">Site Operations</p>
+            <h1 className="mt-1 text-2xl font-bold text-white sm:text-3xl">Your Site Supervisors</h1>
+            <p className="mt-1 flex min-w-0 items-center gap-2 break-words text-slate-300"><MapPin className="w-4 h-4" />{clientLocations.length > 1 ? `${clientLocations.length} assigned properties` : clientLocations[0]}</p>
           </div>
         </div>
 
@@ -117,42 +88,14 @@ export default function ClientSupervisors() {
             <p className="text-sm text-slate-400">Supervisors assigned directly to this client location</p>
           </CardHeader>
           <CardContent className="space-y-4">
-            {siteSupervisors.length > 0 ? (
-              <div className="grid md:grid-cols-2 gap-4">
-                {siteSupervisors.map((supervisor) => (
-                  <div key={supervisor.id} className="min-w-0 rounded-lg border border-slate-700 bg-slate-800 p-4 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                      {supervisor.profile_photo_url ? (
-                        <img
-                          src={supervisor.profile_photo_url}
-                          alt={`${supervisor.first_name} ${supervisor.last_name}`}
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold">
-                          {supervisor.first_name?.charAt(0)}{supervisor.last_name?.charAt(0)}
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <p className="break-words font-bold text-white">
-                          {supervisor.first_name} {supervisor.last_name}
-                        </p>
-                        <Badge className={`${getRankColor(supervisor.rank)} text-xs`}>
-                          {supervisor.rank}
-                        </Badge>
-                      </div>
-                    </div>
-                    {supervisor.unit_number && (
-                      <p className="text-sm text-slate-300">
-                        <span className="font-semibold">Unit:</span> #{supervisor.unit_number}
-                      </p>
-                    )}
-                  </div>
-                ))}
+            {siteSupervisorGroups.map(({ location, supervisors }) => (
+              <div key={location.id} className="rounded-xl border border-slate-700 bg-slate-950/50 p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="font-bold text-white">{location.site_name}</p><p className="text-xs text-slate-500">{location.address || location.division || ''}</p></div><Badge className="bg-slate-800 text-slate-300">{supervisors.length} assigned</Badge></div>
+                {supervisors.length > 0 ? <div className="grid gap-3 md:grid-cols-2">{supervisors.map(supervisor => (
+                  <div key={supervisor.id} className="min-w-0 rounded-lg border border-slate-700 bg-slate-800 p-4"><div className="flex items-center gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-700 font-bold text-white">{supervisor.first_name?.charAt(0)}{supervisor.last_name?.charAt(0)}</div><div className="min-w-0"><p className="break-words font-bold text-white">{supervisor.first_name} {supervisor.last_name}</p><Badge className={`${getRankColor(supervisor.rank)} text-xs`}>{supervisor.rank}</Badge>{supervisor.unit_number && <p className="mt-1 text-xs text-slate-400">Unit #{supervisor.unit_number}</p>}</div></div></div>
+                ))}</div> : <p className="text-sm text-slate-400">No direct site supervisor is currently assigned.</p>}
               </div>
-            ) : (
-              <div className="rounded-lg border border-slate-700 bg-slate-800 p-4 text-sm text-slate-300">No site supervisors are assigned to {effectiveLocation}. If this location should have supervisors, update the location's Assigned Supervisors field in Admin.</div>
-            )}
+            ))}
           </CardContent>
         </Card>
 
@@ -162,7 +105,7 @@ export default function ClientSupervisors() {
               <Shield className="w-6 h-6" />
               Division Command
             </CardTitle>
-            <p className="text-sm text-slate-400">Command staff assigned to the {location?.division || 'site'} division</p>
+            <p className="text-sm text-slate-400">Command personnel supporting the divisions assigned to your properties</p>
           </CardHeader>
           <CardContent className="space-y-4">
             {divisionCommand.length > 0 ? (
