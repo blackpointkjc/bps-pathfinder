@@ -189,8 +189,8 @@ export default function SupervisorCallOuts() {
                       <div className="flex-1">
                         <div className="mb-2 flex flex-wrap items-center gap-2">
                           <p className="font-bold text-slate-900">{callOut.officer_name}</p>
-                          <Badge className={callOut.call_out_type === 'called_out' ? 'bg-red-600' : 'bg-amber-600'}>
-                            {callOut.call_out_type === 'called_out' ? 'Called Out' : 'Sent Home'}
+                          <Badge className={callOut.call_out_type === 'called_out' ? 'bg-red-600' : callOut.call_out_type === 'reassigned' ? 'bg-blue-600' : 'bg-amber-600'}>
+                            {callOut.call_out_type === 'called_out' ? 'Called Out' : callOut.call_out_type === 'reassigned' ? 'Reassigned' : 'Sent Home'}
                           </Badge>
                           {callOut.affects_pto && (
                             <Badge variant="outline" className="border-purple-600 text-purple-600">
@@ -201,7 +201,13 @@ export default function SupervisorCallOuts() {
                         <div className="space-y-1 text-sm text-slate-600">
                           <p><strong>Date:</strong> {format(new Date(callOut.call_out_date), 'MMM d, yyyy')}</p>
                           <p><strong>Time:</strong> {callOut.call_out_time}</p>
-                          {callOut.location && <p><strong>Location:</strong> {callOut.location}</p>}
+                          {callOut.call_out_type === 'reassigned' ? (
+                            <>
+                              <p><strong>Original Property:</strong> {callOut.original_location || callOut.location || 'Not recorded'}</p>
+                              <p><strong>Destination:</strong> {callOut.destination_location || 'Not recorded'}</p>
+                              <p className="text-blue-700"><strong>Incident Metric:</strong> Original-property calls after reassignment are excluded.</p>
+                            </>
+                          ) : callOut.location ? <p><strong>Location:</strong> {callOut.location}</p> : null}
                           <p><strong>Reason:</strong> {callOut.reason}</p>
                           <p className="text-xs text-slate-500 mt-2">
                             Documented by: {callOut.supervisor_name} • {format(new Date(callOut.created_date), 'MMM d, yyyy h:mm a')}
@@ -325,9 +331,11 @@ export default function SupervisorCallOuts() {
               />
             </div>
 
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-sm text-amber-800">
-                <strong>⚠️ Important:</strong> This will prevent PTO accrual for this officer on this date and will appear in their performance analytics.
+            <div className={`p-4 rounded-lg border ${formData.call_out_type === 'reassigned' ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'}`}>
+              <p className={`text-sm ${formData.call_out_type === 'reassigned' ? 'text-blue-800' : 'text-amber-800'}`}>
+                <strong>Important:</strong> {formData.call_out_type === 'reassigned'
+                  ? 'A reassignment does not count as an attendance call-out. Property-call Incident Report requirements at the original location after the reassignment time will be excluded from Job Duty performance.'
+                  : 'This will prevent PTO accrual for this officer on this date and will appear in attendance performance analytics.'}
               </p>
             </div>
 
