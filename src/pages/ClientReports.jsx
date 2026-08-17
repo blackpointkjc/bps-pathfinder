@@ -54,7 +54,7 @@ export default function ClientReports() {
     queryFn: () => listDirectoryLocations('site_name'),
   });
 
-  const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
+  const clientLocations = [...new Set([...(Array.isArray(user?.assigned_locations) ? user.assigned_locations : []), ...(Array.isArray(user?.assigned_sites) ? user.assigned_sites : []), ...(user?.assigned_location ? [user.assigned_location] : [])].filter(Boolean))];
   const assignedSiteKeys = useMemo(() => new Set(clientLocations.map(loc => String(loc || '').split(' - ')[0].split(':')[0].trim().toLowerCase()).filter(Boolean)), [clientLocations.join('|')]);
   const isClientSite = (value) => assignedSiteKeys.has(String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase());
   const effectiveLocation = clientLocations.length > 1 ? 'All Assigned Sites' : (clientLocations[0] || '');
