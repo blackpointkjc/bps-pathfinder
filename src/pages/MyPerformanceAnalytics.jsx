@@ -193,14 +193,7 @@ export default function MyPerformanceAnalytics() {
   const performanceFactors = useMemo(() => {
     const factors = [];
 
-    if (onTimeStats.total === 0) {
-      factors.push({
-        metric: 'On-Time Arrival',
-        value: 'Not scored yet',
-        severity: 'neutral',
-        reason: 'No clock-in has been matched to a scheduled shift this month. This is not a deduction; there is simply no punctuality event to score yet.'
-      });
-    } else if (onTimeStats.late > 0) {
+    if (onTimeStats.total > 0 && onTimeStats.late > 0) {
       const lateDetails = onTimeStats.details
         .filter(detail => detail.status === 'late')
         .map(detail => `${format(parseISO(detail.shift_date), 'MMM d')}: scheduled ${detail.scheduled_start}, clocked in ${detail.actual_clock_in} (${detail.minutes_late} min late)${detail.location ? ` at ${detail.location.split(':')[0]}` : ''}`);
@@ -220,14 +213,7 @@ export default function MyPerformanceAnalytics() {
       });
     }
 
-    if (trainingStats.total === 0) {
-      factors.push({
-        metric: 'Training Completion',
-        value: '100% neutral',
-        severity: 'positive',
-        reason: 'No training or compliance items are currently assigned. No penalty applies, so this 3% grade category receives full neutral credit (3.0 points).'
-      });
-    } else if (trainingStats.pending > 0) {
+    if (trainingStats.total > 0 && trainingStats.pending > 0) {
       factors.push({
         metric: 'Training Completion',
         value: `${trainingStats.percentage}%`,
@@ -260,22 +246,22 @@ export default function MyPerformanceAnalytics() {
         severity: 'positive',
         reason: `${bidStats.accepted} accepted and ${bidStats.pending} pending bid${bidStats.scoredTotal === 1 ? '' : 's'} are in good standing. Pending bids do not count against you.`
       });
-    } else {
+    } else if (bidStats.score != null) {
       factors.push({
         metric: 'Bid Standing',
-        value: bidStats.score != null ? `${bidStats.score}%` : 'Not scored yet',
-        severity: bidStats.score != null ? 'positive' : 'neutral',
-        reason: bidStats.pending > 0 ? `${bidStats.pending} bid${bidStats.pending === 1 ? ' is' : 's are'} still pending. Because management has not answered them, they remain neutral/good standing and do not lower the score.` : 'No shift bids were submitted this month. No penalty applies, so the 3% Bid Standing category receives full neutral credit.'
+        value: `${bidStats.score}%`,
+        severity: 'positive',
+        reason: `${bidStats.pending} pending bid${bidStats.pending === 1 ? '' : 's'} remain in good standing because management has not answered them.`
       });
     }
 
-    factors.push({
+    if (callOutAttendance.score != null) factors.push({
       metric: 'Call-Out Attendance',
       value: `${callOutAttendance.score}%`,
       severity: callOutAttendance.count > 0 ? 'negative' : 'positive',
       reason: callOutAttendance.count > 0
-        ? `${callOutAttendance.count} officer call-out${callOutAttendance.count === 1 ? '' : 's'} against ${callOutAttendance.scheduled || callOutAttendance.count} scheduled shift${(callOutAttendance.scheduled || callOutAttendance.count) === 1 ? '' : 's'} this month. This category is 15% of the overall grade. Sent-home and reassignment records do not lower this attendance score.`
-        : 'No officer call-outs this month. Full credit is applied to the 15% Call-Out Attendance portion of the grade.'
+        ? `${callOutAttendance.count} officer call-out${callOutAttendance.count === 1 ? '' : 's'} across ${callOutAttendance.scheduled} elapsed scheduled shift${callOutAttendance.scheduled === 1 ? '' : 's'}. Sent-home and reassignment records do not lower this attendance score.`
+        : `No officer call-outs across ${callOutAttendance.scheduled} elapsed scheduled shift${callOutAttendance.scheduled === 1 ? '' : 's'}.`
     });
 
     const sustainedThisMonth = (myComplaints || []).filter(item => {
@@ -396,7 +382,7 @@ export default function MyPerformanceAnalytics() {
             <CardContent className="p-3 sm:p-4">
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
               <p className="text-2xl font-bold text-green-600 sm:text-3xl">{onTimeStats.total > 0 ? `${onTimeStats.rate}%` : '—'}</p>
-              <p className="text-xs font-semibold text-slate-700">On-Time Arrival <span className="font-normal text-slate-500">(55%)</span></p>
+              <p className="text-xs font-semibold text-slate-700">On-Time Arrival</p>
               <p className="mt-1 text-[11px] text-slate-600">
                 {onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.total} matched shifts` : 'No matched scheduled clock-ins yet'}
               </p>
@@ -433,28 +419,28 @@ export default function MyPerformanceAnalytics() {
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           <Card className="border border-rose-200 bg-rose-50 shadow-sm">
             <CardContent className="p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Call-Out Attendance (15%)</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Call-Out Attendance</p>
               <p className="mt-1 text-2xl font-bold text-rose-900">{callOutAttendance.score != null ? `${callOutAttendance.score}%` : '—'}</p>
               <p className="text-xs text-slate-600">{callOutAttendance.score == null ? 'No elapsed scheduled shifts — omitted from grade' : callOutAttendance.count > 0 ? `${callOutAttendance.count} officer call-out${callOutAttendance.count === 1 ? '' : 's'} across ${callOutAttendance.scheduled} elapsed scheduled shifts` : `0 call-outs across ${callOutAttendance.scheduled} elapsed scheduled shifts`}</p>
             </CardContent>
           </Card>
           <Card className="border border-blue-200 bg-blue-50 shadow-sm">
             <CardContent className="p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Client Feedback (3%)</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Client Feedback</p>
               <p className="mt-1 text-2xl font-bold text-blue-900">{clientFeedbackStats.score != null ? `${clientFeedbackStats.score}%` : '—'}</p>
               <p className="text-xs text-slate-600">{clientFeedbackStats.count > 0 ? `${clientFeedbackStats.avgRating.toFixed(1)}/5 average from ${clientFeedbackStats.count} rating${clientFeedbackStats.count === 1 ? '' : 's'}` : 'No client ratings — omitted from grade'}</p>
             </CardContent>
           </Card>
           <Card className="border border-violet-200 bg-violet-50 shadow-sm">
             <CardContent className="p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">Supervisor Rating (3%)</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">Supervisor Rating</p>
               <p className="mt-1 text-2xl font-bold text-violet-900">{supervisorRatingStats.score != null ? `${supervisorRatingStats.score}%` : '—'}</p>
               <p className="text-xs text-slate-600">{supervisorRatingStats.count > 0 ? `${supervisorRatingStats.avgRating.toFixed(1)}/5 average from ${supervisorRatingStats.count} review${supervisorRatingStats.count === 1 ? '' : 's'}` : 'No supervisor review — omitted from grade'}</p>
             </CardContent>
           </Card>
           <Card className="border border-emerald-200 bg-emerald-50 shadow-sm">
             <CardContent className="p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Recognition (3%)</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Recognition</p>
               <p className="mt-1 text-2xl font-bold text-emerald-900">{recognitionStats.score != null ? `${recognitionStats.score}%` : '—'}</p>
               <p className="text-xs text-slate-600">{recognitionStats.count > 0 ? `${recognitionStats.commendations.length} commendation${recognitionStats.commendations.length === 1 ? '' : 's'} • ${recognitionStats.positiveFeedback.length} positive client recognition` : 'No recognition records — omitted from grade'}</p>
             </CardContent>
@@ -464,7 +450,7 @@ export default function MyPerformanceAnalytics() {
         <Card className="overflow-hidden border border-cyan-200 shadow-lg">
           <CardHeader className="bg-gradient-to-r from-cyan-700 to-blue-700 text-white">
             <CardTitle className="flex flex-wrap items-center justify-between gap-2">
-              <span>Job Duty / Performance (15%)</span>
+              <span>Job Duty / Performance</span>
               <span className="text-3xl font-black">{jobDutyStats.score != null ? `${jobDutyStats.score}%` : '—'}</span>
             </CardTitle>
             <p className="text-xs text-cyan-100">Required reports and QR duties are evaluated against the exact worked shift and property. Reassignment exceptions are excluded automatically.</p>
