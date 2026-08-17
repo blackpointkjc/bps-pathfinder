@@ -12,7 +12,6 @@ import { QrCode, MapPin, Clock, CheckCircle2, AlertTriangle, RefreshCw, XCircle 
 import { format } from "date-fns";
 
 export default function ClientQRReports() {
-  const [filterSite, setFilterSite] = useState("all");
   const [filterOfficer, setFilterOfficer] = useState("all");
   const [filterDate, setFilterDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [viewGroup, setViewGroup] = useState(null);
@@ -146,13 +145,11 @@ export default function ClientQRReports() {
 
   // Apply filters
   const filtered = groups.filter((g) => {
-    if (filterSite !== "all" && g.property_site !== filterSite) return false;
     if (filterOfficer !== "all" && g.officer_email !== filterOfficer) return false;
     return true;
   });
 
   // Build filter options
-  const allSites = [...new Set(allScans.map((s) => s.property_site).filter(Boolean))].sort();
   const allOfficers = [
     ...new Map(
       allScans.map((s) => [
@@ -163,15 +160,15 @@ export default function ClientQRReports() {
   ];
 
   return (
-    <div className="p-4 md:p-8 min-h-screen bg-white max-w-6xl mx-auto space-y-6">
+    <div className="client-qr-reports-page mx-auto min-h-screen w-full min-w-0 max-w-[1400px] space-y-5 p-3 sm:p-4 md:p-6">
       <div className="flex items-center gap-3">
         <div className="bg-purple-600 p-2 rounded-xl">
           <QrCode className="w-6 h-6 text-white" />
         </div>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-slate-900">QR Patrol Reports</h1>
-          <p className="text-sm text-slate-500">
-            Live scan data · {groups.length} officer session{groups.length !== 1 ? "s" : ""} ·
+          <h1 className="text-2xl font-bold text-white">QR Patrol Reports</h1>
+          <p className="text-sm text-slate-400">
+            All assigned properties · live scan data · {groups.length} officer session{groups.length !== 1 ? "s" : ""} ·
             last updated {dataUpdatedAt ? format(new Date(dataUpdatedAt), "h:mm:ss a") : "—"}
           </p>
         </div>
@@ -187,25 +184,12 @@ export default function ClientQRReports() {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Input
           type="date"
           value={filterDate}
           onChange={(e) => setFilterDate(e.target.value)}
         />
-        <Select value={filterSite} onValueChange={setFilterSite}>
-          <SelectTrigger>
-            <SelectValue placeholder="All Sites" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Sites</SelectItem>
-            {allSites.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <Select value={filterOfficer} onValueChange={setFilterOfficer}>
           <SelectTrigger>
             <SelectValue placeholder="All Officers" />
