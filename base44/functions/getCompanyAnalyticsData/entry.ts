@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
       }
     };
 
-    const [users, divisions, timeEntries, schedules, bids, trainingCompletions, trainingAssignments, trainingModules, qrScans, qrCheckpoints, incidentReports, callsForService, dispatchCalls, commendations, complaints, clientFeedback, performanceReviews] = await Promise.all([
+    const [users, divisions, timeEntries, schedules, bids, trainingCompletions, trainingAssignments, trainingModules, qrScans, qrCheckpoints, incidentReports, dailyActivityReports, callOuts, callsForService, dispatchCalls, dutyRules, locations, commendations, complaints, clientFeedback, performanceReviews] = await Promise.all([
       list('User', '-updated_date'),
       list('Division', 'division_name'),
       list('TimeEntry', '-clock_in'),
@@ -37,8 +37,12 @@ Deno.serve(async (req) => {
       list('QRScanEvent', '-scanned_at'),
       list('QRCheckpoint', 'property_site'),
       list('IncidentReport', '-incident_date'),
+      list('DailyActivityReport', '-report_date'),
+      list('CallOut', '-call_out_date'),
       list('CallForService', '-call_time'),
       list('DispatchCall', '-time_received'),
+      list('JobDutyRule', 'property_site'),
+      list('Location', 'site_name'),
       list('Commendation', '-commendation_date'),
       list('Complaint', '-complaint_date'),
       list('ClientFeedback', '-feedback_date'),
@@ -58,8 +62,12 @@ Deno.serve(async (req) => {
       qrScans,
       qrCheckpoints,
       incidentReports,
+      dailyActivityReports,
+      callOuts,
       callsForService,
       dispatchCalls,
+      dutyRules,
+      locations,
       commendations,
       complaints,
       clientFeedback,
