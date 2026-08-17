@@ -371,6 +371,45 @@ body::-webkit-scrollbar-button,
   }
 }
 
+/* Client center: keep legacy client tools readable inside the dark unified workspace. */
+.client-schedule-page,
+.client-supervisors-page {
+  color: #eaf2f9;
+}
+
+.client-schedule-page [class*="from-purple-50"],
+.client-schedule-page [class*="to-blue-50"],
+.client-supervisors-page [class*="from-purple-50"],
+.client-supervisors-page [class*="to-blue-50"] {
+  background: #111d2b !important;
+  border-color: #334c64 !important;
+}
+
+.client-schedule-page .text-purple-900,
+.client-supervisors-page .text-purple-900,
+.client-schedule-page .text-slate-900,
+.client-supervisors-page .text-slate-900 {
+  color: #f8fafc !important;
+}
+
+.client-schedule-page .text-slate-600,
+.client-supervisors-page .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+.client-schedule-page [role="combobox"],
+.client-supervisors-page [role="combobox"] {
+  background: #0b1724 !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+
+@media (min-width: 1280px) {
+  .client-schedule-table {
+    overflow-x: hidden !important;
+  }
+}
+
 /* Officer weekly schedule — high-contrast CAD theme */
 .schedule-dark .bg-white,
 .schedule-dark .bg-slate-50,
@@ -408,94 +447,4 @@ body::-webkit-scrollbar-button,
 .schedule-dark button,
 .schedule-dark [role="combobox"] {
   color: #f8fafc;
-}
-
-/* Global workspace containment: cards and legacy page wrappers must never grow
-   wider than the available center canvas. Wide data tables keep their own scroller. */
-.cad-app main,
-.cad-app main > *,
-.cad-app main > * > *,
-.cad-app main .rounded-lg,
-.cad-app main .rounded-xl,
-.cad-app main .rounded-2xl,
-.cad-app main [class*="shadow"] {
-  box-sizing: border-box;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.cad-app main .flex > *,
-.cad-app main .grid > * {
-  min-width: 0;
-}
-
-.cad-app main img,
-.cad-app main canvas,
-.cad-app main video {
-  max-width: 100%;
-}
-
-/* Leaflet popup used by the live location tracker. The old popup stayed white
-   while night-mode text was light, making officer details nearly invisible. */
-.cad-app main.night-workspace .leaflet-popup-content-wrapper,
-.cad-app main.night-workspace .leaflet-popup-tip {
-  background: #111d2b !important;
-  color: #e8f0f8 !important;
-}
-
-.cad-app main.night-workspace .leaflet-popup-content {
-  color: #e8f0f8 !important;
-  margin: 14px 16px !important;
-  min-width: min(320px, calc(100vw - 90px));
-  max-width: min(420px, calc(100vw - 48px));
-  overflow-wrap: anywhere;
-}
-
-.cad-app main.night-workspace .leaflet-popup-content .text-slate-900,
-.cad-app main.night-workspace .leaflet-popup-content .text-slate-800,
-.cad-app main.night-workspace .leaflet-popup-content .text-slate-700 {
-  color: #f8fafc !important;
-}
-
-.cad-app main.night-workspace .leaflet-popup-content .text-slate-600,
-.cad-app main.night-workspace .leaflet-popup-content .text-slate-500,
-.cad-app main.night-workspace .leaflet-popup-content .text-slate-400 {
-  color: #b8c7d6 !important;
-}
-
-.cad-app main.night-workspace .leaflet-popup-content .text-green-600 {
-  color: #86efac !important;
-}
-
-.cad-app main.night-workspace .leaflet-popup-close-button {
-  color: #dbe7f2 !important;
-}
-
-/* Client portal schedule is intentionally horizontally scrollable on smaller
-   screens. Do not let generic mobile table rules squeeze seven days unreadably. */
-.cad-app main .client-schedule-table {
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch;
-}
-
-.cad-app main .client-schedule-table table {
-  table-layout: auto !important;
-}
-
-@media (max-width: 767px) {
-  .cad-app .mobile-field-content .client-schedule-table {
-    overflow-x: auto !important;
-  }
-
-  .cad-app .mobile-field-content .client-schedule-table table {
-    width: max-content !important;
-    min-width: 900px !important;
-    max-width: none !important;
-    table-layout: auto !important;
-  }
-
-  .cad-app .mobile-field-content .client-schedule-table th,
-  .cad-app .mobile-field-content .client-schedule-table td {
-    white-space: nowrap;
-  }
 }
