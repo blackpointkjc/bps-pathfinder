@@ -208,11 +208,187 @@ export function calculateRecognition(commendations = [], feedback = [], monthSta
   return { count, points, commendations: monthlyCommendations, positiveFeedback, score: count ? 100 : null };
 }
 
-export function buildOverallPerformance({ punctuality, trainingScore = null, qrScore = null, bidStanding, clientFeedback, supervisorRating, recognition }) {
+const siteKey = value => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
+
+function propertyForSite(site, locations = []) {
+  const key = siteKey(site);
+  return locations.find(loc => siteKey(loc.site_name) === key) || null;
+}
+
+function callMatchesProperty(call, site, locations = []) {
+  const property = propertyForSite(site, locations);
+  const haystack = `${call?.location || ''} ${call?.address || ''}`.toLowerCase();
+  const names = [siteKey(site), property?.site_name, property?.address].filter(Boolean).map(v => String(v).trim().toLowerCase());
+  return names.some(name => name && (haystack.includes(name) || name.includes(haystack)));
+}
+
+function localWallMinute(dateKey, timeKey) {
+  return wallClockMinute(dateKey, timeKey);
+}
+
+export function calculateJobDutyCompliance({
+  officer = null,
+  timeEntries = [],
+  dailyReports = [],
+  incidentReports = [],
+  dispatchCalls = [],
+  callOuts = [],
+  qrScans = [],
+  qrCheckpoints = [],
+  dutyRules = [],
+  locations = [],
+  monthStart,
+  monthEnd,
+} = {}) {
+  const officerEmail = emailKey(officer?.email);
+  const completedShifts = timeEntries.filter(entry => {
+    if (!entry?.clock_in || !entry?.clock_out) return false;
+    if (officerEmail && emailKey(entry.officer_email) !== officerEmail) return false;
+    const d = easternDateKey(entry.clock_in);
+    return d && (!monthStart || d >= monthStart) && (!monthEnd || d <= monthEnd);
+  });
+
+  const activeRules = dutyRules.filter(rule => rule.active !== false);
+  const ruleFor = site => activeRules.find(rule => siteKey(rule.property_site) === siteKey(site)) || null;
+  const officerDailyReports = dailyReports.filter(report => !officer || emailKey(report.officer_email) === officerEmail || String(report.created_by_id || '') === String(officer?.id || ''));
+  const officerIncidents = incidentReports.filter(report => !officer || emailKey(report.officer_email) === officerEmail || String(report.created_by_id || '') === String(officer?.id || ''));
+  const officerCallOuts = callOuts.filter(item => !officer || emailKey(item.officer_email) === officerEmail);
+  const officerQrScans = qrScans.filter(scan => !officer || emailKey(scan.officer_email) === officerEmail);
+
+  const shiftDetails = [];
+  let darRequired = 0, darCompleted = 0;
+  let incidentRequired = 0, incidentCompleted = 0, incidentExcluded = 0;
+  let qrRequired = 0, qrCompleted = 0;
+
+  completedShifts.forEach(entry => {
+    const shiftDate = easternDateKey(entry.clock_in);
+    const site = siteKey(entry.location);
+    if (!site) return;
+    const rule = ruleFor(site);
+    const shiftStartMs = new Date(entry.clock_in).getTime();
+    const shiftEndMs = new Date(entry.clock_out).getTime();
+    const detail = {
+      shift_id: entry.id,
+      shift_date: shiftDate,
+      property: propertyForSite(site, locations)?.site_name || String(entry.location || '').split(' - ')[0].split(':')[0],
+      daily_activity: { required: false, completed: false, report_id: null },
+      incidents: { required: 0, completed: 0, excluded: 0, items: [] },
+      qr: { required: 0, completed: 0, missed: 0, required_checkpoint_names: [] },
+    };
+
+    const requiresDar = rule ? rule.daily_activity_report_required !== false : true;
+    if (requiresDar) {
+      darRequired++;
+      detail.daily_activity.required = true;
+      const matchingDar = officerDailyReports.find(report => {
+        if (report.status === 'draft') return false;
+        if (report.shift_id && String(report.shift_id) === String(entry.id)) return true;
+        return report.report_date === shiftDate && siteKey(report.location) === site;
+      });
+      if (matchingDar) {
+        darCompleted++;
+        detail.daily_activity.completed = true;
+        detail.daily_activity.report_id = matchingDar.id;
+      }
+    }
+
+    const calls = dispatchCalls.filter(call => {
+      const stamp = new Date(call.time_received || call.created_date).getTime();
+      if (!Number.isFinite(stamp) || stamp < shiftStartMs || stamp > shiftEndMs) return false;
+      return callMatchesProperty(call, site, locations);
+    });
+    const allowedTypes = Array.isArray(rule?.incident_required_call_types) ? rule.incident_required_call_types.map(v => String(v).toLowerCase()) : [];
+    const requireIncident = rule ? rule.incident_report_required_for_property_calls !== false : true;
+
+    if (requireIncident) {
+      calls.forEach(call => {
+        const callType = String(call.incident_type || call.call_type || call.type || '').toLowerCase();
+        if (allowedTypes.length && !allowedTypes.includes(callType)) return;
+        const callDate = easternDateKey(call.time_received || call.created_date);
+        const callTime = easternTimeKey(call.time_received || call.created_date);
+        const callWall = localWallMinute(callDate, callTime);
+        const reassignment = officerCallOuts.find(item => {
+          if (item.call_out_type !== 'reassigned' || item.exclude_original_incident_metric !== true) return false;
+          if (siteKey(item.original_location || item.location) !== site) return false;
+          const outWall = localWallMinute(item.call_out_date, item.call_out_time || '00:00');
+          return outWall != null && callWall != null && callWall >= outWall;
+        });
+        if (reassignment) {
+          incidentExcluded++;
+          detail.incidents.excluded++;
+          detail.incidents.items.push({ call_id: call.id, call_number: call.call_number || '', status: 'excluded_reassignment', reason: `Excluded after reassignment to ${reassignment.destination_location || 'another assignment'}` });
+          return;
+        }
+        incidentRequired++;
+        detail.incidents.required++;
+        const report = officerIncidents.find(ir =>
+          String(ir.linked_call_id || '') === String(call.id || '') ||
+          (ir.linked_call_number && call.call_number && String(ir.linked_call_number) === String(call.call_number))
+        );
+        if (report && report.status !== 'draft') {
+          incidentCompleted++;
+          detail.incidents.completed++;
+          detail.incidents.items.push({ call_id: call.id, call_number: call.call_number || '', status: 'completed', report_id: report.id });
+        } else {
+          detail.incidents.items.push({ call_id: call.id, call_number: call.call_number || '', status: 'missing', call_type: call.incident_type || call.call_type || 'Call for service' });
+        }
+      });
+    }
+
+    const propertyCheckpoints = qrCheckpoints.filter(cp => cp.is_active !== false && siteKey(cp.property_site) === site);
+    const explicitIds = new Set((rule?.required_checkpoint_ids || []).map(String));
+    const mandatoryLabels = new Set((rule?.mandatory_location_labels || []).map(v => String(v).trim().toLowerCase()));
+    let requiredCheckpoints = propertyCheckpoints.filter(cp => {
+      if (explicitIds.size) return explicitIds.has(String(cp.id));
+      if (mandatoryLabels.size) return mandatoryLabels.has(String(cp.location_label || '').trim().toLowerCase());
+      return cp.is_required !== false;
+    });
+    const qrIsRequired = rule ? rule.qr_required === true : requiredCheckpoints.length > 0;
+    if (qrIsRequired && requiredCheckpoints.length > 0) {
+      const frequency = Math.max(1, Number(rule?.qr_frequency_minutes || 60));
+      const shiftMinutes = Math.max(1, Math.ceil((shiftEndMs - shiftStartMs) / 60000));
+      const intervals = Math.max(1, Math.ceil(shiftMinutes / frequency));
+      const derivedRequired = requiredCheckpoints.length * intervals;
+      const requiredCount = Math.max(derivedRequired, Number(rule?.qr_scans_per_shift || 0));
+      const successful = officerQrScans.filter(scan => {
+        const stamp = new Date(scan.scanned_at).getTime();
+        if (!Number.isFinite(stamp) || stamp < shiftStartMs || stamp > shiftEndMs || scan.scan_status !== 'success') return false;
+        if (siteKey(scan.property_site) !== site) return false;
+        return requiredCheckpoints.some(cp => String(cp.id) === String(scan.checkpoint_id));
+      });
+      const completedCount = Math.min(requiredCount, successful.length);
+      qrRequired += requiredCount;
+      qrCompleted += completedCount;
+      detail.qr.required = requiredCount;
+      detail.qr.completed = completedCount;
+      detail.qr.missed = Math.max(0, requiredCount - completedCount);
+      detail.qr.required_checkpoint_names = requiredCheckpoints.map(cp => cp.checkpoint_name || cp.location_label || cp.id);
+    }
+
+    shiftDetails.push(detail);
+  });
+
+  const darScore = darRequired ? Math.round((darCompleted / darRequired) * 100) : null;
+  const incidentScore = incidentRequired ? Math.round((incidentCompleted / incidentRequired) * 100) : null;
+  const qrScore = qrRequired ? Math.round((qrCompleted / qrRequired) * 100) : null;
+  const scored = [darScore, incidentScore, qrScore].filter(v => v != null);
+  const score = scored.length ? Math.round(scored.reduce((sum, value) => sum + value, 0) / scored.length) : null;
+
+  return {
+    score,
+    dailyActivity: { required: darRequired, completed: darCompleted, missed: Math.max(0, darRequired - darCompleted), score: darScore },
+    incidentReports: { required: incidentRequired, completed: incidentCompleted, missed: Math.max(0, incidentRequired - incidentCompleted), excluded: incidentExcluded, score: incidentScore },
+    qrCompliance: { required: qrRequired, completed: qrCompleted, missed: Math.max(0, qrRequired - qrCompleted), score: qrScore },
+    shifts: shiftDetails,
+  };
+}
+
+export function buildOverallPerformance({ punctuality, trainingScore = null, qrScore = null, jobDuty = null, bidStanding, clientFeedback, supervisorRating, recognition }) {
   const categories = [];
   if (punctuality?.rate != null && punctuality.total > 0) categories.push({ label: 'On-Time Arrival', score: punctuality.rate });
   if (trainingScore != null) categories.push({ label: 'Training Completion', score: Math.round(trainingScore) });
   if (qrScore != null) categories.push({ label: 'QR Patrol Completion', score: Math.round(qrScore) });
+  if (jobDuty?.score != null) categories.push({ label: 'Job Duty Compliance', score: Math.round(jobDuty.score) });
   if (bidStanding?.score != null && bidStanding.scoredTotal > 0) categories.push({ label: 'Bid Standing', score: bidStanding.score });
   if (clientFeedback?.score != null && clientFeedback.count > 0) categories.push({ label: 'Client Feedback', score: clientFeedback.score });
   if (supervisorRating?.score != null && supervisorRating.count > 0) categories.push({ label: 'Supervisor Rating', score: supervisorRating.score });
