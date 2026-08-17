@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function ClientSupervisors() {
-  const [selectedLocation, setSelectedLocation] = React.useState("");
 
   const { data: user } = useQuery({
     queryKey: ['clientPortalUser', getClientPreviewId()],
@@ -23,23 +22,12 @@ export default function ClientSupervisors() {
     ...(user?.assigned_location ? [user.assigned_location] : []),
   ].filter(Boolean))];
 
-  React.useEffect(() => {
-    if (clientLocations.length > 0 && !selectedLocation) {
-      setSelectedLocation(clientLocations[0]);
-    }
-  }, [clientLocations, selectedLocation]);
-
-  const effectiveLocation = selectedLocation || clientLocations[0];
-
-  const { data: location } = useQuery({
-    queryKey: ['clientLocation', effectiveLocation],
-    queryFn: async () => {
-      if (!effectiveLocation) return null;
-      const locations = await listDirectoryLocations();
-      const key = String(effectiveLocation || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
-      return locations.find(loc => String(loc.site_name || '').trim().toLowerCase() === key) || null;
-    },
-    enabled: !!effectiveLocation,
+  const siteKey = value => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
+  const assignedSiteKeys = new Set(clientLocations.map(siteKey));
+  const { data: siteLocations = [] } = useQuery({
+    queryKey: ['clientSupervisorLocations', clientLocations.join('|')],
+    queryFn: async () => (await listDirectoryLocations()).filter(loc => assignedSiteKeys.has(siteKey(loc.site_name))),
+    enabled: clientLocations.length > 0,
   });
 
   const { data: allUsers } = useQuery({
@@ -48,20 +36,15 @@ export default function ClientSupervisors() {
     initialData: [],
   });
 
-  // Get site supervisors from location's assigned_supervisors field ONLY
-  const assignedSupervisorEmails = new Set((location?.assigned_supervisors || []).map(email => String(email || '').trim().toLowerCase()));
-  const siteSupervisors = allUsers?.filter(u => 
-    !u.termination_date &&
-    assignedSupervisorEmails.has(String(u.email || '').trim().toLowerCase())
-  ) || [];
+  const siteSupervisorGroups = siteLocations.map(location => {
+    const assigned = new Set((location.assigned_supervisors || []).map(email => String(email || '').trim().toLowerCase()));
+    return { location, supervisors: (allUsers || []).filter(u => !u.termination_date && assigned.has(String(u.email || '').trim().toLowerCase())) };
+  });
 
-  // Division command should reflect the actual command ranks used in this app,
-  // including Lt Colonel/Colonel records that were previously being omitted.
   const commandRanks = new Set(['senior corporal','sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel']);
+  const assignedDivisions = new Set(siteLocations.map(loc => String(loc.division || '').trim().toLowerCase()).filter(Boolean));
   const divisionCommand = allUsers?.filter(u =>
-    !u.termination_date &&
-    String(u.division || '').trim().toLowerCase() === String(location?.division || '').trim().toLowerCase() &&
-    commandRanks.has(String(u.rank || '').trim().toLowerCase())
+    !u.termination_date && assignedDivisions.has(String(u.division || '').trim().toLowerCase()) && commandRanks.has(String(u.rank || '').trim().toLowerCase())
   ) || [];
 
   const getRankColor = (rank) => {
