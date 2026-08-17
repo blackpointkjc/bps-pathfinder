@@ -491,6 +491,18 @@ export default function AdminAnalytics() {
                     <span>Client Feedback: {officer.clientFeedback.score != null ? `${officer.clientFeedback.score}% (${officer.clientFeedback.avgRating.toFixed(1)}/5)` : 'No ratings'}</span>
                     <span>Recognition: {officer.recognition.count} record{officer.recognition.count === 1 ? '' : 's'} • Supervisor Rating: {officer.supervisorRating.score != null ? `${officer.supervisorRating.score}%` : 'No review'}</span>
                   </div>
+                  {officer.jobDuty.score != null && officer.jobDuty.score < 100 && (
+                    <div className="mt-3 rounded-lg border border-red-900/60 bg-red-950/20 p-2 text-xs text-red-200">
+                      <p className="mb-1 font-bold">Job Duty reasons:</p>
+                      {officer.jobDuty.shifts.flatMap(shift => {
+                        const rows = [];
+                        if (shift.daily_activity.required && !shift.daily_activity.completed) rows.push(`${shift.shift_date} ${shift.property}: DAR missing`);
+                        shift.incidents.items.filter(item => item.status === 'missing').forEach(item => rows.push(`${shift.shift_date} ${shift.property}: Incident Report missing for call ${item.call_number || item.call_id}`));
+                        if (shift.qr.missed > 0) rows.push(`${shift.shift_date} ${shift.property}: QR ${shift.qr.completed}/${shift.qr.required}, ${shift.qr.missed} missed`);
+                        return rows;
+                      }).slice(0, 8).map((reason, index) => <p key={index}>• {reason}</p>)}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
