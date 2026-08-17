@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 
 
 export default function OpenDoorReports() {
@@ -21,6 +22,10 @@ export default function OpenDoorReports() {
   const [editingReport, setEditingReport] = useState(null);
   const [formData, setFormData] = useState({
     report_date: new Date().toISOString(),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
     location: "",
     door_description: "",
     action_taken: "",
@@ -138,6 +143,10 @@ export default function OpenDoorReports() {
       setEditingReport(null);
       setFormData({
         report_date: new Date().toISOString(),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
         location: "",
         door_description: "",
         action_taken: "",
@@ -163,6 +172,10 @@ export default function OpenDoorReports() {
       setEditingReport(null);
       setFormData({
         report_date: new Date().toISOString(),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
         location: "",
         door_description: "",
         action_taken: "",
@@ -237,6 +250,10 @@ export default function OpenDoorReports() {
                 setEditingReport(null); // Ensure no report is being edited
                 setFormData({ // Reset form for a new report
                   report_date: new Date().toISOString(),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
                   location: "",
                   door_description: "",
                   action_taken: "",
@@ -272,6 +289,7 @@ export default function OpenDoorReports() {
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4">
+                <ActiveCallLinkField formData={formData} setFormData={setFormData} />
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="report_date">Date & Time *</Label>
@@ -392,6 +410,10 @@ export default function OpenDoorReports() {
                       setEditingReport(null);
                       setFormData({
                         report_date: new Date().toISOString(),
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
                         location: "",
                         door_description: "",
                         action_taken: "",
