@@ -208,10 +208,10 @@ export default function AdminAnalytics() {
       .map(officer => {
         // Check assigned training based on email, division, or rank
         const assignedTraining = allTraining.filter(t => 
-          t.assigned_to?.includes(officer.email) || 
-          t.assigned_divisions?.includes(officer.division) ||
-          t.assigned_ranks?.includes(officer.rank) ||
-          t.required // Include all required training
+          (t.assigned_to || []).some(email => emailKey(email) === emailKey(officer.email)) ||
+          (t.assigned_divisions || []).includes(officer.division) ||
+          (t.assigned_ranks || []).includes(officer.rank) ||
+          t.required
         );
 
         // If no training is assigned to this officer, they still need to do required training
@@ -220,7 +220,7 @@ export default function AdminAnalytics() {
         if (trainingToCheck.length === 0) return null;
 
         const completedIds = trainingCompletions
-          .filter(tc => tc.officer_email === officer.email && tc.completed)
+          .filter(tc => emailKey(tc.officer_email) === emailKey(officer.email) && tc.completed)
           .map(tc => tc.training_module_id);
         
         const completed = trainingToCheck.filter(t => completedIds.includes(t.id)).length;
