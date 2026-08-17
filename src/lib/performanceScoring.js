@@ -133,7 +133,7 @@ export function calculateTrainingScore(user, modules = [], completions = [], ass
     ...assignedModules.filter(module => !completedIds.has(String(module.id))).map(module => module.title || 'Training module'),
     ...officerAssignments.filter(item => item.status !== 'approved').map(item => `${item.training_name || 'Compliance item'} (${String(item.status || 'pending').replaceAll('_', ' ')})`),
   ];
-  return { completed, pending, total, percentage: total ? Math.round((completed / total) * 100) : null, assignmentApproved, assignmentPending, pendingNames };
+  return { completed, pending, total, percentage: total ? Math.round((completed / total) * 100) : null, assignmentApproved, assignmentPending, complianceApproved: assignmentApproved, compliancePending: assignmentPending, pendingNames };
 }
 
 export function calculateQrPatrol(timeEntries = [], scans = [], checkpoints = [], monthStart, monthEnd) {
