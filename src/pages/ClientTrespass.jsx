@@ -28,7 +28,6 @@ import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
 export default function ClientTrespass() {
-  const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedNotice, setSelectedNotice] = useState(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(null);
@@ -55,13 +54,9 @@ export default function ClientTrespass() {
 
   const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
 
-  useEffect(() => {
-    if (clientLocations.length > 0 && !selectedLocation) {
-      setSelectedLocation(clientLocations[0]);
-    }
-  }, [clientLocations, selectedLocation]);
-
-  const effectiveLocation = selectedLocation || clientLocations[0];
+  const siteKey = value => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
+  const assignedSiteKeys = new Set(clientLocations.map(siteKey));
+  const effectiveLocation = clientLocations.length > 1 ? 'All Assigned Sites' : clientLocations[0];
 
   const getOfficerFullDisplay = (officerRef) => {
     if (officerRef === 'OPEN') return 'OPEN SHIFT';
@@ -108,13 +103,13 @@ export default function ClientTrespass() {
   };
 
   const { data: notices } = useQuery({
-    queryKey: ['clientTrespassNotices', effectiveLocation],
+    queryKey: ['clientTrespassNotices', clientLocations.join('|')],
     queryFn: async () => {
-      if (!effectiveLocation) return [];
+      if (!clientLocations.length) return [];
       const allNotices = await base44.entities.TrespassingNotice.list('-created_date');
-      return allNotices.filter(n => n.location === effectiveLocation && n.status === 'approved');
+      return allNotices.filter(n => assignedSiteKeys.has(siteKey(n.location)) && n.status === 'approved');
     },
-    enabled: !!effectiveLocation,
+    enabled: clientLocations.length > 0,
   });
 
   const updateExpirationMutation = useMutation({
@@ -143,7 +138,7 @@ export default function ClientTrespass() {
             <h3>Client Information</h3>
             <p><strong>Name:</strong> ${user?.full_name || 'N/A'}<br>
             <strong>Email:</strong> ${user?.email}<br>
-            <strong>Location:</strong> ${effectiveLocation}</p>
+            <strong>Location:</strong> ${notice.location || effectiveLocation}</p>
             <h3>Trespass Notice Details</h3>
             <p><strong>Subject:</strong> ${notice.subject_name}<br>
             <strong>Date Issued:</strong> ${format(new Date(notice.notice_date), 'MMMM d, yyyy h:mm a')}<br>
@@ -306,36 +301,10 @@ export default function ClientTrespass() {
   return (
     <div className="p-4 md:p-8 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-8">
-        {clientLocations.length > 1 && (
-          <Card className="border-none shadow-lg bg-gradient-to-r from-purple-50 to-blue-50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <MapPin className="w-8 h-8 text-purple-600" />
-                <div className="flex-1">
-                  <Label className="text-sm font-semibold text-purple-900 mb-2 block">
-                    Select Location to View
-                  </Label>
-                  <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="Select a location to view..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clientLocations.map((locName) => (
-                        <SelectItem key={locName} value={locName}>
-                          {locName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Trespass Management</h1>
-          <p className="text-slate-600">View and manage trespass notices for {effectiveLocation}</p>
+        <div className="rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-xl">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-rose-300">Site Operations</p>
+          <h1 className="mt-1 text-2xl font-black text-white sm:text-3xl">Trespass Management</h1>
+          <p className="mt-1 text-sm text-slate-400">Approved trespass notices across {clientLocations.length > 1 ? `all ${clientLocations.length} assigned sites` : effectiveLocation}.</p>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
