@@ -165,8 +165,8 @@ export default function ClientSchedule() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="client-schedule-page min-h-screen w-full min-w-0 overflow-x-hidden p-3 sm:p-4 md:p-6">
+      <div className="mx-auto w-full min-w-0 max-w-[1500px] space-y-5 sm:space-y-6">
         {clientLocations.length > 1 && (
           <Card className="border-none shadow-lg bg-gradient-to-r from-purple-50 to-blue-50">
             <CardContent className="p-6">
@@ -194,33 +194,33 @@ export default function ClientSchedule() {
           </Card>
         )}
 
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Site Schedule</h1>
-          <div className="flex items-center gap-2 text-slate-600">
+        <div className="min-w-0">
+          <h1 className="mb-2 text-2xl font-bold text-white sm:text-3xl">Site Schedule</h1>
+          <div className="flex min-w-0 items-center gap-2 text-slate-300">
             <MapPin className="w-5 h-5" />
             {effectiveLocation}
           </div>
         </div>
 
-        <div className="flex items-center justify-between bg-gradient-to-r from-purple-100 to-blue-100 p-4 rounded-lg border-2 border-purple-400">
+        <div className="grid min-w-0 grid-cols-1 items-center gap-3 rounded-xl border border-slate-700 bg-slate-900 p-3 sm:grid-cols-[auto_1fr_auto] sm:p-4">
           <Button
             variant="outline"
             onClick={() => setCurrentWeekOffset(currentWeekOffset - 1)}
-            className="bg-white"
+            className="w-full border-slate-600 bg-slate-800 text-white hover:bg-slate-700 sm:w-auto"
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Previous Week
           </Button>
-          <div className="text-center">
-            <p className="font-bold text-slate-900 text-lg">
+          <div className="min-w-0 text-center">
+            <p className="text-lg font-bold text-white">
               {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
             </p>
-            <p className="text-sm text-slate-600">Weekly Schedule (Read-Only)</p>
+            <p className="text-sm text-slate-400">Weekly Schedule (Read-Only)</p>
           </div>
           <Button
             variant="outline"
             onClick={() => setCurrentWeekOffset(currentWeekOffset + 1)}
-            className="bg-white"
+            className="w-full border-slate-600 bg-slate-800 text-white hover:bg-slate-700 sm:w-auto"
           >
             Next Week
             <ChevronRight className="w-4 h-4 ml-2" />
@@ -239,15 +239,15 @@ export default function ClientSchedule() {
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-lg overflow-x-auto border-2 border-slate-300">
-          <table className="w-full border-collapse text-xs">
+        <div className="client-schedule-table w-full min-w-0 overflow-x-auto rounded-xl border border-slate-700 bg-slate-900 shadow-lg">
+          <table className="w-full min-w-[1050px] border-collapse text-xs text-slate-100">
             <thead>
-              <tr className="bg-gradient-to-r from-purple-400 to-blue-400">
-                <th className="border border-slate-400 p-3 text-left min-w-[220px] sticky left-0 bg-purple-400 z-10">
+              <tr className="bg-slate-800">
+                <th className="sticky left-0 z-10 min-w-[220px] border border-slate-600 bg-slate-800 p-3 text-left">
                     <div className="font-bold text-white">Officer / Unit</div>
                   </th>
                 {weekDays.map((day) => (
-                  <th key={day.toString()} className="border border-slate-400 p-3 text-center min-w-[120px]">
+                  <th key={day.toString()} className="min-w-[120px] border border-slate-600 bg-slate-800 p-3 text-center">
                     <div className="text-white font-bold">{format(day, 'EEE')}</div>
                     <div className="text-white text-[10px]">{format(day, 'M/d')}</div>
                   </th>
@@ -267,15 +267,15 @@ export default function ClientSchedule() {
                 const officerDisplay = getOfficerFullDisplay(officerEmail);
 
                 return (
-                  <tr key={officerEmail} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                    <td className="border border-slate-400 p-3 font-semibold sticky left-0 z-10" style={{backgroundColor: idx % 2 === 0 ? 'white' : '#f8fafc'}}>
+                  <tr key={officerEmail} className={idx % 2 === 0 ? 'bg-slate-900' : 'bg-slate-800/70'}>
+                    <td className={`sticky left-0 z-10 border border-slate-600 p-3 font-semibold ${idx % 2 === 0 ? 'bg-slate-900' : 'bg-slate-800'}`}> 
                       <div className="flex items-center gap-2">
                         {unitNumber && (
                           <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-[10px] font-bold">
                             #{unitNumber}
                           </span>
                         )}
-                        <div className="text-slate-900">{officerDisplay}</div>
+                        <div className="font-semibold text-white">{officerDisplay}</div>
                       </div>
                     </td>
                     {weekDays.map((day) => {
@@ -283,17 +283,17 @@ export default function ClientSchedule() {
                       const daySchedules = officerSchedules[officerEmail].filter(s => s.shift_date === dateStr);
 
                       return (
-                        <td key={day.toString()} className="border border-slate-400 p-2">
+                        <td key={day.toString()} className="border border-slate-600 bg-inherit p-2">
                           {daySchedules.length > 0 ? (
                             <div className="space-y-1">
                               {daySchedules.map((schedule) => (
-                                <div key={schedule.id} className="p-2 bg-purple-100 rounded text-[10px] font-semibold text-center text-purple-900">
+                                <div key={schedule.id} className="rounded border border-violet-700/60 bg-violet-950/70 p-2 text-center text-[10px] font-semibold text-violet-200">
                                   <div>{schedule.start_time}-{schedule.end_time}</div>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <div className="text-center text-slate-300 text-[10px]">—</div>
+                            <div className="text-center text-[10px] text-slate-500">—</div>
                           )}
                         </td>
                       );
@@ -305,8 +305,8 @@ export default function ClientSchedule() {
           </table>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-900">
+        <div className="rounded-lg border border-blue-800 bg-blue-950/40 p-4">
+          <p className="text-sm text-blue-100">
             <strong>Note:</strong> This schedule is read-only. You can view shifts assigned to your location but cannot make changes. Contact Black Point Protection for scheduling updates.
           </p>
         </div>
