@@ -242,19 +242,19 @@ Review in Admin > Shift Bids.`
         </div>
 
         {myBids && myBids.filter(b => b.status === 'pending').length > 0 && (
-          <Card className="border-none shadow-lg border-l-4 border-l-blue-600">
-            <CardHeader className="bg-blue-50">
-              <CardTitle className="text-blue-900">My Pending Bids</CardTitle>
+          <Card className="border border-slate-700 border-l-4 border-l-blue-500 bg-slate-900 text-white shadow-lg">
+            <CardHeader className="border-b border-slate-700 bg-blue-950/40">
+              <CardTitle className="text-blue-200">My Pending Bids</CardTitle>
             </CardHeader>
-            <CardContent className="p-4">
+            <CardContent className="bg-slate-900 p-4">
               <div className="space-y-2">
                 {myBids.filter(b => b.status === 'pending').map(bid => {
                   const shift = openShifts?.find(s => s.id === bid.shift_id);
                   return (
-                    <div key={bid.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                    <div key={bid.id} className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800 p-3">
                       <div>
                         <p className="font-medium">{shift ? format(parseISO(shift.shift_date), 'MMM d, yyyy') : 'Unknown'}</p>
-                        <p className="text-sm text-slate-600">{shift?.location?.split(':')[0]}</p>
+                        <p className="text-sm text-slate-400">{shift?.location?.split(':')[0]}</p>
                       </div>
                       <Badge className="bg-blue-600">Priority {bid.bid_priority}</Badge>
                     </div>
@@ -266,11 +266,11 @@ Review in Admin > Shift Bids.`
         )}
 
         {openShifts?.length === 0 ? (
-          <Card className="border-none shadow-lg">
-            <CardContent className="p-12 text-center">
-              <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-500" />
-              <h3 className="text-xl font-bold text-slate-900 mb-2">No Open Shifts</h3>
-              <p className="text-slate-600">All shifts are currently assigned. Check back later!</p>
+          <Card className="border border-slate-700 bg-slate-900 text-white shadow-lg">
+            <CardContent className="bg-slate-900 p-12 text-center">
+              <CheckCircle2 className="mx-auto mb-4 h-16 w-16 text-emerald-400" />
+              <h3 className="mb-2 text-xl font-bold text-white">No Open Shifts</h3>
+              <p className="text-slate-400">All shifts are currently assigned. Check back later!</p>
             </CardContent>
           </Card>
         ) : (
@@ -355,22 +355,22 @@ Review in Admin > Shift Bids.`
                       </div>
 
                       {shift.site_details && (
-                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                          <p className="text-xs text-blue-700 font-medium mb-1 flex items-center gap-1">
+                        <div className="rounded-lg border border-blue-800 bg-blue-950/40 p-3">
+                          <p className="mb-1 flex items-center gap-1 text-xs font-medium text-blue-300">
                             <AlertCircle className="w-3 h-3" />
                             Site Details
                           </p>
-                          <p className="text-sm text-slate-700">{shift.site_details}</p>
+                          <p className="text-sm text-slate-200">{shift.site_details}</p>
                         </div>
                       )}
 
                       {shift.special_instructions && (
-                        <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
-                          <p className="text-xs text-amber-700 font-medium mb-1 flex items-center gap-1">
+                        <div className="rounded-lg border border-amber-800 bg-amber-950/40 p-3">
+                          <p className="mb-1 flex items-center gap-1 text-xs font-medium text-amber-300">
                             <AlertCircle className="w-3 h-3" />
                             Special Instructions
                           </p>
-                          <p className="text-sm text-slate-700">{shift.special_instructions}</p>
+                          <p className="text-sm text-slate-200">{shift.special_instructions}</p>
                         </div>
                       )}
 
@@ -397,7 +397,7 @@ Review in Admin > Shift Bids.`
       </div>
 
       <Dialog open={bidDialogOpen} onOpenChange={setBidDialogOpen}>
-        <DialogContent>
+        <DialogContent className="border-slate-700 bg-slate-900 text-white">
           <DialogHeader>
             <DialogTitle>Submit Shift Bid</DialogTitle>
             <DialogDescription>
@@ -413,7 +413,7 @@ Review in Admin > Shift Bids.`
                     key={num}
                     onClick={() => setBidPriority(num)}
                     className={`w-10 h-10 rounded-lg border flex items-center justify-center font-bold transition-all ${
-                      bidPriority === num ? 'bg-green-600 text-white border-green-600' : 'bg-white border-slate-300 hover:border-green-400'
+                      bidPriority === num ? 'border-green-500 bg-green-600 text-white' : 'border-slate-600 bg-slate-800 text-slate-200 hover:border-green-400'
                     }`}
                   >
                     {num}
