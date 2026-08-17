@@ -114,6 +114,8 @@ export default function ClientCallHistory() {
           id: `property-alert-${alert.id}`,
           call_id: alert.callId || '',
           original_call_id: alert.callId || '',
+          agency_cad_number: alert.agency_cad_number || alert.cad_number || alert.callCadNumber || '',
+          bps_reference: alert.bps_reference || '',
           time_received: alert.callTime || alert.time_received || alert.created_date,
           created_date: alert.created_date,
           location: alert.callLocation || alert.propertyName,
@@ -196,8 +198,9 @@ export default function ClientCallHistory() {
       <div className="p-3 md:p-4 space-y-2">
         {filtered.length === 0 ? <div className="border border-slate-800 rounded-xl p-12 text-center text-slate-500">No calls for service matched your assigned properties.</div> : filtered.map(row => {
           const open = expanded === row.id;
-          const official = row.agency_cad_number || (row.official_cad_verified ? row.call_id : '');
-          const ref = official || compactRef(row.bps_reference || row.call_id);
+          const internalId = /^[0-9a-f]{20,}$/i.test(String(row.call_id || '').trim());
+          const official = row.agency_cad_number || row.cad_number || row.callCadNumber || (row.official_cad_verified && !internalId ? row.call_id : '');
+          const ref = official || row.bps_reference || (!internalId ? row.call_id : '') || 'CAD NUMBER UNAVAILABLE';
           return <div key={`${row._source}-${row.id}`} className="border border-slate-700 bg-slate-900 rounded-lg overflow-hidden">
             <button onClick={() => setExpanded(open ? null : row.id)} className="w-full text-left p-3 md:p-4 grid grid-cols-1 md:grid-cols-[150px_1fr_220px_90px_90px_32px] gap-2 md:items-center hover:bg-slate-800/70">
               <div><div className={`text-xs font-black ${official ? 'text-blue-300' : 'text-gold'}`}>{ref || 'REFERENCE PENDING'}</div><div className="text-[10px] text-slate-500">{fmt(row.time_received || row.created_date)}</div></div>
