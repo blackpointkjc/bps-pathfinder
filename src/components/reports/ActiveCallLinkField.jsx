@@ -4,6 +4,7 @@ import { Radio } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { listActiveDispatchCalls, applyDispatchCallToForm, callDisplayNumber } from '@/lib/reportCallLinking';
+import { cleanIncident } from '@/utils/callUtils';
 
 export default function ActiveCallLinkField({ formData, setFormData, label = 'Link to Active Call for Service' }) {
   const { data: activeCalls = [], isLoading } = useQuery({
@@ -40,7 +41,7 @@ export default function ActiveCallLinkField({ formData, setFormData, label = 'Li
           <SelectItem value="none">No linked call</SelectItem>
           {activeCalls.map(call => (
             <SelectItem key={call.id} value={call.id}>
-              {callDisplayNumber(call)} — {call.incident || 'Call for Service'} — {call.location || 'Location pending'}
+              {callDisplayNumber(call)} — {cleanIncident(call)} — {call.location || 'Location pending'}
             </SelectItem>
           ))}
         </SelectContent>
