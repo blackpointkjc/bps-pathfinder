@@ -485,7 +485,8 @@ export default function AdminAnalytics() {
                     ))}
                     {officer.overall.categories.length === 0 && <span className="text-xs text-slate-500">No scoreable records this month.</span>}
                   </div>
-                  <div className="mt-2 grid gap-2 text-xs text-slate-400 md:grid-cols-3">
+                  <div className="mt-2 grid gap-2 text-xs text-slate-400 md:grid-cols-4">
+                    <span>Job Duty: {officer.jobDuty.score != null ? `${officer.jobDuty.score}%` : 'Not scored'} • DAR {officer.jobDuty.dailyActivity.completed}/{officer.jobDuty.dailyActivity.required} • Incident {officer.jobDuty.incidentReports.completed}/{officer.jobDuty.incidentReports.required} • QR {officer.jobDuty.qrCompliance.completed}/{officer.jobDuty.qrCompliance.required}</span>
                     <span>Bid Standing: {officer.bidStanding.score != null ? `${officer.bidStanding.score}%` : 'Not scored'} ({officer.bidStanding.accepted} accepted, {officer.bidStanding.pending} pending, {officer.bidStanding.rejected} rejected)</span>
                     <span>Client Feedback: {officer.clientFeedback.score != null ? `${officer.clientFeedback.score}% (${officer.clientFeedback.avgRating.toFixed(1)}/5)` : 'No ratings'}</span>
                     <span>Recognition: {officer.recognition.count} record{officer.recognition.count === 1 ? '' : 's'} • Supervisor Rating: {officer.supervisorRating.score != null ? `${officer.supervisorRating.score}%` : 'No review'}</span>
