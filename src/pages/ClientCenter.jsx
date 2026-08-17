@@ -17,9 +17,9 @@ import ClientFeedback from './ClientFeedback';
 
 const SECTIONS = [
   { id: 'overview', label: 'Overview', description: 'Dashboard, alerts and calls for service', icon: AlertTriangle },
-  { id: 'site', label: 'Site Operations', description: 'Schedule, supervisors, location and trespass', icon: Building2 },
-  { id: 'records', label: 'Reports & Documents', description: 'Reports, QR patrol and documents', icon: FileText },
-  { id: 'requests', label: 'Requests & Billing', description: 'Requests, payroll/invoicing and feedback', icon: CalendarClock },
+  { id: 'site', label: 'Site Operations', description: 'Unified schedule, supervisors, property details and trespass activity across every assigned site', icon: Building2 },
+  { id: 'records', label: 'Reports & Records', description: 'Approved reports, patrol verification and site documents', icon: FileText },
+  { id: 'requests', label: 'Service & Billing', description: 'Coverage requests, billing, invoices and service feedback', icon: CalendarClock },
 ];
 
 const TOOLS = {
@@ -41,14 +41,14 @@ const TOOLS = {
   ],
   requests: [
     { id: 'special', label: 'Special Requests', component: ClientSpecialRequests },
-    { id: 'payroll', label: 'Payroll & Invoicing', component: ClientPayrollReport },
+    { id: 'payroll', label: 'Billing & Invoices', component: ClientPayrollReport },
     { id: 'feedback', label: 'Feedback', component: ClientFeedback },
   ],
 };
 
 export default function ClientCenter() {
   return (
-    <UnifiedCenter eyebrow="Client Services" title="Client Center" description="One desktop workspace for site activity, reports, requests, billing, and client communication." sections={SECTIONS} defaultSection="overview">
+    <UnifiedCenter eyebrow="Client Services" title="Client Center" description="Your secure portfolio view for site operations, verified reporting, service requests, billing, and communication across every assigned property." sections={SECTIONS} defaultSection="overview">
       {section => <CenterToolSection key={section} tools={TOOLS[section]} />}
     </UnifiedCenter>
   );
