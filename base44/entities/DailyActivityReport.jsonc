@@ -18,6 +18,14 @@
       "type": "string",
       "description": "Linked CAD call location"
     },
+    "shift_id": {
+      "type": "string",
+      "description": "TimeEntry ID for the exact worked shift this DAR satisfies"
+    },
+    "officer_email": {
+      "type": "string",
+      "description": "Officer email cached for duty-compliance matching"
+    },
     "report_date": {
       "type": "string",
       "format": "date",
