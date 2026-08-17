@@ -401,6 +401,24 @@ export function calculateJobDutyCompliance({
       if (mandatoryLabels.size) return mandatoryLabels.has(String(cp.location_label || '').trim().toLowerCase());
       return cp.is_required !== false;
     });
+    // A duty rule can remain active after a checkpoint master row is removed. Do not
+    // silently turn that into QR 0/0. Preserve explicit required checkpoint IDs and
+    // recover their display names from historical scan snapshots when possible.
+    if (explicitIds.size) {
+      const knownIds = new Set(requiredCheckpoints.map(cp => String(cp.id)));
+      for (const checkpointId of explicitIds) {
+        if (knownIds.has(checkpointId)) continue;
+        const snapshot = qrScans.find(scan => String(scan.checkpoint_id || '') === checkpointId && siteKey(scan.property_site) === site);
+        requiredCheckpoints.push({
+          id: checkpointId,
+          checkpoint_name: snapshot?.checkpoint_name_snapshot || snapshot?.location_label_snapshot || `Checkpoint ${checkpointId.slice(-6)}`,
+          location_label: snapshot?.location_label_snapshot || '',
+          created_date: effectiveQrRule?.created_date || null,
+          is_required: true,
+          is_active: true,
+        });
+      }
+    }
     const qrIsRequired = effectiveQrRule ? effectiveQrRule.qr_required === true : requiredCheckpoints.length > 0;
     if (qrIsRequired && requiredCheckpoints.length > 0) {
       const frequency = Math.max(1, Number(effectiveQrRule?.qr_frequency_minutes || 60));
