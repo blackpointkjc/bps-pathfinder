@@ -182,12 +182,20 @@ function MapController({ center, routeBounds, mapCenter, fitBounds, isNavigating
     return null;
 }
 
+const validCoordPair = value => Array.isArray(value) && value.length >= 2 && Number.isFinite(Number(value[0])) && Number.isFinite(Number(value[1]));
+
 const MapView = function MapView({ currentLocation, destination, route, trafficSegments, useOfflineTiles, activeCalls, heading, locationHistory, unitName, showLights, otherUnits, currentUserId, onCallClick, speed, mapCenter, fitBounds, isNavigating, baseMapType = 'street', jurisdictionFilters, showPoliceStations = true, showFireStations = true, showJails = true, searchPin = null, onNavigateToJail = () => {}, mapTheme = 'day', showHeatmap = false, children, allCalls = [] }) {
-    const defaultCenter = currentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
+    const safeCurrentLocation = validCoordPair(currentLocation) ? [Number(currentLocation[0]), Number(currentLocation[1])] : null;
+    const safeMapCenter = validCoordPair(mapCenter) ? [Number(mapCenter[0]), Number(mapCenter[1])] : null;
+    const safeDestination = destination && validCoordPair(destination.coords) ? { ...destination, coords: [Number(destination.coords[0]), Number(destination.coords[1])] } : null;
+    const safeSearchPin = searchPin && validCoordPair(searchPin.coords) ? { ...searchPin, coords: [Number(searchPin.coords[0]), Number(searchPin.coords[1])] } : null;
+    const safeRoute = (route || []).filter(validCoordPair).map(coord => [Number(coord[0]), Number(coord[1])]);
+    const safeHistory = (locationHistory || []).filter(validCoordPair).map(coord => [Number(coord[0]), Number(coord[1])]);
+    const defaultCenter = safeCurrentLocation || [37.5407, -77.4360]; // Default to Richmond, VA
     
     // Calculate route bounds if route exists
-    const routeBounds = route && route.length > 0 
-        ? L.latLngBounds(route.map(coord => [coord[0], coord[1]]))
+    const routeBounds = safeRoute.length > 0 
+        ? L.latLngBounds(safeRoute)
         : null;
 
     // Determine tile layer URL based on base map type and theme
@@ -287,9 +295,9 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             
             {!isNavigating ? (
                 <MapController 
-                    center={currentLocation} 
+                    center={safeCurrentLocation} 
                     routeBounds={routeBounds}
-                    mapCenter={mapCenter}
+                    mapCenter={safeMapCenter}
                     fitBounds={fitBounds}
                     isNavigating={isNavigating}
                     heading={heading}
@@ -297,25 +305,25 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             ) : (
                 <NavigationCamera
                     isNavigating={isNavigating}
-                    currentLocation={currentLocation}
+                    currentLocation={safeCurrentLocation}
                     heading={heading}
                     speed={speed}
                     onUserInteraction={otherUnits ? undefined : undefined}
                 />
             )}
 
-            {currentLocation && (
+            {safeCurrentLocation && (
                 <Marker
-                    key={`self-${currentLocation[0].toFixed(6)}-${currentLocation[1].toFixed(6)}`}
-                    position={currentLocation}
+                    key={`self-${safeCurrentLocation[0].toFixed(6)}-${safeCurrentLocation[1].toFixed(6)}`}
+                    position={safeCurrentLocation}
                     icon={heading !== null ? createLocationWithHeading(heading, showLights, unitName) : createCurrentLocationIcon(showLights, unitName)}
                 />
             )}
             
             {/* Location History Trail */}
-            {locationHistory && locationHistory.length > 1 && (
+            {safeHistory.length > 1 && (
                 <Polyline
-                    positions={locationHistory}
+                    positions={safeHistory}
                     pathOptions={{
                         color: '#007AFF',
                         weight: 3,
@@ -327,20 +335,20 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                 />
             )}
             
-            {destination && (
-                <Marker position={destination.coords} icon={destinationIcon}>
+            {safeDestination && (
+                <Marker position={safeDestination.coords} icon={destinationIcon}>
                     <Popup autoPan={false}>
-                        <span className="font-medium">{destination.name}</span>
+                        <span className="font-medium">{safeDestination.name}</span>
                     </Popup>
                 </Marker>
             )}
             
             {trafficSegments && trafficSegments.length > 0 ? (
                 <TrafficLayer trafficSegments={trafficSegments} />
-            ) : route && route.length > 0 ? (
+            ) : safeRoute.length > 0 ? (
                 <>
                     <Polyline
-                        positions={route}
+                        positions={safeRoute}
                         pathOptions={{
                             color: '#ffffff',
                             weight: 10,
@@ -350,7 +358,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
                         }}
                     />
                     <Polyline
-                        positions={route}
+                        positions={safeRoute}
                         pathOptions={{
                             color: '#1a73e8',
                             weight: 6,
@@ -373,7 +381,7 @@ const MapView = function MapView({ currentLocation, destination, route, trafficS
             )}
             
             {/* Search Pin */}
-            {searchPin && <SearchPinMarker position={searchPin.coords} address={searchPin.address} propertyInfo={searchPin.propertyInfo} />}
+            {safeSearchPin && <SearchPinMarker position={safeSearchPin.coords} address={safeSearchPin.address} propertyInfo={safeSearchPin.propertyInfo} />}
             
             {/* Call Volume Heatmap */}
             <CallHeatmapLayer enabled={showHeatmap} calls={allCalls} />
