@@ -74,67 +74,24 @@ export default function AdminAnalytics() {
     return active.filter(u => String(u.division || '') === String(selectedDivision));
   }, [allUsers, timeEntries, schedules, trainingCompletions, selectedDivision]);
 
+  const currentMonthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+  const currentMonthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
+
   const companyOnTimeStats = useMemo(() => {
-    if (!timeEntries || !schedules || !filteredUsers) return { rate: 0, byOfficer: [] };
-
-    // Use current month instead of payroll period
-    const now = new Date();
-    const monthStart = format(startOfMonth(now), 'yyyy-MM-dd');
-    const monthEnd = format(endOfMonth(now), 'yyyy-MM-dd');
-
-    const officerStats = {};
-
-    filteredUsers.forEach(officer => {
-      officerStats[emailKey(officer.email)] = { name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email, onTime: 0, late: 0, total: 0 };
-    });
-
-    timeEntries.forEach(entry => {
-      const key = emailKey(entry.officer_email);
-      if (!entry.clock_in || !officerStats[key]) return;
-      
-      const clockInDate = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
-      
-      // Filter to current month
-      if (clockInDate < monthStart || clockInDate > monthEnd) return;
-      
-      const matchingSchedule = schedules.find(s => 
-        s.shift_date === clockInDate && emailKey(s.officer_email) === key
+    const byOfficer = filteredUsers.map(officer => {
+      const key = emailKey(officer.email);
+      const stats = calculatePunctuality(
+        timeEntries.filter(entry => emailKey(entry.officer_email) === key),
+        schedules.filter(schedule => emailKey(schedule.officer_email) === key),
+        currentMonthStart,
+        currentMonthEnd
       );
-      
-      if (matchingSchedule) {
-        const scheduledStart = matchingSchedule.start_time;
-        const actualClockIn = format(parseISO(entry.clock_in), 'HH:mm');
-        
-        const scheduledMinutes = parseInt(scheduledStart.split(':')[0]) * 60 + parseInt(scheduledStart.split(':')[1]);
-        const actualMinutes = parseInt(actualClockIn.split(':')[0]) * 60 + parseInt(actualClockIn.split(':')[1]);
-        
-        officerStats[key].total++;
-        if (actualMinutes <= scheduledMinutes + 5) {
-          officerStats[key].onTime++;
-        } else {
-          officerStats[key].late++;
-        }
-      }
-    });
-
-    const byOfficer = Object.entries(officerStats)
-      .filter(([_, stats]) => stats.total > 0)
-      .map(([email, stats]) => ({
-        name: stats.name,
-        email,
-        rate: Math.round((stats.onTime / stats.total) * 100),
-        onTime: stats.onTime,
-        late: stats.late,
-        total: stats.total
-      }))
-      .sort((a, b) => b.rate - a.rate);
-
-    const totalOnTime = byOfficer.reduce((sum, o) => sum + o.onTime, 0);
-    const totalEntries = byOfficer.reduce((sum, o) => sum + o.total, 0);
-    const rate = totalEntries > 0 ? Math.round((totalOnTime / totalEntries) * 100) : 0;
-
-    return { rate, byOfficer };
-  }, [timeEntries, schedules, filteredUsers]);
+      return { name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email, email: officer.email, ...stats };
+    }).filter(item => item.total > 0).sort((a, b) => (b.rate || 0) - (a.rate || 0));
+    const totalOnTime = byOfficer.reduce((sum, item) => sum + item.onTime, 0);
+    const totalEntries = byOfficer.reduce((sum, item) => sum + item.total, 0);
+    return { rate: totalEntries ? Math.round((totalOnTime / totalEntries) * 100) : 0, byOfficer };
+  }, [timeEntries, schedules, filteredUsers, currentMonthStart, currentMonthEnd]);
 
   const hoursBreakdown = useMemo(() => {
     if (!timeEntries || !filteredUsers) return [];
@@ -245,6 +202,41 @@ export default function AdminAnalytics() {
       .filter(o => o !== null && o.total > 0 && o.percentage < 100)
       .sort((a, b) => a.percentage - b.percentage);
   }, [trainingCompletions, allTraining, filteredUsers]);
+
+  const overallByOfficer = useMemo(() => filteredUsers.map(officer => {
+    const key = emailKey(officer.email);
+    const officerTimeEntries = timeEntries.filter(item => emailKey(item.officer_email) === key);
+    const officerSchedules = schedules.filter(item => emailKey(item.officer_email) === key);
+    const officerBids = allBids.filter(item => emailKey(item.officer_email) === key);
+    const officerCompletions = trainingCompletions.filter(item => emailKey(item.officer_email) === key);
+    const officerAssignments = trainingAssignments.filter(item => emailKey(item.officer_email) === key);
+    const officerScans = allQrScans.filter(item => emailKey(item.officer_email) === key);
+    const officerFeedback = allClientFeedback.filter(item => emailKey(item.officer_email) === key);
+    const officerReviews = allPerformanceReviews.filter(item => emailKey(item.officer_email) === key);
+    const officerCommendations = allCommendations.filter(item => emailKey(item.officer_email) === key);
+
+    const punctuality = calculatePunctuality(officerTimeEntries, officerSchedules, currentMonthStart, currentMonthEnd);
+    const training = calculateTrainingScore(officer, allTraining, officerCompletions, officerAssignments);
+    const qr = calculateQrPatrol(officerTimeEntries, officerScans, allQrCheckpoints, currentMonthStart, currentMonthEnd);
+    const bidStanding = calculateBidStanding(officerBids, currentMonthStart, currentMonthEnd);
+    const clientFeedback = calculateClientFeedback(officerFeedback, currentMonthStart, currentMonthEnd);
+    const supervisorRating = calculateSupervisorRating(officerReviews, currentMonthStart, currentMonthEnd);
+    const recognition = calculateRecognition(officerCommendations, officerFeedback, currentMonthStart, currentMonthEnd);
+    const overall = buildOverallPerformance({ punctuality, trainingScore: training.percentage, qrScore: qr.score, bidStanding, clientFeedback, supervisorRating, recognition });
+
+    return {
+      email: officer.email,
+      name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email,
+      overall,
+      punctuality,
+      training,
+      qr,
+      bidStanding,
+      clientFeedback,
+      supervisorRating,
+      recognition,
+    };
+  }).sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1)), [filteredUsers, timeEntries, schedules, allBids, trainingCompletions, trainingAssignments, allTraining, allQrScans, allQrCheckpoints, allClientFeedback, allPerformanceReviews, allCommendations, currentMonthStart, currentMonthEnd]);
 
   const responseTimeStats = useMemo(() => {
     const responseTimes = dispatchCalls
