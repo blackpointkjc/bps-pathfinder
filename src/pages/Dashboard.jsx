@@ -254,25 +254,25 @@ export default function Dashboard({ embedded = false }) {
     <PullToRefresh onRefresh={handleRefresh}>
     <div className={`relative overflow-hidden bg-slate-950 ${embedded ? 'min-h-0' : 'min-h-screen'}`}>
       {/* Cinematic animated gradient mesh background */}
-      <div className="fixed inset-0 pointer-events-none">
+      {!embedded && <div className="fixed inset-0 pointer-events-none">
         <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-blue-600/20 blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
         <div className="absolute top-1/3 -right-40 w-[500px] h-[500px] rounded-full bg-violet-600/20 blur-[120px] animate-pulse" style={{ animationDuration: '10s', animationDelay: '1s' }} />
         <div className="absolute -bottom-40 left-1/3 w-[500px] h-[500px] rounded-full bg-emerald-600/15 blur-[120px] animate-pulse" style={{ animationDuration: '12s', animationDelay: '2s' }} />
-      </div>
+      </div>}
       {/* Subtle grid overlay */}
-      <div 
+      {!embedded && <div 
         className="fixed inset-0 pointer-events-none opacity-[0.03]"
         style={{
           backgroundImage: `linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)`,
           backgroundSize: '60px 60px',
         }}
-      />
+      />}
 
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="relative max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8 space-y-5 md:space-y-6"
+        className={`relative mx-auto max-w-[1600px] space-y-5 md:space-y-6 ${embedded ? 'p-4 md:p-5' : 'p-4 md:p-6 lg:p-8'}`}
       >
         {/* Cinematic Hero */}
         <motion.div variants={itemVariants} className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/90 via-slate-900/75 to-slate-800/50 p-5 backdrop-blur-xl md:p-7">
