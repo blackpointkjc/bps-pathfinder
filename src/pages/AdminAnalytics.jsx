@@ -238,6 +238,11 @@ export default function AdminAnalytics() {
     };
   }).sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1)), [filteredUsers, timeEntries, schedules, allBids, trainingCompletions, trainingAssignments, allTraining, allQrScans, allQrCheckpoints, allClientFeedback, allPerformanceReviews, allCommendations, currentMonthStart, currentMonthEnd]);
 
+  const companyOverallScore = useMemo(() => {
+    const scored = overallByOfficer.filter(item => item.overall.score != null);
+    return scored.length ? Math.round(scored.reduce((sum, item) => sum + item.overall.score, 0) / scored.length) : null;
+  }, [overallByOfficer]);
+
   const responseTimeStats = useMemo(() => {
     const responseTimes = dispatchCalls
       .filter(call => call.time_received && call.time_on_scene)
@@ -369,12 +374,19 @@ export default function AdminAnalytics() {
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
           <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
             <CardContent className="p-4">
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
               <p className="text-2xl font-bold text-green-600">{companyOnTimeStats.rate || 0}%</p>
               <p className="text-xs text-slate-400">On-Time Rate</p>
+            </CardContent>
+          </Card>
+          <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
+            <CardContent className="p-4">
+              <BarChart3 className="w-6 h-6 text-cyan-500 mb-2" />
+              <p className="text-2xl font-bold text-cyan-400">{companyOverallScore != null ? `${companyOverallScore}%` : '—'}</p>
+              <p className="text-xs text-slate-400">Overall Performance</p>
             </CardContent>
           </Card>
           <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
@@ -424,6 +436,46 @@ export default function AdminAnalytics() {
             </CardContent>
           </Card>
         </div>
+
+        <Card className="min-w-0 overflow-hidden border border-slate-800 bg-slate-900 text-white shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-cyan-400" />
+              Officer Overall Performance — Current Month
+            </CardTitle>
+            <p className="text-xs text-slate-400">Same scoring engine as the officer My Performance page. Categories with no records are excluded instead of counted as zero.</p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {overallByOfficer.map(officer => (
+                <div key={officer.email} className="rounded-lg border border-slate-700 bg-slate-800/80 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-white">{officer.name}</p>
+                      <p className="text-xs text-slate-400">{officer.email}</p>
+                    </div>
+                    <Badge className={officer.overall.score == null ? 'bg-slate-600' : officer.overall.score >= 90 ? 'bg-green-600' : officer.overall.score >= 75 ? 'bg-amber-600' : 'bg-red-600'}>
+                      {officer.overall.score != null ? `${officer.overall.score}%` : 'Not scored'}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {officer.overall.categories.map(category => (
+                      <span key={category.label} className="rounded-md border border-slate-600 bg-slate-900 px-2 py-1 text-xs text-slate-200">
+                        {category.label}: <strong>{category.score}%</strong>
+                      </span>
+                    ))}
+                    {officer.overall.categories.length === 0 && <span className="text-xs text-slate-500">No scoreable records this month.</span>}
+                  </div>
+                  <div className="mt-2 grid gap-2 text-xs text-slate-400 md:grid-cols-3">
+                    <span>Bid Standing: {officer.bidStanding.score != null ? `${officer.bidStanding.score}%` : 'Not scored'} ({officer.bidStanding.accepted} accepted, {officer.bidStanding.pending} pending, {officer.bidStanding.rejected} rejected)</span>
+                    <span>Client Feedback: {officer.clientFeedback.score != null ? `${officer.clientFeedback.score}% (${officer.clientFeedback.avgRating.toFixed(1)}/5)` : 'No ratings'}</span>
+                    <span>Recognition: {officer.recognition.count} record{officer.recognition.count === 1 ? '' : 's'} • Supervisor Rating: {officer.supervisorRating.score != null ? `${officer.supervisorRating.score}%` : 'No review'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="min-w-0 overflow-hidden border border-slate-800 bg-slate-900 text-white shadow-lg">
           <CardHeader>
