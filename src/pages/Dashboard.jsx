@@ -90,14 +90,16 @@ export default function Dashboard() {
   const profile = directoryProfile || user;
 
   const { data: activeEntry } = useQuery({
-    queryKey: ['activeTimeEntry'],
+    queryKey: ['activeTimeEntry', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
-      const entries = await base44.entities.TimeEntry.list('-created_date');
-      const userEntries = entries.filter(e => e.officer_email === user.email);
+      const email = String(user.email).trim().toLowerCase();
+      const entries = await base44.entities.TimeEntry.list('-created_date', 500);
+      const userEntries = entries.filter(e => String(e.officer_email || '').trim().toLowerCase() === email);
       return userEntries.find(e => !e.clock_out) || null;
     },
     enabled: !!user?.email,
+    refetchInterval: 15000,
   });
 
   const { data: todaySchedule } = useQuery({
@@ -105,13 +107,17 @@ export default function Dashboard() {
     queryFn: async () => {
       if (!user?.email) return null;
       const today = format(new Date(), 'yyyy-MM-dd');
-      const schedules = await base44.entities.Schedule.filter({
-        officer_email: user.email,
-        shift_date: today
-      });
-      return schedules[0] || null;
+      const email = String(user.email).trim().toLowerCase();
+      const schedules = await base44.entities.Schedule.list('shift_date', 500);
+      return schedules.find(s =>
+        s.shift_date === today &&
+        String(s.officer_email || '').trim().toLowerCase() === email &&
+        s.archived !== true &&
+        s.is_open !== true
+      ) || null;
     },
     enabled: !!user?.email,
+    refetchInterval: 30000,
   });
 
   const { data: pendingRequests } = useQuery({
@@ -148,8 +154,9 @@ export default function Dashboard() {
     queryFn: async () => {
       if (!user?.email || !currentPeriod) return { totalHours: 0, regularHours: 0, overtimeHours: 0 };
       
-      const entries = await base44.entities.TimeEntry.filter({ officer_email: user.email }, '-clock_in');
-      const completedEntries = entries.filter(e => e.clock_out);
+      const email = String(user.email).trim().toLowerCase();
+      const entries = await base44.entities.TimeEntry.list('-clock_in', 1000);
+      const completedEntries = entries.filter(e => e.clock_out && String(e.officer_email || '').trim().toLowerCase() === email);
       
       const getPayrollWeekStart = (clockInTime) => {
         const dt = new Date(clockInTime);
@@ -285,8 +292,13 @@ export default function Dashboard() {
                   <span className="text-xs font-medium uppercase tracking-[0.2em] text-blue-400">{format(new Date(), 'EEEE')}</span>
                 </div>
                 <h1 className="break-words text-3xl font-bold tracking-tight text-white md:text-4xl">
-                  Welcome back, <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-emerald-400 bg-clip-text text-transparent">{getDisplayName()}</span>
+                  Welcome back, <span className="text-blue-300">{getDisplayName()}</span>
                 </h1>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-400">
+                  {profile?.rank && <span>{profile.rank}</span>}
+                  {profile?.unit_number && <span>• Unit {profile.unit_number}</span>}
+                  {profile?.division && <span>• {profile.division}</span>}
+                </div>
                 <p className="text-sm md:text-base text-slate-400 mt-2">
                   {format(new Date(), 'MMMM d, yyyy')}
                 </p>
