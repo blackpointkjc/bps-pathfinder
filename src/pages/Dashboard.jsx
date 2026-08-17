@@ -176,7 +176,12 @@ export default function Dashboard() {
         const weekStart = getPayrollWeekStart(clockInTime);
         const weekKey = weekStart.toISOString();
         if (!weeklyHours[weekKey]) weeklyHours[weekKey] = 0;
-        const hours = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
+        const breakMs = (entry.break_periods || []).reduce((total, period) => {
+          const breakStart = period?.start ? new Date(period.start).getTime() : NaN;
+          const breakEnd = period?.end ? new Date(period.end).getTime() : NaN;
+          return total + (Number.isFinite(breakStart) && Number.isFinite(breakEnd) && breakEnd > breakStart ? breakEnd - breakStart : 0);
+        }, 0);
+        const hours = Math.max(0, (clockOutTime.getTime() - clockInTime.getTime() - breakMs) / (1000 * 60 * 60));
         weeklyHours[weekKey] += hours;
       });
 
