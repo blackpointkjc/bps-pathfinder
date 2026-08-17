@@ -73,6 +73,11 @@ export default function ClientPayrollReport() {
   const clientInvoices = billingData.invoices || [];
   const schedules = billingData.schedules || [];
 
+  // Keep the original client billing behavior: when Accounting issues an invoice,
+  // surface it automatically while the live service/billing view remains primary.
+  useEffect(() => {
+    if (clientInvoices.length > 0) setShowInvoiceDialog(true);
+  }, [clientInvoices.length]);
 
   // Filter to only client's locations
   const filteredEntries = timeEntries.filter(entry => {
@@ -128,7 +133,8 @@ export default function ClientPayrollReport() {
     });
   });
 
-  const activeShiftCount = filteredEntries.filter(entry => !entry.clock_out).length;
+  const activeEntries = filteredEntries.filter(entry => !entry.clock_out);
+  const activeShiftCount = activeEntries.length;
   const totalHours = Object.values(billingSummary).reduce((sum, data) => sum + data.hours, 0);
   const totalBilled = Object.values(billingSummary).reduce((sum, data) => sum + data.billedAmount, 0);
   const printStoredInvoice = (invoice) => {
@@ -326,35 +332,17 @@ export default function ClientPayrollReport() {
   };
 
   return (
-    <div className="client-billing-page mx-auto w-full min-w-0 max-w-[1500px] space-y-5 p-3 sm:p-4 md:p-6">
-      <div className="rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 to-slate-950 p-5 shadow-xl sm:p-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">Client Financial Center</p>
-            <h1 className="mt-1 text-2xl font-black text-white sm:text-3xl">Billing & Invoices</h1>
-            <p className="mt-1 text-sm text-slate-400">Current service activity and issued invoices across all assigned properties.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">{clientLocations.map(site => <Badge key={site} className="border border-slate-600 bg-slate-800 text-slate-200">{site}</Badge>)}</div>
+    <div className="client-billing-page container mx-auto w-full min-w-0 max-w-7xl p-3 sm:p-4 md:p-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-white sm:text-3xl">Timesheet Report</h1>
+          <p className="mt-1 text-sm text-slate-400">Real-time officer hours and billing for your sites</p>
         </div>
+        {clientInvoices.length > 0 && <Button onClick={() => setShowInvoiceDialog(true)} variant="outline" className="border-slate-600 bg-slate-800 text-white hover:bg-slate-700">View Issued Invoices ({clientInvoices.length})</Button>}
       </div>
 
-      {billingLoading && <div className="rounded-xl border border-blue-800 bg-blue-950/40 p-4 text-sm text-blue-200">Loading billing activity and invoices…</div>}
-      {billingError && <div className="rounded-xl border border-red-800 bg-red-950/40 p-4 text-sm text-red-200">Billing data could not be loaded: {billingLoadError?.message || 'Unknown error'}</div>}
-
-      {!billingLoading && !billingError && (
-        <Card className="border border-slate-700 bg-slate-900 shadow-lg">
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Issued Invoices</p>
-                <p className="mt-1 text-2xl font-black text-white">{clientInvoices.length}</p>
-                <p className="text-sm text-slate-400">{clientInvoices.length ? 'Invoices issued to your account are ready to review.' : 'No issued invoices yet. Current service activity is still shown below.'}</p>
-              </div>
-              {clientInvoices.length > 0 && <Button onClick={() => setShowInvoiceDialog(true)} className="bg-blue-600 hover:bg-blue-700">View Issued Invoices</Button>}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {billingLoading && <div className="mb-5 rounded-xl border border-blue-800 bg-blue-950/40 p-4 text-sm text-blue-200">Loading live timesheets and billing…</div>}
+      {billingError && <div className="mb-5 rounded-xl border border-red-800 bg-red-950/40 p-4 text-sm text-red-200">Billing data could not be loaded: {billingLoadError?.message || 'Unknown error'}</div>}
 
       {/* Invoice Notification Dialog */}
       <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
