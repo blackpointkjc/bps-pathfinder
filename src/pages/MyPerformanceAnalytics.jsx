@@ -129,7 +129,7 @@ export default function MyPerformanceAnalytics() {
     });
 
     const total = onTime + late;
-    const rate = total > 0 ? Math.round((onTime / total) * 100) : 100;
+    const rate = total > 0 ? Math.round((onTime / total) * 100) : 0;
 
     return { rate, onTime, late, total };
   }, [timeEntries, schedules, currentMonthStart, currentMonthEnd]);
@@ -219,76 +219,54 @@ export default function MyPerformanceAnalytics() {
     return { total, accepted, rejected, pending, acceptanceRate };
   }, [myBids, currentMonthStart, currentMonthEnd]);
 
-  // QR Patrol stats for the current month - only count when clocked in
+  // QR Patrol stats for the current month. A scan counts only while the officer is
+  // inside an actual completed TimeEntry, and round windows stop at clock-out.
   const qrPatrolStats = useMemo(() => {
     if (!qrScanEvents || !allCheckpoints || !timeEntries) return { totalScans: 0, successScans: 0, missedRounds: 0, completedRounds: 0 };
 
-    const monthlyScans = qrScanEvents.filter(s => s.scanned_date >= currentMonthStart && s.scanned_date <= currentMonthEnd);
-    const totalScans = monthlyScans.length;
-    const successScans = monthlyScans.filter(s => s.scan_status === 'success').length;
-
-    // Create map of clock in/out times for quick lookup
-    const clockInOutMap = {};
-    timeEntries.forEach(entry => {
-      if (entry.clock_in && entry.clock_out) {
-        const date = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
-        if (!clockInOutMap[date]) clockInOutMap[date] = [];
-        clockInOutMap[date].push({
-          start: new Date(entry.clock_in),
-          end: new Date(entry.clock_out)
-        });
-      }
+    const completedEntries = timeEntries.filter(entry => entry.clock_in && entry.clock_out);
+    const monthlyScans = qrScanEvents.filter(scan => scan.scanned_date >= currentMonthStart && scan.scanned_date <= currentMonthEnd);
+    const scansInWorkedTime = monthlyScans.filter(scan => {
+      const stamp = new Date(scan.scanned_at).getTime();
+      return Number.isFinite(stamp) && completedEntries.some(entry => {
+        const start = new Date(entry.clock_in).getTime();
+        const end = new Date(entry.clock_out).getTime();
+        return stamp >= start && stamp <= end;
+      });
     });
 
-    // Check if a scan time falls within any clock in/out period
-    const isClockIn = (scanTime) => {
-      const scanDate = format(parseISO(scanTime), 'yyyy-MM-dd');
-      const periods = clockInOutMap[scanDate];
-      if (!periods) return false;
-      const scanDateTime = new Date(scanTime);
-      return periods.some(p => scanDateTime >= p.start && scanDateTime <= p.end);
-    };
-
-    // Group by date to count rounds
-    const byDate = {};
-    for (const s of monthlyScans) {
-      if (!isClockIn(s.scanned_at)) continue; // Skip if clocked out
-      if (!byDate[s.scanned_date]) byDate[s.scanned_date] = [];
-      byDate[s.scanned_date].push(s);
-    }
-
+    const totalScans = scansInWorkedTime.length;
+    const successScans = scansInWorkedTime.filter(scan => scan.scan_status === 'success').length;
     let completedRounds = 0;
     let missedRounds = 0;
 
-    for (const [, scans] of Object.entries(byDate)) {
-      if (scans.length === 0) continue;
-      // Determine site from scans
-      const site = scans[0]?.property_site;
-      if (!site) continue;
-      const siteCheckpoints = allCheckpoints.filter(cp => cp.property_site === site);
-      if (siteCheckpoints.length === 0) continue;
+    const siteKey = value => String(value || '').split(' - ')[0].split(':')[0].trim().toLowerCase();
+    completedEntries.forEach(entry => {
+      const entryDate = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
+      if (entryDate < currentMonthStart || entryDate > currentMonthEnd) return;
+      const start = new Date(entry.clock_in);
+      const end = new Date(entry.clock_out);
+      const site = siteKey(entry.location);
+      const required = allCheckpoints.filter(cp => siteKey(cp.property_site) === site && cp.is_active !== false && cp.is_required !== false);
+      if (!required.length) return;
 
-      // Figure out shift start from earliest scan
-      const earliest = new Date(Math.min(...scans.map(s => new Date(s.scanned_at).getTime())));
-      let cursor = new Date(earliest);
-      cursor.setMinutes(0, 0, 0); // align to hour
-
-      const now = new Date();
-      let safetyCount = 0;
-      while (cursor <= now && safetyCount < 24) {
-        safetyCount++;
-        const windowEnd = new Date(cursor.getTime() + 30 * 60 * 1000);
-        const windowScans = scans.filter(s => {
-          const t = new Date(s.scanned_at);
-          return t >= cursor && t <= windowEnd && s.scan_status === 'success';
-        });
-        const scannedIds = new Set(windowScans.map(s => s.checkpoint_id));
-        const allDone = siteCheckpoints.every(cp => scannedIds.has(cp.id));
-        if (allDone) completedRounds++;
-        else if (new Date() > windowEnd) missedRounds++;
-        cursor = new Date(cursor.getTime() + 60 * 60 * 1000);
+      const shiftScans = scansInWorkedTime.filter(scan => {
+        const stamp = new Date(scan.scanned_at);
+        return stamp >= start && stamp <= end && siteKey(scan.property_site) === site;
+      });
+      let windowStart = new Date(start);
+      let guard = 0;
+      while (windowStart < end && guard < 24) {
+        guard++;
+        const windowEnd = new Date(Math.min(end.getTime(), windowStart.getTime() + 30 * 60 * 1000));
+        const scannedIds = new Set(shiftScans
+          .filter(scan => scan.scan_status === 'success' && new Date(scan.scanned_at) >= windowStart && new Date(scan.scanned_at) <= windowEnd)
+          .map(scan => String(scan.checkpoint_id)));
+        if (required.every(cp => scannedIds.has(String(cp.id)))) completedRounds++;
+        else missedRounds++;
+        windowStart = new Date(windowStart.getTime() + 60 * 60 * 1000);
       }
-    }
+    });
 
     return { totalScans, successScans, completedRounds, missedRounds };
   }, [qrScanEvents, allCheckpoints, timeEntries, currentMonthStart, currentMonthEnd]);
