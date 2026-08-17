@@ -372,7 +372,16 @@ export default function QRPatrolScan() {
       return;
     }
 
-    // Only enforce site matching if officer is clocked in at a specific site
+    if (!activeEntry) {
+      toast.error('You must be clocked in at a property for a QR scan to count toward compliance.');
+      await logScanMutation.mutateAsync({ checkpoint, status: 'outside_property', note: officerNote });
+      setLastScan({ checkpoint, status: 'outside_property', time: new Date() });
+      processingRef.current = false;
+      setProcessing(false);
+      return;
+    }
+
+    // Enforce the checkpoint property against the officer's active clock-in site.
     if (activeEntry) {
       const officerSite = activeEntry.location.includes(': ')
         ? activeEntry.location.split(': ')[0].trim()
