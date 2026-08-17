@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
       }
     };
 
-    const [users, divisions, timeEntries, schedules, bids, trainingCompletions, trainingAssignments, trainingModules, qrScans, qrCheckpoints, incidentReports, dailyActivityReports, callOuts, callsForService, dispatchCalls, dutyRules, locations, commendations, complaints, clientFeedback, performanceReviews] = await Promise.all([
+    const [users, divisions, timeEntries, schedules, bids, trainingCompletions, trainingAssignments, trainingModules, qrScans, qrCheckpoints, incidentReports, dailyActivityReports, callOuts, callsForService, dispatchCallsLive, callHistory, propertyAlerts, dutyRules, locations, commendations, complaints, clientFeedback, performanceReviews] = await Promise.all([
       list('User', '-updated_date'),
       list('Division', 'division_name'),
       list('TimeEntry', '-clock_in'),
@@ -41,6 +41,8 @@ Deno.serve(async (req) => {
       list('CallOut', '-call_out_date'),
       list('CallForService', '-call_time'),
       list('DispatchCall', '-time_received'),
+      list('CallHistory', '-archived_date'),
+      list('PropertyAlert', '-created_date'),
       list('JobDutyRule', 'property_site'),
       list('Location', 'site_name'),
       list('Commendation', '-commendation_date'),
@@ -48,6 +50,56 @@ Deno.serve(async (req) => {
       list('ClientFeedback', '-feedback_date'),
       list('PerformanceReview', '-review_date'),
     ]);
+
+    const alertByCall = new Map<string, any>();
+    for (const alert of propertyAlerts || []) {
+      if (!alert?.callId) continue;
+      const key = String(alert.callId);
+      const prior = alertByCall.get(key);
+      const hasTime = Boolean(alert.callTime || alert.time_received);
+      const priorHasTime = Boolean(prior?.callTime || prior?.time_received);
+      const stamp = new Date(alert.created_date || 0).getTime();
+      const priorStamp = new Date(prior?.created_date || 0).getTime();
+      if (!prior || (hasTime && !priorHasTime) || (hasTime === priorHasTime && stamp > priorStamp)) alertByCall.set(key, alert);
+    }
+    const callsByOriginalId = new Map<string, any>();
+    for (const call of dispatchCallsLive || []) callsByOriginalId.set(String(call.id), { ...call, original_call_id: call.id });
+    for (const call of callHistory || []) {
+      const originalId = String(call.original_call_id || call.id || '');
+      if (originalId && !callsByOriginalId.has(originalId)) callsByOriginalId.set(originalId, { ...call, id: originalId, original_call_id: originalId });
+    }
+    const dispatchCalls:any[] = [];
+    const represented = new Set<string>();
+    for (const [originalId, call] of callsByOriginalId.entries()) {
+      const alert = alertByCall.get(originalId);
+      if (!alert) continue;
+      represented.add(originalId);
+      dispatchCalls.push({
+        ...call,
+        id: originalId,
+        original_call_id: originalId,
+        property_id: alert.propertyId || '',
+        property_site: alert.propertyName || '',
+        call_id: call.call_id || originalId,
+        incident: call.incident || alert.callIncident || 'Property call',
+        location: call.location || alert.callLocation || alert.propertyName || '',
+        time_received: call.time_received || alert.callTime || alert.time_received || alert.created_date,
+      });
+    }
+    for (const [originalId, alert] of alertByCall.entries()) {
+      if (represented.has(originalId)) continue;
+      dispatchCalls.push({
+        id: originalId,
+        original_call_id: originalId,
+        call_id: originalId,
+        property_id: alert.propertyId || '',
+        property_site: alert.propertyName || '',
+        incident: alert.callIncident || 'Property call',
+        location: alert.callLocation || alert.propertyName || '',
+        time_received: alert.callTime || alert.time_received || alert.created_date,
+        status: alert.acknowledged ? 'Closed' : 'Pending',
+      });
+    }
 
     return Response.json({
       success: true,
