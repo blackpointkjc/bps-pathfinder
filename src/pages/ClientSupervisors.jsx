@@ -17,7 +17,11 @@ export default function ClientSupervisors() {
     staleTime: 0,
   });
 
-  const clientLocations = user?.assigned_locations || (user?.assigned_location ? [user.assigned_location] : []);
+  const clientLocations = [...new Set([
+    ...(Array.isArray(user?.assigned_locations) ? user.assigned_locations : []),
+    ...(Array.isArray(user?.assigned_sites) ? user.assigned_sites : []),
+    ...(user?.assigned_location ? [user.assigned_location] : []),
+  ].filter(Boolean))];
 
   React.useEffect(() => {
     if (clientLocations.length > 0 && !selectedLocation) {
@@ -51,11 +55,13 @@ export default function ClientSupervisors() {
     assignedSupervisorEmails.has(String(u.email || '').trim().toLowerCase())
   ) || [];
 
-  // Get division command (Senior Corporal to Captain ranks from the same division)
+  // Division command should reflect the actual command ranks used in this app,
+  // including Lt Colonel/Colonel records that were previously being omitted.
+  const commandRanks = new Set(['senior corporal','sergeant','lieutenant','captain','major','lt colonel','lieutenant colonel','colonel']);
   const divisionCommand = allUsers?.filter(u =>
     !u.termination_date &&
-    u.division === location?.division &&
-    (u.rank === 'Senior Corporal' || u.rank === 'Sergeant' || u.rank === 'Lieutenant' || u.rank === 'Captain')
+    String(u.division || '').trim().toLowerCase() === String(location?.division || '').trim().toLowerCase() &&
+    commandRanks.has(String(u.rank || '').trim().toLowerCase())
   ) || [];
 
   const getRankColor = (rank) => {
@@ -173,7 +179,7 @@ export default function ClientSupervisors() {
               <Shield className="w-6 h-6" />
               Division Command
             </CardTitle>
-            <p className="text-sm text-slate-400">Senior Corporals through Captains for {location?.division || 'this location'}</p>
+            <p className="text-sm text-slate-400">Command staff assigned to the {location?.division || 'site'} division</p>
           </CardHeader>
           <CardContent className="space-y-4">
             {divisionCommand.length > 0 ? (
@@ -220,7 +226,7 @@ export default function ClientSupervisors() {
             <h3 className="mb-3 font-bold text-blue-300">Chain of Command</h3>
             <div className="space-y-2 text-sm text-slate-300">
               <p><strong>For immediate site issues:</strong> Contact your Site Supervisor</p>
-              <p><strong>For escalated concerns:</strong> Contact Division Command (Senior Corporal through Captain)</p>
+              <p><strong>For escalated concerns:</strong> Contact Division Command</p>
               <p className="mt-3 text-xs text-slate-400">
                 Note: Contact information is not displayed for security and privacy reasons. For urgent matters, please contact Black Point Protection dispatch.
               </p>
