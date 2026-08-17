@@ -465,16 +465,41 @@ export function calculateJobDutyCompliance({
   };
 }
 
-export function buildOverallPerformance({ punctuality, trainingScore = null, qrScore = null, jobDuty = null, bidStanding, clientFeedback, supervisorRating, recognition }) {
-  const categories = [];
-  if (punctuality?.rate != null && punctuality.total > 0) categories.push({ label: 'On-Time Arrival', score: punctuality.rate });
-  if (trainingScore != null) categories.push({ label: 'Training Completion', score: Math.round(trainingScore) });
-  if (jobDuty?.score != null) categories.push({ label: 'Job Duty Compliance', score: Math.round(jobDuty.score) });
-  else if (qrScore != null) categories.push({ label: 'QR Patrol Completion', score: Math.round(qrScore) });
-  if (bidStanding?.score != null && bidStanding.scoredTotal > 0) categories.push({ label: 'Bid Standing', score: bidStanding.score });
-  if (clientFeedback?.score != null && clientFeedback.count > 0) categories.push({ label: 'Client Feedback', score: clientFeedback.score });
-  if (supervisorRating?.score != null && supervisorRating.count > 0) categories.push({ label: 'Supervisor Rating', score: supervisorRating.score });
-  if (recognition?.score != null && recognition.count > 0) categories.push({ label: 'Recognition', score: recognition.score });
-  const score = categories.length ? Math.round(categories.reduce((sum, item) => sum + item.score, 0) / categories.length) : null;
-  return { score, categories };
+export function calculateCallOutAttendance(callOuts = [], schedules = [], monthStart, monthEnd) {
+  const monthlySchedules = schedules.filter(schedule => schedule.archived !== true && schedule.is_open !== true && schedule.shift_date && (!monthStart || schedule.shift_date >= monthStart) && (!monthEnd || schedule.shift_date <= monthEnd));
+  const applicable = callOuts.filter(item => {
+    if (item.call_out_type !== 'called_out') return false;
+    const date = item.call_out_date || easternDateKey(item.created_date);
+    return date && (!monthStart || date >= monthStart) && (!monthEnd || date <= monthEnd);
+  });
+  if (applicable.length === 0) return { score: 100, count: 0, scheduled: monthlySchedules.length, items: [], neutral: false };
+  const denominator = monthlySchedules.length || applicable.length;
+  const score = Math.max(0, Math.round(((denominator - Math.min(denominator, applicable.length)) / denominator) * 100));
+  return { score, count: applicable.length, scheduled: monthlySchedules.length, items: applicable, neutral: false };
+}
+
+const neutralMetricScore = value => value == null ? 100 : Math.max(0, Math.min(100, Math.round(value)));
+
+export function buildOverallPerformance({ punctuality, trainingScore = null, jobDuty = null, callOutAttendance = null, bidStanding, clientFeedback, supervisorRating, recognition }) {
+  const punctualityScore = punctuality?.rate != null && punctuality.total > 0 ? punctuality.rate : 100;
+  const jobDutyScore = jobDuty?.score != null ? jobDuty.score : 100;
+  const callOutScore = callOutAttendance?.score != null ? callOutAttendance.score : 100;
+  const training = neutralMetricScore(trainingScore);
+  const bid = neutralMetricScore(bidStanding?.score);
+  const client = neutralMetricScore(clientFeedback?.score);
+  const supervisor = neutralMetricScore(supervisorRating?.score);
+  const recognitionScore = recognition?.score != null ? recognition.score : 100;
+
+  const categories = [
+    { label: 'On-Time Arrival', score: punctualityScore, weight: 55, contribution: punctualityScore * 0.55 },
+    { label: 'Job Duty / Performance', score: jobDutyScore, weight: 15, contribution: jobDutyScore * 0.15 },
+    { label: 'Call-Out Attendance', score: callOutScore, weight: 15, contribution: callOutScore * 0.15 },
+    { label: 'Training Completion', score: training, weight: 3, contribution: training * 0.03, neutral: trainingScore == null },
+    { label: 'Bid Standing', score: bid, weight: 3, contribution: bid * 0.03, neutral: bidStanding?.score == null },
+    { label: 'Client Feedback', score: client, weight: 3, contribution: client * 0.03, neutral: clientFeedback?.score == null },
+    { label: 'Supervisor Rating', score: supervisor, weight: 3, contribution: supervisor * 0.03, neutral: supervisorRating?.score == null },
+    { label: 'Recognition', score: recognitionScore, weight: 3, contribution: recognitionScore * 0.03, neutral: recognition?.score == null },
+  ];
+  const score = Math.round(categories.reduce((sum, item) => sum + item.contribution, 0));
+  return { score, categories, weights: { punctuality: 55, jobDuty: 15, callOut: 15, otherEach: 3 } };
 }
