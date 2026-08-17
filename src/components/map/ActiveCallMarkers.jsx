@@ -82,10 +82,9 @@ export default function ActiveCallMarkers({ calls, onCallClick }) {
     if (!calls || calls.length === 0) return null;
 
     const renderable = calls.filter(c =>
-        c.latitude && c.longitude &&
-        !isNaN(parseFloat(c.latitude)) && !isNaN(parseFloat(c.longitude)) &&
-        parseFloat(c.latitude) !== 0 && parseFloat(c.longitude) !== 0
-    );
+        Number.isFinite(Number(c.latitude)) && Number.isFinite(Number(c.longitude)) &&
+        Number(c.latitude) !== 0 && Number(c.longitude) !== 0
+    ).map(c => ({ ...c, latitude: Number(c.latitude), longitude: Number(c.longitude) }));
 
     return (
         <>
