@@ -226,6 +226,33 @@ export default function AdminQRCheckpoints() {
         </Select>
       </div>
 
+      <Card className="border-cyan-200 bg-cyan-50/40">
+        <CardContent className="p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <Settings2 className="h-5 w-5 text-cyan-700" />
+            <div>
+              <p className="font-bold text-slate-900">Property Job Duty & QR Rules</p>
+              <p className="text-xs text-slate-600">Set DAR, incident-report, QR frequency, minimum scans, and required checkpoints by property.</p>
+            </div>
+          </div>
+          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+            {allSites.map(site => {
+              const rule = dutyRules.find(item => item.property_site === site);
+              return (
+                <button key={site} type="button" onClick={() => openRule(site)} className="rounded-lg border border-slate-200 bg-white p-3 text-left hover:border-cyan-400">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-slate-900">{site}</span>
+                    <Badge className={rule ? 'bg-cyan-100 text-cyan-800' : 'bg-slate-100 text-slate-600'}>{rule ? 'Configured' : 'Default rules'}</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-600">DAR: {rule?.daily_activity_report_required === false ? 'Not required' : 'Required'} • Incident: {rule?.incident_report_required_for_property_calls === false ? 'Not required' : 'Required'}</p>
+                  <p className="text-xs text-slate-600">QR: {rule?.qr_required ? `Required every ${rule.qr_frequency_minutes || 60} min` : 'Uses checkpoint defaults unless enabled'}</p>
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Table */}
       <Card>
         <CardContent className="p-0">
@@ -284,6 +311,49 @@ export default function AdminQRCheckpoints() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={showRuleForm} onOpenChange={setShowRuleForm}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Job Duty Rules — {ruleForm.property_site}</DialogTitle></DialogHeader>
+          <div className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex items-center justify-between rounded-lg border p-3"><Label>Daily Activity Report required every worked shift</Label><Switch checked={ruleForm.daily_activity_report_required} onCheckedChange={v => setRuleForm(p => ({...p, daily_activity_report_required: v}))} /></div>
+              <div className="flex items-center justify-between rounded-lg border p-3"><Label>Incident Report required for property calls</Label><Switch checked={ruleForm.incident_report_required_for_property_calls} onCheckedChange={v => setRuleForm(p => ({...p, incident_report_required_for_property_calls: v}))} /></div>
+              <div className="flex items-center justify-between rounded-lg border p-3 sm:col-span-2"><Label>QR compliance required</Label><Switch checked={ruleForm.qr_required} onCheckedChange={v => setRuleForm(p => ({...p, qr_required: v}))} /></div>
+            </div>
+
+            {ruleForm.qr_required && (
+              <div className="space-y-4 rounded-xl border border-cyan-200 bg-cyan-50 p-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div><Label>Frequency (minutes)</Label><Input type="number" min="1" value={ruleForm.qr_frequency_minutes} onChange={e => setRuleForm(p => ({...p, qr_frequency_minutes: Number(e.target.value || 60)}))} /></div>
+                  <div><Label>Scan window (minutes)</Label><Input type="number" min="1" value={ruleForm.qr_window_minutes} onChange={e => setRuleForm(p => ({...p, qr_window_minutes: Number(e.target.value || 30)}))} /></div>
+                  <div><Label>Minimum scans per shift</Label><Input type="number" min="0" value={ruleForm.qr_scans_per_shift} onChange={e => setRuleForm(p => ({...p, qr_scans_per_shift: Number(e.target.value || 0)}))} /></div>
+                </div>
+                <div>
+                  <Label className="mb-2 block">Required QR codes for this property</Label>
+                  <div className="space-y-2 rounded-lg border bg-white p-3">
+                    {checkpoints.filter(cp => cp.property_site === ruleForm.property_site && cp.is_active !== false).length === 0 ? (
+                      <p className="text-sm text-slate-500">No active checkpoints exist for this property yet.</p>
+                    ) : checkpoints.filter(cp => cp.property_site === ruleForm.property_site && cp.is_active !== false).map(cp => {
+                      const checked = ruleForm.required_checkpoint_ids.includes(cp.id);
+                      return (
+                        <label key={cp.id} className="flex items-center gap-3 text-sm text-slate-700">
+                          <input type="checkbox" checked={checked} onChange={e => setRuleForm(p => ({...p, required_checkpoint_ids: e.target.checked ? [...p.required_checkpoint_ids, cp.id] : p.required_checkpoint_ids.filter(id => id !== cp.id)}))} />
+                          <span><strong>{cp.checkpoint_name}</strong> — {cp.location_label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">If no specific QR codes are selected, all checkpoints marked Required for this property are used.</p>
+                </div>
+              </div>
+            )}
+
+            <div><Label>Rule Notes</Label><Input value={ruleForm.notes} onChange={e => setRuleForm(p => ({...p, notes: e.target.value}))} placeholder="Optional instructions for this property" /></div>
+            <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setShowRuleForm(false)}>Cancel</Button><Button onClick={() => saveRuleMutation.mutate(ruleForm)} disabled={saveRuleMutation.isPending}>{saveRuleMutation.isPending ? 'Saving...' : 'Save Property Rules'}</Button></div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Form Dialog */}
       <Dialog open={showForm} onOpenChange={(v) => !v && resetForm()}>
