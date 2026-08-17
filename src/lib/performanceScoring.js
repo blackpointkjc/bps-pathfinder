@@ -289,7 +289,8 @@ export function calculateJobDutyCompliance({
   const activeRules = dutyRules.filter(rule => rule.active !== false);
   const ruleFor = site => activeRules.find(rule => siteKey(rule.property_site) === siteKey(site)) || null;
   const officerDailyReports = dailyReports.filter(report => !officer || emailKey(report.officer_email) === officerEmail || String(report.created_by_id || '') === String(officer?.id || ''));
-  const officerIncidents = incidentReports.filter(report => !officer || emailKey(report.officer_email) === officerEmail || String(report.created_by_id || '') === String(officer?.id || ''));
+  // Incident compliance is tied to the property call itself. A submitted report linked to that call satisfies the call for all officers who were actively working that property at the time.
+  const officerIncidents = incidentReports;
   const officerCallOuts = callOuts.filter(item => !officer || emailKey(item.officer_email) === officerEmail);
   const allWorkedEntries = allTimeEntries.length ? allTimeEntries : timeEntries;
   const scannerWasWorkingAtSite = (scan, site, stamp) => allWorkedEntries.some(work => {
