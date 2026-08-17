@@ -334,7 +334,10 @@ export default function MyPerformanceAnalytics() {
         if (shift.daily_activity.required && !shift.daily_activity.completed) dutyDetails.push(`${shift.shift_date} • ${shift.property}: Daily Activity Report missing for this worked shift.`);
         shift.incidents.items.filter(item => item.status === 'missing').forEach(item => dutyDetails.push(`${shift.shift_date} • ${shift.property}: Incident Report missing for call ${item.call_number || item.call_id} (${item.call_type || 'call for service'}).`));
         shift.incidents.items.filter(item => item.status === 'excluded_reassignment').forEach(item => dutyDetails.push(`${shift.shift_date} • ${shift.property}: Call ${item.call_number || item.call_id} excluded — ${item.reason}.`));
-        if (shift.qr.missed > 0) dutyDetails.push(`${shift.shift_date} • ${shift.property}: ${shift.qr.completed}/${shift.qr.required} required QR scans completed; ${shift.qr.missed} missed.`);
+        if (shift.qr.missed > 0) {
+          dutyDetails.push(`${shift.shift_date} • ${shift.property}: ${shift.qr.completed}/${shift.qr.required} required QR scans completed; ${shift.qr.missed} missed.`);
+          (shift.qr.missed_obligations || []).slice(0, 8).forEach(item => dutyDetails.push(`${shift.shift_date} • ${shift.property}: ${item.checkpoint_name} missed in QR round ${item.round} (${new Date(item.window_start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}–${new Date(item.window_end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}).`));
+        }
       });
       factors.push({
         metric: 'Job Duty Compliance',
