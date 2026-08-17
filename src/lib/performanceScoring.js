@@ -294,9 +294,9 @@ export function calculateJobDutyCompliance({
   const officerCallOuts = callOuts.filter(item => !officer || emailKey(item.officer_email) === officerEmail);
   const allWorkedEntries = allTimeEntries.length ? allTimeEntries : timeEntries;
   const scannerWasWorkingAtSite = (scan, site, stamp) => allWorkedEntries.some(work => {
-    if (!work?.clock_in || !work?.clock_out || emailKey(work.officer_email) !== emailKey(scan.officer_email)) return false;
+    if (!work?.clock_in || emailKey(work.officer_email) !== emailKey(scan.officer_email)) return false;
     const start = new Date(work.clock_in).getTime();
-    const end = new Date(work.clock_out).getTime();
+    const end = work.clock_out ? new Date(work.clock_out).getTime() : Date.now();
     return Number.isFinite(start) && Number.isFinite(end) && stamp >= start && stamp <= end && siteKey(work.location) === site;
   });
   const eligibleQrScans = qrScans.filter(scan => {
