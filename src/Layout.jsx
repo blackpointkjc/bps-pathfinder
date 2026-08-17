@@ -941,6 +941,13 @@ export default function Layout({ children, currentPageName }) {
         ]);
         const dismissedPairs = new Set((receipts || []).map(item => `${item.call_id}:${item.property_id}`));
         const dismissedEventKeys = new Set((receipts || []).map(item => String(item.event_key || '')).filter(Boolean));
+        const localDismissKey = `bps:property-alert-dismissed:${String(user?.email || user?.id || '').trim().toLowerCase()}`;
+        let locallyDismissed = new Set();
+        try {
+          locallyDismissed = new Set(JSON.parse(window.localStorage.getItem(localDismissKey) || '[]'));
+        } catch {
+          locallyDismissed = new Set();
+        }
         const callById = new Map((calls || []).map(call => [String(call.id), call]));
         const locationById = new Map((locations || []).map(location => [String(location.id), location]));
         const recentCutoff = Date.now() - (6 * 60 * 60 * 1000);
@@ -961,6 +968,8 @@ export default function Layout({ children, currentPageName }) {
             && eventTime >= recentCutoff
             && !dismissedPairs.has(pair)
             && !dismissedEventKeys.has(eventKey)
+            && !locallyDismissed.has(pair)
+            && !locallyDismissed.has(eventKey)
             && !dismissedPropertyAlertKeysRef.current.has(eventKey)
             && !dismissedPropertyAlertIdsRef.current.has(item.id);
         });
@@ -1036,8 +1045,18 @@ export default function Layout({ children, currentPageName }) {
 
     const stableCallId = propertyAlert.call.external_call_id || propertyAlert.call.agency_cad_number || propertyAlert.call.bps_reference || propertyAlert.call.call_id || propertyAlert.call.id;
     const pairKey = `${propertyAlert.property.id}|${stableCallId}`;
+    const rawPairKey = `${propertyAlert.call.id}:${propertyAlert.property.id}`;
     const dismissedIds = [];
     dismissedPropertyAlertKeysRef.current.add(pairKey);
+    const localDismissKey = `bps:property-alert-dismissed:${String(user?.email || user?.id || '').trim().toLowerCase()}`;
+    try {
+      const saved = new Set(JSON.parse(window.localStorage.getItem(localDismissKey) || '[]'));
+      saved.add(pairKey);
+      saved.add(rawPairKey);
+      window.localStorage.setItem(localDismissKey, JSON.stringify([...saved].slice(-1000)));
+    } catch {
+      // Server-side PropertyAlertReceipt remains the durable cross-device source.
+    }
     try {
       // Hide every legacy duplicate row for this call/property immediately in this session.
       const records = await base44.entities.PropertyAlert.filter({ callId: propertyAlert.call.id, propertyId: propertyAlert.property.id }).catch(() => []);
@@ -1058,8 +1077,8 @@ export default function Layout({ children, currentPageName }) {
       setPropertyAlertSilenced(false);
       return true;
     } catch (error) {
-      dismissedPropertyAlertKeysRef.current.delete(pairKey);
-      dismissedIds.forEach(id => dismissedPropertyAlertIdsRef.current.delete(id));
+      // Keep the local dismissal so a call the officer already saw does not pop
+      // back up after a browser refresh while the server receipt is retrying.
       setPropertyAlertSilenced(false);
       console.warn('Unable to save property alert dismissal:', error?.message);
       toast.error(action === 'silenced' ? 'Unable to silence this property call for your account.' : 'Unable to acknowledge this property call.');
