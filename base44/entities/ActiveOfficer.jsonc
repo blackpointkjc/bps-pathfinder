@@ -22,7 +22,12 @@
     "last_update": {
       "type": "string",
       "format": "date-time",
-      "description": "Last activity update"
+      "description": "Last signed-in heartbeat or activity update"
+    },
+    "gps_updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the most recent accepted GPS coordinate"
     },
     "latitude": {
       "type": "number",
