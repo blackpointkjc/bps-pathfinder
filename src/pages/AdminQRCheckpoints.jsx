@@ -227,7 +227,7 @@ export default function AdminQRCheckpoints() {
         </Select>
       </div>
 
-      <Card className="border-slate-700 bg-slate-900 text-white shadow-lg">
+      <Card className="border-blue-900/60 bg-gradient-to-br from-blue-950 via-slate-950 to-blue-950 text-white shadow-lg">
         <CardContent className="p-4">
           <div className="mb-3 flex items-center gap-2">
             <Settings2 className="h-5 w-5 text-cyan-700" />
@@ -240,7 +240,7 @@ export default function AdminQRCheckpoints() {
             {allSites.map(site => {
               const rule = dutyRules.find(item => item.property_site === site);
               return (
-                <button key={site} type="button" onClick={() => openRule(site)} className="rounded-lg border border-slate-700 bg-slate-800 p-3 text-left transition hover:border-cyan-500 hover:bg-slate-700">
+                <button key={site} type="button" onClick={() => openRule(site)} className="rounded-lg border border-blue-800/60 bg-blue-950/55 p-3 text-left transition hover:border-cyan-500 hover:bg-blue-900/70">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold text-white">{site}</span>
                     <Badge className={rule ? 'bg-cyan-100 text-cyan-800' : 'bg-slate-100 text-slate-600'}>{rule ? 'Configured' : 'Default rules'}</Badge>
