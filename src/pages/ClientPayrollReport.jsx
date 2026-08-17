@@ -436,6 +436,43 @@ export default function ClientPayrollReport() {
         </DialogContent>
       </Dialog>
 
+      <Card className="mb-5 border border-slate-700 bg-slate-900 shadow-lg">
+        <CardHeader className="border-b border-slate-700 pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-white">Officers Clocked In Now</CardTitle>
+              <p className="mt-1 text-xs text-slate-400">Live hours and billing update every second while an officer remains clocked in.</p>
+            </div>
+            <Badge className={activeEntries.length ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300'}>{activeEntries.length} active</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-5">
+          {activeEntries.length === 0 ? (
+            <div className="rounded-xl border border-slate-700 bg-slate-950/50 p-6 text-center text-sm text-slate-400">No officers are clocked in at your properties right now.</div>
+          ) : (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {activeEntries.map(entry => {
+                const entrySite = normalizeSiteName(entry.location);
+                const location = locations.find(l => normalizeSiteName(l.site_name) === entrySite);
+                const officer = officers.find(o => String(o.email || '').toLowerCase() === String(entry.officer_email || '').toLowerCase());
+                const hours = calculateLiveHours(entry, liveNow);
+                const { rate } = resolveBillingRate(entry, location, schedules);
+                const liveAmount = hours * Number(rate || 0);
+                const officerName = officer ? ([officer.rank, officer.first_name, officer.last_name].filter(Boolean).join(' ') || officer.email) : entry.officer_email;
+                return (
+                  <div key={entry.id} className="rounded-xl border border-emerald-800/60 bg-emerald-950/20 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div><p className="font-bold text-white">{officerName}</p><p className="mt-1 text-xs text-emerald-300">Clocked in • {entrySite}</p><p className="mt-1 text-xs text-slate-400">Since {format(new Date(entry.clock_in), 'MMM d, h:mm a')}</p></div>
+                      <div className="text-right"><p className="text-lg font-black text-white">{hours.toFixed(4)}h</p><p className="text-sm font-bold text-emerald-300">${liveAmount.toFixed(2)}</p><p className="text-[10px] text-slate-500">${Number(rate || 0).toFixed(2)}/hr</p></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="space-y-5">
 
         {/* Date Range & Options */}
