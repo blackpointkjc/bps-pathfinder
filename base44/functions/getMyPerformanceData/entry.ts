@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
       }
     };
 
-    const [timeEntriesAll, schedulesAll, bidsAll, completionsAll, assignmentsAll, notificationsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll] = await Promise.all([
+    const [timeEntriesAll, schedulesAll, bidsAll, completionsAll, assignmentsAll, notificationsAll, callOutsAll, scansAll, checkpointsAll, modulesAll, incidentsAll, commendationsAll, complaintsAll, feedbackAll, reviewsAll, dailyReportsAll, dispatchCallsAll, dutyRulesAll, locationsAll] = await Promise.all([
       safeList('TimeEntry', '-clock_in'),
       safeList('Schedule', '-shift_date'),
       safeList('ShiftBid', '-created_date'),
@@ -35,6 +35,10 @@ Deno.serve(async (req) => {
       safeList('Complaint', '-complaint_date'),
       safeList('ClientFeedback', '-feedback_date'),
       safeList('PerformanceReview', '-review_date'),
+      safeList('DailyActivityReport', '-report_date'),
+      safeList('DispatchCall', '-time_received'),
+      safeList('JobDutyRule', 'property_site'),
+      safeList('Location', 'site_name'),
     ]);
 
     const myTimeEntries = timeEntriesAll.filter((r:any) => sameEmail(r, 'officer_email', email) || String(r?.created_by_id || '') === String(me.id || ''));
@@ -50,6 +54,7 @@ Deno.serve(async (req) => {
     const myComplaints = complaintsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
     const myFeedback = feedbackAll.filter((r:any) => sameEmail(r, 'officer_email', email));
     const myReviews = reviewsAll.filter((r:any) => sameEmail(r, 'officer_email', email));
+    const myDailyReports = dailyReportsAll.filter((r:any) => sameEmail(r, 'officer_email', email) || String(r?.created_by_id || '') === String(me.id || '')); 
 
     return Response.json({
       success: true,
@@ -68,6 +73,10 @@ Deno.serve(async (req) => {
       complaints: myComplaints,
       clientFeedback: myFeedback,
       performanceReviews: myReviews,
+      dailyActivityReports: myDailyReports,
+      dispatchCalls: dispatchCallsAll,
+      jobDutyRules: dutyRulesAll.filter((r:any) => r.active !== false),
+      locations: locationsAll,
       meta: {
         timeEntries: myTimeEntries.length,
         schedules: mySchedules.length,
@@ -79,6 +88,8 @@ Deno.serve(async (req) => {
         commendations: myCommendations.length,
         clientFeedback: myFeedback.length,
         performanceReviews: myReviews.length,
+        dailyActivityReports: myDailyReports.length,
+        jobDutyRules: dutyRulesAll.length,
       },
     });
   } catch (error) {
