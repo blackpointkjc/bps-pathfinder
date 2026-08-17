@@ -11,7 +11,17 @@ import {
 import { format, parseISO, differenceInMinutes, startOfWeek, addDays, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import MissingReportsCheck from "../components/MissingReportsCheck";
-import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { isOperationalOfficer, isInternalMember } from '@/lib/directoryUtils';
+
+const emailKey = (value) => String(value || '').trim().toLowerCase();
+
+function breakMinutes(entry) {
+  return (entry?.break_periods || []).reduce((total, period) => {
+    const start = period?.start ? new Date(period.start).getTime() : NaN;
+    const end = period?.end ? new Date(period.end).getTime() : NaN;
+    return total + (Number.isFinite(start) && Number.isFinite(end) && end > start ? (end - start) / 60000 : 0);
+  }, 0);
+}
 
 export default function AdminAnalytics() {
   const [selectedDivision, setSelectedDivision] = useState('all');
@@ -41,15 +51,21 @@ export default function AdminAnalytics() {
   const allTraining = (analyticsData.trainingModules || []).filter(module => module.active !== false);
   const incidentReports = analyticsData.incidentReports || [];
   const callsForService = analyticsData.callsForService || [];
+  const dispatchCalls = analyticsData.dispatchCalls || [];
   const allCommendations = analyticsData.commendations || [];
   const allComplaints = analyticsData.complaints || [];
 
   const filteredUsers = useMemo(() => {
     if (!allUsers) return [];
-    const active = allUsers.filter(isOperationalOfficer);
+    const workEmails = new Set([
+      ...timeEntries.map(row => emailKey(row.officer_email)),
+      ...schedules.map(row => emailKey(row.officer_email)),
+      ...trainingCompletions.map(row => emailKey(row.officer_email)),
+    ].filter(Boolean));
+    const active = allUsers.filter(userRow => isOperationalOfficer(userRow) || (isInternalMember(userRow) && workEmails.has(emailKey(userRow.email))));
     if (selectedDivision === 'all') return active;
-    return active.filter(u => u.division === selectedDivision);
-  }, [allUsers, selectedDivision]);
+    return active.filter(u => String(u.division || '') === String(selectedDivision));
+  }, [allUsers, timeEntries, schedules, trainingCompletions, selectedDivision]);
 
   const companyOnTimeStats = useMemo(() => {
     if (!timeEntries || !schedules || !filteredUsers) return { rate: 0, byOfficer: [] };
@@ -62,11 +78,12 @@ export default function AdminAnalytics() {
     const officerStats = {};
 
     filteredUsers.forEach(officer => {
-      officerStats[officer.email] = { name: `${officer.first_name} ${officer.last_name}`, onTime: 0, late: 0, total: 0 };
+      officerStats[emailKey(officer.email)] = { name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email, onTime: 0, late: 0, total: 0 };
     });
 
     timeEntries.forEach(entry => {
-      if (!entry.clock_in || !officerStats[entry.officer_email]) return;
+      const key = emailKey(entry.officer_email);
+      if (!entry.clock_in || !officerStats[key]) return;
       
       const clockInDate = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
       
@@ -74,7 +91,7 @@ export default function AdminAnalytics() {
       if (clockInDate < monthStart || clockInDate > monthEnd) return;
       
       const matchingSchedule = schedules.find(s => 
-        s.shift_date === clockInDate && s.officer_email === entry.officer_email
+        s.shift_date === clockInDate && emailKey(s.officer_email) === key
       );
       
       if (matchingSchedule) {
@@ -84,11 +101,11 @@ export default function AdminAnalytics() {
         const scheduledMinutes = parseInt(scheduledStart.split(':')[0]) * 60 + parseInt(scheduledStart.split(':')[1]);
         const actualMinutes = parseInt(actualClockIn.split(':')[0]) * 60 + parseInt(actualClockIn.split(':')[1]);
         
-        officerStats[entry.officer_email].total++;
+        officerStats[key].total++;
         if (actualMinutes <= scheduledMinutes + 5) {
-          officerStats[entry.officer_email].onTime++;
+          officerStats[key].onTime++;
         } else {
-          officerStats[entry.officer_email].late++;
+          officerStats[key].late++;
         }
       }
     });
@@ -123,24 +140,25 @@ export default function AdminAnalytics() {
     const officerHours = {};
 
     filteredUsers.forEach(officer => {
-      officerHours[officer.email] = { 
-        name: `${officer.first_name} ${officer.last_name}`,
+      officerHours[emailKey(officer.email)] = { 
+        name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email,
         regular: 0,
         overtime: 0,
         weeks: {}
       };
     });
 
-    // Calculate hours from actual time entries, not schedules
+    // Calculate hours from actual completed time entries, deducting recorded breaks.
     timeEntries.forEach(entry => {
-      if (!entry.clock_in || !entry.clock_out || !officerHours[entry.officer_email]) return;
+      const key = emailKey(entry.officer_email);
+      if (!entry.clock_in || !entry.clock_out || !officerHours[key]) return;
       
       const clockInDate = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
       if (clockInDate < monthStart || clockInDate > monthEnd) return;
 
       const clockIn = parseISO(entry.clock_in);
       const clockOut = parseISO(entry.clock_out);
-      const hours = differenceInMinutes(clockOut, clockIn) / 60;
+      const hours = Math.max(0, (differenceInMinutes(clockOut, clockIn) - breakMinutes(entry)) / 60);
 
       // Calculate week key (Friday start)
       const date = parseISO(clockInDate);
@@ -150,10 +168,10 @@ export default function AdminAnalytics() {
       weekStart.setDate(weekStart.getDate() - daysSinceFriday);
       const weekKey = format(weekStart, 'yyyy-MM-dd');
 
-      if (!officerHours[entry.officer_email].weeks[weekKey]) {
-        officerHours[entry.officer_email].weeks[weekKey] = 0;
+      if (!officerHours[key].weeks[weekKey]) {
+        officerHours[key].weeks[weekKey] = 0;
       }
-      officerHours[entry.officer_email].weeks[weekKey] += hours;
+      officerHours[key].weeks[weekKey] += hours;
     });
 
     // Calculate regular and overtime per week
@@ -222,33 +240,17 @@ export default function AdminAnalytics() {
   }, [trainingCompletions, allTraining, filteredUsers]);
 
   const responseTimeStats = useMemo(() => {
-    if (!callsForService || !incidentReports) return { avg: 0 };
+    const responseTimes = dispatchCalls
+      .filter(call => call.time_received && call.time_on_scene)
+      .map(call => differenceInMinutes(parseISO(call.time_on_scene), parseISO(call.time_received)))
+      .filter(minutes => Number.isFinite(minutes) && minutes >= 0 && minutes <= 240);
 
-    const responseTimes = [];
-
-    callsForService.forEach(call => {
-      if (!call.call_time) return;
-      
-      const matchingIncident = incidentReports.find(ir => {
-        if (!ir.created_date) return false;
-        const callTime = parseISO(call.call_time);
-        const incidentTime = parseISO(ir.created_date);
-        const diffMins = differenceInMinutes(incidentTime, callTime);
-        return diffMins >= 0 && diffMins <= 120 && ir.location?.includes(call.address?.split(',')[0]);
-      });
-
-      if (matchingIncident) {
-        const minutes = differenceInMinutes(parseISO(matchingIncident.created_date), parseISO(call.call_time));
-        responseTimes.push(minutes);
-      }
-    });
-
-    const avg = responseTimes.length > 0 
-      ? Math.round(responseTimes.reduce((sum, r) => sum + r, 0) / responseTimes.length)
+    const avg = responseTimes.length > 0
+      ? Math.round(responseTimes.reduce((sum, minutes) => sum + minutes, 0) / responseTimes.length)
       : 0;
 
-    return { avg };
-  }, [callsForService, incidentReports]);
+    return { avg, total: responseTimes.length };
+  }, [dispatchCalls]);
 
   const commendationStats = useMemo(() => {
     if (!allCommendations || !filteredUsers) return { byOfficer: [], total: 0 };
@@ -260,19 +262,20 @@ export default function AdminAnalytics() {
     const officerCommendations = {};
 
     filteredUsers.forEach(officer => {
-      officerCommendations[officer.email] = {
-        name: `${officer.first_name} ${officer.last_name}`,
+      officerCommendations[emailKey(officer.email)] = {
+        name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email,
         count: 0,
         points: 0
       };
     });
 
     allCommendations.forEach(comm => {
-      if (!officerCommendations[comm.officer_email]) return;
+      const key = emailKey(comm.officer_email);
+      if (!officerCommendations[key]) return;
       const commDate = format(parseISO(comm.commendation_date), 'yyyy-MM-dd');
       if (commDate >= monthStart && commDate <= monthEnd) {
-        officerCommendations[comm.officer_email].count++;
-        officerCommendations[comm.officer_email].points += comm.points_awarded || 1;
+        officerCommendations[key].count++;
+        officerCommendations[key].points += comm.points_awarded || 1;
       }
     });
 
@@ -294,8 +297,8 @@ export default function AdminAnalytics() {
     const officerComplaints = {};
 
     filteredUsers.forEach(officer => {
-      officerComplaints[officer.email] = {
-        name: `${officer.first_name} ${officer.last_name}`,
+      officerComplaints[emailKey(officer.email)] = {
+        name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email,
         count: 0,
         sustained: 0
       };
@@ -304,12 +307,13 @@ export default function AdminAnalytics() {
     let pending = 0;
 
     allComplaints.forEach(comp => {
-      if (!officerComplaints[comp.officer_email]) return;
+      const key = emailKey(comp.officer_email);
+      if (!officerComplaints[key]) return;
       const compDate = format(parseISO(comp.complaint_date), 'yyyy-MM-dd');
       if (compDate >= monthStart && compDate <= monthEnd) {
-        officerComplaints[comp.officer_email].count++;
+        officerComplaints[key].count++;
         if (comp.investigation_status === 'sustained') {
-          officerComplaints[comp.officer_email].sustained++;
+          officerComplaints[key].sustained++;
         }
         if (comp.investigation_status === 'pending' || comp.investigation_status === 'under_investigation') {
           pending++;
