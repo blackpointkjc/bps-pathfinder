@@ -670,7 +670,7 @@ export default function AdminAnalytics() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-600" />
-              Officers Missing Shift Reports (Current Week)
+              Officers Missing Shift Reports (Current Month)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -678,8 +678,6 @@ export default function AdminAnalytics() {
               schedules={schedules}
               allUsers={allUsers}
               filteredUsers={filteredUsers}
-              weekStart={startOfWeek(new Date(), { weekStartsOn: 0 })}
-              weekEnd={addDays(startOfWeek(new Date(), { weekStartsOn: 0 }), 6)}
             />
           </CardContent>
         </Card>
