@@ -51,27 +51,29 @@ function MapUpdater({ officers, historicalPath, clockInLocation, clockOutLocatio
       const bounds = [];
       
       // Add clock-in location
-      if (clockInLocation) {
-        bounds.push([clockInLocation.latitude, clockInLocation.longitude]);
+      if (clockInLocation && Number.isFinite(Number(clockInLocation.latitude)) && Number.isFinite(Number(clockInLocation.longitude))) {
+        bounds.push([Number(clockInLocation.latitude), Number(clockInLocation.longitude)]);
       }
       
-      // Add path points
+      // Add only valid path points; Leaflet will throw when a null coordinate reaches project().
       historicalPath.forEach(h => {
-        bounds.push([h.latitude, h.longitude]);
+        if (Number.isFinite(Number(h.latitude)) && Number.isFinite(Number(h.longitude))) {
+          bounds.push([Number(h.latitude), Number(h.longitude)]);
+        }
       });
       
       // Add clock-out location
-      if (clockOutLocation) {
-        bounds.push([clockOutLocation.latitude, clockOutLocation.longitude]);
+      if (clockOutLocation && Number.isFinite(Number(clockOutLocation.latitude)) && Number.isFinite(Number(clockOutLocation.longitude))) {
+        bounds.push([Number(clockOutLocation.latitude), Number(clockOutLocation.longitude)]);
       }
       
       if (bounds.length > 0) {
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
       }
     } else if (officers && officers.length > 0) {
-      const validOfficers = officers.filter(o => o.latitude && o.longitude);
+      const validOfficers = officers.filter(o => Number.isFinite(Number(o.latitude)) && Number.isFinite(Number(o.longitude)));
       if (validOfficers.length > 0) {
-        const bounds = validOfficers.map(o => [o.latitude, o.longitude]);
+        const bounds = validOfficers.map(o => [Number(o.latitude), Number(o.longitude)]);
         map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
       }
     }
@@ -177,7 +179,7 @@ export default function AdminLocationTracker() {
       const end = new Date(`${selectedDate}T23:59:59.999`);
       return (allHistory || []).filter(h => {
         const timestamp = new Date(h.timestamp);
-        return timestamp >= start && timestamp <= end;
+        return timestamp >= start && timestamp <= end && Number.isFinite(Number(h.latitude)) && Number.isFinite(Number(h.longitude));
       }).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     },
     enabled: hasAccess && viewMode === 'history' && !!selectedOfficerEmail && !!selectedDate,
