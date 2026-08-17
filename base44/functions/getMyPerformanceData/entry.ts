@@ -104,6 +104,22 @@ Deno.serve(async (req) => {
       const priorStamp = new Date(prior?.created_date || 0).getTime();
       if (!prior || (hasTime && !priorHasTime) || (hasTime === priorHasTime && stamp > priorStamp)) alertByCall.set(key, alert);
     }
+    const historyMatchForAlert = (alert:any) => {
+      if (alert?.callTime || alert?.time_received) return null;
+      const incident = lower(alert?.callIncident);
+      const location = lower(alert?.callLocation);
+      const alertStamp = new Date(alert?.created_date || 0).getTime();
+      let best:any = null;
+      let bestDistance = Infinity;
+      for (const row of callHistoryAll || []) {
+        if (lower(row?.incident) !== incident || lower(row?.location) !== location) continue;
+        const stamp = new Date(row?.time_received || row?.created_date || 0).getTime();
+        if (!Number.isFinite(stamp) || !Number.isFinite(alertStamp)) continue;
+        const distance = Math.abs(alertStamp - stamp);
+        if (distance <= 24 * 60 * 60 * 1000 && distance < bestDistance) { best = row; bestDistance = distance; }
+      }
+      return best;
+    };
     const callsByOriginalId = new Map<string, any>();
     for (const call of dispatchCallsAll || []) callsByOriginalId.set(String(call.id), { ...call, original_call_id: call.id });
     for (const call of callHistoryAll || []) {
@@ -130,16 +146,19 @@ Deno.serve(async (req) => {
     }
     for (const [originalId, alert] of alertByCall.entries()) {
       if (represented.has(originalId)) continue;
+      const historyMatch = historyMatchForAlert(alert);
       combinedPropertyCalls.push({
         id: originalId,
         original_call_id: originalId,
         call_id: originalId,
         property_id: alert.propertyId || '',
         property_site: alert.propertyName || '',
-        incident: alert.callIncident || 'Property call',
-        location: alert.callLocation || alert.propertyName || '',
-        time_received: alert.callTime || alert.time_received || alert.created_date,
-        status: alert.acknowledged ? 'Closed' : 'Pending',
+        incident: alert.callIncident || historyMatch?.incident || 'Property call',
+        location: alert.callLocation || historyMatch?.location || alert.propertyName || '',
+        latitude: historyMatch?.latitude,
+        longitude: historyMatch?.longitude,
+        time_received: alert.callTime || alert.time_received || historyMatch?.time_received || alert.created_date,
+        status: historyMatch?.status || (alert.acknowledged ? 'Closed' : 'Pending'),
       });
     }
     const myWorkedSites = new Set(myTimeEntries.map((entry:any) => siteKey(entry.location)).filter(Boolean));
