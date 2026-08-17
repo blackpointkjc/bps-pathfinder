@@ -215,11 +215,47 @@ function propertyForSite(site, locations = []) {
   return locations.find(loc => siteKey(loc.site_name) === key) || null;
 }
 
+function distanceMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371e3;
+  const p1 = Number(lat1) * Math.PI / 180;
+  const p2 = Number(lat2) * Math.PI / 180;
+  const dLat = (Number(lat2) - Number(lat1)) * Math.PI / 180;
+  const dLng = (Number(lng2) - Number(lng1)) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function pointInPolygon(lat, lng, polygon = []) {
+  const pts = (polygon || []).map(point => Array.isArray(point) ? [Number(point[0]), Number(point[1])] : [Number(point?.lat), Number(point?.lng)]).filter(pair => pair.every(Number.isFinite));
+  if (pts.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [latI, lngI] = pts[i];
+    const [latJ, lngJ] = pts[j];
+    const intersects = ((lngI > lng) !== (lngJ > lng)) && (lat < ((latJ - latI) * (lng - lngI)) / ((lngJ - lngI) || Number.EPSILON) + latI);
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
 function callMatchesProperty(call, site, locations = []) {
   const property = propertyForSite(site, locations);
+  if (!property) return false;
+  const lat = Number(call?.latitude);
+  const lng = Number(call?.longitude);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    const polygon = property.property_monitoring_polygon?.length >= 3 ? property.property_monitoring_polygon : property.geofence_polygon;
+    if (String(property.property_monitoring_boundary_type || '').toLowerCase() === 'polygon' && Array.isArray(polygon) && polygon.length >= 3) {
+      if (pointInPolygon(lat, lng, polygon)) return true;
+    }
+    if (Number.isFinite(Number(property.latitude)) && Number.isFinite(Number(property.longitude))) {
+      const radius = Number(property.property_monitoring_radius_meters || property.geofence_radius_meters || 100);
+      if (distanceMeters(lat, lng, Number(property.latitude), Number(property.longitude)) <= radius) return true;
+    }
+  }
   const haystack = `${call?.location || ''} ${call?.address || ''}`.trim().toLowerCase();
   if (!haystack) return false;
-  const names = [siteKey(site), property?.site_name, property?.address].filter(Boolean).map(v => String(v).trim().toLowerCase());
+  const names = [property.site_name, property.address, site].filter(Boolean).map(v => String(v).trim().toLowerCase());
   return names.some(name => name && (haystack.includes(name) || (haystack.length >= 5 && name.includes(haystack))));
 }
 
@@ -235,6 +271,7 @@ export function calculateJobDutyCompliance({
   dispatchCalls = [],
   callOuts = [],
   qrScans = [],
+  allTimeEntries = [],
   qrCheckpoints = [],
   dutyRules = [],
   locations = [],
@@ -254,7 +291,17 @@ export function calculateJobDutyCompliance({
   const officerDailyReports = dailyReports.filter(report => !officer || emailKey(report.officer_email) === officerEmail || String(report.created_by_id || '') === String(officer?.id || ''));
   const officerIncidents = incidentReports.filter(report => !officer || emailKey(report.officer_email) === officerEmail || String(report.created_by_id || '') === String(officer?.id || ''));
   const officerCallOuts = callOuts.filter(item => !officer || emailKey(item.officer_email) === officerEmail);
-  const officerQrScans = qrScans.filter(scan => !officer || emailKey(scan.officer_email) === officerEmail);
+  const allWorkedEntries = allTimeEntries.length ? allTimeEntries : timeEntries;
+  const scannerWasWorkingAtSite = (scan, site, stamp) => allWorkedEntries.some(work => {
+    if (!work?.clock_in || !work?.clock_out || emailKey(work.officer_email) !== emailKey(scan.officer_email)) return false;
+    const start = new Date(work.clock_in).getTime();
+    const end = new Date(work.clock_out).getTime();
+    return Number.isFinite(start) && Number.isFinite(end) && stamp >= start && stamp <= end && siteKey(work.location) === site;
+  });
+  const eligibleQrScans = qrScans.filter(scan => {
+    const stamp = new Date(scan.scanned_at).getTime();
+    return Number.isFinite(stamp) && scan.scan_status === 'success' && scannerWasWorkingAtSite(scan, siteKey(scan.property_site), stamp);
+  });
 
   const shiftDetails = [];
   const usedDarIds = new Set();
@@ -311,7 +358,7 @@ export function calculateJobDutyCompliance({
         const callTime = easternTimeKey(call.time_received || call.created_date);
         const callWall = localWallMinute(callDate, callTime);
         const reassignment = officerCallOuts.find(item => {
-          if (item.call_out_type !== 'reassigned' || item.exclude_original_incident_metric !== true) return false;
+          if (!['reassigned', 'sent_home', 'called_out'].includes(item.call_out_type)) return false;
           if (siteKey(item.original_location || item.location) !== site) return false;
           const outWall = localWallMinute(item.call_out_date, item.call_out_time || '00:00');
           return outWall != null && callWall != null && callWall >= outWall;
@@ -319,21 +366,23 @@ export function calculateJobDutyCompliance({
         if (reassignment) {
           incidentExcluded++;
           detail.incidents.excluded++;
-          detail.incidents.items.push({ call_id: call.id, call_number: call.call_number || '', status: 'excluded_reassignment', reason: `Excluded after reassignment to ${reassignment.destination_location || 'another assignment'}` });
+          detail.incidents.items.push({ call_id: call.id, call_number: call.call_id || call.agency_cad_number || call.bps_reference || '', status: 'excluded_reassignment', reason: reassignment.call_out_type === 'reassigned' ? `Excluded after reassignment to ${reassignment.destination_location || 'another assignment'}` : `Excluded after officer was ${reassignment.call_out_type === 'sent_home' ? 'sent home' : 'called out'}` });
           return;
         }
         incidentRequired++;
         detail.incidents.required++;
+        const callNumbers = [call.call_id, call.agency_cad_number, call.bps_reference].filter(Boolean).map(String);
         const report = officerIncidents.find(ir =>
           String(ir.linked_call_id || '') === String(call.id || '') ||
-          (ir.linked_call_number && call.call_number && String(ir.linked_call_number) === String(call.call_number))
+          callNumbers.includes(String(ir.linked_call_number || '')) ||
+          callNumbers.includes(String(ir.call_number || ''))
         );
         if (report && report.status !== 'draft') {
           incidentCompleted++;
           detail.incidents.completed++;
-          detail.incidents.items.push({ call_id: call.id, call_number: call.call_number || '', status: 'completed', report_id: report.id });
+          detail.incidents.items.push({ call_id: call.id, call_number: call.call_id || call.agency_cad_number || call.bps_reference || '', status: 'completed', report_id: report.id });
         } else {
-          detail.incidents.items.push({ call_id: call.id, call_number: call.call_number || '', status: 'missing', call_type: call.incident_type || call.call_type || 'Call for service' });
+          detail.incidents.items.push({ call_id: call.id, call_number: call.call_id || call.agency_cad_number || call.bps_reference || '', status: 'missing', call_type: call.incident || call.incident_type || call.call_type || 'Call for service' });
         }
       });
     }
@@ -350,9 +399,9 @@ export function calculateJobDutyCompliance({
     if (qrIsRequired && requiredCheckpoints.length > 0) {
       const frequency = Math.max(1, Number(rule?.qr_frequency_minutes || 60));
       const windowMinutes = Math.max(1, Number(rule?.qr_window_minutes || 30));
-      const successful = officerQrScans.filter(scan => {
+      const successful = eligibleQrScans.filter(scan => {
         const stamp = new Date(scan.scanned_at).getTime();
-        return Number.isFinite(stamp) && stamp >= shiftStartMs && stamp <= shiftEndMs && scan.scan_status === 'success' && siteKey(scan.property_site) === site;
+        return Number.isFinite(stamp) && stamp >= shiftStartMs && stamp <= shiftEndMs && siteKey(scan.property_site) === site;
       });
 
       let obligationCount = 0;
