@@ -27,6 +27,7 @@ import SignaturePad from "../components/SignaturePad";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { openTrespassNoticePrint, resolvePoliceDepartment } from '@/utils/trespassNoticePrint';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
 
 export default function VATrespassNotices() {
   // Same implementation as TrespassingNotices.js but with VA-specific title
@@ -65,6 +66,10 @@ export default function VATrespassNotices() {
     duration: "Permanent",
     police_notified: false,
     police_report_number: "",
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
     photo_url: "",
     signature_url: "",
     officer_signature_url: "",
@@ -250,6 +255,10 @@ export default function VATrespassNotices() {
       duration: "Permanent",
       police_notified: false,
       police_report_number: "",
+    linked_call_id: "",
+    linked_call_number: "",
+    linked_call_type: "",
+    linked_call_location: "",
       photo_url: "",
       signature_url: "",
       officer_signature_url: "",
@@ -714,6 +723,7 @@ export default function VATrespassNotices() {
             <CardContent className="p-6">
               {/* Same form as TrespassingNotices */}
               <form onSubmit={handleSubmit} className="space-y-4">
+                <ActiveCallLinkField formData={formData} setFormData={setFormData} />
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="notice_date">Date & Time *</Label>
