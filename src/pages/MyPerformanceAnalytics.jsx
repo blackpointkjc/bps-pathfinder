@@ -12,7 +12,7 @@ import {
 import { format, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateQrPatrol, calculateJobDutyCompliance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
+import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateQrPatrol, calculateJobDutyCompliance, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 
@@ -67,6 +67,8 @@ export default function MyPerformanceAnalytics() {
   const jobDutyRules = performanceData.jobDutyRules || [];
   const performanceLocations = performanceData.locations || [];
   const qrScanEvents = performanceData.qrScanEvents || [];
+  const sharedQrScanEvents = performanceData.sharedQrScanEvents || qrScanEvents;
+  const partnerTimeEntries = performanceData.partnerTimeEntries || timeEntries;
   const allCheckpoints = performanceData.checkpoints || [];
 
   const thisWeekSchedule = React.useMemo(() => {
@@ -158,8 +160,8 @@ export default function MyPerformanceAnalytics() {
   );
 
   const qrPatrolStats = useMemo(
-    () => calculateQrPatrol(timeEntries, qrScanEvents, allCheckpoints, currentMonthStart, currentMonthEnd),
-    [timeEntries, qrScanEvents, allCheckpoints, currentMonthStart, currentMonthEnd]
+    () => calculateQrPatrol(timeEntries, sharedQrScanEvents, allCheckpoints, currentMonthStart, currentMonthEnd),
+    [timeEntries, sharedQrScanEvents, allCheckpoints, currentMonthStart, currentMonthEnd]
   );
   const qrPatrolRate = qrPatrolStats.score;
   const clientFeedbackStats = useMemo(() => calculateClientFeedback(myClientFeedback, currentMonthStart, currentMonthEnd), [myClientFeedback, currentMonthStart, currentMonthEnd]);
@@ -172,24 +174,26 @@ export default function MyPerformanceAnalytics() {
     incidentReports: performanceData.incidents || [],
     dispatchCalls,
     callOuts: myCallOuts,
-    qrScans: qrScanEvents,
+    qrScans: sharedQrScanEvents,
+    allTimeEntries: partnerTimeEntries,
     qrCheckpoints: allCheckpoints,
     dutyRules: jobDutyRules,
     locations: performanceLocations,
     monthStart: currentMonthStart,
     monthEnd: currentMonthEnd,
-  }), [user, timeEntries, myDailyActivityReports, performanceData.incidents, dispatchCalls, myCallOuts, qrScanEvents, allCheckpoints, jobDutyRules, performanceLocations, currentMonthStart, currentMonthEnd]);
+  }), [user, timeEntries, myDailyActivityReports, performanceData.incidents, dispatchCalls, myCallOuts, sharedQrScanEvents, partnerTimeEntries, allCheckpoints, jobDutyRules, performanceLocations, currentMonthStart, currentMonthEnd]);
+  const callOutAttendance = useMemo(() => calculateCallOutAttendance(myCallOuts, schedules, currentMonthStart, currentMonthEnd), [myCallOuts, schedules, currentMonthStart, currentMonthEnd]);
 
   const overallPerformance = useMemo(() => buildOverallPerformance({
     punctuality: onTimeStats,
     trainingScore: trainingStats.total > 0 ? trainingStats.percentage : null,
-    qrScore: qrPatrolRate,
     jobDuty: jobDutyStats,
+    callOutAttendance,
     bidStanding: bidStats,
     clientFeedback: clientFeedbackStats,
     supervisorRating: supervisorRatingStats,
     recognition: recognitionStats,
-  }), [onTimeStats, trainingStats, qrPatrolRate, jobDutyStats, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
+  }), [onTimeStats, trainingStats, jobDutyStats, callOutAttendance, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
 
   const performanceFactors = useMemo(() => {
     const factors = [];
