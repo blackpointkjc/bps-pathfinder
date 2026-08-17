@@ -39,7 +39,7 @@ export default function UnifiedCenter({ eyebrow, title, description, sections, d
   return (
     <div className="min-h-full w-full min-w-0 overflow-x-hidden bg-[#070d17] text-slate-100">
       <header className="border-b border-slate-800 bg-[#0a1220] px-4 py-4 md:px-6">
-        <div className="mx-auto max-w-[1700px]">
+        <div className="mx-auto w-full min-w-0 max-w-[1700px]">
           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">{eyebrow}</div>
           <h1 className="mt-1 text-2xl font-black tracking-tight text-white md:text-3xl">{title}</h1>
           <p className="mt-1 max-w-4xl text-sm text-slate-400">{description}</p>
