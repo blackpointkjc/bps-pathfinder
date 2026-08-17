@@ -579,7 +579,7 @@ export default function AdminLocationTracker() {
                       {officersWithLocation.map((officer) => (
                         <Marker 
                           key={`${officer.id}-${Number(officer.latitude).toFixed(6)}-${Number(officer.longitude).toFixed(6)}-${officer.last_update || ''}`} 
-                          position={[officer.latitude, officer.longitude]}
+                          position={[Number(officer.latitude), Number(officer.longitude)]}
                         >
                           <Popup autoPan={false}>
                             <div className="p-2">
@@ -726,7 +726,7 @@ export default function AdminLocationTracker() {
                     
                     {/* Draw the path line */}
                     <Polyline
-                      positions={locationHistory.map(h => [h.latitude, h.longitude])}
+                      positions={locationHistory.map(h => [Number(h.latitude), Number(h.longitude)])}
                       color="#3b82f6"
                       weight={4}
                       opacity={0.8}
@@ -736,7 +736,7 @@ export default function AdminLocationTracker() {
                     {locationHistory.map((ping, index) => (
                       <CircleMarker
                         key={`${ping.id || ping.timestamp}-${index}`}
-                        center={[ping.latitude, ping.longitude]}
+                        center={[Number(ping.latitude), Number(ping.longitude)]}
                         radius={5}
                         pathOptions={{ color: '#fbbf24', fillColor: '#fbbf24', fillOpacity: 0.9, weight: 2 }}
                       >
@@ -754,7 +754,7 @@ export default function AdminLocationTracker() {
                     
                     {/* First ping marker (green) */}
                     <Marker 
-                      position={[locationHistory[0].latitude, locationHistory[0].longitude]}
+                      position={[Number(locationHistory[0].latitude), Number(locationHistory[0].longitude)]}
                       icon={clockInIcon}
                     >
                       <Popup autoPan={false}>
@@ -773,8 +773,8 @@ export default function AdminLocationTracker() {
                     {locationHistory.length > 1 && (
                       <Marker 
                         position={[
-                          locationHistory[locationHistory.length - 1].latitude, 
-                          locationHistory[locationHistory.length - 1].longitude
+                          Number(locationHistory[locationHistory.length - 1].latitude), 
+                          Number(locationHistory[locationHistory.length - 1].longitude)
                         ]}
                         icon={clockOutIcon}
                       >
