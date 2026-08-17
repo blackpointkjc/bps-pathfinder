@@ -12,9 +12,11 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
+    const heartbeatOnly = body.heartbeat_only === true;
     const latitude = Number(body.latitude);
     const longitude = Number(body.longitude);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    const hasGps = Number.isFinite(latitude) && Number.isFinite(longitude);
+    if (!heartbeatOnly && !hasGps) {
       return Response.json({ error: 'Valid latitude and longitude are required' }, { status: 400 });
     }
 
@@ -22,24 +24,27 @@ Deno.serve(async (req) => {
     const officerEmail = String(user.email || body.officer_email || '').trim().toLowerCase();
     if (!officerEmail) return Response.json({ error: 'Officer email is required' }, { status: 400 });
 
-    const liveData = {
+    const liveData: Record<string, unknown> = {
       officer_email: officerEmail,
       officer_name: String(user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || body.officer_name || officerEmail),
       unit_number: String(body.unit_number || user.unit_number || ''),
       current_location: String(body.current_location || user.current_location || user.assigned_location || 'Signed In'),
       clock_in_time: String(body.clock_in_time || now),
       last_update: now,
-      latitude,
-      longitude,
-      heading: finiteNumber(body.heading),
-      speed: finiteNumber(body.speed),
-      accuracy: finiteNumber(body.accuracy),
       status: String(body.status || user.status || 'Signed In'),
       user_role: String(body.user_role || user.role || 'user'),
       session_active: true,
       show_lights: body.show_lights === true,
       current_call_info: String(body.current_call_info || user.current_call_info || ''),
     };
+    if (hasGps) {
+      liveData.gps_updated_at = now;
+      liveData.latitude = latitude;
+      liveData.longitude = longitude;
+      liveData.heading = finiteNumber(body.heading);
+      liveData.speed = finiteNumber(body.speed);
+      liveData.accuracy = finiteNumber(body.accuracy);
+    }
 
     const records = await base44.asServiceRole.entities.ActiveOfficer.filter(
       { officer_email: officerEmail },
@@ -58,12 +63,13 @@ Deno.serve(async (req) => {
       ));
     }
 
-    console.log(`[logLocation] activeOfficer=${activeOfficer.id} user=${user.id} lat=${latitude} lng=${longitude}`);
+    console.log(`[logLocation] activeOfficer=${activeOfficer.id} user=${user.id} heartbeat=${heartbeatOnly} gps=${hasGps}`);
     return Response.json({
       success: true,
       active_officer: activeOfficer,
-      latitude,
-      longitude,
+      latitude: hasGps ? latitude : null,
+      longitude: hasGps ? longitude : null,
+      gps_updated_at: hasGps ? now : activeOfficer.gps_updated_at || null,
       last_updated: now,
     });
   } catch (error) {
