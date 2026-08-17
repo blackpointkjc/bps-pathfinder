@@ -23,6 +23,9 @@ export default function SupervisorCallOuts() {
     call_out_time: format(new Date(), 'HH:mm'),
     reason: "",
     location: "",
+    original_location: "",
+    destination_location: "",
+    exclude_original_incident_metric: false,
   });
 
   const queryClient = useQueryClient();
@@ -43,8 +46,19 @@ export default function SupervisorCallOuts() {
 
   const { data: locations = [] } = useQuery({
     queryKey: ['directoryLocations', 'supervisorCallOuts'],
-    queryFn: () => listDirectoryLocations('site_name', 1000),
+    queryFn: async () => {
+      try {
+        const direct = await base44.entities.Location.list('site_name', 1000);
+        if (Array.isArray(direct) && direct.length) return direct.filter(loc => loc.active !== false);
+      } catch (error) {
+        console.warn('Direct location list failed:', error?.message);
+      }
+      const fallback = await listDirectoryLocations('site_name', 1000);
+      return (fallback || []).filter(loc => loc.active !== false);
+    },
     initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const { data: callOuts } = useQuery({
@@ -61,7 +75,9 @@ export default function SupervisorCallOuts() {
         officer_name: officer ? `${officer.first_name} ${officer.last_name}` : data.officer_email,
         supervisor_email: user.email,
         supervisor_name: `${user.first_name} ${user.last_name}`,
-        affects_pto: true,
+        affects_pto: data.call_out_type !== 'reassigned',
+        exclude_original_incident_metric: data.call_out_type === 'reassigned' ? true : !!data.exclude_original_incident_metric,
+        location: data.call_out_type === 'reassigned' ? data.original_location : data.location,
         admin_notified: false,
       });
     },
@@ -86,6 +102,10 @@ export default function SupervisorCallOuts() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (formData.call_out_type === 'reassigned' && (!formData.original_location || !formData.destination_location)) {
+      alert('Select both the original property and the destination property/assignment.');
+      return;
+    }
     createCallOutMutation.mutate(formData);
   };
 
@@ -232,6 +252,7 @@ export default function SupervisorCallOuts() {
                 <SelectContent>
                   <SelectItem value="called_out">Called Out (Officer called to say they can't come in)</SelectItem>
                   <SelectItem value="sent_home">Sent Home (Officer was sent home early)</SelectItem>
+                  <SelectItem value="reassigned">Reassigned / Called to Another Property</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -257,21 +278,41 @@ export default function SupervisorCallOuts() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Location (Optional)</Label>
-              <Select value={formData.location} onValueChange={(value) => setFormData({...formData, location: value})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select location..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations?.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.site_name}>
-                      {loc.site_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {formData.call_out_type === 'reassigned' ? (
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Original Property *</Label>
+                  <Select value={formData.original_location} onValueChange={(value) => setFormData({...formData, original_location: value, location: value, exclude_original_incident_metric: true})}>
+                    <SelectTrigger><SelectValue placeholder="Select original property..." /></SelectTrigger>
+                    <SelectContent>
+                      {locations.map((loc) => <SelectItem key={`origin-${loc.id}`} value={loc.site_name}>{loc.site_name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Destination Property / Assignment *</Label>
+                  <Select value={formData.destination_location} onValueChange={(value) => setFormData({...formData, destination_location: value})}>
+                    <SelectTrigger><SelectValue placeholder="Select destination..." /></SelectTrigger>
+                    <SelectContent>
+                      {locations.map((loc) => <SelectItem key={`dest-${loc.id}`} value={loc.site_name}>{loc.site_name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="md:col-span-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                  Incident-report requirements at the original property after this reassignment time will be excluded from the officer's Job Duty metric.
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Location (Optional)</Label>
+                <Select value={formData.location} onValueChange={(value) => setFormData({...formData, location: value})}>
+                  <SelectTrigger><SelectValue placeholder="Select location..." /></SelectTrigger>
+                  <SelectContent>
+                    {locations.map((loc) => <SelectItem key={loc.id} value={loc.site_name}>{loc.site_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )
 
             <div className="space-y-2">
               <Label>Reason *</Label>
