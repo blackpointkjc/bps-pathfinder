@@ -38,7 +38,9 @@ Deno.serve(async (req) => {
       const prior = alertByCallId.get(key);
       const currentStamp = new Date(alert.created_date || 0).getTime();
       const priorStamp = new Date(prior?.created_date || 0).getTime();
-      if (!prior || currentStamp > priorStamp) alertByCallId.set(key, alert);
+      const hasTime = Boolean(alert.callTime || alert.time_received);
+      const priorHasTime = Boolean(prior?.callTime || prior?.time_received);
+      if (!prior || (hasTime && !priorHasTime) || (hasTime === priorHasTime && currentStamp > priorStamp)) alertByCallId.set(key, alert);
       const fp = propertyFingerprint(alert.callTime || alert.time_received, alert.callIncident, alert.callLocation);
       if (fp && !fp.startsWith('|')) {
         const priorFp = alertByFingerprint.get(fp);
