@@ -232,10 +232,12 @@ export default function AdminSupervisorReports() {
     // Calculate shift hours scheduled
     let scheduledHours = 0;
     officerSchedules.forEach(s => {
-      const start = parseInt(s.start_time.replace(':', ''));
-      const end = parseInt(s.end_time.replace(':', ''));
-      const hours = end < start ? ((2400 - start) + end) / 100 : (end - start) / 100;
-      scheduledHours += hours;
+      const [sh = 0, sm = 0] = String(s.start_time || '00:00').split(':').map(Number);
+      const [eh = 0, em = 0] = String(s.end_time || '00:00').split(':').map(Number);
+      const startMinutes = sh * 60 + sm;
+      let endMinutes = eh * 60 + em;
+      if (endMinutes <= startMinutes) endMinutes += 1440;
+      scheduledHours += Math.max(0, (endMinutes - startMinutes) / 60);
     });
 
     // Bid stats
@@ -272,7 +274,7 @@ export default function AdminSupervisorReports() {
       shiftsWorked: officerTimeEntries.length,
       shiftsScheduled: officerSchedules.length,
       bids: { accepted: acceptedBids, rejected: rejectedBids, pending: pendingBids, total: officerBids.length },
-      bidAcceptanceRate: (acceptedBids + rejectedBids) > 0 ? Math.round((acceptedBids / (acceptedBids + rejectedBids)) * 100) : 0,
+      bidAcceptanceRate: (acceptedBids + pendingBids + rejectedBids) > 0 ? Math.round(((acceptedBids + pendingBids) / (acceptedBids + pendingBids + rejectedBids)) * 100) : 0,
       trainingCompleted: completedTraining,
       writeUps: officerWriteUps,
       inspections: officerInspections,
@@ -474,7 +476,7 @@ export default function AdminSupervisorReports() {
             </div>
             <div class="stat-box">
               <div class="stat-value">${officerPerformance.bidAcceptanceRate}%</div>
-              <div class="stat-label">Bid Acceptance</div>
+              <div class="stat-label">Bid Standing</div>
             </div>
           </div>
         </div>
@@ -951,7 +953,7 @@ export default function AdminSupervisorReports() {
                       </div>
                       <div className="p-4 bg-purple-50 rounded-lg border border-purple-200 text-center">
                         <p className="text-3xl font-bold text-purple-600">{officerPerformance.bidAcceptanceRate}%</p>
-                        <p className="text-xs text-slate-600">Bid Acceptance</p>
+                        <p className="text-xs text-slate-600">Bid Standing</p>
                       </div>
                     </div>
 
