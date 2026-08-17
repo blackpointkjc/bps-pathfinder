@@ -337,8 +337,9 @@ export default function ClientQRReports() {
 }
 
 function ScanDetailView({ group, allCheckpoints }) {
-  const siteCheckpoints = allCheckpoints.filter(
-    (cp) => cp.property_site === group.property_site
+  const explicitIds = new Set((group.rule?.required_checkpoint_ids || []).map(String));
+  const siteCheckpoints = group.rule?.qr_required === false ? [] : allCheckpoints.filter(
+    (cp) => cp.property_site === group.property_site && (explicitIds.size ? explicitIds.has(String(cp.id)) : cp.is_required !== false)
   );
   const successScans = group.scans.filter((s) => s.scan_status === "success");
   const allScannedIds = new Set(successScans.map((s) => s.checkpoint_id));
@@ -352,15 +353,16 @@ function ScanDetailView({ group, allCheckpoints }) {
     const earliest = new Date(sortedScans[0].scanned_at);
     const latest = new Date(sortedScans[sortedScans.length - 1].scanned_at);
 
+    const frequencyMinutes = Math.max(1, Number(group.rule?.qr_frequency_minutes || 60));
+    const windowMinutes = Math.max(1, Number(group.rule?.qr_window_minutes || 30));
     const cursor = new Date(earliest);
-    cursor.setMinutes(0, 0, 0);
 
     const rounds = [];
     const now = new Date();
 
     while (cursor <= latest || rounds.length === 0) {
       const windowStart = new Date(cursor);
-      const windowEnd = new Date(cursor.getTime() + 60 * 60 * 1000);
+      const windowEnd = new Date(cursor.getTime() + windowMinutes * 60 * 1000);
 
       const windowScans = group.scans.filter((s) => {
         const t = new Date(s.scanned_at);
@@ -394,7 +396,7 @@ function ScanDetailView({ group, allCheckpoints }) {
         isComplete,
       });
 
-      cursor.setTime(cursor.getTime() + 60 * 60 * 1000);
+      cursor.setTime(cursor.getTime() + frequencyMinutes * 60 * 1000);
       if (cursor > latest && rounds.length > 0) break;
     }
 
