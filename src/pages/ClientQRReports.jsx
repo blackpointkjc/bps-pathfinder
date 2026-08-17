@@ -39,9 +39,11 @@ export default function ClientQRReports() {
     return fallbackName || email;
   };
 
-  const clientLocations =
-    user?.assigned_locations ||
-    (user?.assigned_location ? [user.assigned_location] : []);
+  const clientLocations = [...new Set([
+    ...(Array.isArray(user?.assigned_locations) ? user.assigned_locations : []),
+    ...(Array.isArray(user?.assigned_sites) ? user.assigned_sites : []),
+    ...(user?.assigned_location ? [user.assigned_location] : []),
+  ].filter(Boolean))];
 
   // Fetch live scan events for the selected date, filtered to client's sites
   const { data: allScans = [], dataUpdatedAt } = useQuery({
