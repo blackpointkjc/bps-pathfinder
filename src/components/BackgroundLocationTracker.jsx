@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { publishLiveLocation } from '@/lib/liveLocationService';
-import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { isInternalMember } from '@/lib/directoryUtils';
 
 // Calculate distance between two GPS coordinates in meters
 function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
@@ -81,7 +81,7 @@ export default function BackgroundLocationTracker({ user }) {
   // Signed-in tracking rule: GPS publishing and one-minute movement history run
   // whenever the officer is logged into the app. An open TimeEntry adds site/shift
   // context, but it does not control whether live navigation tracking is active.
-  const shouldTrack = !!user?.email && isOperationalOfficer(user);
+  const shouldTrack = !!user?.email && isInternalMember(user);
   const shouldPublish = shouldTrack;
 
   // Mutation to create geofence alert
@@ -120,9 +120,6 @@ export default function BackgroundLocationTracker({ user }) {
     const getActiveOfficerRecord = async () => {
       try {
         const records = await base44.entities.ActiveOfficer.filter({ officer_email: user.email });
-        const newest = records.length > 0
-          ? [...records].sort((a, b) => new Date(b.last_update || b.updated_date || b.created_date || 0).getTime() - new Date(a.last_update || a.updated_date || a.created_date || 0).getTime())[0]
-          : null;
         const sessionData = {
           officer_email: user.email,
           officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
@@ -133,19 +130,12 @@ export default function BackgroundLocationTracker({ user }) {
           user_role: user?.role || 'user',
           session_active: true,
         };
-        const newestStamp = newest ? new Date(newest.last_update || newest.updated_date || newest.created_date || 0).getTime() : 0;
-        const canReuseCurrentSession = newest && Number.isFinite(newestStamp) && Date.now() - newestStamp <= 2 * 60 * 1000;
-        if (canReuseCurrentSession) {
-          activeOfficerRecordRef.current = newest.id;
-          await base44.entities.ActiveOfficer.update(newest.id, sessionData);
-          await Promise.all(records.filter(record => record.id !== newest.id).map(record => base44.entities.ActiveOfficer.delete(record.id).catch(() => null)));
-        } else {
-          // A stale previous-session record may contain old coordinates. Delete it and
-          // create a clean session row so old GPS can never be presented as current.
-          await Promise.all(records.map(record => base44.entities.ActiveOfficer.delete(record.id).catch(() => null)));
-          const created = await base44.entities.ActiveOfficer.create(sessionData);
-          activeOfficerRecordRef.current = created.id;
-        }
+        // Never revive a previous session's coordinates by refreshing its heartbeat.
+        // Start every login/clock-context session with a clean row; the first accepted
+        // device GPS fix will populate coordinates through logLocation.
+        await Promise.all(records.map(record => base44.entities.ActiveOfficer.delete(record.id).catch(() => null)));
+        const created = await base44.entities.ActiveOfficer.create(sessionData);
+        activeOfficerRecordRef.current = created.id;
         queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
       } catch (error) {
         console.error('Error establishing live user location record:', error);
@@ -215,6 +205,7 @@ export default function BackgroundLocationTracker({ user }) {
           current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
           clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
           last_update: new Date().toISOString(),
+          gps_updated_at: new Date().toISOString(),
           latitude: lat,
           longitude: lng,
           heading: Number.isFinite(position.coords.heading) ? position.coords.heading : 0,
@@ -344,18 +335,20 @@ export default function BackgroundLocationTracker({ user }) {
       const nowIso = new Date().toISOString();
       const fix = lastPositionRef.current;
       try {
-        if (fix && Date.now() - lastLivePushRef.current >= 10000) {
+        if (Date.now() - lastLivePushRef.current >= 10000) {
           const response = await base44.functions.invoke('logLocation', {
             officer_email: user.email,
             officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
             unit_number: user.unit_number || '',
             current_location: activeEntry?.location || user?.current_location || user?.assigned_location || 'Signed In',
             clock_in_time: activeEntry?.clock_in || sessionStartedRef.current,
-            latitude: fix.latitude,
-            longitude: fix.longitude,
-            heading: Number.isFinite(Number(fix.heading)) ? Number(fix.heading) : 0,
-            speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : 0,
-            accuracy: fix.accuracy,
+            ...(fix ? {
+              latitude: fix.latitude,
+              longitude: fix.longitude,
+              heading: Number.isFinite(Number(fix.heading)) ? Number(fix.heading) : 0,
+              speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : 0,
+              accuracy: fix.accuracy,
+            } : { heartbeat_only: true }),
             status: user?.status || 'Signed In',
             user_role: user?.role || 'user',
             session_active: true,
