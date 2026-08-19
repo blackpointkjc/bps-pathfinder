@@ -92,8 +92,8 @@ export function DashboardDataProvider({ children }) {
 
             console.log(`[CAD ${nowET}] Calls fetched: ${callsData?.length ?? 0} | Users: ${usersData?.length ?? 0}`);
 
-            // DispatchCall mirrors GRAC's current active-call list. Age alone must never
-            // remove an upstream-active call; it remains live until the feed clears it.
+            // Keep the live CAD queue to the most recent hour. Older calls are
+            // handled by CallHistory/archive cleanup and should no longer display live.
             const uniqueCalls = new Map();
             for (const call of callsData || []) {
                 const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
@@ -105,7 +105,12 @@ export function DashboardDataProvider({ children }) {
                 const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
-            const active = [...uniqueCalls.values()].filter(c => !['Cleared', 'Cancelled'].includes(c.status));
+            const active = [...uniqueCalls.values()].filter(c => {
+                if (['Cleared', 'Cancelled'].includes(c.status)) return false;
+                const receivedAt = parseServerTimestamp(c.time_received || c.created_date);
+                if (!receivedAt) return true;
+                return Date.now() - receivedAt < 60 * 60 * 1000;
+            });
 
             // Debug: newest call time
             if (active.length > 0) {
@@ -175,10 +180,26 @@ export function DashboardDataProvider({ children }) {
         let cancelled = false;
         (async () => {
             await loadData(true);
-            if (!cancelled) await syncGrac();
+            if (!cancelled) syncGrac();
         })();
         return () => { cancelled = true; };
     }, [loadData, syncGrac]);
+
+    // Archive cleanup is deliberately outside the startup path so it cannot hold the
+    // page spinner open. The UI already filters calls at one hour immediately.
+    useEffect(() => {
+        const runArchive = async () => {
+            await base44.functions.invoke('archiveOldCalls', {}).catch(error => {
+                console.warn('[CAD] automatic old-call archive pass failed:', error?.message);
+            });
+        };
+        const first = window.setTimeout(runArchive, 5000);
+        const interval = window.setInterval(runArchive, 60_000);
+        return () => {
+            window.clearTimeout(first);
+            window.clearInterval(interval);
+        };
+    }, []);
 
     // Fallback local CAD refresh. Real-time entity subscriptions handle faster updates.
     useEffect(() => {
