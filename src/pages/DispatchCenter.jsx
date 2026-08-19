@@ -242,11 +242,7 @@ export default function DispatchCenter() {
                 const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
-            const recentCalls = [...uniqueCalls.values()].filter(call => {
-                const receivedAt = parseServerTimestamp(call.time_received || call.created_date)?.getTime() || 0;
-                const isFresh = Number.isFinite(receivedAt) && Date.now() - receivedAt < 61 * 60 * 1000;
-                return isFresh && !['Cleared', 'Cancelled'].includes(call.status);
-            });
+            const recentCalls = [...uniqueCalls.values()].filter(call => !['Cleared', 'Cancelled'].includes(call.status));
 
             recentCalls.sort((a, b) => {
                 const timeA = parseServerTimestamp(a.time_received || a.created_date)?.getTime() || 0;
