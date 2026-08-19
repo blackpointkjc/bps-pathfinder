@@ -24,7 +24,8 @@ Deno.serve(async (req) => {
             const callTime = new Date(call.time_received || call.created_date);
             const ageMs = now - callTime;
 
-            if (ageMs >= ARCHIVE_AFTER_MS) {
+            const isTerminal = ['Cleared', 'Cancelled'].includes(String(call.status || ''));
+            if (isTerminal && ageMs >= ARCHIVE_AFTER_MS) {
                 try {
                     const existing = await base44.asServiceRole.entities.CallHistory.filter({ original_call_id: call.id }, '-archived_date', 1);
                     if (!existing?.length) {
@@ -85,7 +86,7 @@ Deno.serve(async (req) => {
         return Response.json({
             success: true,
             archivedCount,
-            message: `Archived ${archivedCount} calls at 1 hour elapsed`
+            message: `Archived ${archivedCount} cleared/cancelled calls after 1 hour elapsed`
         });
 
     } catch (error) {
