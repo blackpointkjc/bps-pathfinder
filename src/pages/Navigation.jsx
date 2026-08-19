@@ -645,11 +645,7 @@ export default function Navigation() {
                 const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
-            const active = [...uniqueCalls.values()].filter(c => {
-                const receivedAt = parseServerTimestamp(c.time_received || c.created_date)?.getTime() || 0;
-                const isFresh = Number.isFinite(receivedAt) && Date.now() - receivedAt < 61 * 60 * 1000;
-                return isFresh && !['Cleared', 'Cancelled'].includes(c.status);
-            });
+            const active = [...uniqueCalls.values()].filter(c => !['Cleared', 'Cancelled'].includes(c.status));
             const { unmapped } = splitCallsByCoords(active);
             setActiveCalls(active);
             setUnmappedCalls(unmapped);
