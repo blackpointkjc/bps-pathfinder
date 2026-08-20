@@ -2,6 +2,10 @@ import { base44 } from '@/api/base44Client';
 
 const GRAPH_ROOT = 'https://graph.microsoft.com/v1.0';
 const MICROSOFT_AUTH_ROOT = 'https://login.microsoftonline.com';
+// Public Microsoft Entra identifiers for the Pathfinder single-tenant SPA.
+// These are application identifiers, not secrets.
+const PATHFINDER_MICROSOFT_CLIENT_ID = '5cf1a58f-17d1-46d4-a7fd-ff5fcd7624eb';
+const PATHFINDER_MICROSOFT_TENANT_ID = '07f32330-fc73-4d73-a835-e9c47ba798c7';
 const DEFAULT_SCOPES = [
   'openid',
   'profile',
@@ -46,8 +50,8 @@ export async function getMicrosoftMailConfig({ force = false } = {}) {
   if (!force && microsoftConfigPromise) return microsoftConfigPromise;
 
   microsoftConfigPromise = (async () => {
-    const envClientId = String(import.meta.env.VITE_MICROSOFT_CLIENT_ID || '').trim();
-    const envTenant = String(import.meta.env.VITE_MICROSOFT_TENANT || '').trim();
+    const envClientId = String(import.meta.env.VITE_MICROSOFT_CLIENT_ID || PATHFINDER_MICROSOFT_CLIENT_ID).trim();
+    const envTenant = String(import.meta.env.VITE_MICROSOFT_TENANT || PATHFINDER_MICROSOFT_TENANT_ID).trim();
     try {
       const rows = await base44.entities.MicrosoftMailConfig.filter({ config_key: 'outlook' }, '-updated_at', 1);
       const row = rows?.[0] || null;
@@ -293,21 +297,40 @@ async function syncOutlookMailboxLink(userId, pathfinderEmail, profile) {
   const now = new Date().toISOString();
   const links = await base44.entities.OutlookMailboxLink.filter({ user_id: userId }, '-last_verified_at', 5);
   const existing = (links || []).find(link => String(link.outlook_email || '').trim().toLowerCase() === outlookEmail) || links?.[0];
+  const pathfinderNormalized = String(pathfinderEmail || '').trim().toLowerCase();
+  const profileName = profile?.displayName || '';
+  const microsoftUserId = profile?.id || '';
+
+  // Verification runs frequently for notifications. Do not write the same mailbox
+  // mapping over and over; only persist when identity/connection data changed or
+  // the durable verification timestamp is more than 6 hours old.
+  const lastVerifiedMs = existing?.last_verified_at ? new Date(existing.last_verified_at).getTime() : 0;
+  const staleVerification = !Number.isFinite(lastVerifiedMs) || Date.now() - lastVerifiedMs > 6 * 60 * 60 * 1000;
+  const changed = !existing
+    || String(existing.pathfinder_email || '').trim().toLowerCase() !== pathfinderNormalized
+    || String(existing.outlook_email || '').trim().toLowerCase() !== outlookEmail
+    || String(existing.outlook_display_name || '') !== profileName
+    || String(existing.microsoft_user_id || '') !== microsoftUserId
+    || existing.connected !== true;
+
   const payload = {
     user_id: userId,
-    pathfinder_email: String(pathfinderEmail || '').trim().toLowerCase(),
+    pathfinder_email: pathfinderNormalized,
     outlook_email: outlookEmail,
-    outlook_display_name: profile?.displayName || '',
-    microsoft_user_id: profile?.id || '',
+    outlook_display_name: profileName,
+    microsoft_user_id: microsoftUserId,
     connected: true,
     connected_at: existing?.connected_at || now,
-    last_verified_at: now,
+    last_verified_at: changed || staleVerification ? now : existing?.last_verified_at,
     disconnected_at: null,
   };
+
   if (existing?.id) {
-    await base44.entities.OutlookMailboxLink.update(existing.id, payload);
-    for (const duplicate of (links || []).filter(link => link.id !== existing.id)) {
-      if (duplicate.connected !== false) await base44.entities.OutlookMailboxLink.update(duplicate.id, { connected: false, disconnected_at: now });
+    if (changed || staleVerification) await base44.entities.OutlookMailboxLink.update(existing.id, payload);
+    if (changed) {
+      for (const duplicate of (links || []).filter(link => link.id !== existing.id)) {
+        if (duplicate.connected !== false) await base44.entities.OutlookMailboxLink.update(duplicate.id, { connected: false, disconnected_at: now });
+      }
     }
     return { ...existing, ...payload };
   }
