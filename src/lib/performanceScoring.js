@@ -578,28 +578,33 @@ export function calculateCallOutAttendance(callOuts = [], schedules = [], monthS
 const boundedMetricScore = value => value == null ? null : Math.max(0, Math.min(100, Math.round(value)));
 
 export function buildOverallPerformance({ punctuality, trainingScore = null, jobDuty = null, callOutAttendance = null, bidStanding, clientFeedback, supervisorRating, recognition }) {
+  // Fixed weighting requested for Pathfinder officer performance:
+  // 55% punctuality, 15% job duty, 15% call-out attendance, and 3% each for
+  // Training, Bid Standing, Client Feedback, Supervisor Rating, Recognition.
+  // The five 3% categories are neutral/full credit when no scoreable record exists.
+  // This prevents an officer from losing points just because nobody submitted a
+  // client/supervisor rating, recognition, bid, or training record that month.
   const configured = [
-    { label: 'On-Time Arrival', score: punctuality?.rate != null && punctuality.total > 0 ? boundedMetricScore(punctuality.rate) : null, baseWeight: 55 },
-    { label: 'Job Duty / Performance', score: jobDuty?.score != null ? boundedMetricScore(jobDuty.score) : null, baseWeight: 15 },
-    { label: 'Call-Out Attendance', score: callOutAttendance?.score != null ? boundedMetricScore(callOutAttendance.score) : null, baseWeight: 15 },
-    { label: 'Training Completion', score: boundedMetricScore(trainingScore), baseWeight: 3 },
-    { label: 'Bid Standing', score: boundedMetricScore(bidStanding?.score), baseWeight: 3 },
-    { label: 'Client Feedback', score: boundedMetricScore(clientFeedback?.score), baseWeight: 3 },
-    { label: 'Supervisor Rating', score: boundedMetricScore(supervisorRating?.score), baseWeight: 3 },
-    { label: 'Recognition', score: recognition?.score != null ? boundedMetricScore(recognition.score) : null, baseWeight: 3 },
-  ];
-  const scoreable = configured.filter(item => item.score != null);
+    { label: 'On-Time Arrival', score: punctuality?.rate != null && punctuality.total > 0 ? boundedMetricScore(punctuality.rate) : null, baseWeight: 55, neutralWhenMissing: false },
+    { label: 'Job Duty / Performance', score: jobDuty?.score != null ? boundedMetricScore(jobDuty.score) : null, baseWeight: 15, neutralWhenMissing: false },
+    { label: 'Call-Out Attendance', score: callOutAttendance?.score != null ? boundedMetricScore(callOutAttendance.score) : null, baseWeight: 15, neutralWhenMissing: false },
+    { label: 'Training Completion', score: boundedMetricScore(trainingScore), baseWeight: 3, neutralWhenMissing: true },
+    { label: 'Bid Standing', score: boundedMetricScore(bidStanding?.score), baseWeight: 3, neutralWhenMissing: true },
+    { label: 'Client Feedback', score: boundedMetricScore(clientFeedback?.score), baseWeight: 3, neutralWhenMissing: true },
+    { label: 'Supervisor Rating', score: boundedMetricScore(supervisorRating?.score), baseWeight: 3, neutralWhenMissing: true },
+    { label: 'Recognition', score: recognition?.score != null ? boundedMetricScore(recognition.score) : null, baseWeight: 3, neutralWhenMissing: true },
+  ].map(item => ({ ...item, effectiveScore: item.score == null && item.neutralWhenMissing ? 100 : item.score }));
+
+  // Core operational metrics are only included once they have scoreable records;
+  // the neutral 3% categories keep their fixed weight at 100 when missing.
+  const scoreable = configured.filter(item => item.effectiveScore != null);
   const activeWeight = scoreable.reduce((sum, item) => sum + item.baseWeight, 0);
-  if (!activeWeight) return { score: null, categories: [], omitted: configured.map(item => item.label) };
-  const score = Math.round(scoreable.reduce((sum, item) => {
-    return sum + (item.score * (item.baseWeight / activeWeight));
-  }, 0));
-  // Do not expose normalized decimal weights/contribution math to the UI. The
-  // performance screens only need the final score and each scoreable metric.
-  const categories = scoreable.map(item => ({ label: item.label, score: item.score }));
+  if (!activeWeight) return { score: null, categories: [], omitted: configured.filter(item => item.effectiveScore == null).map(item => item.label) };
+  const score = Math.round(scoreable.reduce((sum, item) => sum + (item.effectiveScore * item.baseWeight), 0) / activeWeight);
+  const categories = scoreable.map(item => ({ label: item.label, score: item.effectiveScore, neutral: item.score == null && item.neutralWhenMissing }));
   return {
     score,
     categories,
-    omitted: configured.filter(item => item.score == null).map(item => item.label),
+    omitted: configured.filter(item => item.effectiveScore == null).map(item => item.label),
   };
 }
