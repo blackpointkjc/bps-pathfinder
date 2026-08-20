@@ -52,10 +52,9 @@ export default function UniversalInbox({ currentUser, users = [] }) {
     let cancelled = false;
     const refresh = async () => {
       try {
-        const result = await syncAllTeamsDirectChats(currentUser.id, currentUser.id);
+        const result = await syncAllTeamsDirectChats(currentUser.id, currentUser.id, { chatLimit: 12, messageLimit: 30 });
         if (!cancelled) setTeamsSyncError('');
-        if (!cancelled && result?.imported) await load();
-        else if (!cancelled) await load();
+        if (!cancelled) await load();
       } catch (error) {
         console.warn('[Teams] Unable to discover direct-message history:', error?.message);
         if (!cancelled) setTeamsSyncError(error?.message || 'Microsoft Teams history could not be loaded.');
@@ -63,7 +62,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
       }
     };
     refresh();
-    const interval = window.setInterval(refresh, 20000);
+    const interval = window.setInterval(refresh, 90000);
     // Message delivery must not remove a user's archived-thread preference.
     const unsubscribe = base44.entities.Message.subscribe(() => load());
     return () => { cancelled = true; window.clearInterval(interval); unsubscribe?.(); };
@@ -124,9 +123,8 @@ export default function UniversalInbox({ currentUser, users = [] }) {
       }
     };
     sync();
-    const interval = window.setInterval(sync, 20000);
-    return () => { cancelled = true; window.clearInterval(interval); };
-  }, [selectedKey, selected?.messages.length, currentUser?.id]);
+    return () => { cancelled = true; };
+  }, [selectedKey, currentUser?.id]);
 
   useEffect(() => {
     if (!selected) return;
@@ -179,11 +177,12 @@ export default function UniversalInbox({ currentUser, users = [] }) {
       if (!teamsResult?.chatId || !teamsResult?.messageId) throw new Error('Microsoft Teams did not confirm message delivery.');
 
       const messageId = crypto.randomUUID();
-      await Promise.all(recipients.map(recipientId => base44.entities.Message.create({
+      const optimistic = {
+        id: `teams-local:${teamsResult.messageId}`,
         sender_id: currentUser.id,
         sender_name: senderName,
-        recipient_id: recipientId,
-        recipient_name: nameOf(userMap.get(String(recipientId))),
+        recipient_id: recipients[0],
+        recipient_name: nameOf(userMap.get(String(recipients[0]))),
         message: body,
         read: true,
         message_type: 'dispatch_message',
@@ -194,11 +193,12 @@ export default function UniversalInbox({ currentUser, users = [] }) {
         teams_chat_id: teamsResult.chatId,
         teams_message_id: teamsResult.messageId,
         teams_synced_at: new Date().toISOString(),
-        teams_sync_error: '',
-      })));
+        created_date: new Date().toISOString(),
+      };
+      setMessages(current => [optimistic, ...current.filter(item => item.teams_message_id !== teamsResult.messageId)]);
+      await Promise.all(recipients.map(recipientId => base44.entities.Message.create({ ...optimistic, id: undefined, recipient_id: recipientId, recipient_name: nameOf(userMap.get(String(recipientId))) })));
       setSelectedKey(`teams:${teamsResult.chatId}`);
       setText('');
-      await load();
     } catch (error) {
       toast.error(`Teams direct message failed: ${error?.message || 'Unknown Microsoft error'}`, { duration: 12000 });
     }
