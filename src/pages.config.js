@@ -176,6 +176,7 @@ import SupervisorTasks from './pages/SupervisorTasks';
 import SupervisorUseOfForce from './pages/SupervisorUseOfForce';
 import SupervisorWriteUps from './pages/SupervisorWriteUps';
 import TeamChat from './pages/TeamChat';
+import OfficerChat from './pages/OfficerChat';
 import TimeClock from './pages/TimeClock';
 import TimeRequests from './pages/TimeRequests';
 import TrespassingNotices from './pages/TrespassingNotices';
@@ -320,6 +321,7 @@ export const PAGES = {
     "SupervisorUseOfForce": SupervisorUseOfForce,
     "SupervisorWriteUps": SupervisorWriteUps,
     "TeamChat": TeamChat,
+    "OfficerChat": OfficerChat,
     "TimeClock": TimeClock,
     "TimeRequests": TimeRequests,
     "TrespassingNotices": TrespassingNotices,
