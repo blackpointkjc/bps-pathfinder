@@ -157,12 +157,12 @@ export async function sendTeamsDirectMessage(userId, { participantIds = [], part
   return { chatId, messageId: message?.id || '', message };
 }
 
-export async function syncTeamsDirectMessages(userId, { chatId, threadKey = '', currentPathfinderUserId, participantIds = [], participantNames = [], cachedMessages = null, limit = 50 } = {}) {
+export async function syncTeamsDirectMessages(userId, { chatId, threadKey = '', currentPathfinderUserId, participantIds = [], participantNames = [], cachedMessages = null, cachedIdentities = null, microsoftMeId = '', limit = 50 } = {}) {
   if (!chatId || !userId || !currentPathfinderUserId) return { imported: 0 };
   const [me, payload, identities, cached] = await Promise.all([
-    graphRequest(userId, '/me?$select=id'),
+    microsoftMeId ? Promise.resolve({ id: microsoftMeId }) : graphRequest(userId, '/me?$select=id'),
     graphRequest(userId, `/chats/${encodeURIComponent(chatId)}/messages?$top=${Math.min(50, Math.max(1, Number(limit) || 50))}`),
-    base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []),
+    cachedIdentities ? Promise.resolve(cachedIdentities) : base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []),
     cachedMessages ? Promise.resolve(cachedMessages) : base44.entities.Message.list('-created_date', 500).catch(() => []),
   ]);
   const byMicrosoftId = new Map((identities || []).filter(item => item.microsoft_user_id).map(item => [String(item.microsoft_user_id), item]));
@@ -243,9 +243,60 @@ export async function syncAllTeamsDirectChats(userId, currentPathfinderUserId, {
       participantIds,
       participantNames,
       cachedMessages,
+      cachedIdentities: identities,
+      microsoftMeId: meMicrosoftId,
       limit: messageLimit,
     });
     imported += Number(result?.imported || 0);
   }
   return { chats, imported };
+}
+
+export async function listTeamsDirectChats(userId, { limit = 25 } = {}) {
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 25));
+  const [me, chatsPayload, identities] = await Promise.all([
+    graphRequest(userId, '/me?$select=id,displayName,mail,userPrincipalName'),
+    graphRequest(userId, `/me/chats?$top=${safeLimit}`),
+    base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []),
+  ]);
+  const identityByMicrosoftId = new Map((identities || []).filter(item => item.microsoft_user_id).map(item => [String(item.microsoft_user_id), item]));
+  const meId = String(me?.id || '');
+  const chats = [];
+  for (const chat of chatsPayload?.value || []) {
+    if (!chat?.id || !['oneOnOne', 'group'].includes(chat.chatType)) continue;
+    const membersPayload = await graphRequest(userId, `/chats/${encodeURIComponent(chat.id)}/members?$top=100`);
+    const members = (membersPayload?.value || []).filter(member => member?.userId || member?.user?.id || member?.id);
+    const otherMembers = members.filter(member => String(member?.userId || member?.user?.id || member?.id || '') !== meId);
+    chats.push({
+      id: chat.id,
+      chatType: chat.chatType,
+      topic: chat.topic || '',
+      createdDateTime: chat.createdDateTime || '',
+      lastUpdatedDateTime: chat.lastUpdatedDateTime || chat.createdDateTime || '',
+      participantIds: [userId, ...otherMembers.map(member => memberPathfinderId(member, identityByMicrosoftId))],
+      participantNames: [me?.displayName || 'You', ...otherMembers.map(member => memberDisplayName(member, identityByMicrosoftId))],
+      members: otherMembers.map(member => ({
+        microsoftId: member?.userId || member?.user?.id || member?.id || '',
+        name: memberDisplayName(member, identityByMicrosoftId),
+        pathfinderId: memberPathfinderId(member, identityByMicrosoftId),
+      })),
+    });
+  }
+  return { me, chats };
+}
+
+export async function getTeamsDirectChatMessages(userId, chatId, { limit = 50 } = {}) {
+  if (!chatId) return [];
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 50));
+  const payload = await graphRequest(userId, `/chats/${encodeURIComponent(chatId)}/messages?$top=${safeLimit}`);
+  return [...(payload?.value || [])].reverse().map(item => ({
+    id: item.id,
+    teams_message_id: item.id,
+    teams_chat_id: chatId,
+    sender_microsoft_id: item?.from?.user?.id || '',
+    sender_name: item?.from?.user?.displayName || item?.from?.application?.displayName || 'Microsoft Teams',
+    message: stripHtml(item?.body?.content || '').trim(),
+    created_date: item.createdDateTime || '',
+    last_modified_date: item.lastModifiedDateTime || '',
+  })).filter(item => item.message);
 }
