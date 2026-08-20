@@ -485,9 +485,9 @@ export async function deleteOutlookMessage(userId, messageId, mailboxEmail = '')
   await graphRequest(userId, `${mailboxRoot(mailboxEmail)}/messages/${encodeURIComponent(messageId)}`, { method: 'DELETE' });
 }
 
-export async function getLatestUnreadMail(userId) {
+export async function getLatestUnreadMail(userId, mailboxEmail = '') {
   const select = 'id,subject,from,receivedDateTime,isRead,bodyPreview';
-  const payload = await graphRequest(userId, `/me/mailFolders/inbox/messages?$top=10&$filter=isRead eq false&$select=${encodeURIComponent(select)}&$orderby=receivedDateTime desc`);
+  const payload = await graphRequest(userId, `${mailboxRoot(mailboxEmail)}/mailFolders/inbox/messages?$top=10&$filter=isRead eq false&$select=${encodeURIComponent(select)}&$orderby=receivedDateTime desc`);
   return payload?.value || [];
 }
 
