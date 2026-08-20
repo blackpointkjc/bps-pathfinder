@@ -255,22 +255,35 @@ export default function OutlookMail() {
   const addSharedMailbox = async () => {
     const address = sharedAddress.trim().toLowerCase();
     if (!address) return toast.error('Enter the shared mailbox email address.');
+    let pending = null;
     try {
       setAddingShared(true);
-      const verified = await verifySharedMailboxAccess(user.id, address);
-      const saved = await saveSharedMailbox(user.id, user?.email || '', verified);
+      pending = await saveSharedMailbox(user.id, user?.email || '', { email: address, displayName: address, connectionStatus: 'pending' });
       setSharedMailboxes(current => {
-        const without = current.filter(item => item.id !== saved.id && item.mailbox_email !== saved.mailbox_email);
-        return [saved, ...without];
+        const without = current.filter(item => item.id !== pending.id && item.mailbox_email !== pending.mailbox_email);
+        return [pending, ...without];
       });
       setSharedAddress('');
-      toast.success(`Shared mailbox added: ${verified.email}`);
+
+      const verified = await verifySharedMailboxAccess(user.id, address);
+      const saved = await saveSharedMailbox(user.id, user?.email || '', { ...verified, displayName: pending.display_name || verified.displayName, connectionStatus: 'verified' });
+      setSharedMailboxes(current => current.map(item => item.id === saved.id || item.mailbox_email === saved.mailbox_email ? saved : item));
+      toast.success(`Shared mailbox connected: ${verified.email}`);
       await switchMailbox(saved);
     } catch (error) {
-      const raw = error?.message || 'Unable to add the shared mailbox.';
+      const raw = error?.message || 'Microsoft could not verify this shared mailbox.';
+      if (pending?.id) {
+        const needsAttention = await saveSharedMailbox(user.id, user?.email || '', {
+          email: address,
+          displayName: pending.display_name || address,
+          connectionStatus: 'needs_attention',
+          lastError: raw,
+        }).catch(() => pending);
+        setSharedMailboxes(current => current.map(item => item.id === pending.id || item.mailbox_email === address ? { ...item, ...needsAttention, connection_status: 'needs_attention', last_error: raw } : item));
+      }
       const guidance = error?.status === 403
-        ? ' Confirm this signed-in Microsoft user has access to the shared mailbox in Exchange and reconnect Microsoft 365 if the shared permissions were added after the user originally connected.'
-        : '';
+        ? ' It has been saved in Pathfinder, but Microsoft denied mailbox access. Confirm Full Access plus Send As/Send on Behalf in Exchange, then reconnect Microsoft 365 and retry.'
+        : ' The address has been saved in Pathfinder so you can rename it or retry later.';
       toast.error(`${raw}${guidance}`, { duration: 12000 });
     } finally {
       setAddingShared(false);
