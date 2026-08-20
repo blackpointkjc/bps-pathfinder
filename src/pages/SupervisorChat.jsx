@@ -63,8 +63,7 @@ export default function SupervisorChat() {
       }
     };
     sync();
-    const interval = window.setInterval(sync, 20000);
-    return () => { cancelled = true; window.clearInterval(interval); };
+    return () => { cancelled = true; };
   }, [user?.id, queryClient]);
 
   const { data: supervisorUpdates = [] } = useQuery({
@@ -88,22 +87,21 @@ export default function SupervisorChat() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ data, mentions }) => {
-      const created = await base44.entities.SupervisorChatMessage.create({ ...data, message_source: 'pathfinder' });
-      try {
-        const target = teamsConfig || await getTeamsSyncConfig('supervisor_chat');
-        if (target?.enabled) {
-          const teamsMessage = await sendTeamChannelMessage(user?.id, `<strong>${data.sender_name}</strong>: ${data.message}`, target, 'supervisor_chat');
-          if (teamsMessage?.id) await base44.entities.SupervisorChatMessage.update(created.id, {
-            teams_message_id: teamsMessage.id,
-            teams_team_id: target.team_id,
-            teams_channel_id: target.channel_id,
-            teams_synced_at: new Date().toISOString(),
-          }).catch(() => null);
-        }
-      } catch (error) {
-        console.warn('[Teams] Unable to mirror Supervisor Chat message:', error?.message);
-        toast.error(`Supervisor Teams delivery failed: ${error?.message || 'Unknown Microsoft error'}`, { duration: 12000 });
-      }
+      const target = teamsConfig || await getTeamsSyncConfig('supervisor_chat');
+      if (!target?.enabled) throw new Error('Microsoft Teams Supervisors Chat is not configured.');
+      const teamsMessage = await sendTeamChannelMessage(user?.id, `<strong>${data.sender_name}</strong>: ${data.message}`, target, 'supervisor_chat');
+      if (!teamsMessage?.id) throw new Error('Microsoft Teams did not confirm delivery.');
+      const created = await base44.entities.SupervisorChatMessage.create({
+        ...data,
+        message_source: 'teams',
+        teams_message_id: teamsMessage.id,
+        teams_team_id: target.team_id,
+        teams_channel_id: target.channel_id,
+        teams_sender_id: teamsMessage?.from?.user?.id || '',
+        teams_sender_name: teamsMessage?.from?.user?.displayName || data.sender_name,
+        teams_created_at: teamsMessage?.createdDateTime || new Date().toISOString(),
+        teams_synced_at: new Date().toISOString(),
+      });
       await Promise.all(mentions.map(mention => base44.entities.ChatMention.create({
         message_id: created.id,
         chat_type: 'supervisor',
@@ -120,6 +118,11 @@ export default function SupervisorChat() {
       queryClient.invalidateQueries({ queryKey: ['supervisorChatMessages'] });
       setMessage("");
       setMentionedUsers([]);
+      setTeamsSyncError('');
+    },
+    onError: (error) => {
+      setTeamsSyncError(error?.message || 'Microsoft Teams delivery failed.');
+      toast.error(`Supervisor Teams delivery failed: ${error?.message || 'Unknown Microsoft error'}`, { duration: 12000 });
     },
   });
 
