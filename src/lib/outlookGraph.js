@@ -452,20 +452,24 @@ export async function listSavedSharedMailboxes(userId) {
 export async function saveSharedMailbox(userId, pathfinderEmail, mailbox) {
   const email = String(mailbox?.email || '').trim().toLowerCase();
   if (!userId || !email) throw new Error('Shared mailbox information is incomplete.');
-  const rows = await base44.entities.OutlookSharedMailbox.filter({ user_id: userId, mailbox_email: email }, '-verified_at', 1);
+  const rows = await base44.entities.OutlookSharedMailbox.filter({ user_id: userId, mailbox_email: email }, '-updated_date', 1);
+  const existing = rows?.[0] || null;
+  const status = mailbox?.connectionStatus || (mailbox?.inbox ? 'verified' : 'pending');
   const payload = {
     user_id: userId,
     pathfinder_email: String(pathfinderEmail || '').trim().toLowerCase(),
     mailbox_email: email,
-    display_name: mailbox?.displayName || email,
-    microsoft_user_id: mailbox?.id || '',
+    display_name: mailbox?.displayName || existing?.display_name || email,
+    microsoft_user_id: mailbox?.id || existing?.microsoft_user_id || '',
     active: true,
-    verified_at: new Date().toISOString(),
+    connection_status: status,
+    last_error: String(mailbox?.lastError || ''),
+    verified_at: status === 'verified' ? new Date().toISOString() : (existing?.verified_at || null),
     last_used_at: new Date().toISOString(),
   };
-  if (rows?.[0]?.id) {
-    await base44.entities.OutlookSharedMailbox.update(rows[0].id, payload);
-    return { ...rows[0], ...payload };
+  if (existing?.id) {
+    await base44.entities.OutlookSharedMailbox.update(existing.id, payload);
+    return { ...existing, ...payload };
   }
   return base44.entities.OutlookSharedMailbox.create(payload);
 }
