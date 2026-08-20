@@ -470,6 +470,17 @@ export async function saveSharedMailbox(userId, pathfinderEmail, mailbox) {
   return base44.entities.OutlookSharedMailbox.create(payload);
 }
 
+export async function renameSharedMailbox(linkId, displayName) {
+  const clean = String(displayName || '').trim();
+  if (!linkId) throw new Error('Shared mailbox link is missing.');
+  if (!clean) throw new Error('Enter a mailbox display name.');
+  await base44.entities.OutlookSharedMailbox.update(linkId, {
+    display_name: clean,
+    last_used_at: new Date().toISOString(),
+  });
+  return { id: linkId, display_name: clean };
+}
+
 export async function removeSharedMailbox(linkId) {
   if (!linkId) return;
   await base44.entities.OutlookSharedMailbox.update(linkId, { active: false });
