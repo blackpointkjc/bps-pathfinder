@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Mail, ShieldCheck, Loader2, ExternalLink, AlertTriangle } from 'lucide-react';
 import { beginOutlookConnection, getOutlookConnectionStatus, handleOutlookOAuthCallback, isMicrosoftConfigured } from '@/lib/outlookGraph';
 
