@@ -8,7 +8,7 @@ import { MessageCircle, Send, Users, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
-import { getTeamsSyncConfig, sendTeamChannelMessage, syncTeamsChannelToPathfinder } from "@/lib/teamsGraph";
+import { getTeamsChannelMessages, getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage, syncTeamsChannelToEntity } from "@/lib/teamsGraph";
 import { toast } from 'sonner';
 
 export default function TeamChat() {
@@ -18,6 +18,8 @@ export default function TeamChat() {
   const queryClient = useQueryClient();
   const [teamsConfig, setTeamsConfig] = useState(null);
   const [teamsSyncError, setTeamsSyncError] = useState('');
+  const [teamsLink, setTeamsLink] = useState('');
+  const [teamsSaving, setTeamsSaving] = useState(false);
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -33,6 +35,15 @@ export default function TeamChat() {
     queryFn: () => base44.entities.ChatMessage.list('-created_date', 100),
   });
 
+  const { data: liveTeamsMessages = [], error: liveTeamsError, refetch: refetchTeamsHistory } = useQuery({
+    queryKey: ['teamTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
+    queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'team_chat'),
+    enabled: !!user?.id && !!teamsConfig?.enabled,
+    refetchInterval: 60000,
+    refetchOnWindowFocus: true,
+    staleTime: 15000,
+  });
+
   useEffect(() => {
     const unsubscribe = base44.entities.ChatMessage.subscribe(() => {
       queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
@@ -45,11 +56,12 @@ export default function TeamChat() {
     let cancelled = false;
     const sync = async () => {
       try {
-        const config = await getTeamsSyncConfig('officer_chat');
+        const config = await getTeamsSyncConfig('team_chat');
         if (cancelled) return;
         setTeamsConfig(config);
+        if (config?.channel_url) setTeamsLink(current => current || config.channel_url);
         if (config?.enabled) {
-          const result = await syncTeamsChannelToPathfinder(user.id, config);
+          const result = await syncTeamsChannelToEntity(user.id, { config, configKey: 'team_chat', entityName: 'ChatMessage' });
           setTeamsSyncError('');
           if (result?.imported) queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
         }
@@ -73,9 +85,9 @@ export default function TeamChat() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ data, mentions }) => {
-      const target = teamsConfig || await getTeamsSyncConfig('officer_chat');
-      if (!target?.enabled) throw new Error('Microsoft Teams General Chat is not configured.');
-      const teamsMessage = await sendTeamChannelMessage(user?.id, `<strong>${data.sender_name}</strong>: ${data.message}`, target, 'officer_chat');
+      const target = teamsConfig || await getTeamsSyncConfig('team_chat');
+      if (!target?.enabled) throw new Error('Microsoft Teams Team Chat channel is not configured.');
+      const teamsMessage = await sendTeamChannelMessage(user?.id, `<strong>${data.sender_name}</strong>: ${data.message}`, target, 'team_chat');
       if (!teamsMessage?.id) throw new Error('Microsoft Teams did not confirm delivery.');
       const created = await base44.entities.ChatMessage.create({
         ...data,
@@ -100,8 +112,9 @@ export default function TeamChat() {
       })));
       return created;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
+      await refetchTeamsHistory();
       setMessage("");
       setMentionedUsers([]);
       setTeamsSyncError('');
@@ -184,17 +197,35 @@ export default function TeamChat() {
     return unsubscribe;
   }, [user?.email]);
 
+  const displayedMessages = teamsConfig?.enabled ? liveTeamsMessages : [...(messages || [])].reverse();
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
-
-  const reversedMessages = [...(messages || [])].reverse();
+  }, [displayedMessages]);
 
   const handleRefresh = async () => {
-    if (user?.id && teamsConfig?.enabled) await syncTeamsChannelToPathfinder(user.id, teamsConfig).catch(() => null);
+    if (user?.id && teamsConfig?.enabled) {
+      await syncTeamsChannelToEntity(user.id, { config: teamsConfig, configKey: 'team_chat', entityName: 'ChatMessage' }).catch(() => null);
+      await refetchTeamsHistory();
+    }
     await queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
+  };
+
+  const saveTeamsChannel = async () => {
+    if (!teamsLink.trim() || !user?.id) return;
+    try {
+      setTeamsSaving(true);
+      const saved = await saveTeamsSyncConfig({ channelUrl: teamsLink.trim(), channelName: 'Pathfinder Team Chat', updatedBy: user?.email || user?.id || '', configKey: 'team_chat' });
+      setTeamsConfig(saved);
+      setTeamsSyncError('');
+      await refetchTeamsHistory();
+    } catch (error) {
+      setTeamsSyncError(error?.message || 'Unable to connect Team Chat to Microsoft Teams.');
+    } finally {
+      setTeamsSaving(false);
+    }
   };
 
   return (
@@ -209,20 +240,27 @@ export default function TeamChat() {
                 Team Chat
                 <Users className="w-4 h-4 text-slate-500 ml-auto" />
                 <span className="text-sm font-normal text-slate-600">
-                  {messages?.length || 0} messages
+                  {displayedMessages?.length || 0} messages
                 </span>
               </CardTitle>
             </div>
           </CardHeader>
 
-          {teamsConfig?.enabled && (
-            <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams sync active · Pathfinder Team Chat ↔ General Chat</div>
+          {user?.role === 'admin' && !teamsConfig?.enabled && (
+            <div className="border-b bg-blue-50 p-4">
+              <div className="text-xs font-black uppercase tracking-wider text-blue-800">Connect Team Chat to its own Microsoft Teams channel</div>
+              <p className="mt-1 text-xs text-slate-600">Team Chat is separate from Officer General Chat and Supervisor Chat. Paste the dedicated Team Chat channel link once.</p>
+              <div className="mt-3 flex gap-2"><input value={teamsLink} onChange={e => setTeamsLink(e.target.value)} placeholder="Paste Team Chat channel link" className="min-w-0 flex-1 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs outline-none focus:border-blue-500"/><Button type="button" onClick={saveTeamsChannel} disabled={teamsSaving || !teamsLink.trim()}>{teamsSaving ? 'Connecting…' : 'Connect'}</Button></div>
+            </div>
           )}
-          {teamsSyncError && <div className="border-b border-red-300 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">Microsoft Teams sync error: {teamsSyncError}</div>}
+          {teamsConfig?.enabled && (
+            <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams live history · Pathfinder Team Chat ↔ dedicated Team Chat channel</div>
+          )}
+          {(teamsSyncError || liveTeamsError) && <div className="border-b border-red-300 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">Microsoft Teams sync error: {teamsSyncError || liveTeamsError?.message}</div>}
 
           <ScrollArea className="flex-1 p-6" ref={scrollRef}>
             <div className="space-y-4">
-              {reversedMessages?.map((msg) => {
+              {displayedMessages?.map((msg) => {
                 const senderEmail = getMessageEmail(msg);
                 const isOwnMessage = senderEmail.toLowerCase() === String(user?.email || '').toLowerCase() || (!msg.sender_email && msg.sender_name === senderName);
                 const showName = true;
@@ -279,7 +317,7 @@ export default function TeamChat() {
                   </div>
                 );
               })}
-              {!messages?.length && (
+              {!displayedMessages?.length && (
                 <div className="text-center py-12">
                   <MessageCircle className="w-16 h-16 mx-auto mb-4 text-slate-300" />
                   <p className="text-slate-500 text-lg font-medium mb-2">No messages yet</p>
