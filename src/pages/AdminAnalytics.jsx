@@ -464,7 +464,7 @@ export default function AdminAnalytics() {
               <BarChart3 className="h-5 w-5 text-cyan-400" />
               Officer Overall Performance — Current Month
             </CardTitle>
-            <p className="text-xs text-slate-400">Uses the same scoring engine as Officer My Performance. Metrics without scoreable records are omitted from the grade.</p>
+            <p className="text-xs text-slate-400">Uses the same scoring engine as Officer My Performance. Training, Bid Standing, Client Feedback, Supervisor Rating, and Recognition are neutral/full credit when no scoreable record exists.</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
