@@ -210,7 +210,7 @@ export async function syncAllTeamsDirectChats(userId, currentPathfinderUserId) {
   const [me, identities, chatsPayload] = await Promise.all([
     graphRequest(userId, '/me?$select=id,displayName,mail,userPrincipalName'),
     base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []),
-    graphRequest(userId, '/me/chats?$top=50&$expand=members,lastMessagePreview'),
+    graphRequest(userId, '/me/chats?$top=50'),
   ]);
   const identityByMicrosoftId = new Map((identities || []).filter(item => item.microsoft_user_id).map(item => [String(item.microsoft_user_id), item]));
   const meMicrosoftId = String(me?.id || '');
@@ -219,7 +219,13 @@ export async function syncAllTeamsDirectChats(userId, currentPathfinderUserId) {
 
   for (const chat of chatsPayload?.value || []) {
     if (!chat?.id || !['oneOnOne', 'group'].includes(chat.chatType)) continue;
-    const members = (chat.members || []).filter(member => member?.userId || member?.user?.id || member?.id);
+    let members = [];
+    try {
+      const membersPayload = await graphRequest(userId, `/chats/${encodeURIComponent(chat.id)}/members?$top=100`);
+      members = (membersPayload?.value || []).filter(member => member?.userId || member?.user?.id || member?.id);
+    } catch (error) {
+      console.warn('[Teams] Unable to read members for chat', chat.id, error?.message);
+    }
     if (!members.length) continue;
     chats += 1;
     const otherMembers = members.filter(member => String(member?.userId || member?.user?.id || member?.id || '') !== meMicrosoftId);
