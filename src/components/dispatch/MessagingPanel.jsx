@@ -8,6 +8,7 @@ import { MessageSquare, Send, X, Megaphone, Radio } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MentionInput from '@/components/chat/MentionInput';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { getTeamsSyncConfig, sendTeamChannelMessage } from '@/lib/teamsGraph';
 
 const roleSet = (user) => new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(r => String(r).toLowerCase()));
 const isDispatchUser = (user) => user?.role === 'admin' || user?.role === 'dispatch' || user?.dispatch_role === true || roleSet(user).has('full_access');
@@ -82,6 +83,25 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
           sends.push(base44.entities.SupervisorChatMessage.create(chatPayload).then(record => ({ record, page: 'SupervisorChat', chatType: 'supervisor' })));
         }
         const createdChats = await Promise.all(sends);
+
+        for (const createdChat of createdChats) {
+          try {
+            const configKey = createdChat.chatType === 'supervisor' ? 'supervisor_chat' : 'officer_chat';
+            const target = await getTeamsSyncConfig(configKey);
+            const teamsMessage = await sendTeamChannelMessage(currentUser.id, `<strong>${senderName}</strong>: ${text}`, target, configKey);
+            if (!teamsMessage?.id) throw new Error('Microsoft Teams did not return a message ID.');
+            const entity = createdChat.chatType === 'supervisor' ? base44.entities.SupervisorChatMessage : base44.entities.ChatMessage;
+            await entity.update(createdChat.record.id, {
+              teams_message_id: teamsMessage.id,
+              teams_team_id: target.team_id,
+              teams_channel_id: target.channel_id,
+              teams_synced_at: new Date().toISOString(),
+            }).catch(() => null);
+          } catch (teamsError) {
+            toast.error(`Teams delivery failed: ${teamsError?.message || 'Unknown Microsoft error'}`, { duration: 12000 });
+          }
+        }
+
         const mentionChat = createdChats.find(item => item.page === (recipient === 'supervisor_chat' ? 'SupervisorChat' : 'TeamChat')) || createdChats[0];
         if (mentionChat) {
           await Promise.all(mentionedUsers.map(mention => base44.entities.ChatMention.create({
