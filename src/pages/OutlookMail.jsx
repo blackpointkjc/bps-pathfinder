@@ -351,7 +351,7 @@ export default function OutlookMail() {
             {sharedMailboxes.map(mailbox => (
               <button key={mailbox.id} type="button" onClick={() => switchMailbox(mailbox)} className={`group mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs ${activeMailbox?.id === mailbox.id ? 'bg-[#163a5a] text-white' : 'text-slate-300 hover:bg-[#0d2236]'}`}>
                 <Building2 className="h-4 w-4 shrink-0" />
-                <span className="min-w-0 flex-1"><span className="block truncate font-bold">{mailbox.display_name || 'Shared Mailbox'}</span><span className="block truncate text-[10px] text-slate-500">{mailbox.mailbox_email}</span></span>
+                <span className="min-w-0 flex-1"><span className="block truncate font-bold">{mailbox.display_name || 'Shared Mailbox'}</span><span className="block truncate text-[10px] text-slate-500">{mailbox.mailbox_email}</span>{mailbox.connection_status === 'needs_attention' && <span className="mt-0.5 block text-[9px] font-bold text-amber-400">Needs Microsoft access verification</span>}</span>
                 <span role="button" tabIndex={0} onClick={event => renameMailbox(event, mailbox)} className="rounded p-1 text-slate-600 opacity-0 hover:bg-blue-950/50 hover:text-blue-300 group-hover:opacity-100" aria-label={`Rename ${mailbox.mailbox_email}`} title="Rename mailbox"><PenLine className="h-3.5 w-3.5" /></span>
                 <span role="button" tabIndex={0} onClick={event => unlinkSharedMailbox(event, mailbox)} className="rounded p-1 text-slate-600 opacity-0 hover:bg-red-950/50 hover:text-red-300 group-hover:opacity-100" aria-label={`Remove ${mailbox.mailbox_email}`} title="Remove mailbox"><X className="h-3.5 w-3.5" /></span>
               </button>
