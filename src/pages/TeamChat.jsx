@@ -39,7 +39,7 @@ export default function TeamChat() {
     queryKey: ['teamTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'team_chat'),
     enabled: !!user?.id && !!teamsConfig?.enabled,
-    refetchInterval: 60000,
+    refetchInterval: 120000,
     refetchOnWindowFocus: true,
     staleTime: 15000,
   });
