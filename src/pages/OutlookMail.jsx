@@ -150,7 +150,11 @@ export default function OutlookMail() {
       setComposeOpen(false);
       if (String(folderName).toLowerCase().includes('sent')) loadMailbox(folderId);
     } catch (error) {
-      toast.error(error?.message || 'Unable to send email.');
+      const raw = error?.message || 'Unable to send email.';
+      const guidance = activeMailboxEmail && (error?.status === 403 || /SendAs|send on behalf|denied/i.test(raw))
+        ? ' Confirm this user has Send As or Send on Behalf permission for the selected shared mailbox in Microsoft 365.'
+        : '';
+      toast.error(`${raw}${guidance}`, { duration: 12000 });
     } finally {
       setSending(false);
     }
@@ -239,10 +243,11 @@ export default function OutlookMail() {
       toast.success(`Shared mailbox added: ${verified.email}`);
       await switchMailbox(saved);
     } catch (error) {
-      const message = error?.status === 403
-        ? 'Microsoft denied access to that shared mailbox. Confirm the user has Full Access and Send As/Send on Behalf permission, and that Pathfinder has the shared-mail delegated Graph permissions.'
-        : (error?.message || 'Unable to add the shared mailbox.');
-      toast.error(message);
+      const raw = error?.message || 'Unable to add the shared mailbox.';
+      const guidance = error?.status === 403
+        ? ' Confirm this signed-in Microsoft user has access to the shared mailbox in Exchange and reconnect Microsoft 365 if the shared permissions were added after the user originally connected.'
+        : '';
+      toast.error(`${raw}${guidance}`, { duration: 12000 });
     } finally {
       setAddingShared(false);
     }
