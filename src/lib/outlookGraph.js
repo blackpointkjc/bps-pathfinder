@@ -42,57 +42,25 @@ function oauthStateKey(userId) {
   return `bps:outlook-oauth:${String(userId || '').trim()}`;
 }
 
-let microsoftConfigCache = null;
-let microsoftConfigPromise = null;
+const BUILT_IN_MICROSOFT_CONFIG = Object.freeze({
+  id: 'pathfinder-built-in',
+  clientId: PATHFINDER_MICROSOFT_CLIENT_ID,
+  tenant: PATHFINDER_MICROSOFT_TENANT_ID,
+  enabled: true,
+  managed: true,
+});
 
-export async function getMicrosoftMailConfig({ force = false } = {}) {
-  if (!force && microsoftConfigCache) return microsoftConfigCache;
-  if (!force && microsoftConfigPromise) return microsoftConfigPromise;
-
-  microsoftConfigPromise = (async () => {
-    const envClientId = String(import.meta.env.VITE_MICROSOFT_CLIENT_ID || PATHFINDER_MICROSOFT_CLIENT_ID).trim();
-    const envTenant = String(import.meta.env.VITE_MICROSOFT_TENANT || PATHFINDER_MICROSOFT_TENANT_ID).trim();
-    try {
-      const rows = await base44.entities.MicrosoftMailConfig.filter({ config_key: 'outlook' }, '-updated_at', 1);
-      const row = rows?.[0] || null;
-      const config = {
-        id: row?.id || null,
-        clientId: String(row?.client_id || envClientId || '').trim(),
-        tenant: String(row?.tenant || envTenant || 'common').trim() || 'common',
-        enabled: row ? row.enabled !== false : true,
-      };
-      microsoftConfigCache = config;
-      return config;
-    } catch (error) {
-      const fallback = { id: null, clientId: envClientId, tenant: envTenant || 'common', enabled: true, error };
-      microsoftConfigCache = fallback;
-      return fallback;
-    } finally {
-      microsoftConfigPromise = null;
-    }
-  })();
-
-  return microsoftConfigPromise;
+export async function getMicrosoftMailConfig() {
+  // Pathfinder is a single-tenant internal application. The Entra application
+  // identifiers are public identifiers (not secrets), so keep them in the app
+  // configuration and avoid a Base44 entity read on every login/notification poll.
+  return BUILT_IN_MICROSOFT_CONFIG;
 }
 
-export async function saveMicrosoftMailConfig({ clientId, tenant = 'common', updatedBy = '' }) {
-  const cleanClientId = String(clientId || '').trim();
-  const cleanTenant = String(tenant || 'common').trim() || 'common';
-  if (!cleanClientId) throw new Error('Enter the Microsoft Application (client) ID.');
-  const existing = await base44.entities.MicrosoftMailConfig.filter({ config_key: 'outlook' }, '-updated_at', 1);
-  const payload = {
-    config_key: 'outlook',
-    client_id: cleanClientId,
-    tenant: cleanTenant,
-    enabled: true,
-    updated_by: String(updatedBy || ''),
-    updated_at: new Date().toISOString(),
-  };
-  if (existing?.[0]?.id) await base44.entities.MicrosoftMailConfig.update(existing[0].id, payload);
-  else await base44.entities.MicrosoftMailConfig.create(payload);
-  microsoftConfigCache = { id: existing?.[0]?.id || null, clientId: cleanClientId, tenant: cleanTenant, enabled: true };
-  window.dispatchEvent(new CustomEvent('bps:microsoft-mail-config-changed'));
-  return microsoftConfigCache;
+export async function saveMicrosoftMailConfig() {
+  // Retained for compatibility with older UI code. Configuration is now managed
+  // centrally and is intentionally not editable by end users.
+  return BUILT_IN_MICROSOFT_CONFIG;
 }
 
 export function getOutlookRedirectUri() {
