@@ -155,6 +155,7 @@ export default function OutlookMail() {
       if (!message.isRead) {
         await setOutlookMessageRead(user.id, message.id, true, activeMailboxEmail);
         setMessages(current => current.map(item => item.id === message.id ? { ...item, isRead: true } : item));
+        window.dispatchEvent(new CustomEvent('bps-outlook-refresh')); 
       }
       if (message.hasAttachments) {
         const rows = await getOutlookAttachments(user.id, message.id, activeMailboxEmail);
@@ -231,6 +232,7 @@ export default function OutlookMail() {
     try {
       await deleteOutlookMessage(user.id, selected.id, activeMailboxEmail);
       setMessages(current => current.filter(item => item.id !== selected.id));
+      window.dispatchEvent(new CustomEvent('bps-outlook-refresh'));
       setSelected(null);
       setAttachments([]);
       toast.success('Email moved to Deleted Items.');
@@ -246,6 +248,7 @@ export default function OutlookMail() {
       await setOutlookMessageRead(user.id, selected.id, next, activeMailboxEmail);
       setSelected(current => ({ ...current, isRead: next }));
       setMessages(current => current.map(item => item.id === selected.id ? { ...item, isRead: next } : item));
+      window.dispatchEvent(new CustomEvent('bps-outlook-refresh'));
     } catch (error) {
       toast.error(error?.message || 'Unable to update email.');
     }
