@@ -12,7 +12,7 @@ export default function OutlookNotificationMonitor({ user }) {
 
     const poll = async () => {
       try {
-        const status = await getOutlookConnectionStatus(user.id);
+        const status = await getOutlookConnectionStatus(user.id, user?.email || '');
         if (!status.connected || cancelled) return;
         const unread = await getLatestUnreadMail(user.id);
         if (cancelled) return;
