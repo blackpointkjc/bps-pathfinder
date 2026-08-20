@@ -8,7 +8,8 @@ import { MessageCircle, Send, Users, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
-import { getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage, syncTeamsChannelToPathfinder } from "@/lib/teamsGraph";
+import { getTeamsSyncConfig, sendTeamChannelMessage, syncTeamsChannelToPathfinder } from "@/lib/teamsGraph";
+import { toast } from 'sonner';
 
 export default function TeamChat() {
   const [message, setMessage] = useState("");
@@ -45,7 +46,7 @@ export default function TeamChat() {
     let cancelled = false;
     const sync = async () => {
       try {
-        const config = await getTeamsSyncConfig();
+        const config = await getTeamsSyncConfig('officer_chat');
         if (cancelled) return;
         setTeamsConfig(config);
         if (config?.channel_url && !teamsLink) setTeamsLink(config.channel_url);
@@ -75,9 +76,9 @@ export default function TeamChat() {
     mutationFn: async ({ data, mentions }) => {
       const created = await base44.entities.ChatMessage.create({ ...data, message_source: 'pathfinder' });
       try {
-        const target = teamsConfig || await getTeamsSyncConfig();
+        const target = teamsConfig || await getTeamsSyncConfig('officer_chat');
         if (target?.enabled) {
-          const teamsMessage = await sendTeamChannelMessage(user?.id, `<strong>${data.sender_name}</strong>: ${data.message}`, target);
+          const teamsMessage = await sendTeamChannelMessage(user?.id, `<strong>${data.sender_name}</strong>: ${data.message}`, target, 'officer_chat');
           if (teamsMessage?.id) {
             await base44.entities.ChatMessage.update(created.id, {
               teams_message_id: teamsMessage.id,
@@ -89,6 +90,7 @@ export default function TeamChat() {
         }
       } catch (error) {
         console.warn('[Teams] Unable to mirror Pathfinder message:', error?.message);
+        toast.error(`Teams delivery failed: ${error?.message || 'Unknown Microsoft error'}`, { duration: 12000 });
       }
       await Promise.all(mentions.map(mention => base44.entities.ChatMention.create({
         message_id: created.id,
@@ -192,19 +194,6 @@ export default function TeamChat() {
   const handleRefresh = async () => {
     if (user?.id && teamsConfig?.enabled) await syncTeamsChannelToPathfinder(user.id, teamsConfig).catch(() => null);
     await queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
-  };
-
-  const saveTeamsChannel = async () => {
-    if (!teamsLink.trim()) return;
-    try {
-      setTeamsSaving(true);
-      const saved = await saveTeamsSyncConfig({ channelUrl: teamsLink.trim(), channelName: 'Pathfinder Team Chat', updatedBy: user?.email || user?.id || '' });
-      setTeamsConfig(saved);
-      await syncTeamsChannelToPathfinder(user.id, saved).catch(() => null);
-      await queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
-    } finally {
-      setTeamsSaving(false);
-    }
   };
 
   return (
