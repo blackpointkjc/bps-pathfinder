@@ -8,7 +8,8 @@ import { MessageCircle, Send, Users, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
-import { getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage, syncTeamsChannelToEntity } from "@/lib/teamsGraph";
+import { getTeamsChannelMessages, getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage, syncTeamsChannelToEntity } from "@/lib/teamsGraph";
+import { toast } from 'sonner';
 
 export default function OfficerChat() {
   const [message, setMessage] = useState("");
@@ -31,6 +32,15 @@ export default function OfficerChat() {
   const { data: messages } = useQuery({
     queryKey: ['officerChatMessages'],
     queryFn: () => base44.entities.OfficerChatMessage.list('-created_date', 100),
+  });
+
+  const { data: liveTeamsMessages = [], error: liveTeamsError, refetch: refetchTeamsHistory } = useQuery({
+    queryKey: ['officerTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
+    queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'officer_chat'),
+    enabled: !!user?.id && !!teamsConfig?.enabled,
+    refetchInterval: 60000,
+    refetchOnWindowFocus: true,
+    staleTime: 15000,
   });
 
   useEffect(() => {
@@ -73,23 +83,22 @@ export default function OfficerChat() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ data, mentions }) => {
-      const created = await base44.entities.OfficerChatMessage.create({ ...data, message_source: 'pathfinder' });
-      try {
-        const target = teamsConfig || await getTeamsSyncConfig('officer_chat');
-        if (target?.enabled) {
-          const teamsMessage = await sendTeamChannelMessage(user?.id, `<strong>${data.sender_name}</strong>: ${data.message}`, target, 'officer_chat');
-          if (teamsMessage?.id) {
-            await base44.entities.OfficerChatMessage.update(created.id, {
-              teams_message_id: teamsMessage.id,
-              teams_team_id: target.team_id,
-              teams_channel_id: target.channel_id,
-              teams_synced_at: new Date().toISOString(),
-            }).catch(() => null);
-          }
-        }
-      } catch (error) {
-        console.warn('[Teams] Unable to mirror Pathfinder message:', error?.message);
-      }
+      const target = teamsConfig || await getTeamsSyncConfig('officer_chat');
+      if (!target?.enabled) throw new Error('Microsoft Teams Officer General Chat is not configured.');
+      // Teams is the source of truth. Do not create a Pathfinder-only message first.
+      const teamsMessage = await sendTeamChannelMessage(user?.id, `<strong>${data.sender_name}</strong>: ${data.message}`, target, 'officer_chat');
+      if (!teamsMessage?.id) throw new Error('Microsoft Teams did not confirm Officer Chat delivery.');
+      const created = await base44.entities.OfficerChatMessage.create({
+        ...data,
+        message_source: 'teams',
+        teams_message_id: teamsMessage.id,
+        teams_team_id: target.team_id,
+        teams_channel_id: target.channel_id,
+        teams_sender_id: teamsMessage?.from?.user?.id || '',
+        teams_sender_name: teamsMessage?.from?.user?.displayName || data.sender_name,
+        teams_created_at: teamsMessage?.createdDateTime || new Date().toISOString(),
+        teams_synced_at: new Date().toISOString(),
+      });
       await Promise.all(mentions.map(mention => base44.entities.ChatMention.create({
         message_id: created.id,
         chat_type: 'officer',
@@ -102,11 +111,13 @@ export default function OfficerChat() {
       })));
       return created;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['officerChatMessages'] });
+      await refetchTeamsHistory();
       setMessage("");
       setMentionedUsers([]);
     },
+    onError: error => toast.error(`Officer Teams delivery failed: ${error?.message || 'Unknown Microsoft error'}`, { duration: 12000 }),
   });
 
   const handleSendMessage = (e) => {
@@ -181,13 +192,13 @@ export default function OfficerChat() {
     return unsubscribe;
   }, [user?.email]);
 
+  const displayedMessages = teamsConfig?.enabled ? liveTeamsMessages : [...(messages || [])].reverse();
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
-
-  const reversedMessages = [...(messages || [])].reverse();
+  }, [displayedMessages]);
 
   const handleRefresh = async () => {
     if (user?.id && teamsConfig?.enabled) await syncTeamsChannelToEntity(user.id, { config: teamsConfig, configKey: 'officer_chat', entityName: 'OfficerChatMessage' }).catch(() => null);
@@ -219,7 +230,7 @@ export default function OfficerChat() {
                 Officer Chat
                 <Users className="w-4 h-4 text-slate-500 ml-auto" />
                 <span className="text-sm font-normal text-slate-600">
-                  {messages?.length || 0} messages
+                  {displayedMessages?.length || 0} messages
                 </span>
               </CardTitle>
             </div>
@@ -237,12 +248,13 @@ export default function OfficerChat() {
           )}
 
           {teamsConfig?.enabled && (
-            <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams sync active · Pathfinder Officer Chat ↔ Teams</div>
+            <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams live history · Pathfinder Officer Chat ↔ General Chat</div>
           )}
+          {liveTeamsError && <div className="border-b border-red-300 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">Microsoft Teams sync error: {liveTeamsError.message}</div>}
 
           <ScrollArea className="flex-1 p-6" ref={scrollRef}>
             <div className="space-y-4">
-              {reversedMessages?.map((msg) => {
+              {displayedMessages?.map((msg) => {
                 const senderEmail = getMessageEmail(msg);
                 const isOwnMessage = senderEmail.toLowerCase() === String(user?.email || '').toLowerCase() || (!msg.sender_email && msg.sender_name === senderName);
                 const showName = true;
@@ -299,7 +311,7 @@ export default function OfficerChat() {
                   </div>
                 );
               })}
-              {!messages?.length && (
+              {!displayedMessages?.length && (
                 <div className="text-center py-12">
                   <MessageCircle className="w-16 h-16 mx-auto mb-4 text-slate-300" />
                   <p className="text-slate-500 text-lg font-medium mb-2">No messages yet</p>
