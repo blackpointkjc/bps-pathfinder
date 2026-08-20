@@ -193,7 +193,7 @@ export async function handleOutlookOAuthCallback(userId) {
     scope: DEFAULT_SCOPES.join(' '),
   });
 
-  const response = await fetch(`${MICROSOFT_AUTH_ROOT}/${encodeURIComponent(getMicrosoftTenant())}/oauth2/v2.0/token`, {
+  const response = await fetch(`${MICROSOFT_AUTH_ROOT}/${encodeURIComponent(config.tenant || 'common')}/oauth2/v2.0/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body,
@@ -219,7 +219,7 @@ async function refreshOutlookToken(userId, existing) {
     refresh_token: existing.refresh_token,
     scope: DEFAULT_SCOPES.join(' '),
   });
-  const response = await fetch(`${MICROSOFT_AUTH_ROOT}/${encodeURIComponent(getMicrosoftTenant())}/oauth2/v2.0/token`, {
+  const response = await fetch(`${MICROSOFT_AUTH_ROOT}/${encodeURIComponent(config.tenant || 'common')}/oauth2/v2.0/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body,
