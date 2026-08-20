@@ -159,47 +159,46 @@ export default function UniversalInbox({ currentUser, users = [] }) {
     if (!body || !selected) return;
     const participantIds = [...new Set(selected.participants || [])];
     const recipients = participantIds.filter(id => id !== currentUser.id && id !== 'dispatch');
-    const messageId = crypto.randomUUID();
+    if (!recipients.length) {
+      toast.error('This Teams conversation has no valid Microsoft recipient.');
+      return;
+    }
     const senderName = nameOf(currentUser);
     const participantNames = participantIds.map(id => id === 'dispatch' ? 'Dispatch' : nameOf(userMap.get(String(id))));
-    const createdRecords = await Promise.all(participantIds.filter(id => id !== currentUser.id).map(recipientId => base44.entities.Message.create({
-      sender_id: currentUser.id,
-      sender_name: senderName,
-      recipient_id: recipientId,
-      recipient_name: recipientId === 'dispatch' ? 'Dispatch' : nameOf(userMap.get(String(recipientId))),
-      message: body,
-      read: false,
-      message_type: 'dispatch_message',
-      thread_id: selected.key,
-      client_message_id: messageId,
-      participant_ids: participantIds,
-      participant_names: participantNames,
-    })));
+    try {
+      const existingChatId = selected.messages.find(item => item.teams_chat_id)?.teams_chat_id || (selected.key.startsWith('teams:') ? selected.key.slice(6) : '');
+      const teamsResult = await sendTeamsDirectMessage(currentUser.id, {
+        participantIds,
+        participantDirectory: users,
+        text: body,
+        existingChatId,
+      });
+      if (!teamsResult?.chatId || !teamsResult?.messageId) throw new Error('Microsoft Teams did not confirm message delivery.');
 
-    if (recipients.length) {
-      try {
-        const existingChatId = selected.messages.find(item => item.teams_chat_id)?.teams_chat_id || '';
-        const teamsResult = await sendTeamsDirectMessage(currentUser.id, {
-          participantIds,
-          participantDirectory: users,
-          text: body,
-          existingChatId,
-        });
-        await Promise.all(createdRecords.map(record => base44.entities.Message.update(record.id, {
-          teams_chat_id: teamsResult.chatId,
-          teams_message_id: teamsResult.messageId,
-          teams_synced_at: new Date().toISOString(),
-          teams_sync_error: '',
-        }).catch(() => null)));
-      } catch (error) {
-        await Promise.all(createdRecords.map(record => base44.entities.Message.update(record.id, {
-          teams_sync_error: error?.message || 'Microsoft Teams delivery failed',
-        }).catch(() => null)));
-        toast.error(`Teams direct message failed: ${error?.message || 'Unknown Microsoft error'}`, { duration: 12000 });
-      }
+      const messageId = crypto.randomUUID();
+      await Promise.all(recipients.map(recipientId => base44.entities.Message.create({
+        sender_id: currentUser.id,
+        sender_name: senderName,
+        recipient_id: recipientId,
+        recipient_name: nameOf(userMap.get(String(recipientId))),
+        message: body,
+        read: true,
+        message_type: 'dispatch_message',
+        thread_id: `teams:${teamsResult.chatId}`,
+        client_message_id: messageId,
+        participant_ids: participantIds,
+        participant_names: participantNames,
+        teams_chat_id: teamsResult.chatId,
+        teams_message_id: teamsResult.messageId,
+        teams_synced_at: new Date().toISOString(),
+        teams_sync_error: '',
+      })));
+      setSelectedKey(`teams:${teamsResult.chatId}`);
+      setText('');
+      await load();
+    } catch (error) {
+      toast.error(`Teams direct message failed: ${error?.message || 'Unknown Microsoft error'}`, { duration: 12000 });
     }
-    setText('');
-    await load();
   };
 
   const createThread = async () => {
