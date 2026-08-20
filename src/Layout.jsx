@@ -800,7 +800,7 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     const onUnread = event => {
       const page = event.detail?.page;
-      if (!page || page === currentPageName) return;
+      if (!page || (page === currentPageName && !event.detail?.absolute)) return;
       setUnreadCounts(current => {
         const nextValue = event.detail?.absolute ? Math.max(0, Number(event.detail?.count) || 0) : (Number(current[page]) || 0) + Math.max(1, Number(event.detail?.count) || 1);
         const next = { ...current, [page]: nextValue };
@@ -872,7 +872,7 @@ export default function Layout({ children, currentPageName }) {
       mainScrollRef.current?.scrollTo({ top: savedPosition, behavior: 'auto' });
     });
     setUnreadCounts(current => {
-      if (!current[currentPageName]) return current;
+      if (currentPageName === 'OutlookMail' || !current[currentPageName]) return current;
       const next = { ...current, [currentPageName]: 0 };
       localStorage.setItem(unreadStorageKey, JSON.stringify(next));
       return next;
