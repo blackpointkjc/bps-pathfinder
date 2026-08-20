@@ -16,6 +16,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   const [selectedPeople, setSelectedPeople] = useState([]);
   const [hiddenPreferences, setHiddenPreferences] = useState([]);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
+  const [teamsSyncError, setTeamsSyncError] = useState('');
 
   const userMap = useMemo(() => new Map(users.map(user => [String(user.id), user])), [users]);
   const activeUsers = useMemo(() => users.filter(user => !user.termination_date && user.id !== currentUser.id && user.email !== currentUser.email), [users, currentUser.id, currentUser.email]);
@@ -52,10 +53,12 @@ export default function UniversalInbox({ currentUser, users = [] }) {
     const refresh = async () => {
       try {
         const result = await syncAllTeamsDirectChats(currentUser.id, currentUser.id);
+        if (!cancelled) setTeamsSyncError('');
         if (!cancelled && result?.imported) await load();
         else if (!cancelled) await load();
       } catch (error) {
         console.warn('[Teams] Unable to discover direct-message history:', error?.message);
+        if (!cancelled) setTeamsSyncError(error?.message || 'Microsoft Teams history could not be loaded.');
         if (!cancelled) await load();
       }
     };
@@ -274,6 +277,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
           <div className="flex items-center justify-between"><h1 className="text-xl font-black">Messages</h1><button onClick={() => setNewThread(true)} className="rounded-full bg-blue-600 p-2 hover:bg-blue-500"><Plus className="h-4 w-4" /></button></div>
           <div className="mt-3 flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2"><Search className="h-4 w-4 text-slate-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search conversations" className="w-full bg-transparent text-sm outline-none" /></div>
         </div>
+        {teamsSyncError && <div className="border-b border-red-800 bg-red-950/50 p-3 text-xs font-bold text-red-200">Microsoft Teams sync error: {teamsSyncError}</div>}
         <div className="flex-1 overflow-y-auto">
           {visibleThreads.map(thread => <button key={thread.key} onClick={() => setSelectedKey(thread.key)} className={`flex w-full min-w-0 items-center gap-3 border-b border-slate-800 p-3 sm:p-4 text-left hover:bg-slate-800 ${selectedKey === thread.key ? 'bg-slate-800' : ''}`}>
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600/30"><MessageCircle className="h-5 w-5 text-blue-300" /></div>
