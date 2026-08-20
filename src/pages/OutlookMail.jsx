@@ -71,11 +71,11 @@ export default function OutlookMail() {
       append ? setLoadingMore(true) : setLoading(true);
       const [status, folderRows, result] = await Promise.all([
         getOutlookConnectionStatus(user.id, user?.email || ''),
-        folders.length ? Promise.resolve(folders) : listOutlookFolders(user.id, mailboxEmail),
+        listOutlookFolders(user.id, mailboxEmail),
         listOutlookMessages(user.id, targetFolder, link, mailboxEmail),
       ]);
       setConnection(status);
-      if (!folders.length) setFolders(folderRows);
+      setFolders(folderRows);
       setMessages(current => append ? [...current, ...(result.messages || [])] : (result.messages || []));
       setNextLink(result.nextLink || null);
     } catch (error) {
