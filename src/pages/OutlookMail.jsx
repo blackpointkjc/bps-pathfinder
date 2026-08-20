@@ -11,6 +11,7 @@ import {
   listOutlookMessages,
   listSavedSharedMailboxes,
   removeSharedMailbox,
+  renameSharedMailbox,
   replyOutlookMail,
   saveSharedMailbox,
   sendOutlookMail,
@@ -35,6 +36,30 @@ function formatDate(value) {
 
 function senderOf(message) {
   return message?.from?.emailAddress?.name || message?.from?.emailAddress?.address || 'Unknown sender';
+}
+
+function safeEmailHtml(value) {
+  const html = String(value || '');
+  if (!html) return '';
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('script,style,iframe,object,embed,form,input,button,textarea,select').forEach(node => node.remove());
+    doc.querySelectorAll('*').forEach(node => {
+      [...node.attributes].forEach(attr => {
+        const name = attr.name.toLowerCase();
+        const val = String(attr.value || '').trim();
+        if (name.startsWith('on') || (['href','src','xlink:href'].includes(name) && /^javascript:/i.test(val))) node.removeAttribute(attr.name);
+      });
+    });
+    doc.querySelectorAll('a[href]').forEach(link => {
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener noreferrer');
+      link.style.textDecoration = 'underline';
+    });
+    return doc.body.innerHTML;
+  } catch {
+    return html.replace(/<script[\s\S]*?<\/script>/gi, '');
+  }
 }
 
 export default function OutlookMail() {
@@ -253,6 +278,20 @@ export default function OutlookMail() {
     }
   };
 
+  const renameMailbox = async (event, mailbox) => {
+    event.stopPropagation();
+    const nextName = window.prompt('Shared mailbox display name', mailbox.display_name || mailbox.mailbox_email || '');
+    if (nextName == null) return;
+    try {
+      const updated = await renameSharedMailbox(mailbox.id, nextName);
+      setSharedMailboxes(current => current.map(item => item.id === mailbox.id ? { ...item, display_name: updated.display_name } : item));
+      setActiveMailbox(current => current?.id === mailbox.id ? { ...current, display_name: updated.display_name } : current);
+      toast.success('Shared mailbox name saved.');
+    } catch (error) {
+      toast.error(error?.message || 'Unable to rename shared mailbox.');
+    }
+  };
+
   const unlinkSharedMailbox = async (event, mailbox) => {
     event.stopPropagation();
     try {
@@ -301,7 +340,8 @@ export default function OutlookMail() {
               <button key={mailbox.id} type="button" onClick={() => switchMailbox(mailbox)} className={`group mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs ${activeMailbox?.id === mailbox.id ? 'bg-[#163a5a] text-white' : 'text-slate-300 hover:bg-[#0d2236]'}`}>
                 <Building2 className="h-4 w-4 shrink-0" />
                 <span className="min-w-0 flex-1"><span className="block truncate font-bold">{mailbox.display_name || 'Shared Mailbox'}</span><span className="block truncate text-[10px] text-slate-500">{mailbox.mailbox_email}</span></span>
-                <span role="button" tabIndex={0} onClick={event => unlinkSharedMailbox(event, mailbox)} className="rounded p-1 text-slate-600 opacity-0 hover:bg-red-950/50 hover:text-red-300 group-hover:opacity-100" aria-label={`Remove ${mailbox.mailbox_email}`}><X className="h-3.5 w-3.5" /></span>
+                <span role="button" tabIndex={0} onClick={event => renameMailbox(event, mailbox)} className="rounded p-1 text-slate-600 opacity-0 hover:bg-blue-950/50 hover:text-blue-300 group-hover:opacity-100" aria-label={`Rename ${mailbox.mailbox_email}`} title="Rename mailbox"><PenLine className="h-3.5 w-3.5" /></span>
+                <span role="button" tabIndex={0} onClick={event => unlinkSharedMailbox(event, mailbox)} className="rounded p-1 text-slate-600 opacity-0 hover:bg-red-950/50 hover:text-red-300 group-hover:opacity-100" aria-label={`Remove ${mailbox.mailbox_email}`} title="Remove mailbox"><X className="h-3.5 w-3.5" /></span>
               </button>
             ))}
             <div className="mt-2 border-t border-[#1d344b] pt-2">
@@ -370,7 +410,7 @@ export default function OutlookMail() {
                   <div className="mt-1 text-xs text-slate-500">{formatDate(selected.receivedDateTime || selected.sentDateTime)} ET</div>
                 </div>
                 {attachments.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{attachments.map(file => <span key={file.id || file.name} className="flex items-center gap-1 rounded-lg border border-[#29435d] bg-[#0c1b2a] px-3 py-2 text-xs text-slate-300"><Paperclip className="h-3.5 w-3.5" />{file.name}</span>)}</div>}
-                <div className="mt-5 whitespace-pre-wrap text-sm leading-7 text-slate-200">{stripHtml(selected?.body?.content || selected.bodyPreview)}</div>
+                <div className="mt-5 overflow-x-auto rounded-lg bg-white p-4 text-sm leading-6 text-slate-900 [&_a]:text-blue-700 [&_img]:max-w-full [&_p]:my-2 [&_li]:my-1" dangerouslySetInnerHTML={{ __html: safeEmailHtml(selected?.body?.content || selected.bodyPreview) }} />
                 <div className="mt-7 border-t border-[#1d344b] pt-5">
                   <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-400"><Reply className="h-4 w-4" /> Reply</div>
                   <textarea value={replyText} onChange={event => setReplyText(event.target.value)} rows={5} placeholder="Write a reply…" className="w-full rounded-xl border border-[#29435d] bg-[#081522] p-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500" />
