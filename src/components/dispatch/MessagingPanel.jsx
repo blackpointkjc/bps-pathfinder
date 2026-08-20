@@ -36,6 +36,9 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
     try {
       const all = await base44.entities.Message.list('-created_date', 300);
       const visible = all.filter(msg => {
+        // Legacy Pathfinder-only direct messages are intentionally hidden. Message
+        // records now act only as a confirmed Microsoft Teams delivery cache.
+        if (!msg.teams_message_id) return false;
         if (dispatchMode) {
           return msg.sender_id === 'dispatch' || msg.recipient_id === 'dispatch' || msg.recipient_id === 'company';
         }
@@ -156,7 +159,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
             <MessageSquare className="h-5 w-5 text-blue-400" />
             {inboxOnly ? 'My Inbox' : dispatchMode ? 'Dispatch Messaging' : 'Messages with Dispatch'}
           </h3>
-          <p className="mt-1 text-xs text-slate-400">{inboxOnly ? 'Private direct messages between Black Point users' : 'Two-way operational messaging and company broadcasts'}</p>
+          <p className="mt-1 text-xs text-slate-400">{inboxOnly ? 'Microsoft Teams direct messages' : 'Microsoft Teams operational messaging and channel broadcasts'}</p>
         </div>
         {!embedded && onClose && <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>}
       </div>
@@ -200,7 +203,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
               <>
                 <option value="officer_chat">Officer Chat — Teams General Chat</option>
                 <option value="supervisor_chat">Supervisor Chat — Supervisors Only</option>
-                <option value="company">Company Wide — Team + Supervisor Chats</option>
+                <option value="company">Company Wide — Officer + Supervisor Teams channels</option>
                 {officers.map(unit => <option key={unit.id} value={unit.id}>{`Direct — ${unit.rank || 'Officer'} ${unit.last_name || unit.full_name || unit.unit_number || ''}`.trim()}</option>)}
               </>
             )}
