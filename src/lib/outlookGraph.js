@@ -16,6 +16,8 @@ const DEFAULT_SCOPES = [
   'Mail.ReadWrite.Shared',
   'Mail.Send.Shared',
   'Chat.ReadWrite',
+  'Chat.Create',
+  'User.ReadBasic.All',
   'ChatMessage.Read',
   'ChatMessage.Send',
   'ChannelMessage.Read.All',
@@ -319,6 +321,7 @@ async function syncOutlookMailboxLink(userId, pathfinderEmail, profile) {
     disconnected_at: null,
   };
 
+  let durableLink;
   if (existing?.id) {
     if (changed || staleVerification) await base44.entities.OutlookMailboxLink.update(existing.id, payload);
     if (changed) {
@@ -326,9 +329,34 @@ async function syncOutlookMailboxLink(userId, pathfinderEmail, profile) {
         if (duplicate.connected !== false) await base44.entities.OutlookMailboxLink.update(duplicate.id, { connected: false, disconnected_at: now });
       }
     }
-    return { ...existing, ...payload };
+    durableLink = { ...existing, ...payload };
+  } else {
+    durableLink = await base44.entities.OutlookMailboxLink.create(payload);
   }
-  return base44.entities.OutlookMailboxLink.create(payload);
+
+  // Keep a credential-free directory mapping for Teams routing. This contains no
+  // access/refresh token and lets Pathfinder resolve a private-message recipient
+  // even when their Pathfinder login email differs from Microsoft 365.
+  try {
+    const identities = await base44.entities.MicrosoftTeamsIdentity.filter({ user_id: userId }, '-updated_at', 5);
+    const identityPayload = {
+      user_id: userId,
+      pathfinder_email: pathfinderNormalized,
+      microsoft_email: outlookEmail,
+      microsoft_user_id: microsoftUserId,
+      display_name: profileName,
+      active: true,
+      updated_at: now,
+    };
+    if (identities?.[0]?.id) {
+      await base44.entities.MicrosoftTeamsIdentity.update(identities[0].id, identityPayload);
+    } else {
+      await base44.entities.MicrosoftTeamsIdentity.create(identityPayload);
+    }
+  } catch (error) {
+    console.warn('[Teams] Unable to refresh Microsoft identity directory:', error?.message);
+  }
+  return durableLink;
 }
 
 export async function getOutlookConnectionStatus(userId, pathfinderEmail = '') {
