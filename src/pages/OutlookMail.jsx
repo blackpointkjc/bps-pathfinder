@@ -197,7 +197,7 @@ export default function OutlookMail() {
     }
   };
 
-  const disconnect = () => {
+  const disconnect = async () => {
     await disconnectOutlook(user.id);
     window.dispatchEvent(new CustomEvent('bps:outlook-connection-changed'));
   };
