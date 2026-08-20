@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { getLatestUnreadMail, getOutlookConnectionStatus } from '@/lib/outlookGraph';
+import { getLatestUnreadMail, getOutlookConnectionStatus, listSavedSharedMailboxes } from '@/lib/outlookGraph';
 
 export default function OutlookNotificationMonitor({ user }) {
   const initializedRef = useRef(false);
@@ -14,31 +14,47 @@ export default function OutlookNotificationMonitor({ user }) {
       try {
         const status = await getOutlookConnectionStatus(user.id, user?.email || '');
         if (!status.connected || cancelled) return;
-        const unread = await getLatestUnreadMail(user.id);
+        const shared = await listSavedSharedMailboxes(user.id).catch(() => []);
+        const mailboxTargets = [
+          { email: '', label: 'My Mailbox' },
+          ...(shared || []).map(item => ({ email: item.mailbox_email, label: item.display_name || item.mailbox_email })),
+        ];
+
+        const batches = await Promise.all(mailboxTargets.map(async target => {
+          try {
+            const rows = await getLatestUnreadMail(user.id, target.email);
+            return (rows || []).map(item => ({ ...item, _mailboxEmail: target.email, _mailboxLabel: target.label }));
+          } catch {
+            return [];
+          }
+        }));
         if (cancelled) return;
 
-        const ids = new Set((unread || []).map(item => item.id));
+        const unread = batches.flat();
+        const keyOf = item => `${item._mailboxEmail || 'me'}:${item.id}`;
+        const ids = new Set(unread.map(keyOf));
         if (!initializedRef.current) {
           seenRef.current = ids;
           initializedRef.current = true;
           return;
         }
 
-        const newItems = (unread || []).filter(item => !seenRef.current.has(item.id));
-        seenRef.current = new Set([...ids, ...seenRef.current].slice ? [...ids, ...seenRef.current].slice(0, 250) : [...ids, ...seenRef.current]);
+        const newItems = unread.filter(item => !seenRef.current.has(keyOf(item)));
+        seenRef.current = new Set([...ids, ...seenRef.current].slice(0, 250));
 
         if (newItems.length > 0) {
-          const newest = newItems[0];
+          const newest = newItems.sort((a, b) => new Date(b.receivedDateTime || 0) - new Date(a.receivedDateTime || 0))[0];
           const sender = newest?.from?.emailAddress?.name || newest?.from?.emailAddress?.address || 'New sender';
-          toast.info(newItems.length === 1 ? `New Outlook email from ${sender}` : `${newItems.length} new Outlook emails`, {
-            description: newest?.subject || newest?.bodyPreview || 'Open Outlook Mail to view.',
+          const mailboxLabel = newest?._mailboxLabel || 'Outlook';
+          toast.info(newItems.length === 1 ? `New email in ${mailboxLabel}` : `${newItems.length} new Outlook emails`, {
+            description: `${sender}: ${newest?.subject || newest?.bodyPreview || 'Open Outlook Mail to view.'}`,
             duration: 9000,
           });
           try {
             window.dispatchEvent(new CustomEvent('bps-unread-notification', { detail: { page: 'OutlookMail', count: newItems.length } }));
           } catch {}
           if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(newItems.length === 1 ? 'New Outlook Email' : `${newItems.length} New Outlook Emails`, {
+            new Notification(newItems.length === 1 ? `New Email · ${mailboxLabel}` : `${newItems.length} New Outlook Emails`, {
               body: `${sender}: ${newest?.subject || 'No subject'}`,
             });
           }
