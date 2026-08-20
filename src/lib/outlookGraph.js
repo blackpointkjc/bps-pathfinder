@@ -13,6 +13,8 @@ const DEFAULT_SCOPES = [
   'User.Read',
   'Mail.ReadWrite',
   'Mail.Send',
+  'Mail.ReadWrite.Shared',
+  'Mail.Send.Shared',
 ];
 
 const encoder = new TextEncoder();
@@ -352,25 +354,73 @@ export async function getOutlookConnectionStatus(userId, pathfinderEmail = '') {
   }
 }
 
-export async function listOutlookFolders(userId) {
-  const payload = await graphRequest(userId, '/me/mailFolders?$top=50&$select=id,displayName,totalItemCount,unreadItemCount');
+function mailboxRoot(mailboxEmail = '') {
+  const clean = String(mailboxEmail || '').trim();
+  return clean ? `/users/${encodeURIComponent(clean)}` : '/me';
+}
+
+export async function listOutlookFolders(userId, mailboxEmail = '') {
+  const payload = await graphRequest(userId, `${mailboxRoot(mailboxEmail)}/mailFolders?$top=50&$select=id,displayName,totalItemCount,unreadItemCount`);
   return payload?.value || [];
 }
 
-export async function listOutlookMessages(userId, folderId = 'inbox', nextLink = null) {
+export async function listOutlookMessages(userId, folderId = 'inbox', nextLink = null, mailboxEmail = '') {
   const select = 'id,subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,bodyPreview,body,hasAttachments,conversationId';
-  const url = nextLink || `/me/mailFolders/${encodeURIComponent(folderId)}/messages?$top=35&$select=${encodeURIComponent(select)}&$orderby=receivedDateTime desc`;
+  const url = nextLink || `${mailboxRoot(mailboxEmail)}/mailFolders/${encodeURIComponent(folderId)}/messages?$top=35&$select=${encodeURIComponent(select)}&$orderby=receivedDateTime desc`;
   const payload = await graphRequest(userId, url);
   return { messages: payload?.value || [], nextLink: payload?.['@odata.nextLink'] || null };
 }
 
-export async function getOutlookMessage(userId, messageId) {
-  return graphRequest(userId, `/me/messages/${encodeURIComponent(messageId)}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,bodyPreview,body,hasAttachments,conversationId`);
+export async function getOutlookMessage(userId, messageId, mailboxEmail = '') {
+  return graphRequest(userId, `${mailboxRoot(mailboxEmail)}/messages/${encodeURIComponent(messageId)}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,isRead,bodyPreview,body,hasAttachments,conversationId`);
 }
 
-export async function getOutlookAttachments(userId, messageId) {
-  const payload = await graphRequest(userId, `/me/messages/${encodeURIComponent(messageId)}/attachments?$top=50`);
+export async function getOutlookAttachments(userId, messageId, mailboxEmail = '') {
+  const payload = await graphRequest(userId, `${mailboxRoot(mailboxEmail)}/messages/${encodeURIComponent(messageId)}/attachments?$top=50`);
   return payload?.value || [];
+}
+
+export async function verifySharedMailboxAccess(userId, mailboxEmail) {
+  const clean = String(mailboxEmail || '').trim().toLowerCase();
+  if (!clean || !clean.includes('@')) throw new Error('Enter a valid shared mailbox email address.');
+  const profile = await graphRequest(userId, `/users/${encodeURIComponent(clean)}?$select=id,displayName,mail,userPrincipalName`);
+  await graphRequest(userId, `/users/${encodeURIComponent(clean)}/mailFolders/inbox?$select=id,displayName,totalItemCount,unreadItemCount`);
+  return {
+    id: profile?.id || '',
+    displayName: profile?.displayName || clean,
+    email: profile?.mail || profile?.userPrincipalName || clean,
+  };
+}
+
+export async function listSavedSharedMailboxes(userId) {
+  if (!userId) return [];
+  return base44.entities.OutlookSharedMailbox.filter({ user_id: userId, active: true }, '-last_used_at', 50);
+}
+
+export async function saveSharedMailbox(userId, pathfinderEmail, mailbox) {
+  const email = String(mailbox?.email || '').trim().toLowerCase();
+  if (!userId || !email) throw new Error('Shared mailbox information is incomplete.');
+  const rows = await base44.entities.OutlookSharedMailbox.filter({ user_id: userId, mailbox_email: email }, '-verified_at', 1);
+  const payload = {
+    user_id: userId,
+    pathfinder_email: String(pathfinderEmail || '').trim().toLowerCase(),
+    mailbox_email: email,
+    display_name: mailbox?.displayName || email,
+    microsoft_user_id: mailbox?.id || '',
+    active: true,
+    verified_at: new Date().toISOString(),
+    last_used_at: new Date().toISOString(),
+  };
+  if (rows?.[0]?.id) {
+    await base44.entities.OutlookSharedMailbox.update(rows[0].id, payload);
+    return { ...rows[0], ...payload };
+  }
+  return base44.entities.OutlookSharedMailbox.create(payload);
+}
+
+export async function removeSharedMailbox(linkId) {
+  if (!linkId) return;
+  await base44.entities.OutlookSharedMailbox.update(linkId, { active: false });
 }
 
 function fileToAttachment(file) {
