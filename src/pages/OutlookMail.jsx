@@ -16,7 +16,6 @@ import {
   saveSharedMailbox,
   sendOutlookMail,
   setOutlookMessageRead,
-  stripHtml,
   verifySharedMailboxAccess,
 } from '@/lib/outlookGraph';
 import { toast } from 'sonner';
