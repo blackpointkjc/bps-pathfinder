@@ -383,12 +383,23 @@ export async function getOutlookAttachments(userId, messageId, mailboxEmail = ''
 export async function verifySharedMailboxAccess(userId, mailboxEmail) {
   const clean = String(mailboxEmail || '').trim().toLowerCase();
   if (!clean || !clean.includes('@')) throw new Error('Enter a valid shared mailbox email address.');
-  const profile = await graphRequest(userId, `/users/${encodeURIComponent(clean)}?$select=id,displayName,mail,userPrincipalName`);
-  await graphRequest(userId, `/users/${encodeURIComponent(clean)}/mailFolders/inbox?$select=id,displayName,totalItemCount,unreadItemCount`);
+
+  const token = getStoredOutlookToken(userId);
+  const grantedScopes = String(token?.scope || '').toLowerCase().split(/\s+/).filter(Boolean);
+  const hasSharedRead = grantedScopes.includes('mail.readwrite.shared');
+  const hasSharedSend = grantedScopes.includes('mail.send.shared');
+  if (!hasSharedRead || !hasSharedSend) {
+    const error = new Error('Your current Microsoft connection does not include the shared-mail permissions yet. Disconnect and reconnect Microsoft 365 once, then try adding the shared mailbox again.');
+    error.code = 'OUTLOOK_SHARED_RECONNECT_REQUIRED';
+    throw error;
+  }
+
+  const inbox = await graphRequest(userId, `/users/${encodeURIComponent(clean)}/mailFolders/inbox?$select=id,displayName,totalItemCount,unreadItemCount`);
   return {
-    id: profile?.id || '',
-    displayName: profile?.displayName || clean,
-    email: profile?.mail || profile?.userPrincipalName || clean,
+    id: '',
+    displayName: clean,
+    email: clean,
+    inbox,
   };
 }
 
