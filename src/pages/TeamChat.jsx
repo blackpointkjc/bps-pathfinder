@@ -17,6 +17,7 @@ export default function TeamChat() {
   const scrollRef = useRef(null);
   const queryClient = useQueryClient();
   const [teamsConfig, setTeamsConfig] = useState(null);
+  const [teamsSyncError, setTeamsSyncError] = useState('');
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -49,10 +50,12 @@ export default function TeamChat() {
         setTeamsConfig(config);
         if (config?.enabled) {
           const result = await syncTeamsChannelToPathfinder(user.id, config);
+          setTeamsSyncError('');
           if (result?.imported) queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
         }
       } catch (error) {
         console.warn('[Teams] Team Chat sync unavailable:', error?.message);
+        setTeamsSyncError(error?.message || 'Microsoft Teams General Chat could not be loaded.');
       }
     };
     sync();
@@ -214,6 +217,7 @@ export default function TeamChat() {
           {teamsConfig?.enabled && (
             <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams sync active · Pathfinder Team Chat ↔ General Chat</div>
           )}
+          {teamsSyncError && <div className="border-b border-red-300 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">Microsoft Teams sync error: {teamsSyncError}</div>}
 
           <ScrollArea className="flex-1 p-6" ref={scrollRef}>
             <div className="space-y-4">
