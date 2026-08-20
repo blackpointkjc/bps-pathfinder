@@ -8,7 +8,7 @@ import { MessageSquare, Send, X, Megaphone, Radio } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MentionInput from '@/components/chat/MentionInput';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
-import { getTeamsSyncConfig, sendTeamChannelMessage } from '@/lib/teamsGraph';
+import { getTeamsSyncConfig, sendTeamChannelMessage, sendTeamsDirectMessage } from '@/lib/teamsGraph';
 
 const roleSet = (user) => new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(r => String(r).toLowerCase()));
 const isDispatchUser = (user) => user?.role === 'admin' || user?.role === 'dispatch' || user?.dispatch_role === true || roleSet(user).has('full_access');
@@ -24,7 +24,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [mentionedUsers, setMentionedUsers] = useState([]);
-  const [selectedRecipient, setSelectedRecipient] = useState(inboxOnly ? '' : dispatchMode ? 'team_chat' : 'dispatch');
+  const [selectedRecipient, setSelectedRecipient] = useState(inboxOnly ? '' : dispatchMode ? 'officer_chat' : 'dispatch');
 
   const recipients = useMemo(() => units.filter(unit => (
     !unit.termination_date && unit.id !== currentUser?.id && unit.email !== currentUser?.email && isOperationalRecipient(unit)
@@ -73,41 +73,38 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
       const personalName = [currentUser.rank, currentUser.first_name, currentUser.last_name].filter(Boolean).join(' ') || currentUser.full_name || currentUser.email || 'Black Point User';
       const senderName = dispatchMode ? `Dispatch — ${personalName}` : personalName;
 
-      if (dispatchMode && ['team_chat', 'supervisor_chat', 'company'].includes(recipient)) {
-        const chatPayload = { message: text, sender_name: senderName };
-        const sends = [];
-        if (recipient === 'team_chat' || recipient === 'company') {
-          sends.push(base44.entities.ChatMessage.create(chatPayload).then(record => ({ record, page: 'TeamChat', chatType: 'team' })));
+      if (dispatchMode && ['officer_chat', 'supervisor_chat', 'company'].includes(recipient)) {
+        // Operational channel messages are Teams-first. Pathfinder only stores a
+        // confirmed cache record after Microsoft returns the Teams message ID.
+        const targets = [];
+        if (recipient === 'officer_chat' || recipient === 'company') targets.push({ configKey: 'officer_chat', entity: base44.entities.OfficerChatMessage, page: 'OfficerChat', chatType: 'officer' });
+        if (recipient === 'supervisor_chat' || recipient === 'company') targets.push({ configKey: 'supervisor_chat', entity: base44.entities.SupervisorChatMessage, page: 'SupervisorChat', chatType: 'supervisor' });
+        const createdChats = [];
+        for (const targetSpec of targets) {
+          const target = await getTeamsSyncConfig(targetSpec.configKey);
+          if (!target?.enabled) throw new Error(`${targetSpec.page} Microsoft Teams channel is not configured.`);
+          const teamsMessage = await sendTeamChannelMessage(currentUser.id, `<strong>${senderName}</strong>: ${text}`, target, targetSpec.configKey);
+          if (!teamsMessage?.id) throw new Error(`Microsoft Teams did not confirm ${targetSpec.page} delivery.`);
+          const record = await targetSpec.entity.create({
+            message: text,
+            sender_name: senderName,
+            sender_email: currentUser.email || '',
+            message_source: 'teams',
+            teams_message_id: teamsMessage.id,
+            teams_team_id: target.team_id,
+            teams_channel_id: target.channel_id,
+            teams_sender_id: teamsMessage?.from?.user?.id || '',
+            teams_sender_name: teamsMessage?.from?.user?.displayName || senderName,
+            teams_created_at: teamsMessage?.createdDateTime || new Date().toISOString(),
+            teams_synced_at: new Date().toISOString(),
+          });
+          createdChats.push({ record, ...targetSpec });
         }
-        if (recipient === 'supervisor_chat' || recipient === 'company') {
-          sends.push(base44.entities.SupervisorChatMessage.create(chatPayload).then(record => ({ record, page: 'SupervisorChat', chatType: 'supervisor' })));
-        }
-        const createdChats = await Promise.all(sends);
-
         for (const createdChat of createdChats) {
-          try {
-            const configKey = createdChat.chatType === 'supervisor' ? 'supervisor_chat' : 'officer_chat';
-            const target = await getTeamsSyncConfig(configKey);
-            const teamsMessage = await sendTeamChannelMessage(currentUser.id, `<strong>${senderName}</strong>: ${text}`, target, configKey);
-            if (!teamsMessage?.id) throw new Error('Microsoft Teams did not return a message ID.');
-            const entity = createdChat.chatType === 'supervisor' ? base44.entities.SupervisorChatMessage : base44.entities.ChatMessage;
-            await entity.update(createdChat.record.id, {
-              teams_message_id: teamsMessage.id,
-              teams_team_id: target.team_id,
-              teams_channel_id: target.channel_id,
-              teams_synced_at: new Date().toISOString(),
-            }).catch(() => null);
-          } catch (teamsError) {
-            toast.error(`Teams delivery failed: ${teamsError?.message || 'Unknown Microsoft error'}`, { duration: 12000 });
-          }
-        }
-
-        const mentionChat = createdChats.find(item => item.page === (recipient === 'supervisor_chat' ? 'SupervisorChat' : 'TeamChat')) || createdChats[0];
-        if (mentionChat) {
           await Promise.all(mentionedUsers.map(mention => base44.entities.ChatMention.create({
-            message_id: mentionChat.record.id,
-            chat_type: mentionChat.chatType,
-            page: mentionChat.page,
+            message_id: createdChat.record.id,
+            chat_type: createdChat.chatType,
+            page: createdChat.page,
             recipient_email: mention.email,
             recipient_name: mention.label,
             sender_name: senderName,
@@ -115,16 +112,32 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
             read: false,
           })));
         }
-      } else {
+      } else if (recipient && recipient !== 'dispatch') {
+        const recipientName = `${unit?.rank || ''} ${unit?.first_name || ''} ${unit?.last_name || unit?.full_name || unit?.email || ''}`.trim();
+        const result = await sendTeamsDirectMessage(currentUser.id, {
+          participantIds: [currentUser.id, recipient],
+          participantDirectory: units,
+          text,
+        });
+        if (!result?.messageId) throw new Error('Microsoft Teams did not confirm direct-message delivery.');
         await base44.entities.Message.create({
-          sender_id: dispatchMode ? 'dispatch' : currentUser.id,
+          sender_id: currentUser.id,
           sender_name: senderName,
           recipient_id: recipient,
-          recipient_name: recipient === 'dispatch' ? 'Dispatch' : `${unit?.rank || 'Officer'} ${unit?.last_name || unit?.unit_number || ''}`.trim(),
+          recipient_name: recipientName,
           message: text,
-          read: false,
-          message_type: 'dispatch_message'
+          read: true,
+          message_type: 'dispatch_message',
+          message_source: 'teams',
+          teams_chat_id: result.chatId,
+          teams_message_id: result.messageId,
+          teams_synced_at: new Date().toISOString(),
+          thread_id: `teams:${result.chatId}`,
+          participant_ids: [currentUser.id, recipient],
+          participant_names: [senderName, recipientName],
         });
+      } else {
+        throw new Error('Direct Dispatch messaging must use a Microsoft Teams recipient.');
       }
       setNewMessage('');
       setMentionedUsers([]);
@@ -185,7 +198,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
               </>
             ) : (
               <>
-                <option value="team_chat">Team Chat — All Personnel</option>
+                <option value="officer_chat">Officer Chat — Teams General Chat</option>
                 <option value="supervisor_chat">Supervisor Chat — Supervisors Only</option>
                 <option value="company">Company Wide — Team + Supervisor Chats</option>
                 {officers.map(unit => <option key={unit.id} value={unit.id}>{`Direct — ${unit.rank || 'Officer'} ${unit.last_name || unit.full_name || unit.unit_number || ''}`.trim()}</option>)}
@@ -194,7 +207,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
           </select>
         )}
         <div className="flex gap-2">
-          {dispatchMode && ['team_chat', 'supervisor_chat', 'company'].includes(selectedRecipient) ? (
+          {dispatchMode && ['officer_chat', 'supervisor_chat', 'company'].includes(selectedRecipient) ? (
             <MentionInput
               value={newMessage}
               onChange={setNewMessage}
