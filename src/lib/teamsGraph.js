@@ -23,16 +23,16 @@ export function parseTeamsChannelLink(value) {
   return { teamId: groupId, channelId, channelUrl: raw };
 }
 
-export async function getTeamsSyncConfig() {
-  const rows = await base44.entities.MicrosoftTeamsSyncConfig.filter({ config_key: 'team_chat' }, '-updated_at', 1);
+export async function getTeamsSyncConfig(configKey = 'team_chat') {
+  const rows = await base44.entities.MicrosoftTeamsSyncConfig.filter({ config_key: configKey }, '-updated_at', 1);
   return rows?.[0] || null;
 }
 
-export async function saveTeamsSyncConfig({ channelUrl, channelName = 'Microsoft Teams', updatedBy = '' }) {
+export async function saveTeamsSyncConfig({ channelUrl, channelName = 'Microsoft Teams', updatedBy = '', configKey = 'team_chat' }) {
   const parsed = parseTeamsChannelLink(channelUrl);
-  const existing = await base44.entities.MicrosoftTeamsSyncConfig.filter({ config_key: 'team_chat' }, '-updated_at', 1);
+  const existing = await base44.entities.MicrosoftTeamsSyncConfig.filter({ config_key: configKey }, '-updated_at', 1);
   const payload = {
-    config_key: 'team_chat',
+    config_key: configKey,
     team_id: parsed.teamId,
     channel_id: parsed.channelId,
     channel_name: channelName || 'Microsoft Teams',
@@ -48,8 +48,8 @@ export async function saveTeamsSyncConfig({ channelUrl, channelName = 'Microsoft
   return base44.entities.MicrosoftTeamsSyncConfig.create(payload);
 }
 
-export async function sendTeamChannelMessage(userId, text, config = null) {
-  const target = config || await getTeamsSyncConfig();
+export async function sendTeamChannelMessage(userId, text, config = null, configKey = 'team_chat') {
+  const target = config || await getTeamsSyncConfig(configKey);
   if (!target?.enabled || !target?.team_id || !target?.channel_id) return null;
   const payload = await graphRequest(userId, `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages`, {
     method: 'POST',
@@ -58,20 +58,22 @@ export async function sendTeamChannelMessage(userId, text, config = null) {
   return payload;
 }
 
-export async function syncTeamsChannelToPathfinder(userId, config = null) {
-  const target = config || await getTeamsSyncConfig();
+export async function syncTeamsChannelToEntity(userId, { config = null, configKey = 'team_chat', entityName = 'ChatMessage' } = {}) {
+  const target = config || await getTeamsSyncConfig(configKey);
   if (!target?.enabled || !target?.team_id || !target?.channel_id) return { imported: 0 };
   const payload = await graphRequest(userId, `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages?$top=50`);
   const rows = payload?.value || [];
   let imported = 0;
   for (const item of [...rows].reverse()) {
     if (!item?.id) continue;
-    const existing = await base44.entities.ChatMessage.filter({ teams_message_id: item.id }, '-created_date', 1);
+    const entity = base44.entities[entityName];
+    if (!entity) throw new Error(`Unknown Pathfinder chat entity: ${entityName}`);
+    const existing = await entity.filter({ teams_message_id: item.id }, '-created_date', 1);
     if (existing?.length) continue;
     const body = stripHtml(item?.body?.content || '').trim();
     if (!body) continue;
     const senderName = item?.from?.user?.displayName || item?.from?.application?.displayName || 'Microsoft Teams';
-    await base44.entities.ChatMessage.create({
+    await entity.create({
       message: body,
       sender_name: senderName,
       sender_email: '',
@@ -87,4 +89,8 @@ export async function syncTeamsChannelToPathfinder(userId, config = null) {
     imported += 1;
   }
   return { imported };
+}
+
+export async function syncTeamsChannelToPathfinder(userId, config = null) {
+  return syncTeamsChannelToEntity(userId, { config, configKey: 'team_chat', entityName: 'ChatMessage' });
 }
