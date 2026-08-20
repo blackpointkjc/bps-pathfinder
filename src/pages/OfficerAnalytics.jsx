@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { calculatePunctuality } from '@/lib/performanceScoring';
 
 export default function OfficerAnalytics() {
   const { data: user } = useQuery({
@@ -50,45 +51,10 @@ export default function OfficerAnalytics() {
   const currentMonthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
   const currentMonthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
 
-  const onTimeStats = useMemo(() => {
-    if (!timeEntries || !schedules) return { rate: 0, onTime: 0, late: 0, total: 0 };
-
-    let onTime = 0;
-    let late = 0;
-
-    // Filter to current month only
-    const monthlyEntries = timeEntries.filter(entry => {
-      if (!entry.clock_in) return false;
-      const entryDate = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
-      return entryDate >= currentMonthStart && entryDate <= currentMonthEnd;
-    });
-
-    monthlyEntries.forEach(entry => {
-      if (!entry.clock_in) return;
-      
-      const clockInDate = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
-      const matchingSchedule = schedules.find(s => s.shift_date === clockInDate);
-      
-      if (matchingSchedule) {
-        const scheduledStart = matchingSchedule.start_time;
-        const actualClockIn = format(parseISO(entry.clock_in), 'HH:mm');
-        
-        const scheduledMinutes = parseInt(scheduledStart.split(':')[0]) * 60 + parseInt(scheduledStart.split(':')[1]);
-        const actualMinutes = parseInt(actualClockIn.split(':')[0]) * 60 + parseInt(actualClockIn.split(':')[1]);
-        
-        if (actualMinutes <= scheduledMinutes + 5) {
-          onTime++;
-        } else {
-          late++;
-        }
-      }
-    });
-
-    const total = onTime + late;
-    const rate = total > 0 ? Math.round((onTime / total) * 100) : 100;
-
-    return { rate, onTime, late, total };
-  }, [timeEntries, schedules, currentMonthStart, currentMonthEnd]);
+  const onTimeStats = useMemo(
+    () => calculatePunctuality(timeEntries || [], schedules || [], currentMonthStart, currentMonthEnd),
+    [timeEntries, schedules, currentMonthStart, currentMonthEnd]
+  );
 
   const hoursStats = useMemo(() => {
     if (!timeEntries) return { regular: 0, overtime: 0, total: 0, weeklyBreakdown: [] };
@@ -194,11 +160,11 @@ export default function OfficerAnalytics() {
               <div className="flex items-center justify-between mb-2">
                 <CheckCircle2 className="w-8 h-8 text-green-600" />
                 <span className={`text-3xl font-bold ${onTimeStats.rate >= 90 ? 'text-green-600' : onTimeStats.rate >= 75 ? 'text-amber-600' : 'text-red-600'}`}>
-                  {onTimeStats.rate}%
+                  {onTimeStats.rate != null ? `${onTimeStats.rate}%` : '—'}
                 </span>
               </div>
               <p className="text-sm font-medium text-slate-700">On-Time Arrival</p>
-              <p className="text-xs text-slate-500">{onTimeStats.onTime} on-time / {onTimeStats.total} total</p>
+              <p className="text-xs text-slate-500">{onTimeStats.onTime} on-time / {onTimeStats.late} late / {onTimeStats.missed || 0} missed</p>
             </CardContent>
           </Card>
 
@@ -298,6 +264,10 @@ export default function OfficerAnalytics() {
                 <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
                   <span className="text-slate-700">Late Arrivals</span>
                   <Badge className={`${onTimeStats.late > 0 ? 'bg-red-600' : 'bg-slate-400'} text-white`}>{onTimeStats.late}</Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                  <span className="text-slate-700">Missed / No Clock-In</span>
+                  <Badge className={`${(onTimeStats.missed || 0) > 0 ? 'bg-red-600' : 'bg-slate-400'} text-white`}>{onTimeStats.missed || 0}</Badge>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                   <span className="text-slate-700">Average Performance</span>
