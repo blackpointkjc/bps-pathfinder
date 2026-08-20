@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { listOfficerDirectory } from '@/lib/appDirectory';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
+import { getTeamsSyncConfig, sendTeamChannelMessage } from '@/lib/teamsGraph';
 
 export default function AdminAnnouncements() {
   const [showForm, setShowForm] = useState(false);
@@ -25,6 +26,8 @@ export default function AdminAnnouncements() {
     attachment_url: "",
     attachment_name: "",
     pinged_users: [],
+    audience: "company",
+    teams_destination: "general_alerts",
   });
   const [uploading, setUploading] = useState(false);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
@@ -60,10 +63,31 @@ export default function AdminAnnouncements() {
     mutationFn: async (data) => {
       const announcement = await base44.entities.Announcement.create(data);
 
-      // Announcement delivery is handled by Pathfinder's persistent banner/read-receipt
-      // system. The former email-to-SMS carrier fan-out was removed because it created
-      // multiple unreliable outbound requests per user and bypassed the standard
-      // Black Point notification/email architecture.
+      // Mirror admin-created announcements to the configured Microsoft Teams channel.
+      // Company announcements go to General Alerts; supervisor-only updates go to Updates.
+      try {
+        const destination = data.teams_destination || 'general_alerts';
+        if (destination !== 'none') {
+          const config = await getTeamsSyncConfig(destination);
+          if (config?.enabled) {
+            const priority = String(data.priority || 'normal').toUpperCase();
+            const teamsMessage = await sendTeamChannelMessage(
+              user?.id,
+              `<strong>${data.title}</strong><br><em>${priority}</em><br><br>${String(data.message || '').replace(/\n/g, '<br>')}`,
+              config,
+              destination,
+            );
+            if (teamsMessage?.id) {
+              await base44.entities.Announcement.update(announcement.id, {
+                teams_message_id: teamsMessage.id,
+                teams_synced_at: new Date().toISOString(),
+              }).catch(() => null);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('[Teams] Announcement was posted in Pathfinder but Teams mirroring failed:', error?.message);
+      }
       return announcement;
     },
     onSuccess: () => {
@@ -77,6 +101,8 @@ export default function AdminAnnouncements() {
         attachment_url: "",
         attachment_name: "",
         pinged_users: [],
+        audience: "company",
+        teams_destination: "general_alerts",
       });
     },
   });
@@ -243,6 +269,29 @@ export default function AdminAnnouncements() {
                       <SelectItem value="urgent">Urgent (visible 30 days)</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Announcement Destination</Label>
+                  <Select
+                    value={formData.teams_destination}
+                    onValueChange={(value) => setFormData({
+                      ...formData,
+                      teams_destination: value,
+                      audience: value === 'supervisor_updates' ? 'supervisors' : 'company',
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general_alerts">Company Announcement — Pathfinder + Teams General Alerts</SelectItem>
+                      <SelectItem value="supervisor_updates">Supervisor Update — Supervisor Pathfinder + Teams Updates</SelectItem>
+                      <SelectItem value="none">Pathfinder Only — Do Not Send to Teams</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500">
+                    Supervisor Updates are hidden from the regular officer announcement feed and appear in the supervisor area.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="message">Message *</Label>

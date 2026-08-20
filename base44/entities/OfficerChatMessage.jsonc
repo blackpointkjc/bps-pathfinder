@@ -1,0 +1,81 @@
+{
+  "name": "OfficerChatMessage",
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string"
+    },
+    "sender_name": {
+      "type": "string"
+    },
+    "sender_email": {
+      "type": "string"
+    },
+    "sender_photo_url": {
+      "type": "string"
+    },
+    "message_source": {
+      "type": "string",
+      "enum": [
+        "pathfinder",
+        "teams"
+      ],
+      "default": "pathfinder"
+    },
+    "teams_message_id": {
+      "type": "string"
+    },
+    "teams_team_id": {
+      "type": "string"
+    },
+    "teams_channel_id": {
+      "type": "string"
+    },
+    "teams_sender_id": {
+      "type": "string"
+    },
+    "teams_sender_name": {
+      "type": "string"
+    },
+    "teams_created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "teams_synced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "message",
+    "sender_name"
+  ],
+  "rls": {
+    "create": null,
+    "read": null,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
