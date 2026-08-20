@@ -60,7 +60,7 @@ export default function OutlookMail() {
     try {
       append ? setLoadingMore(true) : setLoading(true);
       const [status, folderRows, result] = await Promise.all([
-        getOutlookConnectionStatus(user.id),
+        getOutlookConnectionStatus(user.id, user?.email || ''),
         folders.length ? Promise.resolve(folders) : listOutlookFolders(user.id),
         listOutlookMessages(user.id, targetFolder, link),
       ]);
@@ -198,7 +198,7 @@ export default function OutlookMail() {
   };
 
   const disconnect = () => {
-    disconnectOutlook(user.id);
+    await disconnectOutlook(user.id);
     window.dispatchEvent(new CustomEvent('bps:outlook-connection-changed'));
   };
 
