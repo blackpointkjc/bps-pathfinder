@@ -32,7 +32,10 @@ export default function UniversalInbox({ currentUser, users = [] }) {
       base44.functions.invoke('get-inbox-thread-preferences', {}).catch(() => ({ data: { preferences: [] } })),
     ]);
     const preferencePayload = preferenceResponse?.data || preferenceResponse || {};
-    setMessages(records || []);
+    // Inbox is a Microsoft Teams inbox. Pathfinder-only/internal Message rows are
+    // deliberately excluded; the Message entity is only a local cache of Teams chats.
+    const teamsOnly = (records || []).filter(record => Boolean(record?.teams_chat_id || record?.teams_message_id));
+    setMessages(teamsOnly);
     setHiddenPreferences((preferencePayload.preferences || []).filter(preference => preference.hidden !== false));
   };
 
