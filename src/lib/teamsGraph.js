@@ -89,7 +89,7 @@ export async function syncTeamsChannelToEntity(userId, { config = null, configKe
   // One Graph read + one Base44 cache read per sync. The previous implementation
   // performed a Base44 filter for every Teams message and quickly hit rate limits.
   const [payload, cached] = await Promise.all([
-    graphRequest(userId, `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages?$top=${Math.min(50, Math.max(1, Number(limit) || 50))}`),
+    graphRequest(userId, `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages`),
     entity.list('-created_date', 500).catch(() => []),
   ]);
   const knownIds = new Set((cached || []).map(row => row.teams_message_id).filter(Boolean).map(String));
