@@ -441,7 +441,7 @@ function fileToAttachment(file) {
   });
 }
 
-export async function sendOutlookMail(userId, { to = [], cc = [], bcc = [], subject = '', body = '', attachments = [] }) {
+export async function sendOutlookMail(userId, { to = [], cc = [], bcc = [], subject = '', body = '', attachments = [], mailboxEmail = '' }) {
   const graphAttachments = [];
   for (const file of attachments || []) {
     if (file.size > 3 * 1024 * 1024) throw new Error(`${file.name} is larger than the 3 MB quick-attachment limit.`);
@@ -456,33 +456,33 @@ export async function sendOutlookMail(userId, { to = [], cc = [], bcc = [], subj
     bccRecipients: bcc.filter(Boolean).map(recipient),
     ...(graphAttachments.length ? { attachments: graphAttachments } : {}),
   };
-  await graphRequest(userId, '/me/sendMail', { method: 'POST', body: JSON.stringify({ message, saveToSentItems: true }) });
+  await graphRequest(userId, `${mailboxRoot(mailboxEmail)}/sendMail`, { method: 'POST', body: JSON.stringify({ message, saveToSentItems: true }) });
 }
 
-export async function replyOutlookMail(userId, messageId, comment) {
-  await graphRequest(userId, `/me/messages/${encodeURIComponent(messageId)}/reply`, {
+export async function replyOutlookMail(userId, messageId, comment, mailboxEmail = '') {
+  await graphRequest(userId, `${mailboxRoot(mailboxEmail)}/messages/${encodeURIComponent(messageId)}/reply`, {
     method: 'POST',
     body: JSON.stringify({ comment: String(comment || '') }),
   });
 }
 
-export async function forwardOutlookMail(userId, messageId, to, comment = '') {
+export async function forwardOutlookMail(userId, messageId, to, comment = '', mailboxEmail = '') {
   const recipients = to.filter(Boolean).map(address => ({ emailAddress: { address: String(address).trim() } }));
-  await graphRequest(userId, `/me/messages/${encodeURIComponent(messageId)}/forward`, {
+  await graphRequest(userId, `${mailboxRoot(mailboxEmail)}/messages/${encodeURIComponent(messageId)}/forward`, {
     method: 'POST',
     body: JSON.stringify({ comment: String(comment || ''), toRecipients: recipients }),
   });
 }
 
-export async function setOutlookMessageRead(userId, messageId, isRead = true) {
-  return graphRequest(userId, `/me/messages/${encodeURIComponent(messageId)}`, {
+export async function setOutlookMessageRead(userId, messageId, isRead = true, mailboxEmail = '') {
+  return graphRequest(userId, `${mailboxRoot(mailboxEmail)}/messages/${encodeURIComponent(messageId)}`, {
     method: 'PATCH',
     body: JSON.stringify({ isRead }),
   });
 }
 
-export async function deleteOutlookMessage(userId, messageId) {
-  await graphRequest(userId, `/me/messages/${encodeURIComponent(messageId)}`, { method: 'DELETE' });
+export async function deleteOutlookMessage(userId, messageId, mailboxEmail = '') {
+  await graphRequest(userId, `${mailboxRoot(mailboxEmail)}/messages/${encodeURIComponent(messageId)}`, { method: 'DELETE' });
 }
 
 export async function getLatestUnreadMail(userId) {
