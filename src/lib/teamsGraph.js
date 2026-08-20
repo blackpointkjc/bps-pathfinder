@@ -150,3 +150,45 @@ export async function sendTeamsDirectMessage(userId, { participantIds = [], part
   });
   return { chatId, messageId: message?.id || '', message };
 }
+
+export async function syncTeamsDirectMessages(userId, { chatId, currentPathfinderUserId, participantIds = [], participantNames = [] } = {}) {
+  if (!chatId || !userId || !currentPathfinderUserId) return { imported: 0 };
+  const [me, payload] = await Promise.all([
+    graphRequest(userId, '/me?$select=id'),
+    graphRequest(userId, `/chats/${encodeURIComponent(chatId)}/messages?$top=50`),
+  ]);
+  const identities = await base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []);
+  const byMicrosoftId = new Map((identities || []).filter(item => item.microsoft_user_id).map(item => [String(item.microsoft_user_id), item]));
+  let imported = 0;
+  for (const item of [...(payload?.value || [])].reverse()) {
+    if (!item?.id || !item?.body?.content) continue;
+    const existing = await base44.entities.Message.filter({ teams_message_id: item.id }, '-created_date', 5).catch(() => []);
+    if (existing?.length) continue;
+    const senderMicrosoftId = item?.from?.user?.id || '';
+    const mine = String(senderMicrosoftId) === String(me?.id || '');
+    const mappedSender = byMicrosoftId.get(String(senderMicrosoftId));
+    const senderId = mine ? currentPathfinderUserId : (mappedSender?.user_id || `teams:${senderMicrosoftId || 'unknown'}`);
+    const senderName = item?.from?.user?.displayName || mappedSender?.display_name || 'Microsoft Teams';
+    const body = stripHtml(item.body.content).trim();
+    if (!body) continue;
+    const otherIds = (participantIds || []).filter(id => String(id) !== String(currentPathfinderUserId));
+    const recipientId = mine ? (otherIds[0] || currentPathfinderUserId) : currentPathfinderUserId;
+    await base44.entities.Message.create({
+      sender_id: senderId,
+      sender_name: senderName,
+      recipient_id: recipientId,
+      recipient_name: mine ? (participantNames?.[0] || '') : '',
+      message: body,
+      read: mine,
+      message_type: 'dispatch_message',
+      thread_id: `teams:${chatId}`,
+      participant_ids: participantIds,
+      participant_names: participantNames,
+      teams_chat_id: chatId,
+      teams_message_id: item.id,
+      teams_synced_at: new Date().toISOString(),
+    });
+    imported += 1;
+  }
+  return { imported };
+}
