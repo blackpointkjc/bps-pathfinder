@@ -6,7 +6,7 @@ import {
   Building2, Calendar, CalendarClock, Car, ChevronDown, ChevronLeft, ChevronRight,
   ClipboardCheck, ClipboardList, Clock3, DollarSign, DoorOpen, FileText,
   FileWarning, Gauge, GraduationCap, Layers, LogOut, Map, MapPin, Menu,
-  MessageCircle, Package, Radio, Search, Settings, Shield, ShieldCheck,
+  Mail, MessageCircle, Package, Radio, Search, Settings, Shield, ShieldCheck,
   Siren, Trash2, UserCheck, UserX, Users, Wrench, X, GitBranch
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -23,6 +23,8 @@ import WelcomeBriefing from '@/components/WelcomeBriefing';
 import BackgroundLocationTracker from '@/components/BackgroundLocationTracker';
 import AdminClientPreviewBar from '@/components/AdminClientPreviewBar';
 import ForcedOOSOverlay from '@/components/ForcedOOSOverlay';
+import MicrosoftMailSetupGate from '@/components/MicrosoftMailSetupGate';
+import OutlookNotificationMonitor from '@/components/OutlookNotificationMonitor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
@@ -397,7 +399,7 @@ function defaultPageForUser(user, desktop = false) {
 }
 
 function canAccessPage(user, pageName) {
-  if (pageName === 'OfficerInbox') return true;
+  if (pageName === 'OfficerInbox' || pageName === 'OutlookMail') return true;
   if (FULL_ACCESS_PAGES.has(pageName)) return hasFullAccess(user);
   const centers = PAGE_TO_CENTERS[pageName];
   if (!centers?.length) return true;
@@ -607,6 +609,16 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             })}
           </div>
         )}
+        <Link
+          to={createPageUrl('OutlookMail')}
+          onClick={() => onCloseMobile?.()}
+          className={`relative mb-2 flex min-h-9 items-center gap-2.5 rounded-md border px-2.5 py-1.5 transition-all ${currentPageName === 'OutlookMail' ? 'border-blue-500/60 bg-gradient-to-r from-[#16466f] to-[#123554] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
+          title={collapsed && !mobile ? 'Outlook Mail' : undefined}
+        >
+          <Mail className="h-4 w-4 shrink-0 text-[#7ec1ff]" />
+          {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">OUTLOOK MAIL</span>}
+          {!!unreadCounts.OutlookMail && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.OutlookMail > 99 ? '99+' : unreadCounts.OutlookMail}</span>}
+        </Link>
         {mobile && <Link
           to={createPageUrl('OfficerInbox')}
           onClick={() => onCloseMobile?.()}
@@ -1111,7 +1123,7 @@ export default function Layout({ children, currentPageName }) {
   }
 
   const mobilePageCenters = PAGE_TO_CENTERS[currentPageName] || [];
-  const allowedOnMobile = currentPageName === 'OfficerInbox' || mobilePageCenters.some(center => ['cad', 'officer', 'supervisor', 'admin'].includes(center));
+  const allowedOnMobile = currentPageName === 'OfficerInbox' || currentPageName === 'OutlookMail' || mobilePageCenters.some(center => ['cad', 'officer', 'supervisor', 'admin'].includes(center));
   if (isMobileViewport && !allowedOnMobile) {
     return <div className="fixed inset-0 flex items-center justify-center bg-[#07111f] p-6 text-white">
       <div className="w-full max-w-sm rounded-2xl border border-[#294867] bg-[#0c1a2a] p-6 text-center shadow-2xl">
@@ -1126,7 +1138,7 @@ export default function Layout({ children, currentPageName }) {
   const criticalOutage = outages.some(item => item.severity === 'outage');
   const centerLabel = CENTER_CONFIG[activeCenter]?.label || 'CAD Center';
 
-  return <div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><BackgroundLocationTracker user={user} /><NotificationMonitor user={user} /><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} /><ForcedOOSOverlay />
+  return <MicrosoftMailSetupGate user={user}><div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><BackgroundLocationTracker user={user} /><NotificationMonitor user={user} /><OutlookNotificationMonitor user={user} /><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} /><ForcedOOSOverlay />
     <aside className="relative hidden flex-col border-r border-[#1c3049] md:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
       <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onToggleCollapsed={() => setCollapsed(value => !value)} onLogout={() => logout(true)} />
     </aside>
@@ -1241,5 +1253,5 @@ export default function Layout({ children, currentPageName }) {
       onReports={() => { setActiveCenter('officer'); setMobileSection('reports'); setMobileOpen(true); }}
       onMenu={() => { setMobileSection(null); if (!['cad', 'officer', 'supervisor', 'admin'].includes(activeCenter)) setActiveCenter('cad'); setMobileOpen(true); }}
     />
-  </div>;
+  </div></MicrosoftMailSetupGate>;
 }
