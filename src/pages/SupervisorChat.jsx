@@ -39,7 +39,7 @@ export default function SupervisorChat() {
     queryKey: ['supervisorTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'supervisor_chat'),
     enabled: !!user?.id && !!teamsConfig?.enabled && (user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin'),
-    refetchInterval: 60000,
+    refetchInterval: 120000,
     refetchOnWindowFocus: true,
     staleTime: 15000,
   });
