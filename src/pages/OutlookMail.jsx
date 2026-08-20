@@ -9,15 +9,20 @@ import {
   getOutlookMessage,
   listOutlookFolders,
   listOutlookMessages,
+  listSavedSharedMailboxes,
+  removeSharedMailbox,
   replyOutlookMail,
+  saveOutlookMail,
+  saveSharedMailbox,
   sendOutlookMail,
   setOutlookMessageRead,
   stripHtml,
+  verifySharedMailboxAccess,
 } from '@/lib/outlookGraph';
 import { toast } from 'sonner';
 import {
-  Archive, ArrowLeft, Forward, Inbox, Loader2, Mail, MailOpen, Paperclip,
-  PenLine, RefreshCw, Reply, Search, Send, Trash2, X,
+  Archive, ArrowLeft, Building2, Forward, Inbox, Loader2, Mail, MailOpen, Paperclip,
+  PenLine, Plus, RefreshCw, Reply, Search, Send, Trash2, X,
 } from 'lucide-react';
 
 const splitAddresses = value => String(value || '').split(/[;,]/).map(item => item.trim()).filter(Boolean);
