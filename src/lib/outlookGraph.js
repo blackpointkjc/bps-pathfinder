@@ -136,7 +136,17 @@ export async function beginOutlookConnection(userId) {
     prompt: 'select_account',
   });
 
-  window.location.assign(`${MICROSOFT_AUTH_ROOT}/${encodeURIComponent(config.tenant || 'common')}/oauth2/v2.0/authorize?${params.toString()}`);
+  const authorizeUrl = `${MICROSOFT_AUTH_ROOT}/${encodeURIComponent(config.tenant || 'common')}/oauth2/v2.0/authorize?${params.toString()}`;
+
+  // Base44 Preview renders the app inside an iframe. Microsoft blocks its login
+  // page from being embedded, so always launch authentication in a top-level
+  // popup/new tab. The callback returns to the Pathfinder origin and shares the
+  // same localStorage/session token state with the app.
+  const popup = window.open(authorizeUrl, 'pathfinder-microsoft-auth', 'popup=yes,width=620,height=780,resizable=yes,scrollbars=yes');
+  if (!popup) {
+    throw new Error('Your browser blocked the Microsoft sign-in window. Allow pop-ups for Pathfinder and try again.');
+  }
+  try { popup.focus(); } catch {}
 }
 
 export async function handleOutlookOAuthCallback(userId) {
