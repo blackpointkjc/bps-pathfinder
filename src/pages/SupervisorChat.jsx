@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
 import { getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage, syncTeamsChannelToEntity } from "@/lib/teamsGraph";
+import { toast } from 'sonner';
 
 export default function SupervisorChat() {
   const [message, setMessage] = useState("");
@@ -63,6 +64,16 @@ export default function SupervisorChat() {
     return () => { cancelled = true; window.clearInterval(interval); };
   }, [user?.id, queryClient]);
 
+  const { data: supervisorUpdates = [] } = useQuery({
+    queryKey: ['supervisorUpdates'],
+    queryFn: async () => {
+      const rows = await base44.entities.Announcement.filter({ audience: 'supervisors' }, '-created_date', 20);
+      return rows || [];
+    },
+    enabled: user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin',
+    refetchInterval: 30000,
+  });
+
   const { data: allUsers = [] } = useQuery({
     queryKey: ['chatDirectory'],
     queryFn: async () => {
@@ -88,6 +99,7 @@ export default function SupervisorChat() {
         }
       } catch (error) {
         console.warn('[Teams] Unable to mirror Supervisor Chat message:', error?.message);
+        toast.error(`Supervisor Teams delivery failed: ${error?.message || 'Unknown Microsoft error'}`, { duration: 12000 });
       }
       await Promise.all(mentions.map(mention => base44.entities.ChatMention.create({
         message_id: created.id,
@@ -227,6 +239,20 @@ export default function SupervisorChat() {
             </div>
           )}
           {teamsConfig?.enabled && <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams sync active · Supervisor Chat ↔ Supervisor Teams channel</div>}
+
+          {!!supervisorUpdates.length && (
+            <div className="border-b border-amber-200 bg-amber-50 p-3">
+              <div className="mb-2 text-[10px] font-black uppercase tracking-[.14em] text-amber-800">Supervisor Updates</div>
+              <div className="space-y-2">
+                {supervisorUpdates.slice(0, 3).map(update => (
+                  <div key={update.id} className="rounded-lg border border-amber-200 bg-white px-3 py-2">
+                    <div className="text-xs font-black text-slate-900">{update.title}</div>
+                    <div className="mt-1 line-clamp-2 text-xs text-slate-600">{update.message}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <ScrollArea className="flex-1 p-6" ref={scrollRef}>
             <div className="space-y-4">
