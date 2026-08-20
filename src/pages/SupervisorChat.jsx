@@ -16,6 +16,7 @@ export default function SupervisorChat() {
   const scrollRef = useRef(null);
   const queryClient = useQueryClient();
   const [teamsConfig, setTeamsConfig] = useState(null);
+  const [teamsSyncError, setTeamsSyncError] = useState('');
   const [teamsLink, setTeamsLink] = useState('');
   const [teamsSaving, setTeamsSaving] = useState(false);
 
