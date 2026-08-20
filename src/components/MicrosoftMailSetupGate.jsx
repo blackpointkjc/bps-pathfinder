@@ -48,10 +48,21 @@ export default function MicrosoftMailSetupGate({ user, children }) {
 
     load();
     const onConnectionChanged = () => load();
+    const onMicrosoftMessage = event => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'bps:outlook-connected' && (!event.data.userId || event.data.userId === userId)) load();
+    };
+    const onStorage = event => {
+      if (event.key === `bps:outlook-token:${String(userId || '').trim()}` && event.newValue) load();
+    };
     window.addEventListener('bps:outlook-connection-changed', onConnectionChanged);
+    window.addEventListener('message', onMicrosoftMessage);
+    window.addEventListener('storage', onStorage);
     return () => {
       active = false;
       window.removeEventListener('bps:outlook-connection-changed', onConnectionChanged);
+      window.removeEventListener('message', onMicrosoftMessage);
+      window.removeEventListener('storage', onStorage);
     };
   }, [userId, user?.email, isCallback]);
 
