@@ -121,7 +121,7 @@ export async function beginOutlookConnection(userId) {
   const challenge = b64url(await sha256(verifier));
   const nonce = randomString(32);
   const state = randomString(40);
-  sessionStorage.setItem(oauthStateKey(userId), JSON.stringify({ verifier, state, nonce, created_at: Date.now() }));
+  localStorage.setItem(oauthStateKey(userId), JSON.stringify({ verifier, state, nonce, created_at: Date.now() }));
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -157,7 +157,7 @@ export async function handleOutlookOAuthCallback(userId) {
   const oauthError = params.get('error');
   if (!code && !oauthError) return { handled: false };
 
-  const savedRaw = sessionStorage.getItem(oauthStateKey(userId));
+  const savedRaw = localStorage.getItem(oauthStateKey(userId));
   let saved = null;
   try { saved = JSON.parse(savedRaw || 'null'); } catch { saved = null; }
 
@@ -192,13 +192,19 @@ export async function handleOutlookOAuthCallback(userId) {
     body,
   });
   const payload = await response.json().catch(() => ({}));
-  sessionStorage.removeItem(oauthStateKey(userId));
+  localStorage.removeItem(oauthStateKey(userId));
   window.history.replaceState({}, document.title, cleanUrl);
   if (!response.ok || !payload.access_token) {
     return { handled: true, success: false, error: payload.error_description || payload.error || 'Microsoft sign-in failed.' };
   }
 
   storeOutlookToken(userId, payload);
+  try {
+    if (window.opener && window.opener !== window) {
+      window.opener.postMessage({ type: 'bps:outlook-connected', userId }, window.location.origin);
+      window.setTimeout(() => window.close(), 250);
+    }
+  } catch {}
   return { handled: true, success: true };
 }
 
