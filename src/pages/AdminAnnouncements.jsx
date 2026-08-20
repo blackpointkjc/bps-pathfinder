@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { listOfficerDirectory } from '@/lib/appDirectory';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 import { getTeamsSyncConfig, sendTeamChannelMessage } from '@/lib/teamsGraph';
+import { toast } from 'sonner';
 
 export default function AdminAnnouncements() {
   const [showForm, setShowForm] = useState(false);
@@ -77,16 +78,17 @@ export default function AdminAnnouncements() {
               config,
               destination,
             );
-            if (teamsMessage?.id) {
-              await base44.entities.Announcement.update(announcement.id, {
-                teams_message_id: teamsMessage.id,
-                teams_synced_at: new Date().toISOString(),
-              }).catch(() => null);
-            }
+            if (!teamsMessage?.id) throw new Error('Microsoft Teams did not return a message ID.');
+            await base44.entities.Announcement.update(announcement.id, {
+              teams_message_id: teamsMessage.id,
+              teams_synced_at: new Date().toISOString(),
+            }).catch(() => null);
+            toast.success(destination === 'supervisor_updates' ? 'Supervisor update posted to Teams Updates.' : 'Announcement posted to Teams General Alerts.');
           }
         }
       } catch (error) {
         console.warn('[Teams] Announcement was posted in Pathfinder but Teams mirroring failed:', error?.message);
+        toast.error(`Pathfinder announcement saved, but Teams delivery failed: ${error?.message || 'Unknown Microsoft error'}`, { duration: 14000 });
       }
       return announcement;
     },
