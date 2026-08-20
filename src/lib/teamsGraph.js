@@ -92,5 +92,61 @@ export async function syncTeamsChannelToEntity(userId, { config = null, configKe
 }
 
 export async function syncTeamsChannelToPathfinder(userId, config = null) {
-  return syncTeamsChannelToEntity(userId, { config, configKey: 'team_chat', entityName: 'ChatMessage' });
+  return syncTeamsChannelToEntity(userId, { config, configKey: 'officer_chat', entityName: 'ChatMessage' });
+}
+
+async function resolveTeamsIdentity(pathfinderUserId, fallbackEmail = '') {
+  const rows = await base44.entities.MicrosoftTeamsIdentity.filter({ user_id: pathfinderUserId, active: true }, '-updated_at', 5).catch(() => []);
+  if (rows?.[0]?.microsoft_user_id) return rows[0];
+  const email = String(rows?.[0]?.microsoft_email || fallbackEmail || '').trim().toLowerCase();
+  if (!email) throw new Error('That Pathfinder user has not connected Microsoft 365 yet.');
+  return { user_id: pathfinderUserId, microsoft_email: email, microsoft_user_id: '' };
+}
+
+async function resolveGraphUser(userId, identity) {
+  if (identity?.microsoft_user_id) return identity.microsoft_user_id;
+  if (!identity?.microsoft_email) throw new Error('Microsoft Teams identity is missing.');
+  const profile = await graphRequest(userId, `/users/${encodeURIComponent(identity.microsoft_email)}?$select=id,displayName,mail,userPrincipalName`);
+  if (!profile?.id) throw new Error(`Microsoft could not resolve ${identity.microsoft_email}.`);
+  return profile.id;
+}
+
+export async function sendTeamsDirectMessage(userId, { participantIds = [], participantDirectory = [], text = '', existingChatId = '' } = {}) {
+  if (!userId) throw new Error('A Pathfinder session is required for Teams messaging.');
+  const uniqueIds = [...new Set((participantIds || []).filter(Boolean))];
+  const recipientIds = uniqueIds.filter(id => String(id) !== String(userId));
+  if (!recipientIds.length) throw new Error('Select at least one Teams recipient.');
+
+  let chatId = String(existingChatId || '').trim();
+  if (!chatId) {
+    const me = await graphRequest(userId, '/me?$select=id,displayName,mail,userPrincipalName');
+    const members = [{
+      '@odata.type': '#microsoft.graph.aadUserConversationMember',
+      roles: ['owner'],
+      'user@odata.bind': `https://graph.microsoft.com/v1.0/users('${me.id}')`,
+    }];
+    for (const recipientId of recipientIds) {
+      const fallback = participantDirectory.find(item => String(item.id) === String(recipientId))?.email || '';
+      const identity = await resolveTeamsIdentity(recipientId, fallback);
+      const graphUserId = await resolveGraphUser(userId, identity);
+      members.push({
+        '@odata.type': '#microsoft.graph.aadUserConversationMember',
+        roles: ['owner'],
+        'user@odata.bind': `https://graph.microsoft.com/v1.0/users('${graphUserId}')`,
+      });
+    }
+    const chatType = members.length === 2 ? 'oneOnOne' : 'group';
+    const created = await graphRequest(userId, '/chats', {
+      method: 'POST',
+      body: JSON.stringify({ chatType, ...(chatType === 'group' ? { topic: 'Pathfinder Direct Message' } : {}), members }),
+    });
+    chatId = created?.id || '';
+    if (!chatId) throw new Error('Microsoft Teams did not return a chat ID.');
+  }
+
+  const message = await graphRequest(userId, `/chats/${encodeURIComponent(chatId)}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ body: { contentType: 'html', content: String(text || '').replace(/\n/g, '<br>') } }),
+  });
+  return { chatId, messageId: message?.id || '', message };
 }
