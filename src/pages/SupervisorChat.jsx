@@ -7,7 +7,7 @@ import { MessageCircle, Send, Users, UserCheck, Shield } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
-import { getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage, syncTeamsChannelToEntity } from "@/lib/teamsGraph";
+import { getTeamsChannelMessages, getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage, syncTeamsChannelToEntity } from "@/lib/teamsGraph";
 import { toast } from 'sonner';
 
 export default function SupervisorChat() {
@@ -33,6 +33,15 @@ export default function SupervisorChat() {
     queryKey: ['supervisorChatMessages'],
     queryFn: () => base44.entities.SupervisorChatMessage.list('-created_date', 100),
     enabled: user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin',
+  });
+
+  const { data: liveTeamsMessages = [], error: liveTeamsError, refetch: refetchTeamsHistory } = useQuery({
+    queryKey: ['supervisorTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
+    queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'supervisor_chat'),
+    enabled: !!user?.id && !!teamsConfig?.enabled && (user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin'),
+    refetchInterval: 60000,
+    refetchOnWindowFocus: true,
+    staleTime: 15000,
   });
 
   useEffect(() => {
@@ -114,8 +123,9 @@ export default function SupervisorChat() {
       })));
       return created;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['supervisorChatMessages'] });
+      await refetchTeamsHistory();
       setMessage("");
       setMentionedUsers([]);
       setTeamsSyncError('');
@@ -185,11 +195,13 @@ export default function SupervisorChat() {
     return unsubscribe;
   }, [user?.email]);
 
+  const displayedMessages = teamsConfig?.enabled ? liveTeamsMessages : [...(messages || [])].reverse();
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [displayedMessages]);
 
   if (!user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access') && user?.role !== 'admin') {
     return (
@@ -200,8 +212,6 @@ export default function SupervisorChat() {
       </div>
     );
   }
-
-  const reversedMessages = [...(messages || [])].reverse();
 
   const saveTeamsChannel = async () => {
     if (!teamsLink.trim()) return;
@@ -231,7 +241,7 @@ export default function SupervisorChat() {
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-slate-500" />
                 <span className="text-sm font-normal text-slate-600">
-                  {messages?.length || 0} messages
+                  {displayedMessages?.length || 0} messages
                 </span>
               </div>
             </div>
@@ -244,8 +254,8 @@ export default function SupervisorChat() {
               <div className="mt-3 flex gap-2"><input value={teamsLink} onChange={e => setTeamsLink(e.target.value)} placeholder="Paste supervisor Teams channel link" className="min-w-0 flex-1 rounded-lg border border-green-200 bg-white px-3 py-2 text-xs outline-none focus:border-green-500"/><Button type="button" onClick={saveTeamsChannel} disabled={teamsSaving || !teamsLink.trim()}>{teamsSaving ? 'Connecting…' : 'Connect'}</Button></div>
             </div>
           )}
-          {teamsConfig?.enabled && <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams sync active · Supervisor Chat ↔ Supervisor Teams channel</div>}
-          {teamsSyncError && <div className="border-b border-red-300 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">Microsoft Teams sync error: {teamsSyncError}</div>}
+          {teamsConfig?.enabled && <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams live history · Supervisor Chat ↔ (Supervisors Chat)</div>}
+          {(teamsSyncError || liveTeamsError) && <div className="border-b border-red-300 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">Microsoft Teams sync error: {teamsSyncError || liveTeamsError?.message}</div>}
 
           {!!supervisorUpdates.length && (
             <div className="border-b border-amber-200 bg-amber-50 p-3">
@@ -263,7 +273,7 @@ export default function SupervisorChat() {
 
           <ScrollArea className="flex-1 p-6" ref={scrollRef}>
             <div className="space-y-4">
-              {reversedMessages?.map((msg) => {
+              {displayedMessages?.map((msg) => {
                 const senderEmail = getMessageEmail(msg);
                 const isOwnMessage = senderEmail.toLowerCase() === String(user?.email || '').toLowerCase() || (!msg.sender_email && msg.sender_name === senderName);
                 const showName = true;
@@ -310,7 +320,7 @@ export default function SupervisorChat() {
                   </div>
                 );
               })}
-              {!messages?.length && (
+              {!displayedMessages?.length && (
                 <div className="text-center py-12">
                   <MessageCircle className="w-16 h-16 mx-auto mb-4 text-green-300" />
                   <p className="text-slate-500 text-lg font-medium mb-2">No messages yet</p>
