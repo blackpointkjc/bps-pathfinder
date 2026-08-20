@@ -1,0 +1,17 @@
+{
+  "name": "TeamsTestResult3",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "tested_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "user_id",
+    "tested_at"
+  ]
+}

@@ -155,7 +155,7 @@ export async function syncTeamsDirectMessages(userId, { chatId, threadKey = '', 
   if (!chatId || !userId || !currentPathfinderUserId) return { imported: 0 };
   const [me, payload] = await Promise.all([
     graphRequest(userId, '/me?$select=id'),
-    graphRequest(userId, `/chats/${encodeURIComponent(chatId)}/messages?$top=50`),
+    graphRequest(userId, `/me/chats/${encodeURIComponent(chatId)}/messages?$top=50&$orderby=createdDateTime desc`),
   ]);
   const identities = await base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []);
   const byMicrosoftId = new Map((identities || []).filter(item => item.microsoft_user_id).map(item => [String(item.microsoft_user_id), item]));
@@ -191,4 +191,48 @@ export async function syncTeamsDirectMessages(userId, { chatId, threadKey = '', 
     imported += 1;
   }
   return { imported };
+}
+
+function memberPathfinderId(member, identityByMicrosoftId) {
+  const microsoftId = member?.userId || member?.user?.id || member?.id || '';
+  const mapped = identityByMicrosoftId.get(String(microsoftId));
+  return mapped?.user_id || (microsoftId ? `teams:${microsoftId}` : 'teams:unknown');
+}
+
+function memberDisplayName(member, identityByMicrosoftId) {
+  const microsoftId = member?.userId || member?.user?.id || member?.id || '';
+  const mapped = identityByMicrosoftId.get(String(microsoftId));
+  return member?.displayName || mapped?.display_name || mapped?.microsoft_email || 'Microsoft Teams User';
+}
+
+export async function syncAllTeamsDirectChats(userId, currentPathfinderUserId) {
+  if (!userId || !currentPathfinderUserId) return { chats: 0, imported: 0 };
+  const [me, identities, chatsPayload] = await Promise.all([
+    graphRequest(userId, '/me?$select=id,displayName,mail,userPrincipalName'),
+    base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []),
+    graphRequest(userId, '/me/chats?$top=50&$expand=members,lastMessagePreview'),
+  ]);
+  const identityByMicrosoftId = new Map((identities || []).filter(item => item.microsoft_user_id).map(item => [String(item.microsoft_user_id), item]));
+  const meMicrosoftId = String(me?.id || '');
+  let imported = 0;
+  let chats = 0;
+
+  for (const chat of chatsPayload?.value || []) {
+    if (!chat?.id || !['oneOnOne', 'group'].includes(chat.chatType)) continue;
+    const members = (chat.members || []).filter(member => member?.userId || member?.user?.id || member?.id);
+    if (!members.length) continue;
+    chats += 1;
+    const otherMembers = members.filter(member => String(member?.userId || member?.user?.id || member?.id || '') !== meMicrosoftId);
+    const participantIds = [currentPathfinderUserId, ...otherMembers.map(member => memberPathfinderId(member, identityByMicrosoftId))];
+    const participantNames = [me?.displayName || 'You', ...otherMembers.map(member => memberDisplayName(member, identityByMicrosoftId))];
+    const result = await syncTeamsDirectMessages(userId, {
+      chatId: chat.id,
+      threadKey: `teams:${chat.id}`,
+      currentPathfinderUserId,
+      participantIds,
+      participantNames,
+    });
+    imported += Number(result?.imported || 0);
+  }
+  return { chats, imported };
 }
