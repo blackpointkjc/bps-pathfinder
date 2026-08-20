@@ -225,6 +225,21 @@ export default function TeamChat() {
             </div>
           </CardHeader>
 
+          {user?.role === 'admin' && !teamsConfig?.enabled && (
+            <div className="border-b bg-blue-50 p-4">
+              <div className="text-xs font-black uppercase tracking-wider text-blue-800">Connect Microsoft Teams</div>
+              <p className="mt-1 text-xs text-slate-600">In Microsoft Teams, open the channel you want Pathfinder Team Chat connected to, choose <strong>Copy link to channel</strong>, and paste it here once.</p>
+              <div className="mt-3 flex gap-2">
+                <input value={teamsLink} onChange={e => setTeamsLink(e.target.value)} placeholder="Paste Teams channel link" className="min-w-0 flex-1 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs outline-none focus:border-blue-500" />
+                <Button type="button" onClick={saveTeamsChannel} disabled={teamsSaving || !teamsLink.trim()}>{teamsSaving ? 'Connecting…' : 'Connect'}</Button>
+              </div>
+            </div>
+          )}
+
+          {teamsConfig?.enabled && (
+            <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams sync active · Pathfinder Team Chat ↔ Teams</div>
+          )}
+
           <ScrollArea className="flex-1 p-6" ref={scrollRef}>
             <div className="space-y-4">
               {reversedMessages?.map((msg) => {
