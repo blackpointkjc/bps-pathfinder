@@ -54,10 +54,12 @@ export default function SupervisorChat() {
         if (config?.channel_url) setTeamsLink(current => current || config.channel_url);
         if (config?.enabled) {
           const result = await syncTeamsChannelToEntity(user.id, { config, configKey: 'supervisor_chat', entityName: 'SupervisorChatMessage' });
+          setTeamsSyncError('');
           if (result?.imported) queryClient.invalidateQueries({ queryKey: ['supervisorChatMessages'] });
         }
       } catch (error) {
         console.warn('[Teams] Supervisor Chat sync unavailable:', error?.message);
+        setTeamsSyncError(error?.message || 'Microsoft Teams Supervisors Chat could not be loaded.');
       }
     };
     sync();
