@@ -6,7 +6,7 @@ const MICROSOFT_AUTH_ROOT = 'https://login.microsoftonline.com';
 // These are application identifiers, not secrets.
 const PATHFINDER_MICROSOFT_CLIENT_ID = '5cf1a58f-17d1-46d4-a7fd-ff5fcd7624eb';
 const PATHFINDER_MICROSOFT_TENANT_ID = '07f32330-fc73-4d73-a835-e9c47ba798c7';
-const DEFAULT_SCOPES = [
+export const DEFAULT_SCOPES = [
   'openid',
   'profile',
   'offline_access',
@@ -88,6 +88,14 @@ export function getStoredOutlookToken(userId) {
   } catch {
     return null;
   }
+}
+
+export function getMissingMicrosoftScopes(userId, requiredScopes = DEFAULT_SCOPES) {
+  const token = getStoredOutlookToken(userId);
+  const granted = new Set(String(token?.scope || '').toLowerCase().split(/\s+/).filter(Boolean));
+  return (requiredScopes || [])
+    .filter(scope => !['openid', 'profile', 'offline_access'].includes(String(scope).toLowerCase()))
+    .filter(scope => !granted.has(String(scope).toLowerCase()));
 }
 
 function storeOutlookToken(userId, tokenResponse, prior = null) {
