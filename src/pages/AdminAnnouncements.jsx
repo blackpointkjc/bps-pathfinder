@@ -62,34 +62,30 @@ export default function AdminAnnouncements() {
 
   const createAnnouncementMutation = useMutation({
     mutationFn: async (data) => {
-      const announcement = await base44.entities.Announcement.create(data);
-
-      // Mirror admin-created announcements to the configured Microsoft Teams channel.
-      // Company announcements go to General Alerts; supervisor-only updates go to Updates.
-      try {
-        const destination = data.teams_destination || 'general_alerts';
-        if (destination !== 'none') {
-          const config = await getTeamsSyncConfig(destination);
-          if (config?.enabled) {
-            const priority = String(data.priority || 'normal').toUpperCase();
-            const teamsMessage = await sendTeamChannelMessage(
-              user?.id,
-              `<strong>${data.title}</strong><br><em>${priority}</em><br><br>${String(data.message || '').replace(/\n/g, '<br>')}`,
-              config,
-              destination,
-            );
-            if (!teamsMessage?.id) throw new Error('Microsoft Teams did not return a message ID.');
-            await base44.entities.Announcement.update(announcement.id, {
-              teams_message_id: teamsMessage.id,
-              teams_synced_at: new Date().toISOString(),
-            }).catch(() => null);
-            toast.success(destination === 'supervisor_updates' ? 'Supervisor update posted to Teams Updates.' : 'Announcement posted to Teams General Alerts.');
-          }
-        }
-      } catch (error) {
-        console.warn('[Teams] Announcement was posted in Pathfinder but Teams mirroring failed:', error?.message);
-        toast.error(`Pathfinder announcement saved, but Teams delivery failed: ${error?.message || 'Unknown Microsoft error'}`, { duration: 14000 });
+      const destination = data.teams_destination || 'general_alerts';
+      let teamsMessage = null;
+      // Teams is the delivery source of truth for routed announcements. Do not
+      // create a Pathfinder-only announcement if Microsoft delivery fails.
+      if (destination !== 'none') {
+        const config = await getTeamsSyncConfig(destination);
+        if (!config?.enabled) throw new Error(destination === 'supervisor_updates' ? 'Microsoft Teams Updates channel is not configured.' : 'Microsoft Teams General Alerts channel is not configured.');
+        const priority = String(data.priority || 'normal').toUpperCase();
+        teamsMessage = await sendTeamChannelMessage(
+          user?.id,
+          `<strong>${data.title}</strong><br><em>${priority}</em><br><br>${String(data.message || '').replace(/\n/g, '<br>')}`,
+          config,
+          destination,
+        );
+        if (!teamsMessage?.id) throw new Error('Microsoft Teams did not confirm announcement delivery.');
       }
+
+      const announcement = await base44.entities.Announcement.create({
+        ...data,
+        teams_message_id: teamsMessage?.id || '',
+        teams_synced_at: teamsMessage?.id ? new Date().toISOString() : null,
+        teams_delivery_error: '',
+      });
+      if (teamsMessage?.id) toast.success(destination === 'supervisor_updates' ? 'Supervisor update posted to Teams Updates.' : 'Announcement posted to Teams General Alerts.');
       return announcement;
     },
     onSuccess: () => {
@@ -106,6 +102,9 @@ export default function AdminAnnouncements() {
         audience: "company",
         teams_destination: "general_alerts",
       });
+    },
+    onError: error => {
+      toast.error(`Announcement was not sent: ${error?.message || 'Microsoft Teams delivery failed.'}`, { duration: 14000 });
     },
   });
 
