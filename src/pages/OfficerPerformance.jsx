@@ -7,6 +7,7 @@ import { TrendingUp, Award, Clock, Star, Target } from "lucide-react";
 import { format, parseISO, subMonths, differenceInMinutes } from "date-fns";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { calculatePunctuality } from '@/lib/performanceScoring';
 
 export default function OfficerPerformance() {
   const [selectedPeriod, setSelectedPeriod] = useState("30");
@@ -30,6 +31,7 @@ export default function OfficerPerformance() {
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
+    refetchInterval: 30000,
   });
 
   const timeEntries = performanceData.timeEntries || [];
@@ -77,28 +79,11 @@ export default function OfficerPerformance() {
         return fDate >= periodStart && fDate <= periodEnd;
       }) || [];
 
-      // Calculate punctuality
-      let onTime = 0;
-      let late = 0;
-      periodEntries.forEach(entry => {
-        const clockInDate = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
-        const matchingSchedule = periodSchedules.find(s => s.shift_date === clockInDate);
-        
-        if (matchingSchedule) {
-          const scheduledStart = matchingSchedule.start_time;
-          const actualClockIn = format(parseISO(entry.clock_in), 'HH:mm');
-          const scheduledMinutes = parseInt(scheduledStart.split(':')[0]) * 60 + parseInt(scheduledStart.split(':')[1]);
-          const actualMinutes = parseInt(actualClockIn.split(':')[0]) * 60 + parseInt(actualClockIn.split(':')[1]);
-          
-          if (actualMinutes <= scheduledMinutes + 5) {
-            onTime++;
-          } else {
-            late++;
-          }
-        }
-      });
-
-      const punctualityScore = (onTime + late) > 0 ? Math.round((onTime / (onTime + late)) * 100) : 100;
+      const punctuality = calculatePunctuality(timeEntries || [], periodSchedules, periodStart, periodEnd);
+      const onTime = punctuality.onTime;
+      const late = punctuality.late;
+      const missed = punctuality.missed || 0;
+      const punctualityScore = punctuality.rate;
 
       // Calculate hours worked
       const hoursWorked = periodEntries.reduce((sum, e) => {
@@ -133,7 +118,7 @@ OFFICER: ${user.first_name} ${user.last_name}
 PERIOD: ${periodStart} to ${periodEnd} (${selectedPeriod} days)
 
 METRICS:
-- Punctuality Score: ${punctualityScore}% (${onTime} on-time, ${late} late)
+- Punctuality Score: ${punctualityScore == null ? 'Not scored' : `${punctualityScore}%`} (${onTime} on-time, ${late} late, ${missed} missed/no clock-in)
 - Hours Worked: ${hoursWorked.toFixed(1)}
 - Shifts Completed: ${periodEntries.length}
 - Incident Reports: ${periodIncidents.length}
@@ -166,6 +151,7 @@ Provide:
 
       setMetrics({
         punctualityScore,
+        missedShifts: missed,
         hoursWorked: hoursWorked.toFixed(1),
         shiftsCompleted: periodEntries.length,
         incidentReports: periodIncidents.length,
@@ -257,10 +243,11 @@ Provide:
                     <Clock className="w-8 h-8 text-blue-600" />
                     <div>
                       <p className="text-sm text-slate-600">Punctuality</p>
-                      <p className="text-2xl font-bold text-slate-900">{metrics.punctualityScore}%</p>
+                      <p className="text-2xl font-bold text-slate-900">{metrics.punctualityScore == null ? '—' : `${metrics.punctualityScore}%`}</p>
+                      <p className="text-xs text-slate-500">{metrics.missedShifts || 0} missed/no clock-in</p>
                     </div>
                   </div>
-                  <Progress value={metrics.punctualityScore} className="h-2" />
+                  <Progress value={metrics.punctualityScore || 0} className="h-2" />
                 </CardContent>
               </Card>
 
