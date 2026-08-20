@@ -274,8 +274,11 @@ export async function graphRequest(userId, pathOrUrl, options = {}) {
   if (response.status === 204) return null;
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    const error = new Error(payload?.error?.message || `Microsoft Graph request failed (${response.status}).`);
+    const graphCode = payload?.error?.code || '';
+    const graphMessage = payload?.error?.message || `Microsoft Graph request failed (${response.status}).`;
+    const error = new Error(graphCode ? `${graphCode}: ${graphMessage}` : graphMessage);
     error.status = response.status;
+    error.code = graphCode || error.code;
     error.payload = payload;
     throw error;
   }
@@ -389,16 +392,8 @@ export async function verifySharedMailboxAccess(userId, mailboxEmail) {
   const clean = String(mailboxEmail || '').trim().toLowerCase();
   if (!clean || !clean.includes('@')) throw new Error('Enter a valid shared mailbox email address.');
 
-  const token = getStoredOutlookToken(userId);
-  const grantedScopes = String(token?.scope || '').toLowerCase().split(/\s+/).filter(Boolean);
-  const hasSharedRead = grantedScopes.includes('mail.readwrite.shared');
-  const hasSharedSend = grantedScopes.includes('mail.send.shared');
-  if (!hasSharedRead || !hasSharedSend) {
-    const error = new Error('Your current Microsoft connection does not include the shared-mail permissions yet. Disconnect and reconnect Microsoft 365 once, then try adding the shared mailbox again.');
-    error.code = 'OUTLOOK_SHARED_RECONNECT_REQUIRED';
-    throw error;
-  }
-
+  // Ask Microsoft directly instead of blocking based on the locally cached scope string.
+  // This avoids false negatives after an administrator changes delegated permissions.
   const inbox = await graphRequest(userId, `/users/${encodeURIComponent(clean)}/mailFolders/inbox?$select=id,displayName,totalItemCount,unreadItemCount`);
   return {
     id: '',
@@ -464,15 +459,23 @@ export async function sendOutlookMail(userId, { to = [], cc = [], bcc = [], subj
     graphAttachments.push(await fileToAttachment(file));
   }
   const recipient = address => ({ emailAddress: { address: String(address).trim() } });
+  const sharedFrom = String(mailboxEmail || '').trim();
   const message = {
     subject,
     body: { contentType: 'HTML', content: String(body || '').replace(/\n/g, '<br>') },
     toRecipients: to.filter(Boolean).map(recipient),
     ccRecipients: cc.filter(Boolean).map(recipient),
     bccRecipients: bcc.filter(Boolean).map(recipient),
+    ...(sharedFrom ? { from: { emailAddress: { address: sharedFrom } } } : {}),
     ...(graphAttachments.length ? { attachments: graphAttachments } : {}),
   };
-  await graphRequest(userId, `${mailboxRoot(mailboxEmail)}/sendMail`, { method: 'POST', body: JSON.stringify({ message, saveToSentItems: true }) });
+
+  // For delegated shared-mail sending Microsoft requires the message.from property.
+  // Use /me/sendMail for shared mailboxes so Send As / Send on Behalf can be honored
+  // without additionally requiring Full Access just to submit the message. The shared
+  // mailbox still needs the Exchange Send As or Send on Behalf right.
+  const endpoint = sharedFrom ? '/me/sendMail' : '/me/sendMail';
+  await graphRequest(userId, endpoint, { method: 'POST', body: JSON.stringify({ message, saveToSentItems: true }) });
 }
 
 export async function replyOutlookMail(userId, messageId, comment, mailboxEmail = '') {
