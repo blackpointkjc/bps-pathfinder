@@ -15,6 +15,11 @@ const DEFAULT_SCOPES = [
   'Mail.Send',
   'Mail.ReadWrite.Shared',
   'Mail.Send.Shared',
+  'Chat.ReadWrite',
+  'ChatMessage.Read',
+  'ChatMessage.Send',
+  'ChannelMessage.Read.All',
+  'ChannelMessage.Send',
 ];
 
 const encoder = new TextEncoder();

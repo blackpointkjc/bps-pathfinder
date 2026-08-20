@@ -1,0 +1,60 @@
+{
+  "name": "MicrosoftTeamsSyncConfig",
+  "type": "object",
+  "properties": {
+    "config_key": {
+      "type": "string",
+      "description": "Singleton configuration key"
+    },
+    "team_id": {
+      "type": "string",
+      "description": "Microsoft Teams team/group ID"
+    },
+    "channel_id": {
+      "type": "string",
+      "description": "Microsoft Teams channel ID"
+    },
+    "channel_name": {
+      "type": "string",
+      "description": "Display label for the synced Teams channel"
+    },
+    "channel_url": {
+      "type": "string",
+      "description": "Original Microsoft Teams channel link"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "updated_by": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "config_key",
+    "team_id",
+    "channel_id"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": true,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
