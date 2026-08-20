@@ -67,14 +67,48 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
   const details = [];
   let onTime = 0;
   let late = 0;
+  let missed = 0;
+  const nowParts = dateParts(new Date());
+  const nowWall = nowParts ? wallClockMinute(`${nowParts.year}-${String(nowParts.month).padStart(2, '0')}-${String(nowParts.day).padStart(2, '0')}`, `${String(nowParts.hour).padStart(2, '0')}:${String(nowParts.minute).padStart(2, '0')}`) : null;
 
-  for (const entry of timeEntries) {
-    if (!entry?.clock_in) continue;
+  const eligibleSchedules = schedules.filter(schedule => {
+    if (schedule?.archived === true || schedule?.is_open === true || !schedule?.shift_date || !schedule?.start_time || !schedule?.end_time) return false;
+    if (monthStart && schedule.shift_date < monthStart) return false;
+    if (monthEnd && schedule.shift_date > monthEnd) return false;
+    let start = wallClockMinute(schedule.shift_date, schedule.start_time);
+    let end = wallClockMinute(schedule.shift_date, schedule.end_time);
+    if (start == null || end == null) return false;
+    if (end <= start) end += 1440;
+    // Score only shifts that have fully elapsed. This prevents an in-progress shift
+    // from being marked missed before the officer still has a chance to clock in.
+    return nowWall != null && end <= nowWall;
+  });
+
+  const usedEntries = new Set();
+  for (const schedule of eligibleSchedules) {
+    const candidates = timeEntries
+      .filter(entry => entry?.clock_in && !usedEntries.has(String(entry.id || '')))
+      .map(entry => ({ entry, matched: matchTimeEntryToSchedule(entry, [schedule]) }))
+      .filter(item => item.matched)
+      .sort((a, b) => new Date(a.entry.clock_in).getTime() - new Date(b.entry.clock_in).getTime());
+    const entry = candidates[0]?.entry || null;
+    if (!entry) {
+      missed++;
+      details.push({
+        status: 'missed',
+        shift_date: schedule.shift_date,
+        scheduled_start: schedule.start_time,
+        actual_clock_in: '',
+        minutes_late: null,
+        location: schedule.location || '',
+        schedule_id: schedule.id,
+        time_entry_id: null,
+      });
+      continue;
+    }
+
+    usedEntries.add(String(entry.id || ''));
     const localDate = easternDateKey(entry.clock_in);
-    if (!localDate || (monthStart && localDate < monthStart) || (monthEnd && localDate > monthEnd)) continue;
-    const schedule = matchTimeEntryToSchedule(entry, schedules);
-    if (!schedule) continue;
-
     const actual = easternTimeKey(entry.clock_in);
     const actualWall = wallClockMinute(localDate, actual);
     const scheduledWall = wallClockMinute(schedule.shift_date, schedule.start_time);
@@ -94,8 +128,8 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     });
   }
 
-  const total = onTime + late;
-  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, total, details };
+  const total = onTime + late + missed;
+  return { rate: total ? Math.round((onTime / total) * 100) : null, onTime, late, missed, total, details };
 }
 
 export function calculateBidStanding(bids = [], monthStart, monthEnd) {
