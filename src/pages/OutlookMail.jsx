@@ -12,7 +12,6 @@ import {
   listSavedSharedMailboxes,
   removeSharedMailbox,
   replyOutlookMail,
-  saveOutlookMail,
   saveSharedMailbox,
   sendOutlookMail,
   setOutlookMessageRead,
@@ -59,15 +58,21 @@ export default function OutlookMail() {
   const [forwardOpen, setForwardOpen] = useState(false);
   const [forwardTo, setForwardTo] = useState('');
   const [forwardComment, setForwardComment] = useState('');
+  const [sharedMailboxes, setSharedMailboxes] = useState([]);
+  const [activeMailbox, setActiveMailbox] = useState(null);
+  const [sharedAddress, setSharedAddress] = useState('');
+  const [addingShared, setAddingShared] = useState(false);
 
-  const loadMailbox = async (targetFolder = folderId, append = false, link = null) => {
+  const activeMailboxEmail = activeMailbox?.mailbox_email || '';
+
+  const loadMailbox = async (targetFolder = folderId, append = false, link = null, mailboxEmail = activeMailboxEmail) => {
     if (!user?.id) return;
     try {
       append ? setLoadingMore(true) : setLoading(true);
       const [status, folderRows, result] = await Promise.all([
         getOutlookConnectionStatus(user.id, user?.email || ''),
-        folders.length ? Promise.resolve(folders) : listOutlookFolders(user.id),
-        listOutlookMessages(user.id, targetFolder, link),
+        folders.length ? Promise.resolve(folders) : listOutlookFolders(user.id, mailboxEmail),
+        listOutlookMessages(user.id, targetFolder, link, mailboxEmail),
       ]);
       setConnection(status);
       if (!folders.length) setFolders(folderRows);
@@ -85,7 +90,11 @@ export default function OutlookMail() {
   };
 
   useEffect(() => {
-    loadMailbox('inbox');
+    if (!user?.id) return;
+    Promise.all([
+      listSavedSharedMailboxes(user.id).catch(() => []),
+      loadMailbox('inbox', false, null, ''),
+    ]).then(([rows]) => setSharedMailboxes(rows || []));
   }, [user?.id]);
 
   const filteredMessages = useMemo(() => {
@@ -105,15 +114,15 @@ export default function OutlookMail() {
 
   const openMessage = async message => {
     try {
-      const full = await getOutlookMessage(user.id, message.id);
+      const full = await getOutlookMessage(user.id, message.id, activeMailboxEmail);
       setSelected(full || message);
       setAttachments([]);
       if (!message.isRead) {
-        await setOutlookMessageRead(user.id, message.id, true);
+        await setOutlookMessageRead(user.id, message.id, true, activeMailboxEmail);
         setMessages(current => current.map(item => item.id === message.id ? { ...item, isRead: true } : item));
       }
       if (message.hasAttachments) {
-        const rows = await getOutlookAttachments(user.id, message.id);
+        const rows = await getOutlookAttachments(user.id, message.id, activeMailboxEmail);
         setAttachments(rows);
       }
     } catch (error) {
@@ -134,6 +143,7 @@ export default function OutlookMail() {
         subject: compose.subject.trim(),
         body: compose.body,
         attachments: compose.attachments,
+        mailboxEmail: activeMailboxEmail,
       });
       toast.success('Email sent through Outlook.');
       setCompose({ to: '', cc: '', bcc: '', subject: '', body: '', attachments: [] });
@@ -150,7 +160,7 @@ export default function OutlookMail() {
     if (!selected || !replyText.trim()) return;
     try {
       setReplying(true);
-      await replyOutlookMail(user.id, selected.id, replyText.trim());
+      await replyOutlookMail(user.id, selected.id, replyText.trim(), activeMailboxEmail);
       setReplyText('');
       toast.success('Reply sent through Outlook.');
     } catch (error) {
@@ -165,7 +175,7 @@ export default function OutlookMail() {
     if (!selected || !recipients.length) return toast.error('Enter a forwarding recipient.');
     try {
       setReplying(true);
-      await forwardOutlookMail(user.id, selected.id, recipients, forwardComment.trim());
+      await forwardOutlookMail(user.id, selected.id, recipients, forwardComment.trim(), activeMailboxEmail);
       setForwardOpen(false);
       setForwardTo('');
       setForwardComment('');
@@ -180,7 +190,7 @@ export default function OutlookMail() {
   const removeMessage = async () => {
     if (!selected) return;
     try {
-      await deleteOutlookMessage(user.id, selected.id);
+      await deleteOutlookMessage(user.id, selected.id, activeMailboxEmail);
       setMessages(current => current.filter(item => item.id !== selected.id));
       setSelected(null);
       setAttachments([]);
@@ -194,7 +204,7 @@ export default function OutlookMail() {
     if (!selected) return;
     try {
       const next = !selected.isRead;
-      await setOutlookMessageRead(user.id, selected.id, next);
+      await setOutlookMessageRead(user.id, selected.id, next, activeMailboxEmail);
       setSelected(current => ({ ...current, isRead: next }));
       setMessages(current => current.map(item => item.id === selected.id ? { ...item, isRead: next } : item));
     } catch (error) {
