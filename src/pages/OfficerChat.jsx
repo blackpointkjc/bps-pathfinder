@@ -38,7 +38,7 @@ export default function OfficerChat() {
     queryKey: ['officerTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'officer_chat'),
     enabled: !!user?.id && !!teamsConfig?.enabled,
-    refetchInterval: 60000,
+    refetchInterval: 120000,
     refetchOnWindowFocus: true,
     staleTime: 15000,
   });
@@ -68,8 +68,7 @@ export default function OfficerChat() {
       }
     };
     sync();
-    const interval = window.setInterval(sync, 20000);
-    return () => { cancelled = true; window.clearInterval(interval); };
+    return () => { cancelled = true; };
   }, [user?.id, queryClient]);
 
   const { data: allUsers = [] } = useQuery({
