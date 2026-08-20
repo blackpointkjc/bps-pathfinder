@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MessageCircle, Plus, Search, Send, Trash2, Users, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { sendTeamsDirectMessage, syncTeamsDirectMessages } from '@/lib/teamsGraph';
+import { toast } from 'sonner';
 
 const nameOf = user => [user?.rank, user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.full_name || user?.email || 'User';
 const lower = value => String(value || '').toLowerCase();
@@ -85,6 +87,31 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   }, [threads, selectedKey, isMobile, hiddenPreferences]);
 
   const selected = threads.find(thread => thread.key === selectedKey);
+
+  useEffect(() => {
+    if (!selected || !currentUser?.id) return undefined;
+    const chatId = selected.messages.find(message => message.teams_chat_id)?.teams_chat_id;
+    if (!chatId) return undefined;
+    let cancelled = false;
+    const sync = async () => {
+      try {
+        const result = await syncTeamsDirectMessages(currentUser.id, {
+          chatId,
+          threadKey: selected.key,
+          currentPathfinderUserId: currentUser.id,
+          participantIds: selected.participants || [],
+          participantNames: (selected.participants || []).map(id => id === 'dispatch' ? 'Dispatch' : nameOf(userMap.get(String(id)))),
+        });
+        if (!cancelled && result?.imported) await load();
+      } catch (error) {
+        console.warn('[Teams] Direct-message sync unavailable:', error?.message);
+      }
+    };
+    sync();
+    const interval = window.setInterval(sync, 20000);
+    return () => { cancelled = true; window.clearInterval(interval); };
+  }, [selectedKey, selected?.messages.length, currentUser?.id]);
+
   useEffect(() => {
     if (!selected) return;
     const unread = selected.messages.filter(message => message.recipient_id === currentUser.id && !message.read);
@@ -112,10 +139,11 @@ export default function UniversalInbox({ currentUser, users = [] }) {
     const body = text.trim();
     if (!body || !selected) return;
     const participantIds = [...new Set(selected.participants || [])];
-    const recipients = participantIds.filter(id => id !== currentUser.id);
+    const recipients = participantIds.filter(id => id !== currentUser.id && id !== 'dispatch');
     const messageId = crypto.randomUUID();
     const senderName = nameOf(currentUser);
-    await Promise.all(recipients.map(recipientId => base44.entities.Message.create({
+    const participantNames = participantIds.map(id => id === 'dispatch' ? 'Dispatch' : nameOf(userMap.get(String(id))));
+    const createdRecords = await Promise.all(participantIds.filter(id => id !== currentUser.id).map(recipientId => base44.entities.Message.create({
       sender_id: currentUser.id,
       sender_name: senderName,
       recipient_id: recipientId,
@@ -123,11 +151,34 @@ export default function UniversalInbox({ currentUser, users = [] }) {
       message: body,
       read: false,
       message_type: 'dispatch_message',
-      thread_id: selected.key.startsWith('direct:') ? selected.key : selected.key,
+      thread_id: selected.key,
       client_message_id: messageId,
       participant_ids: participantIds,
-      participant_names: participantIds.map(id => id === 'dispatch' ? 'Dispatch' : nameOf(userMap.get(String(id)))),
+      participant_names: participantNames,
     })));
+
+    if (recipients.length) {
+      try {
+        const existingChatId = selected.messages.find(item => item.teams_chat_id)?.teams_chat_id || '';
+        const teamsResult = await sendTeamsDirectMessage(currentUser.id, {
+          participantIds,
+          participantDirectory: users,
+          text: body,
+          existingChatId,
+        });
+        await Promise.all(createdRecords.map(record => base44.entities.Message.update(record.id, {
+          teams_chat_id: teamsResult.chatId,
+          teams_message_id: teamsResult.messageId,
+          teams_synced_at: new Date().toISOString(),
+          teams_sync_error: '',
+        }).catch(() => null)));
+      } catch (error) {
+        await Promise.all(createdRecords.map(record => base44.entities.Message.update(record.id, {
+          teams_sync_error: error?.message || 'Microsoft Teams delivery failed',
+        }).catch(() => null)));
+        toast.error(`Teams direct message failed: ${error?.message || 'Unknown Microsoft error'}`, { duration: 12000 });
+      }
+    }
     setText('');
     await load();
   };
