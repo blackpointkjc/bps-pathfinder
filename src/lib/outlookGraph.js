@@ -270,6 +270,11 @@ export async function graphRequest(userId, pathOrUrl, options = {}) {
   if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
   let response = await fetch(url, { ...options, headers });
+  if (response.status === 429) {
+    const retryAfter = Math.min(10, Math.max(1, Number(response.headers.get('Retry-After') || 2)));
+    await new Promise(resolve => window.setTimeout(resolve, retryAfter * 1000));
+    response = await fetch(url, { ...options, headers });
+  }
   if (response.status === 401) {
     const refreshed = await refreshOutlookToken(userId, getStoredOutlookToken(userId));
     if (!refreshed?.access_token) {
