@@ -85,6 +85,7 @@ const CENTER_CONFIG = {
       ]},
       { label: 'Messages', items: [
         ['Team Chat', 'TeamChat', MessageCircle],
+        ['Officer Chat', 'OfficerChat', MessageCircle],
         ['Announcements', 'Announcements', Bell],
       ]},
       { label: 'Profile & Training', items: [
@@ -284,7 +285,7 @@ Object.entries(DESKTOP_CENTER_PAGE).forEach(([center, page]) => {
 
 const DESKTOP_LEGACY_TOOL_ROUTES = {
   CommandDashboard: ['cad','live','command'], DispatchCenter: ['cad','live','dispatch'], Navigation: ['cad','live','map'], BOLOAlerts: ['cad','alerts','bolo'], CallHistory: ['cad','history','history'], RecordsAssistant: ['cad','history','records'], Personnel: ['cad','admin','personnel'], PathfinderReports: ['cad','admin','reports'], AdminPortal: ['cad','admin','control'],
-  Dashboard: ['officer','today','dashboard'], TimeClock: ['officer','today','clock'], Schedule: ['officer','today','myschedule'], PostOrders: ['officer','field','postorders'], QRPatrolScan: ['officer','field','qr'], ShiftHandover: ['officer','field','handover'], VirginiaFieldLawAssistant: ['officer','field','law'], VATrespassNotices: ['officer','field','trespass'], VACriminalComplaints: ['officer','field','complaint'], Summons: ['officer','field','summons'], DailyActivityReports: ['officer','reports','dar'], IncidentReports: ['officer','reports','incident'], MaintenanceReports: ['officer','reports','maintenance'], OpenDoorReports: ['officer','reports','opendoor'], ConfidentialReport: ['officer','reports','confidential'], ExpenseReports: ['officer','reports','expense'], TimeRequests: ['officer','schedule','time'], OfficerAvailability: ['officer','schedule','availability'], OpenShifts: ['officer','schedule','openshifts'], OfficerPayrollDates: ['officer','schedule','payroll'], TeamChat: ['officer','messages','chat'], Announcements: ['officer','messages','announcements'], OfficerProfile: ['officer','profile','profile'], MyPerformanceAnalytics: ['officer','profile','performance'], OfficerTraining: ['officer','profile','training'], RankDuties: ['officer','profile','duties'],
+  Dashboard: ['officer','today','dashboard'], TimeClock: ['officer','today','clock'], Schedule: ['officer','today','myschedule'], PostOrders: ['officer','field','postorders'], QRPatrolScan: ['officer','field','qr'], ShiftHandover: ['officer','field','handover'], VirginiaFieldLawAssistant: ['officer','field','law'], VATrespassNotices: ['officer','field','trespass'], VACriminalComplaints: ['officer','field','complaint'], Summons: ['officer','field','summons'], DailyActivityReports: ['officer','reports','dar'], IncidentReports: ['officer','reports','incident'], MaintenanceReports: ['officer','reports','maintenance'], OpenDoorReports: ['officer','reports','opendoor'], ConfidentialReport: ['officer','reports','confidential'], ExpenseReports: ['officer','reports','expense'], TimeRequests: ['officer','schedule','time'], OfficerAvailability: ['officer','schedule','availability'], OpenShifts: ['officer','schedule','openshifts'], OfficerPayrollDates: ['officer','schedule','payroll'], TeamChat: ['officer','messages','teamchat'], OfficerChat: ['officer','messages','officerchat'], Announcements: ['officer','messages','announcements'], OfficerProfile: ['officer','profile','profile'], MyPerformanceAnalytics: ['officer','profile','performance'], OfficerTraining: ['officer','profile','training'], RankDuties: ['officer','profile','duties'],
   AdminDashboard: ['admin','command','dashboard'], AdminAnalytics: ['admin','command','analytics'], AdminLocationTracker: ['admin','command','tracker'], AdminGeofenceAlerts: ['admin','command','geofence'],
   AdminScheduling: ['admin','schedule','scheduling'], FleetVehicleAssignments: ['admin','schedule','fleet'], AdminOfficerManagement: ['admin','schedule','availability'], AdminPlannedShifts: ['admin','schedule','planned'], AdminShiftBids: ['admin','schedule','bids'],
   AdminUsers: ['admin','people','users'], AdminPlatoonAssignments: ['admin','people','chain'], AdminLocations: ['admin','people','locations'], AdminEquipment: ['admin','people','equipment'], AdminPostOrders: ['admin','people','postorders'],
@@ -314,7 +315,7 @@ const ROOT_PAGES = new Set(['CommandDashboard', 'Dashboard', 'OfficerInbox']);
 const CENTER_UNREAD_PAGES = {
   // CAD message counts are shown on the in-workspace MSG control, not the side menu.
   cad: [],
-  officer: ['TeamChat', 'Announcements'],
+  officer: ['TeamChat', 'OfficerChat', 'Announcements'],
   supervisor: ['SupervisorChat'],
   admin: ['AdminAnnouncements'],
 };
@@ -832,9 +833,10 @@ export default function Layout({ children, currentPageName }) {
           return a.priority === 'urgent' ? days <= 30 : a.priority === 'important' ? days <= 14 : days <= 7;
         });
         const teamMentions = (mentions || []).filter(m => m.page === 'TeamChat').length;
+        const officerMentions = (mentions || []).filter(m => m.page === 'OfficerChat').length;
         const supervisorMentions = (mentions || []).filter(m => m.page === 'SupervisorChat').length;
         setUnreadCounts(current => {
-          const next = { ...current, TeamChat: teamMentions, SupervisorChat: supervisorMentions, Announcements: unreadAnnouncements.length };
+          const next = { ...current, TeamChat: teamMentions, OfficerChat: officerMentions, SupervisorChat: supervisorMentions, Announcements: unreadAnnouncements.length };
           localStorage.setItem(unreadStorageKey, JSON.stringify(next));
           return next;
         });
