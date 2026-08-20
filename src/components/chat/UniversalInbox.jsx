@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MessageCircle, Plus, Search, Send, Trash2, Users, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { sendTeamsDirectMessage, syncTeamsDirectMessages } from '@/lib/teamsGraph';
+import { sendTeamsDirectMessage, syncTeamsDirectMessages, syncAllTeamsDirectChats } from '@/lib/teamsGraph';
 import { toast } from 'sonner';
 
 const nameOf = user => [user?.rank, user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.full_name || user?.email || 'User';
@@ -45,12 +45,22 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   }, []);
 
   useEffect(() => {
-    load();
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const result = await syncAllTeamsDirectChats(currentUser.id, currentUser.id);
+        if (!cancelled && result?.imported) await load();
+        else if (!cancelled) await load();
+      } catch (error) {
+        console.warn('[Teams] Unable to discover direct-message history:', error?.message);
+        if (!cancelled) await load();
+      }
+    };
+    refresh();
+    const interval = window.setInterval(refresh, 20000);
     // Message delivery must not remove a user's archived-thread preference.
-    // Delayed/duplicate realtime create events previously made deleted threads
-    // reappear immediately.
     const unsubscribe = base44.entities.Message.subscribe(() => load());
-    return unsubscribe;
+    return () => { cancelled = true; window.clearInterval(interval); unsubscribe?.(); };
   }, [currentUser.id, currentUser.email]);
 
   const threads = useMemo(() => {
@@ -131,7 +141,13 @@ export default function UniversalInbox({ currentUser, users = [] }) {
 
   const threadNames = thread => {
     const ids = (thread.participants || []).filter(id => id !== currentUser.id);
-    const names = ids.map(id => id === 'dispatch' ? 'Dispatch' : nameOf(userMap.get(String(id)))).filter(Boolean);
+    const participantNames = thread.messages.find(message => message.participant_names?.length)?.participant_names || [];
+    const names = ids.map((id, index) => {
+      if (id === 'dispatch') return 'Dispatch';
+      const mapped = userMap.get(String(id));
+      if (mapped) return nameOf(mapped);
+      return participantNames[index + 1] || participantNames[index] || 'Microsoft Teams User';
+    }).filter(Boolean);
     return names.length ? names.join(', ') : 'Direct Message';
   };
 
