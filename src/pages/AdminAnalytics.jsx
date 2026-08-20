@@ -8,7 +8,7 @@ import {
   BarChart3, Users, Clock, AlertTriangle, 
   CheckCircle2, Award, Shield
 } from "lucide-react";
-import { format, parseISO, differenceInMinutes, startOfWeek, addDays, startOfMonth, endOfMonth } from "date-fns";
+import { format, parseISO, differenceInMinutes, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer, isInternalMember } from '@/lib/directoryUtils';

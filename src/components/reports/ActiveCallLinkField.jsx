@@ -1,4 +1,3 @@
-import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Radio } from 'lucide-react';
 import { Label } from '@/components/ui/label';

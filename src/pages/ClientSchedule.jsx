@@ -1,10 +1,7 @@
 import { getClientPortalUser, getClientPreviewId } from '@/utils/clientPreview';
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Shield, ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import { format, addDays, startOfWeek, addWeeks } from "date-fns";
 import { Button } from "@/components/ui/button";

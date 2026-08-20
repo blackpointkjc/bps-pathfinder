@@ -1,13 +1,10 @@
 import { getClientPortalUser, getClientPreviewId } from '@/utils/clientPreview';
-import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, FileText, AlertTriangle, UserX, MapPin, Clock, Radio } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { Link } from "react-router-dom";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { listDirectoryLocations } from '@/lib/appDirectory';
 
 export default function ClientDashboard() {
