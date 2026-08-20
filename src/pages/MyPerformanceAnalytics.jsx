@@ -193,16 +193,18 @@ export default function MyPerformanceAnalytics() {
   const performanceFactors = useMemo(() => {
     const factors = [];
 
-    if (onTimeStats.total > 0 && onTimeStats.late > 0) {
-      const lateDetails = onTimeStats.details
-        .filter(detail => detail.status === 'late')
-        .map(detail => `${format(parseISO(detail.shift_date), 'MMM d')}: scheduled ${detail.scheduled_start}, clocked in ${detail.actual_clock_in} (${detail.minutes_late} min late)${detail.location ? ` at ${detail.location.split(':')[0]}` : ''}`);
+    if (onTimeStats.total > 0 && (onTimeStats.late > 0 || onTimeStats.missed > 0)) {
+      const problemDetails = onTimeStats.details
+        .filter(detail => detail.status === 'late' || detail.status === 'missed')
+        .map(detail => detail.status === 'missed'
+          ? `${format(parseISO(detail.shift_date), 'MMM d')}: scheduled ${detail.scheduled_start}${detail.location ? ` at ${detail.location.split(':')[0]}` : ''} — no clock-in was recorded.`
+          : `${format(parseISO(detail.shift_date), 'MMM d')}: scheduled ${detail.scheduled_start}, clocked in ${detail.actual_clock_in} (${detail.minutes_late} min late)${detail.location ? ` at ${detail.location.split(':')[0]}` : ''}`);
       factors.push({
         metric: 'On-Time Arrival',
         value: `${onTimeStats.rate}%`,
         severity: 'negative',
-        reason: `${onTimeStats.late} of ${onTimeStats.total} matched shift${onTimeStats.total === 1 ? '' : 's'} were clocked in more than 5 minutes after the scheduled start time.`,
-        details: lateDetails
+        reason: `${onTimeStats.onTime} on time, ${onTimeStats.late} late, and ${onTimeStats.missed || 0} missed/no-clock-in across ${onTimeStats.total} elapsed scheduled shift${onTimeStats.total === 1 ? '' : 's'}.`,
+        details: problemDetails
       });
     } else if (onTimeStats.total > 0) {
       factors.push({
@@ -374,7 +376,7 @@ export default function MyPerformanceAnalytics() {
               <p className="text-2xl font-bold text-green-600 sm:text-3xl">{onTimeStats.total > 0 ? `${onTimeStats.rate}%` : '—'}</p>
               <p className="text-xs font-semibold text-slate-700">On-Time Arrival</p>
               <p className="mt-1 text-[11px] text-slate-600">
-                {onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.total} matched shifts` : 'No matched scheduled clock-ins yet'}
+                {onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.missed || 0} missed • ${onTimeStats.total} elapsed shifts` : 'No elapsed scheduled shifts yet'}
               </p>
             </CardContent>
           </Card>
@@ -668,7 +670,7 @@ export default function MyPerformanceAnalytics() {
                     <Pie
                       data={[
                         { name: 'On Time', value: onTimeStats.onTime },
-                        { name: 'Late', value: onTimeStats.late },
+                        { name: 'Late / Missed', value: onTimeStats.late + (onTimeStats.missed || 0) },
                       ]}
                       cx="50%"
                       cy="50%"
@@ -691,7 +693,7 @@ export default function MyPerformanceAnalytics() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-red-500 rounded" />
-                  <span>Late: {onTimeStats.late}</span>
+                  <span>Late: {onTimeStats.late} • Missed: {onTimeStats.missed || 0}</span>
                 </div>
               </div>
             </CardContent>
