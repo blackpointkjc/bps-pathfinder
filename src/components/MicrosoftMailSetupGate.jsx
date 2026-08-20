@@ -1,24 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Mail, ShieldCheck, Loader2, ExternalLink, AlertTriangle, Settings, CheckCircle2 } from 'lucide-react';
+import { Mail, ShieldCheck, Loader2, ExternalLink, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import {
   beginOutlookConnection,
   getMicrosoftMailConfig,
   getOutlookConnectionStatus,
   getOutlookRedirectUri,
   handleOutlookOAuthCallback,
-  saveMicrosoftMailConfig,
 } from '@/lib/outlookGraph';
 
 export default function MicrosoftMailSetupGate({ user, children }) {
   const [status, setStatus] = useState({ loading: true, connected: false, configured: false });
-  const [config, setConfig] = useState({ clientId: '', tenant: 'common' });
-  const [clientIdInput, setClientIdInput] = useState('');
-  const [tenantInput, setTenantInput] = useState('common');
-  const [saving, setSaving] = useState(false);
+  const [config, setConfig] = useState({ clientId: '', tenant: '' });
   const [error, setError] = useState('');
-  const [savedNotice, setSavedNotice] = useState('');
   const userId = user?.id;
-  const isAdmin = user?.role === 'admin';
   const redirectUri = typeof window !== 'undefined' ? getOutlookRedirectUri() : '/OutlookMail';
 
   const isCallback = useMemo(() => {
@@ -34,11 +28,9 @@ export default function MicrosoftMailSetupGate({ user, children }) {
     const load = async () => {
       try {
         setStatus(current => ({ ...current, loading: true }));
-        const currentConfig = await getMicrosoftMailConfig({ force: true });
+        const currentConfig = await getMicrosoftMailConfig();
         if (!active) return;
-        setConfig(currentConfig || { clientId: '', tenant: 'common' });
-        setClientIdInput(currentConfig?.clientId || '');
-        setTenantInput(currentConfig?.tenant || 'common');
+        setConfig(currentConfig || { clientId: '', tenant: '' });
 
         if (isCallback) {
           const callback = await handleOutlookOAuthCallback(userId);
@@ -58,13 +50,10 @@ export default function MicrosoftMailSetupGate({ user, children }) {
 
     load();
     const onConnectionChanged = () => load();
-    const onConfigChanged = () => load();
     window.addEventListener('bps:outlook-connection-changed', onConnectionChanged);
-    window.addEventListener('bps:microsoft-mail-config-changed', onConfigChanged);
     return () => {
       active = false;
       window.removeEventListener('bps:outlook-connection-changed', onConnectionChanged);
-      window.removeEventListener('bps:microsoft-mail-config-changed', onConfigChanged);
     };
   }, [userId, user?.email, isCallback]);
 
