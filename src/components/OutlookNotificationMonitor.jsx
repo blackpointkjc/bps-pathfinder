@@ -17,8 +17,10 @@ export default function OutlookNotificationMonitor({ user }) {
         const shared = await listSavedSharedMailboxes(user.id).catch(() => []);
         const mailboxTargets = [
           { email: '', label: 'My Mailbox' },
-          ...(shared || []).map(item => ({ email: item.mailbox_email, label: item.display_name || item.mailbox_email })),
-        ];
+          ...(shared || [])
+            .filter(item => item.connection_status !== 'needs_attention')
+            .map(item => ({ email: item.mailbox_email, label: item.display_name || item.mailbox_email })),
+        ]; 
 
         const batches = await Promise.all(mailboxTargets.map(async target => {
           try {
@@ -79,11 +81,13 @@ export default function OutlookNotificationMonitor({ user }) {
     const onFocus = () => poll();
     const onVisibility = () => { if (document.visibilityState === 'visible') poll(); };
     window.addEventListener('focus', onFocus);
+    window.addEventListener('bps-outlook-refresh', poll);
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
       cancelled = true;
       window.clearInterval(interval);
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('bps-outlook-refresh', poll);
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [user?.id]);
