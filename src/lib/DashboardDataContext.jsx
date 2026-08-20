@@ -24,6 +24,19 @@ function parseServerTimestamp(value) {
     return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
 }
 
+function getReliableCallTimestamp(call) {
+    const createdAt = parseServerTimestamp(call?.created_date);
+    const receivedAt = parseServerTimestamp(call?.time_received);
+
+    // GRAC has occasionally supplied a malformed/timezone-shifted time_received.
+    // Trust it only when it is reasonably close to the Base44 row creation time;
+    // otherwise use created_date so a genuinely new call is not hidden by the 1h filter.
+    if (receivedAt && createdAt && Math.abs(receivedAt - createdAt) < 24 * 60 * 60 * 1000) {
+        return receivedAt;
+    }
+    return createdAt || receivedAt;
+}
+
 function isRateLimitError(err) {
     return err?.status === 429 || String(err?.message || err).includes('429') || String(err?.message || err).toLowerCase().includes('rate limit');
 }
@@ -64,38 +77,28 @@ export function DashboardDataProvider({ children }) {
         try {
             setRequestCount(c => c + 2);
 
-            // Fetch calls and the authoritative on-duty roster independently so a
-            // stale saved User.status can never leave a clocked-out officer visible.
+            // Calls are the critical payload. Fetch and paint them first so a slower
+            // officer-roster request can never hold the Active Calls queue behind the spinner.
             let callsData = [];
-            let usersData = [];
+            let usersData = usersCacheRef.current;
             try {
-                callsData = await base44.entities.DispatchCall.list('-time_received', 200);
+                callsData = await base44.entities.DispatchCall.list('-created_date', 200);
             } catch (callsErr) {
                 console.error(`[CAD ${nowET}] Calls fetch failed:`, callsErr);
-                throw callsErr; // re-throw — calls are the critical payload
-            }
-            if (Date.now() - lastUsersRefreshTime.current >= USER_REFRESH_MS || usersCacheRef.current.length === 0) {
-                try {
-                    const result = await base44.functions.invoke('getOnDutyUnits', {});
-                    const payload = result?.data || result || {};
-                    if (payload.error) throw new Error(payload.error);
-                    usersData = payload.users || [];
-                    usersCacheRef.current = usersData;
-                    lastUsersRefreshTime.current = Date.now();
-                } catch (usersErr) {
-                    console.warn(`[CAD ${nowET}] on-duty roster fetch failed — continuing with cached users`, usersErr);
-                    usersData = usersCacheRef.current;
-                }
-            } else {
-                usersData = usersCacheRef.current;
+                throw callsErr;
             }
 
-            console.log(`[CAD ${nowET}] Calls fetched: ${callsData?.length ?? 0} | Users: ${usersData?.length ?? 0}`);
+            // Keep the live CAD queue to the most recent hour. Preserve the 1-hour
+            // requirement, but use the same trustworthy timestamp logic as the UI.
+            const oneHourAgo = Date.now() - 60 * 60 * 1000;
+            const recentCalls = (callsData || []).filter(call => {
+                if (['Cleared', 'Cancelled'].includes(call.status)) return false;
+                const callTime = getReliableCallTimestamp(call);
+                return !callTime || callTime >= oneHourAgo;
+            });
 
-            // Keep the live CAD queue to the most recent hour. Older calls are
-            // handled by CallHistory/archive cleanup and should no longer display live.
             const uniqueCalls = new Map();
-            for (const call of callsData || []) {
+            for (const call of recentCalls) {
                 const descriptionKey = String(call.description || '').match(/\[GRAC:([^\]]+)\]/)?.[1];
                 const key = call.external_call_id || descriptionKey || call.id;
                 const current = uniqueCalls.get(key);
@@ -105,12 +108,17 @@ export function DashboardDataProvider({ children }) {
                 const candidateHasOfficialCad = Boolean(call?.official_cad_verified && (call?.agency_cad_number || call?.call_id));
                 if (!current || (!currentHasIdentifier && candidateHasIdentifier) || (!currentHasOfficialCad && candidateHasOfficialCad)) uniqueCalls.set(key, call);
             }
-            const active = [...uniqueCalls.values()].filter(c => {
-                if (['Cleared', 'Cancelled'].includes(c.status)) return false;
-                const receivedAt = parseServerTimestamp(c.time_received || c.created_date);
-                if (!receivedAt) return true;
-                return Date.now() - receivedAt < 60 * 60 * 1000;
-            });
+            const active = [...uniqueCalls.values()].sort((a, b) =>
+                (getReliableCallTimestamp(b) || 0) - (getReliableCallTimestamp(a) || 0)
+            );
+
+            // Paint calls immediately. This makes Active Calls independent of the
+            // slower roster request while still allowing units to populate moments later.
+            setCalls(active);
+            setLastRefresh(new Date());
+            setRateLimited(false);
+            lastRefreshTime.current = Date.now();
+            setLoading(false);
 
             // Debug: newest call time
             if (active.length > 0) {
@@ -126,12 +134,23 @@ export function DashboardDataProvider({ children }) {
             const richmondNow = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
             console.log(`[CAD ${nowET}] Current Richmond time: ${richmondNow}`);
 
-            setCalls(active);
+            // Refresh the roster after calls are already visible. Cached units render
+            // immediately; fresh on-duty data replaces them when available.
+            if (Date.now() - lastUsersRefreshTime.current >= USER_REFRESH_MS || usersCacheRef.current.length === 0) {
+                try {
+                    const result = await base44.functions.invoke('getOnDutyUnits', {});
+                    const payload = result?.data || result || {};
+                    if (payload.error) throw new Error(payload.error);
+                    usersData = payload.users || [];
+                    usersCacheRef.current = usersData;
+                    lastUsersRefreshTime.current = Date.now();
+                } catch (usersErr) {
+                    console.warn(`[CAD ${nowET}] on-duty roster fetch failed — continuing with cached users`, usersErr);
+                    usersData = usersCacheRef.current;
+                }
+            }
             setUsers(usersData || []);
-            setLastRefresh(new Date());
-            setRateLimited(false);
-            lastRefreshTime.current = Date.now();
-
+            console.log(`[CAD ${nowET}] Calls fetched: ${callsData?.length ?? 0} | Active: ${active.length} | Users: ${usersData?.length ?? 0}`);
 
         } catch (err) {
             if (isRateLimitError(err)) {
