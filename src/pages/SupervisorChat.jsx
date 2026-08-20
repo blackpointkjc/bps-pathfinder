@@ -7,12 +7,16 @@ import { MessageCircle, Send, Users, UserCheck, Shield } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
+import { getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage, syncTeamsChannelToEntity } from "@/lib/teamsGraph";
 
 export default function SupervisorChat() {
   const [message, setMessage] = useState("");
   const [mentionedUsers, setMentionedUsers] = useState([]);
   const scrollRef = useRef(null);
   const queryClient = useQueryClient();
+  const [teamsConfig, setTeamsConfig] = useState(null);
+  const [teamsLink, setTeamsLink] = useState('');
+  const [teamsSaving, setTeamsSaving] = useState(false);
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -37,6 +41,28 @@ export default function SupervisorChat() {
     return unsubscribe;
   }, [queryClient, user?.role, JSON.stringify(user?.additional_roles || [])]);
 
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    let cancelled = false;
+    const sync = async () => {
+      try {
+        const config = await getTeamsSyncConfig('supervisor_chat');
+        if (cancelled) return;
+        setTeamsConfig(config);
+        if (config?.channel_url) setTeamsLink(current => current || config.channel_url);
+        if (config?.enabled) {
+          const result = await syncTeamsChannelToEntity(user.id, { config, configKey: 'supervisor_chat', entityName: 'SupervisorChatMessage' });
+          if (result?.imported) queryClient.invalidateQueries({ queryKey: ['supervisorChatMessages'] });
+        }
+      } catch (error) {
+        console.warn('[Teams] Supervisor Chat sync unavailable:', error?.message);
+      }
+    };
+    sync();
+    const interval = window.setInterval(sync, 20000);
+    return () => { cancelled = true; window.clearInterval(interval); };
+  }, [user?.id, queryClient]);
+
   const { data: allUsers = [] } = useQuery({
     queryKey: ['chatDirectory'],
     queryFn: async () => {
@@ -48,7 +74,21 @@ export default function SupervisorChat() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ data, mentions }) => {
-      const created = await base44.entities.SupervisorChatMessage.create(data);
+      const created = await base44.entities.SupervisorChatMessage.create({ ...data, message_source: 'pathfinder' });
+      try {
+        const target = teamsConfig || await getTeamsSyncConfig('supervisor_chat');
+        if (target?.enabled) {
+          const teamsMessage = await sendTeamChannelMessage(user?.id, `<strong>${data.sender_name}</strong>: ${data.message}`, target, 'supervisor_chat');
+          if (teamsMessage?.id) await base44.entities.SupervisorChatMessage.update(created.id, {
+            teams_message_id: teamsMessage.id,
+            teams_team_id: target.team_id,
+            teams_channel_id: target.channel_id,
+            teams_synced_at: new Date().toISOString(),
+          }).catch(() => null);
+        }
+      } catch (error) {
+        console.warn('[Teams] Unable to mirror Supervisor Chat message:', error?.message);
+      }
       await Promise.all(mentions.map(mention => base44.entities.ChatMention.create({
         message_id: created.id,
         chat_type: 'supervisor',
@@ -145,6 +185,17 @@ export default function SupervisorChat() {
 
   const reversedMessages = [...(messages || [])].reverse();
 
+  const saveTeamsChannel = async () => {
+    if (!teamsLink.trim()) return;
+    try {
+      setTeamsSaving(true);
+      const saved = await saveTeamsSyncConfig({ channelUrl: teamsLink.trim(), channelName: 'Pathfinder Supervisor Chat', updatedBy: user?.email || user?.id || '', configKey: 'supervisor_chat' });
+      setTeamsConfig(saved);
+      await syncTeamsChannelToEntity(user.id, { config: saved, configKey: 'supervisor_chat', entityName: 'SupervisorChatMessage' }).catch(() => null);
+      await queryClient.invalidateQueries({ queryKey: ['supervisorChatMessages'] });
+    } finally { setTeamsSaving(false); }
+  };
+
   return (
     <div className="p-4 md:p-8 min-h-screen">
       <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)]">
@@ -167,6 +218,15 @@ export default function SupervisorChat() {
               </div>
             </div>
           </CardHeader>
+
+          {user?.role === 'admin' && !teamsConfig?.enabled && (
+            <div className="border-b bg-green-50 p-4">
+              <div className="text-xs font-black uppercase tracking-wider text-green-800">Connect Supervisor Chat to Microsoft Teams</div>
+              <p className="mt-1 text-xs text-slate-600">Paste the link for the private Teams channel reserved for supervisors. This channel is separate from Team/Officer Chat.</p>
+              <div className="mt-3 flex gap-2"><input value={teamsLink} onChange={e => setTeamsLink(e.target.value)} placeholder="Paste supervisor Teams channel link" className="min-w-0 flex-1 rounded-lg border border-green-200 bg-white px-3 py-2 text-xs outline-none focus:border-green-500"/><Button type="button" onClick={saveTeamsChannel} disabled={teamsSaving || !teamsLink.trim()}>{teamsSaving ? 'Connecting…' : 'Connect'}</Button></div>
+            </div>
+          )}
+          {teamsConfig?.enabled && <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams sync active · Supervisor Chat ↔ Supervisor Teams channel</div>}
 
           <ScrollArea className="flex-1 p-6" ref={scrollRef}>
             <div className="space-y-4">
