@@ -36,7 +36,7 @@ export default function OutlookNotificationMonitor({ user }) {
           });
           try {
             window.dispatchEvent(new CustomEvent('bps-unread-notification', { detail: { page: 'OutlookMail', count: newItems.length } }));
-          } catch (_) {}
+          } catch {}
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification(newItems.length === 1 ? 'New Outlook Email' : `${newItems.length} New Outlook Emails`, {
               body: `${sender}: ${newest?.subject || 'No subject'}`,
