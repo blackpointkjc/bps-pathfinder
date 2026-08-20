@@ -45,7 +45,7 @@ export default function MicrosoftMailSetupGate({ user, children }) {
           if (callback.handled && !callback.success) setError(callback.error || 'Microsoft sign-in failed.');
         }
 
-        const next = await getOutlookConnectionStatus(userId);
+        const next = await getOutlookConnectionStatus(userId, user?.email || '');
         if (!active) return;
         setStatus({ ...next, loading: false });
         if (next.connected) setError('');
@@ -66,7 +66,7 @@ export default function MicrosoftMailSetupGate({ user, children }) {
       window.removeEventListener('bps:outlook-connection-changed', onConnectionChanged);
       window.removeEventListener('bps:microsoft-mail-config-changed', onConfigChanged);
     };
-  }, [userId, isCallback]);
+  }, [userId, user?.email, isCallback]);
 
   const connect = async () => {
     try {
@@ -202,7 +202,7 @@ export default function MicrosoftMailSetupGate({ user, children }) {
         {status.configured && (
           <div className="mt-5 rounded-xl border border-emerald-700/50 bg-emerald-950/20 p-4 text-sm text-emerald-100">
             <div className="flex items-center gap-2 font-black"><CheckCircle2 className="h-4 w-4" /> MICROSOFT CONNECTION READY</div>
-            <p className="mt-2 leading-6">Click the button below. Microsoft will open its secure sign-in page. Sign in with the Outlook or Microsoft 365 mailbox you want connected to your Pathfinder account and approve the requested mail permissions.</p>
+            <p className="mt-2 leading-6">Click the button below. Microsoft will open its secure sign-in page. You may sign in with the same email used for Pathfinder or a completely different Outlook/Microsoft 365 email. The Microsoft mailbox will be linked to this Pathfinder user account without changing the Pathfinder login email.</p>
             {config?.tenant && <p className="mt-2 text-xs text-emerald-300">Tenant authority: {config.tenant}</p>}
           </div>
         )}
