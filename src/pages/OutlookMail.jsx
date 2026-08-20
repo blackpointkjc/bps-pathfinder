@@ -40,6 +40,17 @@ function senderOf(message) {
 function safeEmailHtml(value) {
   const html = String(value || '');
   if (!html) return '';
+  // Microsoft can return a plain-text body. Rendering that string as HTML would
+  // collapse every line break and make the email look jammed together.
+  if (!/<[a-z][\s\S]*>/i.test(html)) {
+    return html
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
+      .replace(/\r?\n/g, '<br>');
+  }
   try {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     doc.querySelectorAll('script,style,iframe,object,embed,form,input,button,textarea,select').forEach(node => node.remove());
