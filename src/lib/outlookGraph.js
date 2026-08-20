@@ -1,3 +1,5 @@
+import { base44 } from '@/api/base44Client';
+
 const GRAPH_ROOT = 'https://graph.microsoft.com/v1.0';
 const MICROSOFT_AUTH_ROOT = 'https://login.microsoftonline.com';
 const DEFAULT_SCOPES = [
@@ -36,20 +38,66 @@ function oauthStateKey(userId) {
   return `bps:outlook-oauth:${String(userId || '').trim()}`;
 }
 
-export function getMicrosoftClientId() {
-  return String(import.meta.env.VITE_MICROSOFT_CLIENT_ID || '').trim();
+let microsoftConfigCache = null;
+let microsoftConfigPromise = null;
+
+export async function getMicrosoftMailConfig({ force = false } = {}) {
+  if (!force && microsoftConfigCache) return microsoftConfigCache;
+  if (!force && microsoftConfigPromise) return microsoftConfigPromise;
+
+  microsoftConfigPromise = (async () => {
+    const envClientId = String(import.meta.env.VITE_MICROSOFT_CLIENT_ID || '').trim();
+    const envTenant = String(import.meta.env.VITE_MICROSOFT_TENANT || '').trim();
+    try {
+      const rows = await base44.entities.MicrosoftMailConfig.filter({ config_key: 'outlook' }, '-updated_at', 1);
+      const row = rows?.[0] || null;
+      const config = {
+        id: row?.id || null,
+        clientId: String(row?.client_id || envClientId || '').trim(),
+        tenant: String(row?.tenant || envTenant || 'common').trim() || 'common',
+        enabled: row ? row.enabled !== false : true,
+      };
+      microsoftConfigCache = config;
+      return config;
+    } catch (error) {
+      const fallback = { id: null, clientId: envClientId, tenant: envTenant || 'common', enabled: true, error };
+      microsoftConfigCache = fallback;
+      return fallback;
+    } finally {
+      microsoftConfigPromise = null;
+    }
+  })();
+
+  return microsoftConfigPromise;
 }
 
-export function getMicrosoftTenant() {
-  return String(import.meta.env.VITE_MICROSOFT_TENANT || 'common').trim() || 'common';
+export async function saveMicrosoftMailConfig({ clientId, tenant = 'common', updatedBy = '' }) {
+  const cleanClientId = String(clientId || '').trim();
+  const cleanTenant = String(tenant || 'common').trim() || 'common';
+  if (!cleanClientId) throw new Error('Enter the Microsoft Application (client) ID.');
+  const existing = await base44.entities.MicrosoftMailConfig.filter({ config_key: 'outlook' }, '-updated_at', 1);
+  const payload = {
+    config_key: 'outlook',
+    client_id: cleanClientId,
+    tenant: cleanTenant,
+    enabled: true,
+    updated_by: String(updatedBy || ''),
+    updated_at: new Date().toISOString(),
+  };
+  if (existing?.[0]?.id) await base44.entities.MicrosoftMailConfig.update(existing[0].id, payload);
+  else await base44.entities.MicrosoftMailConfig.create(payload);
+  microsoftConfigCache = { id: existing?.[0]?.id || null, clientId: cleanClientId, tenant: cleanTenant, enabled: true };
+  window.dispatchEvent(new CustomEvent('bps:microsoft-mail-config-changed'));
+  return microsoftConfigCache;
 }
 
 export function getOutlookRedirectUri() {
   return `${window.location.origin}/OutlookMail`;
 }
 
-export function isMicrosoftConfigured() {
-  return Boolean(getMicrosoftClientId());
+export async function isMicrosoftConfigured() {
+  const config = await getMicrosoftMailConfig();
+  return Boolean(config?.enabled && config?.clientId);
 }
 
 export function getStoredOutlookToken(userId) {

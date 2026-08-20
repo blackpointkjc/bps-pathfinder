@@ -1,0 +1,52 @@
+{
+  "name": "MicrosoftMailConfig",
+  "type": "object",
+  "properties": {
+    "config_key": {
+      "type": "string",
+      "description": "Singleton configuration key"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "Microsoft Entra Application (client) ID used by the Pathfinder SPA"
+    },
+    "tenant": {
+      "type": "string",
+      "default": "common",
+      "description": "Microsoft tenant authority: common, organizations, consumers, or tenant GUID"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "updated_by": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "config_key",
+    "client_id"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": true,
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
