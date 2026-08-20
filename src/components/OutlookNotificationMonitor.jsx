@@ -45,7 +45,7 @@ export default function OutlookNotificationMonitor({ user }) {
         }
       } catch (error) {
         if (error?.code === 'OUTLOOK_CONNECTION_REQUIRED') {
-          try { window.dispatchEvent(new CustomEvent('bps:outlook-connection-changed')); } catch (_) {}
+          try { window.dispatchEvent(new CustomEvent('bps:outlook-connection-changed')); } catch {}
         }
       }
     };
