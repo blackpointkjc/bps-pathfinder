@@ -229,7 +229,7 @@ export async function syncAllTeamsDirectChats(userId, currentPathfinderUserId, {
   // Process sequentially to stay below Microsoft/Base44 throttling thresholds.
   for (const chat of chatsPayload?.value || []) {
     if (!chat?.id || !['oneOnOne', 'group'].includes(chat.chatType)) continue;
-    const membersPayload = await graphRequest(userId, `/chats/${encodeURIComponent(chat.id)}/members?$top=100`);
+    const membersPayload = await graphRequest(userId, `/chats/${encodeURIComponent(chat.id)}/members`);
     const members = (membersPayload?.value || []).filter(member => member?.userId || member?.user?.id || member?.id);
     if (!members.length) continue;
     chats += 1;
@@ -264,7 +264,7 @@ export async function listTeamsDirectChats(userId, { limit = 25 } = {}) {
   const chats = [];
   for (const chat of chatsPayload?.value || []) {
     if (!chat?.id || !['oneOnOne', 'group'].includes(chat.chatType)) continue;
-    const membersPayload = await graphRequest(userId, `/chats/${encodeURIComponent(chat.id)}/members?$top=100`);
+    const membersPayload = await graphRequest(userId, `/chats/${encodeURIComponent(chat.id)}/members`);
     const members = (membersPayload?.value || []).filter(member => member?.userId || member?.user?.id || member?.id);
     const otherMembers = members.filter(member => String(member?.userId || member?.user?.id || member?.id || '') !== meId);
     chats.push({
