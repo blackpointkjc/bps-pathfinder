@@ -129,8 +129,9 @@ export function disconnectOutlook(userId) {
 }
 
 export async function beginOutlookConnection(userId) {
-  const clientId = getMicrosoftClientId();
-  if (!clientId) throw new Error('Microsoft 365 has not been configured by the administrator.');
+  const config = await getMicrosoftMailConfig();
+  const clientId = config?.clientId;
+  if (!config?.enabled || !clientId) throw new Error('Microsoft 365 has not been configured by the administrator.');
   if (!userId) throw new Error('A Pathfinder user session is required.');
 
   const verifier = randomString(96);
@@ -152,7 +153,7 @@ export async function beginOutlookConnection(userId) {
     prompt: 'select_account',
   });
 
-  window.location.assign(`${MICROSOFT_AUTH_ROOT}/${encodeURIComponent(getMicrosoftTenant())}/oauth2/v2.0/authorize?${params.toString()}`);
+  window.location.assign(`${MICROSOFT_AUTH_ROOT}/${encodeURIComponent(config.tenant || 'common')}/oauth2/v2.0/authorize?${params.toString()}`);
 }
 
 export async function handleOutlookOAuthCallback(userId) {
@@ -180,7 +181,9 @@ export async function handleOutlookOAuthCallback(userId) {
     return { handled: true, success: false, error: 'The Microsoft sign-in response could not be verified. Please connect again.' };
   }
 
-  const clientId = getMicrosoftClientId();
+  const config = await getMicrosoftMailConfig();
+  const clientId = config?.clientId;
+  if (!clientId) return { handled: true, success: false, error: 'Microsoft mail configuration is missing. Ask an administrator to configure it and try again.' };
   const body = new URLSearchParams({
     client_id: clientId,
     grant_type: 'authorization_code',
@@ -207,8 +210,9 @@ export async function handleOutlookOAuthCallback(userId) {
 }
 
 async function refreshOutlookToken(userId, existing) {
-  const clientId = getMicrosoftClientId();
-  if (!clientId || !existing?.refresh_token) return null;
+  const config = await getMicrosoftMailConfig();
+  const clientId = config?.clientId;
+  if (!config?.enabled || !clientId || !existing?.refresh_token) return null;
   const body = new URLSearchParams({
     client_id: clientId,
     grant_type: 'refresh_token',
@@ -273,7 +277,8 @@ export async function graphRequest(userId, pathOrUrl, options = {}) {
 }
 
 export async function getOutlookConnectionStatus(userId) {
-  if (!isMicrosoftConfigured()) return { connected: false, configured: false };
+  const config = await getMicrosoftMailConfig();
+  if (!config?.enabled || !config?.clientId) return { connected: false, configured: false, config };
   const stored = getStoredOutlookToken(userId);
   if (!stored?.access_token) return { connected: false, configured: true };
   try {
