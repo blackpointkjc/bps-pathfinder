@@ -151,7 +151,7 @@ export async function sendTeamsDirectMessage(userId, { participantIds = [], part
   return { chatId, messageId: message?.id || '', message };
 }
 
-export async function syncTeamsDirectMessages(userId, { chatId, currentPathfinderUserId, participantIds = [], participantNames = [] } = {}) {
+export async function syncTeamsDirectMessages(userId, { chatId, threadKey = '', currentPathfinderUserId, participantIds = [], participantNames = [] } = {}) {
   if (!chatId || !userId || !currentPathfinderUserId) return { imported: 0 };
   const [me, payload] = await Promise.all([
     graphRequest(userId, '/me?$select=id'),
@@ -181,7 +181,7 @@ export async function syncTeamsDirectMessages(userId, { chatId, currentPathfinde
       message: body,
       read: mine,
       message_type: 'dispatch_message',
-      thread_id: `teams:${chatId}`,
+      thread_id: threadKey || `teams:${chatId}`,
       participant_ids: participantIds,
       participant_names: participantNames,
       teams_chat_id: chatId,
