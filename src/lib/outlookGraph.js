@@ -124,8 +124,19 @@ function storeOutlookToken(userId, tokenResponse, prior = null) {
   return next;
 }
 
-export function disconnectOutlook(userId) {
+export async function disconnectOutlook(userId) {
   if (userId) localStorage.removeItem(tokenKey(userId));
+  if (!userId) return;
+  try {
+    const links = await base44.entities.OutlookMailboxLink.filter({ user_id: userId }, '-last_verified_at', 5);
+    for (const link of links || []) {
+      await base44.entities.OutlookMailboxLink.update(link.id, {
+        connected: false,
+        disconnected_at: new Date().toISOString(),
+        last_verified_at: new Date().toISOString(),
+      });
+    }
+  } catch {}
 }
 
 export async function beginOutlookConnection(userId) {
@@ -276,18 +287,55 @@ export async function graphRequest(userId, pathOrUrl, options = {}) {
   return payload;
 }
 
-export async function getOutlookConnectionStatus(userId) {
+async function syncOutlookMailboxLink(userId, pathfinderEmail, profile) {
+  const outlookEmail = String(profile?.mail || profile?.userPrincipalName || '').trim().toLowerCase();
+  if (!userId || !outlookEmail) return null;
+  const now = new Date().toISOString();
+  const links = await base44.entities.OutlookMailboxLink.filter({ user_id: userId }, '-last_verified_at', 5);
+  const existing = (links || []).find(link => String(link.outlook_email || '').trim().toLowerCase() === outlookEmail) || links?.[0];
+  const payload = {
+    user_id: userId,
+    pathfinder_email: String(pathfinderEmail || '').trim().toLowerCase(),
+    outlook_email: outlookEmail,
+    outlook_display_name: profile?.displayName || '',
+    microsoft_user_id: profile?.id || '',
+    connected: true,
+    connected_at: existing?.connected_at || now,
+    last_verified_at: now,
+    disconnected_at: null,
+  };
+  if (existing?.id) {
+    await base44.entities.OutlookMailboxLink.update(existing.id, payload);
+    for (const duplicate of (links || []).filter(link => link.id !== existing.id)) {
+      if (duplicate.connected !== false) await base44.entities.OutlookMailboxLink.update(duplicate.id, { connected: false, disconnected_at: now });
+    }
+    return { ...existing, ...payload };
+  }
+  return base44.entities.OutlookMailboxLink.create(payload);
+}
+
+export async function getOutlookConnectionStatus(userId, pathfinderEmail = '') {
   const config = await getMicrosoftMailConfig();
   if (!config?.enabled || !config?.clientId) return { connected: false, configured: false, config };
   const stored = getStoredOutlookToken(userId);
-  if (!stored?.access_token) return { connected: false, configured: true };
+  if (!stored?.access_token) {
+    let savedLink = null;
+    try {
+      const links = await base44.entities.OutlookMailboxLink.filter({ user_id: userId, connected: true }, '-last_verified_at', 1);
+      savedLink = links?.[0] || null;
+    } catch {}
+    return { connected: false, configured: true, savedLink };
+  }
   try {
     const profile = await graphRequest(userId, '/me?$select=id,displayName,mail,userPrincipalName');
+    const mailboxLink = await syncOutlookMailboxLink(userId, pathfinderEmail, profile).catch(() => null);
     return {
       connected: true,
       configured: true,
       profile,
+      mailboxLink,
       email: profile?.mail || profile?.userPrincipalName || '',
+      pathfinderEmail: String(pathfinderEmail || '').trim(),
     };
   } catch (error) {
     if (error.code === 'OUTLOOK_CONNECTION_REQUIRED' || error.status === 401 || error.status === 403) {
