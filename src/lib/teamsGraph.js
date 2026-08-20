@@ -155,7 +155,7 @@ export async function syncTeamsDirectMessages(userId, { chatId, threadKey = '', 
   if (!chatId || !userId || !currentPathfinderUserId) return { imported: 0 };
   const [me, payload] = await Promise.all([
     graphRequest(userId, '/me?$select=id'),
-    graphRequest(userId, `/me/chats/${encodeURIComponent(chatId)}/messages?$top=50&$orderby=createdDateTime desc`),
+    graphRequest(userId, `/chats/${encodeURIComponent(chatId)}/messages?$top=50`),
   ]);
   const identities = await base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []);
   const byMicrosoftId = new Map((identities || []).filter(item => item.microsoft_user_id).map(item => [String(item.microsoft_user_id), item]));
