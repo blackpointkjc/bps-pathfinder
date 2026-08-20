@@ -42,7 +42,7 @@ export default function TeamsSyncMonitor({ user }) {
     };
 
     sync();
-    const interval = window.setInterval(sync, 20000);
+    const interval = window.setInterval(sync, 90000);
     const onFocus = () => sync();
     window.addEventListener('focus', onFocus);
     return () => {
