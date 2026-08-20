@@ -58,6 +58,28 @@ export async function sendTeamChannelMessage(userId, text, config = null, config
   return payload;
 }
 
+export async function getTeamsChannelMessages(userId, config = null, configKey = 'team_chat') {
+  const target = config || await getTeamsSyncConfig(configKey);
+  if (!target?.enabled || !target?.team_id || !target?.channel_id) return [];
+  // Do not add $top here. Some Teams message/member endpoints validate query
+  // options differently across tenants and the previous generic limiter caused
+  // the exact "Query option Top is not allowed" failure seen in Pathfinder.
+  const payload = await graphRequest(userId, `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages`);
+  return [...(payload?.value || [])].reverse().map(item => ({
+    id: item.id,
+    message: stripHtml(item?.body?.content || '').trim(),
+    sender_name: item?.from?.user?.displayName || item?.from?.application?.displayName || 'Microsoft Teams',
+    sender_email: '',
+    sender_photo_url: '',
+    message_source: 'teams',
+    teams_message_id: item.id,
+    teams_sender_id: item?.from?.user?.id || '',
+    teams_sender_name: item?.from?.user?.displayName || item?.from?.application?.displayName || 'Microsoft Teams',
+    created_date: item.createdDateTime || '',
+    teams_created_at: item.createdDateTime || '',
+  })).filter(item => item.message);
+}
+
 export async function syncTeamsChannelToEntity(userId, { config = null, configKey = 'team_chat', entityName = 'ChatMessage', limit = 50 } = {}) {
   const target = config || await getTeamsSyncConfig(configKey);
   if (!target?.enabled || !target?.team_id || !target?.channel_id) return { imported: 0 };
