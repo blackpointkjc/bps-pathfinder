@@ -357,7 +357,7 @@ export default function MyPerformanceAnalytics() {
               <span className="flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Overall Performance Score</span>
               <span className="text-4xl font-black">{overallPerformance.score !== null ? `${overallPerformance.score}%` : '—'}</span>
             </CardTitle>
-            <p className="text-xs text-blue-100">Based only on metrics that have actual scoreable records this month. Metrics with no data are omitted from the grade.</p>
+            <p className="text-xs text-blue-100">55% On-Time Arrival, 15% Job Duty, 15% Call-Out Attendance, and 3% each for Training, Bid Standing, Client Feedback, Supervisor Rating, and Recognition. The five 3% categories receive neutral/full credit when no record exists.</p>
           </CardHeader>
           <CardContent className="p-4">
             <p className="text-sm text-slate-600">
