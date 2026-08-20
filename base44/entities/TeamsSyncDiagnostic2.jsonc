@@ -1,0 +1,20 @@
+{
+  "name": "TeamsSyncDiagnostic2",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "surface": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "surface",
+    "status"
+  ]
+}

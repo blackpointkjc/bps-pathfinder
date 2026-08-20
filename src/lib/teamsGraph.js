@@ -58,18 +58,23 @@ export async function sendTeamChannelMessage(userId, text, config = null, config
   return payload;
 }
 
-export async function syncTeamsChannelToEntity(userId, { config = null, configKey = 'team_chat', entityName = 'ChatMessage' } = {}) {
+export async function syncTeamsChannelToEntity(userId, { config = null, configKey = 'team_chat', entityName = 'ChatMessage', limit = 50 } = {}) {
   const target = config || await getTeamsSyncConfig(configKey);
   if (!target?.enabled || !target?.team_id || !target?.channel_id) return { imported: 0 };
-  const payload = await graphRequest(userId, `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages?$top=50`);
+  const entity = base44.entities[entityName];
+  if (!entity) throw new Error(`Unknown Pathfinder chat entity: ${entityName}`);
+
+  // One Graph read + one Base44 cache read per sync. The previous implementation
+  // performed a Base44 filter for every Teams message and quickly hit rate limits.
+  const [payload, cached] = await Promise.all([
+    graphRequest(userId, `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages?$top=${Math.min(50, Math.max(1, Number(limit) || 50))}`),
+    entity.list('-created_date', 500).catch(() => []),
+  ]);
+  const knownIds = new Set((cached || []).map(row => row.teams_message_id).filter(Boolean).map(String));
   const rows = payload?.value || [];
   let imported = 0;
   for (const item of [...rows].reverse()) {
-    if (!item?.id) continue;
-    const entity = base44.entities[entityName];
-    if (!entity) throw new Error(`Unknown Pathfinder chat entity: ${entityName}`);
-    const existing = await entity.filter({ teams_message_id: item.id }, '-created_date', 1);
-    if (existing?.length) continue;
+    if (!item?.id || knownIds.has(String(item.id))) continue;
     const body = stripHtml(item?.body?.content || '').trim();
     if (!body) continue;
     const senderName = item?.from?.user?.displayName || item?.from?.application?.displayName || 'Microsoft Teams';
@@ -86,6 +91,7 @@ export async function syncTeamsChannelToEntity(userId, { config = null, configKe
       teams_created_at: item.createdDateTime || null,
       teams_synced_at: new Date().toISOString(),
     });
+    knownIds.add(String(item.id));
     imported += 1;
   }
   return { imported };
@@ -151,19 +157,19 @@ export async function sendTeamsDirectMessage(userId, { participantIds = [], part
   return { chatId, messageId: message?.id || '', message };
 }
 
-export async function syncTeamsDirectMessages(userId, { chatId, threadKey = '', currentPathfinderUserId, participantIds = [], participantNames = [] } = {}) {
+export async function syncTeamsDirectMessages(userId, { chatId, threadKey = '', currentPathfinderUserId, participantIds = [], participantNames = [], cachedMessages = null, limit = 50 } = {}) {
   if (!chatId || !userId || !currentPathfinderUserId) return { imported: 0 };
-  const [me, payload] = await Promise.all([
+  const [me, payload, identities, cached] = await Promise.all([
     graphRequest(userId, '/me?$select=id'),
-    graphRequest(userId, `/chats/${encodeURIComponent(chatId)}/messages?$top=50`),
+    graphRequest(userId, `/chats/${encodeURIComponent(chatId)}/messages?$top=${Math.min(50, Math.max(1, Number(limit) || 50))}`),
+    base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []),
+    cachedMessages ? Promise.resolve(cachedMessages) : base44.entities.Message.list('-created_date', 500).catch(() => []),
   ]);
-  const identities = await base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []);
   const byMicrosoftId = new Map((identities || []).filter(item => item.microsoft_user_id).map(item => [String(item.microsoft_user_id), item]));
+  const knownIds = new Set((cached || []).map(row => row.teams_message_id).filter(Boolean).map(String));
   let imported = 0;
   for (const item of [...(payload?.value || [])].reverse()) {
-    if (!item?.id || !item?.body?.content) continue;
-    const existing = await base44.entities.Message.filter({ teams_message_id: item.id }, '-created_date', 5).catch(() => []);
-    if (existing?.length) continue;
+    if (!item?.id || !item?.body?.content || knownIds.has(String(item.id))) continue;
     const senderMicrosoftId = item?.from?.user?.id || '';
     const mine = String(senderMicrosoftId) === String(me?.id || '');
     const mappedSender = byMicrosoftId.get(String(senderMicrosoftId));
@@ -188,6 +194,7 @@ export async function syncTeamsDirectMessages(userId, { chatId, threadKey = '', 
       teams_message_id: item.id,
       teams_synced_at: new Date().toISOString(),
     });
+    knownIds.add(String(item.id));
     imported += 1;
   }
   return { imported };
@@ -205,27 +212,25 @@ function memberDisplayName(member, identityByMicrosoftId) {
   return member?.displayName || mapped?.display_name || mapped?.microsoft_email || 'Microsoft Teams User';
 }
 
-export async function syncAllTeamsDirectChats(userId, currentPathfinderUserId) {
+export async function syncAllTeamsDirectChats(userId, currentPathfinderUserId, { chatLimit = 15, messageLimit = 30 } = {}) {
   if (!userId || !currentPathfinderUserId) return { chats: 0, imported: 0 };
-  const [me, identities, chatsPayload] = await Promise.all([
+  const safeChatLimit = Math.min(25, Math.max(1, Number(chatLimit) || 15));
+  const [me, identities, chatsPayload, cachedMessages] = await Promise.all([
     graphRequest(userId, '/me?$select=id,displayName,mail,userPrincipalName'),
     base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []),
-    graphRequest(userId, '/me/chats?$top=50'),
+    graphRequest(userId, `/me/chats?$top=${safeChatLimit}`),
+    base44.entities.Message.list('-created_date', 500).catch(() => []),
   ]);
   const identityByMicrosoftId = new Map((identities || []).filter(item => item.microsoft_user_id).map(item => [String(item.microsoft_user_id), item]));
   const meMicrosoftId = String(me?.id || '');
   let imported = 0;
   let chats = 0;
 
+  // Process sequentially to stay below Microsoft/Base44 throttling thresholds.
   for (const chat of chatsPayload?.value || []) {
     if (!chat?.id || !['oneOnOne', 'group'].includes(chat.chatType)) continue;
-    let members = [];
-    try {
-      const membersPayload = await graphRequest(userId, `/chats/${encodeURIComponent(chat.id)}/members?$top=100`);
-      members = (membersPayload?.value || []).filter(member => member?.userId || member?.user?.id || member?.id);
-    } catch (error) {
-      console.warn('[Teams] Unable to read members for chat', chat.id, error?.message);
-    }
+    const membersPayload = await graphRequest(userId, `/chats/${encodeURIComponent(chat.id)}/members?$top=100`);
+    const members = (membersPayload?.value || []).filter(member => member?.userId || member?.user?.id || member?.id);
     if (!members.length) continue;
     chats += 1;
     const otherMembers = members.filter(member => String(member?.userId || member?.user?.id || member?.id || '') !== meMicrosoftId);
@@ -237,6 +242,8 @@ export async function syncAllTeamsDirectChats(userId, currentPathfinderUserId) {
       currentPathfinderUserId,
       participantIds,
       participantNames,
+      cachedMessages,
+      limit: messageLimit,
     });
     imported += Number(result?.imported || 0);
   }
