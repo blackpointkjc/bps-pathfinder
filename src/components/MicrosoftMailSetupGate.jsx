@@ -5,6 +5,7 @@ import {
   getMicrosoftMailConfig,
   getOutlookConnectionStatus,
   handleOutlookOAuthCallback,
+  getMissingMicrosoftScopes,
 } from '@/lib/outlookGraph';
 
 export default function MicrosoftMailSetupGate({ user, children }) {
@@ -37,8 +38,11 @@ export default function MicrosoftMailSetupGate({ user, children }) {
 
         const next = await getOutlookConnectionStatus(userId, user?.email || '');
         if (!active) return;
-        setStatus({ ...next, loading: false, configured: true });
-        if (next.connected) setError('');
+        const missingScopes = next.connected ? getMissingMicrosoftScopes(userId) : [];
+        const fullyConnected = Boolean(next.connected && missingScopes.length === 0);
+        setStatus({ ...next, connected: fullyConnected, missingScopes, loading: false, configured: true });
+        if (fullyConnected) setError('');
+        else if (next.connected && missingScopes.length) setError(`Microsoft permissions changed. Reconnect once to activate Teams sync. Missing: ${missingScopes.join(', ')}`);
       } catch (err) {
         if (!active) return;
         setStatus({ loading: false, connected: false, configured: true });
@@ -121,7 +125,7 @@ export default function MicrosoftMailSetupGate({ user, children }) {
 
         <div className="mt-5 rounded-xl border border-emerald-700/50 bg-emerald-950/20 p-4 text-sm text-emerald-100">
           <div className="flex items-center gap-2 font-black"><CheckCircle2 className="h-4 w-4" /> MICROSOFT CONNECTION READY</div>
-          <p className="mt-2 leading-6">Click below and Microsoft will open its secure sign-in page. Pathfinder automatically supplies the application and tenant information in the background.</p>
+          <p className="mt-2 leading-6">Click below and Microsoft will open its secure sign-in page. Pathfinder automatically supplies the application, tenant, Outlook, shared-mailbox, and Teams permissions in the background.</p>
           {config?.tenant && <p className="mt-2 text-xs text-emerald-300">Black Point tenant configured.</p>}
         </div>
 
