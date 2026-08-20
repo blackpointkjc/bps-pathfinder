@@ -242,6 +242,7 @@ export default function SupervisorChat() {
             </div>
           )}
           {teamsConfig?.enabled && <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams sync active · Supervisor Chat ↔ Supervisor Teams channel</div>}
+          {teamsSyncError && <div className="border-b border-red-300 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">Microsoft Teams sync error: {teamsSyncError}</div>}
 
           {!!supervisorUpdates.length && (
             <div className="border-b border-amber-200 bg-amber-50 p-3">
