@@ -46,7 +46,7 @@ export default function MyPerformanceAnalytics() {
     enabled: !!user?.email,
     staleTime: 0,
     refetchOnMount: 'always',
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: 'always',
     refetchInterval: 30000,
   });
 
