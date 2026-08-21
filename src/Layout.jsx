@@ -610,13 +610,37 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
         <Link
           to={createPageUrl('OutlookMail')}
           onClick={() => onCloseMobile?.()}
-          className={`relative mb-2 flex min-h-9 items-center gap-2.5 rounded-md border px-2.5 py-1.5 transition-all ${currentPageName === 'OutlookMail' ? 'border-blue-500/60 bg-gradient-to-r from-[#16466f] to-[#123554] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
+          className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all ${currentPageName === 'OutlookMail' ? 'border-blue-500/60 bg-[#12304a] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
           title={collapsed && !mobile ? 'Outlook Mail' : undefined}
         >
           <Mail className="h-4 w-4 shrink-0 text-[#7ec1ff]" />
           {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">OUTLOOK MAIL</span>}
           {!!unreadCounts.OutlookMail && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.OutlookMail > 99 ? '99+' : unreadCounts.OutlookMail}</span>}
         </Link>
+        {(hasFullAccess(user) || hasRole(user, 'officer')) && (
+          <Link
+            to={createPageUrl('OfficerChat')}
+            onClick={() => onCloseMobile?.()}
+            className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all ${currentPageName === 'OfficerChat' ? 'border-cyan-500/60 bg-[#12304a] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
+            title={collapsed && !mobile ? 'Officer Chat' : undefined}
+          >
+            <Radio className="h-4 w-4 shrink-0 text-cyan-300" />
+            {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">OFFICER CHAT</span>}
+            {!!unreadCounts.OfficerChat && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.OfficerChat > 99 ? '99+' : unreadCounts.OfficerChat}</span>}
+          </Link>
+        )}
+        {(hasFullAccess(user) || hasRole(user, 'supervisor')) && (
+          <Link
+            to={createPageUrl('SupervisorChat')}
+            onClick={() => onCloseMobile?.()}
+            className={`relative mb-2 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all ${currentPageName === 'SupervisorChat' ? 'border-emerald-500/60 bg-[#123a35] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
+            title={collapsed && !mobile ? 'Supervisor Chat' : undefined}
+          >
+            <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-300" />
+            {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">SUPERVISOR CHAT</span>}
+            {!!unreadCounts.SupervisorChat && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.SupervisorChat > 99 ? '99+' : unreadCounts.SupervisorChat}</span>}
+          </Link>
+        )}
 
         {groups.map((group) => {
           const groupOpen = Boolean(query) || openNavGroup === group.label;
