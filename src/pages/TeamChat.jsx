@@ -8,7 +8,7 @@ import { MessageCircle, Send, Users, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
-import { getTeamsChannelMessages, getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage, syncTeamsChannelToEntity } from "@/lib/teamsGraph";
+import { getTeamsChannelMessages, getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage } from "@/lib/teamsGraph";
 import { toast } from 'sonner';
 
 export default function TeamChat() {
@@ -47,10 +47,7 @@ export default function TeamChat() {
         if (cancelled) return;
         setTeamsConfig(config);
         if (config?.channel_url) setTeamsLink(current => current || config.channel_url);
-        if (config?.enabled) {
-          await syncTeamsChannelToEntity(user.id, { config, configKey: 'team_chat', entityName: 'ChatMessage' });
-          setTeamsSyncError('');
-        }
+        if (config?.enabled) setTeamsSyncError('');
       } catch (error) {
         console.warn('[Teams] Team Chat sync unavailable:', error?.message);
         setTeamsSyncError(error?.message || 'Microsoft Teams General Chat could not be loaded.');
@@ -191,10 +188,7 @@ export default function TeamChat() {
   }, [displayedMessages]);
 
   const handleRefresh = async () => {
-    if (user?.id && teamsConfig?.enabled) {
-      await syncTeamsChannelToEntity(user.id, { config: teamsConfig, configKey: 'team_chat', entityName: 'ChatMessage' }).catch(() => null);
-      await refetchTeamsHistory();
-    }
+    if (user?.id && teamsConfig?.enabled) await refetchTeamsHistory();
   };
 
   const saveTeamsChannel = async () => {
