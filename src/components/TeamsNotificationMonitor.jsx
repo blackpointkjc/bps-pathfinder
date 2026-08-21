@@ -55,9 +55,7 @@ export default function TeamsNotificationMonitor({ user }) {
                     description: `${newest?.sender_name || 'Microsoft Teams'}: ${newest?.message || ''}`.slice(0, 220),
                     duration: 7000,
                   });
-                  if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification(target.label, { body: `${newest?.sender_name || 'New message'}: ${newest?.message || ''}`.slice(0, 180) });
-                  }
+                  // The in-app chat toast above is the only user-facing notification.
                 }
               }
             }
