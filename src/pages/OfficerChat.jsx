@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import PullToRefresh from "../components/PullToRefresh";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { MessageCircle, Send, Users, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
-import { getTeamsChannelMessages, getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage } from "@/lib/teamsGraph";
+import { getTeamsChannelMessages, getTeamsSyncConfig, normalizeTeamsChannelMessage, saveTeamsSyncConfig, sendTeamChannelMessage } from "@/lib/teamsGraph";
 import { toast } from 'sonner';
 
 export default function OfficerChat() {
@@ -18,6 +18,7 @@ export default function OfficerChat() {
   const [teamsConfig, setTeamsConfig] = useState(null);
   const [teamsLink, setTeamsLink] = useState('');
   const [teamsSaving, setTeamsSaving] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -32,9 +33,10 @@ export default function OfficerChat() {
     queryKey: ['officerTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'officer_chat'),
     enabled: !!user?.id && !!teamsConfig?.enabled,
-    refetchInterval: 120000,
-    refetchOnWindowFocus: true,
-    staleTime: 15000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false,
+    staleTime: 60000,
   });
 
   useEffect(() => {
@@ -96,8 +98,14 @@ export default function OfficerChat() {
       }
       return teamsMessage;
     },
-    onSuccess: async () => {
-      await refetchTeamsHistory();
+    onSuccess: async (teamsMessage) => {
+      const row = normalizeTeamsChannelMessage(teamsMessage);
+      if (row) {
+        queryClient.setQueryData(
+          ['officerTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
+          (current = []) => [...current.filter(item => item.id !== row.id), row]
+        );
+      }
       setMessage("");
       setMentionedUsers([]);
     },
