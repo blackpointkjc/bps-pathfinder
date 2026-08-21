@@ -11,6 +11,7 @@ import { Shield, FileWarning, ClipboardCheck, Check, X, AlertCircle, Users, Prin
 import { format, parseISO, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { getRankLastNameByEmail } from "@/utils/officerDisplay";
+import { calculatePunctuality } from '@/lib/performanceScoring';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -203,22 +204,7 @@ export default function AdminSupervisorReports() {
       format(parseISO(b.created_date), 'yyyy-MM-dd') <= endDate
     ) || [];
 
-    // Calculate on-time rate
-    let onTime = 0, late = 0;
-    officerTimeEntries.forEach(entry => {
-      const clockInDate = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
-      const matchingSchedule = schedules.find(s => 
-        s.shift_date === clockInDate && s.officer_email === selectedOfficer
-      );
-      if (matchingSchedule) {
-        const scheduledMinutes = parseInt(matchingSchedule.start_time.split(':')[0]) * 60 + 
-                                 parseInt(matchingSchedule.start_time.split(':')[1]);
-        const actualMinutes = parseInt(format(parseISO(entry.clock_in), 'HH:mm').split(':')[0]) * 60 +
-                              parseInt(format(parseISO(entry.clock_in), 'HH:mm').split(':')[1]);
-        if (actualMinutes <= scheduledMinutes + 5) onTime++;
-        else late++;
-      }
-    });
+    const punctuality = calculatePunctuality(officerTimeEntries, officerSchedules, startDate, endDate);
 
     // Calculate hours worked
     let totalHours = 0;
@@ -266,9 +252,10 @@ export default function AdminSupervisorReports() {
     return {
       officer,
       dateRange: getDateRangeLabel(),
-      onTimeRate: (onTime + late) > 0 ? Math.round((onTime / (onTime + late)) * 100) : 100,
-      onTime,
-      late,
+      onTimeRate: punctuality.rate,
+      onTime: punctuality.onTime,
+      late: punctuality.late,
+      missed: punctuality.missed,
       totalHours: Math.round(totalHours * 10) / 10,
       scheduledHours: Math.round(scheduledHours * 10) / 10,
       shiftsWorked: officerTimeEntries.length,
@@ -304,7 +291,7 @@ export default function AdminSupervisorReports() {
     let productivityScore = 0;
     
     // On-time rate (30 points max)
-    productivityScore += (officerPerformance.onTimeRate / 100) * 30;
+    productivityScore += ((officerPerformance.onTimeRate ?? 0) / 100) * 30;
     
     // Shift attendance (25 points max) - worked vs scheduled
     const attendanceRate = officerPerformance.shiftsScheduled > 0 
