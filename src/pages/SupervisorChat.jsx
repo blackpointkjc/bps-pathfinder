@@ -7,7 +7,7 @@ import { MessageCircle, Send, Users, UserCheck, Shield } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
-import { getTeamsChannelMessages, getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage, syncTeamsChannelToEntity } from "@/lib/teamsGraph";
+import { getTeamsChannelMessages, getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage } from "@/lib/teamsGraph";
 import { toast } from 'sonner';
 
 export default function SupervisorChat() {
@@ -46,10 +46,7 @@ export default function SupervisorChat() {
         if (cancelled) return;
         setTeamsConfig(config);
         if (config?.channel_url) setTeamsLink(current => current || config.channel_url);
-        if (config?.enabled) {
-          await syncTeamsChannelToEntity(user.id, { config, configKey: 'supervisor_chat', entityName: 'SupervisorChatMessage' });
-          setTeamsSyncError('');
-        }
+        if (config?.enabled) setTeamsSyncError('');
       } catch (error) {
         console.warn('[Teams] Supervisor Chat sync unavailable:', error?.message);
         setTeamsSyncError(error?.message || 'Microsoft Teams Supervisors Chat could not be loaded.');
@@ -202,7 +199,7 @@ export default function SupervisorChat() {
       setTeamsSaving(true);
       const saved = await saveTeamsSyncConfig({ channelUrl: teamsLink.trim(), channelName: 'Pathfinder Supervisor Chat', updatedBy: user?.email || user?.id || '', configKey: 'supervisor_chat' });
       setTeamsConfig(saved);
-      await syncTeamsChannelToEntity(user.id, { config: saved, configKey: 'supervisor_chat', entityName: 'SupervisorChatMessage' }).catch(() => null);
+      await refetchTeamsHistory();
     } finally { setTeamsSaving(false); }
   };
 
