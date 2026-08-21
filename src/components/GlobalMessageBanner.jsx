@@ -8,6 +8,7 @@ import { cleanIncident } from '@/utils/callUtils';
 
 const SOURCES = [
   { entity: 'ChatMessage', label: 'Team Chat', page: 'TeamChat', kind: 'message' },
+  { entity: 'OfficerChatMessage', label: 'Officer Chat', page: 'OfficerChat', kind: 'message' },
   { entity: 'SupervisorChatMessage', label: 'Supervisor Chat', page: 'SupervisorChat', supervisorOnly: true, kind: 'message' },
   { entity: 'Announcement', label: 'New Announcement', page: 'Announcements', kind: 'announcement' },
   { entity: 'ChatMention', label: 'You Were Mentioned', page: 'TeamChat', kind: 'mention', mention: true },
