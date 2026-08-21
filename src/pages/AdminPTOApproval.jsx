@@ -312,7 +312,7 @@ export default function AdminPTOApproval() {
                           variant="outline"
                           size="sm"
                           disabled={removeApprovedMutation.isPending}
-                          onClick={() => {
+                          onClick={async () => {
                             const hours = Number(request.hours_requested || 0);
                             if (await confirmInApp(`Remove this approved PTO request and return ${hours.toFixed(1)} hours to ${resolveOfficer(request).name}?`)) {
                               removeApprovedMutation.mutate(request);
