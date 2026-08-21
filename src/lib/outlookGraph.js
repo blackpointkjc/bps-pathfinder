@@ -26,6 +26,7 @@ export const DEFAULT_SCOPES = [
 ];
 
 const encoder = new TextEncoder();
+let graphRateLimitUntil = 0;
 
 function b64url(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)))
@@ -306,9 +307,14 @@ export async function graphRequest(userId, pathOrUrl, options = {}) {
   headers.set('Authorization', `Bearer ${token}`);
   if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
+  if (graphRateLimitUntil > Date.now()) {
+    await new Promise(resolve => window.setTimeout(resolve, graphRateLimitUntil - Date.now()));
+  }
+
   let response = await fetch(url, { ...options, headers });
   if (response.status === 429) {
-    const retryAfter = Math.min(10, Math.max(1, Number(response.headers.get('Retry-After') || 2)));
+    const retryAfter = Math.min(30, Math.max(1, Number(response.headers.get('Retry-After') || 3)));
+    graphRateLimitUntil = Math.max(graphRateLimitUntil, Date.now() + retryAfter * 1000);
     await new Promise(resolve => window.setTimeout(resolve, retryAfter * 1000));
     response = await fetch(url, { ...options, headers });
   }
