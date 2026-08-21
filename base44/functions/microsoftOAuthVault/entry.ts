@@ -48,7 +48,10 @@ Deno.serve(async (req) => {
     const input = await req.json().catch(() => ({}));
     const action = String(input?.action || 'restore');
     const rows = await base44.asServiceRole.entities.MicrosoftOAuthCredential.filter({ user_id: caller.id }, '-updated_date', 5).catch(() => []);
-    const current = (rows || []).find((row: any) => row.active !== false) || rows?.[0] || null;
+    const current = (rows || []).find((row: any) => row.active !== false)
+      || (rows || []).find((row: any) => String(row.last_error || '').includes('AADSTS9002327'))
+      || rows?.[0]
+      || null;
 
     if (action === 'disconnect') {
       for (const row of rows || []) {
@@ -87,37 +90,23 @@ Deno.serve(async (req) => {
       return json({ ok: true, profile, microsoft_email: microsoftEmail });
     }
 
-    if (!current?.refresh_token || current.active === false) return json({ connected: false }, 200);
+    const recoverableSpaRecord = current?.active === false && String(current?.last_error || '').includes('AADSTS9002327');
+    if (!current?.refresh_token || (current.active === false && !recoverableSpaRecord)) return json({ connected: false }, 200);
 
-    try {
-      const token = await refresh(String(current.refresh_token), String(current.scope || DEFAULT_SCOPE));
-      const profile = await graphProfile(token.access_token);
-      const now = new Date().toISOString();
-      await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(current.id, {
-        refresh_token: token.refresh_token || current.refresh_token,
-        scope: token.scope || current.scope || DEFAULT_SCOPE,
-        microsoft_email: String(profile.mail || profile.userPrincipalName || current.microsoft_email || '').trim().toLowerCase(),
-        microsoft_user_id: String(profile.id || current.microsoft_user_id || ''),
-        display_name: String(profile.displayName || current.display_name || ''),
-        active: true,
-        last_refreshed_at: now,
-        last_error: '',
-      });
-      return json({
-        connected: true,
-        access_token: token.access_token,
-        expires_in: Number(token.expires_in || 3600),
-        scope: token.scope || current.scope || DEFAULT_SCOPE,
-        profile,
-      });
-    } catch (error) {
-      await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(current.id, {
-        active: false,
-        last_error: error?.message || 'Microsoft refresh failed.',
-        last_refreshed_at: new Date().toISOString(),
-      }).catch(() => null);
-      return json({ connected: false, error: error?.message || 'Microsoft authorization expired.' }, 200);
-    }
+    // Tokens issued to a Microsoft SPA must be redeemed from a browser-origin
+    // request. The vault therefore returns the saved refresh credential only to
+    // the already-authenticated Pathfinder user who owns this record. The browser
+    // immediately redeems it with Microsoft, then sends the rotated credential
+    // back through the `store` action. It is never persisted in browser storage.
+    return json({
+      connected: true,
+      refresh_token: String(current.refresh_token),
+      scope: String(current.scope || DEFAULT_SCOPE),
+      microsoft_email: String(current.microsoft_email || ''),
+      microsoft_user_id: String(current.microsoft_user_id || ''),
+      display_name: String(current.display_name || ''),
+      needs_browser_refresh: true,
+    });
   } catch (error) {
     console.error('microsoftOAuthVault error', error);
     return json({ error: error?.message || 'Microsoft credential service failed.' }, 500);
