@@ -182,6 +182,16 @@ export default function OfficerChat() {
     return unsubscribe;
   }, [user?.email]);
 
+  useEffect(() => {
+    const onTeamsData = event => {
+      if (event.detail?.configKey !== 'officer_chat') return;
+      const rows = Array.isArray(event.detail?.rows) ? event.detail.rows : [];
+      queryClient.setQueryData(['officerTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id], rows);
+    };
+    window.addEventListener('bps:teams-channel-data', onTeamsData);
+    return () => window.removeEventListener('bps:teams-channel-data', onTeamsData);
+  }, [queryClient, teamsConfig?.team_id, teamsConfig?.channel_id, user?.id]);
+
   const displayedMessages = teamsConfig?.enabled ? liveTeamsMessages : [];
 
   useEffect(() => {
