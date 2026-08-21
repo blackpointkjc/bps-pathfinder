@@ -236,7 +236,6 @@ function memberDisplayName(member, identityByMicrosoftId) {
 
 export async function syncAllTeamsDirectChats(userId, currentPathfinderUserId, { chatLimit = 15, messageLimit = 30 } = {}) {
   if (!userId || !currentPathfinderUserId) return { chats: 0, imported: 0 };
-  const safeChatLimit = Math.min(25, Math.max(1, Number(chatLimit) || 15));
   const [me, identities, chatsPayload, cachedMessages] = await Promise.all([
     graphRequest(userId, '/me?$select=id,displayName,mail,userPrincipalName'),
     base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []),
@@ -275,7 +274,6 @@ export async function syncAllTeamsDirectChats(userId, currentPathfinderUserId, {
 }
 
 export async function listTeamsDirectChats(userId, { limit = 25 } = {}) {
-  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 25));
   const [me, chatsPayload, identities] = await Promise.all([
     graphRequest(userId, '/me?$select=id,displayName,mail,userPrincipalName'),
     graphRequest(userId, '/me/chats'),
@@ -309,7 +307,6 @@ export async function listTeamsDirectChats(userId, { limit = 25 } = {}) {
 
 export async function getTeamsDirectChatMessages(userId, chatId, { limit = 50 } = {}) {
   if (!chatId) return [];
-  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 50));
   const payload = await graphRequest(userId, `/chats/${encodeURIComponent(chatId)}/messages`);
   return [...(payload?.value || [])].reverse().map(item => ({
     id: item.id,
