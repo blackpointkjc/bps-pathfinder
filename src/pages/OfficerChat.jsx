@@ -8,7 +8,7 @@ import { MessageCircle, Send, Users, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
-import { getTeamsChannelMessages, getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage, syncTeamsChannelToEntity } from "@/lib/teamsGraph";
+import { getTeamsChannelMessages, getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage } from "@/lib/teamsGraph";
 import { toast } from 'sonner';
 
 export default function OfficerChat() {
@@ -46,9 +46,7 @@ export default function OfficerChat() {
         if (cancelled) return;
         setTeamsConfig(config);
         if (config?.channel_url && !teamsLink) setTeamsLink(config.channel_url);
-        if (config?.enabled) {
-          await syncTeamsChannelToEntity(user.id, { config, configKey: 'officer_chat', entityName: 'OfficerChatMessage' });
-        }
+
       } catch (error) {
         console.warn('[Teams] Officer Chat sync unavailable:', error?.message);
       }
@@ -185,7 +183,7 @@ export default function OfficerChat() {
   }, [displayedMessages]);
 
   const handleRefresh = async () => {
-    if (user?.id && teamsConfig?.enabled) await syncTeamsChannelToEntity(user.id, { config: teamsConfig, configKey: 'officer_chat', entityName: 'OfficerChatMessage' }).catch(() => null);
+    if (user?.id && teamsConfig?.enabled) await refetchTeamsHistory();
   };
 
   const saveTeamsChannel = async () => {
@@ -194,7 +192,7 @@ export default function OfficerChat() {
       setTeamsSaving(true);
       const saved = await saveTeamsSyncConfig({ channelUrl: teamsLink.trim(), channelName: 'Pathfinder Officer Chat', updatedBy: user?.email || user?.id || '', configKey: 'officer_chat' });
       setTeamsConfig(saved);
-      await syncTeamsChannelToEntity(user.id, { config: saved, configKey: 'officer_chat', entityName: 'OfficerChatMessage' }).catch(() => null);
+      await refetchTeamsHistory();
       } finally {
       setTeamsSaving(false);
     }
