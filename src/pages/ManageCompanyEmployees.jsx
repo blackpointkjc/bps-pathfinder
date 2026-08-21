@@ -48,6 +48,12 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   const [selectedUser, setSelectedUser] = useState(null);
   const [activeTab, setActiveTab] = useState("active");
   const [searchQuery, setSearchQuery] = useState("");
+  const [imapMailboxId, setImapMailboxId] = useState('');
+  const [imapSaving, setImapSaving] = useState(false);
+  const [imapForm, setImapForm] = useState({
+    mailbox_email: '', display_name: '', imap_host: '', imap_port: 993, imap_secure: true,
+    smtp_host: '', smtp_port: 465, smtp_secure: true, username: '', password: '', active: true,
+  });
 
   const queryClient = useQueryClient();
 
@@ -202,6 +208,21 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
 
   const handleEditUser = (userData) => {
     setEditingUser(userData.id);
+    setImapMailboxId('');
+    setImapForm({ mailbox_email: '', display_name: '', imap_host: '', imap_port: 993, imap_secure: true, smtp_host: '', smtp_port: 465, smtp_secure: true, username: '', password: '', active: true });
+    if (isSystemAdmin || userRoles.has('full_access')) {
+      base44.entities.CompanyImapMailbox.filter({ user_id: userData.id }, '-updated_date', 1).then(rows => {
+        const mailbox = rows?.[0];
+        if (!mailbox) return;
+        setImapMailboxId(mailbox.id);
+        setImapForm({
+          mailbox_email: mailbox.mailbox_email || '', display_name: mailbox.display_name || '',
+          imap_host: mailbox.imap_host || '', imap_port: Number(mailbox.imap_port || 993), imap_secure: mailbox.imap_secure !== false,
+          smtp_host: mailbox.smtp_host || '', smtp_port: Number(mailbox.smtp_port || 465), smtp_secure: mailbox.smtp_secure !== false,
+          username: mailbox.username || '', password: '', active: mailbox.active !== false,
+        });
+      }).catch(() => null);
+    }
     setPhotoPreview(null);
     const payRange = getPayRangeForRank(userData.rank || "Officer");
     const isFlexible = ['Human Resources', 'Support Staff'].includes(userData.rank);
@@ -246,6 +267,54 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     });
     setSelectedUser(userData);
     setShowDialog(true);
+  };
+
+  const saveCompanyMailbox = async () => {
+    if (!editingUser || !selectedUser || !(isSystemAdmin || userRoles.has('full_access'))) return;
+    if (!imapForm.mailbox_email.trim() || !imapForm.imap_host.trim() || !imapForm.smtp_host.trim() || !imapForm.username.trim()) {
+      alert('Company email, IMAP host, SMTP host, and username are required.');
+      return;
+    }
+    try {
+      setImapSaving(true);
+      const payload = {
+        user_id: editingUser,
+        pathfinder_email: selectedUser.email || '',
+        mailbox_email: imapForm.mailbox_email.trim().toLowerCase(),
+        display_name: imapForm.display_name.trim() || imapForm.mailbox_email.trim(),
+        approved_by_company: true,
+        active: imapForm.active !== false,
+        imap_host: imapForm.imap_host.trim(), imap_port: Number(imapForm.imap_port || 993), imap_secure: imapForm.imap_secure !== false,
+        smtp_host: imapForm.smtp_host.trim(), smtp_port: Number(imapForm.smtp_port || 465), smtp_secure: imapForm.smtp_secure !== false,
+        username: imapForm.username.trim(), updated_by: user?.email || '',
+        ...(imapForm.password ? { password: imapForm.password } : {}),
+      };
+      const saved = imapMailboxId
+        ? await base44.entities.CompanyImapMailbox.update(imapMailboxId, payload)
+        : await base44.entities.CompanyImapMailbox.create(payload);
+      setImapMailboxId(saved.id || imapMailboxId);
+      setImapForm(current => ({ ...current, password: '' }));
+      alert('Company IMAP mailbox assignment saved.');
+    } catch (error) {
+      alert('Unable to save company mailbox: ' + (error?.message || 'Unknown error'));
+    } finally {
+      setImapSaving(false);
+    }
+  };
+
+  const verifyCompanyMailbox = async () => {
+    if (!imapMailboxId) return alert('Save the company mailbox first.');
+    try {
+      setImapSaving(true);
+      const result = await base44.functions.invoke('companyImapMail', { action: 'verify', mailbox_id: imapMailboxId });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      alert('Company mailbox connection verified successfully.');
+    } catch (error) {
+      alert('Mailbox verification failed: ' + (error?.message || 'Unknown error'));
+    } finally {
+      setImapSaving(false);
+    }
   };
 
   const handlePhotoSelection = (file) => {
@@ -468,10 +537,11 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
             </div>
 
             <Tabs defaultValue="basic">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className={`grid w-full ${isSystemAdmin || userRoles.has('full_access') ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 <TabsTrigger value="basic">Basic Info</TabsTrigger>
                 <TabsTrigger value="certs">Certifications</TabsTrigger>
                 <TabsTrigger value="emergency">Emergency Contact</TabsTrigger>
+                {(isSystemAdmin || userRoles.has('full_access')) && <TabsTrigger value="company-mail">Company Email</TabsTrigger>}
               </TabsList>
               <TabsContent value="basic" className="space-y-4 mt-4">
                 <fieldset disabled={isHrReadOnly} className="space-y-4 disabled:opacity-90">
@@ -564,6 +634,26 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                 </div>
                 </fieldset>
               </TabsContent>
+              {(isSystemAdmin || userRoles.has('full_access')) && <TabsContent value="company-mail" className="space-y-4 mt-4">
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                  <div className="flex items-center gap-2 font-semibold text-blue-900"><Mail className="h-4 w-4" /> Company IMAP Mailbox</div>
+                  <p className="mt-1 text-xs text-blue-700">Assign an approved company mailbox to this existing employee. The employee can later change only the mailbox password from My Profile.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div><Label className="text-xs text-slate-500">Company Email</Label><Input type="email" placeholder="officer@company.com" value={imapForm.mailbox_email} onChange={e => setImapForm({...imapForm, mailbox_email:e.target.value})} /></div>
+                  <div><Label className="text-xs text-slate-500">Display Name</Label><Input placeholder="Officer Mailbox" value={imapForm.display_name} onChange={e => setImapForm({...imapForm, display_name:e.target.value})} /></div>
+                  <div><Label className="text-xs text-slate-500">IMAP Host</Label><Input placeholder="imap.company.com" value={imapForm.imap_host} onChange={e => setImapForm({...imapForm, imap_host:e.target.value})} /></div>
+                  <div><Label className="text-xs text-slate-500">IMAP Port</Label><Input type="number" value={imapForm.imap_port} onChange={e => setImapForm({...imapForm, imap_port:Number(e.target.value)||993})} /></div>
+                  <div><Label className="text-xs text-slate-500">SMTP Host</Label><Input placeholder="smtp.company.com" value={imapForm.smtp_host} onChange={e => setImapForm({...imapForm, smtp_host:e.target.value})} /></div>
+                  <div><Label className="text-xs text-slate-500">SMTP Port</Label><Input type="number" value={imapForm.smtp_port} onChange={e => setImapForm({...imapForm, smtp_port:Number(e.target.value)||465})} /></div>
+                  <div><Label className="text-xs text-slate-500">Username</Label><Input value={imapForm.username} onChange={e => setImapForm({...imapForm, username:e.target.value})} /></div>
+                  <div><Label className="text-xs text-slate-500">Mailbox Password</Label><Input type="password" placeholder={imapMailboxId ? 'Leave blank to keep current password' : 'Enter mailbox password'} value={imapForm.password} onChange={e => setImapForm({...imapForm, password:e.target.value})} /></div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" onClick={saveCompanyMailbox} disabled={imapSaving}>{imapSaving ? 'Saving…' : 'Save Company Mailbox'}</Button>
+                  {imapMailboxId && <Button type="button" variant="outline" onClick={verifyCompanyMailbox} disabled={imapSaving}>Test IMAP Connection</Button>}
+                </div>
+              </TabsContent>}
             </Tabs>
 
             {/* Roles */}
