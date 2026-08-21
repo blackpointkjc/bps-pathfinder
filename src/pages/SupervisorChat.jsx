@@ -31,11 +31,11 @@ export default function SupervisorChat() {
     queryKey: ['supervisorTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'supervisor_chat'),
     enabled: !!user?.id && !!teamsConfig?.enabled && (user?.role === 'supervisor' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin'),
-    refetchInterval: () => document.visibilityState === 'hidden' ? 90000 : 20000,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     retry: false,
-    staleTime: 8000,
+    staleTime: 60000,
   });
 
   useEffect(() => {
