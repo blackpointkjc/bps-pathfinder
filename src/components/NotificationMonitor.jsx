@@ -8,21 +8,9 @@ import { parseISO } from "date-fns";
 
 export default function NotificationMonitor({ user }) {
   const { toast } = useToast();
-  const [lastAnnouncementId, setLastAnnouncementId] = useState(null);
   const [lastScheduleCheck, setLastScheduleCheck] = useState(null);
   const [lastPTOStatusId, setLastPTOStatusId] = useState(null);
   const [audioEnabled] = useState(true);
-
-  // Monitor announcements
-  const { data: latestAnnouncement } = useQuery({
-    queryKey: ['latestAnnouncement'],
-    queryFn: async () => {
-      const announcements = await base44.entities.Announcement.list('-created_date', 1);
-      return announcements[0] || null;
-    },
-    refetchInterval: 10000,
-    enabled: !!user,
-  });
 
   // Monitor schedule week status (for new schedule published)
   const { data: weekStatus } = useQuery({
@@ -82,40 +70,6 @@ export default function NotificationMonitor({ user }) {
       new Notification(title, { body, icon, badge: '/badge-icon.png' });
     }
   };
-
-  // Monitor new announcements
-  useEffect(() => {
-    if (latestAnnouncement && latestAnnouncement.id !== lastAnnouncementId && lastAnnouncementId !== null) {
-      const priority = latestAnnouncement.priority || 'normal';
-      toast({
-        title: priority === 'urgent' ? '🚨 URGENT Announcement' : '📢 New Announcement',
-        description: `${latestAnnouncement.title}`,
-        duration: priority === 'urgent' ? 20000 : 10000,
-        className: priority === 'urgent' ? 'bg-red-50 border-red-300' : 'bg-indigo-50 border-indigo-200',
-        action: (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => window.location.href = createPageUrl("Announcements")}
-            className={priority === 'urgent' ? 'hover:bg-red-100' : 'hover:bg-indigo-100'}
-          >
-            View
-          </Button>
-        ),
-      });
-      playNotificationSound();
-      if (priority === 'urgent') {
-        playNotificationSound();
-        playNotificationSound();
-      }
-      showBrowserNotification(
-        priority === 'urgent' ? '🚨 URGENT Announcement' : '📢 New Announcement',
-        latestAnnouncement.title,
-        priority === 'urgent' ? '🚨' : '📢'
-      );
-    }
-    if (latestAnnouncement) setLastAnnouncementId(latestAnnouncement.id);
-  }, [latestAnnouncement, lastAnnouncementId, toast]);
 
   // Monitor schedule publication changes. Track the version/state of the week record,
   // not just its ID, because publishing updates the existing record in place.
