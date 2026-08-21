@@ -92,9 +92,7 @@ export default function OutlookNotificationMonitor({ user }) {
             description: `${sender}: ${newest?.subject || newest?.bodyPreview || 'Open Mail Center to view.'}`,
             duration: 8000,
           });
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(newItems.length === 1 ? `New Email · ${label}` : `${newItems.length} New Emails`, { body: `${sender}: ${newest?.subject || 'No subject'}` });
-          }
+          // The in-app mail toast above is the only user-facing notification.
         }
       } finally {
         runningRef.current = false;
