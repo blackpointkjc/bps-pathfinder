@@ -23,6 +23,9 @@ export function parseTeamsChannelLink(value) {
   return { teamId: groupId, channelId, channelUrl: raw };
 }
 
+const channelRequestCache = new Map();
+const channelRequestInFlight = new Map();
+
 const FIXED_TEAMS_CHANNELS = {
   officer_chat: {
     config_key: 'officer_chat',
@@ -121,22 +124,36 @@ export function normalizeTeamsChannelMessage(item) {
 export async function getTeamsChannelMessages(userId, config = null, configKey = 'team_chat') {
   const target = config || await getTeamsSyncConfig(configKey);
   if (!target?.enabled || !target?.team_id || !target?.channel_id) return [];
-  const cacheKey = `bps:teams-channel-cache:${userId}:${configKey}`;
-  try {
-    // One Graph page per load keeps the channel usable under Microsoft throttling.
-    const payload = await graphRequest(userId, `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages`);
-    const rows = [...(payload?.value || [])].reverse().map(normalizeTeamsChannelMessage).filter(Boolean);
-    try { window.localStorage.setItem(cacheKey, JSON.stringify(rows)); } catch {}
-    return rows;
-  } catch (error) {
-    if (error?.status === 429 || /rate limit|too many requests/i.test(String(error?.message || ''))) {
-      try {
-        const cached = JSON.parse(window.localStorage.getItem(cacheKey) || '[]');
-        if (Array.isArray(cached) && cached.length) return cached;
-      } catch {}
+  const requestKey = `${userId}:${configKey}:${target.team_id}:${target.channel_id}`;
+  const recent = channelRequestCache.get(requestKey);
+  if (recent && Date.now() - recent.at < 8000) return recent.rows;
+  if (channelRequestInFlight.has(requestKey)) return channelRequestInFlight.get(requestKey);
+
+  const promise = (async () => {
+    const cacheKey = `bps:teams-channel-cache:${userId}:${configKey}`;
+    try {
+      const payload = await graphRequest(userId, `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages`);
+      const rows = [...(payload?.value || [])].reverse().map(normalizeTeamsChannelMessage).filter(Boolean);
+      channelRequestCache.set(requestKey, { at: Date.now(), rows });
+      try { window.localStorage.setItem(cacheKey, JSON.stringify(rows)); } catch {}
+      return rows;
+    } catch (error) {
+      if (error?.status === 429 || /rate limit|too many requests/i.test(String(error?.message || ''))) {
+        try {
+          const cached = JSON.parse(window.localStorage.getItem(cacheKey) || '[]');
+          if (Array.isArray(cached) && cached.length) {
+            channelRequestCache.set(requestKey, { at: Date.now(), rows: cached });
+            return cached;
+          }
+        } catch {}
+      }
+      throw error;
+    } finally {
+      channelRequestInFlight.delete(requestKey);
     }
-    throw error;
-  }
+  })();
+  channelRequestInFlight.set(requestKey, promise);
+  return promise;
 }
 
 export async function syncTeamsChannelToEntity(userId, { config = null, configKey = 'team_chat', entityName = 'ChatMessage', limit = 50 } = {}) {
