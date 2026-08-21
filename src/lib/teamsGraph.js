@@ -23,9 +23,50 @@ export function parseTeamsChannelLink(value) {
   return { teamId: groupId, channelId, channelUrl: raw };
 }
 
+const FIXED_TEAMS_CHANNELS = {
+  officer_chat: {
+    config_key: 'officer_chat',
+    channel_name: 'General Chat',
+    team_id: '4edffd95-a684-4d15-a4dc-b940beab82b0',
+    channel_id: '19:UR-vKNsKrbxAhm4pMLE0vYRA9q3Lmj7ISI9HX0DYNkY1@thread.tacv2',
+    channel_url: 'https://teams.microsoft.com/l/channel/19%3AUR-vKNsKrbxAhm4pMLE0vYRA9q3Lmj7ISI9HX0DYNkY1%40thread.tacv2/General%20Chat?groupId=4edffd95-a684-4d15-a4dc-b940beab82b0&tenantId=07f32330-fc73-4d73-a835-e9c47ba798c7',
+    enabled: true,
+  },
+  supervisor_chat: {
+    config_key: 'supervisor_chat',
+    channel_name: '(Supervisors Chat)',
+    team_id: '1ddc95b0-b5f3-4f5c-a5be-1dc9bc622f68',
+    channel_id: '19:3yP13B1ekVxmjtfpoBevmfs0eYSCDrCIvARO01key9I1@thread.tacv2',
+    channel_url: 'https://teams.microsoft.com/l/channel/19%3A3yP13B1ekVxmjtfpoBevmfs0eYSCDrCIvARO01key9I1%40thread.tacv2/(Supervisors%20Chat)?groupId=1ddc95b0-b5f3-4f5c-a5be-1dc9bc622f68&tenantId=07f32330-fc73-4d73-a835-e9c47ba798c7',
+    enabled: true,
+  },
+  general_alerts: {
+    config_key: 'general_alerts',
+    channel_name: 'General Alerts',
+    team_id: '4edffd95-a684-4d15-a4dc-b940beab82b0',
+    channel_id: '19:77ea7fa956ff49cfa17d741a56512738@thread.tacv2',
+    channel_url: 'https://teams.microsoft.com/l/channel/19%3A77ea7fa956ff49cfa17d741a56512738%40thread.tacv2/General%20Alerts?groupId=4edffd95-a684-4d15-a4dc-b940beab82b0&tenantId=07f32330-fc73-4d73-a835-e9c47ba798c7',
+    enabled: true,
+  },
+  supervisor_updates: {
+    config_key: 'supervisor_updates',
+    channel_name: 'Updates',
+    team_id: '1ddc95b0-b5f3-4f5c-a5be-1dc9bc622f68',
+    channel_id: '19:f9677bd8e80449baab00eaac29d1f964@thread.tacv2',
+    channel_url: 'https://teams.microsoft.com/l/channel/19%3Af9677bd8e80449baab00eaac29d1f964%40thread.tacv2/Updates?groupId=1ddc95b0-b5f3-4f5c-a5be-1dc9bc622f68&tenantId=07f32330-fc73-4d73-a835-e9c47ba798c7',
+    enabled: true,
+  },
+};
+
 export async function getTeamsSyncConfig(configKey = 'team_chat') {
-  const rows = await base44.entities.MicrosoftTeamsSyncConfig.filter({ config_key: configKey }, '-updated_at', 1);
-  return rows?.[0] || null;
+  const fallback = FIXED_TEAMS_CHANNELS[configKey] || null;
+  try {
+    const rows = await base44.entities.MicrosoftTeamsSyncConfig.filter({ config_key: configKey }, '-updated_at', 1);
+    return rows?.[0] || fallback;
+  } catch (error) {
+    if (fallback) return fallback;
+    throw error;
+  }
 }
 
 export async function saveTeamsSyncConfig({ channelUrl, channelName = 'Microsoft Teams', updatedBy = '', configKey = 'team_chat' }) {
@@ -80,10 +121,22 @@ export function normalizeTeamsChannelMessage(item) {
 export async function getTeamsChannelMessages(userId, config = null, configKey = 'team_chat') {
   const target = config || await getTeamsSyncConfig(configKey);
   if (!target?.enabled || !target?.team_id || !target?.channel_id) return [];
-  // One Graph page per load keeps the channel usable under Microsoft throttling.
-  // Older history can be refreshed manually rather than continuously hammering Graph.
-  const payload = await graphRequest(userId, `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages`);
-  return [...(payload?.value || [])].reverse().map(normalizeTeamsChannelMessage).filter(Boolean);
+  const cacheKey = `bps:teams-channel-cache:${userId}:${configKey}`;
+  try {
+    // One Graph page per load keeps the channel usable under Microsoft throttling.
+    const payload = await graphRequest(userId, `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages`);
+    const rows = [...(payload?.value || [])].reverse().map(normalizeTeamsChannelMessage).filter(Boolean);
+    try { window.localStorage.setItem(cacheKey, JSON.stringify(rows)); } catch {}
+    return rows;
+  } catch (error) {
+    if (error?.status === 429 || /rate limit|too many requests/i.test(String(error?.message || ''))) {
+      try {
+        const cached = JSON.parse(window.localStorage.getItem(cacheKey) || '[]');
+        if (Array.isArray(cached) && cached.length) return cached;
+      } catch {}
+    }
+    throw error;
+  }
 }
 
 export async function syncTeamsChannelToEntity(userId, { config = null, configKey = 'team_chat', entityName = 'ChatMessage', limit = 50 } = {}) {
