@@ -137,8 +137,21 @@ async function persistOutlookCredential(userId, tokenResponse) {
   return payload;
 }
 
+async function migrateLegacyBrowserCredential(userId) {
+  const legacy = getStoredOutlookToken(userId);
+  if (!legacy?.refresh_token || !legacy?.access_token) return legacy;
+  await persistOutlookCredential(userId, legacy);
+  return storeOutlookToken(userId, legacy, legacy);
+}
+
 async function restoreOutlookTokenFromServer(userId) {
   if (!userId) return null;
+  // Existing Pathfinder installations used to keep the refresh token in this
+  // browser. Move it into the backend vault once, then immediately rewrite the
+  // browser cache without the long-lived credential.
+  await migrateLegacyBrowserCredential(userId).catch(() => null);
+  const current = getStoredOutlookToken(userId);
+  if (current?.access_token && Number(current.expires_at || 0) > Date.now() + 90_000) return current;
   const result = await base44.functions.invoke('microsoftOAuthVault', { action: 'restore' });
   const payload = result?.data || result || {};
   if (!payload?.connected || !payload?.access_token) return null;
@@ -305,7 +318,7 @@ async function refreshOutlookToken(userId, existing) {
 }
 
 export async function getOutlookAccessToken(userId) {
-  let existing = getStoredOutlookToken(userId);
+  let existing = await migrateLegacyBrowserCredential(userId).catch(() => getStoredOutlookToken(userId));
   if (!existing?.access_token) {
     existing = await restoreOutlookTokenFromServer(userId).catch(() => null);
     if (!existing?.access_token) return null;
@@ -439,7 +452,7 @@ async function syncOutlookMailboxLink(userId, pathfinderEmail, profile) {
 export async function getOutlookConnectionStatus(userId, pathfinderEmail = '') {
   const config = await getMicrosoftMailConfig();
   if (!config?.enabled || !config?.clientId) return { connected: false, configured: false, config };
-  let stored = getStoredOutlookToken(userId);
+  let stored = await migrateLegacyBrowserCredential(userId).catch(() => getStoredOutlookToken(userId));
   if (!stored?.access_token) {
     stored = await restoreOutlookTokenFromServer(userId).catch(() => null);
   }
