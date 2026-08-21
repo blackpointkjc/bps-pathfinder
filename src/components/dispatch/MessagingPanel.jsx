@@ -115,12 +115,42 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
             read: false,
           })));
         }
-      } else if (recipient && recipient !== 'dispatch') {
+      } else if (recipient === 'dispatch') {
+        const dispatchRecipients = (units || []).filter(person => person?.id && person.id !== currentUser.id && !person.termination_date && isDispatchUser(person));
+        if (!dispatchRecipients.length) throw new Error('No Microsoft-connected dispatch recipients are available.');
+        const threadKey = `teams-dispatch:${currentUser.id}`;
+        const prior = await base44.entities.Message.filter({ thread_id: threadKey }, '-created_date', 1).catch(() => []);
+        const result = await sendTeamsDirectMessage(currentUser.id, {
+          participantIds: [currentUser.id, ...dispatchRecipients.map(person => person.id)],
+          participantDirectory: units,
+          text,
+          existingChatId: prior?.[0]?.teams_chat_id || '',
+        });
+        if (!result?.messageId) throw new Error('Microsoft Teams did not confirm dispatch-message delivery.');
+        await base44.entities.Message.create({
+          sender_id: currentUser.id,
+          sender_name: senderName,
+          recipient_id: 'dispatch',
+          recipient_name: 'Dispatch',
+          message: text,
+          read: false,
+          message_type: 'dispatch_message',
+          message_source: 'teams',
+          teams_chat_id: result.chatId,
+          teams_message_id: result.messageId,
+          teams_synced_at: new Date().toISOString(),
+          thread_id: threadKey,
+          participant_ids: [currentUser.id, ...dispatchRecipients.map(person => person.id)],
+          participant_names: [senderName, ...dispatchRecipients.map(person => [person.rank, person.first_name, person.last_name].filter(Boolean).join(' ') || person.full_name || person.email)],
+        });
+      } else if (recipient) {
         const recipientName = `${unit?.rank || ''} ${unit?.first_name || ''} ${unit?.last_name || unit?.full_name || unit?.email || ''}`.trim();
+        const prior = await base44.entities.Message.filter({ thread_id: `teams-direct:${[currentUser.id, recipient].sort().join(':')}` }, '-created_date', 1).catch(() => []);
         const result = await sendTeamsDirectMessage(currentUser.id, {
           participantIds: [currentUser.id, recipient],
           participantDirectory: units,
           text,
+          existingChatId: prior?.[0]?.teams_chat_id || '',
         });
         if (!result?.messageId) throw new Error('Microsoft Teams did not confirm direct-message delivery.');
         await base44.entities.Message.create({
@@ -135,19 +165,19 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
           teams_chat_id: result.chatId,
           teams_message_id: result.messageId,
           teams_synced_at: new Date().toISOString(),
-          thread_id: `teams:${result.chatId}`,
+          thread_id: `teams-direct:${[currentUser.id, recipient].sort().join(':')}`,
           participant_ids: [currentUser.id, recipient],
           participant_names: [senderName, recipientName],
         });
       } else {
-        throw new Error('Direct Dispatch messaging must use a Microsoft Teams recipient.');
+        throw new Error('Select a Microsoft Teams recipient.');
       }
       setNewMessage('');
       setMentionedUsers([]);
       await loadMessages();
     } catch (error) {
       console.error('Error sending dispatch message:', error);
-      toast.error('Failed to send message');
+      toast.error(`Teams message failed: ${error?.message || 'Unknown Microsoft error'}`, { duration: 12000 });
     }
   };
 
