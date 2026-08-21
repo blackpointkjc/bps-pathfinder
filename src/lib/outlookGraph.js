@@ -109,9 +109,11 @@ export function getMissingMicrosoftScopes(userId, requiredScopes = DEFAULT_SCOPE
 
 function storeOutlookToken(userId, tokenResponse, prior = null) {
   const expiresIn = Number(tokenResponse.expires_in || 3600);
+  // The browser keeps only the short-lived access token. The long-lived Microsoft
+  // refresh credential is persisted by microsoftOAuthVault and never written to
+  // localStorage, so the connection follows the Pathfinder account across devices.
   const next = {
     access_token: tokenResponse.access_token,
-    refresh_token: tokenResponse.refresh_token || prior?.refresh_token || null,
     id_token: tokenResponse.id_token || prior?.id_token || null,
     scope: tokenResponse.scope || prior?.scope || DEFAULT_SCOPES.join(' '),
     token_type: tokenResponse.token_type || 'Bearer',
@@ -122,9 +124,36 @@ function storeOutlookToken(userId, tokenResponse, prior = null) {
   return next;
 }
 
+async function persistOutlookCredential(userId, tokenResponse) {
+  if (!userId || !tokenResponse?.refresh_token || !tokenResponse?.access_token) return null;
+  const result = await base44.functions.invoke('microsoftOAuthVault', {
+    action: 'store',
+    access_token: tokenResponse.access_token,
+    refresh_token: tokenResponse.refresh_token,
+    scope: tokenResponse.scope || DEFAULT_SCOPES.join(' '),
+  });
+  const payload = result?.data || result || {};
+  if (payload?.error) throw new Error(payload.error);
+  return payload;
+}
+
+async function restoreOutlookTokenFromServer(userId) {
+  if (!userId) return null;
+  const result = await base44.functions.invoke('microsoftOAuthVault', { action: 'restore' });
+  const payload = result?.data || result || {};
+  if (!payload?.connected || !payload?.access_token) return null;
+  return storeOutlookToken(userId, {
+    access_token: payload.access_token,
+    expires_in: payload.expires_in || 3600,
+    scope: payload.scope || DEFAULT_SCOPES.join(' '),
+    token_type: 'Bearer',
+  }, getStoredOutlookToken(userId));
+}
+
 export async function disconnectOutlook(userId) {
   if (userId) localStorage.removeItem(tokenKey(userId));
   if (!userId) return;
+  try { await base44.functions.invoke('microsoftOAuthVault', { action: 'disconnect' }); } catch {}
   try {
     const links = await base44.entities.OutlookMailboxLink.filter({ user_id: userId }, '-last_verified_at', 5);
     for (const link of links || []) {
@@ -221,6 +250,9 @@ async function completeOutlookOAuthCallback(userId, callback = {}, { cleanBrowse
     return { handled: true, success: false, error: payload.error_description || payload.error || 'Microsoft sign-in failed.' };
   }
 
+  // Persist the refresh credential on the backend before declaring the account
+  // connected. This makes the Microsoft link durable across browsers/devices.
+  await persistOutlookCredential(userId, payload);
   storeOutlookToken(userId, payload);
   return { handled: true, success: true };
 }
@@ -264,31 +296,20 @@ if (typeof window !== 'undefined') {
 }
 
 async function refreshOutlookToken(userId, existing) {
-  const config = await getMicrosoftMailConfig();
-  const clientId = config?.clientId;
-  if (!config?.enabled || !clientId || !existing?.refresh_token) return null;
-  const body = new URLSearchParams({
-    client_id: clientId,
-    grant_type: 'refresh_token',
-    refresh_token: existing.refresh_token,
-    scope: DEFAULT_SCOPES.join(' '),
-  });
-  const response = await fetch(`${MICROSOFT_AUTH_ROOT}/${encodeURIComponent(config.tenant || 'common')}/oauth2/v2.0/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || !payload.access_token) {
-    disconnectOutlook(userId);
+  try {
+    return await restoreOutlookTokenFromServer(userId);
+  } catch (error) {
+    console.warn('[Outlook] Durable Microsoft token refresh failed:', error?.message);
     return null;
   }
-  return storeOutlookToken(userId, payload, existing);
 }
 
 export async function getOutlookAccessToken(userId) {
-  const existing = getStoredOutlookToken(userId);
-  if (!existing?.access_token) return null;
+  let existing = getStoredOutlookToken(userId);
+  if (!existing?.access_token) {
+    existing = await restoreOutlookTokenFromServer(userId).catch(() => null);
+    if (!existing?.access_token) return null;
+  }
   if (Number(existing.expires_at || 0) > Date.now() + 90_000) return existing.access_token;
   const refreshed = await refreshOutlookToken(userId, existing);
   return refreshed?.access_token || null;
@@ -418,7 +439,10 @@ async function syncOutlookMailboxLink(userId, pathfinderEmail, profile) {
 export async function getOutlookConnectionStatus(userId, pathfinderEmail = '') {
   const config = await getMicrosoftMailConfig();
   if (!config?.enabled || !config?.clientId) return { connected: false, configured: false, config };
-  const stored = getStoredOutlookToken(userId);
+  let stored = getStoredOutlookToken(userId);
+  if (!stored?.access_token) {
+    stored = await restoreOutlookTokenFromServer(userId).catch(() => null);
+  }
   if (!stored?.access_token) {
     let savedLink = null;
     try {
