@@ -124,7 +124,8 @@ Deno.serve(async (req) => {
           });
         }
         rows.sort((a, b) => new Date(b.receivedDateTime).getTime() - new Date(a.receivedDateTime).getTime());
-        return json({ messages: rows });
+        const unseen = await client.search({ seen: false }).catch(() => []);
+        return json({ messages: rows, unreadCount: Array.isArray(unseen) ? unseen.length : 0 });
       }
 
       const uid = Number(body.uid || body.message_id || 0);
