@@ -83,6 +83,7 @@ export default function OutlookNotificationMonitor({ user }) {
         const newItems = allUnread.filter(item => !seenRef.current.has(keyOf(item)));
         seenRef.current = new Set([...ids, ...seenRef.current].slice(0, 400));
         if (newItems.length) {
+          window.dispatchEvent(new CustomEvent('bps:mail-new-items', { detail: { items: newItems } }));
           window.dispatchEvent(new CustomEvent('bps-mail-new-message', { detail: { count: newItems.length } }));
           const newest = [...newItems].sort((a, b) => new Date(b.receivedDateTime || 0) - new Date(a.receivedDateTime || 0))[0];
           const sender = newest?.from?.emailAddress?.name || newest?.from?.emailAddress?.address || 'New sender';
@@ -103,7 +104,7 @@ export default function OutlookNotificationMonitor({ user }) {
     const schedule = () => {
       if (cancelled) return;
       const currentPage = window.location.pathname.split('/').filter(Boolean).pop() || '';
-      const delay = document.visibilityState === 'hidden' ? 90000 : currentPage === 'OutlookMail' ? 30000 : 60000;
+      const delay = document.visibilityState === 'hidden' ? 120000 : currentPage === 'OutlookMail' ? 30000 : 60000;
       clearTimeout(timer);
       timer = window.setTimeout(async () => { await poll(); schedule(); }, delay);
     };
