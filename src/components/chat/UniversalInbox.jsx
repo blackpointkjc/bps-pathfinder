@@ -94,7 +94,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
     }
     setLoadingMessages(true);
     try {
-      const rows = await getTeamsDirectChatMessages(currentUser.id, chatId, { limit: 50 });
+      const rows = await getTeamsDirectChatMessages(currentUser.id, chatId, { limit: 100 });
       setChatMessages(rows || []);
       setSyncError('');
     } catch (error) {
@@ -162,6 +162,10 @@ export default function UniversalInbox({ currentUser, users = [] }) {
         created_date: new Date().toISOString(),
       };
       setChatMessages(current => [...current.filter(item => item.id !== optimistic.id), optimistic]);
+      const seen = readSeenMap();
+      seen[selected.id] = optimistic.created_date;
+      writeSeenMap(seen);
+      window.dispatchEvent(new CustomEvent('bps-unread-notification', { detail: { page: 'OfficerInbox', count: 0, absolute: true } }));
       setText('');
       window.setTimeout(() => loadChatMessages(selected.id), 700);
       window.setTimeout(() => loadChats(), 1200);
