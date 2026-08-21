@@ -24,6 +24,7 @@ Deno.serve(async (req) => {
       : await base44.asServiceRole.entities.CompanyImapMailbox.filter({ user_id: caller.id, active: true }, '-updated_date', 20).catch(() => []);
 
     if (action === 'status') {
+      const isAdmin = caller.role === 'admin';
       return json({ mailboxes: (records || []).map((row: any) => ({
         id: row.id,
         user_id: row.user_id,
@@ -31,11 +32,13 @@ Deno.serve(async (req) => {
         display_name: row.display_name || row.mailbox_email,
         active: row.active !== false,
         approved_by_company: row.approved_by_company !== false,
-        imap_host: row.imap_host,
-        imap_port: row.imap_port,
-        smtp_host: row.smtp_host,
-        smtp_port: row.smtp_port,
-        username: row.username,
+        ...(isAdmin ? {
+          imap_host: row.imap_host,
+          imap_port: row.imap_port,
+          smtp_host: row.smtp_host,
+          smtp_port: row.smtp_port,
+          username: row.username,
+        } : {}),
         last_verified_at: row.last_verified_at || null,
         last_error: row.last_error || '',
       })) });
@@ -46,6 +49,35 @@ Deno.serve(async (req) => {
     const isAdmin = caller.role === 'admin';
     if (!isAdmin && String(mailbox.user_id) !== String(caller.id)) return json({ error: 'Mailbox access denied.' }, 403);
     if (!mailbox.active || !mailbox.approved_by_company) return json({ error: 'This company mailbox is not active.' }, 403);
+
+    if (action === 'update_password') {
+      const nextPassword = String(body?.password || '');
+      if (!nextPassword || nextPassword.length < 4) return json({ error: 'Enter the new company email password.' }, 400);
+      // Test the replacement credential before persisting it so a typo cannot
+      // break the officer's working mailbox.
+      const testClient = new ImapFlow({
+        host: mailbox.imap_host,
+        port: Number(mailbox.imap_port || 993),
+        secure: mailbox.imap_secure !== false,
+        auth: { user: mailbox.username, pass: nextPassword },
+        logger: false,
+      });
+      try {
+        await testClient.connect();
+        await testClient.logout();
+      } catch (error) {
+        try { await testClient.logout(); } catch {}
+        return json({ error: `The new password was not accepted by the company mail server: ${error?.message || 'authentication failed'}` }, 400);
+      }
+      await base44.asServiceRole.entities.CompanyImapMailbox.update(mailbox.id, {
+        password: nextPassword,
+        last_verified_at: new Date().toISOString(),
+        last_error: '',
+        updated_by: caller.email || caller.id,
+      });
+      return json({ ok: true, mailbox_email: mailbox.mailbox_email });
+    }
+
     if (!mailbox.password) return json({ error: 'The company mailbox password has not been configured by an administrator.' }, 400);
 
     const connectImap = async () => {
