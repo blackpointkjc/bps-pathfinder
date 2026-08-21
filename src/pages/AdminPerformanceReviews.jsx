@@ -14,6 +14,7 @@ import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
+import { calculatePunctuality } from '@/lib/performanceScoring';
 
 export default function AdminPerformanceReviews() {
   const [showForm, setShowForm] = useState(false);
@@ -178,31 +179,9 @@ export default function AdminPerformanceReviews() {
         return sum + (differenceInMinutes(clockOut, clockIn) / 60);
       }, 0);
 
-      // Calculate on-time percentage
-      let onTime = 0;
-      let late = 0;
-      periodEntries.forEach(entry => {
-        const clockInDate = format(parseISO(entry.clock_in), 'yyyy-MM-dd');
-        const matchingSchedule = schedules?.find(s => 
-          s.shift_date === clockInDate && s.officer_email === selectedOfficer
-        );
-
-        if (matchingSchedule) {
-          const scheduledStart = matchingSchedule.start_time;
-          const actualClockIn = format(parseISO(entry.clock_in), 'HH:mm');
-          
-          const scheduledMinutes = parseInt(scheduledStart.split(':')[0]) * 60 + parseInt(scheduledStart.split(':')[1]);
-          const actualMinutes = parseInt(actualClockIn.split(':')[0]) * 60 + parseInt(actualClockIn.split(':')[1]);
-          
-          if (actualMinutes <= scheduledMinutes + 5) {
-            onTime++;
-          } else {
-            late++;
-          }
-        }
-      });
-
-      const onTimePercentage = (onTime + late) > 0 ? Math.round((onTime / (onTime + late)) * 100) : 100;
+      const periodSchedules = (schedules || []).filter(s => s.officer_email === selectedOfficer && s.shift_date >= data.review_period_start && s.shift_date <= data.review_period_end);
+      const punctuality = calculatePunctuality(periodEntries, periodSchedules, data.review_period_start, data.review_period_end);
+      const onTimePercentage = punctuality.rate;
 
       const periodInspections = inspectionReports?.filter(i => {
         const iDate = parseISO(i.inspection_date);
