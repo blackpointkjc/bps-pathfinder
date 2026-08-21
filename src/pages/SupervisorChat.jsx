@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageCircle, Send, Users, UserCheck, Shield } from "lucide-react";
@@ -14,7 +14,6 @@ export default function SupervisorChat() {
   const [message, setMessage] = useState("");
   const [mentionedUsers, setMentionedUsers] = useState([]);
   const scrollRef = useRef(null);
-  const queryClient = useQueryClient();
   const [teamsConfig, setTeamsConfig] = useState(null);
   const [teamsSyncError, setTeamsSyncError] = useState('');
   const [teamsLink, setTeamsLink] = useState('');
@@ -29,12 +28,6 @@ export default function SupervisorChat() {
     ? `${user.first_name} ${user.last_name}`
     : user?.email || 'Unknown';
 
-  const { data: messages } = useQuery({
-    queryKey: ['supervisorChatMessages'],
-    queryFn: () => base44.entities.SupervisorChatMessage.list('-created_date', 100),
-    enabled: user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin',
-  });
-
   const { data: liveTeamsMessages = [], error: liveTeamsError, refetch: refetchTeamsHistory } = useQuery({
     queryKey: ['supervisorTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'supervisor_chat'),
@@ -43,14 +36,6 @@ export default function SupervisorChat() {
     refetchOnWindowFocus: true,
     staleTime: 15000,
   });
-
-  useEffect(() => {
-    if (!user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access') && user?.role !== 'admin') return undefined;
-    const unsubscribe = base44.entities.SupervisorChatMessage.subscribe(() => {
-      queryClient.invalidateQueries({ queryKey: ['supervisorChatMessages'] });
-    });
-    return unsubscribe;
-  }, [queryClient, user?.role, JSON.stringify(user?.additional_roles || [])]);
 
   useEffect(() => {
     if (!user?.id) return undefined;
@@ -62,9 +47,8 @@ export default function SupervisorChat() {
         setTeamsConfig(config);
         if (config?.channel_url) setTeamsLink(current => current || config.channel_url);
         if (config?.enabled) {
-          const result = await syncTeamsChannelToEntity(user.id, { config, configKey: 'supervisor_chat', entityName: 'SupervisorChatMessage' });
+          await syncTeamsChannelToEntity(user.id, { config, configKey: 'supervisor_chat', entityName: 'SupervisorChatMessage' });
           setTeamsSyncError('');
-          if (result?.imported) queryClient.invalidateQueries({ queryKey: ['supervisorChatMessages'] });
         }
       } catch (error) {
         console.warn('[Teams] Supervisor Chat sync unavailable:', error?.message);
@@ -73,7 +57,7 @@ export default function SupervisorChat() {
     };
     sync();
     return () => { cancelled = true; };
-  }, [user?.id, queryClient]);
+  }, [user?.id]);
 
   const { data: supervisorUpdates = [] } = useQuery({
     queryKey: ['supervisorUpdates'],
@@ -124,7 +108,6 @@ export default function SupervisorChat() {
       return created;
     },
     onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ['supervisorChatMessages'] });
       await refetchTeamsHistory();
       setMessage("");
       setMentionedUsers([]);
@@ -220,7 +203,6 @@ export default function SupervisorChat() {
       const saved = await saveTeamsSyncConfig({ channelUrl: teamsLink.trim(), channelName: 'Pathfinder Supervisor Chat', updatedBy: user?.email || user?.id || '', configKey: 'supervisor_chat' });
       setTeamsConfig(saved);
       await syncTeamsChannelToEntity(user.id, { config: saved, configKey: 'supervisor_chat', entityName: 'SupervisorChatMessage' }).catch(() => null);
-      await queryClient.invalidateQueries({ queryKey: ['supervisorChatMessages'] });
     } finally { setTeamsSaving(false); }
   };
 
