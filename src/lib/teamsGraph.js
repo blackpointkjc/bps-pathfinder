@@ -61,11 +61,19 @@ export async function sendTeamChannelMessage(userId, text, config = null, config
 export async function getTeamsChannelMessages(userId, config = null, configKey = 'team_chat') {
   const target = config || await getTeamsSyncConfig(configKey);
   if (!target?.enabled || !target?.team_id || !target?.channel_id) return [];
-  // Do not add $top here. Some Teams message/member endpoints validate query
-  // options differently across tenants and the previous generic limiter caused
-  // the exact "Query option Top is not allowed" failure seen in Pathfinder.
-  const payload = await graphRequest(userId, `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages`);
-  return [...(payload?.value || [])].reverse().map(item => ({
+  // Do not add $top here. Some Teams endpoints reject that option in this tenant.
+  // Follow only Microsoft's own next links so channel history is deeper without
+  // multiplying requests on every poll.
+  const rows = [];
+  let next = `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages`;
+  let pages = 0;
+  while (next && rows.length < 100 && pages < 3) {
+    const payload = await graphRequest(userId, next);
+    rows.push(...(payload?.value || []));
+    next = payload?.['@odata.nextLink'] || '';
+    pages += 1;
+  }
+  return rows.slice(0, 100).reverse().map(item => ({
     id: item.id,
     message: stripHtml(item?.body?.content || '').trim(),
     sender_name: item?.from?.user?.displayName || item?.from?.application?.displayName || 'Microsoft Teams',
