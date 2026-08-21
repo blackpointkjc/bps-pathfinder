@@ -32,7 +32,7 @@ export default function SupervisorChat() {
   const { data: liveTeamsMessages = [], error: liveTeamsError, refetch: refetchTeamsHistory } = useQuery({
     queryKey: ['supervisorTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'supervisor_chat'),
-    enabled: !!user?.id && !!teamsConfig?.enabled && (user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin'),
+    enabled: !!user?.id && !!teamsConfig?.enabled && (user?.role === 'supervisor' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin'),
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     retry: false,
@@ -64,7 +64,7 @@ export default function SupervisorChat() {
       const rows = await base44.entities.Announcement.filter({ audience: 'supervisors' }, '-created_date', 20);
       return rows || [];
     },
-    enabled: user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin',
+    enabled: user?.role === 'supervisor' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin',
     refetchInterval: 30000,
   });
 
@@ -193,7 +193,7 @@ export default function SupervisorChat() {
     }
   }, [displayedMessages]);
 
-  if (!user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access') && user?.role !== 'admin') {
+  if (user?.role !== 'supervisor' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access') && user?.role !== 'admin') {
     return (
       <div className="p-8 text-center">
         <UserCheck className="w-16 h-16 mx-auto mb-4 text-slate-400" />
