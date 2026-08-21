@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import PullToRefresh from "../components/PullToRefresh";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,6 @@ export default function OfficerChat() {
   const [message, setMessage] = useState("");
   const [mentionedUsers, setMentionedUsers] = useState([]);
   const scrollRef = useRef(null);
-  const queryClient = useQueryClient();
   const [teamsConfig, setTeamsConfig] = useState(null);
   const [teamsLink, setTeamsLink] = useState('');
   const [teamsSaving, setTeamsSaving] = useState(false);
@@ -29,11 +28,6 @@ export default function OfficerChat() {
     ? `${user.first_name} ${user.last_name}`
     : user?.email || 'Unknown';
 
-  const { data: messages } = useQuery({
-    queryKey: ['officerChatMessages'],
-    queryFn: () => base44.entities.OfficerChatMessage.list('-created_date', 100),
-  });
-
   const { data: liveTeamsMessages = [], error: liveTeamsError, refetch: refetchTeamsHistory } = useQuery({
     queryKey: ['officerTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'officer_chat'),
@@ -42,13 +36,6 @@ export default function OfficerChat() {
     refetchOnWindowFocus: true,
     staleTime: 15000,
   });
-
-  useEffect(() => {
-    const unsubscribe = base44.entities.OfficerChatMessage.subscribe(() => {
-      queryClient.invalidateQueries({ queryKey: ['officerChatMessages'] });
-    });
-    return unsubscribe;
-  }, [queryClient]);
 
   useEffect(() => {
     if (!user?.id) return undefined;
@@ -60,8 +47,7 @@ export default function OfficerChat() {
         setTeamsConfig(config);
         if (config?.channel_url && !teamsLink) setTeamsLink(config.channel_url);
         if (config?.enabled) {
-          const result = await syncTeamsChannelToEntity(user.id, { config, configKey: 'officer_chat', entityName: 'OfficerChatMessage' });
-          if (result?.imported) queryClient.invalidateQueries({ queryKey: ['officerChatMessages'] });
+          await syncTeamsChannelToEntity(user.id, { config, configKey: 'officer_chat', entityName: 'OfficerChatMessage' });
         }
       } catch (error) {
         console.warn('[Teams] Officer Chat sync unavailable:', error?.message);
@@ -69,7 +55,7 @@ export default function OfficerChat() {
     };
     sync();
     return () => { cancelled = true; };
-  }, [user?.id, queryClient]);
+  }, [user?.id]);
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['chatDirectory'],
@@ -111,7 +97,6 @@ export default function OfficerChat() {
       return created;
     },
     onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ['officerChatMessages'] });
       await refetchTeamsHistory();
       setMessage("");
       setMentionedUsers([]);
@@ -201,7 +186,6 @@ export default function OfficerChat() {
 
   const handleRefresh = async () => {
     if (user?.id && teamsConfig?.enabled) await syncTeamsChannelToEntity(user.id, { config: teamsConfig, configKey: 'officer_chat', entityName: 'OfficerChatMessage' }).catch(() => null);
-    await queryClient.invalidateQueries({ queryKey: ['officerChatMessages'] });
   };
 
   const saveTeamsChannel = async () => {
@@ -211,8 +195,7 @@ export default function OfficerChat() {
       const saved = await saveTeamsSyncConfig({ channelUrl: teamsLink.trim(), channelName: 'Pathfinder Officer Chat', updatedBy: user?.email || user?.id || '', configKey: 'officer_chat' });
       setTeamsConfig(saved);
       await syncTeamsChannelToEntity(user.id, { config: saved, configKey: 'officer_chat', entityName: 'OfficerChatMessage' }).catch(() => null);
-      await queryClient.invalidateQueries({ queryKey: ['officerChatMessages'] });
-    } finally {
+      } finally {
       setTeamsSaving(false);
     }
   };
