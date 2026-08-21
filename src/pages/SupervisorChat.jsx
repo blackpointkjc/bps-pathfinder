@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MessageCircle, Send, Users, UserCheck, Shield } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
-import { getTeamsChannelMessages, getTeamsSyncConfig, saveTeamsSyncConfig, sendTeamChannelMessage } from "@/lib/teamsGraph";
+import { getTeamsChannelMessages, getTeamsSyncConfig, normalizeTeamsChannelMessage, saveTeamsSyncConfig, sendTeamChannelMessage } from "@/lib/teamsGraph";
 import { toast } from 'sonner';
 
 export default function SupervisorChat() {
@@ -18,6 +18,7 @@ export default function SupervisorChat() {
   const [teamsSyncError, setTeamsSyncError] = useState('');
   const [teamsLink, setTeamsLink] = useState('');
   const [teamsSaving, setTeamsSaving] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -32,9 +33,10 @@ export default function SupervisorChat() {
     queryKey: ['supervisorTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'supervisor_chat'),
     enabled: !!user?.id && !!teamsConfig?.enabled && (user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin'),
-    refetchInterval: 120000,
-    refetchOnWindowFocus: true,
-    staleTime: 15000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false,
+    staleTime: 60000,
   });
 
   useEffect(() => {
@@ -106,8 +108,14 @@ export default function SupervisorChat() {
       }
       return teamsMessage;
     },
-    onSuccess: async () => {
-      await refetchTeamsHistory();
+    onSuccess: async (teamsMessage) => {
+      const row = normalizeTeamsChannelMessage(teamsMessage);
+      if (row) {
+        queryClient.setQueryData(
+          ['supervisorTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
+          (current = []) => [...current.filter(item => item.id !== row.id), row]
+        );
+      }
       setMessage("");
       setMentionedUsers([]);
       setTeamsSyncError('');
