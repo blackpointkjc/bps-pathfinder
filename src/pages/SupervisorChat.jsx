@@ -7,7 +7,7 @@ import { MessageCircle, Send, Users, UserCheck, Shield } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
-import { getTeamsChannelMessages, getTeamsSyncConfig, normalizeTeamsChannelMessage, saveTeamsSyncConfig, sendTeamChannelMessage } from "@/lib/teamsGraph";
+import { getTeamsChannelMessages, getTeamsSyncConfig, normalizeTeamsChannelMessage, sendTeamChannelMessage } from "@/lib/teamsGraph";
 import { toast } from 'sonner';
 
 export default function SupervisorChat() {
@@ -16,8 +16,6 @@ export default function SupervisorChat() {
   const scrollRef = useRef(null);
   const [teamsConfig, setTeamsConfig] = useState(null);
   const [teamsSyncError, setTeamsSyncError] = useState('');
-  const [teamsLink, setTeamsLink] = useState('');
-  const [teamsSaving, setTeamsSaving] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -47,7 +45,6 @@ export default function SupervisorChat() {
         const config = await getTeamsSyncConfig('supervisor_chat');
         if (cancelled) return;
         setTeamsConfig(config);
-        if (config?.channel_url) setTeamsLink(current => current || config.channel_url);
         if (config?.enabled) setTeamsSyncError('');
       } catch (error) {
         console.warn('[Teams] Supervisor Chat sync unavailable:', error?.message);
@@ -203,16 +200,6 @@ export default function SupervisorChat() {
     );
   }
 
-  const saveTeamsChannel = async () => {
-    if (!teamsLink.trim()) return;
-    try {
-      setTeamsSaving(true);
-      const saved = await saveTeamsSyncConfig({ channelUrl: teamsLink.trim(), channelName: 'Pathfinder Supervisor Chat', updatedBy: user?.email || user?.id || '', configKey: 'supervisor_chat' });
-      setTeamsConfig(saved);
-      await refetchTeamsHistory();
-    } finally { setTeamsSaving(false); }
-  };
-
   return (
     <div className="p-4 md:p-8 min-h-screen">
       <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)]">
@@ -236,14 +223,7 @@ export default function SupervisorChat() {
             </div>
           </CardHeader>
 
-          {user?.role === 'admin' && !teamsConfig?.enabled && (
-            <div className="border-b bg-green-50 p-4">
-              <div className="text-xs font-black uppercase tracking-wider text-green-800">Connect Supervisor Chat to Microsoft Teams</div>
-              <p className="mt-1 text-xs text-slate-600">Paste the link for the private Teams channel reserved for supervisors. This channel is separate from Team/Officer Chat.</p>
-              <div className="mt-3 flex gap-2"><input value={teamsLink} onChange={e => setTeamsLink(e.target.value)} placeholder="Paste supervisor Teams channel link" className="min-w-0 flex-1 rounded-lg border border-green-200 bg-white px-3 py-2 text-xs outline-none focus:border-green-500"/><Button type="button" onClick={saveTeamsChannel} disabled={teamsSaving || !teamsLink.trim()}>{teamsSaving ? 'Connecting…' : 'Connect'}</Button></div>
-            </div>
-          )}
-          {teamsConfig?.enabled && <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams live history · Supervisor Chat ↔ (Supervisors Chat)</div>}
+          <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams · Supervisor Chat ↔ (Supervisors Chat)</div>
           {(teamsSyncError || liveTeamsError) && <div className="border-b border-red-300 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">Microsoft Teams sync error: {teamsSyncError || liveTeamsError?.message}</div>}
 
           {!!supervisorUpdates.length && (
