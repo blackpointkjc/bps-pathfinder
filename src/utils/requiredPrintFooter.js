@@ -70,8 +70,19 @@ function ensureFooter(targetDocument) {
 }
 
 function patchPrintWindow(printWindow) {
-  if (!printWindow || printWindow.__bpsRequiredFooterPatched) return printWindow;
-  printWindow.__bpsRequiredFooterPatched = true;
+  if (!printWindow) return printWindow;
+
+  // Never inspect or patch a cross-origin popup. Pathfinder globally wraps
+  // window.open for printable reports, but Microsoft/other external auth windows
+  // are also opened with window.open. Touching a custom property on those windows
+  // throws a browser Same-Origin Policy error.
+  try {
+    if (printWindow.location?.origin && printWindow.location.origin !== window.location.origin) return printWindow;
+    if (printWindow.__bpsRequiredFooterPatched) return printWindow;
+    printWindow.__bpsRequiredFooterPatched = true;
+  } catch {
+    return printWindow;
+  }
 
   const nativePrint = printWindow.print?.bind(printWindow);
   if (nativePrint) {
@@ -99,7 +110,20 @@ export function installRequiredPrintFooter() {
   window.__bpsRequiredFooterInstalled = true;
 
   const nativeOpen = window.open.bind(window);
-  window.open = (...args) => patchPrintWindow(nativeOpen(...args));
+  window.open = (...args) => {
+    const opened = nativeOpen(...args);
+    const requestedUrl = String(args?.[0] || '').trim();
+    if (requestedUrl) {
+      try {
+        const target = new URL(requestedUrl, window.location.href);
+        if (target.origin !== window.location.origin) return opened;
+      } catch {
+        // If the target cannot be parsed, keep the browser-created window untouched.
+        return opened;
+      }
+    }
+    return patchPrintWindow(opened);
+  };
 
   window.addEventListener('beforeprint', () => ensureFooter(document));
 }
