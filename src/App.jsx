@@ -43,15 +43,12 @@ const AuthenticatedApp = () => {
     accountLock,
     isAuthenticated,
     navigateToLogin,
+    navigateToMicrosoftLogin,
     checkAppState,
   } = useAuth();
 
   const needsLogin = !isLoadingPublicSettings && !isLoadingAuth
     && (authError?.type === 'auth_required' || (!authError && !isAuthenticated));
-
-  useEffect(() => {
-    if (needsLogin) navigateToLogin();
-  }, [needsLogin, navigateToLogin]);
 
   if (isLoadingPublicSettings || isLoadingAuth) return <LoadingScreen />;
 
@@ -78,8 +75,27 @@ const AuthenticatedApp = () => {
 
   if (needsLogin) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-slate-950 text-slate-300">
-        <p className="text-sm font-semibold">Redirecting to secure sign-in…</p>
+      <div className="fixed inset-0 flex items-center justify-center bg-[#050a12] p-5 text-slate-100">
+        <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#0b1725] p-6 shadow-2xl sm:p-8">
+          <div className="text-xs font-black uppercase tracking-[0.2em] text-blue-300">BPS Pathfinder</div>
+          <h1 className="mt-2 text-2xl font-black">Secure Sign In</h1>
+          <p className="mt-2 text-sm leading-6 text-slate-400">Use your Black Point Microsoft 365 account when that is your Pathfinder login identity, or continue with the standard Pathfinder sign-in.</p>
+          <button
+            type="button"
+            onClick={navigateToMicrosoftLogin}
+            className="mt-6 flex min-h-12 w-full items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-500"
+          >
+            SIGN IN WITH MICROSOFT
+          </button>
+          <button
+            type="button"
+            onClick={navigateToLogin}
+            className="mt-3 flex min-h-12 w-full items-center justify-center rounded-xl border border-slate-600 bg-slate-900 px-4 text-sm font-black text-slate-200 hover:border-slate-500 hover:bg-slate-800"
+          >
+            OTHER PATHFINDER SIGN IN
+          </button>
+          <p className="mt-4 text-center text-xs leading-5 text-slate-500">Microsoft sign-in does not create a second Pathfinder identity when the Microsoft email matches the existing Pathfinder account.</p>
+        </div>
       </div>
     );
   }
