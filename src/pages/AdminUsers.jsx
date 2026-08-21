@@ -1035,10 +1035,10 @@ export default function AdminUsers() {
             </div>
 
             <Tabs defaultValue="basic" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className={`grid w-full ${user?.role === 'admin' ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 <TabsTrigger value="basic">Basic Info</TabsTrigger>
                 <TabsTrigger value="emergency">Emergency Contact</TabsTrigger>
-                <TabsTrigger value="company-mail">Company Email</TabsTrigger>
+                {user?.role === 'admin' && <TabsTrigger value="company-mail">Company Email</TabsTrigger>}
               </TabsList>
 
               <TabsContent value="basic" className="space-y-4 mt-4">
@@ -1308,7 +1308,7 @@ export default function AdminUsers() {
               </div>
             </TabsContent>
 
-            <TabsContent value="company-mail" className="space-y-4 mt-4">
+            {user?.role === 'admin' && <TabsContent value="company-mail" className="space-y-4 mt-4">
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
                 <div className="flex items-center gap-2 font-semibold text-blue-900"><Mail className="h-4 w-4" /> Company IMAP Mailbox</div>
                 <p className="mt-1 text-xs text-blue-700">Assign an approved company mailbox to this Pathfinder user. The mailbox password is not shown to the assigned user and is only used by the backend mail service.</p>
@@ -1327,7 +1327,7 @@ export default function AdminUsers() {
                 <Button type="button" onClick={saveCompanyMailbox} disabled={imapSaving}>{imapSaving ? 'Saving…' : 'Save Company Mailbox'}</Button>
                 {imapMailboxId && <Button type="button" variant="outline" onClick={verifyCompanyMailbox} disabled={imapSaving}>Test IMAP Connection</Button>}
               </div>
-            </TabsContent>
+            </TabsContent>}
 
           </Tabs>
 
