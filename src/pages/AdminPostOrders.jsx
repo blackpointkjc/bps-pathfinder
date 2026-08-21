@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -134,7 +135,7 @@ export default function AdminPostOrders() {
   };
 
   const handleDeleteGeneral = (section) => {
-    if (window.confirm(`Delete section "${section.section_title}"? This cannot be undone.`)) {
+    if (await confirmInApp(`Delete section "${section.section_title}"? This cannot be undone.`)) {
       deleteGeneralMutation.mutate(section.id);
     }
   };

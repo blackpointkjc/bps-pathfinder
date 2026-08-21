@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -253,7 +254,7 @@ export default function AdminDocuments() {
                       </Button>
                       <Button
                         onClick={() => {
-                          if (confirm('Delete this document?')) {
+                          if (await confirmInApp('Delete this document?')) {
                             deleteDocMutation.mutate(doc.id);
                           }
                         }}

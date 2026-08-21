@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { completeReportTodo } from '@/lib/reportTodoApi';
@@ -1199,7 +1200,7 @@ export default function DailyActivityReports() {
                           </Button>
                           <Button
                             onClick={() => {
-                              if (confirm('Delete this draft report?')) {
+                              if (await confirmInApp('Delete this draft report?')) {
                                 deleteDraftMutation.mutate(report.id);
                               }
                             }}

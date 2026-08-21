@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -411,7 +412,7 @@ Review Date: ${format(new Date(), 'MMMM d, yyyy')}`
                                       const effectiveMsg = review.pay_effective_date 
                                         ? ` effective ${format(parseISO(review.pay_effective_date), 'MMM d, yyyy')}` 
                                         : ' effective immediately';
-                                      if (confirm(`Approve pay adjustment from $${review.current_hourly_rate.toFixed(2)}/hr to $${review.suggested_hourly_rate.toFixed(2)}/hr for ${review.officer_name}${effectiveMsg}?`)) {
+                                      if (await confirmInApp(`Approve pay adjustment from $${review.current_hourly_rate.toFixed(2)}/hr to $${review.suggested_hourly_rate.toFixed(2)}/hr for ${review.officer_name}${effectiveMsg}?`)) {
                                         await base44.entities.PerformanceReview.update(review.id, {
                                           pay_adjustment_approved: true,
                                           pay_adjustment_approved_by: user.email,

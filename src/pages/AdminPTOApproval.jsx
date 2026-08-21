@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { listDirectoryUsers } from '@/lib/appDirectory';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
@@ -313,7 +314,7 @@ export default function AdminPTOApproval() {
                           disabled={removeApprovedMutation.isPending}
                           onClick={() => {
                             const hours = Number(request.hours_requested || 0);
-                            if (window.confirm(`Remove this approved PTO request and return ${hours.toFixed(1)} hours to ${resolveOfficer(request).name}?`)) {
+                            if (await confirmInApp(`Remove this approved PTO request and return ${hours.toFixed(1)} hours to ${resolveOfficer(request).name}?`)) {
                               removeApprovedMutation.mutate(request);
                             }
                           }}

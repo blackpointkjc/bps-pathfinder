@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -145,7 +146,7 @@ export default function FleetVehicleAssignments() {
   };
 
   const removeAssignment = async (shift, assignment) => {
-    if (!isAdmin || !assignment?.id || !confirm(`Remove ${assignment.vehicle_label} from ${getName(shift.officer_email)}?`)) return;
+    if (!isAdmin || !assignment?.id || !await confirmInApp(`Remove ${assignment.vehicle_label} from ${getName(shift.officer_email)}?`)) return;
     await base44.entities.VehicleAssignment.delete(assignment.id);
     setVehicleChoice(prev => ({ ...prev, [shift.id]: '' }));
     await qc.invalidateQueries({ queryKey: ['fleetAssignments'] });

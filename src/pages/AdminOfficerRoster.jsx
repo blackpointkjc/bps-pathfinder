@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -119,7 +120,7 @@ export default function AdminOfficerRoster() {
   };
 
   const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this roster entry?')) {
+    if (await confirmInApp('Are you sure you want to delete this roster entry?')) {
       deleteEntryMutation.mutate(id);
     }
   };
@@ -130,7 +131,7 @@ export default function AdminOfficerRoster() {
   };
 
   const handleAutoSync = async () => {
-    if (!confirm('Auto-sync all active officers from Manage Officers? This will update existing entries, add new ones, and remove terminated/client-only users.')) {
+    if (!await confirmInApp('Auto-sync all active officers from Manage Officers? This will update existing entries, add new ones, and remove terminated/client-only users.')) {
       return;
     }
 

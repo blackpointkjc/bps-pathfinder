@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -161,7 +162,7 @@ function AdminCertificationAlertsContent({ embedded = false }) {
   });
 
   const handleManualCheck = () => {
-    if (confirm('This will check all officers for expiring certifications (DCJS and Firearm within 60 days). Continue?')) {
+    if (await confirmInApp('This will check all officers for expiring certifications (DCJS and Firearm within 60 days). Continue?')) {
       setIsRunningCheck(true);
       manualCheckMutation.mutate();
     }

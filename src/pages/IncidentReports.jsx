@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { completeReportTodo } from '@/lib/reportTodoApi';
@@ -1315,7 +1316,7 @@ Provide:
                       </Button>
                       <Button
                         onClick={() => {
-                          if (confirm('Delete this draft report?')) {
+                          if (await confirmInApp('Delete this draft report?')) {
                             deleteDraftMutation.mutate(report.id);
                           }
                         }}

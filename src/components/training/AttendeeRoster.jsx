@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { trainingCreate, trainingDelete, trainingUpdate } from '@/lib/trainingRecordsApi';
@@ -99,7 +100,7 @@ export default function AttendeeRoster({ trainingClass, onGenerateCertificate, s
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Remove this attendee?")) return;
+    if (!await confirmInApp("Remove this attendee?")) return;
     await trainingDelete('TrainingAttendee', id);
     fetchAttendees();
   };

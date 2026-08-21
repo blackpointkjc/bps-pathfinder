@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -332,7 +333,7 @@ export default function Schedule() {
                       </div>
                       <Button
                         onClick={() => {
-                          if (confirm(`Claim this shift on ${format(parseISO(shift.shift_date), 'MMM d, yyyy')} from ${shift.start_time} to ${shift.end_time} at ${shift.location}?`)) {
+                          if (await confirmInApp(`Claim this shift on ${format(parseISO(shift.shift_date), 'MMM d, yyyy')} from ${shift.start_time} to ${shift.end_time} at ${shift.location}?`)) {
                             claimShiftMutation.mutate(shift.id);
                           }
                         }}

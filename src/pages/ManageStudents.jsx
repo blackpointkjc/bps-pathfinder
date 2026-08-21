@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -232,7 +233,7 @@ export default function ManageStudents({ embedded = false }) {
                       size="sm"
                       className="text-green-700 border-green-300 hover:bg-green-50"
                       onClick={() => {
-                        if (window.confirm(`Convert ${student.first_name || student.email} from Student to Officer? This removes the Student role.`)) {
+                        if (await confirmInApp(`Convert ${student.first_name || student.email} from Student to Officer? This removes the Student role.`)) {
                           convertToOfficerMutation.mutate(student);
                         }
                       }}

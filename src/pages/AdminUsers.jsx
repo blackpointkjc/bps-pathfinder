@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -823,7 +824,7 @@ export default function AdminUsers() {
                         size="sm"
                         className="bg-green-50 text-green-700 border-green-300 hover:bg-green-100"
                         onClick={async () => {
-                          if (window.confirm(`Assign ${userData.first_name || userData.email} as a Student?`)) {
+                          if (await confirmInApp(`Assign ${userData.first_name || userData.email} as a Student?`)) {
                             await assignUserCategory(userData, 'student');
                           }
                         }}
@@ -835,7 +836,7 @@ export default function AdminUsers() {
                         size="sm"
                         className="bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100"
                         onClick={async () => {
-                          if (window.confirm(`Assign ${userData.first_name || userData.email} as an Officer?`)) {
+                          if (await confirmInApp(`Assign ${userData.first_name || userData.email} as an Officer?`)) {
                             await assignUserCategory(userData, 'officer');
                           }
                         }}
@@ -847,7 +848,7 @@ export default function AdminUsers() {
                         size="sm"
                         className="bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100"
                         onClick={async () => {
-                          if (window.confirm(`Assign ${userData.first_name || userData.email} as a Client? The property can be selected from Manage Clients.`)) {
+                          if (await confirmInApp(`Assign ${userData.first_name || userData.email} as a Client? The property can be selected from Manage Clients.`)) {
                             await assignUserCategory(userData, 'client');
                           }
                         }}
@@ -868,7 +869,7 @@ export default function AdminUsers() {
                         onValueChange={async (newRole) => {
                           try {
                             const action = newRole === 'admin' ? 'grant full admin access to' : 'remove admin access from';
-                            if (window.confirm(`Are you sure you want to ${action} ${userData.first_name} ${userData.last_name}?`)) {
+                            if (await confirmInApp(`Are you sure you want to ${action} ${userData.first_name} ${userData.last_name}?`)) {
                               await base44.entities.User.update(userData.id, { role: newRole });
                               queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
       queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });

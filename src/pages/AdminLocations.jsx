@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -433,7 +434,7 @@ export default function AdminLocations({ embedded = false }) {
   };
 
   const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this location?')) {
+    if (await confirmInApp('Are you sure you want to delete this location?')) {
       deleteLocationMutation.mutate(id);
     }
   };

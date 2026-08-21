@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -603,7 +604,7 @@ export default function TimeClock() {
       if (!boundaryCheck.ok) throw new Error(boundaryCheck.message);
 
       const fromSite = activeEntry.location?.split(' - ')[0] || 'current site';
-      if (!window.confirm(`Switch from ${fromSite} to ${selectedNewSite}?\n\nThis will clock you out of your current site and immediately clock you in to ${selectedNewSite}.`)) return;
+      if (!await confirmInApp(`Switch from ${fromSite} to ${selectedNewSite}?\n\nThis will clock you out of your current site and immediately clock you in to ${selectedNewSite}.`)) return;
 
       await switchSiteMutation.mutateAsync({ newSite: selectedNewSite, currentPosition });
       setSelectedNewSite('');

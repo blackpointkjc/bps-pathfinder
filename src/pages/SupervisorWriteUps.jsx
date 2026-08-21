@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -152,7 +153,7 @@ export default function SupervisorWriteUps() {
       return;
     }
     
-    if (confirm('Submit this write-up for admin approval?')) {
+    if (await confirmInApp('Submit this write-up for admin approval?')) {
       updateWriteUpMutation.mutate({
         id: writeUp.id,
         data: { ...writeUp, status: 'pending_approval' }

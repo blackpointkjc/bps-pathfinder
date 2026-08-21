@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -80,7 +81,7 @@ export default function VehicleManagement() {
     };
 
     const handleDelete = async (vehicleId) => {
-        if (!confirm('Are you sure you want to delete this vehicle?')) return;
+        if (!await confirmInApp('Are you sure you want to delete this vehicle?')) return;
         try {
             await base44.entities.Vehicle.delete(vehicleId);
             toast.success('Vehicle deleted');

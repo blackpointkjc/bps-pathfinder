@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -224,7 +225,7 @@ export default function AdminPlannedShifts() {
   };
 
   const handleDelete = (id) => {
-    if (confirm('Delete this planned shift?')) {
+    if (await confirmInApp('Delete this planned shift?')) {
       deleteMutation.mutate(id);
     }
   };

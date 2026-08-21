@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -124,7 +125,7 @@ export default function PropertyMonitoring() {
     };
 
     const handleDelete = async (property) => {
-        if (!confirm(`Delete property "${property.name}"? Past alerts will be preserved.`)) {
+        if (!await confirmInApp(`Delete property "${property.name}"? Past alerts will be preserved.`)) {
             return;
         }
 

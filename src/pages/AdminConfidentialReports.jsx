@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -143,7 +144,7 @@ export default function AdminConfidentialReports() {
   };
 
   const handleArchive = () => {
-    if (selectedReport && confirm("Move this report to inactive? This marks it as resolved.")) {
+    if (selectedReport && await confirmInApp("Move this report to inactive? This marks it as resolved.")) {
       archiveReportMutation.mutate(selectedReport.id);
     }
   };

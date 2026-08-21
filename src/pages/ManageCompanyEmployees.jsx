@@ -1,3 +1,4 @@
+import { confirmInApp } from '@/lib/inAppDialog';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -430,7 +431,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                 size="sm"
                 className="text-orange-600 border-orange-300 hover:bg-orange-50"
                 onClick={() => {
-                  if (window.confirm(`Move ${userData.first_name} ${userData.last_name} back to Pending Users? This will remove their Officer role.`)) {
+                  if (await confirmInApp(`Move ${userData.first_name} ${userData.last_name} back to Pending Users? This will remove their Officer role.`)) {
                     moveToPendingMutation.mutate(userData);
                   }
                 }}
