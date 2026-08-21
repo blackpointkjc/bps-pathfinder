@@ -710,7 +710,14 @@ export default function OutlookMail() {
                   <div className="mt-1 text-xs text-slate-500">{formatDate(selected.receivedDateTime || selected.sentDateTime)} ET</div>
                 </div>
                 {attachments.length > 0 && <div className="mt-4"><AttachmentViewer files={attachments} /></div>}
-                <div className="mt-5 overflow-x-auto rounded-lg bg-white p-4 text-sm leading-6 text-slate-900 [&_a]:text-blue-700 [&_img]:max-w-full [&_p]:my-2 [&_li]:my-1" dangerouslySetInnerHTML={{ __html: safeEmailHtml(selected?.body?.content || selected.bodyPreview, attachments) }} />
+                <div className="mt-5 h-[62vh] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-inner">
+                  <iframe
+                    title={`Email preview: ${selected.subject || 'Message'}`}
+                    className="h-full w-full border-0 bg-white"
+                    sandbox="allow-popups allow-popups-to-escape-sandbox"
+                    srcDoc={emailReaderDocument(selected?.body?.content || selected.bodyPreview, attachments)}
+                  />
+                </div>
                 <div className="mt-7 border-t border-[#1d344b] pt-5">
                   <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-400"><Reply className="h-4 w-4" /> Reply</div>
                   <textarea value={replyText} onChange={event => setReplyText(event.target.value)} rows={5} placeholder="Write a reply…" className="w-full rounded-xl border border-[#29435d] bg-[#081522] p-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500" />
