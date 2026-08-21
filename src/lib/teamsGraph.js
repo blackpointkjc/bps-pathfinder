@@ -120,7 +120,8 @@ export async function syncTeamsChannelToEntity(userId, { config = null, configKe
 }
 
 export async function syncTeamsChannelToPathfinder(userId, config = null) {
-  return syncTeamsChannelToEntity(userId, { config, configKey: 'officer_chat', entityName: 'ChatMessage' });
+  // Legacy compatibility alias: the operational General Chat is Officer Chat.
+  return syncTeamsChannelToEntity(userId, { config, configKey: 'officer_chat', entityName: 'OfficerChatMessage' });
 }
 
 async function resolveTeamsIdentity(pathfinderUserId, fallbackEmail = '') {
