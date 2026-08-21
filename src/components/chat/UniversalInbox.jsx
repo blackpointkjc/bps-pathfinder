@@ -22,6 +22,42 @@ export default function UniversalInbox({ currentUser, users = [] }) {
 
   const activeUsers = useMemo(() => users.filter(user => !user.termination_date && user.id !== currentUser.id && user.email !== currentUser.email), [users, currentUser.id, currentUser.email]);
   const selected = chats.find(chat => chat.id === selectedChatId) || null;
+  const seenStorageKey = `pathfinder-teams-chat-seen:${String(currentUser?.id || '')}`;
+
+  const readSeenMap = () => {
+    try { return JSON.parse(localStorage.getItem(seenStorageKey) || '{}') || {}; } catch { return {}; }
+  };
+
+  const writeSeenMap = value => {
+    try { localStorage.setItem(seenStorageKey, JSON.stringify(value || {})); } catch {}
+  };
+
+  const publishUnreadCount = nextChats => {
+    if (!Array.isArray(nextChats)) return;
+    const seen = readSeenMap();
+    // First Teams Inbox load establishes a baseline instead of labeling the user's
+    // entire historical Teams mailbox as unread in Pathfinder.
+    if (!Object.keys(seen).length && nextChats.length) {
+      const baseline = Object.fromEntries(nextChats.map(chat => [chat.id, chat.lastUpdatedDateTime || chat.createdDateTime || new Date().toISOString()]));
+      writeSeenMap(baseline);
+      window.dispatchEvent(new CustomEvent('bps-unread-notification', { detail: { page: 'OfficerInbox', count: 0, absolute: true } }));
+      return;
+    }
+    const count = nextChats.filter(chat => {
+      const changed = new Date(chat.lastUpdatedDateTime || chat.createdDateTime || 0).getTime();
+      const lastSeen = new Date(seen[chat.id] || 0).getTime();
+      return Number.isFinite(changed) && changed > (Number.isFinite(lastSeen) ? lastSeen : 0);
+    }).length;
+    window.dispatchEvent(new CustomEvent('bps-unread-notification', { detail: { page: 'OfficerInbox', count, absolute: true } }));
+  };
+
+  const markChatSeen = chat => {
+    if (!chat?.id) return;
+    const seen = readSeenMap();
+    seen[chat.id] = chat.lastUpdatedDateTime || new Date().toISOString();
+    writeSeenMap(seen);
+    publishUnreadCount(chats);
+  };
 
   const chatName = chat => {
     if (!chat) return 'Direct Message';
@@ -38,6 +74,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
       const nextChats = [...(result?.chats || [])].sort((a, b) => new Date(b.lastUpdatedDateTime || 0) - new Date(a.lastUpdatedDateTime || 0));
       setMicrosoftMe(result?.me || null);
       setChats(nextChats);
+      publishUnreadCount(nextChats);
       setSyncError('');
       setSelectedChatId(current => {
         if (keepSelection && current && nextChats.some(chat => chat.id === current)) return current;
@@ -171,7 +208,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
         {syncError && <div className="border-b border-red-800 bg-red-950/50 p-3 text-xs font-bold text-red-200">Microsoft Teams sync error: {syncError}</div>}
         <div className="flex-1 overflow-y-auto">
           {loadingChats && <div className="flex items-center justify-center gap-2 p-8 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading Teams conversations…</div>}
-          {!loadingChats && visibleChats.map(chat => <button key={chat.id} onClick={() => setSelectedChatId(chat.id)} className={`flex w-full min-w-0 items-center gap-3 border-b border-slate-800 p-3 sm:p-4 text-left hover:bg-slate-800 ${selectedChatId === chat.id ? 'bg-slate-800' : ''}`}>
+          {!loadingChats && visibleChats.map(chat => <button key={chat.id} onClick={() => { setSelectedChatId(chat.id); markChatSeen(chat); }} className={`flex w-full min-w-0 items-center gap-3 border-b border-slate-800 p-3 sm:p-4 text-left hover:bg-slate-800 ${selectedChatId === chat.id ? 'bg-slate-800' : ''}`}>
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600/30"><MessageCircle className="h-5 w-5 text-blue-300" /></div>
             <div className="min-w-0 flex-1"><div className="truncate text-sm font-black">{chatName(chat)}</div><div className="truncate text-xs text-slate-500">{chat.chatType === 'group' ? 'Teams group chat' : 'Teams direct message'}</div></div>
           </button>)}
