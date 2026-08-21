@@ -210,7 +210,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     setEditingUser(userData.id);
     setImapMailboxId('');
     setImapForm({ mailbox_email: '', display_name: '', imap_host: '', imap_port: 993, imap_secure: true, smtp_host: '', smtp_port: 465, smtp_secure: true, username: '', password: '', active: true });
-    if (isSystemAdmin || userRoles.has('full_access')) {
+    if (isSystemAdmin) {
       base44.entities.CompanyImapMailbox.filter({ user_id: userData.id }, '-updated_date', 1).then(rows => {
         const mailbox = rows?.[0];
         if (!mailbox) return;
@@ -270,7 +270,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
   };
 
   const saveCompanyMailbox = async () => {
-    if (!editingUser || !selectedUser || !(isSystemAdmin || userRoles.has('full_access'))) return;
+    if (!editingUser || !selectedUser || !isSystemAdmin) return;
     if (!imapForm.mailbox_email.trim() || !imapForm.imap_host.trim() || !imapForm.smtp_host.trim() || !imapForm.username.trim()) {
       alert('Company email, IMAP host, SMTP host, and username are required.');
       return;
@@ -537,11 +537,11 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
             </div>
 
             <Tabs defaultValue="basic">
-              <TabsList className={`grid w-full ${isSystemAdmin || userRoles.has('full_access') ? 'grid-cols-4' : 'grid-cols-3'}`}>
+              <TabsList className={`grid w-full ${isSystemAdmin ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 <TabsTrigger value="basic">Basic Info</TabsTrigger>
                 <TabsTrigger value="certs">Certifications</TabsTrigger>
                 <TabsTrigger value="emergency">Emergency Contact</TabsTrigger>
-                {(isSystemAdmin || userRoles.has('full_access')) && <TabsTrigger value="company-mail">Company Email</TabsTrigger>}
+                {isSystemAdmin && <TabsTrigger value="company-mail">Company Email</TabsTrigger>}
               </TabsList>
               <TabsContent value="basic" className="space-y-4 mt-4">
                 <fieldset disabled={isHrReadOnly} className="space-y-4 disabled:opacity-90">
@@ -634,7 +634,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                 </div>
                 </fieldset>
               </TabsContent>
-              {(isSystemAdmin || userRoles.has('full_access')) && <TabsContent value="company-mail" className="space-y-4 mt-4">
+              {isSystemAdmin && <TabsContent value="company-mail" className="space-y-4 mt-4">
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
                   <div className="flex items-center gap-2 font-semibold text-blue-900"><Mail className="h-4 w-4" /> Company IMAP Mailbox</div>
                   <p className="mt-1 text-xs text-blue-700">Assign an approved company mailbox to this existing employee. The employee can later change only the mailbox password from My Profile.</p>
