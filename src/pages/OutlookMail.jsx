@@ -90,6 +90,36 @@ function safeEmailHtml(value, attachmentRows = []) {
   }
 }
 
+function mediaKind(file) {
+  const type = String(file?.contentType || '').toLowerCase();
+  if (type.startsWith('audio/')) return 'audio';
+  if (type.startsWith('video/')) return 'video';
+  if (type.startsWith('image/')) return 'image';
+  return '';
+}
+
+function attachmentUrl(file) {
+  return file?._playUrl || attachmentDataUrl(file);
+}
+
+function AttachmentViewer({ files = [] }) {
+  if (!files.length) return null;
+  return <div className="space-y-3">
+    {files.map(file => {
+      const kind = mediaKind(file);
+      const url = attachmentUrl(file);
+      return <div key={file.id || file.name} className="rounded-xl border border-[#29435d] bg-[#0c1b2a] p-3 text-xs text-slate-300">
+        <div className="flex items-center gap-2"><Paperclip className="h-3.5 w-3.5 shrink-0" /><span className="min-w-0 flex-1 truncate font-bold">{file.name || 'Attachment'}</span>{file.size ? <span className="text-[10px] text-slate-500">{Math.max(1, Math.round(Number(file.size) / 1024))} KB</span> : null}</div>
+        {kind === 'audio' && url && <audio className="mt-3 w-full" controls preload="metadata" src={url}>Your browser cannot play this audio attachment.</audio>}
+        {kind === 'video' && url && <video className="mt-3 max-h-[55vh] w-full rounded-lg bg-black" controls preload="metadata" src={url}>Your browser cannot play this video attachment.</video>}
+        {kind === 'image' && url && !file.isInline && <img className="mt-3 max-h-[55vh] max-w-full rounded-lg object-contain" src={url} alt={file.name || 'Email attachment'} />}
+        {url && !file.isInline && <a href={url} download={file.name || 'attachment'} className="mt-2 inline-block text-blue-300 underline">Save attachment</a>}
+        {kind && !url && <div className="mt-2 text-amber-300">Media could not be loaded from Microsoft.</div>}
+      </div>;
+    })}
+  </div>;
+}
+
 function emailReaderDocument(value, attachmentRows = []) {
   const html = String(value || '');
   const plain = !/<[a-z][\s\S]*>/i.test(html);
@@ -304,9 +334,18 @@ export default function OutlookMail() {
         setMessages(current => current.map(item => item.id === message.id ? { ...item, isRead: true } : item));
         window.dispatchEvent(new CustomEvent('bps-outlook-refresh')); 
       }
-      if (message.hasAttachments) {
+      if (message.hasAttachments || full?.hasAttachments) {
         const rows = await getOutlookAttachments(user.id, message.id, activeMailboxEmail);
-        setAttachments(rows);
+        const hydrated = await Promise.all((rows || []).map(async file => {
+          if (file?.contentBytes || !mediaKind(file) || file?.isInline) return file;
+          try {
+            const _playUrl = await getOutlookAttachmentBlobUrl(user.id, message.id, file.id, activeMailboxEmail);
+            return { ...file, _playUrl };
+          } catch {
+            return file;
+          }
+        }));
+        setAttachments(hydrated);
       }
     } catch (error) {
       toast.error(error?.message || 'Unable to open this email.');
@@ -652,8 +691,8 @@ export default function OutlookMail() {
                   <div className="mt-1 text-xs text-slate-500">{selected?.from?.emailAddress?.address}</div>
                   <div className="mt-1 text-xs text-slate-500">{formatDate(selected.receivedDateTime || selected.sentDateTime)} ET</div>
                 </div>
-                {attachments.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{attachments.map(file => <span key={file.id || file.name} className="flex items-center gap-1 rounded-lg border border-[#29435d] bg-[#0c1b2a] px-3 py-2 text-xs text-slate-300"><Paperclip className="h-3.5 w-3.5" />{file.name}</span>)}</div>}
-                <div className="mt-5 overflow-x-auto rounded-lg bg-white p-4 text-sm leading-6 text-slate-900 [&_a]:text-blue-700 [&_img]:max-w-full [&_p]:my-2 [&_li]:my-1" dangerouslySetInnerHTML={{ __html: safeEmailHtml(selected?.body?.content || selected.bodyPreview) }} />
+                {attachments.length > 0 && <div className="mt-4"><AttachmentViewer files={attachments} /></div>}
+                <div className="mt-5 overflow-x-auto rounded-lg bg-white p-4 text-sm leading-6 text-slate-900 [&_a]:text-blue-700 [&_img]:max-w-full [&_p]:my-2 [&_li]:my-1" dangerouslySetInnerHTML={{ __html: safeEmailHtml(selected?.body?.content || selected.bodyPreview, attachments) }} />
                 <div className="mt-7 border-t border-[#1d344b] pt-5">
                   <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-400"><Reply className="h-4 w-4" /> Reply</div>
                   <textarea value={replyText} onChange={event => setReplyText(event.target.value)} rows={5} placeholder="Write a reply…" className="w-full rounded-xl border border-[#29435d] bg-[#081522] p-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500" />
@@ -677,9 +716,14 @@ export default function OutlookMail() {
             <button type="button" onClick={() => setReaderOpen(false)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#36516b] text-white hover:bg-[#13283e]" title="Close email"><X className="h-5 w-5" /></button>
           </div>
           <div className="shrink-0 border-b border-[#1d344b] bg-[#091522] px-4 py-3 text-xs text-slate-400 sm:px-6">{formatDate(selected.receivedDateTime || selected.sentDateTime)} ET</div>
-          {attachments.length > 0 && <div className="flex shrink-0 flex-wrap gap-2 border-b border-[#1d344b] bg-[#0a1623] px-4 py-3 sm:px-6">{attachments.map(file => <span key={file.id || file.name} className="flex items-center gap-1 rounded-lg border border-[#29435d] bg-[#0c1b2a] px-3 py-2 text-xs text-slate-300"><Paperclip className="h-3.5 w-3.5" />{file.name}</span>)}</div>}
-          <div className="min-h-0 flex-1 overflow-auto bg-white p-5 text-slate-900 sm:p-8">
-            <div className="mx-auto max-w-5xl text-sm leading-6 [&_a]:text-blue-700 [&_a]:underline [&_img]:max-w-full [&_p]:my-3 [&_li]:my-1" dangerouslySetInnerHTML={{ __html: safeEmailHtml(selected?.body?.content || selected.bodyPreview) }} />
+          {attachments.length > 0 && <div className="max-h-[38vh] shrink-0 overflow-auto border-b border-[#1d344b] bg-[#0a1623] px-4 py-3 sm:px-6"><AttachmentViewer files={attachments.filter(file => !file.isInline)} /></div>}
+          <div className="min-h-0 flex-1 bg-white">
+            <iframe
+              title={`Email: ${selected.subject || 'Message'}`}
+              className="h-full w-full border-0 bg-white"
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
+              srcDoc={emailReaderDocument(selected?.body?.content || selected.bodyPreview, attachments)}
+            />
           </div>
         </div>
       </div>}
