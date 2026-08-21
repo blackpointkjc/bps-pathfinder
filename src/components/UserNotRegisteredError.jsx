@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 
 const UserNotRegisteredError = () => {
-  const [form, setForm] = useState({ full_name: '', email: '', phone: '', requested_category: 'unsure', notes: '' });
+  const microsoftAttempt = typeof window !== 'undefined' && sessionStorage.getItem('bps:auth-provider') === 'microsoft';
+  const [form, setForm] = useState({ full_name: '', email: '', phone: '', requested_category: 'unsure', notes: microsoftAttempt ? 'Microsoft 365 sign-in account needs to be matched to my existing Pathfinder account.' : '' });
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
 
@@ -27,8 +28,8 @@ const UserNotRegisteredError = () => {
       <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-[#111827] p-7 shadow-2xl">
         <div className="text-center">
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-amber-500/40 bg-amber-500/10 text-3xl">🛡️</div>
-          <h1 className="text-3xl font-black text-white">Access Restricted</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-300">Submit an access request. A Black Point administrator will review it and assign the correct Officer, Student, or Client portal.</p>
+          <h1 className="text-3xl font-black text-white">{microsoftAttempt ? 'Microsoft Account Not Linked' : 'Access Restricted'}</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-300">{microsoftAttempt ? 'Your Microsoft sign-in succeeded, but Pathfinder does not have a registered account with that same Microsoft email. Ask a Black Point administrator to make your Pathfinder login email match your approved Black Point Microsoft 365 address. Your existing roles and records should be preserved rather than creating a duplicate user.' : 'Submit an access request. A Black Point administrator will review it and assign the correct Officer, Student, or Client portal.'}</p>
         </div>
 
         {status === 'sent' ? (
