@@ -18,7 +18,7 @@ export default function OutlookNotificationMonitor({ user }) {
         const mailboxTargets = [
           { email: '', label: 'My Mailbox' },
           ...(shared || [])
-            .filter(item => item.connection_status !== 'needs_attention')
+            .filter(item => item.connection_status === 'verified')
             .map(item => ({ email: item.mailbox_email, label: item.display_name || item.mailbox_email })),
         ]; 
 
