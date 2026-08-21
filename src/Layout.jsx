@@ -334,7 +334,7 @@ const DARK_WORKSPACE_PAGES = new Set([
 ]);
 
 function normalizedRoles(user) {
-  return new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
+  return new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(role => String(role).toLowerCase()));
 }
 
 function hasRole(user, role) {
