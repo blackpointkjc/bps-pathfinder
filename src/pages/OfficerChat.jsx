@@ -31,11 +31,11 @@ export default function OfficerChat() {
     queryKey: ['officerTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'officer_chat'),
     enabled: !!user?.id && !!teamsConfig?.enabled,
-    refetchInterval: () => document.visibilityState === 'hidden' ? 90000 : 20000,
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     retry: false,
-    staleTime: 8000,
+    staleTime: 60000,
   });
 
   useEffect(() => {
