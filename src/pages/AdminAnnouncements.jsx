@@ -287,7 +287,6 @@ export default function AdminAnnouncements() {
                     <SelectContent>
                       <SelectItem value="general_alerts">Company Announcement — Pathfinder + Teams General Alerts</SelectItem>
                       <SelectItem value="supervisor_updates">Supervisor Update — Supervisor Pathfinder + Teams Updates</SelectItem>
-                      <SelectItem value="none">Pathfinder Only — Do Not Send to Teams</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-slate-500">
