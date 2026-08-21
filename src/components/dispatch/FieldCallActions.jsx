@@ -96,10 +96,8 @@ export default function FieldCallActions({ call, onStatusChange }) {
     const alertText = `URGENT BACKUP REQUEST — ${officerLabel} needs assistance at ${location}. Call ${callLabel}: ${call.incident || 'Active call'}. Requested ${requestedAt}.`;
 
     try {
-      const target = await getTeamsSyncConfig('officer_chat');
-      if (!target?.enabled) throw new Error('Microsoft Teams General Chat is not configured.');
-      const teamsMessage = await sendTeamChannelMessage(user.id, `<strong>🚨 DISPATCH ALERT</strong><br>${alertText}`, target, 'officer_chat');
-      if (!teamsMessage?.id) throw new Error('Microsoft Teams did not confirm the backup alert.');
+      // Preserve the CAD emergency/audit workflow even when Microsoft is unavailable.
+      // Teams is the source of truth for chat delivery, not for the CAD CallNote.
       await base44.entities.CallNote.create({
         call_id: call.id,
         author_id: user.id,
@@ -107,6 +105,10 @@ export default function FieldCallActions({ call, onStatusChange }) {
         note: `🚨 ${alertText}`,
         note_type: 'hazard',
       });
+      const target = await getTeamsSyncConfig('officer_chat');
+      if (!target?.enabled) throw new Error('Microsoft Teams General Chat is not configured. The CAD backup note was still saved.');
+      const teamsMessage = await sendTeamChannelMessage(user.id, `<strong>🚨 DISPATCH ALERT</strong><br>${alertText}`, target, 'officer_chat');
+      if (!teamsMessage?.id) throw new Error('Microsoft Teams did not confirm the backup alert. The CAD backup note was still saved.');
       await base44.entities.OfficerChatMessage.create({
         sender_name: officerLabel,
         sender_email: user.email || '',
