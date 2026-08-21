@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Mail, Phone, Calendar, Edit, Briefcase, Save, X, AlertTriangle, Unlink, Camera, Loader2, UserMinus } from "lucide-react";
+import { Shield, Mail, Phone, Calendar, Edit, Briefcase, Save, X, AlertTriangle, Unlink, Camera, Loader2, UserMinus, CheckCircle2 } from "lucide-react";
 import OfficerCertificationsTab from "../components/OfficerCertificationsTab";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -635,6 +635,17 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                 </fieldset>
               </TabsContent>
               {isSystemAdmin && <TabsContent value="company-mail" className="space-y-4 mt-4">
+                <div className={`rounded-lg border p-4 ${String(selectedUser?.email || '').toLowerCase().endsWith('@blackpointkjc.com') ? 'border-emerald-300 bg-emerald-50' : 'border-amber-300 bg-amber-50'}`}>
+                  <div className={`flex items-center gap-2 font-semibold ${String(selectedUser?.email || '').toLowerCase().endsWith('@blackpointkjc.com') ? 'text-emerald-900' : 'text-amber-900'}`}>
+                    {String(selectedUser?.email || '').toLowerCase().endsWith('@blackpointkjc.com') ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                    Microsoft Sign-In {String(selectedUser?.email || '').toLowerCase().endsWith('@blackpointkjc.com') ? 'Ready' : 'Not Ready'}
+                  </div>
+                  <p className={`mt-1 text-xs ${String(selectedUser?.email || '').toLowerCase().endsWith('@blackpointkjc.com') ? 'text-emerald-700' : 'text-amber-800'}`}>
+                    {String(selectedUser?.email || '').toLowerCase().endsWith('@blackpointkjc.com')
+                      ? `This Pathfinder account uses ${selectedUser?.email}. The employee can use Sign in with Microsoft and keep this same Pathfinder user ID, roles, reports, and history.`
+                      : `This Pathfinder account currently signs in as ${selectedUser?.email || 'a non-Black Point address'}. Microsoft sign-in will not attach to it until the Pathfinder login email matches the employee's approved @blackpointkjc.com Microsoft 365 address. Do not create a duplicate employee account.`}
+                  </p>
+                </div>
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
                   <div className="flex items-center gap-2 font-semibold text-blue-900"><Mail className="h-4 w-4" /> Company IMAP Mailbox</div>
                   <p className="mt-1 text-xs text-blue-700">Assign an approved company mailbox to this existing employee. The employee can later change only the mailbox password from My Profile.</p>
