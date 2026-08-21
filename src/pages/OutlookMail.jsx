@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
 import {
+  beginOutlookConnection,
   deleteOutlookMessage,
   disconnectOutlook,
   forwardOutlookMail,
@@ -171,11 +172,24 @@ export default function OutlookMail() {
   useEffect(() => {
     if (!user?.id) return undefined;
     reloadSharedMailboxes();
-    base44.functions.invoke('companyImapMail', { action: 'status' }).then(result => {
-      const payload = result?.data || result || {};
-      setCompanyMailboxes((payload.mailboxes || []).map(item => ({ ...item, _source: 'imap' })));
-    }).catch(() => setCompanyMailboxes([]));
-    loadMailbox('inbox', false, null, '');
+    const initializeMail = async () => {
+      const companyResult = await base44.functions.invoke('companyImapMail', { action: 'status' }).catch(() => null);
+      const companyPayload = companyResult?.data || companyResult || {};
+      const assigned = (companyPayload.mailboxes || []).map(item => ({ ...item, _source: 'imap' }));
+      setCompanyMailboxes(assigned);
+      const status = await getOutlookConnectionStatus(user.id, user?.email || '').catch(() => ({ connected: false }));
+      setConnection(status);
+      if (status?.connected) await loadMailbox('inbox', false, null, '');
+      else if (assigned[0]) {
+        setActiveMailbox(assigned[0]);
+        await loadCompanyMailbox(assigned[0], 'INBOX');
+      } else {
+        setLoading(false);
+        setFolders([]);
+        setMessages([]);
+      }
+    };
+    initializeMail();
     const refreshShared = () => reloadSharedMailboxes();
     window.addEventListener('bps:outlook-connection-changed', refreshShared);
     window.addEventListener('bps:outlook-shared-mailboxes-changed', refreshShared);
@@ -467,12 +481,12 @@ export default function OutlookMail() {
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-blue-500/40 bg-blue-950/40"><Mail className="h-5 w-5 text-blue-300" /></div>
             <div className="min-w-0">
-              <h1 className="text-lg font-black">OUTLOOK MAIL</h1>
-              <p className="truncate text-xs text-slate-400">{activeMailbox ? `${activeMailbox.display_name || 'Shared Mailbox'} · ${activeMailbox.mailbox_email}` : (connection?.email || connection?.profile?.displayName || 'Microsoft 365 mailbox')}</p>
+              <h1 className="text-lg font-black">MAIL CENTER</h1>
+              <p className="truncate text-xs text-slate-400">{activeMailbox ? `${activeMailbox.display_name || (isCompanyImap ? 'Company Mailbox' : 'Shared Mailbox')} · ${activeMailbox.mailbox_email}` : (connection?.email || connection?.profile?.displayName || 'Company mail')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => loadMailbox(folderId)} className="flex h-10 items-center gap-2 rounded-lg border border-[#2a4662] bg-[#0d1d2d] px-3 text-xs font-bold hover:bg-[#122a42]"><RefreshCw className="h-4 w-4" /> Refresh</button>
+            <button type="button" onClick={() => isCompanyImap ? loadCompanyMailbox(activeMailbox, folderId || 'INBOX') : loadMailbox(folderId)} className="flex h-10 items-center gap-2 rounded-lg border border-[#2a4662] bg-[#0d1d2d] px-3 text-xs font-bold hover:bg-[#122a42]"><RefreshCw className="h-4 w-4" /> Refresh</button>
             <button type="button" onClick={() => setComposeOpen(true)} className="flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-black text-white hover:bg-blue-500"><PenLine className="h-4 w-4" /> New Email</button>
           </div>
         </div>
@@ -484,9 +498,15 @@ export default function OutlookMail() {
 
           <div className="mb-4 rounded-xl border border-[#213b53] bg-[#07111d] p-2">
             <div className="mb-2 px-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Mailboxes</div>
-            <button type="button" onClick={() => switchMailbox(null)} className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs ${!activeMailbox ? 'bg-[#163a5a] text-white' : 'text-slate-300 hover:bg-[#0d2236]'}`}>
-              <Mail className="h-4 w-4" /><span className="min-w-0 flex-1 truncate">My Mailbox</span>
-            </button>
+            {connection?.connected && <button type="button" onClick={() => switchMailbox(null)} className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs ${!activeMailbox ? 'bg-[#163a5a] text-white' : 'text-slate-300 hover:bg-[#0d2236]'}`}>
+              <Mail className="h-4 w-4" /><span className="min-w-0 flex-1 truncate">My Microsoft Mailbox</span>
+            </button>}
+            {companyMailboxes.map(mailbox => (
+              <button key={`imap-${mailbox.id}`} type="button" onClick={() => switchMailbox(mailbox)} className={`mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs ${activeMailbox?.id === mailbox.id && isCompanyImap ? 'bg-emerald-950/70 text-white' : 'text-slate-300 hover:bg-[#0d2236]'}`}>
+                <Building2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                <span className="min-w-0 flex-1"><span className="block truncate font-bold">{mailbox.display_name || 'Company Mailbox'}</span><span className="block truncate text-[10px] text-slate-500">{mailbox.mailbox_email}</span><span className="mt-0.5 block text-[9px] font-bold text-emerald-400">Company IMAP</span></span>
+              </button>
+            ))}
             {sharedMailboxes.map(mailbox => (
               <button key={mailbox.id} type="button" onClick={() => switchMailbox(mailbox)} className={`group mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs ${activeMailbox?.id === mailbox.id ? 'bg-[#163a5a] text-white' : 'text-slate-300 hover:bg-[#0d2236]'}`}>
                 <Building2 className="h-4 w-4 shrink-0" />
@@ -517,7 +537,11 @@ export default function OutlookMail() {
               );
             })}
           </div>
-          <button type="button" onClick={disconnect} className="mt-6 w-full rounded-lg border border-red-900/60 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-950/30">Disconnect Microsoft 365</button>
+          {connection?.connected ? (
+            <button type="button" onClick={disconnect} className="mt-6 w-full rounded-lg border border-red-900/60 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-950/30">Disconnect Microsoft 365</button>
+          ) : (
+            <button type="button" onClick={() => beginOutlookConnection(user.id)} className="mt-6 w-full rounded-lg border border-blue-700/60 px-3 py-2 text-xs font-bold text-blue-300 hover:bg-blue-950/30">Connect Microsoft 365 (Optional)</button>
+          )}
         </aside>
 
         <section className={`${selected ? 'hidden md:block' : 'block'} border-b border-[#1d344b] bg-[#0a1623] md:border-b-0 md:border-r`}>
