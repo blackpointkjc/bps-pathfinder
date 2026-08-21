@@ -831,8 +831,7 @@ export default function Layout({ children, currentPageName }) {
     let active = true;
     const refreshUnreadFromServer = async () => {
       try {
-        const [mentions, announcements, receipts] = await Promise.all([
-          base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200),
+        const [announcements, receipts] = await Promise.all([
           base44.entities.Announcement.list('-created_date', 100),
           base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500),
         ]);
