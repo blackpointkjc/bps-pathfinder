@@ -89,6 +89,7 @@ export default function MyPerformanceAnalytics() {
   const recentNotifications = React.useMemo(() => {
     if (!notifications || !user?.email) return [];
     const myEmail = user.email.trim().toLowerCase();
+    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
     return notifications
       .filter(n => {
         const recipient = String(n.recipient_email || '').trim().toLowerCase();
@@ -96,8 +97,11 @@ export default function MyPerformanceAnalytics() {
         const isCompanyWide = ['all', 'company', 'company-wide', 'company_wide', '*'].includes(recipient)
           || n.type === 'company_broadcast'
           || n.audience === 'company';
-        return !n.is_read && isMine && !isCompanyWide;
+        const createdAt = new Date(n.created_date || n.created_at || 0).getTime();
+        const withinSevenDays = Number.isFinite(createdAt) && createdAt >= sevenDaysAgo;
+        return !n.is_read && isMine && !isCompanyWide && withinSevenDays;
       })
+      .sort((a, b) => new Date(b.created_date || b.created_at || 0) - new Date(a.created_date || a.created_at || 0))
       .slice(0, 5);
   }, [notifications, user?.email]);
 
