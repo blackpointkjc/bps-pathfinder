@@ -58,24 +58,13 @@ export async function sendTeamChannelMessage(userId, text, config = null, config
   return payload;
 }
 
-export async function getTeamsChannelMessages(userId, config = null, configKey = 'team_chat') {
-  const target = config || await getTeamsSyncConfig(configKey);
-  if (!target?.enabled || !target?.team_id || !target?.channel_id) return [];
-  // Do not add $top here. Some Teams endpoints reject that option in this tenant.
-  // Follow only Microsoft's own next links so channel history is deeper without
-  // multiplying requests on every poll.
-  const rows = [];
-  let next = `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages`;
-  let pages = 0;
-  while (next && rows.length < 100 && pages < 3) {
-    const payload = await graphRequest(userId, next);
-    rows.push(...(payload?.value || []));
-    next = payload?.['@odata.nextLink'] || '';
-    pages += 1;
-  }
-  return rows.slice(0, 100).reverse().map(item => ({
+export function normalizeTeamsChannelMessage(item) {
+  if (!item?.id) return null;
+  const message = stripHtml(item?.body?.content || '').trim();
+  if (!message) return null;
+  return {
     id: item.id,
-    message: stripHtml(item?.body?.content || '').trim(),
+    message,
     sender_name: item?.from?.user?.displayName || item?.from?.application?.displayName || 'Microsoft Teams',
     sender_email: '',
     sender_photo_url: '',
@@ -83,9 +72,18 @@ export async function getTeamsChannelMessages(userId, config = null, configKey =
     teams_message_id: item.id,
     teams_sender_id: item?.from?.user?.id || '',
     teams_sender_name: item?.from?.user?.displayName || item?.from?.application?.displayName || 'Microsoft Teams',
-    created_date: item.createdDateTime || '',
-    teams_created_at: item.createdDateTime || '',
-  })).filter(item => item.message);
+    created_date: item.createdDateTime || new Date().toISOString(),
+    teams_created_at: item.createdDateTime || new Date().toISOString(),
+  };
+}
+
+export async function getTeamsChannelMessages(userId, config = null, configKey = 'team_chat') {
+  const target = config || await getTeamsSyncConfig(configKey);
+  if (!target?.enabled || !target?.team_id || !target?.channel_id) return [];
+  // One Graph page per load keeps the channel usable under Microsoft throttling.
+  // Older history can be refreshed manually rather than continuously hammering Graph.
+  const payload = await graphRequest(userId, `/teams/${encodeURIComponent(target.team_id)}/channels/${encodeURIComponent(target.channel_id)}/messages`);
+  return [...(payload?.value || [])].reverse().map(normalizeTeamsChannelMessage).filter(Boolean);
 }
 
 export async function syncTeamsChannelToEntity(userId, { config = null, configKey = 'team_chat', entityName = 'ChatMessage', limit = 50 } = {}) {
