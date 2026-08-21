@@ -88,6 +88,7 @@ export default function OutlookMail() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
   const [composeOpen, setComposeOpen] = useState(false);
+  const [readerOpen, setReaderOpen] = useState(false);
   const [compose, setCompose] = useState({ to: '', cc: '', bcc: '', subject: '', body: '', attachments: [] });
   const [sending, setSending] = useState(false);
   const [replyText, setReplyText] = useState('');
