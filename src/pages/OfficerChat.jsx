@@ -8,7 +8,7 @@ import { MessageCircle, Send, Users, Phone } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MentionInput from "@/components/chat/MentionInput";
-import { getTeamsChannelMessages, getTeamsSyncConfig, normalizeTeamsChannelMessage, saveTeamsSyncConfig, sendTeamChannelMessage } from "@/lib/teamsGraph";
+import { getTeamsChannelMessages, getTeamsSyncConfig, normalizeTeamsChannelMessage, sendTeamChannelMessage } from "@/lib/teamsGraph";
 import { toast } from 'sonner';
 
 export default function OfficerChat() {
@@ -16,8 +16,6 @@ export default function OfficerChat() {
   const [mentionedUsers, setMentionedUsers] = useState([]);
   const scrollRef = useRef(null);
   const [teamsConfig, setTeamsConfig] = useState(null);
-  const [teamsLink, setTeamsLink] = useState('');
-  const [teamsSaving, setTeamsSaving] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -47,7 +45,6 @@ export default function OfficerChat() {
         const config = await getTeamsSyncConfig('officer_chat');
         if (cancelled) return;
         setTeamsConfig(config);
-        if (config?.channel_url && !teamsLink) setTeamsLink(config.channel_url);
 
       } catch (error) {
         console.warn('[Teams] Officer Chat sync unavailable:', error?.message);
@@ -196,18 +193,6 @@ export default function OfficerChat() {
     if (user?.id && teamsConfig?.enabled) await refetchTeamsHistory();
   };
 
-  const saveTeamsChannel = async () => {
-    if (!teamsLink.trim()) return;
-    try {
-      setTeamsSaving(true);
-      const saved = await saveTeamsSyncConfig({ channelUrl: teamsLink.trim(), channelName: 'Pathfinder Officer Chat', updatedBy: user?.email || user?.id || '', configKey: 'officer_chat' });
-      setTeamsConfig(saved);
-      await refetchTeamsHistory();
-      } finally {
-      setTeamsSaving(false);
-    }
-  };
-
   return (
     <PullToRefresh onRefresh={handleRefresh}>
     <div className="p-4 md:p-8 min-h-screen">
@@ -226,20 +211,7 @@ export default function OfficerChat() {
             </div>
           </CardHeader>
 
-          {user?.role === 'admin' && !teamsConfig?.enabled && (
-            <div className="border-b bg-blue-50 p-4">
-              <div className="text-xs font-black uppercase tracking-wider text-blue-800">Connect Microsoft Teams</div>
-              <p className="mt-1 text-xs text-slate-600">In Microsoft Teams, open the channel you want Pathfinder Officer Chat connected to, choose <strong>Copy link to channel</strong>, and paste it here once.</p>
-              <div className="mt-3 flex gap-2">
-                <input value={teamsLink} onChange={e => setTeamsLink(e.target.value)} placeholder="Paste Teams channel link" className="min-w-0 flex-1 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs outline-none focus:border-blue-500" />
-                <Button type="button" onClick={saveTeamsChannel} disabled={teamsSaving || !teamsLink.trim()}>{teamsSaving ? 'Connecting…' : 'Connect'}</Button>
-              </div>
-            </div>
-          )}
-
-          {teamsConfig?.enabled && (
-            <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams live history · Pathfinder Officer Chat ↔ General Chat</div>
-          )}
+          <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams · Officer Chat ↔ General Chat</div>
           {liveTeamsError && <div className="border-b border-red-300 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">Microsoft Teams sync error: {liveTeamsError.message}</div>}
 
           <ScrollArea className="flex-1 p-6" ref={scrollRef}>
