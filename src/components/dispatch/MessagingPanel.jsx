@@ -100,10 +100,11 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
             teams_sender_name: teamsMessage?.from?.user?.displayName || senderName,
             teams_created_at: teamsMessage?.createdDateTime || new Date().toISOString(),
             teams_synced_at: new Date().toISOString(),
-          });
+          }).catch(() => null);
           createdChats.push({ record, ...targetSpec });
         }
         for (const createdChat of createdChats) {
+          if (!createdChat.record?.id) continue;
           await Promise.all(mentionedUsers.map(mention => base44.entities.ChatMention.create({
             message_id: createdChat.record.id,
             chat_type: createdChat.chatType,
@@ -113,7 +114,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
             sender_name: senderName,
             message: text,
             read: false,
-          })));
+          }).catch(() => null)));
         }
       } else if (recipient === 'dispatch') {
         const dispatchRecipients = (units || []).filter(person => person?.id && person.id !== currentUser.id && !person.termination_date && isDispatchUser(person));
@@ -142,7 +143,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
           thread_id: threadKey,
           participant_ids: [currentUser.id, ...dispatchRecipients.map(person => person.id)],
           participant_names: [senderName, ...dispatchRecipients.map(person => [person.rank, person.first_name, person.last_name].filter(Boolean).join(' ') || person.full_name || person.email)],
-        });
+        }).catch(() => null);
       } else if (recipient) {
         const recipientName = `${unit?.rank || ''} ${unit?.first_name || ''} ${unit?.last_name || unit?.full_name || unit?.email || ''}`.trim();
         const prior = await base44.entities.Message.filter({ thread_id: `teams-direct:${[currentUser.id, recipient].sort().join(':')}` }, '-created_date', 1).catch(() => []);
@@ -168,7 +169,7 @@ export default function MessagingPanel({ currentUser, units = [], isOpen = true,
           thread_id: `teams-direct:${[currentUser.id, recipient].sort().join(':')}`,
           participant_ids: [currentUser.id, recipient],
           participant_names: [senderName, recipientName],
-        });
+        }).catch(() => null);
       } else {
         throw new Error('Select a Microsoft Teams recipient.');
       }
