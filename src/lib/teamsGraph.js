@@ -183,7 +183,7 @@ export async function syncTeamsDirectMessages(userId, { chatId, threadKey = '', 
   if (!chatId || !userId || !currentPathfinderUserId) return { imported: 0 };
   const [me, payload, identities, cached] = await Promise.all([
     microsoftMeId ? Promise.resolve({ id: microsoftMeId }) : graphRequest(userId, '/me?$select=id'),
-    graphRequest(userId, `/chats/${encodeURIComponent(chatId)}/messages?$top=${Math.min(50, Math.max(1, Number(limit) || 50))}`),
+    graphRequest(userId, `/chats/${encodeURIComponent(chatId)}/messages`),
     cachedIdentities ? Promise.resolve(cachedIdentities) : base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []),
     cachedMessages ? Promise.resolve(cachedMessages) : base44.entities.Message.list('-created_date', 500).catch(() => []),
   ]);
@@ -240,7 +240,7 @@ export async function syncAllTeamsDirectChats(userId, currentPathfinderUserId, {
   const [me, identities, chatsPayload, cachedMessages] = await Promise.all([
     graphRequest(userId, '/me?$select=id,displayName,mail,userPrincipalName'),
     base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []),
-    graphRequest(userId, `/me/chats?$top=${safeChatLimit}`),
+    graphRequest(userId, '/me/chats'),
     base44.entities.Message.list('-created_date', 500).catch(() => []),
   ]);
   const identityByMicrosoftId = new Map((identities || []).filter(item => item.microsoft_user_id).map(item => [String(item.microsoft_user_id), item]));
@@ -278,7 +278,7 @@ export async function listTeamsDirectChats(userId, { limit = 25 } = {}) {
   const safeLimit = Math.min(50, Math.max(1, Number(limit) || 25));
   const [me, chatsPayload, identities] = await Promise.all([
     graphRequest(userId, '/me?$select=id,displayName,mail,userPrincipalName'),
-    graphRequest(userId, `/me/chats?$top=${safeLimit}`),
+    graphRequest(userId, '/me/chats'),
     base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []),
   ]);
   const identityByMicrosoftId = new Map((identities || []).filter(item => item.microsoft_user_id).map(item => [String(item.microsoft_user_id), item]));
@@ -310,7 +310,7 @@ export async function listTeamsDirectChats(userId, { limit = 25 } = {}) {
 export async function getTeamsDirectChatMessages(userId, chatId, { limit = 50 } = {}) {
   if (!chatId) return [];
   const safeLimit = Math.min(50, Math.max(1, Number(limit) || 50));
-  const payload = await graphRequest(userId, `/chats/${encodeURIComponent(chatId)}/messages?$top=${safeLimit}`);
+  const payload = await graphRequest(userId, `/chats/${encodeURIComponent(chatId)}/messages`);
   return [...(payload?.value || [])].reverse().map(item => ({
     id: item.id,
     teams_message_id: item.id,
