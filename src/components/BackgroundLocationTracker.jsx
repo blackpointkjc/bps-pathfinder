@@ -383,15 +383,10 @@ export default function BackgroundLocationTracker({ user }) {
     return () => window.clearInterval(heartbeatId);
   }, [shouldTrack, user?.email, user?.role, user?.status, user?.assigned_location, activeEntry?.id, activeEntry?.location, activeEntry?.clock_in]);
 
-  // Signed-in officers are tracked and receive the close warning.
+  // Keep tracking state awareness internal; never invoke the browser's
+  // native close-tab confirmation UI.
   useEffect(() => {
     if (!shouldTrack) return;
-
-    const handleBeforeUnload = (e) => {
-      e.preventDefault();
-      e.returnValue = '⚠️ Closing this tab will stop live location tracking. Are you sure you want to close?';
-      return e.returnValue;
-    };
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -399,13 +394,8 @@ export default function BackgroundLocationTracker({ user }) {
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [shouldTrack]);
 
   // Add pagehide event for iOS/mobile browsers
