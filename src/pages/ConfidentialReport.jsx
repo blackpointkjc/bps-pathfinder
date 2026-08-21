@@ -33,22 +33,24 @@ export default function ConfidentialReport() {
     queryFn: () => base44.auth.me(),
   });
 
-  // Fetch all confidential reports
-  const { data: reports, isLoading: isLoadingReports, isError: isErrorReports } = useQuery({
-    queryKey: ['confidentialReports'],
-    queryFn: () => base44.entities.ConfidentialReport.list(),
-    enabled: !!user, // Only fetch reports if user data is available
+  // Fetch only this user's confidential reports. The entity is creator-protected by
+  // RLS, so avoid requesting the entire confidential-report collection and then
+  // filtering it in the browser.
+  const { data: reports = [], isLoading: isLoadingReports, isError: isErrorReports, refetch: refetchReports } = useQuery({
+    queryKey: ['confidentialReports', user?.id],
+    queryFn: () => base44.entities.ConfidentialReport.filter({ created_by_id: user.id }, '-created_date', 100),
+    enabled: !!user?.id,
+    retry: 1,
   });
 
-  // Confidential reports are private to their creator through entity RLS.
-  const myReports = reports?.filter(r => String(r.created_by_id || '') === String(user?.id || '') && !r.archived) || [];
+  const myReports = (reports || []).filter(r => !r.archived);
 
   const submitReportMutation = useMutation({
     mutationFn: (data) => base44.entities.ConfidentialReport.create(data),
     onSuccess: () => {
       setSubmitted(true);
       // Invalidate and refetch reports to update the list after a new submission
-      queryClient.invalidateQueries({ queryKey: ['confidentialReports'] });
+      queryClient.invalidateQueries({ queryKey: ['confidentialReports', user?.id] });
       setTimeout(() => {
         setSubmitted(false);
         setFormData({
@@ -300,8 +302,9 @@ export default function ConfidentialReport() {
           ) : isErrorReports ? (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Error loading your reports. Please try again later.
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+                <span>Unable to load your submitted reports.</span>
+                <Button type="button" variant="outline" size="sm" onClick={() => refetchReports()}>Try Again</Button>
               </AlertDescription>
             </Alert>
           ) : myReports.length === 0 ? (
@@ -323,7 +326,7 @@ export default function ConfidentialReport() {
                       {report.description}
                     </p>
                     <div className="text-xs text-slate-500 space-y-1">
-                      <p><strong>Submitted:</strong> {new Date(report.created_at).toLocaleString()}</p>
+                      <p><strong>Submitted:</strong> {report.created_date ? new Date(report.created_date).toLocaleString() : 'Date unavailable'}</p>
                       <p><strong>Contact method:</strong> {report.preferred_contact_method.replace(/_/g, ' ')}</p>
                       <p><strong>Anonymous:</strong> {report.anonymous ? 'Yes' : 'No'}</p>
                     </div>
