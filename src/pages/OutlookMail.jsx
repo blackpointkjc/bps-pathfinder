@@ -22,7 +22,7 @@ import {
 } from '@/lib/outlookGraph';
 import { toast } from 'sonner';
 import {
-  Archive, ArrowLeft, Building2, Forward, Inbox, Loader2, Mail, MailOpen, Paperclip,
+  Archive, ArrowLeft, Building2, Forward, Inbox, Loader2, Mail, MailOpen, Maximize2, Paperclip,
   PenLine, Plus, RefreshCw, Reply, Search, Send, Trash2, X,
 } from 'lucide-react';
 
@@ -88,6 +88,7 @@ export default function OutlookMail() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
   const [composeOpen, setComposeOpen] = useState(false);
+  const [readerOpen, setReaderOpen] = useState(false);
   const [compose, setCompose] = useState({ to: '', cc: '', bcc: '', subject: '', body: '', attachments: [] });
   const [sending, setSending] = useState(false);
   const [replyText, setReplyText] = useState('');
@@ -242,6 +243,7 @@ export default function OutlookMail() {
         const result = await invokeCompanyMail('message', { folder: folderId || 'INBOX', uid: Number(message.uid || message.id) });
         const full = result.message || message;
         setSelected(full);
+        setReaderOpen(true);
         setAttachments([]);
         if (!message.isRead) {
           await invokeCompanyMail('mark_read', { folder: folderId || 'INBOX', uid: Number(message.uid || message.id), read: true });
@@ -252,6 +254,7 @@ export default function OutlookMail() {
       }
       const full = await getOutlookMessage(user.id, message.id, activeMailboxEmail);
       setSelected(full || message);
+      setReaderOpen(true);
       setAttachments([]);
       if (!message.isRead) {
         await setOutlookMessageRead(user.id, message.id, true, activeMailboxEmail);
@@ -618,6 +621,25 @@ export default function OutlookMail() {
           ) : <div className="m-auto text-center text-slate-600"><MailOpen className="mx-auto h-12 w-12" /><div className="mt-3 text-sm font-bold">Select an email to read it</div></div>}
         </section>
       </div>
+
+      {readerOpen && selected && <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/75 p-3 sm:p-6">
+        <div className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-[#294867] bg-[#07101b] shadow-2xl">
+          <div className="flex shrink-0 items-center gap-3 border-b border-[#1d344b] bg-[#0b1928] px-4 py-3 sm:px-6">
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-base font-black text-white">{selected.subject || '(No subject)'}</div>
+              <div className="mt-1 truncate text-xs text-slate-400">{senderOf(selected)} · {selected?.from?.emailAddress?.address}</div>
+            </div>
+            <button type="button" onClick={toggleRead} className="hidden h-9 items-center gap-2 rounded-lg border border-[#29435d] px-3 text-xs font-bold text-slate-200 hover:bg-[#102338] sm:flex">{selected.isRead ? <Mail className="h-4 w-4" /> : <MailOpen className="h-4 w-4" />}{selected.isRead ? 'Mark Unread' : 'Mark Read'}</button>
+            <button type="button" onClick={() => setForwardOpen(true)} className="hidden h-9 items-center gap-2 rounded-lg border border-[#29435d] px-3 text-xs font-bold text-slate-200 hover:bg-[#102338] sm:flex"><Forward className="h-4 w-4" />Forward</button>
+            <button type="button" onClick={() => setReaderOpen(false)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#36516b] text-white hover:bg-[#13283e]" title="Close email"><X className="h-5 w-5" /></button>
+          </div>
+          <div className="shrink-0 border-b border-[#1d344b] bg-[#091522] px-4 py-3 text-xs text-slate-400 sm:px-6">{formatDate(selected.receivedDateTime || selected.sentDateTime)} ET</div>
+          {attachments.length > 0 && <div className="flex shrink-0 flex-wrap gap-2 border-b border-[#1d344b] bg-[#0a1623] px-4 py-3 sm:px-6">{attachments.map(file => <span key={file.id || file.name} className="flex items-center gap-1 rounded-lg border border-[#29435d] bg-[#0c1b2a] px-3 py-2 text-xs text-slate-300"><Paperclip className="h-3.5 w-3.5" />{file.name}</span>)}</div>}
+          <div className="min-h-0 flex-1 overflow-auto bg-white p-5 text-slate-900 sm:p-8">
+            <div className="mx-auto max-w-5xl text-sm leading-6 [&_a]:text-blue-700 [&_a]:underline [&_img]:max-w-full [&_p]:my-3 [&_li]:my-1" dangerouslySetInnerHTML={{ __html: safeEmailHtml(selected?.body?.content || selected.bodyPreview) }} />
+          </div>
+        </div>
+      </div>}
 
       {composeOpen && <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4">
         <div className="w-full max-w-2xl rounded-t-2xl border border-[#294867] bg-[#0b1725] shadow-2xl sm:rounded-2xl">
