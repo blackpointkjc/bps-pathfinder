@@ -81,18 +81,20 @@ export default function OfficerChat() {
         teams_sender_name: teamsMessage?.from?.user?.displayName || data.sender_name,
         teams_created_at: teamsMessage?.createdDateTime || new Date().toISOString(),
         teams_synced_at: new Date().toISOString(),
-      });
-      await Promise.all(mentions.map(mention => base44.entities.ChatMention.create({
-        message_id: created.id,
-        chat_type: 'officer',
-        page: 'OfficerChat',
-        recipient_email: mention.email,
-        recipient_name: mention.label,
-        sender_name: data.sender_name,
-        message: data.message,
-        read: false,
-      })));
-      return created;
+      }).catch(() => null);
+      if (created?.id) {
+        await Promise.all(mentions.map(mention => base44.entities.ChatMention.create({
+          message_id: created.id,
+          chat_type: 'officer',
+          page: 'OfficerChat',
+          recipient_email: mention.email,
+          recipient_name: mention.label,
+          sender_name: data.sender_name,
+          message: data.message,
+          read: false,
+        }).catch(() => null)));
+      }
+      return teamsMessage;
     },
     onSuccess: async () => {
       await refetchTeamsHistory();
