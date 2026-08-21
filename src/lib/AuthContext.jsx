@@ -236,6 +236,13 @@ export const AuthProvider = ({ children }) => {
     base44.auth.redirectToLogin(window.location.href);
   }, []);
 
+  const navigateToMicrosoftLogin = useCallback(() => {
+    // Base44's native Microsoft provider creates the actual Pathfinder session,
+    // so existing roles/permissions remain authoritative. This is intended for
+    // users whose Pathfinder login identity is their Black Point Microsoft email.
+    base44.auth.loginWithProvider('microsoft', window.location.href);
+  }, []);
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -247,6 +254,7 @@ export const AuthProvider = ({ children }) => {
       appPublicSettings,
       logout,
       navigateToLogin,
+      navigateToMicrosoftLogin,
       checkAppState
     }}>
       {children}
