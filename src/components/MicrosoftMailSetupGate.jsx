@@ -10,7 +10,7 @@ import {
   getMissingMicrosoftScopes,
 } from '@/lib/outlookGraph';
 
-export default function MicrosoftMailSetupGate({ user, children }) {
+export default function MicrosoftMailSetupGate({ user, children, enabled = true }) {
   const [status, setStatus] = useState({ loading: true, connected: false, configured: true });
   const [config, setConfig] = useState({ clientId: '', tenant: '' });
   const [error, setError] = useState('');
@@ -23,7 +23,7 @@ export default function MicrosoftMailSetupGate({ user, children }) {
   }, []);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!enabled || !userId) return;
     let active = true;
 
     const load = async () => {
@@ -90,7 +90,7 @@ export default function MicrosoftMailSetupGate({ user, children }) {
       window.removeEventListener('message', onMicrosoftMessage);
       window.removeEventListener('storage', onStorage);
     };
-  }, [userId, user?.email, isCallback]);
+  }, [enabled, userId, user?.email, isCallback]);
 
   const connect = async () => {
     try {
@@ -101,7 +101,7 @@ export default function MicrosoftMailSetupGate({ user, children }) {
     }
   };
 
-  if (!userId) return children;
+  if (!enabled || !userId) return children;
 
   if (status.loading) {
     return (
