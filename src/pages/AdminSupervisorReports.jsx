@@ -428,7 +428,7 @@ export default function AdminSupervisorReports() {
           <div class="section-title">ATTENDANCE & PUNCTUALITY</div>
           <div class="stats-grid">
             <div class="stat-box">
-              <div class="stat-value">${officerPerformance.onTimeRate}%</div>
+              <div class="stat-value">${officerPerformance.onTimeRate != null ? `${officerPerformance.onTimeRate}%` : '—'}</div>
               <div class="stat-label">On-Time Rate</div>
             </div>
             <div class="stat-box">
@@ -927,7 +927,7 @@ export default function AdminSupervisorReports() {
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <div className="p-4 bg-green-50 rounded-lg border border-green-200 text-center">
-                        <p className="text-3xl font-bold text-green-600">{officerPerformance.onTimeRate}%</p>
+                        <p className="text-3xl font-bold text-green-600">{officerPerformance.onTimeRate != null ? `${officerPerformance.onTimeRate}%` : '—'}</p>
                         <p className="text-xs text-slate-600">On-Time Rate</p>
                       </div>
                       <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 text-center">
