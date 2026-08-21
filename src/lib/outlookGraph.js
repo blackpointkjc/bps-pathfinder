@@ -154,13 +154,29 @@ async function restoreOutlookTokenFromServer(userId) {
   if (current?.access_token && Number(current.expires_at || 0) > Date.now() + 90_000) return current;
   const result = await base44.functions.invoke('microsoftOAuthVault', { action: 'restore' });
   const payload = result?.data || result || {};
-  if (!payload?.connected || !payload?.access_token) return null;
-  return storeOutlookToken(userId, {
-    access_token: payload.access_token,
-    expires_in: payload.expires_in || 3600,
+  if (!payload?.connected || !payload?.refresh_token) return null;
+
+  // Microsoft SPA refresh tokens must be redeemed by a browser-origin request.
+  // The refresh credential comes from the authenticated account vault, is used
+  // only for this request, and is never written to localStorage.
+  const config = await getMicrosoftMailConfig();
+  const body = new URLSearchParams({
+    client_id: config?.clientId || PATHFINDER_MICROSOFT_CLIENT_ID,
+    grant_type: 'refresh_token',
+    refresh_token: payload.refresh_token,
     scope: payload.scope || DEFAULT_SCOPES.join(' '),
-    token_type: 'Bearer',
-  }, getStoredOutlookToken(userId));
+  });
+  const response = await fetch(`${MICROSOFT_AUTH_ROOT}/${encodeURIComponent(config?.tenant || PATHFINDER_MICROSOFT_TENANT_ID)}/oauth2/v2.0/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  const refreshed = await response.json().catch(() => ({}));
+  if (!response.ok || !refreshed?.access_token) return null;
+
+  // Rotate the durable credential back into the account vault immediately.
+  await persistOutlookCredential(userId, refreshed);
+  return storeOutlookToken(userId, refreshed, getStoredOutlookToken(userId));
 }
 
 export async function disconnectOutlook(userId) {
