@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { promptInApp } from '@/lib/inAppDialog';
 import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
 import {
@@ -567,7 +568,7 @@ export default function OutlookMail() {
 
   const renameMailbox = async (event, mailbox) => {
     event.stopPropagation();
-    const nextName = window.prompt('Shared mailbox display name', mailbox.display_name || mailbox.mailbox_email || '');
+    const nextName = await promptInApp('Shared mailbox display name', mailbox.display_name || mailbox.mailbox_email || '', { title: 'Rename shared mailbox' });
     if (nextName == null) return;
     try {
       const updated = await renameSharedMailbox(mailbox.id, nextName);
