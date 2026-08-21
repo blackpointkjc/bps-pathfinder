@@ -496,21 +496,6 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             <div className="text-[12px] font-black tracking-[0.16em] text-white">BPS PATHFINDER</div>
             <div className="text-[9px] tracking-[0.16em] text-[#7290ad]">BLACK POINT PROTECTION</div>
           </div>}
-          {!mobile && (
-            <Link
-              to={createPageUrl('OfficerInbox')}
-              title="Inbox"
-              aria-label="Inbox"
-              className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition ${currentPageName === 'OfficerInbox' ? 'border-cyan-400 bg-cyan-500/15 text-cyan-200' : 'border-[#31506d] bg-[#102337] text-[#8cc7ff] hover:bg-[#19334e] hover:text-white'}`}
-            >
-              <MessageCircle className="h-4 w-4" />
-              {!!unreadCounts.OfficerInbox && (
-                <span className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black text-white">
-                  {unreadCounts.OfficerInbox > 99 ? '99+' : unreadCounts.OfficerInbox}
-                </span>
-              )}
-            </Link>
-          )}
           {mobile && (
             <button type="button" onClick={onCloseMobile} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#31506d] bg-[#13263a] text-white" aria-label="Close menu">
               <X className="h-5 w-5" />
