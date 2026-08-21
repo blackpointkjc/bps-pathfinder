@@ -9,14 +9,6 @@ export default function MandatoryReadGate({ user }) {
   const enabled = !!user?.id && user?.role !== 'admin';
   const scheduleAlertsEnabled = !!user?.email;
 
-  const { data: directMessages = [] } = useQuery({
-    queryKey: ['mandatoryDirectMessages', user?.id],
-    queryFn: () => base44.entities.Message.filter({ recipient_id: user.id, read: false }, '-created_date', 200),
-    enabled,
-    refetchInterval: 3000,
-    refetchOnWindowFocus: false,
-  });
-
   const { data: mentions = [] } = useQuery({
     queryKey: ['mandatoryChatMentions', user?.email],
     queryFn: () => base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200),
@@ -39,10 +31,9 @@ export default function MandatoryReadGate({ user }) {
   const queue = useMemo(() => {
     const scheduleItems = scheduleAlerts.map(n => ({ type: 'schedule', id: n.id, sort: n.created_date, record: n }));
     if (!enabled) return scheduleItems;
-    const messageItems = directMessages.map(m => ({ type: 'message', id: m.id, sort: m.created_date, record: m }));
     const mentionItems = mentions.map(m => ({ type: 'mention', id: m.id, sort: m.created_date, record: m }));
-    return [...scheduleItems, ...messageItems, ...mentionItems].sort((a,b) => new Date(a.sort || 0) - new Date(b.sort || 0));
-  }, [enabled, directMessages, mentions, scheduleAlerts]);
+    return [...scheduleItems, ...mentionItems].sort((a,b) => new Date(a.sort || 0) - new Date(b.sort || 0));
+  }, [enabled, mentions, scheduleAlerts]);
 
   const current = queue[0];
   if (!current) return null;
@@ -51,15 +42,12 @@ export default function MandatoryReadGate({ user }) {
     if (working) return;
     setWorking(true);
     try {
-      if (current.type === 'message') {
-        await base44.entities.Message.update(current.id, { read: true });
-      } else if (current.type === 'mention') {
+      if (current.type === 'mention') {
         await base44.entities.ChatMention.update(current.id, { read: true, read_at: new Date().toISOString() });
       } else {
         await base44.entities.Notification.update(current.id, { is_read: true, acknowledged_at: new Date().toISOString() });
       }
       await Promise.all([
-        qc.invalidateQueries({ queryKey: ['mandatoryDirectMessages', user?.id] }),
         qc.invalidateQueries({ queryKey: ['mandatoryChatMentions', user?.email] }),
         qc.invalidateQueries({ queryKey: ['mandatoryScheduleAlerts', user?.email] }),
       ]);
@@ -72,9 +60,7 @@ export default function MandatoryReadGate({ user }) {
   const record = current.record;
   const title = current.type === 'schedule'
     ? record.title || 'Schedule Update'
-    : current.type === 'mention'
-      ? 'Chat Mention'
-      : `Message from ${record.sender_name || record.sender_id || 'Company User'}`;
+    : 'Chat Mention';
   const message = record.message;
 
   if (current.type === 'schedule') {
