@@ -7,11 +7,11 @@ import { announceVoice } from '@/utils/voiceAnnouncer';
 import { cleanIncident } from '@/utils/callUtils';
 
 const SOURCES = [
-  { entity: 'ChatMessage', label: 'Team Chat', page: 'TeamChat', kind: 'message' },
-  { entity: 'OfficerChatMessage', label: 'Officer Chat', page: 'OfficerChat', kind: 'message' },
-  { entity: 'SupervisorChatMessage', label: 'Supervisor Chat', page: 'SupervisorChat', supervisorOnly: true, kind: 'message' },
+  // Microsoft Teams is the source of truth for Officer/Supervisor chat. Those
+  // notifications are owned by TeamsNotificationMonitor so the local metadata
+  // cache cannot produce a second banner/unread count for the same Teams message.
   { entity: 'Announcement', label: 'New Announcement', page: 'Announcements', kind: 'announcement' },
-  { entity: 'ChatMention', label: 'You Were Mentioned', page: 'TeamChat', kind: 'mention', mention: true },
+  { entity: 'ChatMention', label: 'You Were Mentioned', page: 'OfficerChat', kind: 'mention', mention: true },
 ];
 
 const lowerRoles = user => new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
