@@ -18,7 +18,7 @@ export default function TeamsSyncMonitor({ user }) {
           await syncTeamsChannelToEntity(user.id, {
             config: officerConfig,
             configKey: 'officer_chat',
-            entityName: 'ChatMessage',
+            entityName: 'OfficerChatMessage',
           });
         }
       } catch (error) {
