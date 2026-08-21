@@ -6,6 +6,7 @@ const MICROSOFT_AUTH_ROOT = 'https://login.microsoftonline.com';
 // These are application identifiers, not secrets.
 const PATHFINDER_MICROSOFT_CLIENT_ID = '5cf1a58f-17d1-46d4-a7fd-ff5fcd7624eb';
 const PATHFINDER_MICROSOFT_TENANT_ID = '07f32330-fc73-4d73-a835-e9c47ba798c7';
+const PATHFINDER_OUTLOOK_REDIRECT_URI = 'https://bpspf.blackpointkjc.com/OutlookMail';
 export const DEFAULT_SCOPES = [
   'openid',
   'profile',
@@ -73,7 +74,14 @@ export async function saveMicrosoftMailConfig() {
 }
 
 export function getOutlookRedirectUri() {
-  return `${window.location.origin}/OutlookMail`;
+  // Microsoft Entra requires an exact redirect URI match. Base44 preview hosts use
+  // temporary preview-sandbox origins that are not (and should not need to be)
+  // registered in Entra. Always use Pathfinder's stable production callback URI.
+  return PATHFINDER_OUTLOOK_REDIRECT_URI;
+}
+
+export function getOutlookRedirectOrigin() {
+  return new URL(PATHFINDER_OUTLOOK_REDIRECT_URI).origin;
 }
 
 export async function isMicrosoftConfigured() {
@@ -166,28 +174,26 @@ export async function beginOutlookConnection(userId) {
   try { popup.focus(); } catch {}
 }
 
-export async function handleOutlookOAuthCallback(userId) {
-  if (!userId || typeof window === 'undefined') return { handled: false };
-  const params = new URLSearchParams(window.location.search);
-  const code = params.get('code');
-  const returnedState = params.get('state');
-  const oauthError = params.get('error');
+async function completeOutlookOAuthCallback(userId, callback = {}, { cleanBrowserUrl = false } = {}) {
+  if (!userId) return { handled: false };
+  const code = callback.code || '';
+  const returnedState = callback.state || '';
+  const oauthError = callback.error || '';
   if (!code && !oauthError) return { handled: false };
 
   const savedRaw = localStorage.getItem(oauthStateKey(userId));
   let saved = null;
   try { saved = JSON.parse(savedRaw || 'null'); } catch { saved = null; }
 
-  const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+  if (cleanBrowserUrl && typeof window !== 'undefined') {
+    window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}`);
+  }
 
   if (oauthError) {
-    window.history.replaceState({}, document.title, cleanUrl);
-    const detail = params.get('error_description') || oauthError;
-    return { handled: true, success: false, error: detail };
+    return { handled: true, success: false, error: callback.error_description || oauthError };
   }
 
   if (!saved?.verifier || !saved?.state || returnedState !== saved.state) {
-    window.history.replaceState({}, document.title, cleanUrl);
     return { handled: true, success: false, error: 'The Microsoft sign-in response could not be verified. Please connect again.' };
   }
 
@@ -210,19 +216,50 @@ export async function handleOutlookOAuthCallback(userId) {
   });
   const payload = await response.json().catch(() => ({}));
   localStorage.removeItem(oauthStateKey(userId));
-  window.history.replaceState({}, document.title, cleanUrl);
   if (!response.ok || !payload.access_token) {
     return { handled: true, success: false, error: payload.error_description || payload.error || 'Microsoft sign-in failed.' };
   }
 
   storeOutlookToken(userId, payload);
+  return { handled: true, success: true };
+}
+
+export async function handleOutlookOAuthMessage(userId, messageData = {}) {
+  if (messageData?.type !== 'bps:outlook-oauth-callback') return { handled: false };
+  return completeOutlookOAuthCallback(userId, messageData, { cleanBrowserUrl: false });
+}
+
+export async function handleOutlookOAuthCallback(userId) {
+  if (!userId || typeof window === 'undefined') return { handled: false };
+  const params = new URLSearchParams(window.location.search);
+  return completeOutlookOAuthCallback(userId, {
+    code: params.get('code') || '',
+    state: params.get('state') || '',
+    error: params.get('error') || '',
+    error_description: params.get('error_description') || '',
+  }, { cleanBrowserUrl: true });
+}
+
+// When Microsoft redirects to the stable production callback from a Base44 preview
+// popup, relay the authorization response back to the preview opener. The preview
+// holds the PKCE verifier, so it performs the token exchange there using the same
+// stable redirect URI. postMessage is intentionally used instead of touching the
+// opener DOM, which is cross-origin in preview mode.
+if (typeof window !== 'undefined') {
   try {
-    if (window.opener && window.opener !== window) {
-      window.opener.postMessage({ type: 'bps:outlook-connected', userId }, window.location.origin);
-      window.setTimeout(() => window.close(), 250);
+    const params = new URLSearchParams(window.location.search);
+    const hasOAuthResponse = params.has('code') || params.has('error');
+    if (hasOAuthResponse && window.opener && window.opener !== window && window.location.origin === getOutlookRedirectOrigin()) {
+      window.opener.postMessage({
+        type: 'bps:outlook-oauth-callback',
+        code: params.get('code') || '',
+        state: params.get('state') || '',
+        error: params.get('error') || '',
+        error_description: params.get('error_description') || '',
+      }, '*');
+      window.setTimeout(() => window.close(), 500);
     }
   } catch {}
-  return { handled: true, success: true };
 }
 
 async function refreshOutlookToken(userId, existing) {
