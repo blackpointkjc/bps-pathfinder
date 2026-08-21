@@ -195,7 +195,7 @@ export default function OfficerDistressButton({ currentUser, className = '' }) {
                 onLostPointerCapture={cancelHold}
                 onContextMenu={e => e.preventDefault()}
                 style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none', pointerEvents: 'auto' }}
-                className={`relative z-[1000] overflow-hidden flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-mono font-bold text-xs transition-all cursor-pointer
+                className={`relative z-10 overflow-hidden flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-mono font-bold text-xs transition-all cursor-pointer
                     ${holding
                         ? 'bg-red-700 border-red-400 text-white scale-95'
                         : 'bg-red-950/60 border-red-600/60 text-red-400 hover:bg-red-900/60 hover:border-red-500 hover:text-red-300'
