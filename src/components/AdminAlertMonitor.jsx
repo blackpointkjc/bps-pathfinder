@@ -79,12 +79,8 @@ export default function AdminAlertMonitor({ user }) {
     }
   };
 
-  // Show browser notification
-  const showBrowserNotification = (title, body) => {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, { body, icon: '🔔' });
-    }
-  };
+  // Keep administrative alerts in the Pathfinder toast/banner system.
+  const showBrowserNotification = () => {};
 
   // Monitor pending reports
   useEffect(() => {
