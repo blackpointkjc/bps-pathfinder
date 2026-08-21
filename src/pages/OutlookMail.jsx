@@ -123,9 +123,9 @@ function AttachmentViewer({ files = [] }) {
 function emailReaderDocument(value, attachmentRows = []) {
   const html = String(value || '');
   const plain = !/<[a-z][\s\S]*>/i.test(html);
-  let body = plain ? safeEmailHtml(html, attachmentRows) : html;
+  const source = plain ? safeEmailHtml(html, attachmentRows) : html;
   try {
-    const doc = new DOMParser().parseFromString(body, 'text/html');
+    const doc = new DOMParser().parseFromString(source, 'text/html');
     doc.querySelectorAll('script,iframe,object,embed,form,input,button,textarea,select').forEach(node => node.remove());
     resolveCidSources(doc, attachmentRows);
     doc.querySelectorAll('*').forEach(node => {
@@ -139,11 +139,29 @@ function emailReaderDocument(value, attachmentRows = []) {
       link.setAttribute('target', '_blank');
       link.setAttribute('rel', 'noopener noreferrer');
     });
-    body = doc.body.innerHTML;
-    const styles = Array.from(doc.head.querySelectorAll('style')).map(node => node.outerHTML).join('');
-    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${styles}<style>html,body{margin:0;padding:0;background:#fff;color:#111827;font-family:Arial,Helvetica,sans-serif}body{padding:24px;overflow-wrap:anywhere}img,video{max-width:100%;height:auto}audio{width:min(100%,720px)}a{color:#1d4ed8;text-decoration:underline}table{max-width:100%}</style></head><body>${body}</body></html>`;
+
+    const headContent = Array.from(doc.head.children)
+      .filter(node => !['SCRIPT','IFRAME','OBJECT','EMBED'].includes(node.tagName))
+      .map(node => node.outerHTML)
+      .join('');
+    const bodyAttrs = Array.from(doc.body.attributes)
+      .filter(attr => !attr.name.toLowerCase().startsWith('on'))
+      .map(attr => `${attr.name}="${String(attr.value).replace(/"/g, '&quot;')}"`)
+      .join(' ');
+    const bodyHasBg = doc.body.hasAttribute('bgcolor') || /background(?:-color)?\s*:/i.test(doc.body.getAttribute('style') || '');
+    const bodyHasColor = doc.body.hasAttribute('text') || /(^|;)\s*color\s*:/i.test(doc.body.getAttribute('style') || '');
+    const fallbackCss = `
+      html{margin:0;padding:0;background:#fff;color-scheme:light only;}
+      body{margin:0;padding:24px;overflow-wrap:anywhere;${bodyHasBg ? '' : 'background:#fff;'}${bodyHasColor ? '' : 'color:#111827;'}}
+      img,video{max-width:100%;height:auto;}
+      audio{width:min(100%,720px);}
+      table{max-width:100%;}
+      a{text-decoration:underline;}
+      @media(max-width:720px){body{padding:14px;}table{width:100%!important;}td{max-width:100%!important;}img{height:auto!important;}}
+    `;
+    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${headContent}<style>${fallbackCss}</style></head><body ${bodyAttrs}>${doc.body.innerHTML}</body></html>`;
   } catch {
-    return `<!doctype html><html><body style="font-family:Arial,sans-serif;padding:24px">${safeEmailHtml(body, attachmentRows)}</body></html>`;
+    return `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#fff;color:#111827}body{padding:24px;font-family:Arial,sans-serif}</style></head><body>${safeEmailHtml(source, attachmentRows)}</body></html>`;
   }
 }
 
