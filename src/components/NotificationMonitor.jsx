@@ -8,22 +8,10 @@ import { parseISO } from "date-fns";
 
 export default function NotificationMonitor({ user }) {
   const { toast } = useToast();
-  const [lastChatId, setLastChatId] = useState(null);
   const [lastAnnouncementId, setLastAnnouncementId] = useState(null);
   const [lastScheduleCheck, setLastScheduleCheck] = useState(null);
   const [lastPTOStatusId, setLastPTOStatusId] = useState(null);
   const [audioEnabled] = useState(true);
-
-  // Monitor chat messages
-  const { data: latestChat } = useQuery({
-    queryKey: ['latestChatMessage'],
-    queryFn: async () => {
-      const messages = await base44.entities.ChatMessage.list('-created_date', 1);
-      return messages[0] || null;
-    },
-    refetchInterval: 5000,
-    enabled: !!user,
-  });
 
   // Monitor announcements
   const { data: latestAnnouncement } = useQuery({
@@ -94,38 +82,6 @@ export default function NotificationMonitor({ user }) {
       new Notification(title, { body, icon, badge: '/badge-icon.png' });
     }
   };
-
-  // Monitor new chat messages
-  useEffect(() => {
-    if (latestChat && latestChat.id !== lastChatId && lastChatId !== null) {
-      if (latestChat.created_by !== user?.email) {
-        const senderName = latestChat.sender_name || latestChat.created_by;
-        toast({
-          title: "New Team Message",
-          description: `${senderName}: ${latestChat.message.substring(0, 50)}${latestChat.message.length > 50 ? '...' : ''}`,
-          duration: 8000,
-          className: "bg-blue-50 border-blue-200",
-          action: (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => window.location.href = createPageUrl("TeamChat")}
-              className="hover:bg-blue-100"
-            >
-              View
-            </Button>
-          ),
-        });
-        playNotificationSound();
-        showBrowserNotification(
-          "New Team Message",
-          `${senderName}: ${latestChat.message.substring(0, 100)}`,
-          "💬"
-        );
-      }
-    }
-    if (latestChat) setLastChatId(latestChat.id);
-  }, [latestChat, user?.email, lastChatId, toast, playNotificationSound, showBrowserNotification]);
 
   // Monitor new announcements
   useEffect(() => {
