@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { syncOfflineDataToServer, OfflineStorage } from './OfflineStorage';
-import PWAInstallPrompt from './PWAInstallPrompt';
 import OfflineIndicator from './OfflineIndicator';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
@@ -174,10 +173,5 @@ export default function PWAManager() {
     }
   };
 
-  return (
-    <>
-      <PWAInstallPrompt />
-      <OfflineIndicator />
-    </>
-  );
+  return <OfflineIndicator />;
 }
