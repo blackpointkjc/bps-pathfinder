@@ -71,18 +71,24 @@ export default function AdminPerformanceReviews() {
     },
     enabled: hasHRAccess && !!selectedOfficer,
     initialData: [],
+    refetchInterval: 30000,
+    refetchOnWindowFocus: 'always',
   });
 
   const { data: schedules } = useQuery({
     queryKey: ['allSchedules'],
     queryFn: () => base44.entities.Schedule.list(),
     enabled: !!selectedOfficer,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: 'always',
   });
 
   const { data: commendations } = useQuery({
     queryKey: ['officerCommendations', selectedOfficer],
     queryFn: () => base44.entities.Commendation.filter({ officer_email: selectedOfficer }),
     enabled: !!selectedOfficer,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: 'always',
   });
 
   const { data: complaints } = useQuery({
@@ -92,6 +98,8 @@ export default function AdminPerformanceReviews() {
       return all.filter(c => !c.exclude_from_performance_review);
     },
     enabled: !!selectedOfficer,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: 'always',
   });
 
   const { data: inspectionReports } = useQuery({
@@ -101,6 +109,8 @@ export default function AdminPerformanceReviews() {
       return all.filter(i => i.officer_email === selectedOfficer && !i.exclude_from_performance_review);
     },
     enabled: !!selectedOfficer,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: 'always',
   });
 
   const { data: writeUpReports } = useQuery({
@@ -110,6 +120,8 @@ export default function AdminPerformanceReviews() {
       return all.filter(w => w.officer_email === selectedOfficer && w.status === 'approved' && !w.exclude_from_performance_review);
     },
     enabled: !!selectedOfficer,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: 'always',
   });
 
   const getPayRangeForRank = (rank) => {
