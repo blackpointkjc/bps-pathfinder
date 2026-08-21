@@ -845,11 +845,10 @@ export default function Layout({ children, currentPageName }) {
           const days = (Date.now() - created) / 86400000;
           return a.priority === 'urgent' ? days <= 30 : a.priority === 'important' ? days <= 14 : days <= 7;
         });
-        const teamMentions = (mentions || []).filter(m => m.page === 'TeamChat').length;
-        const officerMentions = (mentions || []).filter(m => m.page === 'OfficerChat').length;
-        const supervisorMentions = (mentions || []).filter(m => m.page === 'SupervisorChat').length;
         setUnreadCounts(current => {
-          const next = { ...current, TeamChat: teamMentions, OfficerChat: officerMentions, SupervisorChat: supervisorMentions, Announcements: unreadAnnouncements.length };
+          // Teams chat unread counts are owned by TeamsNotificationMonitor. Do not
+          // overwrite them with legacy Pathfinder @mention records.
+          const next = { ...current, Announcements: unreadAnnouncements.length };
           localStorage.setItem(unreadStorageKey, JSON.stringify(next));
           return next;
         });
