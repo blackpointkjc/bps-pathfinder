@@ -13,6 +13,19 @@ export default function TeamsSyncMonitor({ user }) {
 
     const sync = async () => {
       try {
+        const teamConfig = await getTeamsSyncConfig('team_chat');
+        if (!cancelled && teamConfig?.enabled) {
+          await syncTeamsChannelToEntity(user.id, {
+            config: teamConfig,
+            configKey: 'team_chat',
+            entityName: 'ChatMessage',
+          });
+        }
+      } catch (error) {
+        console.warn('[Teams] Team Chat background sync unavailable:', error?.message);
+      }
+
+      try {
         const officerConfig = await getTeamsSyncConfig('officer_chat');
         if (!cancelled && officerConfig?.enabled) {
           await syncTeamsChannelToEntity(user.id, {
