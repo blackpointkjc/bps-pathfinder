@@ -233,13 +233,15 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const navigateToLogin = useCallback(() => {
+    try { sessionStorage.removeItem('bps:auth-provider'); } catch {}
     base44.auth.redirectToLogin(window.location.href);
   }, []);
 
   const navigateToMicrosoftLogin = useCallback(() => {
     // Base44's native Microsoft provider creates the actual Pathfinder session,
-    // so existing roles/permissions remain authoritative. This is intended for
-    // users whose Pathfinder login identity is their Black Point Microsoft email.
+    // so existing roles/permissions remain authoritative. A private Pathfinder
+    // account must already exist with the same Black Point Microsoft email.
+    try { sessionStorage.setItem('bps:auth-provider', 'microsoft'); } catch {}
     base44.auth.loginWithProvider('microsoft', window.location.href);
   }, []);
 
