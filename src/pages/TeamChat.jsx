@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import PullToRefresh from "../components/PullToRefresh";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +15,6 @@ export default function TeamChat() {
   const [message, setMessage] = useState("");
   const [mentionedUsers, setMentionedUsers] = useState([]);
   const scrollRef = useRef(null);
-  const queryClient = useQueryClient();
   const [teamsConfig, setTeamsConfig] = useState(null);
   const [teamsSyncError, setTeamsSyncError] = useState('');
   const [teamsLink, setTeamsLink] = useState('');
@@ -30,11 +29,6 @@ export default function TeamChat() {
     ? `${user.first_name} ${user.last_name}`
     : user?.email || 'Unknown';
 
-  const { data: messages } = useQuery({
-    queryKey: ['chatMessages'],
-    queryFn: () => base44.entities.ChatMessage.list('-created_date', 100),
-  });
-
   const { data: liveTeamsMessages = [], error: liveTeamsError, refetch: refetchTeamsHistory } = useQuery({
     queryKey: ['teamTeamsChannelHistory', teamsConfig?.team_id, teamsConfig?.channel_id, user?.id],
     queryFn: () => getTeamsChannelMessages(user.id, teamsConfig, 'team_chat'),
@@ -43,13 +37,6 @@ export default function TeamChat() {
     refetchOnWindowFocus: true,
     staleTime: 15000,
   });
-
-  useEffect(() => {
-    const unsubscribe = base44.entities.ChatMessage.subscribe(() => {
-      queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
-    });
-    return unsubscribe;
-  }, [queryClient]);
 
   useEffect(() => {
     if (!user?.id) return undefined;
@@ -61,9 +48,8 @@ export default function TeamChat() {
         setTeamsConfig(config);
         if (config?.channel_url) setTeamsLink(current => current || config.channel_url);
         if (config?.enabled) {
-          const result = await syncTeamsChannelToEntity(user.id, { config, configKey: 'team_chat', entityName: 'ChatMessage' });
+          await syncTeamsChannelToEntity(user.id, { config, configKey: 'team_chat', entityName: 'ChatMessage' });
           setTeamsSyncError('');
-          if (result?.imported) queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
         }
       } catch (error) {
         console.warn('[Teams] Team Chat sync unavailable:', error?.message);
@@ -72,7 +58,7 @@ export default function TeamChat() {
     };
     sync();
     return () => { cancelled = true; };
-  }, [user?.id, queryClient]);
+  }, [user?.id]);
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['chatDirectory'],
@@ -113,7 +99,6 @@ export default function TeamChat() {
       return created;
     },
     onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
       await refetchTeamsHistory();
       setMessage("");
       setMentionedUsers([]);
@@ -210,7 +195,6 @@ export default function TeamChat() {
       await syncTeamsChannelToEntity(user.id, { config: teamsConfig, configKey: 'team_chat', entityName: 'ChatMessage' }).catch(() => null);
       await refetchTeamsHistory();
     }
-    await queryClient.invalidateQueries({ queryKey: ['chatMessages'] });
   };
 
   const saveTeamsChannel = async () => {
