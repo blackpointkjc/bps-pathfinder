@@ -5,6 +5,8 @@ import {
   getMicrosoftMailConfig,
   getOutlookConnectionStatus,
   handleOutlookOAuthCallback,
+  handleOutlookOAuthMessage,
+  getOutlookRedirectOrigin,
   getMissingMicrosoftScopes,
 } from '@/lib/outlookGraph';
 
@@ -52,8 +54,28 @@ export default function MicrosoftMailSetupGate({ user, children }) {
 
     load();
     const onConnectionChanged = () => load();
-    const onMicrosoftMessage = event => {
-      if (event.origin !== window.location.origin) return;
+    const onMicrosoftMessage = async event => {
+      const sameOrigin = event.origin === window.location.origin;
+      const productionOAuthOrigin = event.origin === getOutlookRedirectOrigin();
+      if (!sameOrigin && !productionOAuthOrigin) return;
+
+      if (event.data?.type === 'bps:outlook-oauth-callback' && productionOAuthOrigin) {
+        try {
+          const callback = await handleOutlookOAuthMessage(userId, event.data);
+          if (callback.handled && !callback.success) {
+            if (active) setError(callback.error || 'Microsoft sign-in failed.');
+            return;
+          }
+          if (callback.success) {
+            window.dispatchEvent(new CustomEvent('bps:outlook-connection-changed'));
+            await load();
+          }
+        } catch (err) {
+          if (active) setError(err?.message || 'Unable to complete Microsoft sign-in.');
+        }
+        return;
+      }
+
       if (event.data?.type === 'bps:outlook-connected' && (!event.data.userId || event.data.userId === userId)) load();
     };
     const onStorage = event => {
