@@ -22,7 +22,7 @@ import {
 } from '@/lib/outlookGraph';
 import { toast } from 'sonner';
 import {
-  Archive, ArrowLeft, Building2, Forward, Inbox, Loader2, Mail, MailOpen, Paperclip,
+  Archive, ArrowLeft, Building2, Forward, Inbox, Loader2, Mail, MailOpen, Maximize2, Paperclip,
   PenLine, Plus, RefreshCw, Reply, Search, Send, Trash2, X,
 } from 'lucide-react';
 
