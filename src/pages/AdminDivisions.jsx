@@ -149,7 +149,7 @@ export default function AdminDivisions() {
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (await confirmInApp('Are you sure you want to delete this division? This may affect officers and locations assigned to it.')) {
       deleteDivisionMutation.mutate(id);
     }

@@ -332,7 +332,7 @@ export default function Schedule() {
                         )}
                       </div>
                       <Button
-                        onClick={() => {
+                        onClick={async () => {
                           if (await confirmInApp(`Claim this shift on ${format(parseISO(shift.shift_date), 'MMM d, yyyy')} from ${shift.start_time} to ${shift.end_time} at ${shift.location}?`)) {
                             claimShiftMutation.mutate(shift.id);
                           }

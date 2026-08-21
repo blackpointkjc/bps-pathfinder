@@ -137,7 +137,7 @@ export default function AdminEquipment() {
     setShowDialog(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (await confirmInApp('Are you sure you want to delete this equipment?')) {
       deleteMutation.mutate(id);
     }

@@ -430,7 +430,7 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
                 variant="outline"
                 size="sm"
                 className="text-orange-600 border-orange-300 hover:bg-orange-50"
-                onClick={() => {
+                onClick={async () => {
                   if (await confirmInApp(`Move ${userData.first_name} ${userData.last_name} back to Pending Users? This will remove their Officer role.`)) {
                     moveToPendingMutation.mutate(userData);
                   }

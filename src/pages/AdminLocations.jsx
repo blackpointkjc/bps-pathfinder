@@ -433,7 +433,7 @@ export default function AdminLocations({ embedded = false }) {
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (await confirmInApp('Are you sure you want to delete this location?')) {
       deleteLocationMutation.mutate(id);
     }

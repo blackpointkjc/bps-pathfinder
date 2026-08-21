@@ -1315,7 +1315,7 @@ Provide:
                         Continue
                       </Button>
                       <Button
-                        onClick={() => {
+                        onClick={async () => {
                           if (await confirmInApp('Delete this draft report?')) {
                             deleteDraftMutation.mutate(report.id);
                           }

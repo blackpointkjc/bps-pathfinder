@@ -537,7 +537,7 @@ export default function ManageTimeEntries() {
                               <Button
                                 variant="destructive"
                                 size="icon"
-                                onClick={() => {
+                                onClick={async () => {
                                   if (await confirmInApp("Are you sure you want to delete this time entry?")) {
                                     deleteEntryMutation.mutate(entry.id);
                                   }

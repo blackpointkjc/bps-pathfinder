@@ -180,7 +180,7 @@ export default function ManageClients() {
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (await confirmInApp('Are you sure you want to remove this client?')) {
       deleteClientMutation.mutate(id);
     }

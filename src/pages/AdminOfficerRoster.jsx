@@ -119,7 +119,7 @@ export default function AdminOfficerRoster() {
     setShowDialog(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (await confirmInApp('Are you sure you want to delete this roster entry?')) {
       deleteEntryMutation.mutate(id);
     }

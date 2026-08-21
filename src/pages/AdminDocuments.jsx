@@ -253,7 +253,7 @@ export default function AdminDocuments() {
                         View
                       </Button>
                       <Button
-                        onClick={() => {
+                        onClick={async () => {
                           if (await confirmInApp('Delete this document?')) {
                             deleteDocMutation.mutate(doc.id);
                           }

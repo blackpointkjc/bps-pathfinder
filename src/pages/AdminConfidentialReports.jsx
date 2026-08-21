@@ -143,7 +143,7 @@ export default function AdminConfidentialReports() {
     }
   };
 
-  const handleArchive = () => {
+  const handleArchive = async () => {
     if (selectedReport && await confirmInApp("Move this report to inactive? This marks it as resolved.")) {
       archiveReportMutation.mutate(selectedReport.id);
     }

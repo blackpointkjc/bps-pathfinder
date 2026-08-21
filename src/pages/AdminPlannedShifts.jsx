@@ -224,7 +224,7 @@ export default function AdminPlannedShifts() {
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (await confirmInApp('Delete this planned shift?')) {
       deleteMutation.mutate(id);
     }

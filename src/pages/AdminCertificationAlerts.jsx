@@ -161,7 +161,7 @@ function AdminCertificationAlertsContent({ embedded = false }) {
     },
   });
 
-  const handleManualCheck = () => {
+  const handleManualCheck = async () => {
     if (await confirmInApp('This will check all officers for expiring certifications (DCJS and Firearm within 60 days). Continue?')) {
       setIsRunningCheck(true);
       manualCheckMutation.mutate();

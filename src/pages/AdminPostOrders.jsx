@@ -134,7 +134,7 @@ export default function AdminPostOrders() {
     setShowGeneralDialog(true);
   };
 
-  const handleDeleteGeneral = (section) => {
+  const handleDeleteGeneral = async (section) => {
     if (await confirmInApp(`Delete section "${section.section_title}"? This cannot be undone.`)) {
       deleteGeneralMutation.mutate(section.id);
     }

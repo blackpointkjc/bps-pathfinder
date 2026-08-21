@@ -970,7 +970,7 @@ function AdminTrainingComplianceContent({ embedded = false }) {
                           <Button size="sm" variant="outline" onClick={() => { setEditingRequirement(req); setRequirementForm({ ...req }); setShowRequirementDialog(true); }}>
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => { if (await confirmInApp('Delete this training type?')) deleteRequirementMutation.mutate(req.id); }}>
+                          <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={async () => { if (await confirmInApp('Delete this training type?')) deleteRequirementMutation.mutate(req.id); }}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>

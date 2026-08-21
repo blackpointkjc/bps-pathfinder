@@ -232,7 +232,7 @@ export default function ManageStudents({ embedded = false }) {
                       variant="outline"
                       size="sm"
                       className="text-green-700 border-green-300 hover:bg-green-50"
-                      onClick={() => {
+                      onClick={async () => {
                         if (await confirmInApp(`Convert ${student.first_name || student.email} from Student to Officer? This removes the Student role.`)) {
                           convertToOfficerMutation.mutate(student);
                         }
