@@ -321,6 +321,7 @@ const CENTER_UNREAD_PAGES = {
 };
 
 const MICROSOFT_TOOL_PAGES = new Set(['OfficerInbox', 'OfficerChat', 'SupervisorChat']);
+const COMMUNICATION_PAGES = new Set(['OfficerInbox', 'OutlookMail', 'OfficerChat', 'SupervisorChat']);
 
 function hasFullAccess(user) {
   return user?.role === 'admin' || normalizedRoles(user).has('full_access');
@@ -1204,6 +1205,16 @@ export default function Layout({ children, currentPageName }) {
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
           {!ROOT_PAGES.has(currentPageName) && (
             <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(createPageUrl(defaultPageForUser(user)))} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] md:hidden" aria-label="Go back"><ChevronLeft className="h-5 w-5" /></button>
+          )}
+          {COMMUNICATION_PAGES.has(currentPageName) && (
+            <Link
+              to={createPageUrl('CommandDashboard')}
+              className="flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-blue-500/70 bg-blue-600/20 px-3 text-[10px] font-black uppercase tracking-wider text-blue-100 hover:bg-blue-600/35"
+              aria-label="Return to CAD home"
+            >
+              <Gauge className="h-4 w-4" />
+              <span>CAD Home</span>
+            </Link>
           )}
           <div className="min-w-0">
             <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white md:tracking-[0.15em]"><span className="md:hidden">{pageLabel(currentPageName)}</span><span className="hidden md:inline">{centerLabel}</span></div>
