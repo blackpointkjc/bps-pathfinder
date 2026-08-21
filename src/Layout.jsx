@@ -82,9 +82,9 @@ const CENTER_CONFIG = {
         ['Open Shifts', 'OpenShifts', Briefcase],
         ['Payroll Dates', 'OfficerPayrollDates', DollarSign],
       ]},
-      { label: 'Messages', items: [
-        ['Team Chat', 'TeamChat', MessageCircle],
-        ['Officer Chat', 'OfficerChat', MessageCircle],
+      { label: 'Communications', items: [
+        ['Teams Messages', 'OfficerInbox', MessageCircle],
+        ['Officer Chat', 'OfficerChat', Radio],
         ['Announcements', 'Announcements', Bell],
       ]},
       { label: 'Profile & Training', items: [
@@ -314,10 +314,12 @@ const ROOT_PAGES = new Set(['CommandDashboard', 'Dashboard', 'OfficerInbox']);
 const CENTER_UNREAD_PAGES = {
   // CAD message counts are shown on the in-workspace MSG control, not the side menu.
   cad: [],
-  officer: ['TeamChat', 'OfficerChat', 'Announcements'],
+  officer: ['OfficerInbox', 'OfficerChat', 'Announcements'],
   supervisor: ['SupervisorChat'],
   admin: ['AdminAnnouncements'],
 };
+
+const MICROSOFT_TOOL_PAGES = new Set(['OutlookMail', 'OfficerInbox', 'OfficerChat', 'SupervisorChat']);
 
 function hasFullAccess(user) {
   return user?.role === 'admin' || normalizedRoles(user).has('full_access');
@@ -555,27 +557,26 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
                 </Select>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-2 rounded-xl border border-[#203a52] bg-[#07131f]/70 p-2">
-                {availableCenters.map(key => {
-                  const item = CENTER_CONFIG[key];
-                  const Icon = item.icon;
-                  const target = DESKTOP_CENTER_PAGE[key] || defaultPageForCenter(key);
-                  const active = activeCenter === key;
-                  const centerUnread = (CENTER_UNREAD_PAGES[key] || []).reduce((sum, page) => sum + (Number(unreadCounts[page]) || 0), 0);
-                  return (
-                    <Link
-                      key={key}
-                      to={createPageUrl(target)}
-                      onClick={() => setActiveCenter(key)}
-                      title={item.label}
-                      className={`relative flex min-h-[58px] min-w-0 flex-col items-center justify-center gap-1 rounded-lg border px-1.5 py-2 text-center transition ${active ? 'border-cyan-400/70 bg-[#12304a] text-white shadow-[0_0_0_1px_rgba(34,211,238,.08)]' : 'border-transparent bg-[#0a1927] text-[#91a8bf] hover:border-[#31506d] hover:bg-[#102b47] hover:text-white'}`}
-                    >
-                      <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-cyan-300' : 'text-[#6683a0]'}`} />
-                      <span className="w-full truncate text-[8px] font-black leading-tight">{item.label.replace(' Center', '').replace(' Portal', '')}</span>
-                      {!!centerUnread && <span className="absolute right-1 top-1 rounded-full bg-red-500 px-1 text-[7px] font-black text-white">{centerUnread > 99 ? '99+' : centerUnread}</span>}
-                    </Link>
-                  );
-                })}
+              <div className="rounded-xl border border-[#203a52] bg-[#07131f]/70 p-2.5 shadow-inner">
+                <div className="mb-1.5 flex items-center justify-between px-1">
+                  <span className="text-[8px] font-black uppercase tracking-[0.18em] text-[#6886a3]">Workspace</span>
+                  <span className="text-[8px] font-bold text-cyan-300">{center.label}</span>
+                </div>
+                <div className="relative">
+                  {React.createElement(center.icon, { className: 'pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-cyan-300' })}
+                  <Select value={activeCenter} onValueChange={setActiveCenter}>
+                    <SelectTrigger className="h-11 w-full border-[#315879] bg-gradient-to-r from-[#102c49] to-[#0c2238] pl-10 text-[11px] font-black text-white shadow-sm focus:ring-cyan-900/40" aria-label="Switch Pathfinder workspace">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="border-[#315879] bg-[#0b1928] text-white">
+                      {availableCenters.map(key => {
+                        const item = CENTER_CONFIG[key];
+                        const centerUnread = (CENTER_UNREAD_PAGES[key] || []).reduce((sum, page) => sum + (Number(unreadCounts[page]) || 0), 0);
+                        return <SelectItem key={key} value={key} className="focus:bg-[#15314f] focus:text-white">{item.label}{centerUnread ? ` — ${centerUnread > 99 ? '99+' : centerUnread} unread` : ''}</SelectItem>;
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             )}
           </div>
@@ -610,6 +611,17 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             })}
           </div>
         )}
+        {(!collapsed || mobile) && <div className="mb-1 px-2.5 pt-1 text-[8px] font-black uppercase tracking-[0.18em] text-[#5f7d99]">Communication</div>}
+        <Link
+          to={createPageUrl('OfficerInbox')}
+          onClick={() => onCloseMobile?.()}
+          className={`relative mb-1 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all ${currentPageName === 'OfficerInbox' ? 'border-cyan-500/60 bg-[#12304a] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
+          title={collapsed && !mobile ? 'Teams Messages' : undefined}
+        >
+          <MessageCircle className="h-4 w-4 shrink-0 text-cyan-300" />
+          {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">TEAMS MESSAGES</span>}
+          {!!unreadCounts.OfficerInbox && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.OfficerInbox > 99 ? '99+' : unreadCounts.OfficerInbox}</span>}
+        </Link>
         <Link
           to={createPageUrl('OutlookMail')}
           onClick={() => onCloseMobile?.()}
@@ -620,15 +632,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
           {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">OUTLOOK MAIL</span>}
           {!!unreadCounts.OutlookMail && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.OutlookMail > 99 ? '99+' : unreadCounts.OutlookMail}</span>}
         </Link>
-        {mobile && <Link
-          to={createPageUrl('OfficerInbox')}
-          onClick={() => onCloseMobile?.()}
-          className={`relative mb-2 flex min-h-9 items-center gap-2.5 rounded-md border px-2.5 py-1.5 transition-all ${currentPageName === 'OfficerInbox' ? 'border-cyan-500/60 bg-gradient-to-r from-[#16466f] to-[#123554] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'}`}
-        >
-          <MessageCircle className="h-4 w-4 shrink-0 text-[#7ec1ff]" />
-          <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">INBOX</span>
-          {!!unreadCounts.OfficerInbox && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.OfficerInbox > 99 ? '99+' : unreadCounts.OfficerInbox}</span>}
-        </Link>}
+
         {groups.map((group) => {
           const groupOpen = Boolean(query) || openNavGroup === group.label;
           return (
@@ -1118,7 +1122,7 @@ export default function Layout({ children, currentPageName }) {
   const criticalOutage = outages.some(item => item.severity === 'outage');
   const centerLabel = CENTER_CONFIG[activeCenter]?.label || 'CAD Center';
 
-  return <MicrosoftMailSetupGate user={user}><div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><BackgroundLocationTracker user={user} /><NotificationMonitor user={user} /><OutlookNotificationMonitor user={user} /><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} /><ForcedOOSOverlay />
+  return <MicrosoftMailSetupGate user={user} enabled={MICROSOFT_TOOL_PAGES.has(currentPageName)}><div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><BackgroundLocationTracker user={user} /><NotificationMonitor user={user} />{currentPageName === 'OutlookMail' && <OutlookNotificationMonitor user={user} />}<GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} /><ForcedOOSOverlay />
     <aside className="relative hidden flex-col border-r border-[#1c3049] md:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
       <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onToggleCollapsed={() => setCollapsed(value => !value)} onLogout={() => logout(true)} />
     </aside>
