@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { calculatePunctuality } from '@/lib/performanceScoring';
+import { calculatePunctuality, calculateTrainingScore } from '@/lib/performanceScoring';
 
 export default function OfficerAnalytics() {
   const { data: user } = useQuery({
@@ -45,6 +45,12 @@ export default function OfficerAnalytics() {
   const { data: allTraining } = useQuery({
     queryKey: ['allTrainingModules'],
     queryFn: () => base44.entities.TrainingModule.filter({ active: true }),
+  });
+
+  const { data: trainingAssignments = [] } = useQuery({
+    queryKey: ['myTrainingAssignments', user?.email],
+    queryFn: () => base44.entities.TrainingAssignment.filter({ officer_email: user?.email }),
+    enabled: !!user?.email,
   });
 
   // Get current month boundaries for monthly reset
@@ -122,22 +128,10 @@ export default function OfficerAnalytics() {
     return { splitShifts, overnightShifts, totalShifts: schedules.length };
   }, [schedules]);
 
-  const trainingStats = useMemo(() => {
-    if (!trainingCompletions || !allTraining) return { completed: 0, pending: 0, percentage: 0 };
-
-    const assignedTraining = allTraining.filter(t => 
-      t.assigned_to?.includes(user?.email) || 
-      t.assigned_divisions?.includes(user?.division) ||
-      t.assigned_ranks?.includes(user?.rank)
-    );
-
-    const completedIds = trainingCompletions.filter(tc => tc.completed).map(tc => tc.training_module_id);
-    const completed = assignedTraining.filter(t => completedIds.includes(t.id)).length;
-    const pending = assignedTraining.length - completed;
-    const percentage = assignedTraining.length > 0 ? Math.round((completed / assignedTraining.length) * 100) : 100;
-
-    return { completed, pending, percentage };
-  }, [trainingCompletions, allTraining, user]);
+  const trainingStats = useMemo(
+    () => calculateTrainingScore(user, allTraining || [], trainingCompletions || [], trainingAssignments || []),
+    [user, allTraining, trainingCompletions, trainingAssignments]
+  );
 
   return (
     <div className="p-4 md:p-8 min-h-screen">
@@ -195,7 +189,7 @@ export default function OfficerAnalytics() {
               <div className="flex items-center justify-between mb-2">
                 <Award className="w-8 h-8 text-amber-600" />
                 <span className={`text-3xl font-bold ${trainingStats.percentage === 100 ? 'text-green-600' : 'text-amber-600'}`}>
-                  {trainingStats.percentage}%
+                  {trainingStats.percentage != null ? `${trainingStats.percentage}%` : '—'}
                 </span>
               </div>
               <p className="text-sm font-medium text-slate-700">Training Complete</p>
