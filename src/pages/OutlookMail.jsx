@@ -199,6 +199,23 @@ export default function OutlookMail() {
     };
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    let refreshing = false;
+    const refreshForNewMail = async () => {
+      if (refreshing || document.visibilityState !== 'visible') return;
+      refreshing = true;
+      try {
+        if (isCompanyImap && activeMailbox?.id) await loadCompanyMailbox(activeMailbox, folderId || 'INBOX');
+        else if (connection?.connected) await loadMailbox(folderId || 'inbox', false, null, activeMailboxEmail);
+      } finally {
+        refreshing = false;
+      }
+    };
+    window.addEventListener('bps-mail-new-message', refreshForNewMail);
+    return () => window.removeEventListener('bps-mail-new-message', refreshForNewMail);
+  }, [user?.id, activeMailbox?.id, isCompanyImap, folderId, connection?.connected, activeMailboxEmail]);
+
   const filteredMessages = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return messages;
