@@ -21,7 +21,6 @@ import TimeRequests from './TimeRequests';
 import OfficerAvailability from './OfficerAvailability';
 import OpenShifts from './OpenShifts';
 import OfficerPayrollDates from './OfficerPayrollDates';
-import TeamChat from './TeamChat';
 import Announcements from './Announcements';
 import OfficerProfile from './OfficerProfile';
 import MyPerformanceAnalytics from './MyPerformanceAnalytics';
@@ -34,7 +33,7 @@ const SECTIONS = [
   { id: 'field', label: 'Field Tools', description: 'Post orders, patrol, handover and enforcement forms', icon: Shield },
   { id: 'reports', label: 'Reports', description: 'Daily, incident and support reports', icon: ClipboardList },
   { id: 'schedule', label: 'Schedule & Availability', description: 'Availability, open shifts and payroll dates', icon: Wrench },
-  { id: 'messages', label: 'Messages', description: 'Team chat and announcements', icon: MessageCircle },
+  { id: 'messages', label: 'Messages', description: 'Announcements and communication shortcuts', icon: MessageCircle },
   { id: 'profile', label: 'Profile & Training', description: 'Profile, performance, training and rank information', icon: UserRound },
 ];
 
@@ -68,7 +67,6 @@ const TOOLS = {
     { id: 'payroll', label: 'Payroll Dates', component: OfficerPayrollDates },
   ],
   messages: [
-    { id: 'chat', label: 'Team Chat', component: TeamChat },
     { id: 'announcements', label: 'Announcements', component: Announcements },
   ],
   profile: [
