@@ -1199,7 +1199,7 @@ export default function Layout({ children, currentPageName }) {
       </motion.div>
     )}</AnimatePresence>
 
-    <section className="flex min-w-0 flex-1 flex-col">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       <header className="flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
           {!ROOT_PAGES.has(currentPageName) && (
