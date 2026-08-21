@@ -32,7 +32,11 @@ export default function TeamsNotificationMonitor({ user }) {
       if (!token?.access_token) return;
       runningRef.current = true;
       try {
+        const currentPage = window.location.pathname.split('/').filter(Boolean).pop() || '';
         for (const target of targets) {
+          // The open chat page owns its own 20-second refresh. The background
+          // monitor skips that same channel so two loops never hit Graph together.
+          if (currentPage === target.page) continue;
           try {
             const rows = await getTeamsChannelMessages(user.id, null, target.key);
             const ids = new Set((rows || []).map(item => String(item.id)));
@@ -40,9 +44,8 @@ export default function TeamsNotificationMonitor({ user }) {
             if (initializedRef.current) {
               const newItems = (rows || []).filter(item => !previous.has(String(item.id)));
               if (newItems.length) {
-                const currentPage = window.location.pathname.split('/').filter(Boolean).pop() || '';
                 window.dispatchEvent(new CustomEvent('bps-unread-notification', { detail: { page: target.page, count: newItems.length } }));
-                if (currentPage !== target.page) {
+                {
                   const newest = newItems[newItems.length - 1];
                   toast.info(`${target.label} · ${newItems.length === 1 ? 'New message' : `${newItems.length} new messages`}`, {
                     description: `${newest?.sender_name || 'Microsoft Teams'}: ${newest?.message || ''}`.slice(0, 220),
@@ -67,9 +70,7 @@ export default function TeamsNotificationMonitor({ user }) {
 
     const schedule = () => {
       if (cancelled) return;
-      const currentPage = window.location.pathname.split('/').filter(Boolean).pop() || '';
-      const activeChat = currentPage === 'OfficerChat' || currentPage === 'SupervisorChat';
-      const delay = document.visibilityState === 'hidden' ? 90000 : activeChat ? 20000 : 60000;
+      const delay = document.visibilityState === 'hidden' ? 90000 : 60000;
       clearTimeout(timer);
       timer = window.setTimeout(async () => { await poll(); schedule(); }, delay);
     };
