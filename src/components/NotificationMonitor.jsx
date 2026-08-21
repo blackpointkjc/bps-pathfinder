@@ -57,19 +57,9 @@ export default function NotificationMonitor({ user }) {
     }
   };
 
-  // Request notification permission on mount
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  // Show browser notification
-  const showBrowserNotification = (title, body, icon) => {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, { body, icon, badge: '/badge-icon.png' });
-    }
-  };
+  // Notifications stay inside Pathfinder. Browser/OS notification
+  // permission prompts and external notification banners are intentionally disabled.
+  const showBrowserNotification = () => {};
 
   // Monitor schedule publication changes. Track the version/state of the week record,
   // not just its ID, because publishing updates the existing record in place.
