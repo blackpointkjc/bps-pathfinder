@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
+import { base44 } from '@/api/base44Client';
 import {
   deleteOutlookMessage,
   disconnectOutlook,
@@ -94,11 +95,43 @@ export default function OutlookMail() {
   const [forwardTo, setForwardTo] = useState('');
   const [forwardComment, setForwardComment] = useState('');
   const [sharedMailboxes, setSharedMailboxes] = useState([]);
+  const [companyMailboxes, setCompanyMailboxes] = useState([]);
   const [activeMailbox, setActiveMailbox] = useState(null);
   const [sharedAddress, setSharedAddress] = useState('');
   const [addingShared, setAddingShared] = useState(false);
 
-  const activeMailboxEmail = activeMailbox?.mailbox_email || '';
+  const isCompanyImap = activeMailbox?._source === 'imap';
+  const activeMailboxEmail = isCompanyImap ? '' : (activeMailbox?.mailbox_email || '');
+
+  const invokeCompanyMail = async (action, extra = {}, mailbox = activeMailbox) => {
+    const mailboxId = mailbox?.id;
+    if (!mailboxId) throw new Error('Company mailbox is not selected.');
+    const result = await base44.functions.invoke('companyImapMail', { action, mailbox_id: mailboxId, ...extra });
+    const payload = result?.data || result || {};
+    if (payload.error) throw new Error(payload.error);
+    return payload;
+  };
+
+  const loadCompanyMailbox = async (mailbox, targetFolder = 'INBOX') => {
+    if (!mailbox?.id) return;
+    try {
+      setLoading(true);
+      const [folderResult, messageResult] = await Promise.all([
+        invokeCompanyMail('folders', {}, mailbox),
+        invokeCompanyMail('messages', { folder: targetFolder, limit: 35 }, mailbox),
+      ]);
+      const folderRows = (folderResult.folders || []).map(folder => ({ ...folder, id: folder.id || folder.path }));
+      setFolders(folderRows);
+      setFolderId(targetFolder);
+      setFolderName(folderRows.find(folder => folder.id === targetFolder)?.displayName || targetFolder);
+      setMessages(messageResult.messages || []);
+      setNextLink(null);
+    } catch (error) {
+      toast.error(error?.message || 'Unable to load company mailbox.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const reloadSharedMailboxes = async () => {
     if (!user?.id) return [];
@@ -138,6 +171,10 @@ export default function OutlookMail() {
   useEffect(() => {
     if (!user?.id) return undefined;
     reloadSharedMailboxes();
+    base44.functions.invoke('companyImapMail', { action: 'status' }).then(result => {
+      const payload = result?.data || result || {};
+      setCompanyMailboxes((payload.mailboxes || []).map(item => ({ ...item, _source: 'imap' })));
+    }).catch(() => setCompanyMailboxes([]));
     loadMailbox('inbox', false, null, '');
     const refreshShared = () => reloadSharedMailboxes();
     window.addEventListener('bps:outlook-connection-changed', refreshShared);
@@ -160,11 +197,24 @@ export default function OutlookMail() {
     setFolderName(folder.displayName || 'Mail');
     setSelected(null);
     setAttachments([]);
-    await loadMailbox(folder.id, false, null);
+    if (isCompanyImap) await loadCompanyMailbox(activeMailbox, folder.id || folder.path || 'INBOX');
+    else await loadMailbox(folder.id, false, null);
   };
 
   const openMessage = async message => {
     try {
+      if (isCompanyImap) {
+        const result = await invokeCompanyMail('message', { folder: folderId || 'INBOX', uid: Number(message.uid || message.id) });
+        const full = result.message || message;
+        setSelected(full);
+        setAttachments([]);
+        if (!message.isRead) {
+          await invokeCompanyMail('mark_read', { folder: folderId || 'INBOX', uid: Number(message.uid || message.id), read: true });
+          setSelected(current => current ? { ...current, isRead: true } : current);
+          setMessages(current => current.map(item => item.id === message.id ? { ...item, isRead: true } : item));
+        }
+        return;
+      }
       const full = await getOutlookMessage(user.id, message.id, activeMailboxEmail);
       setSelected(full || message);
       setAttachments([]);
@@ -188,16 +238,27 @@ export default function OutlookMail() {
     if (!compose.subject.trim()) return toast.error('Enter a subject.');
     try {
       setSending(true);
-      await sendOutlookMail(user.id, {
-        to: recipients,
-        cc: splitAddresses(compose.cc),
-        bcc: splitAddresses(compose.bcc),
-        subject: compose.subject.trim(),
-        body: compose.body,
-        attachments: compose.attachments,
-        mailboxEmail: activeMailboxEmail,
-      });
-      toast.success('Email sent through Outlook.');
+      if (isCompanyImap) {
+        await invokeCompanyMail('send', {
+          to: recipients,
+          cc: splitAddresses(compose.cc),
+          bcc: splitAddresses(compose.bcc),
+          subject: compose.subject.trim(),
+          body: compose.body,
+          text: compose.body,
+        });
+      } else {
+        await sendOutlookMail(user.id, {
+          to: recipients,
+          cc: splitAddresses(compose.cc),
+          bcc: splitAddresses(compose.bcc),
+          subject: compose.subject.trim(),
+          body: compose.body,
+          attachments: compose.attachments,
+          mailboxEmail: activeMailboxEmail,
+        });
+      }
+      toast.success(isCompanyImap ? 'Email sent through company mail.' : 'Email sent through Outlook.');
       setCompose({ to: '', cc: '', bcc: '', subject: '', body: '', attachments: [] });
       setComposeOpen(false);
       if (String(folderName).toLowerCase().includes('sent')) loadMailbox(folderId);
@@ -216,9 +277,15 @@ export default function OutlookMail() {
     if (!selected || !replyText.trim()) return;
     try {
       setReplying(true);
-      await replyOutlookMail(user.id, selected.id, replyText.trim(), activeMailboxEmail);
+      if (isCompanyImap) {
+        const replyAddress = selected?.from?.emailAddress?.address;
+        if (!replyAddress) throw new Error('Sender email address is unavailable.');
+        await invokeCompanyMail('send', { to: [replyAddress], subject: /^re:/i.test(selected.subject || '') ? selected.subject : `Re: ${selected.subject || ''}`, body: replyText.trim(), text: replyText.trim() });
+      } else {
+        await replyOutlookMail(user.id, selected.id, replyText.trim(), activeMailboxEmail);
+      }
       setReplyText('');
-      toast.success('Reply sent through Outlook.');
+      toast.success(isCompanyImap ? 'Reply sent through company mail.' : 'Reply sent through Outlook.');
     } catch (error) {
       toast.error(error?.message || 'Unable to send reply.');
     } finally {
@@ -231,7 +298,12 @@ export default function OutlookMail() {
     if (!selected || !recipients.length) return toast.error('Enter a forwarding recipient.');
     try {
       setReplying(true);
-      await forwardOutlookMail(user.id, selected.id, recipients, forwardComment.trim(), activeMailboxEmail);
+      if (isCompanyImap) {
+        const original = String(selected?.body?.content || selected?.bodyPreview || '');
+        await invokeCompanyMail('send', { to: recipients, subject: /^fwd:/i.test(selected.subject || '') ? selected.subject : `Fwd: ${selected.subject || ''}`, body: `${forwardComment.trim()}\n\n---------- Forwarded message ----------\n${original}`, text: `${forwardComment.trim()}\n\n---------- Forwarded message ----------\n${original}` });
+      } else {
+        await forwardOutlookMail(user.id, selected.id, recipients, forwardComment.trim(), activeMailboxEmail);
+      }
       setForwardOpen(false);
       setForwardTo('');
       setForwardComment('');
@@ -246,9 +318,10 @@ export default function OutlookMail() {
   const removeMessage = async () => {
     if (!selected) return;
     try {
-      await deleteOutlookMessage(user.id, selected.id, activeMailboxEmail);
+      if (isCompanyImap) await invokeCompanyMail('delete', { folder: folderId || 'INBOX', uid: Number(selected.uid || selected.id) });
+      else await deleteOutlookMessage(user.id, selected.id, activeMailboxEmail);
       setMessages(current => current.filter(item => item.id !== selected.id));
-      window.dispatchEvent(new CustomEvent('bps-outlook-refresh'));
+      if (!isCompanyImap) window.dispatchEvent(new CustomEvent('bps-outlook-refresh'));
       setSelected(null);
       setAttachments([]);
       toast.success('Email moved to Deleted Items.');
@@ -261,7 +334,8 @@ export default function OutlookMail() {
     if (!selected) return;
     try {
       const next = !selected.isRead;
-      await setOutlookMessageRead(user.id, selected.id, next, activeMailboxEmail);
+      if (isCompanyImap) await invokeCompanyMail('mark_read', { folder: folderId || 'INBOX', uid: Number(selected.uid || selected.id), read: next });
+      else await setOutlookMessageRead(user.id, selected.id, next, activeMailboxEmail);
       setSelected(current => ({ ...current, isRead: next }));
       setMessages(current => current.map(item => item.id === selected.id ? { ...item, isRead: next } : item));
       window.dispatchEvent(new CustomEvent('bps-outlook-refresh'));
@@ -274,12 +348,13 @@ export default function OutlookMail() {
     const mailboxEmail = mailbox?.mailbox_email || '';
     setActiveMailbox(mailbox || null);
     setFolders([]);
-    setFolderId('inbox');
+    setFolderId(mailbox?._source === 'imap' ? 'INBOX' : 'inbox');
     setFolderName('Inbox');
     setSelected(null);
     setAttachments([]);
     setMessages([]);
-    await loadMailbox('inbox', false, null, mailboxEmail);
+    if (mailbox?._source === 'imap') await loadCompanyMailbox(mailbox, 'INBOX');
+    else await loadMailbox('inbox', false, null, mailboxEmail);
   };
 
   const addSharedMailbox = async () => {
