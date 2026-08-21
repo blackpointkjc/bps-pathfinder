@@ -100,6 +100,17 @@ export default function OutlookMail() {
 
   const activeMailboxEmail = activeMailbox?.mailbox_email || '';
 
+  const reloadSharedMailboxes = async () => {
+    if (!user?.id) return [];
+    const rows = await listSavedSharedMailboxes(user.id).catch(() => []);
+    setSharedMailboxes(rows || []);
+    setActiveMailbox(current => {
+      if (!current?.id) return current;
+      return (rows || []).find(item => item.id === current.id) || current;
+    });
+    return rows || [];
+  };
+
   const loadMailbox = async (targetFolder = folderId, append = false, link = null, mailboxEmail = activeMailboxEmail) => {
     if (!user?.id) return;
     try {
@@ -125,11 +136,16 @@ export default function OutlookMail() {
   };
 
   useEffect(() => {
-    if (!user?.id) return;
-    Promise.all([
-      listSavedSharedMailboxes(user.id).catch(() => []),
-      loadMailbox('inbox', false, null, ''),
-    ]).then(([rows]) => setSharedMailboxes(rows || []));
+    if (!user?.id) return undefined;
+    reloadSharedMailboxes();
+    loadMailbox('inbox', false, null, '');
+    const refreshShared = () => reloadSharedMailboxes();
+    window.addEventListener('bps:outlook-connection-changed', refreshShared);
+    window.addEventListener('bps:outlook-shared-mailboxes-changed', refreshShared);
+    return () => {
+      window.removeEventListener('bps:outlook-connection-changed', refreshShared);
+      window.removeEventListener('bps:outlook-shared-mailboxes-changed', refreshShared);
+    };
   }, [user?.id]);
 
   const filteredMessages = useMemo(() => {
@@ -282,6 +298,7 @@ export default function OutlookMail() {
       const verified = await verifySharedMailboxAccess(user.id, address);
       const saved = await saveSharedMailbox(user.id, user?.email || '', { ...verified, displayName: pending.display_name || verified.displayName, connectionStatus: 'verified' });
       setSharedMailboxes(current => current.map(item => item.id === saved.id || item.mailbox_email === saved.mailbox_email ? saved : item));
+      window.dispatchEvent(new CustomEvent('bps:outlook-shared-mailboxes-changed'));
       toast.success(`Shared mailbox connected: ${verified.email}`);
       await switchMailbox(saved);
     } catch (error) {
@@ -294,6 +311,7 @@ export default function OutlookMail() {
           lastError: raw,
         }).catch(() => pending);
         setSharedMailboxes(current => current.map(item => item.id === pending.id || item.mailbox_email === address ? { ...item, ...needsAttention, connection_status: 'needs_attention', last_error: raw } : item));
+        window.dispatchEvent(new CustomEvent('bps:outlook-shared-mailboxes-changed')); 
       }
       const guidance = error?.status === 403
         ? ' It has been saved in Pathfinder, but Microsoft denied mailbox access. Confirm Full Access plus Send As/Send on Behalf in Exchange, then reconnect Microsoft 365 and retry.'
@@ -315,6 +333,7 @@ export default function OutlookMail() {
         connectionStatus: 'verified',
       });
       setSharedMailboxes(current => current.map(item => item.id === mailbox.id || item.mailbox_email === mailbox.mailbox_email ? saved : item));
+      window.dispatchEvent(new CustomEvent('bps:outlook-shared-mailboxes-changed'));
       toast.success(`${mailbox.display_name || mailbox.mailbox_email} verified with Microsoft.`);
       await switchMailbox(saved);
     } catch (error) {
@@ -326,6 +345,7 @@ export default function OutlookMail() {
         lastError: raw,
       }).catch(() => mailbox);
       setSharedMailboxes(current => current.map(item => item.id === mailbox.id ? { ...item, ...saved, connection_status: 'needs_attention', last_error: raw } : item));
+      window.dispatchEvent(new CustomEvent('bps:outlook-shared-mailboxes-changed'));
       toast.error(raw, { duration: 12000 });
     } finally {
       setAddingShared(false);
@@ -340,6 +360,7 @@ export default function OutlookMail() {
       const updated = await renameSharedMailbox(mailbox.id, nextName);
       setSharedMailboxes(current => current.map(item => item.id === mailbox.id ? { ...item, display_name: updated.display_name } : item));
       setActiveMailbox(current => current?.id === mailbox.id ? { ...current, display_name: updated.display_name } : current);
+      window.dispatchEvent(new CustomEvent('bps:outlook-shared-mailboxes-changed'));
       toast.success('Shared mailbox name saved.');
     } catch (error) {
       toast.error(error?.message || 'Unable to rename shared mailbox.');
@@ -351,6 +372,7 @@ export default function OutlookMail() {
     try {
       await removeSharedMailbox(mailbox.id);
       setSharedMailboxes(current => current.filter(item => item.id !== mailbox.id));
+      window.dispatchEvent(new CustomEvent('bps:outlook-shared-mailboxes-changed'));
       if (activeMailbox?.id === mailbox.id) await switchMailbox(null);
       toast.success('Shared mailbox removed from Pathfinder.');
     } catch (error) {
