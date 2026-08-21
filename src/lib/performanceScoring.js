@@ -596,10 +596,15 @@ export function buildOverallPerformance({ punctuality, trainingScore = null, job
   ].map(item => ({ ...item, effectiveScore: item.score == null && item.neutralWhenMissing ? 100 : item.score }));
 
   // Core operational metrics are only included once they have scoreable records;
-  // the neutral 3% categories keep their fixed weight at 100 when missing.
+  // the neutral 3% categories keep their fixed weight at 100 when missing. Neutral
+  // categories may protect an existing grade, but they must never manufacture a
+  // 100% overall grade when there is no punctuality/job-duty/call-out data at all.
+  const coreScoreable = configured.slice(0, 3).filter(item => item.effectiveScore != null);
+  if (!coreScoreable.length) {
+    return { score: null, categories: [], omitted: configured.filter(item => item.effectiveScore == null).map(item => item.label) };
+  }
   const scoreable = configured.filter(item => item.effectiveScore != null);
   const activeWeight = scoreable.reduce((sum, item) => sum + item.baseWeight, 0);
-  if (!activeWeight) return { score: null, categories: [], omitted: configured.filter(item => item.effectiveScore == null).map(item => item.label) };
   const score = Math.round(scoreable.reduce((sum, item) => sum + (item.effectiveScore * item.baseWeight), 0) / activeWeight);
   const categories = scoreable.map(item => ({ label: item.label, score: item.effectiveScore, neutral: item.score == null && item.neutralWhenMissing }));
   return {
