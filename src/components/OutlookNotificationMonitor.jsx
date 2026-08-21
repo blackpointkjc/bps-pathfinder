@@ -83,6 +83,7 @@ export default function OutlookNotificationMonitor({ user }) {
         const newItems = allUnread.filter(item => !seenRef.current.has(keyOf(item)));
         seenRef.current = new Set([...ids, ...seenRef.current].slice(0, 400));
         if (newItems.length) {
+          window.dispatchEvent(new CustomEvent('bps-mail-new-message', { detail: { count: newItems.length } }));
           const newest = [...newItems].sort((a, b) => new Date(b.receivedDateTime || 0) - new Date(a.receivedDateTime || 0))[0];
           const sender = newest?.from?.emailAddress?.name || newest?.from?.emailAddress?.address || 'New sender';
           const label = newest?._mailboxLabel || 'Mail';
