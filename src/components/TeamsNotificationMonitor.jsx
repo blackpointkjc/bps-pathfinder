@@ -8,6 +8,7 @@ export default function TeamsNotificationMonitor({ user }) {
   const seenRef = useRef({});
   const initializedRef = useRef(false);
   const runningRef = useRef(false);
+  const lastPollRef = useRef({});
 
   useEffect(() => {
     if (!user?.id) return undefined;
@@ -33,19 +34,22 @@ export default function TeamsNotificationMonitor({ user }) {
       runningRef.current = true;
       try {
         const currentPage = window.location.pathname.split('/').filter(Boolean).pop() || '';
+        const now = Date.now();
         for (const target of targets) {
-          // The open chat page owns its own 20-second refresh. The background
-          // monitor skips that same channel so two loops never hit Graph together.
-          if (currentPage === target.page) continue;
+          const isActiveTarget = currentPage === target.page;
+          const minimumGap = document.visibilityState === 'hidden' ? 120000 : isActiveTarget ? 20000 : 60000;
+          if (now - Number(lastPollRef.current[target.key] || 0) < minimumGap) continue;
+          lastPollRef.current[target.key] = now;
           try {
             const rows = await getTeamsChannelMessages(user.id, null, target.key);
+            window.dispatchEvent(new CustomEvent('bps:teams-channel-data', { detail: { configKey: target.key, page: target.page, rows: rows || [] } }));
             const ids = new Set((rows || []).map(item => String(item.id)));
             const previous = seenRef.current[target.key] || new Set();
             if (initializedRef.current) {
               const newItems = (rows || []).filter(item => !previous.has(String(item.id)));
               if (newItems.length) {
                 window.dispatchEvent(new CustomEvent('bps-unread-notification', { detail: { page: target.page, count: newItems.length } }));
-                {
+                if (currentPage !== target.page) {
                   const newest = newItems[newItems.length - 1];
                   toast.info(`${target.label} · ${newItems.length === 1 ? 'New message' : `${newItems.length} new messages`}`, {
                     description: `${newest?.sender_name || 'Microsoft Teams'}: ${newest?.message || ''}`.slice(0, 220),
@@ -70,7 +74,11 @@ export default function TeamsNotificationMonitor({ user }) {
 
     const schedule = () => {
       if (cancelled) return;
-      const delay = document.visibilityState === 'hidden' ? 90000 : 60000;
+      const currentPage = window.location.pathname.split('/').filter(Boolean).pop() || '';
+      const activeChat = currentPage === 'OfficerChat' || currentPage === 'SupervisorChat';
+      // The scheduler wakes frequently but each target enforces its own minimum gap.
+      // Active chat: ~20s, other authorized channel: ~60s, background tab: ~120s.
+      const delay = document.visibilityState === 'hidden' ? 60000 : activeChat ? 10000 : 30000;
       clearTimeout(timer);
       timer = window.setTimeout(async () => { await poll(); schedule(); }, delay);
     };
