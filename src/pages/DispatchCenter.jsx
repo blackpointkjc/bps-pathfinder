@@ -115,7 +115,7 @@ export default function DispatchCenter() {
             try {
                 const records = await base44.entities.Message.filter({ recipient_id: 'dispatch', read: false }, '-created_date', 200);
                 if (!active) return;
-                const unread = (records || []).filter(message => !message.draft && String(message.message || '').trim());
+                const unread = (records || []).filter(message => message.teams_message_id && !message.draft && String(message.message || '').trim());
                 setUnreadDispatchMessages(unread.length);
             } catch {
                 if (active) setUnreadDispatchMessages(0);
