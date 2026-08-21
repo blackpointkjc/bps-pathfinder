@@ -82,18 +82,20 @@ export default function TeamChat() {
         teams_sender_name: teamsMessage?.from?.user?.displayName || data.sender_name,
         teams_created_at: teamsMessage?.createdDateTime || new Date().toISOString(),
         teams_synced_at: new Date().toISOString(),
-      });
-      await Promise.all(mentions.map(mention => base44.entities.ChatMention.create({
-        message_id: created.id,
-        chat_type: 'team',
-        page: 'TeamChat',
-        recipient_email: mention.email,
-        recipient_name: mention.label,
-        sender_name: data.sender_name,
-        message: data.message,
-        read: false,
-      })));
-      return created;
+      }).catch(() => null);
+      if (created?.id) {
+        await Promise.all(mentions.map(mention => base44.entities.ChatMention.create({
+          message_id: created.id,
+          chat_type: 'team',
+          page: 'TeamChat',
+          recipient_email: mention.email,
+          recipient_name: mention.label,
+          sender_name: data.sender_name,
+          message: data.message,
+          read: false,
+        }).catch(() => null)));
+      }
+      return teamsMessage;
     },
     onSuccess: async () => {
       await refetchTeamsHistory();
@@ -234,6 +236,7 @@ export default function TeamChat() {
           {teamsConfig?.enabled && (
             <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Microsoft Teams live history · Pathfinder Team Chat ↔ dedicated Team Chat channel</div>
           )}
+          {!teamsConfig?.enabled && <div className="border-b border-amber-300 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-900">Team Chat does not yet have its own Microsoft Teams channel. No internal Pathfinder-only messages are used here. An admin must connect a dedicated Teams channel before Team Chat can send or receive.</div>}
           {(teamsSyncError || liveTeamsError) && <div className="border-b border-red-300 bg-red-50 px-4 py-3 text-xs font-bold text-red-800">Microsoft Teams sync error: {teamsSyncError || liveTeamsError?.message}</div>}
 
           <ScrollArea className="flex-1 p-6" ref={scrollRef}>
@@ -325,11 +328,11 @@ export default function TeamChat() {
                 ]}
                 currentEmail={user?.email}
                 onMentionsChange={setMentionedUsers}
-                disabled={sendMessageMutation.isPending}
+                disabled={sendMessageMutation.isPending || !teamsConfig?.enabled}
               />
               <Button
                 type="submit"
-                disabled={!message.trim() || sendMessageMutation.isPending}
+                disabled={!message.trim() || sendMessageMutation.isPending || !teamsConfig?.enabled}
                 className="bg-blue-600 hover:bg-blue-700 px-6"
               >
                 <Send className="w-4 h-4" />
