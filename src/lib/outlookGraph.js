@@ -509,6 +509,32 @@ export async function getOutlookAttachments(userId, messageId, mailboxEmail = ''
   return payload?.value || [];
 }
 
+export async function getOutlookAttachmentBlobUrl(userId, messageId, attachmentId, mailboxEmail = '') {
+  if (!userId || !messageId || !attachmentId) throw new Error('Attachment information is incomplete.');
+  let token = await getOutlookAccessToken(userId);
+  if (!token) {
+    const error = new Error('Microsoft 365 connection required.');
+    error.code = 'OUTLOOK_CONNECTION_REQUIRED';
+    throw error;
+  }
+  const url = `${GRAPH_ROOT}${mailboxRoot(mailboxEmail)}/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}/$value`;
+  const fetchFile = accessToken => fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  let response = await fetchFile(token);
+  if (response.status === 401) {
+    const refreshed = await refreshOutlookToken(userId, getStoredOutlookToken(userId));
+    token = refreshed?.access_token || '';
+    if (token) response = await fetchFile(token);
+  }
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    const error = new Error(text || `Unable to load Outlook attachment (${response.status}).`);
+    error.status = response.status;
+    throw error;
+  }
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
+
 export async function verifySharedMailboxAccess(userId, mailboxEmail) {
   const clean = String(mailboxEmail || '').trim().toLowerCase();
   if (!clean || !clean.includes('@')) throw new Error('Enter a valid shared mailbox email address.');
