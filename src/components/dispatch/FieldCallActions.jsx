@@ -96,34 +96,31 @@ export default function FieldCallActions({ call, onStatusChange }) {
     const alertText = `URGENT BACKUP REQUEST — ${officerLabel} needs assistance at ${location}. Call ${callLabel}: ${call.incident || 'Active call'}. Requested ${requestedAt}.`;
 
     try {
-      const [, chatRecord] = await Promise.all([
-        base44.entities.CallNote.create({
-          call_id: call.id,
-          author_id: user.id,
-          author_name: officerLabel,
-          note: `🚨 ${alertText}`,
-          note_type: 'hazard',
-        }),
-        base44.entities.ChatMessage.create({
-          sender_name: officerLabel,
-          message: `🚨 ${alertText}`,
-          message_source: 'pathfinder',
-        }),
-      ]);
-      try {
-        const target = await getTeamsSyncConfig('officer_chat');
-        const teamsMessage = await sendTeamChannelMessage(user.id, `<strong>🚨 DISPATCH ALERT</strong><br>${alertText}`, target, 'officer_chat');
-        if (!teamsMessage?.id) throw new Error('Microsoft Teams did not return a message ID.');
-        await base44.entities.ChatMessage.update(chatRecord.id, {
-          teams_message_id: teamsMessage.id,
-          teams_team_id: target.team_id,
-          teams_channel_id: target.channel_id,
-          teams_synced_at: new Date().toISOString(),
-        }).catch(() => null);
-        toast.success('Urgent backup request posted to Pathfinder and Teams General Chat');
-      } catch (teamsError) {
-        toast.error(`Backup posted in Pathfinder, but Teams failed: ${teamsError?.message || 'Unknown Microsoft error'}`, { duration: 12000 });
-      }
+      const target = await getTeamsSyncConfig('officer_chat');
+      if (!target?.enabled) throw new Error('Microsoft Teams General Chat is not configured.');
+      const teamsMessage = await sendTeamChannelMessage(user.id, `<strong>🚨 DISPATCH ALERT</strong><br>${alertText}`, target, 'officer_chat');
+      if (!teamsMessage?.id) throw new Error('Microsoft Teams did not confirm the backup alert.');
+      await base44.entities.CallNote.create({
+        call_id: call.id,
+        author_id: user.id,
+        author_name: officerLabel,
+        note: `🚨 ${alertText}`,
+        note_type: 'hazard',
+      });
+      await base44.entities.OfficerChatMessage.create({
+        sender_name: officerLabel,
+        sender_email: user.email || '',
+        message: `🚨 ${alertText}`,
+        message_source: 'teams',
+        teams_message_id: teamsMessage.id,
+        teams_team_id: target.team_id,
+        teams_channel_id: target.channel_id,
+        teams_sender_id: teamsMessage?.from?.user?.id || '',
+        teams_sender_name: teamsMessage?.from?.user?.displayName || officerLabel,
+        teams_created_at: teamsMessage?.createdDateTime || new Date().toISOString(),
+        teams_synced_at: new Date().toISOString(),
+      }).catch(() => null);
+      toast.success('Urgent backup request posted to Teams General Chat');
       setBackupSent(true);
       window.setTimeout(() => setBackupSent(false), 5000);
     } catch (error) {
