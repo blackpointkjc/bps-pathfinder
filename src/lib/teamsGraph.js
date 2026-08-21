@@ -320,10 +320,22 @@ export async function listTeamsDirectChats(userId, { limit = 25 } = {}) {
   return { me, chats };
 }
 
-export async function getTeamsDirectChatMessages(userId, chatId, { limit = 50 } = {}) {
+export async function getTeamsDirectChatMessages(userId, chatId, { limit = 100 } = {}) {
   if (!chatId) return [];
-  const payload = await graphRequest(userId, `/chats/${encodeURIComponent(chatId)}/messages`);
-  return [...(payload?.value || [])].reverse().map(item => ({
+  const wanted = Math.min(200, Math.max(20, Number(limit) || 100));
+  const collected = [];
+  let next = `/chats/${encodeURIComponent(chatId)}/messages`;
+  let pages = 0;
+  // Microsoft controls the page size for Teams chat history. Follow only a few
+  // server-provided next links so users can see meaningful history without
+  // recreating the request storm that previously caused throttling.
+  while (next && collected.length < wanted && pages < 5) {
+    const payload = await graphRequest(userId, next);
+    collected.push(...(payload?.value || []));
+    next = payload?.['@odata.nextLink'] || '';
+    pages += 1;
+  }
+  return collected.slice(0, wanted).reverse().map(item => ({
     id: item.id,
     teams_message_id: item.id,
     teams_chat_id: chatId,
