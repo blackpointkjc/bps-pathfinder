@@ -201,20 +201,24 @@ export default function OutlookMail() {
 
   useEffect(() => {
     if (!user?.id) return undefined;
-    let refreshing = false;
-    const refreshForNewMail = async () => {
-      if (refreshing || document.visibilityState !== 'visible') return;
-      refreshing = true;
-      try {
-        if (isCompanyImap && activeMailbox?.id) await loadCompanyMailbox(activeMailbox, folderId || 'INBOX');
-        else if (connection?.connected) await loadMailbox(folderId || 'inbox', false, null, activeMailboxEmail);
-      } finally {
-        refreshing = false;
-      }
+    const receiveNewMail = event => {
+      if (document.visibilityState !== 'visible') return;
+      const isInbox = String(folderId || '').toLowerCase() === 'inbox';
+      if (!isInbox) return;
+      const activeKey = isCompanyImap && activeMailbox?.id
+        ? `imap:${activeMailbox.id}`
+        : `ms:${activeMailbox?.mailbox_email || 'me'}`;
+      const incoming = (event.detail?.items || []).filter(item => item?._mailboxKey === activeKey);
+      if (!incoming.length) return;
+      setMessages(current => {
+        const existing = new Set((current || []).map(item => String(item.id)));
+        const additions = incoming.filter(item => !existing.has(String(item.id)));
+        return additions.length ? [...additions, ...(current || [])] : current;
+      });
     };
-    window.addEventListener('bps-mail-new-message', refreshForNewMail);
-    return () => window.removeEventListener('bps-mail-new-message', refreshForNewMail);
-  }, [user?.id, activeMailbox?.id, isCompanyImap, folderId, connection?.connected, activeMailboxEmail]);
+    window.addEventListener('bps:mail-new-items', receiveNewMail);
+    return () => window.removeEventListener('bps:mail-new-items', receiveNewMail);
+  }, [user?.id, activeMailbox?.id, activeMailbox?.mailbox_email, isCompanyImap, folderId]);
 
   const filteredMessages = useMemo(() => {
     const q = search.trim().toLowerCase();
