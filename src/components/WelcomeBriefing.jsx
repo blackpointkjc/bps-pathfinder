@@ -91,7 +91,7 @@ export default function WelcomeBriefing({ user }) {
         // Keep each burst below the Base44 per-user request threshold. This
         // briefing used to launch sixteen reads simultaneously during sign-in.
         const first = await Promise.all([
-          base44.entities.Message.filter({ recipient_id: user.id, read: false }, '-created_date', 200).catch(() => []),
+          Promise.resolve([]),
           base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200).catch(() => []),
           base44.entities.Announcement.list('-created_date', 100).catch(() => []),
           base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500).catch(() => []),
@@ -175,7 +175,7 @@ export default function WelcomeBriefing({ user }) {
     };
   }, [storageKey]);
 
-  const pendingMessages = brief.messages.length + brief.mentions.length;
+  const pendingMessages = brief.mentions.length;
   const totalItems = pendingMessages + brief.announcements.length + brief.updates.length + brief.appUpdates.length + brief.propertyAlerts.length;
   const status = brief.unit?.status || brief.liveUser?.status || user?.status || 'Out of Service';
   const partnerName = brief.unit?.partner_name || (brief.shift?.partner_officer_email ? brief.shift.partner_officer_email : '');
@@ -328,7 +328,7 @@ export default function WelcomeBriefing({ user }) {
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
-                    <BriefCard icon={MessageCircle} label="Pending Messages" value={pendingMessages} detail={pendingMessages ? 'Unread direct messages or mentions' : 'You are caught up'} tone="blue" onClick={() => go('OfficerInbox')} />
+                    <BriefCard icon={MessageCircle} label="Teams Messages" value={pendingMessages} detail={pendingMessages ? 'Unread Teams chat mentions' : 'Open Inbox for your Microsoft Teams conversations'} tone="blue" onClick={() => go('OfficerInbox')} />
                     <BriefCard icon={Megaphone} label="Announcements" value={brief.announcements.length} detail={brief.announcements.length ? 'Announcements you have not opened yet' : 'No unseen announcements'} tone="amber" onClick={() => go('Announcements')} />
                     <BriefCard icon={Sparkles} label="App Updates" value={brief.appUpdates.length} detail={brief.appUpdates.length ? 'Unread platform or software updates' : 'No new app updates'} tone="violet" />
                     <BriefCard icon={Bell} label="Other Updates" value={brief.updates.length} detail={brief.updates.length ? 'Unread account, schedule, or system updates' : 'No other pending updates'} tone="blue" />
@@ -345,7 +345,7 @@ export default function WelcomeBriefing({ user }) {
 
                   <div className="mt-4 rounded-2xl border border-slate-800 bg-black/15 p-3 sm:p-4">
                     <div className="flex items-center gap-2"><Radio className="h-4 w-4 text-cyan-300"/><div className="text-xs font-black uppercase tracking-[.16em] text-slate-300">Session Summary</div></div>
-                    <p className="mt-2 text-sm leading-6 text-slate-400">{totalItems ? `You have ${totalItems} item${totalItems === 1 ? '' : 's'} needing your attention from messages, announcements, system updates, or monitored-property activity.` : 'You are fully caught up. No unread messages, unseen announcements, new app updates, or monitored-property calls were found for this session.'}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-400">{totalItems ? `You have ${totalItems} item${totalItems === 1 ? '' : 's'} needing your attention from Teams mentions, announcements, system updates, or monitored-property activity.` : 'You are fully caught up. No unread Teams mentions, unseen announcements, new app updates, or monitored-property calls were found for this session.'}</p>
                     {brief.propertyAlerts.slice(0, 3).map(alert => (
                       <button key={alert.id} type="button" onClick={() => go('DispatchCenter')} className="mt-2 flex w-full items-start gap-3 rounded-xl border border-red-900/50 bg-red-950/20 p-3 text-left hover:bg-red-950/35">
                         <Siren className="mt-0.5 h-4 w-4 shrink-0 text-red-300"/><div className="min-w-0 flex-1"><div className="truncate text-xs font-black text-white">{alert.propertyName || 'Monitored Property'} · {alert.callIncident || 'Call for service'}</div><div className="mt-1 break-words text-[10px] text-slate-400">{alert.callLocation || alert.description || 'Location unavailable'}</div></div><ChevronRight className="h-4 w-4 shrink-0 text-slate-600"/>
