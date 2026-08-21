@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Upload, Camera, Award, AlertTriangle, ClipboardCheck, Star, Shield, Phone, Package, Trash2, CheckCircle } from "lucide-react";
+import { User, Upload, Camera, Award, AlertTriangle, ClipboardCheck, Star, Shield, Phone, Package, Trash2, CheckCircle, Mail, KeyRound } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
@@ -68,6 +68,9 @@ export default function OfficerProfile() {
   const [photoToCrop, setPhotoToCrop] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [companyMailPassword, setCompanyMailPassword] = useState('');
+  const [companyMailPasswordConfirm, setCompanyMailPasswordConfirm] = useState('');
+  const [savingCompanyMailPassword, setSavingCompanyMailPassword] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -82,6 +85,45 @@ export default function OfficerProfile() {
   });
 
   const certificationRows = profileCertifications(user);
+
+  const { data: companyMailboxes = [] } = useQuery({
+    queryKey: ['myCompanyImapMailboxes', user?.id],
+    queryFn: async () => {
+      const result = await base44.functions.invoke('companyImapMail', { action: 'status' });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.mailboxes || [];
+    },
+    enabled: !!user?.id,
+    staleTime: 60000,
+  });
+
+  const myCompanyMailbox = companyMailboxes?.[0] || null;
+
+  const updateCompanyMailPassword = async () => {
+    if (!myCompanyMailbox?.id) return;
+    if (!companyMailPassword) return alert('Enter your new company email password.');
+    if (companyMailPassword !== companyMailPasswordConfirm) return alert('The passwords do not match.');
+    try {
+      setSavingCompanyMailPassword(true);
+      const result = await base44.functions.invoke('companyImapMail', {
+        action: 'update_password',
+        mailbox_id: myCompanyMailbox.id,
+        password: companyMailPassword,
+      });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      setCompanyMailPassword('');
+      setCompanyMailPasswordConfirm('');
+      queryClient.invalidateQueries({ queryKey: ['myCompanyImapMailboxes', user?.id] });
+      window.dispatchEvent(new CustomEvent('bps-outlook-refresh'));
+      alert('Your company email password was updated and verified successfully.');
+    } catch (error) {
+      alert(error?.message || 'Unable to update your company email password.');
+    } finally {
+      setSavingCompanyMailPassword(false);
+    }
+  };
 
   const { data: commendations } = useQuery({
     queryKey: ['myCommendations', user?.email],
@@ -247,6 +289,28 @@ export default function OfficerProfile() {
             </div>
           </CardContent>
         </Card>
+
+        {myCompanyMailbox && (
+          <Card className="border-none shadow-lg bg-white">
+            <CardHeader className="border-b bg-gradient-to-r from-emerald-50 to-blue-50">
+              <CardTitle className="flex items-center gap-2 text-slate-900"><Mail className="h-5 w-5 text-emerald-600" /> Company Email</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                <div className="text-sm font-bold text-emerald-900">{myCompanyMailbox.display_name || 'Company Mailbox'}</div>
+                <div className="mt-1 text-sm text-emerald-800">{myCompanyMailbox.mailbox_email}</div>
+                <p className="mt-2 text-xs leading-5 text-emerald-700">This mailbox is assigned by the company. You can update only your mailbox password here. Address and server settings are controlled by an administrator.</p>
+              </div>
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <div><Label className="text-sm text-slate-600">New Email Password</Label><Input type="password" autoComplete="new-password" value={companyMailPassword} onChange={e => setCompanyMailPassword(e.target.value)} placeholder="Enter new password" /></div>
+                <div><Label className="text-sm text-slate-600">Confirm New Password</Label><Input type="password" autoComplete="new-password" value={companyMailPasswordConfirm} onChange={e => setCompanyMailPasswordConfirm(e.target.value)} placeholder="Confirm new password" /></div>
+              </div>
+              <Button type="button" className="mt-4" onClick={updateCompanyMailPassword} disabled={savingCompanyMailPassword || !companyMailPassword || !companyMailPasswordConfirm}>
+                <KeyRound className="mr-2 h-4 w-4" />{savingCompanyMailPassword ? 'Verifying…' : 'Update Company Email Password'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="border-none shadow-lg bg-white">
           <CardHeader className="border-b">
