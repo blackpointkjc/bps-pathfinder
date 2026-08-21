@@ -152,6 +152,11 @@ Deno.serve(async (req) => {
         return json({ ok: true });
       }
 
+      if (action === 'delete') {
+        await client.messageDelete(uid, { uid: true });
+        return json({ ok: true });
+      }
+
       return json({ error: 'Unsupported IMAP action.' }, 400);
     } finally {
       lock.release();
