@@ -137,7 +137,7 @@ export default function SupervisorPerformanceReview() {
             <div class="metric-label">HOURS WORKED</div>
           </div>
           <div class="metric-box">
-            <div class="metric-value">${review.on_time_percentage ?? '—'}%</div>
+            <div class="metric-value">${review.on_time_percentage != null ? `${review.on_time_percentage}%` : '—'}</div>
             <div class="metric-label">ON-TIME RATE</div>
           </div>
           <div class="metric-box" style="background: #dcfce7; border-color: #86efac;">
@@ -300,7 +300,7 @@ export default function SupervisorPerformanceReview() {
                   <p className="text-xs text-slate-600">Hours Worked</p>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-lg border text-center">
-                  <p className="text-2xl font-bold text-slate-900">{selectedReview.on_time_percentage ?? '—'}%</p>
+                  <p className="text-2xl font-bold text-slate-900">{selectedReview.on_time_percentage != null ? `${selectedReview.on_time_percentage}%` : '—'}</p>
                   <p className="text-xs text-slate-600">On-Time</p>
                 </div>
                 <div className="p-4 bg-green-50 rounded-lg border border-green-200 text-center">
