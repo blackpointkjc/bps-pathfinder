@@ -7,6 +7,7 @@ import {
   disconnectOutlook,
   forwardOutlookMail,
   getOutlookAttachments,
+  getOutlookAttachmentBlobUrl,
   getOutlookConnectionStatus,
   getOutlookMessage,
   listOutlookFolders,
@@ -39,7 +40,21 @@ function senderOf(message) {
   return message?.from?.emailAddress?.name || message?.from?.emailAddress?.address || 'Unknown sender';
 }
 
-function safeEmailHtml(value) {
+function attachmentDataUrl(file) {
+  if (!file?.contentBytes) return '';
+  return `data:${file.contentType || 'application/octet-stream'};base64,${file.contentBytes}`;
+}
+
+function resolveCidSources(doc, attachmentRows = []) {
+  const byCid = new Map((attachmentRows || []).filter(file => file?.contentId && file?.contentBytes).map(file => [String(file.contentId).replace(/[<>]/g, '').toLowerCase(), attachmentDataUrl(file)]));
+  doc.querySelectorAll('[src^="cid:"], source[src^="cid:"]').forEach(node => {
+    const cid = String(node.getAttribute('src') || '').slice(4).replace(/[<>]/g, '').toLowerCase();
+    const dataUrl = byCid.get(cid);
+    if (dataUrl) node.setAttribute('src', dataUrl);
+  });
+}
+
+function safeEmailHtml(value, attachmentRows = []) {
   const html = String(value || '');
   if (!html) return '';
   // Microsoft can return a plain-text body. Rendering that string as HTML would
@@ -56,6 +71,7 @@ function safeEmailHtml(value) {
   try {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     doc.querySelectorAll('script,style,iframe,object,embed,form,input,button,textarea,select').forEach(node => node.remove());
+    resolveCidSources(doc, attachmentRows);
     doc.querySelectorAll('*').forEach(node => {
       [...node.attributes].forEach(attr => {
         const name = attr.name.toLowerCase();
@@ -71,6 +87,33 @@ function safeEmailHtml(value) {
     return doc.body.innerHTML;
   } catch {
     return html.replace(/<script[\s\S]*?<\/script>/gi, '');
+  }
+}
+
+function emailReaderDocument(value, attachmentRows = []) {
+  const html = String(value || '');
+  const plain = !/<[a-z][\s\S]*>/i.test(html);
+  let body = plain ? safeEmailHtml(html, attachmentRows) : html;
+  try {
+    const doc = new DOMParser().parseFromString(body, 'text/html');
+    doc.querySelectorAll('script,iframe,object,embed,form,input,button,textarea,select').forEach(node => node.remove());
+    resolveCidSources(doc, attachmentRows);
+    doc.querySelectorAll('*').forEach(node => {
+      [...node.attributes].forEach(attr => {
+        const name = attr.name.toLowerCase();
+        const val = String(attr.value || '').trim();
+        if (name.startsWith('on') || (['href','src','xlink:href'].includes(name) && /^javascript:/i.test(val))) node.removeAttribute(attr.name);
+      });
+    });
+    doc.querySelectorAll('a[href]').forEach(link => {
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener noreferrer');
+    });
+    body = doc.body.innerHTML;
+    const styles = Array.from(doc.head.querySelectorAll('style')).map(node => node.outerHTML).join('');
+    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${styles}<style>html,body{margin:0;padding:0;background:#fff;color:#111827;font-family:Arial,Helvetica,sans-serif}body{padding:24px;overflow-wrap:anywhere}img,video{max-width:100%;height:auto}audio{width:min(100%,720px)}a{color:#1d4ed8;text-decoration:underline}table{max-width:100%}</style></head><body>${body}</body></html>`;
+  } catch {
+    return `<!doctype html><html><body style="font-family:Arial,sans-serif;padding:24px">${safeEmailHtml(body, attachmentRows)}</body></html>`;
   }
 }
 
