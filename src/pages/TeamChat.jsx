@@ -197,7 +197,7 @@ export default function TeamChat() {
     return unsubscribe;
   }, [user?.email]);
 
-  const displayedMessages = teamsConfig?.enabled ? liveTeamsMessages : [...(messages || [])].reverse();
+  const displayedMessages = teamsConfig?.enabled ? liveTeamsMessages : [];
 
   useEffect(() => {
     if (scrollRef.current) {
