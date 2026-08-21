@@ -234,12 +234,28 @@ function memberDisplayName(member, identityByMicrosoftId) {
   return member?.displayName || mapped?.display_name || mapped?.microsoft_email || 'Microsoft Teams User';
 }
 
+async function listMyTeamsChats(userId) {
+  try {
+    const expanded = await graphRequest(userId, '/me/chats?$expand=members');
+    if (Array.isArray(expanded?.value)) return expanded;
+  } catch (error) {
+    if (!/query option|not allowed|invalid/i.test(String(error?.message || ''))) throw error;
+  }
+  return graphRequest(userId, '/me/chats');
+}
+
+async function membersForChat(userId, chat) {
+  if (Array.isArray(chat?.members) && chat.members.length) return chat.members;
+  const payload = await graphRequest(userId, `/chats/${encodeURIComponent(chat.id)}/members`);
+  return payload?.value || [];
+}
+
 export async function syncAllTeamsDirectChats(userId, currentPathfinderUserId, { chatLimit = 15, messageLimit = 30 } = {}) {
   if (!userId || !currentPathfinderUserId) return { chats: 0, imported: 0 };
   const [me, identities, chatsPayload, cachedMessages] = await Promise.all([
     graphRequest(userId, '/me?$select=id,displayName,mail,userPrincipalName'),
     base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []),
-    graphRequest(userId, '/me/chats'),
+    listMyTeamsChats(userId),
     base44.entities.Message.list('-created_date', 500).catch(() => []),
   ]);
   const identityByMicrosoftId = new Map((identities || []).filter(item => item.microsoft_user_id).map(item => [String(item.microsoft_user_id), item]));
@@ -250,8 +266,7 @@ export async function syncAllTeamsDirectChats(userId, currentPathfinderUserId, {
   // Process sequentially to stay below Microsoft/Base44 throttling thresholds.
   for (const chat of chatsPayload?.value || []) {
     if (!chat?.id || !['oneOnOne', 'group'].includes(chat.chatType)) continue;
-    const membersPayload = await graphRequest(userId, `/chats/${encodeURIComponent(chat.id)}/members`);
-    const members = (membersPayload?.value || []).filter(member => member?.userId || member?.user?.id || member?.id);
+    const members = (await membersForChat(userId, chat)).filter(member => member?.userId || member?.user?.id || member?.id);
     if (!members.length) continue;
     chats += 1;
     const otherMembers = members.filter(member => String(member?.userId || member?.user?.id || member?.id || '') !== meMicrosoftId);
@@ -276,7 +291,7 @@ export async function syncAllTeamsDirectChats(userId, currentPathfinderUserId, {
 export async function listTeamsDirectChats(userId, { limit = 25 } = {}) {
   const [me, chatsPayload, identities] = await Promise.all([
     graphRequest(userId, '/me?$select=id,displayName,mail,userPrincipalName'),
-    graphRequest(userId, '/me/chats'),
+    listMyTeamsChats(userId),
     base44.entities.MicrosoftTeamsIdentity.list('-updated_at', 500).catch(() => []),
   ]);
   const identityByMicrosoftId = new Map((identities || []).filter(item => item.microsoft_user_id).map(item => [String(item.microsoft_user_id), item]));
@@ -284,8 +299,7 @@ export async function listTeamsDirectChats(userId, { limit = 25 } = {}) {
   const chats = [];
   for (const chat of chatsPayload?.value || []) {
     if (!chat?.id || !['oneOnOne', 'group'].includes(chat.chatType)) continue;
-    const membersPayload = await graphRequest(userId, `/chats/${encodeURIComponent(chat.id)}/members`);
-    const members = (membersPayload?.value || []).filter(member => member?.userId || member?.user?.id || member?.id);
+    const members = (await membersForChat(userId, chat)).filter(member => member?.userId || member?.user?.id || member?.id);
     const otherMembers = members.filter(member => String(member?.userId || member?.user?.id || member?.id || '') !== meId);
     chats.push({
       id: chat.id,
