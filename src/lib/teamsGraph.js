@@ -62,14 +62,12 @@ const FIXED_TEAMS_CHANNELS = {
 };
 
 export async function getTeamsSyncConfig(configKey = 'team_chat') {
-  const fallback = FIXED_TEAMS_CHANNELS[configKey] || null;
-  try {
-    const rows = await base44.entities.MicrosoftTeamsSyncConfig.filter({ config_key: configKey }, '-updated_at', 1);
-    return rows?.[0] || fallback;
-  } catch (error) {
-    if (fallback) return fallback;
-    throw error;
-  }
+  // Company-controlled channels are fixed and already verified. Do not spend a
+  // Base44 API call re-reading their IDs every time a chat page/monitor wakes up.
+  const fixed = FIXED_TEAMS_CHANNELS[configKey] || null;
+  if (fixed) return fixed;
+  const rows = await base44.entities.MicrosoftTeamsSyncConfig.filter({ config_key: configKey }, '-updated_at', 1);
+  return rows?.[0] || null;
 }
 
 export async function saveTeamsSyncConfig({ channelUrl, channelName = 'Microsoft Teams', updatedBy = '', configKey = 'team_chat' }) {
