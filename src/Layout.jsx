@@ -16,6 +16,7 @@ import { stopAllAlerts } from '@/utils/alertUtils';
 import { stopVoice } from '@/utils/voiceAnnouncer';
 import { formatEasternDateTime } from '@/lib/easternTime';
 import { cleanIncident } from '@/utils/callUtils';
+import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
 import GlobalMessageBanner from '@/components/GlobalMessageBanner';
 import NotificationMonitor from '@/components/NotificationMonitor';
 import MandatoryReadGate from '@/components/MandatoryReadGate';
@@ -864,7 +865,10 @@ export default function Layout({ children, currentPageName }) {
           base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 5000),
         ]);
         if (!active) return;
-        const receiptIds = new Set((receipts || []).map(r => r.announcement_id));
+        const receiptIds = getLocalReadAnnouncementIds(user.email);
+        (receipts || []).forEach(receipt => {
+          if (receipt?.announcement_id) receiptIds.add(String(receipt.announcement_id));
+        });
         const accountCreated = user.created_date ? new Date(user.created_date).getTime() : 0;
         const canSeeSupervisorAnnouncements = user.role === 'admin' || user.additional_roles?.includes('supervisor');
         const unreadAnnouncements = (announcements || []).filter(a => {
