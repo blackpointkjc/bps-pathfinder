@@ -1229,7 +1229,7 @@ export default function Layout({ children, currentPageName }) {
       </motion.div>
     )}</AnimatePresence>
 
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <header className="flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
           {!ROOT_PAGES.has(currentPageName) && (
@@ -1266,7 +1266,7 @@ export default function Layout({ children, currentPageName }) {
       </div>}
 
       <AdminClientPreviewBar user={user} activeCenter={activeCenter} />
-      <main ref={mainScrollRef} data-page={currentPageName} className={`mobile-field-content min-h-0 flex-1 overflow-auto ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'night-workspace bg-[#0b1420] text-slate-100'}`}>{children}</main>
+      <main ref={mainScrollRef} data-page={currentPageName} className={`mobile-field-content h-0 min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain touch-pan-y ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'night-workspace bg-[#0b1420] text-slate-100'}`}>{children}</main>
     </section>
     <MobileFieldNav
       currentPageName={currentPageName}
