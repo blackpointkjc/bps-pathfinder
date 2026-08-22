@@ -166,7 +166,7 @@ body::-webkit-scrollbar-button,
 }
 
 /* Mobile field mode: keep every page reachable and usable on phones. */
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   html,
   body,
   #root {
@@ -512,7 +512,7 @@ body::-webkit-scrollbar-button,
   border-color: #344b61 !important;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .client-portal-shell [class*="p-8"] { padding: .875rem !important; }
   .client-portal-shell [class*="p-6"] { padding: .875rem !important; }
   .client-portal-shell h1 { font-size: 1.5rem !important; line-height: 1.2 !important; }
