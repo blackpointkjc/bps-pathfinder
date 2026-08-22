@@ -28,7 +28,8 @@ export default function Announcements() {
     queryKey: ['announcementReceipts', user?.email],
     queryFn: () => base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 5000),
     enabled: !!user?.email,
-    refetchInterval: 30000,
+    staleTime: 60000,
+    refetchOnWindowFocus: true,
   });
 
   const readAnnouncementIds = React.useMemo(
@@ -123,7 +124,7 @@ export default function Announcements() {
               {filteredAnnouncements.map((announcement) => {
                 const config = priorityConfig[announcement.priority] || priorityConfig.normal;
                 const isPinged = isPingedForMe(announcement);
-                const isRead = readAnnouncementIds.has(announcement.id);
+                const isRead = readAnnouncementIds.has(String(announcement.id || ''));
 
                 return (
                   <Card
