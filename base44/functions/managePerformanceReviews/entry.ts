@@ -6,6 +6,17 @@ const emailKey = (value: unknown) => String(value || '').trim().toLowerCase();
 const dateOnly = (value = new Date()) => value.toISOString().slice(0, 10);
 const displayName = (user: any) => `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.full_name || user?.email || 'Supervisor';
 const active = (user: any) => user && user.employment_status !== 'terminated' && user.employment_status !== 'on_leave' && !user.termination_date;
+const RANK_ORDER = ['colonel', 'lt colonel', 'major', 'captain', 'lieutenant', 'first sergeant', 'sergeant', 'corporal', 'senior officer', 'officer', 'unarmed officer'];
+const normalizeRank = (value: unknown) => {
+  const normalized = String(value || '').trim().toLowerCase().replace(/\./g, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+  return normalized === 'lieutenant colonel' ? 'lt colonel' : normalized;
+};
+const rankLevel = (user: any) => RANK_ORDER.indexOf(normalizeRank(user?.rank));
+const reviewerOutranks = (reviewer: any, officer: any) => {
+  const reviewerLevel = rankLevel(reviewer);
+  const officerLevel = rankLevel(officer);
+  return reviewerLevel >= 0 && officerLevel >= 0 && reviewerLevel < officerLevel;
+};
 const rating = (value: unknown, fallback = 3) => {
   const number = Number(value);
   return Number.isFinite(number) ? Math.min(5, Math.max(1, Math.round(number))) : fallback;
@@ -42,13 +53,21 @@ function randomIndex(length: number) {
 }
 
 function chooseRotatingSupervisor(officer: any, users: any[], reviews: any[]) {
-  const eligible = (users || []).filter((user: any) =>
+  const higherRanked = (users || []).filter((user: any) =>
     active(user) &&
     String(user.id || '') !== String(officer.id || '') &&
-    rolesOf(user).has('supervisor')
+    rolesOf(user).has('supervisor') &&
+    reviewerOutranks(user, officer)
   );
-  if (!eligible.length) return null;
+  if (!higherRanked.length) return null;
 
+  const directSupervisor = higherRanked.find((user: any) => String(user.id || '') === String(officer.supervisor_id || ''));
+  if (directSupervisor) return directSupervisor;
+
+  // Without an explicit valid reporting-line assignment, use the closest
+  // higher operational rank, then rotate only among reviewers at that rank.
+  const closestLevel = Math.max(...higherRanked.map(rankLevel));
+  const eligible = higherRanked.filter((user: any) => rankLevel(user) === closestLevel);
   const stats = new Map(eligible.map((user: any) => [String(user.id), { count: 0, last: 0 }]));
   for (const review of reviews || []) {
     const id = String(review.assigned_supervisor_id || '');
@@ -140,31 +159,54 @@ Deno.serve(async (req) => {
 
     const existingReviews = await base44.asServiceRole.entities.PerformanceReview.list('-supervisor_task_created_at', 5000);
     const assignedSupervisor = chooseRotatingSupervisor(officer, users || [], existingReviews || []);
-    if (!assignedSupervisor) {
-      return Response.json({ error: 'No other active user with the supervisor role is available for assignment.' }, { status: 409 });
-    }
-    const payload = {
+    const commonPayload = {
       ...reviewPayloadFromMetrics(metrics, body.review || {}),
       review_type: 'manual',
       review_date: dateOnly(),
       reviewer_email: me.email,
       reviewer_name: displayName(me),
+      supervisor_review_completed: false,
+      officer_acknowledged: false,
+      officer_signature_obtained: false,
+      hr_approved: false,
+    };
+
+    if (!assignedSupervisor) {
+      const assignmentIssue = `No active supervisor currently outranks ${officer.rank || 'this officer'}.`;
+      const review = await base44.asServiceRole.entities.PerformanceReview.create({
+        ...commonPayload,
+        workflow_stage: 'higher_reviewer_required',
+        higher_reviewer_required: true,
+        assignment_issue: assignmentIssue,
+        supervisor_review_pending: false,
+      });
+      const adminRecipients = new Set((users || [])
+        .filter((user: any) => active(user) && user.email && (user.role === 'admin' || rolesOf(user).has('hr') || rolesOf(user).has('full_access')))
+        .map((user: any) => emailKey(user.email))
+        .filter((email: string) => email && email !== emailKey(officer.email)));
+      await Promise.all([
+        notify(base44, officer.email, 'Higher-Ranking Reviewer Required', `Your performance review for ${start} through ${end} was created, but it cannot be assigned until an active reviewer above ${officer.rank || 'your rank'} is available.`, review.id),
+        ...[...adminRecipients].map((recipient) => notify(base44, recipient, 'Performance Review Needs Higher-Ranking Reviewer', `${review.officer_name}'s review cannot be sent downward. Add or assign an active reviewer above ${officer.rank || 'the officer rank'}.`, review.id)),
+      ]);
+      return Response.json({ success: true, review, metrics, assigned_supervisor: null, warning: assignmentIssue });
+    }
+
+    const payload = {
+      ...commonPayload,
       assigned_supervisor_id: assignedSupervisor.id,
       assigned_supervisor_email: assignedSupervisor.email,
       assigned_supervisor_name: displayName(assignedSupervisor),
       supervisor_task_created_at: new Date().toISOString(),
       assignment_round: (existingReviews || []).filter((item: any) => String(item.assigned_supervisor_id || '') === String(assignedSupervisor.id)).length + 1,
       workflow_stage: 'supervisor_pending',
+      higher_reviewer_required: false,
+      assignment_issue: '',
       supervisor_review_pending: true,
-      supervisor_review_completed: false,
-      officer_acknowledged: false,
-      officer_signature_obtained: false,
-      hr_approved: false,
     };
     const review = await base44.asServiceRole.entities.PerformanceReview.create(payload);
     await Promise.all([
-      notify(base44, assignedSupervisor.email, 'Performance Review Assigned', `HR assigned you ${review.officer_name}'s performance review. Submit your ratings and feedback in Supervisor Center.`, review.id),
-      notify(base44, officer.email, 'Performance Review Started', `HR started your performance review for ${start} through ${end}. It is currently with the assigned supervisor.`, review.id),
+      notify(base44, assignedSupervisor.email, 'Performance Review Assigned', `HR assigned you ${review.officer_name}'s performance review because your rank is above the officer's. Submit your ratings and feedback in Supervisor Center.`, review.id),
+      notify(base44, officer.email, 'Performance Review Started', `HR started your performance review for ${start} through ${end}. It was assigned up the chain of command to ${displayName(assignedSupervisor)}.`, review.id),
     ]);
     return Response.json({ success: true, review, metrics, assigned_supervisor: { id: assignedSupervisor.id, name: displayName(assignedSupervisor) } });
   } catch (error) {
