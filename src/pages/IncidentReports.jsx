@@ -20,6 +20,14 @@ import StructuredPeopleEditor from '@/components/reports/StructuredPeopleEditor'
 import { toast } from 'sonner';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { listActiveDispatchCalls } from '@/lib/reportCallLinking';
+import {
+  formatReportClock,
+  formatReportDate,
+  formatReportDateTime,
+  openBlackPointReport,
+  reportTimeZoneLabel,
+  resolveReportTimeZone,
+} from '@/lib/reportPrint';
 
 // Build an incident description that references the CAD number instead of the
 // upstream GRAC feed tag (e.g. "VANDALISM at ... [GRAC:abc]" -> "VANDALISM at ... [CAD:B1123]").
@@ -571,6 +579,100 @@ Provide:
   };
 
   const printReport = (report) => {
+    const locationRecord = locations?.find(location => location.site_name === report.location);
+    const timeZone = resolveReportTimeZone(locationRecord);
+    const zoneLabel = reportTimeZoneLabel(timeZone, report.created_date || report.incident_date);
+    const creator = allUsers?.find(officer => String(officer.id) === String(report.created_by_id)
+      || String(officer.email || '').toLowerCase() === String(report.created_by_id || '').toLowerCase());
+    const officerName = getOfficerFullName(report.created_by_id);
+    const people = Array.isArray(report.persons)
+      ? report.persons.map(person => [
+          person.role || person.type,
+          person.name || [person.first_name, person.last_name].filter(Boolean).join(' '),
+          person.description,
+          person.contact,
+        ].filter(Boolean).join(' — ')).filter(Boolean).join('\n')
+      : '';
+
+    openBlackPointReport({
+      title: 'Incident Report',
+      subtitle: 'Security Incident Documentation',
+      reportNumber: report.report_number || '',
+      status: report.status || report.severity || '',
+      timeZone,
+      meta: [
+        { label: 'Call Number', value: report.call_number || report.linked_call_number || 'Not linked' },
+        { label: 'Incident Date', value: formatReportDate(report.incident_date, timeZone) },
+        { label: 'Submitted', value: formatReportDateTime(report.created_date, timeZone) },
+      ],
+      sections: [
+        {
+          title: 'Incident Information',
+          fields: [
+            { label: 'Site Location', value: report.location },
+            { label: 'Specific Location', value: report.specific_location },
+            { label: 'Incident Type', value: String(report.incident_type || '').replaceAll('_', ' ').toUpperCase() },
+            { label: 'Severity', value: String(report.severity || '').toUpperCase() },
+            { label: `Time Occurred (${zoneLabel})`, value: formatReportClock(report.incident_time) },
+            { label: `Time Discovered (${zoneLabel})`, value: formatReportClock(report.discovered_time) },
+            { label: 'Linked CAD Call', value: report.linked_call_number, wide: true },
+            { label: 'Linked BOLO', value: report.linked_bolo_number, wide: true },
+          ],
+        },
+        {
+          title: 'Incident Narrative',
+          fields: [
+            { label: 'Description', value: report.description, wide: true },
+            { label: 'Action Taken', value: report.action_taken, wide: true },
+          ],
+        },
+        {
+          title: 'People and Vehicle Information',
+          fields: [
+            { label: 'Structured People', value: people, wide: true },
+            { label: 'Persons Involved', value: report.persons_involved, wide: true },
+            { label: 'Victims', value: report.victims },
+            { label: 'Witnesses', value: report.witnesses },
+            { label: 'Suspect Description', value: report.suspect_description },
+            { label: 'Suspect Vehicle', value: report.suspect_vehicle },
+          ],
+        },
+        {
+          title: 'Injuries and Property',
+          fields: [
+            { label: 'Injuries Reported', value: report.injuries_reported ? 'Yes' : 'No' },
+            { label: 'Property Damage', value: report.property_damage ? 'Yes' : 'No' },
+            { label: 'Injury Details', value: report.injury_details, wide: true },
+            { label: 'Damage Details', value: report.damage_details, wide: true },
+            { label: 'Estimated Value', value: report.estimated_value },
+          ],
+        },
+        {
+          title: 'Emergency Response',
+          fields: [
+            { label: 'Police Notified', value: report.police_notified ? 'Yes' : 'No' },
+            { label: 'Police Report Number', value: report.police_report_number },
+            { label: 'EMS Notified', value: report.ems_notified ? 'Yes' : 'No' },
+            { label: 'Fire Notified', value: report.fire_notified ? 'Yes' : 'No' },
+          ],
+        },
+      ],
+      photos: report.photo_url ? [report.photo_url] : [],
+      officer: {
+        name: officerName,
+        signatureName: getOfficerSignature(report.created_by_id),
+        email: getOfficerEmail(report.created_by_id),
+        badge: creator?.badge_number || '',
+        unit: creator?.unit_number || '',
+        ip: report.officer_ip_address || '',
+      },
+      signedAt: report.officer_signed_at || report.created_date,
+      signatureUrl: report.officer_signature_url || report.signature_url || '',
+      footerNote: 'DCJS License 11-5175.',
+    });
+  };
+
+  const legacyPrintReport = (report) => {
     const printWindow = window.open('', '', 'width=850,height=1100');
     
     const officerName = getOfficerFullName(report.created_by_id);
