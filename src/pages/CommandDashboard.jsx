@@ -243,12 +243,6 @@ function CommandDashboardInner() {
                 </div>
                 <div className="flex-1" />
                 <div className="flex items-center gap-1.5">
-                    {isDispatchOrAdmin && (
-                        <button onClick={toggleSound} title={soundEnabled ? 'Mute' : 'Unmute'}
-                            className={`h-7 w-7 flex items-center justify-center rounded border font-mono text-[10px] font-bold transition-all flex-shrink-0 ${soundEnabled ? 'bg-slate-800 border-green-600/40 text-green-400' : 'bg-slate-800 border-red-600/40 text-red-400'}`}>
-                            {soundEnabled ? <Volume2 className="w-3 h-3" /> : <VolumeX className="w-3 h-3" />}
-                        </button>
-                    )}
                     {/* Sync status */}
                     <div className={`h-7 flex items-center gap-1.5 px-2 rounded border font-mono text-[10px] font-bold flex-shrink-0 ${
                         syncStatus.state === 'syncing' ? 'bg-blue-900/30 border-blue-600/40 text-blue-300' :
