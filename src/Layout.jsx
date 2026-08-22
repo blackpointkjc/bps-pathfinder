@@ -598,7 +598,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
         </div>
       </div>}
 
-      <nav className="flex-1 overflow-y-auto px-2 py-2">
+      <nav className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y px-2 py-2">
         {collapsed && !mobile && (
           <div className="mb-2 space-y-1 border-b border-[#1b3048] pb-2">
             {availableCenters.map(key => {
@@ -1270,7 +1270,7 @@ export default function Layout({ children, currentPageName }) {
       </div>}
 
       <AdminClientPreviewBar user={user} activeCenter={activeCenter} />
-      <main ref={mainScrollRef} data-page={currentPageName} className={`mobile-field-content h-0 min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain touch-pan-y ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'night-workspace bg-[#0b1420] text-slate-100'}`}>{children}</main>
+      <main ref={mainScrollRef} data-page={currentPageName} className={`mobile-field-content min-h-0 flex-1 overflow-x-auto overflow-y-auto overscroll-contain touch-pan-y ${DARK_WORKSPACE_PAGES.has(currentPageName) ? 'dark-workspace bg-[#07101b] text-white' : 'night-workspace bg-[#0b1420] text-slate-100'}`}>{children}</main>
     </section>
     <MobileFieldNav
       currentPageName={currentPageName}
