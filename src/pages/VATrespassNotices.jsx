@@ -213,12 +213,10 @@ export default function VATrespassNotices() {
   };
 
   useEffect(() => {
-    if (!editingNotice && !isAdmin && activeEntry?.location && locations?.length > 0) {
-      const siteName = activeEntry.location.split(' - ')[0];
-      const matchingLocation = locations.find(loc => loc.site_name === siteName);
-      if (matchingLocation) {
-        setFormData(prev => ({ ...prev, location: matchingLocation.site_name }));
-      }
+    if (!editingNotice && !isAdmin && activeEntry?.location) {
+      const siteName = activeEntry.location.split(' - ')[0].trim();
+      const matchingLocation = locations?.find(loc => loc.site_name === siteName);
+      setFormData(prev => ({ ...prev, location: matchingLocation?.site_name || siteName }));
     }
   }, [activeEntry, locations, editingNotice, isAdmin]);
 
