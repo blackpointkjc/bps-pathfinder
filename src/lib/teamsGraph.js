@@ -288,7 +288,7 @@ export async function syncTeamsDirectMessages(userId, { chatId, threadKey = '', 
     const mappedSender = byMicrosoftId.get(String(senderMicrosoftId));
     const senderId = mine ? currentPathfinderUserId : (mappedSender?.user_id || `teams:${senderMicrosoftId || 'unknown'}`);
     const senderName = item?.from?.user?.displayName || mappedSender?.display_name || 'Microsoft Teams';
-    const body = stripHtml(item.body.content).trim();
+    const body = stripRedundantSenderPrefix(stripHtml(item.body.content), senderName);
     if (!body) continue;
     const otherIds = (participantIds || []).filter(id => String(id) !== String(currentPathfinderUserId));
     const recipientId = mine ? (otherIds[0] || currentPathfinderUserId) : currentPathfinderUserId;
@@ -432,7 +432,10 @@ export async function getTeamsDirectChatMessages(userId, chatId, { limit = 100 }
     teams_chat_id: chatId,
     sender_microsoft_id: item?.from?.user?.id || '',
     sender_name: item?.from?.user?.displayName || item?.from?.application?.displayName || 'Microsoft Teams',
-    message: stripHtml(item?.body?.content || '').trim(),
+    message: stripRedundantSenderPrefix(
+      stripHtml(item?.body?.content || ''),
+      item?.from?.user?.displayName || item?.from?.application?.displayName || 'Microsoft Teams'
+    ),
     created_date: item.createdDateTime || '',
     last_modified_date: item.lastModifiedDateTime || '',
   })).filter(item => item.message);
