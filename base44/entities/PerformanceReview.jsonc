@@ -4,7 +4,38 @@
   "properties": {
     "officer_email": {
       "type": "string",
-      "description": "Email of officer being reviewed"
+      "description": "Primary Pathfinder work email of officer being reviewed"
+    },
+    "officer_id": {
+      "type": "string",
+      "description": "Immutable Pathfinder user ID of officer being reviewed"
+    },
+    "review_type": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "annual_automatic"
+      ],
+      "default": "manual",
+      "description": "Whether HR created the review manually or the annual automation created it"
+    },
+    "annual_review_key": {
+      "type": "string",
+      "description": "Idempotency key for one automatic annual review per officer and anniversary year"
+    },
+    "generated_year": {
+      "type": "number",
+      "description": "Anniversary year represented by an automatic review"
+    },
+    "performance_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Objective performance score calculated for the selected review period"
+    },
+    "performance_snapshot": {
+      "type": "object",
+      "description": "Objective period statistics used to generate the review"
     },
     "officer_name": {
       "type": "string",
