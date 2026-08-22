@@ -308,13 +308,13 @@ export default function Dashboard({ embedded = false }) {
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('pathfinder:open-mobile-tools'))}
-              className="flex min-h-12 w-full items-center justify-center rounded-xl border border-blue-400/30 bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-3 font-bold text-white shadow-lg shadow-blue-600/25 md:hidden"
+              className="flex min-h-12 w-full items-center justify-center rounded-xl border border-blue-400/30 bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-3 font-bold text-white shadow-lg shadow-blue-600/25 lg:hidden"
             >
               <LayoutDashboard className="mr-2 h-5 w-5" />
               Browse All Tools
               <ChevronRight className="ml-2 h-5 w-5" />
             </button>
-            <div className="hidden md:block">
+            <div className="hidden lg:block">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="group bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 transition-all duration-300 rounded-xl px-5 py-2.5 border border-white/10">
