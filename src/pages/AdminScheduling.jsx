@@ -160,6 +160,23 @@ export default function AdminScheduling() {
   });
 
   const markWeekReadyMutation = useMutation({
+    onMutate: async (isReady) => {
+      const targetWeekStart = addWeeks(startOfWeek(new Date(), { weekStartsOn: 0 }), currentWeekOffset);
+      const weekStartStr = format(targetWeekStart, 'yyyy-MM-dd');
+      const weekEndStr = format(addDays(targetWeekStart, 6), 'yyyy-MM-dd');
+      const queryKey = ['scheduleWeekStatus', weekStartStr];
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, {
+        ...(previous || {}),
+        week_start_date: weekStartStr,
+        week_end_date: weekEndStr,
+        is_ready: isReady,
+        marked_ready_by: user?.email,
+        marked_ready_date: new Date().toISOString(),
+      });
+      return { previous, queryKey };
+    },
     mutationFn: async (isReady) => {
       const currentWeekStart = addWeeks(startOfWeek(new Date(), { weekStartsOn: 0 }), currentWeekOffset);
       const weekStartStr = format(currentWeekStart, 'yyyy-MM-dd');
@@ -268,9 +285,16 @@ export default function AdminScheduling() {
       return isReady;
     },
     onSuccess: (isReady) => {
-      queryClient.invalidateQueries({ queryKey: ['scheduleWeekStatus'] });
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       alert(isReady ? 'Week schedule published. Each scheduled officer was sent an in-app alert and a Black Point schedule email.' : 'Week schedule hidden from officers and clients');
+    },
+    onError: (error, _isReady, context) => {
+      if (context?.queryKey) queryClient.setQueryData(context.queryKey, context.previous);
+      console.error('Unable to update week publication status:', error);
+      alert('The schedule publication signal could not be saved. The checkbox was restored; please try again.');
+    },
+    onSettled: (_data, _error, _isReady, context) => {
+      queryClient.invalidateQueries({ queryKey: context?.queryKey || ['scheduleWeekStatus'] });
     },
   });
 
@@ -2428,12 +2452,17 @@ Return ONLY a JSON array of suggestion objects with this structure:
               <Checkbox
                 id="week-ready"
                 checked={weekStatus?.is_ready || false}
-                onCheckedChange={(checked) => markWeekReadyMutation.mutate(checked)}
                 disabled={markWeekReadyMutation.isPending}
+                aria-busy={markWeekReadyMutation.isPending}
+                onCheckedChange={(checked) => {
+                  if (checked === true || checked === false) markWeekReadyMutation.mutate(checked);
+                }}
               />
               <div className="min-w-0 flex-1">
                 <Label htmlFor="week-ready" className={`cursor-pointer font-black ${weekStatus?.is_ready ? 'text-emerald-200' : 'text-amber-200'}`}>
-                  {weekStatus?.is_ready ? '✓ Week Schedule Published' : '⚠️ Schedule Not Yet Published'}
+                  {markWeekReadyMutation.isPending
+                    ? (weekStatus?.is_ready ? 'Publishing Schedule…' : 'Hiding Schedule…')
+                    : (weekStatus?.is_ready ? '✓ Week Schedule Published' : '⚠️ Schedule Not Yet Published')}
                 </Label>
                 <p className={`mt-1 text-xs ${weekStatus?.is_ready ? 'text-emerald-400' : 'text-amber-400'}`}>
                   {weekStatus?.is_ready 
@@ -2441,7 +2470,9 @@ Return ONLY a JSON array of suggestion objects with this structure:
                     : 'Publish the week when it is ready. You can still keep individual officers unpublished.'}
                 </p>
               </div>
-              <Badge className={weekStatus?.is_ready ? 'w-fit bg-emerald-700 text-white' : 'w-fit bg-amber-700 text-white'}>{weekStatus?.is_ready ? 'Published' : 'Not Published'}</Badge>
+              <Badge className={markWeekReadyMutation.isPending ? 'w-fit bg-blue-700 text-white' : weekStatus?.is_ready ? 'w-fit bg-emerald-700 text-white' : 'w-fit bg-amber-700 text-white'}>
+                {markWeekReadyMutation.isPending ? 'Sending…' : weekStatus?.is_ready ? 'Published' : 'Not Published'}
+              </Badge>
             </div>
 
             {weekOfficersForPublication.length > 0 && (
