@@ -84,6 +84,13 @@ export default function AdminPerformanceReviews() {
     refetchOnWindowFocus: 'always',
   });
 
+  const { data: incidentReports = [] } = useQuery({
+    queryKey: ['allIncidentReports', 'performanceReviews'],
+    queryFn: () => base44.entities.IncidentReport.list('-created_date'),
+    enabled: hasHRAccess && !!selectedOfficer,
+    refetchOnWindowFocus: 'always',
+  });
+
   const { data: commendations } = useQuery({
     queryKey: ['officerCommendations', selectedOfficer],
     queryFn: () => base44.entities.Commendation.filter({ officer_email: selectedOfficer }),
@@ -193,7 +200,7 @@ export default function AdminPerformanceReviews() {
       }, 0);
 
       const periodSchedules = (schedules || []).filter(s => s.officer_email === selectedOfficer && s.shift_date >= data.review_period_start && s.shift_date <= data.review_period_end);
-      const punctuality = calculatePunctuality(periodEntries, periodSchedules, data.review_period_start, data.review_period_end);
+      const punctuality = calculatePunctuality(periodEntries, periodSchedules, data.review_period_start, data.review_period_end, incidentReports, officer);
       const onTimePercentage = punctuality.rate;
 
       const periodInspections = inspectionReports?.filter(i => {
