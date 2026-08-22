@@ -73,8 +73,12 @@ Deno.serve(async (req) => {
         const periodStart = validAnniversary(now.year - 1, hireMonth, hireDay);
         const periodEnd = dayBefore(dueDate);
         const metrics = await buildPerformanceMetrics(base44, officer, periodStart, periodEnd);
-        const supervisor = (users || []).find((user: any) => String(user.id || '') === String(officer.supervisor_id || ''));
-        const reviewerEmail = supervisor?.email || 'annualreviews@blackpointkjc.com';
+        const directSupervisor = (users || []).find((user: any) => String(user.id || '') === String(officer.supervisor_id || ''));
+        const supervisor = directSupervisor || (users || []).find((user: any) => user.id !== officer.id && (
+          user.role === 'admin' || (user.additional_roles || []).some((role: unknown) => ['supervisor','full_access'].includes(String(role).toLowerCase()))
+        ));
+        if (!supervisor) throw new Error('No supervisor is available to receive this annual review task.');
+        const reviewerEmail = supervisor.email;
         const reviewerName = supervisor
           ? `${supervisor.first_name || ''} ${supervisor.last_name || ''}`.trim() || supervisor.full_name || supervisor.email
           : 'Black Point Annual Review System';
@@ -86,6 +90,14 @@ Deno.serve(async (req) => {
           review_date: now.date,
           reviewer_email: reviewerEmail,
           reviewer_name: reviewerName,
+          assigned_supervisor_id: supervisor.id,
+          assigned_supervisor_email: supervisor.email,
+          assigned_supervisor_name: reviewerName,
+          supervisor_task_created_at: new Date().toISOString(),
+          supervisor_review_pending: true,
+          supervisor_review_completed: false,
+          officer_acknowledged: false,
+          officer_signature_obtained: false,
           supervisor_notes: 'Automatically generated from Pathfinder performance statistics for the completed annual review period. Supervisor and HR may add qualitative comments during the review meeting.',
         };
         const review = await base44.asServiceRole.entities.PerformanceReview.create(payload);
