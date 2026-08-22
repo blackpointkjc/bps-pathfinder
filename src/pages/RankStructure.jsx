@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Shield, GitBranch, Mail, Phone } from 'lucide-react';
@@ -6,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import { createPageUrl } from '@/utils';
 
 const RANKS = ['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer'];
 const COMMAND_RANKS = new Set(['Colonel','Lt Colonel','Major']);
@@ -13,6 +15,23 @@ const rankIndex = rank => { const i=RANKS.indexOf(rank); return i < 0 ? 99 : i; 
 const rolesOf = user => new Set((user?.additional_roles || []).map(r=>String(r).toLowerCase()));
 const displayName = user => `${user?.rank || 'Officer'} ${user?.last_name || user?.first_name || user?.email || ''}`.trim();
 const isOperational = user => isOperationalOfficer(user) && RANKS.includes(user?.rank);
+const isColonelHiers = person => String(person?.id || '') === '6a72bbee2842d6338cbae513' || (
+  String(person?.rank || '').toLowerCase() === 'colonel' &&
+  String(person?.first_name || '').toLowerCase() === 'kavon' &&
+  String(person?.last_name || '').toLowerCase() === 'hiers'
+);
+const contactEmail = person => {
+  if (isColonelHiers(person)) {
+    const blackPoint = [
+      person?.outlook_email,
+      person?.microsoft_email,
+      ...(Array.isArray(person?.email_aliases) ? person.email_aliases : []),
+    ].find(value => String(value || '').toLowerCase().endsWith('@blackpointkjc.com'));
+    return String(blackPoint || 'khiers@blackpointkjc.com').toLowerCase();
+  }
+  return String(person?.work_email || person?.email || '').toLowerCase();
+};
+const composeUrl = person => `${createPageUrl('OutlookMail')}?compose=1&to=${encodeURIComponent(contactEmail(person))}`;
 
 function PersonCard({ person, users, onOpen, compact = false }) {
   const supervisor = users.find(u=>u.id===person.supervisor_id);
@@ -28,7 +47,7 @@ function PersonCard({ person, users, onOpen, compact = false }) {
       </div>
     </div>
     <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Supervisor</div><div className="mt-1 text-xs font-semibold text-slate-200">{supervisorText}</div></div>
-    {!compact && <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2"><div className="min-w-0 rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2"><div className="text-[10px] font-bold uppercase text-slate-500">Email</div><div className="mt-1 whitespace-nowrap text-[10px] tracking-tight text-slate-300">{person.email || '—'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2"><div className="text-[10px] font-bold uppercase text-slate-500">Mobile</div><div className="mt-1 text-slate-300">{person.mobile_phone || '—'}</div></div></div>}
+    {!compact && <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2"><div className="min-w-0 rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2"><div className="text-[10px] font-bold uppercase text-slate-500">Email</div><div className="mt-1 whitespace-nowrap text-[10px] tracking-tight text-slate-300">{contactEmail(person) || '—'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2"><div className="text-[10px] font-bold uppercase text-slate-500">Mobile</div><div className="mt-1 text-slate-300">{person.mobile_phone || '—'}</div></div></div>}
   </button>;
 }
 
@@ -36,7 +55,7 @@ function OfficerDialog({ person, users, open, onOpenChange }) {
   if(!person) return null;
   const supervisor=users.find(u=>u.id===person.supervisor_id);
   const directReports=users.filter(u=>u.supervisor_id===person.id);
-  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-xl border-slate-700 bg-slate-950 text-white"><DialogHeader><DialogTitle>Personnel Information</DialogTitle></DialogHeader><div className="space-y-4"><div className="flex items-center gap-4">{person.profile_photo_url?<img src={person.profile_photo_url} alt="" className="h-20 w-20 rounded-full object-cover"/>:<div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-800 text-xl font-black">{person.first_name?.[0]}{person.last_name?.[0]}</div>}<div><div className="text-xl font-black">{displayName(person)}</div><div className="text-sm text-slate-400">Unit {person.unit_number||'—'} · {person.division||'No division'}</div><Badge className="mt-2 bg-blue-950 text-blue-300">{COMMAND_RANKS.has(person.rank)?'Shared Command':`Platoon ${person.platoon||'—'}`}</Badge></div></div><div className="grid gap-2 sm:grid-cols-2"><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Email</div><div className="mt-1 break-all text-sm">{person.email||'—'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Mobile</div><div className="mt-1 text-sm">{person.mobile_phone||'—'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Reports To</div><div className="mt-1 text-sm font-semibold">{supervisor?displayName(supervisor):(person.rank==='Colonel'?'Top of Command':'Awaiting assignment')}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Direct Reports</div><div className="mt-1 text-sm font-semibold">{directReports.length?directReports.map(displayName).join(', '):'None'}</div></div></div><div className="flex flex-wrap gap-2">{person.email&&<a href={`mailto:${person.email}`} className="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"><Mail className="mr-2 h-4 w-4"/>Email</a>}{person.mobile_phone&&<a href={`tel:${person.mobile_phone}`} className="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"><Phone className="mr-2 h-4 w-4"/>Call</a>}</div></div></DialogContent></Dialog>;
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-w-xl border-slate-700 bg-slate-950 text-white"><DialogHeader><DialogTitle>Personnel Information</DialogTitle></DialogHeader><div className="space-y-4"><div className="flex items-center gap-4">{person.profile_photo_url?<img src={person.profile_photo_url} alt="" className="h-20 w-20 rounded-full object-cover"/>:<div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-800 text-xl font-black">{person.first_name?.[0]}{person.last_name?.[0]}</div>}<div><div className="text-xl font-black">{displayName(person)}</div><div className="text-sm text-slate-400">Unit {person.unit_number||'—'} · {person.division||'No division'}</div><Badge className="mt-2 bg-blue-950 text-blue-300">{COMMAND_RANKS.has(person.rank)?'Shared Command':`Platoon ${person.platoon||'—'}`}</Badge></div></div><div className="grid gap-2 sm:grid-cols-2"><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Email</div><div className="mt-1 break-all text-sm">{contactEmail(person)||'—'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Mobile</div><div className="mt-1 text-sm">{person.mobile_phone||'—'}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Reports To</div><div className="mt-1 text-sm font-semibold">{supervisor?displayName(supervisor):(person.rank==='Colonel'?'Top of Command':'Awaiting assignment')}</div></div><div className="rounded-lg border border-slate-800 bg-slate-900 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Direct Reports</div><div className="mt-1 text-sm font-semibold">{directReports.length?directReports.map(displayName).join(', '):'None'}</div></div></div><div className="flex flex-wrap gap-2">{contactEmail(person)&&<Link to={composeUrl(person)} className="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"><Mail className="mr-2 h-4 w-4"/>Email in Pathfinder</Link>}{person.mobile_phone&&<a href={`tel:${person.mobile_phone}`} className="inline-flex items-center rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"><Phone className="mr-2 h-4 w-4"/>Call</a>}</div></div></DialogContent></Dialog>;
 }
 
 function OrgTreeNode({ person, branch, allUsers, onOpen }) {
