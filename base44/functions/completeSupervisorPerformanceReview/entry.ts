@@ -26,6 +26,9 @@ Deno.serve(async (req) => {
     if (stage !== 'supervisor_pending') {
       return Response.json({ error: 'This review is no longer waiting for supervisor ratings.' }, { status: 409 });
     }
+    if (String(review.officer_id || '') === String(me.id || '')) {
+      return Response.json({ error: 'You cannot submit the supervisor rating for your own performance review.' }, { status: 403 });
+    }
     if (me.role !== 'admin' && !roles.has('full_access') &&
         String(review.assigned_supervisor_id || '') !== String(me.id || '')) {
       return Response.json({ error: 'This review is assigned to another supervisor.' }, { status: 403 });
