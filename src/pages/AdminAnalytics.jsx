@@ -97,7 +97,7 @@ export default function AdminAnalytics() {
     const totalOnTime = byOfficer.reduce((sum, item) => sum + item.onTime, 0);
     const totalEntries = byOfficer.reduce((sum, item) => sum + item.total, 0);
     return { rate: totalEntries ? Math.round((totalOnTime / totalEntries) * 100) : 0, byOfficer };
-  }, [timeEntries, schedules, filteredUsers, currentMonthStart, currentMonthEnd]);
+  }, [timeEntries, schedules, incidentReports, filteredUsers, currentMonthStart, currentMonthEnd]);
 
   const hoursBreakdown = useMemo(() => {
     if (!timeEntries || !filteredUsers) return [];
