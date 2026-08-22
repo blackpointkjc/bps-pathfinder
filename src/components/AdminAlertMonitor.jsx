@@ -35,6 +35,8 @@ export default function AdminAlertMonitor({ user }) {
     },
     enabled: user?.role === 'admin',
     refetchInterval: 60000, // Subscription-friendly fallback refresh
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
   });
 
   // Query for pending supervisor write-ups
