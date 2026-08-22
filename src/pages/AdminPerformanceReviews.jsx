@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { listOfficerDirectory } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { calculatePunctuality } from '@/lib/performanceScoring';
 
@@ -40,7 +40,7 @@ export default function AdminPerformanceReviews() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const hasHRAccess = user?.role === 'admin' || user?.additional_roles?.includes('hr') || user?.additional_roles?.includes('full_access') || String(user?.rank || '').toLowerCase() === 'human resources';
