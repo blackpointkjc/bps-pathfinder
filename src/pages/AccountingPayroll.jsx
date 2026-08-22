@@ -68,8 +68,8 @@ export default function AccountingPayroll() {
     enabled: isAccountingRole,
     staleTime: 0,
     refetchOnMount: 'always',
-    refetchInterval: 15000,
-    refetchIntervalInBackground: true,
+    refetchInterval: 60000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
 
