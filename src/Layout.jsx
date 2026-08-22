@@ -861,7 +861,7 @@ export default function Layout({ children, currentPageName }) {
       try {
         const [announcements, receipts] = await Promise.all([
           base44.entities.Announcement.list('-created_date', 100),
-          base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500),
+          base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 5000),
         ]);
         if (!active) return;
         const receiptIds = new Set((receipts || []).map(r => r.announcement_id));
