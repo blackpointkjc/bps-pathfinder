@@ -355,7 +355,8 @@ export default function TrespassingNotices() {
       senderName: 'Black Point Protection',
       senderAddress: siteLocation?.address || notice.location,
       officerName: officerFullName,
-      signatureName: '',
+      signatureName: getOfficerSignature(notice.created_by_id),
+      timeZone: siteLocation?.time_zone || 'America/New_York',
       policeDepartment: resolvePoliceDepartment(siteLocation || { site_name: notice.location, division: 'Virginia' }),
     });
     return;
