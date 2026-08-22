@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '../utils';
 import { announceVoice } from '@/utils/voiceAnnouncer';
 import { cleanIncident } from '@/utils/callUtils';
+import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
 
 const SOURCES = [
   // Microsoft Teams is the source of truth for Officer/Supervisor chat. Those
@@ -458,7 +459,10 @@ export default function GlobalMessageBanner({ user }) {
       base44.entities.Announcement.list('-created_date', 100),
       base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 5000),
     ]).then(([announcements, receipts]) => {
-      const seen = new Set((receipts || []).map(receipt => receipt.announcement_id));
+      const seen = getLocalReadAnnouncementIds(user.email);
+      (receipts || []).forEach(receipt => {
+        if (receipt?.announcement_id) seen.add(String(receipt.announcement_id));
+      });
       const accountCreated = user?.created_date ? new Date(user.created_date).getTime() : 0;
       (announcements || []).slice().reverse().forEach(record => {
         const created = new Date(record.created_date || 0).getTime();
