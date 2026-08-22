@@ -181,7 +181,8 @@ export default function ClientReports() {
         senderName: 'Black Point Protection',
         senderAddress: site?.address || report.location,
         officerName,
-        signatureName: '',
+        signatureName: officerSig,
+        timeZone: site?.time_zone || 'America/New_York',
         policeDepartment: resolvePoliceDepartment(site || { site_name: report.location, division: 'Virginia' }),
       });
       return;
@@ -191,7 +192,8 @@ export default function ClientReports() {
         displayLocation: report.location,
         officerName,
         complainantName: report.complainant_name || officerName,
-        signatureName: '',
+        signatureName: officerSig,
+        timeZone: locations.find(loc => loc.site_name === report.location)?.time_zone || 'America/New_York',
       });
       return;
     }
