@@ -28,6 +28,7 @@ function stageOf(review) {
 }
 
 function stagePresentation(stage) {
+  if (stage === 'higher_reviewer_required') return { label: 'Higher-Ranking Reviewer Required', className: 'bg-red-800' };
   if (stage === 'officer_pending') return { label: 'Your Response Required', className: 'bg-amber-600' };
   if (stage === 'hr_approval_pending') return { label: 'Waiting for HR Approval', className: 'bg-sky-700' };
   if (stage === 'approved') return { label: 'HR Approved', className: 'bg-emerald-700' };
@@ -143,7 +144,7 @@ export default function OfficerPerformanceReviews() {
               <div className="rounded-lg bg-slate-800 p-3"><div className="text-xs text-slate-400">On-time</div><div className="text-2xl font-bold">{review.on_time_percentage == null ? '—' : `${review.on_time_percentage}%`}</div></div>
             </div>
 
-            {stage !== 'supervisor_pending' && <section className="rounded-lg border border-slate-700 bg-slate-800/60 p-4">
+            {['officer_pending', 'hr_approval_pending', 'approved'].includes(stage) && <section className="rounded-lg border border-slate-700 bg-slate-800/60 p-4">
               <h3 className="mb-3 font-semibold text-sky-300">Supervisor Ratings</h3>
               <div className="space-y-2">
                 {ratingFields.map(({ key, label }) => <div key={key} className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700 py-2">
@@ -171,7 +172,8 @@ export default function OfficerPerformanceReviews() {
             </div>}
 
             {stage === 'officer_pending' && <Button onClick={() => openResponse(review)} className="bg-amber-500 text-slate-950 hover:bg-amber-400"><PenLine className="mr-2 h-4 w-4"/>Add Self-Rating, Comment & Sign</Button>}
-            {stage === 'supervisor_pending' && <p className="rounded-lg border border-violet-800 bg-violet-950/30 p-4 text-sm text-violet-200">The assigned supervisor is preparing this review. You will be notified when it is ready for your response.</p>}
+            {stage === 'higher_reviewer_required' && <p className="rounded-lg border border-red-800 bg-red-950/30 p-4 text-sm text-red-200">{review.assignment_issue || 'No active reviewer currently ranks above you.'} This review has not been sent downward. Administration must add or assign a higher-ranking reviewer before it can continue.</p>}
+            {stage === 'supervisor_pending' && <p className="rounded-lg border border-violet-800 bg-violet-950/30 p-4 text-sm text-violet-200">The assigned higher-ranking supervisor is preparing this review. You will be notified when it is ready for your response.</p>}
           </CardContent>
         </Card>;
       })}
