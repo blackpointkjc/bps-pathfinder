@@ -8,6 +8,42 @@ let officerCacheAt = 0;
 let officerPending = null;
 const TTL_MS = 15_000;
 
+const normalizedIdentity = value => String(value || '').trim().toLowerCase();
+
+export function directoryUserEmails(user) {
+  return [...new Set([
+    user?.email,
+    user?.work_email,
+    user?.pathfinder_email,
+    user?.microsoft_email,
+    user?.outlook_email,
+    ...(Array.isArray(user?.email_aliases) ? user.email_aliases : []),
+  ].map(normalizedIdentity).filter(Boolean))];
+}
+
+export function directoryUserMatches(user, reference) {
+  if (!user || reference === undefined || reference === null) return false;
+  const value = String(reference).trim();
+  if (value && String(user.id || '') === value) return true;
+  const normalized = normalizedIdentity(value);
+  return Boolean(normalized && directoryUserEmails(user).includes(normalized));
+}
+
+export function findDirectoryUser(users, ...references) {
+  const list = Array.isArray(users) ? users : [];
+  return list.find(user => references.some(reference => directoryUserMatches(user, reference))) || null;
+}
+
+export function primaryDirectoryEmail(user) {
+  return normalizedIdentity(user?.work_email || user?.pathfinder_email || user?.email);
+}
+
+export function directoryEmailLabel(user) {
+  const work = primaryDirectoryEmail(user);
+  const microsoft = normalizedIdentity(user?.microsoft_email || user?.outlook_email);
+  return microsoft && microsoft !== work ? `${work} · Outlook: ${microsoft}` : work;
+}
+
 export async function getAppDirectory(force = false) {
   const now = Date.now();
   if (!force && cache && now - cacheAt < TTL_MS) return cache;
