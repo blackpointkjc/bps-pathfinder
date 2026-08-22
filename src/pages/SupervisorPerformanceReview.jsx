@@ -407,15 +407,20 @@ export default function SupervisorPerformanceReview() {
                   />
                 </div>
 
-                <div className="flex items-center space-x-2 p-4 bg-amber-950/30 rounded-lg border border-amber-700 text-slate-100">
-                  <Checkbox
-                    id="signature"
-                    checked={signatureObtained}
-                    onCheckedChange={setSignatureObtained}
-                  />
-                  <Label htmlFor="signature" className="cursor-pointer font-medium text-slate-100">
-                    I have reviewed this performance evaluation with the officer and obtained their signature on the printed document
-                  </Label>
+                <div className={`p-4 rounded-lg border ${selectedReview.officer_acknowledged && selectedReview.officer_signature_url ? 'bg-emerald-950/40 border-emerald-700' : 'bg-amber-950/30 border-amber-700'}`}>
+                  {selectedReview.officer_acknowledged && selectedReview.officer_signature_url ? (
+                    <div>
+                      <p className="font-semibold text-emerald-300">Officer electronically signed this review</p>
+                      <p className="text-sm text-slate-300">{selectedReview.officer_signed_at ? new Date(selectedReview.officer_signed_at).toLocaleString() : ''}</p>
+                      <img src={selectedReview.officer_signature_url} alt="Officer signature" className="mt-3 max-h-24 rounded bg-white p-2" />
+                      {selectedReview.officer_comments && <p className="mt-3 text-slate-200"><strong>Officer comments:</strong> {selectedReview.officer_comments}</p>}
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="font-semibold text-amber-300">Waiting for officer signature</p>
+                      <p className="text-sm text-slate-300 mt-1">The officer must open Officer Center → Profile & Training → My Reviews & Feedback, review the evaluation, and sign electronically.</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -430,7 +435,7 @@ export default function SupervisorPerformanceReview() {
                 </Button>
                 <Button
                   onClick={() => completeReviewMutation.mutate(selectedReview.id)}
-                  disabled={!signatureObtained || completeReviewMutation.isPending}
+                  disabled={!selectedReview.officer_acknowledged || !selectedReview.officer_signature_url || completeReviewMutation.isPending}
                   className="bg-green-600 hover:bg-green-700"
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
@@ -477,7 +482,7 @@ export default function SupervisorPerformanceReview() {
                           onClick={() => {
                             setSelectedReview(review);
                             setSupervisorNotes("");
-                            setSignatureObtained(false);
+                            setSignatureObtained(Boolean(review.officer_acknowledged && review.officer_signature_url));
                           }}
                           className="bg-purple-600 hover:bg-purple-700"
                         >
