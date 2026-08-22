@@ -1,4 +1,4 @@
-import { listDirectoryUsers } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, listDirectoryUsers } from '@/lib/appDirectory';
 import { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,7 +41,7 @@ export default function AdminSupervisorReports() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const { data: allUsers } = useQuery({
