@@ -41,6 +41,11 @@
       "type": "string",
       "description": "Subdivision this location belongs to (e.g., Richmond, NOVA, Tidewater)"
     },
+    "time_zone": {
+      "type": "string",
+      "default": "America/New_York",
+      "description": "IANA time zone used for schedules, reports, and printed timestamps"
+    },
     "active": {
       "type": "boolean",
       "default": true,
