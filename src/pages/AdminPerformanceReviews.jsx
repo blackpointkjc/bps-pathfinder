@@ -17,9 +17,36 @@ import { getCurrentDirectoryUser, listOfficerDirectory } from '@/lib/appDirector
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { toast } from 'sonner';
 
+const ratingFields = [
+  { key: 'punctuality_rating', label: 'Punctuality' },
+  { key: 'professionalism_rating', label: 'Professionalism' },
+  { key: 'uniform_appearance_rating', label: 'Uniform & Appearance' },
+  { key: 'communication_rating', label: 'Communication' },
+  { key: 'initiative_rating', label: 'Initiative' },
+  { key: 'overall_rating', label: 'Overall Rating' },
+];
+
+const workflowLabel = (review) => {
+  const stage = review.workflow_stage || (review.hr_approved ? 'approved' : review.officer_acknowledged ? 'hr_approval_pending' : review.supervisor_review_completed ? 'officer_pending' : 'supervisor_pending');
+  if (stage === 'officer_pending') return { stage, label: 'Officer Response', className: 'bg-amber-600 text-white' };
+  if (stage === 'hr_approval_pending') return { stage, label: 'HR Approval Required', className: 'bg-red-700 text-white' };
+  if (stage === 'approved') return { stage, label: 'Approved', className: 'bg-green-700 text-white' };
+  return { stage, label: 'Supervisor Rating', className: 'bg-purple-700 text-white' };
+};
+
 export default function AdminPerformanceReviews() {
   const [showForm, setShowForm] = useState(false);
   const [selectedOfficer, setSelectedOfficer] = useState("");
+  const [finalizingReview, setFinalizingReview] = useState(null);
+  const [finalRatings, setFinalRatings] = useState({
+    punctuality_rating: 3,
+    professionalism_rating: 3,
+    uniform_appearance_rating: 3,
+    communication_rating: 3,
+    initiative_rating: 3,
+    overall_rating: 3,
+  });
+  const [approvalNotes, setApprovalNotes] = useState("");
   const [formData, setFormData] = useState({
     review_period_start: "",
     review_period_end: "",
@@ -57,9 +84,15 @@ export default function AdminPerformanceReviews() {
   });
   const allUsers = directoryUsers.filter(isOperationalOfficer);
 
-  const { data: allReviews } = useQuery({
+  const { data: allReviews = [] } = useQuery({
     queryKey: ['allPerformanceReviews'],
-    queryFn: () => base44.entities.PerformanceReview.list('-review_date'),
+    queryFn: async () => {
+      const result = await base44.functions.invoke('managePerformanceReviews', { action: 'list' });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.reviews || [];
+    },
+    enabled: hasHRAccess,
   });
 
   const selectedOfficerRecord = useMemo(
@@ -129,7 +162,7 @@ export default function AdminPerformanceReviews() {
         supervisor_notes: "",
         pay_effective_date: "",
       });
-      toast.success('Performance review created, pushed to the officer, and assigned for supervisor review.');
+      toast.success('Review started and assigned to the next supervisor in the rotation.');
     },
     onError: (error) => toast.error(error?.message || 'Unable to create performance review.'),
   });
@@ -138,6 +171,34 @@ export default function AdminPerformanceReviews() {
     () => (allUsers || []).filter(officer => officer.employment_status !== 'terminated' && !officer.termination_date),
     [allUsers]
   );
+
+  const approveReviewMutation = useMutation({
+    mutationFn: async () => {
+      if (!finalizingReview?.id) throw new Error('Select a review to approve.');
+      const result = await base44.functions.invoke('managePerformanceReviews', {
+        action: 'approve',
+        review_id: finalizingReview.id,
+        ratings: finalRatings,
+        hr_approval_notes: approvalNotes,
+      });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allPerformanceReviews'] });
+      setFinalizingReview(null);
+      setApprovalNotes('');
+      toast.success('HR approved the review and published the final rating.');
+    },
+    onError: (error) => toast.error(error?.message || 'Unable to approve this performance review.'),
+  });
+
+  const openFinalApproval = (review) => {
+    setFinalizingReview(review);
+    setFinalRatings(Object.fromEntries(ratingFields.map(({ key }) => [key, Number(review[key]) || 3])));
+    setApprovalNotes(review.hr_approval_notes || '');
+  };
 
   if (!hasHRAccess) {
     return (
@@ -157,14 +218,14 @@ export default function AdminPerformanceReviews() {
               <ClipboardCheck className="w-8 h-8 text-purple-600" />
               Performance Reviews
             </h1>
-            <p className="text-slate-600">Conduct and manage officer performance reviews</p>
+            <p className="text-slate-600">Start manual reviews, track annual reviews, and publish final ratings after supervisor and officer responses</p>
           </div>
           <Button
             onClick={() => setShowForm(true)}
             className="bg-purple-600 hover:bg-purple-700"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Create Review
+            Start Manual Review
           </Button>
         </div>
 
@@ -186,6 +247,7 @@ export default function AdminPerformanceReviews() {
                             <Badge variant="outline">
                               {format(parseISO(review.review_period_start), 'MMM d')} - {format(parseISO(review.review_period_end), 'MMM d, yyyy')}
                             </Badge>
+                            <Badge className={workflowLabel(review).className}>{workflowLabel(review).label}</Badge>
                           </div>
                           <div className="flex items-center gap-2 mb-2">
                             <div className="flex items-center gap-1">
@@ -198,8 +260,10 @@ export default function AdminPerformanceReviews() {
                             </div>
                             <span className="text-sm text-slate-600">Overall: {review.overall_rating}/5</span>
                           </div>
-                          <div className="flex gap-2 text-xs text-slate-600 mb-2">
-                            <span>By: {review.reviewer_name}</span>
+                          <div className="flex flex-wrap gap-2 text-xs text-slate-600 mb-2">
+                            <span>Started by: {review.reviewer_name || 'Automated annual review'}</span>
+                            <span>•</span>
+                            <span>Assigned supervisor: {review.assigned_supervisor_name || 'Pending'}</span>
                             <span>•</span>
                             <span>{format(parseISO(review.review_date), 'MMM d, yyyy')}</span>
                           </div>
@@ -300,11 +364,13 @@ export default function AdminPerformanceReviews() {
                               <p className="text-sm text-slate-700">{review.areas_for_improvement}</p>
                             </div>
                           )}
-                          {!review.officer_acknowledged && (
-                            <Badge className="bg-amber-600 text-white mt-2">Pending Officer Acknowledgment</Badge>
+                          {workflowLabel(review).stage === 'hr_approval_pending' && (
+                            <Button onClick={() => openFinalApproval(review)} className="mt-3 bg-red-700 hover:bg-red-800">
+                              Review Officer Response & Final Approve
+                            </Button>
                           )}
-                          {review.officer_acknowledged && (
-                            <Badge className="bg-green-600 text-white mt-2">Acknowledged {review.officer_acknowledged_at ? format(parseISO(review.officer_acknowledged_at), 'MMM d, yyyy') : 'electronically'}</Badge>
+                          {workflowLabel(review).stage === 'approved' && (
+                            <Badge className="mt-2 bg-green-700 text-white">Final rating: {review.final_rating ?? review.overall_rating}/5</Badge>
                           )}
                         </div>
                       </div>
