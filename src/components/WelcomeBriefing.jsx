@@ -129,8 +129,10 @@ export default function WelcomeBriefing({ user }) {
           const created = parseServerTimestamp(item?.created_date)?.getTime() || 0;
           return created > briefingCutoff;
         };
+        const canSeeSupervisorAnnouncements = user.role === 'admin' || user.additional_roles?.includes('supervisor');
         const unseenAnnouncements = (announcements || []).filter(item => (
           activeAnnouncement(item)
+          && (item.audience !== 'supervisors' || canSeeSupervisorAnnouncements)
           && !receiptIds.has(item.id)
           && createdAfterCutoff(item)
         ));
