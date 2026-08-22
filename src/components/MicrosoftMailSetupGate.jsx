@@ -51,6 +51,13 @@ export default function MicrosoftMailSetupGate({ user, children, enabled = true 
   }, []);
 
   useEffect(() => {
+    setError('');
+    setStatus(readVerifiedSession(userId)
+      ? { loading: false, connected: true, configured: true, sessionVerified: true }
+      : { loading: true, connected: false, configured: true });
+  }, [userId]);
+
+  useEffect(() => {
     if (!enabled || !userId) return;
     let active = true;
 
