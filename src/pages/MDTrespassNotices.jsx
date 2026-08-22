@@ -138,7 +138,7 @@ export default function MDTrespassNotices() {
     queryKey: ['activeLocations'],
     queryFn: async () => {
       const allLocations = await listDirectoryLocations('site_name');
-      return allLocations.filter(loc => loc.active);
+      return allLocations.filter(loc => loc.active !== false);
     },
     enabled: !!user,
     initialData: [],
