@@ -5,6 +5,14 @@ import { getTeamsDirectChatMessages, listTeamsDirectChats, sendTeamsDirectMessag
 
 const nameOf = user => [user?.rank, user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.full_name || user?.email || 'User';
 
+const messageBody = message => {
+  const body = String(message?.message || '').trim();
+  const sender = String(message?.sender_name || '').trim();
+  if (!sender || !body) return body;
+  const escaped = sender.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return body.replace(new RegExp(`^${escaped}\\s*:\\s*`, 'i'), '').trim();
+};
+
 export default function UniversalInbox({ currentUser, users = [] }) {
   const [chats, setChats] = useState([]);
   const [selectedChatId, setSelectedChatId] = useState('');
@@ -257,7 +265,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
             {loadingMessages && <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading Teams history…</div>}
             {!loadingMessages && chatMessages.map(message => {
               const mine = String(message.sender_microsoft_id || '') === String(microsoftMe?.id || '');
-              return <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}><div className="max-w-[78%]"><div className={`mb-1 px-2 text-[10px] text-slate-500 ${mine ? 'text-right' : ''}`}>{mine ? 'You' : message.sender_name}</div><div className={`break-words rounded-2xl px-4 py-2 text-sm ${mine ? 'rounded-br-sm bg-blue-600' : 'rounded-bl-sm bg-slate-800'}`}>{message.message}</div><div className={`mt-1 px-2 text-[9px] text-slate-600 ${mine ? 'text-right' : ''}`}>{message.created_date ? new Date(message.created_date).toLocaleString() : ''}</div></div></div>;
+              return <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}><div className="max-w-[78%]"><div className={`mb-1 px-2 text-[10px] text-slate-500 ${mine ? 'text-right' : ''}`}>{mine ? 'You' : message.sender_name}</div><div className={`break-words rounded-2xl px-4 py-2 text-sm ${mine ? 'rounded-br-sm bg-blue-600' : 'rounded-bl-sm bg-slate-800'}`}>{messageBody(message)}</div><div className={`mt-1 px-2 text-[9px] text-slate-600 ${mine ? 'text-right' : ''}`}>{message.created_date ? new Date(message.created_date).toLocaleString() : ''}</div></div></div>;
             })}
             {!loadingMessages && !chatMessages.length && <div className="py-12 text-center text-sm text-slate-500">No messages were returned from this Teams conversation.</div>}
           </div>
