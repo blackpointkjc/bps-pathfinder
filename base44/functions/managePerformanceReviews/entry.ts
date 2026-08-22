@@ -90,6 +90,11 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action || 'preview');
 
+    if (action === 'list') {
+      const reviews = await base44.asServiceRole.entities.PerformanceReview.list('-review_date', 2000);
+      return Response.json({ success: true, reviews: reviews || [] });
+    }
+
     if (action === 'approve') {
       const review = await base44.asServiceRole.entities.PerformanceReview.get(String(body.review_id || ''));
       if (!review) return Response.json({ error: 'Performance review not found.' }, { status: 404 });
