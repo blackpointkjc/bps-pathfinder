@@ -71,7 +71,7 @@ export default function OfficerChat() {
       const target = teamsConfig || await getTeamsSyncConfig('officer_chat');
       if (!target?.enabled) throw new Error('Microsoft Teams Officer General Chat is not configured.');
       // Teams is the source of truth. Do not create a Pathfinder-only message first.
-      const teamsMessage = await sendTeamChannelMessage(user?.id, `<strong>${data.sender_name}</strong>: ${data.message}`, target, 'officer_chat');
+      const teamsMessage = await sendTeamChannelMessage(user?.id, data.message, target, 'officer_chat');
       if (!teamsMessage?.id) throw new Error('Microsoft Teams did not confirm Officer Chat delivery.');
       const created = await base44.entities.OfficerChatMessage.create({
         ...data,
@@ -255,7 +255,7 @@ export default function OfficerChat() {
                       {showName && (
                         <div className={`flex items-baseline gap-2 mb-1 px-2 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
                           <span className="text-xs font-semibold text-slate-700">
-                            {isOwnMessage ? `You — ${getSenderName(msg)}` : getSenderName(msg)}
+                            {isOwnMessage ? 'You' : getSenderName(msg)}
                           </span>
                           {!isOwnMessage && userPhone && (
                             <button
