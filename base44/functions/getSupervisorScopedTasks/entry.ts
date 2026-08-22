@@ -1,11 +1,22 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const normalized = (value:any) => String(value || '').trim().toLowerCase();
-const OPERATIONAL_RANKS = new Set(['Colonel','Lt Colonel','Major','Captain','Lieutenant','First Sergeant','Sergeant','Corporal','Senior officer','Officer','Unarmed Officer']);
+const RANK_ORDER = ['colonel', 'lt colonel', 'major', 'captain', 'lieutenant', 'first sergeant', 'sergeant', 'corporal', 'senior officer', 'officer', 'unarmed officer'];
+const OPERATIONAL_RANKS = new Set(RANK_ORDER);
+const normalizeRank = (value:any) => {
+  const rank = String(value || '').trim().toLowerCase().replace(/\./g, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+  return rank === 'lieutenant colonel' ? 'lt colonel' : rank;
+};
+const rankLevel = (user:any) => RANK_ORDER.indexOf(normalizeRank(user?.rank));
+const reviewerOutranks = (reviewer:any, officer:any) => {
+  const reviewerLevel = rankLevel(reviewer);
+  const officerLevel = rankLevel(officer);
+  return reviewerLevel >= 0 && officerLevel >= 0 && reviewerLevel < officerLevel;
+};
 const rolesOf = (u:any) => new Set((u?.additional_roles || []).map((r:any) => String(r).toLowerCase()));
 const operational = (u:any) => {
   const roles = rolesOf(u);
-  return !u?.termination_date && OPERATIONAL_RANKS.has(u?.rank) && roles.has('officer') && roles.has('cad_access');
+  return !u?.termination_date && OPERATIONAL_RANKS.has(normalizeRank(u?.rank)) && roles.has('officer') && roles.has('cad_access');
 };
 
 Deno.serve(async (req) => {
@@ -88,6 +99,11 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.InspectionReport.list('-inspection_date', 1000),
     ]);
 
+    const officerForReview = (review:any) => (allUsers || []).find((person:any) =>
+      (review.officer_id && String(person.id || '') === String(review.officer_id)) ||
+      (!review.officer_id && normalized(person.email) === normalized(review.officer_email))
+    );
+
     return Response.json({
       assignedPeople,
       complaints: (complaints || []).filter((c:any) => isAssigned(c.officer_email) && ['pending','under_investigation'].includes(c.investigation_status)),
@@ -95,15 +111,15 @@ Deno.serve(async (req) => {
       reviews: (reviews || []).filter((r:any) => {
         const stage = String(r.workflow_stage || (r.supervisor_review_pending ? 'supervisor_pending' : ''));
         if (stage !== 'supervisor_pending' || r.supervisor_review_completed) return false;
-        if (me.role === 'admin') return true;
-        if (r.assigned_supervisor_id) return String(r.assigned_supervisor_id) === String(me.id || '');
-        return isAssigned(r.officer_email) || assigned.some((person:any) => String(person.id) === String(r.officer_id || ''));
+        const officer = officerForReview(r);
+        if (!officer || !reviewerOutranks(me, officer)) return false;
+        return String(r.assigned_supervisor_id || '') === String(me.id || '');
       }),
       reviewFollowUps: (reviews || []).filter((r:any) => {
         if (String(r.workflow_stage || '') !== 'officer_pending' || r.officer_acknowledged) return false;
-        if (me.role === 'admin') return true;
-        if (r.assigned_supervisor_id) return String(r.assigned_supervisor_id) === String(me.id || '');
-        return isAssigned(r.officer_email) || assigned.some((person:any) => String(person.id) === String(r.officer_id || ''));
+        const officer = officerForReview(r);
+        if (!officer || !reviewerOutranks(me, officer)) return false;
+        return String(r.assigned_supervisor_id || '') === String(me.id || '');
       }),
       inspections: (inspections || []).filter((i:any) => isAssigned(i.officer_email) && i.follow_up_required && !i.follow_up_completed),
     });
