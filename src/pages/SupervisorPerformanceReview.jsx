@@ -6,15 +6,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ClipboardCheck, Printer, Star, CheckCircle, User } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 export default function SupervisorPerformanceReview() {
   const [selectedReview, setSelectedReview] = useState(null);
-  const [signatureObtained, setSignatureObtained] = useState(false);
   const [supervisorNotes, setSupervisorNotes] = useState("");
+  const [supervisorRatings, setSupervisorRatings] = useState({
+    punctuality_rating: 3,
+    professionalism_rating: 3,
+    uniform_appearance_rating: 3,
+    communication_rating: 3,
+    initiative_rating: 3,
+    overall_rating: 3,
+  });
   
   const queryClient = useQueryClient();
 
@@ -48,7 +54,7 @@ export default function SupervisorPerformanceReview() {
     mutationFn: async (reviewId) => {
       const response = await base44.functions.invoke('completeSupervisorPerformanceReview', {
         reviewId,
-        signatureObtained,
+        ratings: supervisorRatings,
         supervisorNotes,
       });
       const payload = response?.data || response || {};
@@ -59,9 +65,8 @@ export default function SupervisorPerformanceReview() {
       queryClient.invalidateQueries({ queryKey: ['supervisorScopedTasks'] });
       queryClient.invalidateQueries({ queryKey: ['pendingPerformanceReviews'] });
       setSelectedReview(null);
-      setSignatureObtained(false);
       setSupervisorNotes("");
-      toast.success('Review marked as completed.');
+      toast.success('Supervisor ratings submitted to the officer.');
     },
     onError: (error) => toast.error(error?.message || 'Unable to complete this performance review.'),
   });
@@ -287,7 +292,6 @@ export default function SupervisorPerformanceReview() {
                   size="sm"
                   onClick={() => {
                     setSelectedReview(null);
-                    setSignatureObtained(false);
                     setSupervisorNotes("");
                   }}
                 >
@@ -323,37 +327,35 @@ export default function SupervisorPerformanceReview() {
               </div>
 
               <div>
-                <h3 className="font-semibold text-slate-900 mb-3">Performance Ratings</h3>
+                <h3 className="font-semibold text-slate-900 mb-1">Supervisor Ratings</h3>
+                <p className="text-sm text-slate-500 mb-3">Select one through five stars for every category. These ratings will be sent to the officer for a self-rating and signature.</p>
                 {[
-                  { label: 'Punctuality', value: selectedReview.punctuality_rating },
-                  { label: 'Professionalism', value: selectedReview.professionalism_rating },
-                  { label: 'Uniform & Appearance', value: selectedReview.uniform_appearance_rating },
-                  { label: 'Communication', value: selectedReview.communication_rating },
-                  { label: 'Initiative', value: selectedReview.initiative_rating },
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex justify-between items-center py-2 border-b">
-                    <span className="text-slate-700">{label}</span>
-                    <div className="flex gap-1">
+                  { key: 'punctuality_rating', label: 'Punctuality' },
+                  { key: 'professionalism_rating', label: 'Professionalism' },
+                  { key: 'uniform_appearance_rating', label: 'Uniform & Appearance' },
+                  { key: 'communication_rating', label: 'Communication' },
+                  { key: 'initiative_rating', label: 'Initiative' },
+                  { key: 'overall_rating', label: 'Overall Rating' },
+                ].map(({ key, label }) => (
+                  <div key={key} className={`flex justify-between items-center py-3 border-b ${key === 'overall_rating' ? 'bg-purple-50 px-3 rounded-lg mt-2' : ''}`}>
+                    <span className={key === 'overall_rating' ? 'font-bold text-slate-900' : 'text-slate-700'}>{label}</span>
+                    <div className="flex gap-1" role="radiogroup" aria-label={label}>
                       {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
+                        <button
                           key={star}
-                          className={`w-5 h-5 ${star <= value ? 'text-amber-500 fill-amber-500' : 'text-slate-300'}`}
-                        />
+                          type="button"
+                          role="radio"
+                          aria-checked={supervisorRatings[key] === star}
+                          aria-label={`${label}: ${star} of 5`}
+                          onClick={() => setSupervisorRatings(current => ({ ...current, [key]: star }))}
+                          className="rounded p-1 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                          <Star className={`${key === 'overall_rating' ? 'w-6 h-6' : 'w-5 h-5'} ${star <= supervisorRatings[key] ? 'text-amber-500 fill-amber-500' : 'text-slate-300'}`} />
+                        </button>
                       ))}
                     </div>
                   </div>
                 ))}
-                <div className="flex justify-between items-center py-3 bg-purple-50 px-3 rounded-lg mt-2">
-                  <span className="font-bold text-slate-900">Overall Rating</span>
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className={`w-6 h-6 ${star <= selectedReview.overall_rating ? 'text-amber-500 fill-amber-500' : 'text-slate-300'}`}
-                      />
-                    ))}
-                  </div>
-                </div>
               </div>
 
               {selectedReview.strengths && (
@@ -415,20 +417,9 @@ export default function SupervisorPerformanceReview() {
                   />
                 </div>
 
-                <div className={`p-4 rounded-lg border ${selectedReview.officer_acknowledged && selectedReview.officer_signature_url ? 'bg-emerald-950/40 border-emerald-700' : 'bg-amber-950/30 border-amber-700'}`}>
-                  {selectedReview.officer_acknowledged && selectedReview.officer_signature_url ? (
-                    <div>
-                      <p className="font-semibold text-emerald-300">Officer electronically signed this review</p>
-                      <p className="text-sm text-slate-300">{selectedReview.officer_signed_at ? new Date(selectedReview.officer_signed_at).toLocaleString() : ''}</p>
-                      <img src={selectedReview.officer_signature_url} alt="Officer signature" className="mt-3 max-h-24 rounded bg-white p-2" />
-                      {selectedReview.officer_comments && <p className="mt-3 text-slate-200"><strong>Officer comments:</strong> {selectedReview.officer_comments}</p>}
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="font-semibold text-amber-300">Waiting for officer signature</p>
-                      <p className="text-sm text-slate-300 mt-1">The officer must open Officer Center → Profile & Training → My Reviews & Feedback, review the evaluation, and sign electronically.</p>
-                    </div>
-                  )}
+                <div className="p-4 rounded-lg border bg-blue-950/30 border-blue-700">
+                  <p className="font-semibold text-blue-300">Next step: officer response</p>
+                  <p className="text-sm text-slate-300 mt-1">Submitting your ratings routes this review to the officer. The officer will provide a self-rating, comments, and an electronic signature before HR receives it for final approval.</p>
                 </div>
               </div>
 
@@ -443,11 +434,11 @@ export default function SupervisorPerformanceReview() {
                 </Button>
                 <Button
                   onClick={() => completeReviewMutation.mutate(selectedReview.id)}
-                  disabled={!selectedReview.officer_acknowledged || !selectedReview.officer_signature_url || completeReviewMutation.isPending}
+                  disabled={Object.values(supervisorRatings).some(value => value < 1 || value > 5) || completeReviewMutation.isPending}
                   className="bg-green-600 hover:bg-green-700"
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
-                  {completeReviewMutation.isPending ? 'Completing...' : 'Complete Review'}
+                  {completeReviewMutation.isPending ? 'Submitting...' : 'Submit Ratings to Officer'}
                 </Button>
               </div>
             </CardContent>
@@ -489,12 +480,19 @@ export default function SupervisorPerformanceReview() {
                         <Button
                           onClick={() => {
                             setSelectedReview(review);
-                            setSupervisorNotes("");
-                            setSignatureObtained(Boolean(review.officer_acknowledged && review.officer_signature_url));
+                            setSupervisorNotes(review.supervisor_notes || "");
+                            setSupervisorRatings({
+                              punctuality_rating: Number(review.punctuality_rating) || 3,
+                              professionalism_rating: Number(review.professionalism_rating) || 3,
+                              uniform_appearance_rating: Number(review.uniform_appearance_rating) || 3,
+                              communication_rating: Number(review.communication_rating) || 3,
+                              initiative_rating: Number(review.initiative_rating) || 3,
+                              overall_rating: Number(review.overall_rating) || 3,
+                            });
                           }}
                           className="bg-purple-600 hover:bg-purple-700"
                         >
-                          Review with Officer
+                          Rate Officer
                         </Button>
                       </div>
                     </div>
