@@ -7,13 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   BarChart3, Users, Clock, AlertTriangle, 
-  CheckCircle2, Award, Shield
+  CheckCircle2, Award, Shield, Send, Loader2, MailCheck, X
 } from "lucide-react";
 import { format, parseISO, differenceInMinutes, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer, isInternalMember } from '@/lib/directoryUtils';
 import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateJobDutyCompliance, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
+import { toast } from 'sonner';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
 
@@ -27,11 +28,35 @@ function breakMinutes(entry) {
 
 export default function AdminAnalytics() {
   const [selectedDivision, setSelectedDivision] = useState('all');
+  const [showSummaryDialog, setShowSummaryDialog] = useState(false);
+  const [summarySending, setSummarySending] = useState(false);
+  const [summaryResult, setSummaryResult] = useState(null);
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => getCurrentDirectoryUser(),
   });
+
+  const sendCompanySummaryNow = async () => {
+    setSummarySending(true);
+    setSummaryResult(null);
+    try {
+      const result = await base44.functions.invoke('sendDailyCompanySummary', { action: 'send_now' });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      setSummaryResult(payload);
+      if (payload.email_sent) {
+        toast.success(`Company summary sent to ${payload.recipient_count || 0} active company member${payload.recipient_count === 1 ? '' : 's'}.`);
+      } else {
+        toast.warning('In-app summaries were created, but Microsoft email delivery needs attention.');
+      }
+    } catch (error) {
+      toast.error(error?.message || 'Company summary could not be sent.');
+      setSummaryResult({ success: false, email_sent: false, error: error?.message || 'Delivery failed.' });
+    } finally {
+      setSummarySending(false);
+    }
+  };
 
   const { data: analyticsData = {}, isLoading: analyticsLoading, error: analyticsError } = useQuery({
     queryKey: ['companyAnalyticsData'],
@@ -385,17 +410,27 @@ export default function AdminAnalytics() {
             </h1>
             <p className="text-slate-400">Performance metrics across all officers</p>
           </div>
-          <Select value={selectedDivision} onValueChange={setSelectedDivision}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="All Divisions" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Divisions</SelectItem>
-              {divisions?.map(d => (
-                <SelectItem key={d.id} value={d.division_name}>{d.division_name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <button
+              type="button"
+              onClick={() => { setSummaryResult(null); setShowSummaryDialog(true); }}
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-amber-400/50 bg-gradient-to-r from-amber-500 to-yellow-500 px-4 py-2 text-sm font-black text-slate-950 shadow-lg shadow-amber-950/20 transition hover:from-amber-400 hover:to-yellow-400 sm:flex-none"
+            >
+              <Send className="h-4 w-4" />
+              Send Company Summary
+            </button>
+            <Select value={selectedDivision} onValueChange={setSelectedDivision}>
+              <SelectTrigger className="min-h-11 flex-1 border-slate-700 bg-slate-900 sm:w-48 sm:flex-none">
+                <SelectValue placeholder="All Divisions" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Divisions</SelectItem>
+                {divisions?.map(d => (
+                  <SelectItem key={d.id} value={d.division_name}>{d.division_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
@@ -687,6 +722,61 @@ export default function AdminAnalytics() {
           </CardContent>
         </Card>
       </div>
+
+      {showSummaryDialog && (
+        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/75 p-3 backdrop-blur-sm sm:items-center sm:p-6" onClick={() => !summarySending && setShowSummaryDialog(false)}>
+          <div role="dialog" aria-modal="true" aria-labelledby="company-summary-dialog-title" className="w-full max-w-lg overflow-hidden rounded-2xl border border-amber-500/40 bg-[#0b1522] shadow-2xl" onClick={event => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4 border-b border-slate-800 bg-gradient-to-r from-[#111d2d] to-[#0b1522] p-5">
+              <div className="flex gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-400/40 bg-amber-500/10 text-amber-300"><MailCheck className="h-5 w-5" /></div>
+                <div>
+                  <h2 id="company-summary-dialog-title" className="text-lg font-black text-white">Send Company Summary</h2>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-400">The automated version sends every day at 8:00 AM Eastern.</p>
+                </div>
+              </div>
+              <button type="button" disabled={summarySending} onClick={() => setShowSummaryDialog(false)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 disabled:opacity-40" aria-label="Close"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4 p-5">
+              {!summaryResult ? (
+                <>
+                  <div className="rounded-xl border border-slate-700 bg-slate-900/80 p-4 text-sm leading-relaxed text-slate-300">
+                    <p className="font-bold text-white">This sends one Black Point HTML email and one in-app notification to every active internal company member.</p>
+                    <ul className="mt-3 space-y-2 text-xs text-slate-400">
+                      <li>• Company aggregate performance only</li>
+                      <li>• Company ranking positions and names, without individual scores</li>
+                      <li>• Each person’s exact missing reports, training, and certification items</li>
+                      <li>• Microsoft 365 delivery with zero Base44 integration credits</li>
+                    </ul>
+                  </div>
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button type="button" disabled={summarySending} onClick={() => setShowSummaryDialog(false)} className="min-h-11 rounded-xl border border-slate-700 px-4 text-sm font-bold text-slate-200 hover:bg-slate-800 disabled:opacity-40">Cancel</button>
+                    <button type="button" disabled={summarySending} onClick={sendCompanySummaryNow} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 text-sm font-black text-slate-950 hover:bg-amber-300 disabled:cursor-wait disabled:opacity-70">
+                      {summarySending ? <><Loader2 className="h-4 w-4 animate-spin" />Sending…</> : <><Send className="h-4 w-4" />Send Now</>}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className={`rounded-xl border p-4 ${summaryResult.email_sent ? 'border-emerald-600/40 bg-emerald-950/25' : 'border-amber-600/40 bg-amber-950/25'}`}>
+                    <div className="flex items-center gap-2 font-black text-white">
+                      {summaryResult.email_sent ? <CheckCircle2 className="h-5 w-5 text-emerald-400" /> : <AlertTriangle className="h-5 w-5 text-amber-400" />}
+                      {summaryResult.email_sent ? 'Company summary delivered' : 'Partial delivery'}
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-300">
+                      <div className="rounded-lg bg-black/20 p-3"><div className="text-slate-500">Active recipients</div><div className="mt-1 text-lg font-black text-white">{summaryResult.recipient_count || 0}</div></div>
+                      <div className="rounded-lg bg-black/20 p-3"><div className="text-slate-500">Missing items listed</div><div className="mt-1 text-lg font-black text-white">{summaryResult.missing_item_count || 0}</div></div>
+                    </div>
+                    {summaryResult.email_error && <p className="mt-3 text-xs leading-relaxed text-amber-200">{summaryResult.email_error}</p>}
+                    {summaryResult.error && <p className="mt-3 text-xs leading-relaxed text-red-200">{summaryResult.error}</p>}
+                    <p className="mt-3 text-[11px] text-slate-400">Integration credits used: {summaryResult.integration_credits_used || 0}</p>
+                  </div>
+                  <button type="button" onClick={() => setShowSummaryDialog(false)} className="ml-auto flex min-h-11 items-center justify-center rounded-xl border border-slate-700 px-5 text-sm font-bold text-white hover:bg-slate-800">Done</button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
