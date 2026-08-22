@@ -201,12 +201,10 @@ export default function DailyActivityReports() {
   };
 
   useEffect(() => {
-    if (activeEntry?.location && locations) {
-      const siteName = activeEntry.location.split(' - ')[0];
-      const matchingLocation = locations.find(loc => loc.site_name === siteName);
-      if (matchingLocation) {
-        setFormData(prev => ({ ...prev, location: matchingLocation.site_name }));
-      }
+    if (activeEntry?.location) {
+      const siteName = activeEntry.location.split(' - ')[0].trim();
+      const matchingLocation = locations?.find(loc => loc.site_name === siteName);
+      setFormData(prev => ({ ...prev, location: matchingLocation?.site_name || siteName }));
     }
   }, [activeEntry, locations]);
 
