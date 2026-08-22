@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
         hrRecipients.add(key(user.email));
       }
     }
-    await Promise.all([...hrRecipients].filter(Boolean).map((recipient) =>
+    const notificationWork = Promise.all([...hrRecipients].filter(Boolean).slice(0, 100).map((recipient) =>
       base44.asServiceRole.entities.Notification.create({
         recipient_email: recipient,
         type: 'training_reminder',
@@ -210,6 +210,12 @@ Deno.serve(async (req) => {
         source_name: 'Performance Reviews',
       }).catch(() => null)
     ));
+    // The review is already safely saved. Do not hold the officer's response open
+    // indefinitely while secondary HR notifications fan out.
+    await Promise.race([
+      notificationWork,
+      new Promise(resolve => setTimeout(resolve, 3000)),
+    ]);
 
     return Response.json({ success: true, workflow_stage: 'hr_approval_pending' });
   } catch (error) {
