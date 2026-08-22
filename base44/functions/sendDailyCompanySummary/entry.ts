@@ -3,6 +3,7 @@ import { blackPointEmail } from './blackPointEmail.ts';
 import { buildPerformanceMetrics, easternDateKey, loadPerformanceMetricData } from './metrics.ts';
 
 const TIME_ZONE = 'America/New_York';
+const ONE_TIME_SEND_DATE = '2026-08-22';
 const PORTAL_URL = 'https://bpspf.blackpointkjc.com/AdminAnalytics';
 const CLIENT_ID = '5cf1a58f-17d1-46d4-a7fd-ff5fcd7624eb';
 const TENANT_ID = '07f32330-fc73-4d73-a835-e9c47ba798c7';
@@ -385,7 +386,8 @@ Deno.serve(async (req) => {
     }
 
     const now = easternNow();
-    if (!manual && now.hour !== 8) {
+    const oneTimeScheduledSend = !manual && now.date === ONE_TIME_SEND_DATE;
+    if (!manual && !oneTimeScheduledSend && now.hour !== 8) {
       return json({ success: true, skipped: true, reason: 'Outside the 8:00 AM Eastern delivery window', date: now.date });
     }
 
@@ -398,10 +400,10 @@ Deno.serve(async (req) => {
         entity_type: 'DailyCompanySummary',
         entity_id: deliveryId,
       }, '-timestamp', 20).catch(() => []);
-      const completed = (audits || []).some((row: any) => {
-        try { return JSON.parse(row.after_value || '{}')?.status === 'completed'; } catch { return false; }
+      const alreadyAttempted = (audits || []).some((row: any) => {
+        try { return ['completed', 'partial'].includes(JSON.parse(row.after_value || '{}')?.status); } catch { return false; }
       });
-      if (completed) return json({ success: true, skipped: true, reason: 'Today\'s summary was already delivered', date: now.date });
+      if (alreadyAttempted) return json({ success: true, skipped: true, reason: 'Today\'s summary was already attempted', date: now.date });
     }
 
     const [
