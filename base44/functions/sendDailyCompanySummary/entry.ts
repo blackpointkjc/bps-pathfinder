@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
-import { blackPointEmail } from '../_shared/blackPointEmail.ts';
-import { buildPerformanceMetrics, easternDateKey, loadPerformanceMetricData } from '../generateAnnualPerformanceReviews/metrics.ts';
+import { blackPointEmail } from './blackPointEmail.ts';
+import { buildPerformanceMetrics, easternDateKey, loadPerformanceMetricData } from './metrics.ts';
 
 const TIME_ZONE = 'America/New_York';
 const PORTAL_URL = 'https://bpspf.blackpointkjc.com/AdminAnalytics';
