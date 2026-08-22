@@ -119,15 +119,22 @@ export default function UniversalInbox({ currentUser, users = [] }) {
       if (stopped) return;
       await loadChats();
     };
+    // Load once on mount. TeamsNotificationMonitor owns subsequent list polling
+    // and broadcasts the shared result to this page.
     refresh();
-    const interval = window.setInterval(refresh, 30000);
-    const onFocus = () => refresh();
-    window.addEventListener('focus', onFocus);
-    return () => {
-      stopped = true;
-      window.clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
+    return () => { stopped = true; };
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    const onDirectChats = event => {
+      const nextChats = Array.isArray(event.detail?.chats) ? event.detail.chats : [];
+      if (!nextChats.length) return;
+      setMicrosoftMe(event.detail?.me || null);
+      setChats([...nextChats].sort((a, b) => new Date(b.lastUpdatedDateTime || 0) - new Date(a.lastUpdatedDateTime || 0)));
+      publishUnreadCount(nextChats);
     };
+    window.addEventListener('bps:teams-direct-chats-data', onDirectChats);
+    return () => window.removeEventListener('bps:teams-direct-chats-data', onDirectChats);
   }, [currentUser?.id]);
 
   useEffect(() => {
@@ -140,7 +147,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
       if (!stopped) await loadChatMessages(selectedChatId);
     };
     refreshMessages();
-    const interval = window.setInterval(refreshMessages, 15000);
+    const interval = window.setInterval(refreshMessages, 30000);
     const onFocus = () => refreshMessages();
     window.addEventListener('focus', onFocus);
     return () => {
