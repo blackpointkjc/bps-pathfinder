@@ -55,7 +55,9 @@ export default function TeamsSyncMonitor({ user }) {
     };
 
     sync();
-    const interval = window.setInterval(sync, 90000);
+    // This monitor persists a cache only; live UI polling is centralized in
+    // TeamsNotificationMonitor. Run infrequently to avoid duplicate Graph reads.
+    const interval = window.setInterval(sync, 300000);
     const onFocus = () => sync();
     window.addEventListener('focus', onFocus);
     return () => {
