@@ -5,6 +5,17 @@ const key = (value: unknown) => String(value || '').trim().toLowerCase();
 const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role: unknown) => String(role).toLowerCase()));
 const active = (user: any) => user && user.employment_status !== 'terminated' && user.employment_status !== 'on_leave' && !user.termination_date;
 const displayName = (user: any) => `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.full_name || user?.email || 'Supervisor';
+const RANK_ORDER = ['colonel', 'lt colonel', 'major', 'captain', 'lieutenant', 'first sergeant', 'sergeant', 'corporal', 'senior officer', 'officer', 'unarmed officer'];
+const normalizeRank = (value: unknown) => {
+  const normalized = String(value || '').trim().toLowerCase().replace(/\./g, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+  return normalized === 'lieutenant colonel' ? 'lt colonel' : normalized;
+};
+const rankLevel = (user: any) => RANK_ORDER.indexOf(normalizeRank(user?.rank));
+const reviewerOutranks = (reviewer: any, officer: any) => {
+  const reviewerLevel = rankLevel(reviewer);
+  const officerLevel = rankLevel(officer);
+  return reviewerLevel >= 0 && officerLevel >= 0 && reviewerLevel < officerLevel;
+};
 const ratingFields = [
   'punctuality_rating',
   'professionalism_rating',
@@ -37,12 +48,17 @@ function randomIndex(length: number) {
 }
 
 function chooseRotatingSupervisor(officer: any, users: any[], reviews: any[]) {
-  const eligible = (users || []).filter((user: any) =>
+  const higherRanked = (users || []).filter((user: any) =>
     active(user) &&
     String(user.id || '') !== String(officer.id || '') &&
-    rolesOf(user).has('supervisor')
+    rolesOf(user).has('supervisor') &&
+    reviewerOutranks(user, officer)
   );
-  if (!eligible.length) return null;
+  if (!higherRanked.length) return null;
+  const directSupervisor = higherRanked.find((user: any) => String(user.id || '') === String(officer.supervisor_id || ''));
+  if (directSupervisor) return directSupervisor;
+  const closestLevel = Math.max(...higherRanked.map(rankLevel));
+  const eligible = higherRanked.filter((user: any) => rankLevel(user) === closestLevel);
 
   const stats = new Map(eligible.map((user: any) => [String(user.id), { count: 0, last: 0 }]));
   for (const review of reviews || []) {
@@ -86,46 +102,69 @@ async function recoverOrphanedReviews(base44: any, me: any, aliases: Set<string>
     }
 
     const supervisor = chooseRotatingSupervisor(me, users || [], [...(allReviews || []), ...recovered]);
-    if (!supervisor) continue;
     const metrics = await buildPerformanceMetrics(base44, me, start, end);
+    const assignmentIssue = supervisor ? '' : `No active supervisor currently outranks ${me.rank || 'this officer'}.`;
     const review = await base44.asServiceRole.entities.PerformanceReview.create({
       ...reviewPayloadFromMetrics(metrics),
       review_type: 'manual',
       review_date: String(notice.created_date || new Date().toISOString()).slice(0, 10),
-      reviewer_email: supervisor.email,
-      reviewer_name: displayName(supervisor),
-      assigned_supervisor_id: supervisor.id,
-      assigned_supervisor_email: supervisor.email,
-      assigned_supervisor_name: displayName(supervisor),
-      supervisor_task_created_at: new Date().toISOString(),
-      assignment_round: [...(allReviews || []), ...recovered].filter((item: any) => String(item.assigned_supervisor_id || '') === String(supervisor.id)).length + 1,
-      workflow_stage: 'supervisor_pending',
-      supervisor_review_pending: true,
+      reviewer_email: supervisor?.email || 'performance-reviews@blackpointkjc.com',
+      reviewer_name: supervisor ? displayName(supervisor) : 'Black Point Review Administration',
+      ...(supervisor ? {
+        assigned_supervisor_id: supervisor.id,
+        assigned_supervisor_email: supervisor.email,
+        assigned_supervisor_name: displayName(supervisor),
+        supervisor_task_created_at: new Date().toISOString(),
+        assignment_round: [...(allReviews || []), ...recovered].filter((item: any) => String(item.assigned_supervisor_id || '') === String(supervisor.id)).length + 1,
+      } : {}),
+      workflow_stage: supervisor ? 'supervisor_pending' : 'higher_reviewer_required',
+      higher_reviewer_required: !supervisor,
+      assignment_issue: assignmentIssue,
+      supervisor_review_pending: Boolean(supervisor),
       supervisor_review_completed: false,
       officer_acknowledged: false,
       officer_signature_obtained: false,
       hr_approved: false,
-      supervisor_notes: 'Recovered from the original Pathfinder performance-review notification after the underlying review record became unavailable.',
+      supervisor_notes: supervisor
+        ? 'Recovered from the original Pathfinder performance-review notification after the underlying review record became unavailable.'
+        : `Review restored, but assignment is paused because no active supervisor outranks ${me.rank || 'the officer'}.`,
     });
     recovered.push(review);
 
-    await Promise.all([
+    const notificationWork: Promise<any>[] = [
       base44.asServiceRole.entities.Notification.update(notice.id, {
         related_id: review.id,
-        title: 'Performance Review Restored',
-        message: `Your performance review for ${start} through ${end} is restored and visible in Officer Center → Profile & Training → My Reviews & Feedback.`,
+        title: supervisor ? 'Performance Review Restored' : 'Performance Review Restored — Higher Reviewer Required',
+        message: supervisor
+          ? `Your performance review for ${start} through ${end} is restored and visible in Officer Center → Profile & Training → My Reviews & Feedback.`
+          : `Your performance review for ${start} through ${end} is restored. It cannot be assigned downward and is waiting for a reviewer above ${me.rank || 'your rank'}.`,
         is_read: false,
       }).catch(() => null),
-      base44.asServiceRole.entities.Notification.create({
+    ];
+    if (supervisor) {
+      notificationWork.push(base44.asServiceRole.entities.Notification.create({
         recipient_email: supervisor.email,
         type: 'training_reminder',
         title: 'Recovered Performance Review Assigned',
-        message: `${metrics.officer_name}'s review for ${start} through ${end} was restored and assigned to you. Submit ratings in Supervisor Center.`,
+        message: `${metrics.officer_name}'s review for ${start} through ${end} was restored and assigned to you because your rank is above the officer's. Submit ratings in Supervisor Center.`,
         priority: 'high',
         related_id: review.id,
         source_name: 'Performance Reviews',
-      }).catch(() => null),
-    ]);
+      }).catch(() => null));
+    } else {
+      for (const admin of (users || []).filter((user: any) => active(user) && user.email && key(user.email) !== key(me.email) && (user.role === 'admin' || rolesOf(user).has('hr') || rolesOf(user).has('full_access')))) {
+        notificationWork.push(base44.asServiceRole.entities.Notification.create({
+          recipient_email: admin.email,
+          type: 'training_reminder',
+          title: 'Restored Review Needs Higher-Ranking Reviewer',
+          message: `${metrics.officer_name}'s restored review cannot be assigned until an active reviewer above ${me.rank || 'the officer rank'} is available.`,
+          priority: 'high',
+          related_id: review.id,
+          source_name: 'Performance Reviews',
+        }).catch(() => null));
+      }
+    }
+    await Promise.all(notificationWork);
   }
   return recovered;
 }
