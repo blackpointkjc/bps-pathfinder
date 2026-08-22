@@ -19,6 +19,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
+import {
+  formatReportClock,
+  formatReportDate,
+  formatReportDateTime,
+  openBlackPointReport,
+  reportTimeZoneLabel,
+  resolveReportTimeZone,
+} from '@/lib/reportPrint';
 
 export default function ShiftReports() {
   const [showForm, setShowForm] = useState(false);
@@ -406,6 +414,62 @@ export default function ShiftReports() {
   const draftReports = reports?.filter(r => r.status === 'draft') || [];
 
   const printReport = (report) => {
+    const locationRecord = locations?.find(location => location.site_name === report.location);
+    const timeZone = resolveReportTimeZone(locationRecord);
+    const zoneLabel = reportTimeZoneLabel(timeZone, report.created_date || report.shift_date);
+    const creator = allUsers?.find(officer => String(officer.id) === String(report.created_by_id)
+      || String(officer.email || '').toLowerCase() === String(report.created_by_id || '').toLowerCase());
+
+    openBlackPointReport({
+      title: 'Shift Report',
+      subtitle: 'Officer Operations and Activity Summary',
+      reportNumber: report.report_number || report.id || '',
+      status: report.status || '',
+      timeZone,
+      meta: [
+        { label: 'Shift Date', value: formatReportDate(report.shift_date, timeZone) },
+        { label: `Shift (${zoneLabel})`, value: `${formatReportClock(report.start_time)} – ${formatReportClock(report.end_time)}` },
+        { label: 'Submitted', value: formatReportDateTime(report.created_date, timeZone) },
+      ],
+      sections: [
+        {
+          title: 'Assignment and Statistics',
+          fields: [
+            { label: 'Location / Post', value: report.location, wide: true },
+            { label: 'Weather', value: report.weather_conditions },
+            { label: 'Patrol Count', value: report.patrol_count },
+            { label: 'Visitors Logged', value: report.visitors_logged },
+            { label: 'Doors Checked', value: report.doors_checked },
+            { label: 'Linked CAD Call', value: report.linked_call_number, wide: true },
+          ],
+        },
+        {
+          title: 'Shift Activity',
+          fields: [
+            { label: 'Activities', value: report.activities, wide: true },
+            { label: 'Incidents', value: report.incidents, wide: true },
+            { label: 'Vehicles Noted', value: report.vehicles_noted, wide: true },
+            { label: 'Persons of Interest', value: report.persons_of_interest, wide: true },
+            { label: 'Equipment Status', value: report.equipment_check, wide: true },
+          ],
+        },
+      ],
+      photos: report.photo_url ? [report.photo_url] : [],
+      officer: {
+        name: getOfficerName(report.created_by_id),
+        signatureName: getOfficerSignature(report.created_by_id),
+        email: creator?.email || '',
+        badge: creator?.badge_number || '',
+        unit: creator?.unit_number || '',
+        ip: report.officer_ip_address || '',
+      },
+      signedAt: report.officer_signed_at || report.created_date,
+      signatureUrl: report.signature_url || '',
+      footerNote: 'DCJS License 11-5175.',
+    });
+  };
+
+  const legacyPrintReport = (report) => {
     const printWindow = window.open('', '', 'width=850,height=1100');
     
     const officerName = getOfficerName(report.created_by_id);
