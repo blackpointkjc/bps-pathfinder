@@ -13,8 +13,9 @@ export default function MandatoryReadGate({ user }) {
     queryKey: ['mandatoryChatMentions', user?.email],
     queryFn: () => base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200),
     enabled: enabled && !!user?.email,
-    refetchInterval: 3000,
-    refetchOnWindowFocus: false,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
   });
 
   const { data: scheduleAlerts = [] } = useQuery({
@@ -24,8 +25,9 @@ export default function MandatoryReadGate({ user }) {
       return (records || []).filter(item => item.requires_acknowledgment === true && ['shift_posted', 'schedule_changed'].includes(item.type));
     },
     enabled: scheduleAlertsEnabled,
-    refetchInterval: 3000,
-    refetchOnWindowFocus: false,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
   });
 
   const queue = useMemo(() => {
