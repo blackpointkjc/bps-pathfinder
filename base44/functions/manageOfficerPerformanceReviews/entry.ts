@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
-import { buildPerformanceMetrics, reviewPayloadFromMetrics } from '../managePerformanceReviews/metrics.ts';
+import { buildPerformanceMetrics, reviewPayloadFromMetrics } from './metrics.ts';
 
 const key = (value: unknown) => String(value || '').trim().toLowerCase();
 const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role: unknown) => String(role).toLowerCase()));
