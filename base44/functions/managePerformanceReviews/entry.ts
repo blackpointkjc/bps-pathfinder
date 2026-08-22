@@ -5,7 +5,7 @@ const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role:
 const emailKey = (value: unknown) => String(value || '').trim().toLowerCase();
 const dateOnly = (value = new Date()) => value.toISOString().slice(0, 10);
 const displayName = (user: any) => `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.full_name || user?.email || 'Supervisor';
-const active = (user: any) => user && user.employment_status !== 'terminated' && !user.termination_date;
+const active = (user: any) => user && user.employment_status !== 'terminated' && user.employment_status !== 'on_leave' && !user.termination_date;
 const rating = (value: unknown, fallback = 3) => {
   const number = Number(value);
   return Number.isFinite(number) ? Math.min(5, Math.max(1, Math.round(number))) : fallback;
