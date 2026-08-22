@@ -271,11 +271,8 @@ export default function MDTrespassNotices() {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['allMDTrespassNotices'] });
-      if (!variables.isDraft) {
-        resetForm();
-      } else {
-        toast.success('Draft saved successfully.');
-      }
+      if (variables.isDraft) toast.success('Draft saved successfully.');
+      resetForm();
       setSaving(false);
     },
     onError: (error) => {
