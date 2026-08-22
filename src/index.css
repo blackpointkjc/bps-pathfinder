@@ -1045,10 +1045,8 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
     padding: 1rem !important;
   }
 
-  .cad-app .mobile-field-content [class*="grid-cols-"] {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
-
+  /* Respect each page's responsive grid. A former blanket override forced
+     every dashboard into the same layout and produced oversized mobile tiles. */
   .cad-app .mobile-field-content form [class*="grid-cols-"] {
     grid-template-columns: minmax(0, 1fr) !important;
   }
@@ -1063,7 +1061,8 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   }
 
   .cad-app .mobile-field-content :is(h1, h2, h3, p, span, label, td, th) {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
   }
 
   .cad-app .mobile-field-content table {
@@ -1103,60 +1102,183 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
     padding: .75rem 1rem !important;
   }
 
+  .pathfinder-mobile-drawer {
+    width: min(92vw, 420px);
+    max-width: 420px;
+    box-shadow: 28px 0 70px rgba(0, 0, 0, .5);
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .mobile-tool-library {
+    min-width: 0;
+  }
+
   .mobile-tool-library nav {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-content: start;
-    gap: .5rem;
+    display: block;
     padding: .75rem;
   }
 
   .mobile-tool-library nav > a {
     min-height: 48px !important;
-    margin: 0 !important;
-    padding: .625rem .75rem !important;
-    border-radius: .75rem;
+    margin-bottom: .45rem !important;
+    padding: .7rem .8rem !important;
+    border-radius: .85rem;
   }
 
   .mobile-tool-library nav > div {
-    grid-column: 1 / -1;
-    margin: .25rem 0 0 !important;
+    margin: .35rem 0 .5rem !important;
   }
 
   .mobile-tool-library nav > div > button {
-    min-height: 32px;
-    padding: .35rem .25rem !important;
-    pointer-events: none;
+    min-height: 44px;
+    padding: .65rem .7rem !important;
+    pointer-events: auto;
+    border: 1px solid transparent;
   }
 
-  .mobile-tool-library nav > div > button svg {
-    display: none;
+  .mobile-tool-library nav > div > button[aria-expanded="true"] {
+    border-color: #254966;
+    background: #0e2235;
+    color: #a9d7f4;
   }
 
   .mobile-tool-library nav > div > div {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: .5rem;
-    padding: 0 !important;
+    display: block;
+    padding: .3rem 0 .2rem !important;
   }
 
   .mobile-tool-library nav > div > div > a {
     min-height: 48px !important;
-    margin: 0 !important;
-    padding: .625rem .75rem !important;
+    margin: .35rem 0 0 !important;
+    padding: .7rem .8rem !important;
     border: 1px solid #203b56 !important;
-    border-radius: .75rem;
+    border-radius: .8rem;
     background: #0b1928;
   }
 
   .mobile-tool-library nav a span {
-    font-size: .72rem !important;
-    line-height: 1rem !important;
+    font-size: .76rem !important;
+    line-height: 1.05rem !important;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .mobile-tool-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 48px 48px;
+    align-items: center;
+    gap: .5rem;
+    padding: .65rem max(.75rem, env(safe-area-inset-right)) max(.65rem, env(safe-area-inset-bottom)) .75rem;
+  }
+
+  .mobile-tool-footer .mobile-account-card {
+    min-width: 0;
+    margin: 0;
+  }
+
+  .mobile-tool-footer .mobile-account-card .secure-session {
+    display: none;
+  }
+
+  .mobile-tool-footer .mobile-session-action {
+    min-height: 46px !important;
+    width: 46px !important;
+    padding: 0 !important;
+    justify-content: center;
+    border: 1px solid #29455f;
+    border-radius: .75rem;
+    background: #0d1d2d;
+  }
+
+  .mobile-tool-footer .mobile-session-action span {
+    display: none;
+  }
+
+  /* Command dashboard: compact, glanceable cards with no clipped actions. */
+  .command-dashboard-system-bar {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .75rem;
+    padding: .8rem 1rem !important;
+  }
+
+  .command-dashboard-system-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .command-dashboard-spacer {
+    display: none;
+  }
+
+  .command-dashboard-actions {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .55rem !important;
+  }
+
+  .command-dashboard-sync {
+    grid-column: 1 / -1;
+    min-width: 0;
+    justify-content: space-between;
+  }
+
+  .command-dashboard-action,
+  .command-dashboard-distress,
+  .command-dashboard-distress > button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .command-dashboard-action,
+  .command-dashboard-distress > button {
+    justify-content: center;
+    padding-left: .65rem !important;
+    padding-right: .65rem !important;
+    white-space: nowrap;
+    font-size: .66rem !important;
+  }
+
+  .command-dashboard-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .command-dashboard-kpi {
+    min-height: 104px;
+  }
+
+  .command-dashboard-kpi :is(span, div) {
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .command-dashboard-system-meta {
+    width: auto;
+    margin-left: auto;
+  }
+
+  .command-dashboard-actions {
+    grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(132px, auto));
+  }
+
+  .command-dashboard-sync {
+    grid-column: auto;
+  }
+
+  .command-dashboard-kpis {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 }
 
 @media (max-width: 639px) {
-  .cad-app .mobile-field-content [class*="grid-cols-"] {
+  .cad-app .mobile-field-content form [class*="grid-cols-"] {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .command-dashboard-system-meta time {
+    font-size: .72rem;
   }
 }
