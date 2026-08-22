@@ -194,6 +194,24 @@ export default function OutlookMail() {
   const [sharedAddress, setSharedAddress] = useState('');
   const [addingShared, setAddingShared] = useState(false);
 
+  useEffect(() => {
+    if (!user?.id || typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const recipient = String(params.get('to') || '').trim();
+    if (params.get('compose') !== '1' || !recipient) return;
+    setCompose(current => ({
+      ...current,
+      to: recipient,
+      subject: params.get('subject') || current.subject,
+    }));
+    setComposeOpen(true);
+    params.delete('compose');
+    params.delete('to');
+    params.delete('subject');
+    const query = params.toString();
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash || ''}`);
+  }, [user?.id]);
+
   const isCompanyImap = activeMailbox?._source === 'imap';
   const activeMailboxEmail = isCompanyImap ? '' : (activeMailbox?.mailbox_email || '');
 
