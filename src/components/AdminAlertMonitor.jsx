@@ -34,7 +34,7 @@ export default function AdminAlertMonitor({ user }) {
       }
     },
     enabled: user?.role === 'admin',
-    refetchInterval: 15000, // Check every 15 seconds
+    refetchInterval: 60000, // Subscription-friendly fallback refresh
   });
 
   // Query for pending supervisor write-ups
@@ -49,7 +49,9 @@ export default function AdminAlertMonitor({ user }) {
       }
     },
     enabled: user?.role === 'admin',
-    refetchInterval: 15000,
+    refetchInterval: 60000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
   });
 
   // Query for new confidential reports (not viewed yet)
@@ -65,7 +67,9 @@ export default function AdminAlertMonitor({ user }) {
       }
     },
     enabled: user?.role === 'admin',
-    refetchInterval: 15000,
+    refetchInterval: 60000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
   });
 
   // Play notification sound
