@@ -23,6 +23,14 @@ import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
 import { openVirginiaCriminalComplaintPrint } from "@/utils/virginiaCriminalComplaintPrint";
 import { openTrespassNoticePrint, resolvePoliceDepartment } from "@/utils/trespassNoticePrint";
 import {
+  formatReportClock,
+  formatReportDate,
+  formatReportDateTime,
+  openBlackPointReport,
+  reportTimeZoneLabel,
+  resolveReportTimeZone,
+} from '@/lib/reportPrint';
+import {
   MobileResponsiveDialog,
   MobileResponsiveDialogContent,
   MobileResponsiveDialogHeader,
@@ -302,6 +310,191 @@ export default function AdminReports() {
   };
 
   const printReport = (report, type) => {
+    const creatorRef = report.created_by_id || report.created_by;
+    const officerName = getOfficerName(creatorRef);
+    const officer = allUsers?.find(item => String(item.id) === String(creatorRef)
+      || String(item.email || '').toLowerCase() === String(creatorRef || '').toLowerCase());
+    const locationRecord = locations?.find(location => location.site_name === report.location);
+    const timeZone = resolveReportTimeZone(locationRecord, report.device_timezone || 'America/New_York');
+    const zoneLabel = reportTimeZoneLabel(timeZone, report.created_date);
+
+    if (type === 'summons') {
+      openVirginiaSummonsPrint(report, {
+        officerName: report.officer_name || officerName,
+        badge: report.officer_code_badge || officer?.badge_number || '',
+        signatureName: getOfficerSignature(creatorRef),
+        timeZone,
+      });
+      return;
+    }
+    if (type === 'trespass') {
+      const officerFullName = officer
+        ? [officer.first_name, officer.last_name].filter(Boolean).join(' ')
+        : officerName;
+      openTrespassNoticePrint(report, {
+        jurisdiction: 'VA',
+        locationRecord: locationRecord || { site_name: report.location, division: 'Virginia', time_zone: timeZone },
+        propertyName: locationRecord?.site_name || report.location,
+        propertyAddress: locationRecord?.address || report.location,
+        senderName: 'Black Point Protection',
+        senderAddress: locationRecord?.address || report.location,
+        officerName: officerFullName,
+        signatureName: getOfficerSignature(creatorRef),
+        policeDepartment: resolvePoliceDepartment(locationRecord || { site_name: report.location, division: 'Virginia' }),
+        timeZone,
+      });
+      return;
+    }
+    if (type === 'criminal') {
+      const complainantName = officer?.last_name && officer?.first_name
+        ? `${officer.last_name.toUpperCase()}, ${officer.first_name}${officer.middle_name ? ` ${officer.middle_name}` : ''}`
+        : (report.complainant_name || officerName);
+      openVirginiaCriminalComplaintPrint(report, {
+        displayLocation: locationRecord?.address || report.location,
+        officerName,
+        complainantName,
+        signatureName: getOfficerSignature(creatorRef),
+        timeZone,
+      });
+      return;
+    }
+
+    const configurations = {
+      daily_activity: {
+        title: 'Daily Activity Report',
+        subtitle: 'Officer Shift Activity and Patrol Record',
+        reportNumber: report.report_number || report.id,
+        meta: [
+          { label: 'Report Date', value: formatReportDate(report.report_date, timeZone) },
+          { label: `Shift (${zoneLabel})`, value: `${formatReportClock(report.start_time)} – ${formatReportClock(report.end_time)}` },
+          { label: 'Submitted', value: formatReportDateTime(report.created_date, timeZone) },
+        ],
+        sections: [
+          { title: 'Assignment and Statistics', fields: [
+            { label: 'Location / Post', value: report.location, wide: true },
+            { label: 'Weather', value: report.weather_conditions },
+            { label: 'Patrols', value: report.patrol_count },
+            { label: 'Visitors Logged', value: report.visitors_logged },
+            { label: 'Doors Checked', value: report.doors_checked },
+          ] },
+          { title: 'Hourly Activity Log', fields: [
+            { label: 'Activities and Observations', value: report.hourly_entries, wide: true },
+            { label: 'Incidents', value: report.incidents, wide: true },
+            { label: 'Vehicles Noted', value: report.vehicles_noted, wide: true },
+            { label: 'Persons of Interest', value: report.persons_of_interest, wide: true },
+            { label: 'Equipment Status', value: report.equipment_check, wide: true },
+          ] },
+        ],
+      },
+      shift: {
+        title: 'Shift Report',
+        subtitle: 'Officer Operations and Activity Summary',
+        reportNumber: report.report_number || report.id,
+        meta: [
+          { label: 'Shift Date', value: formatReportDate(report.shift_date, timeZone) },
+          { label: `Shift (${zoneLabel})`, value: `${formatReportClock(report.start_time)} – ${formatReportClock(report.end_time)}` },
+          { label: 'Submitted', value: formatReportDateTime(report.created_date, timeZone) },
+        ],
+        sections: [
+          { title: 'Assignment and Statistics', fields: [
+            { label: 'Location / Post', value: report.location, wide: true },
+            { label: 'Weather', value: report.weather_conditions },
+            { label: 'Patrol Count', value: report.patrol_count },
+            { label: 'Visitors Logged', value: report.visitors_logged },
+            { label: 'Doors Checked', value: report.doors_checked },
+          ] },
+          { title: 'Shift Activity', fields: [
+            { label: 'Activities', value: report.activities, wide: true },
+            { label: 'Incidents', value: report.incidents, wide: true },
+            { label: 'Vehicles Noted', value: report.vehicles_noted, wide: true },
+            { label: 'Persons of Interest', value: report.persons_of_interest, wide: true },
+            { label: 'Equipment Status', value: report.equipment_check, wide: true },
+          ] },
+        ],
+      },
+      incident: {
+        title: 'Incident Report',
+        subtitle: 'Security Incident Documentation',
+        reportNumber: report.report_number || report.id,
+        meta: [
+          { label: 'Call Number', value: report.call_number || report.linked_call_number || 'Not linked' },
+          { label: 'Incident Date', value: formatReportDate(report.incident_date, timeZone) },
+          { label: 'Submitted', value: formatReportDateTime(report.created_date, timeZone) },
+        ],
+        sections: [
+          { title: 'Incident Information', fields: [
+            { label: 'Location', value: report.location },
+            { label: 'Specific Location', value: report.specific_location },
+            { label: 'Incident Type', value: String(report.incident_type || '').replaceAll('_', ' ').toUpperCase() },
+            { label: 'Severity', value: String(report.severity || '').toUpperCase() },
+            { label: `Time Occurred (${zoneLabel})`, value: formatReportClock(report.incident_time) },
+            { label: `Time Discovered (${zoneLabel})`, value: formatReportClock(report.discovered_time) },
+          ] },
+          { title: 'Incident Narrative', fields: [
+            { label: 'Description', value: report.description, wide: true },
+            { label: 'Action Taken', value: report.action_taken, wide: true },
+            { label: 'Suspect Description', value: report.suspect_description },
+            { label: 'Suspect Vehicle', value: report.suspect_vehicle },
+            { label: 'Victims', value: report.victims },
+            { label: 'Witnesses', value: report.witnesses },
+          ] },
+          { title: 'Response and Damage', fields: [
+            { label: 'Police Notified', value: report.police_notified ? 'Yes' : 'No' },
+            { label: 'Police Report Number', value: report.police_report_number },
+            { label: 'EMS Notified', value: report.ems_notified ? 'Yes' : 'No' },
+            { label: 'Fire Notified', value: report.fire_notified ? 'Yes' : 'No' },
+            { label: 'Injury Details', value: report.injury_details, wide: true },
+            { label: 'Damage Details', value: report.damage_details, wide: true },
+          ] },
+        ],
+      },
+      parking: {
+        title: 'Parking Violation Report',
+        subtitle: 'Vehicle and Property Enforcement Record',
+        reportNumber: report.citation_number || report.id,
+        meta: [
+          { label: 'Violation Date', value: formatReportDate(report.violation_date, timeZone) },
+          { label: `Violation Time (${zoneLabel})`, value: formatReportClock(report.violation_time) },
+          { label: 'Submitted', value: formatReportDateTime(report.created_date, timeZone) },
+        ],
+        sections: [
+          { title: 'Violation Information', fields: [
+            { label: 'Location', value: report.location },
+            { label: 'Violation Type', value: String(report.violation_type || '').replaceAll('_', ' ').toUpperCase() },
+            { label: 'Description', value: report.description, wide: true },
+          ] },
+          { title: 'Vehicle Information', fields: [
+            { label: 'Vehicle', value: [report.vehicle_year, report.vehicle_make, report.vehicle_model].filter(Boolean).join(' ') },
+            { label: 'Color', value: report.vehicle_color },
+            { label: 'License Plate', value: report.license_plate },
+            { label: 'State', value: report.license_state },
+          ] },
+        ],
+      },
+    };
+
+    const configuration = configurations[type];
+    if (!configuration) return;
+    openBlackPointReport({
+      ...configuration,
+      status: report.status || '',
+      timeZone,
+      photos: report.photo_urls || (report.photo_url ? [report.photo_url] : []),
+      officer: {
+        name: officerName,
+        signatureName: getOfficerSignature(creatorRef),
+        email: officer?.email || '',
+        badge: officer?.badge_number || '',
+        unit: officer?.unit_number || '',
+        ip: report.officer_ip_address || '',
+      },
+      signedAt: report.officer_signed_at || report.created_date,
+      signatureUrl: report.officer_signature_url || report.signature_url || '',
+      footerNote: 'DCJS License 11-5175.',
+    });
+  };
+
+  const legacyPrintReport = (report, type) => {
     const officerName = getOfficerName(report.created_by_id || report.created_by);
     if (type === 'summons') {
       openVirginiaSummonsPrint(report, {
