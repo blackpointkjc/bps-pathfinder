@@ -97,6 +97,7 @@ export default function AdminLocations({ embedded = false }) {
     longitude: null,
     division: "",
     subdivision: "",
+    time_zone: "America/New_York",
     active: true,
     contract_start_date: "",
     contract_end_date: "",
@@ -256,6 +257,7 @@ export default function AdminLocations({ embedded = false }) {
       longitude: null,
       division: "",
       subdivision: "",
+      time_zone: "America/New_York",
       active: true,
       contract_start_date: "",
       contract_end_date: "",
@@ -334,6 +336,7 @@ export default function AdminLocations({ embedded = false }) {
       longitude: location.longitude,
       division: location.division || "",
       subdivision: location.subdivision || "",
+      time_zone: location.time_zone || "America/New_York",
       active: location.active !== false,
       contract_start_date: location.contract_start_date || "",
       contract_end_date: location.contract_end_date || "",
@@ -810,6 +813,24 @@ export default function AdminLocations({ embedded = false }) {
                 </select>
               </div>
             )}
+
+            <div className="space-y-2">
+              <Label htmlFor="time_zone">Location Time Zone</Label>
+              <select
+                id="time_zone"
+                value={formData.time_zone || 'America/New_York'}
+                onChange={(event) => setFormData(current => ({ ...current, time_zone: event.target.value }))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="America/New_York">Eastern Time</option>
+                <option value="America/Chicago">Central Time</option>
+                <option value="America/Denver">Mountain Time</option>
+                <option value="America/Los_Angeles">Pacific Time</option>
+                <option value="America/Anchorage">Alaska Time</option>
+                <option value="Pacific/Honolulu">Hawaii Time</option>
+              </select>
+              <p className="text-xs text-slate-600">Reports and printed timestamps use this location’s time zone.</p>
+            </div>
 
             <div className="flex items-center gap-4">
               <div className="flex items-center space-x-2">
