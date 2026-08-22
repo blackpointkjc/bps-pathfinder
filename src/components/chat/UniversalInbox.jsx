@@ -26,7 +26,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [microsoftMe, setMicrosoftMe] = useState(null);
-  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches);
 
   const activeUsers = useMemo(() => users.filter(user => !user.termination_date && user.id !== currentUser.id && user.email !== currentUser.email), [users, currentUser.id, currentUser.email]);
   const selected = chats.find(chat => chat.id === selectedChatId) || null;
@@ -113,7 +113,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   };
 
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 767px)');
+    const media = window.matchMedia('(max-width: 1023px)');
     const update = event => setIsMobile(event.matches);
     setIsMobile(media.matches);
     media.addEventListener?.('change', update);
@@ -235,7 +235,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden border border-slate-700 bg-slate-950 text-white shadow-2xl md:rounded-xl">
-      <aside className={`${selected ? 'hidden md:flex' : 'flex'} w-full flex-col border-r border-slate-700 md:w-[340px]`}>
+      <aside className={`${selected ? 'hidden lg:flex' : 'flex'} w-full flex-col border-r border-slate-700 lg:w-[340px]`}>
         <div className="shrink-0 border-b border-slate-700 p-3 sm:p-4">
           <div className="flex items-center justify-between">
             <div><h1 className="text-xl font-black">Teams Messages</h1><p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">Microsoft Teams only</p></div>
@@ -258,9 +258,9 @@ export default function UniversalInbox({ currentUser, users = [] }) {
         </div>
       </aside>
 
-      <section className={`${selected ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}>
+      <section className={`${selected ? 'flex' : 'hidden lg:flex'} min-w-0 flex-1 flex-col`}>
         {selected ? <>
-          <header className="flex shrink-0 items-center gap-3 border-b border-slate-700 p-3 sm:p-4"><button onClick={() => setSelectedChatId('')} className="md:hidden"><X className="h-5 w-5" /></button><Users className="h-5 w-5 text-blue-300" /><div className="min-w-0 flex-1"><div className="truncate font-black">{chatName(selected)}</div><div className="text-xs text-slate-400">Live Microsoft Teams conversation</div></div></header>
+          <header className="flex shrink-0 items-center gap-3 border-b border-slate-700 p-3 sm:p-4"><button onClick={() => setSelectedChatId('')} className="lg:hidden"><X className="h-5 w-5" /></button><Users className="h-5 w-5 text-blue-300" /><div className="min-w-0 flex-1"><div className="truncate font-black">{chatName(selected)}</div><div className="text-xs text-slate-400">Live Microsoft Teams conversation</div></div></header>
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
             {loadingMessages && <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading Teams history…</div>}
             {!loadingMessages && chatMessages.map(message => {
