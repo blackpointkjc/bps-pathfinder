@@ -45,6 +45,23 @@
       "type": "string",
       "description": "Email of supervisor conducting review"
     },
+    "assigned_supervisor_id": {
+      "type": "string",
+      "description": "Immutable user ID of the supervisor assigned to conduct the review"
+    },
+    "assigned_supervisor_email": {
+      "type": "string",
+      "description": "Work email of the supervisor assigned to conduct the review"
+    },
+    "assigned_supervisor_name": {
+      "type": "string",
+      "description": "Display name of the assigned supervisor"
+    },
+    "supervisor_task_created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the review task was routed to Supervisor Center"
+    },
     "reviewer_name": {
       "type": "string",
       "description": "Name of reviewer"
@@ -203,6 +220,24 @@
       "type": "boolean",
       "default": false,
       "description": "Whether officer signature was obtained"
+    },
+    "officer_signature_url": {
+      "type": "string",
+      "description": "Stored electronic signature image URL"
+    },
+    "officer_signed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the officer electronically signed the review"
+    },
+    "officer_acknowledged_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the officer acknowledged the review"
+    },
+    "officer_acknowledged_by_id": {
+      "type": "string",
+      "description": "Immutable user ID of the officer who acknowledged the review"
     }
   },
   "required": [
