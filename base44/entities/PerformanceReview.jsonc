@@ -132,13 +132,23 @@
     "workflow_stage": {
       "type": "string",
       "enum": [
+        "higher_reviewer_required",
         "supervisor_pending",
         "officer_pending",
         "hr_approval_pending",
         "approved"
       ],
       "default": "supervisor_pending",
-      "description": "Current step in the HR to supervisor to officer to HR review cycle"
+      "description": "Current step in the higher-rank reviewer to officer to HR review cycle"
+    },
+    "higher_reviewer_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this review is waiting for an active reviewer who strictly outranks the officer"
+    },
+    "assignment_issue": {
+      "type": "string",
+      "description": "Reason the review could not be routed to a valid higher-ranking reviewer"
     },
     "assignment_round": {
       "type": "number",
