@@ -20,12 +20,16 @@ export default function MissingReportsCheck({ schedules, allUsers = [], filtered
   const { data: reports = [], isLoading: reportsLoading } = useQuery({
     queryKey: ['allDailyActivityReports', format(periodStart, 'yyyy-MM-dd'), format(periodEnd, 'yyyy-MM-dd')],
     queryFn: () => base44.entities.DailyActivityReport.list('-report_date'),
-    refetchInterval: 15000,
+    refetchInterval: 60000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
   });
   const { data: timeEntries = [], isLoading: timeLoading } = useQuery({
     queryKey: ['missingReportTimeEntries', format(periodStart, 'yyyy-MM-dd'), format(periodEnd, 'yyyy-MM-dd')],
     queryFn: () => base44.entities.TimeEntry.list('-clock_in', 2000),
-    refetchInterval: 15000,
+    refetchInterval: 60000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
   });
 
   const checks = useMemo(() => {
