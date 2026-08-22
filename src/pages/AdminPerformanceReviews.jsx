@@ -1,5 +1,5 @@
 import { confirmInApp } from '@/lib/inAppDialog';
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,11 +11,11 @@ import { ClipboardCheck, Plus, Shield, Star, User, Award, AlertTriangle, FileTex
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { format, parseISO, differenceInMinutes } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getCurrentDirectoryUser, listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
-import { calculatePunctuality } from '@/lib/performanceScoring';
+import { toast } from 'sonner';
 
 export default function AdminPerformanceReviews() {
   const [showForm, setShowForm] = useState(false);
@@ -25,14 +25,14 @@ export default function AdminPerformanceReviews() {
     review_period_end: "",
     punctuality_rating: 3,
     professionalism_rating: 3,
-    report_quality_rating: 3,
-    teamwork_rating: 3,
+    uniform_appearance_rating: 3,
+    communication_rating: 3,
     initiative_rating: 3,
     overall_rating: 3,
     strengths: "",
     areas_for_improvement: "",
-    goals_for_next_period: "",
-    reviewer_comments: "",
+    goals: "",
+    supervisor_notes: "",
     pay_effective_date: "",
   });
 
@@ -62,214 +62,53 @@ export default function AdminPerformanceReviews() {
     queryFn: () => base44.entities.PerformanceReview.list('-review_date'),
   });
 
-  const { data: timeEntries = [] } = useQuery({
-    queryKey: ['hrTimeEntries', 'performanceReviews', selectedOfficer],
+  const selectedOfficerRecord = useMemo(
+    () => allUsers.find(officer => String(officer.email || '').toLowerCase() === String(selectedOfficer || '').toLowerCase()) || null,
+    [allUsers, selectedOfficer]
+  );
+
+  const { data: reviewPreview, isFetching: previewLoading, error: previewError } = useQuery({
+    queryKey: ['performanceReviewPreview', selectedOfficerRecord?.id, formData.review_period_start, formData.review_period_end],
     queryFn: async () => {
-      const result = await base44.functions.invoke('manageHRTimeEntries', { action: 'list' });
+      const result = await base44.functions.invoke('managePerformanceReviews', {
+        action: 'preview',
+        officer_id: selectedOfficerRecord.id,
+        officer_email: selectedOfficerRecord.email,
+        review_period_start: formData.review_period_start,
+        review_period_end: formData.review_period_end,
+      });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
-      return (payload.entries || []).filter(entry => !selectedOfficer || entry.officer_email === selectedOfficer);
+      return payload.metrics;
     },
-    enabled: hasHRAccess && !!selectedOfficer,
-    initialData: [],
-    refetchInterval: 30000,
-    refetchOnWindowFocus: 'always',
+    enabled: hasHRAccess && !!selectedOfficerRecord?.id && !!formData.review_period_start && !!formData.review_period_end && formData.review_period_start <= formData.review_period_end,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 
-  const { data: schedules } = useQuery({
-    queryKey: ['allSchedules'],
-    queryFn: () => base44.entities.Schedule.list(),
-    enabled: !!selectedOfficer,
-    refetchInterval: 30000,
-    refetchOnWindowFocus: 'always',
-  });
-
-  const { data: incidentReports = [] } = useQuery({
-    queryKey: ['allIncidentReports', 'performanceReviews'],
-    queryFn: () => base44.entities.IncidentReport.list('-created_date'),
-    enabled: hasHRAccess && !!selectedOfficer,
-    refetchOnWindowFocus: 'always',
-  });
-
-  const { data: commendations } = useQuery({
-    queryKey: ['officerCommendations', selectedOfficer],
-    queryFn: () => base44.entities.Commendation.filter({ officer_email: selectedOfficer }),
-    enabled: !!selectedOfficer,
-    refetchInterval: 30000,
-    refetchOnWindowFocus: 'always',
-  });
-
-  const { data: complaints } = useQuery({
-    queryKey: ['officerComplaints', selectedOfficer],
-    queryFn: async () => {
-      const all = await base44.entities.Complaint.filter({ officer_email: selectedOfficer });
-      return all.filter(c => !c.exclude_from_performance_review);
-    },
-    enabled: !!selectedOfficer,
-    refetchInterval: 30000,
-    refetchOnWindowFocus: 'always',
-  });
-
-  const { data: inspectionReports } = useQuery({
-    queryKey: ['officerInspections', selectedOfficer],
-    queryFn: async () => {
-      const all = await base44.entities.InspectionReport.list();
-      return all.filter(i => i.officer_email === selectedOfficer && !i.exclude_from_performance_review);
-    },
-    enabled: !!selectedOfficer,
-    refetchInterval: 30000,
-    refetchOnWindowFocus: 'always',
-  });
-
-  const { data: writeUpReports } = useQuery({
-    queryKey: ['officerWriteUps', selectedOfficer],
-    queryFn: async () => {
-      const all = await base44.entities.WriteUpReport.list();
-      return all.filter(w => w.officer_email === selectedOfficer && w.status === 'approved' && !w.exclude_from_performance_review);
-    },
-    enabled: !!selectedOfficer,
-    refetchInterval: 30000,
-    refetchOnWindowFocus: 'always',
-  });
-
-  const getPayRangeForRank = (rank) => {
-    const payRanges = {
-      'Unarmed Officer': { min: 18.00, max: 20.00 },
-      'Officer': { min: 19.50, max: 21.50 },
-      'Senior officer': { min: 20.50, max: 22.50 },
-      'Corporal': { min: 21.00, max: 23.00 },
-      'Sergeant': { min: 22.00, max: 24.00 },
-      'First Sergeant': { min: 23.00, max: 25.00 },
-      'Lieutenant': { min: 24.00, max: 26.00 },
-      'Captain': { min: 25.00, max: 27.00 },
-      'Lt Colonel (Director of Security Operations)': { min: 27.50, max: 27.50 },
-      'Colonel (Director of Company Operations)': { min: 27.50, max: 27.50 },
-      'Major (Director of Field Operations)': { min: 27.50, max: 27.50 },
-    };
-    return payRanges[rank] || { min: 18.00, max: 20.00 };
-  };
-
-  const calculateSuggestedPay = (overallRating, currentRate, rank) => {
-    const payRange = getPayRangeForRank(rank);
-    const midpoint = (payRange.min + payRange.max) / 2;
-    
-    if (overallRating >= 5) {
-      // Excellent: Move toward max or give raise
-      return Math.min(currentRate * 1.05, payRange.max);
-    } else if (overallRating >= 4) {
-      // Good: Move toward midpoint-high
-      return Math.min(currentRate * 1.03, (midpoint + payRange.max) / 2);
-    } else if (overallRating >= 3) {
-      // Satisfactory: Small raise
-      return Math.min(currentRate * 1.02, midpoint);
-    } else {
-      // Needs improvement: No change
-      return currentRate;
-    }
-  };
+  useEffect(() => {
+    if (!reviewPreview?.suggested_ratings) return;
+    setFormData(current => ({
+      ...current,
+      ...reviewPreview.suggested_ratings,
+    }));
+  }, [reviewPreview]);
 
   const createReviewMutation = useMutation({
     mutationFn: async (data) => {
-      const officer = allUsers?.find(u => u.email === selectedOfficer);
-      const officerName = officer ? `${officer.first_name} ${officer.last_name}` : selectedOfficer;
-
-      // Calculate metrics for the review period
-      const periodStart = parseISO(data.review_period_start + 'T00:00:00');
-      const periodEnd = parseISO(data.review_period_end + 'T23:59:59');
-
-      const periodCommendations = commendations?.filter(c => {
-        const cDate = parseISO(c.commendation_date);
-        return cDate >= periodStart && cDate <= periodEnd;
-      }) || [];
-
-      const periodComplaints = complaints?.filter(c => {
-        const cDate = parseISO(c.complaint_date);
-        return cDate >= periodStart && cDate <= periodEnd;
-      }) || [];
-
-      const periodEntries = timeEntries?.filter(e => {
-        if (!e.clock_in) return false;
-        const clockIn = parseISO(e.clock_in);
-        return clockIn >= periodStart && clockIn <= periodEnd && e.clock_out;
-      }) || [];
-
-      const totalHours = periodEntries.reduce((sum, e) => {
-        const clockIn = parseISO(e.clock_in);
-        const clockOut = parseISO(e.clock_out);
-        return sum + (differenceInMinutes(clockOut, clockIn) / 60);
-      }, 0);
-
-      const periodSchedules = (schedules || []).filter(s => s.officer_email === selectedOfficer && s.shift_date >= data.review_period_start && s.shift_date <= data.review_period_end);
-      const punctuality = calculatePunctuality(periodEntries, periodSchedules, data.review_period_start, data.review_period_end, incidentReports, officer);
-      const onTimePercentage = punctuality.rate;
-
-      const periodInspections = inspectionReports?.filter(i => {
-        const iDate = parseISO(i.inspection_date);
-        return iDate >= periodStart && iDate <= periodEnd;
-      }) || [];
-
-      const periodWriteUps = writeUpReports?.filter(w => {
-        const wDate = parseISO(w.created_date);
-        return wDate >= periodStart && wDate <= periodEnd;
-      }) || [];
-
-      const currentRate = officer?.hourly_rate || 0;
-      const suggestedRate = calculateSuggestedPay(data.overall_rating, currentRate, officer?.rank);
-      const payRange = getPayRangeForRank(officer?.rank);
-
-      const newReview = await base44.entities.PerformanceReview.create({
-        ...data,
-        officer_email: selectedOfficer,
-        officer_name: officerName,
-        review_date: new Date().toISOString(),
-        reviewer_email: user.email,
-        reviewer_name: `${user.first_name} ${user.last_name}`,
-        commendations_count: periodCommendations.length,
-        complaints_count: periodComplaints.length,
-        inspections_count: periodInspections.length,
-        writeups_count: periodWriteUps.length,
-        hours_worked: Math.round(totalHours * 10) / 10,
-        on_time_percentage: onTimePercentage,
-        current_hourly_rate: currentRate,
-        suggested_hourly_rate: Math.round(suggestedRate * 100) / 100,
-        pay_range_min: payRange.min,
-        pay_range_max: payRange.max,
-        supervisor_review_pending: true,
+      if (!selectedOfficerRecord?.id) throw new Error('Select an active officer.');
+      const result = await base44.functions.invoke('managePerformanceReviews', {
+        action: 'create',
+        officer_id: selectedOfficerRecord.id,
+        officer_email: selectedOfficerRecord.email,
+        review_period_start: data.review_period_start,
+        review_period_end: data.review_period_end,
+        review: data,
       });
-
-      // Notify all supervisors to review this with the officer
-      const supervisors = allUsers?.filter(u => u.additional_roles?.includes('supervisor')) || [];
-      for (const supervisor of supervisors) {
-        await base44.entities.Notification.create({
-          recipient_email: supervisor.email,
-          type: 'training_reminder',
-          title: '📋 Performance Review - Supervisor Action Required',
-          message: `Review performance with ${officerName} and have them sign acknowledgment`,
-          priority: 'high',
-          action_link: '/SupervisorPerformanceReview',
-        });
-      }
-
-      await base44.integrations.Core.SendEmail({
-        to: selectedOfficer,
-        subject: `Performance Review - ${format(periodStart, 'MMM yyyy')}`,
-        body: `Your performance review for the period ${format(periodStart, 'MMMM d')} - ${format(periodEnd, 'MMMM d, yyyy')} is now available.
-
-Overall Rating: ${data.overall_rating}/5 stars
-
-Please log in to Black Point Portal to view the complete review and acknowledge receipt.
-
-Reviewed by: ${user.first_name} ${user.last_name}
-Review Date: ${format(new Date(), 'MMMM d, yyyy')}`
-      });
-
-      await base44.entities.Notification.create({
-        recipient_email: selectedOfficer,
-        type: 'training_reminder',
-        title: '📋 Performance Review Available',
-        message: `Your performance review for ${format(periodStart, 'MMM yyyy')} is ready for your review`,
-        priority: 'high',
-      });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allPerformanceReviews'] });
@@ -280,26 +119,25 @@ Review Date: ${format(new Date(), 'MMMM d, yyyy')}`
         review_period_end: "",
         punctuality_rating: 3,
         professionalism_rating: 3,
-        report_quality_rating: 3,
-        teamwork_rating: 3,
+        uniform_appearance_rating: 3,
+        communication_rating: 3,
         initiative_rating: 3,
         overall_rating: 3,
         strengths: "",
         areas_for_improvement: "",
-        goals_for_next_period: "",
-        reviewer_comments: "",
+        goals: "",
+        supervisor_notes: "",
         pay_effective_date: "",
       });
-      alert('Performance review created and sent to officer!');
+      toast.success('Performance review created, pushed to the officer, and assigned for supervisor review.');
     },
+    onError: (error) => toast.error(error?.message || 'Unable to create performance review.'),
   });
 
-  const activeOfficers = React.useMemo(() => {
-    const filtered = allUsers?.filter(u => !u.termination_date && u.role !== 'admin') || [];
-    console.log('All users in performance review:', allUsers);
-    console.log('Active officers after filter:', filtered);
-    return filtered;
-  }, [allUsers]);
+  const activeOfficers = useMemo(
+    () => (allUsers || []).filter(officer => officer.employment_status !== 'terminated' && !officer.termination_date),
+    [allUsers]
+  );
 
   if (!hasHRAccess) {
     return (
@@ -545,42 +383,27 @@ Review Date: ${format(new Date(), 'MMMM d, yyyy')}`
                   </div>
 
                   {formData.review_period_start && formData.review_period_end && (
-                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-sm font-semibold text-blue-900 mb-2">Review Period Metrics:</p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div>
-                          <Award className="w-5 h-5 text-green-600 mb-1" />
-                          <p className="text-2xl font-bold text-green-600">{commendations?.filter(c => {
-                            const cDate = parseISO(c.commendation_date);
-                            return cDate >= parseISO(formData.review_period_start) && cDate <= parseISO(formData.review_period_end);
-                          }).length || 0}</p>
-                          <p className="text-xs text-slate-600">Commendations</p>
-                        </div>
-                        <div>
-                          <AlertTriangle className="w-5 h-5 text-red-600 mb-1" />
-                          <p className="text-2xl font-bold text-red-600">{complaints?.filter(c => {
-                            const cDate = parseISO(c.complaint_date);
-                            return cDate >= parseISO(formData.review_period_start) && cDate <= parseISO(formData.review_period_end);
-                          }).length || 0}</p>
-                          <p className="text-xs text-slate-600">Complaints</p>
-                        </div>
-                        <div>
-                          <FileText className="w-5 h-5 text-purple-600 mb-1" />
-                          <p className="text-2xl font-bold text-purple-600">{inspectionReports?.filter(i => {
-                            const iDate = parseISO(i.inspection_date);
-                            return iDate >= parseISO(formData.review_period_start) && iDate <= parseISO(formData.review_period_end);
-                          }).length || 0}</p>
-                          <p className="text-xs text-slate-600">Inspections</p>
-                        </div>
-                        <div>
-                          <AlertTriangle className="w-5 h-5 text-orange-600 mb-1" />
-                          <p className="text-2xl font-bold text-orange-600">{writeUpReports?.filter(w => {
-                            const wDate = parseISO(w.created_date);
-                            return wDate >= parseISO(formData.review_period_start) && wDate <= parseISO(formData.review_period_end);
-                          }).length || 0}</p>
-                          <p className="text-xs text-slate-600">Write-Ups</p>
-                        </div>
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-blue-900">Objective Statistics for Selected Dates</p>
+                        {previewLoading && <Badge variant="outline">Calculating…</Badge>}
+                        {reviewPreview?.performance_score != null && <Badge className="bg-blue-700 text-white">{reviewPreview.performance_score}% performance score</Badge>}
                       </div>
+                      {previewError ? (
+                        <p className="text-sm text-red-700">{previewError.message}</p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                          <div><Award className="mb-1 h-5 w-5 text-green-600"/><p className="text-2xl font-bold text-green-600">{reviewPreview?.commendations_count ?? '—'}</p><p className="text-xs text-slate-600">Commendations</p></div>
+                          <div><AlertTriangle className="mb-1 h-5 w-5 text-red-600"/><p className="text-2xl font-bold text-red-600">{reviewPreview?.complaints_count ?? '—'}</p><p className="text-xs text-slate-600">Complaints</p></div>
+                          <div><FileText className="mb-1 h-5 w-5 text-purple-600"/><p className="text-2xl font-bold text-purple-600">{reviewPreview?.inspections_count ?? '—'}</p><p className="text-xs text-slate-600">Inspections</p></div>
+                          <div><AlertTriangle className="mb-1 h-5 w-5 text-orange-600"/><p className="text-2xl font-bold text-orange-600">{reviewPreview?.writeups_count ?? '—'}</p><p className="text-xs text-slate-600">Approved Write-Ups</p></div>
+                          <div><p className="text-2xl font-bold text-cyan-700">{reviewPreview?.hours_worked ?? '—'}</p><p className="text-xs text-slate-600">Hours Worked</p></div>
+                          <div><p className="text-2xl font-bold text-cyan-700">{reviewPreview?.on_time_percentage == null ? '—' : `${reviewPreview.on_time_percentage}%`}</p><p className="text-xs text-slate-600">On-Time Shifts</p></div>
+                          <div><p className="text-2xl font-bold text-emerald-700">{reviewPreview?.punctuality?.on_time ?? '—'}</p><p className="text-xs text-slate-600">Compliant Shifts</p></div>
+                          <div><p className="text-2xl font-bold text-rose-700">{reviewPreview?.punctuality?.violations ?? '—'}</p><p className="text-xs text-slate-600">Time Violations</p></div>
+                        </div>
+                      )}
+                      <p className="mt-3 text-xs text-blue-800">Ratings below are prefilled from these statistics. HR can adjust ratings and add the qualitative review before creating it.</p>
                     </div>
                   )}
 
@@ -590,8 +413,8 @@ Review Date: ${format(new Date(), 'MMMM d, yyyy')}`
                       {[
                         { key: 'punctuality_rating', label: 'Punctuality' },
                         { key: 'professionalism_rating', label: 'Professionalism' },
-                        { key: 'report_quality_rating', label: 'Report Quality' },
-                        { key: 'teamwork_rating', label: 'Teamwork' },
+                        { key: 'uniform_appearance_rating', label: 'Uniform & Appearance' },
+                        { key: 'communication_rating', label: 'Communication' },
                         { key: 'initiative_rating', label: 'Initiative' },
                       ].map(({ key, label }) => (
                         <div key={key} className="space-y-2">
@@ -666,8 +489,8 @@ Review Date: ${format(new Date(), 'MMMM d, yyyy')}`
                   <div className="space-y-2">
                     <Label>Goals for Next Period</Label>
                     <Textarea
-                      value={formData.goals_for_next_period}
-                      onChange={(e) => setFormData({ ...formData, goals_for_next_period: e.target.value })}
+                      value={formData.goals}
+                      onChange={(e) => setFormData({ ...formData, goals: e.target.value })}
                       placeholder="Set goals and objectives for next review period..."
                       rows={3}
                     />
@@ -676,8 +499,8 @@ Review Date: ${format(new Date(), 'MMMM d, yyyy')}`
                   <div className="space-y-2">
                     <Label>Additional Comments</Label>
                     <Textarea
-                      value={formData.reviewer_comments}
-                      onChange={(e) => setFormData({ ...formData, reviewer_comments: e.target.value })}
+                      value={formData.supervisor_notes}
+                      onChange={(e) => setFormData({ ...formData, supervisor_notes: e.target.value })}
                       placeholder="Any additional comments or observations..."
                       rows={3}
                     />
