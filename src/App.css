@@ -439,7 +439,8 @@ body::-webkit-scrollbar-button,
 
 @media (min-width: 1280px) {
   .client-schedule-table {
-    overflow-x: hidden !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
   }
 }
 
