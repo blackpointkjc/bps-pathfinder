@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* Mobile Admin Center normalization */
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .cad-app main[data-page^="Admin"] {
     overflow-x: hidden;
     padding-bottom: calc(76px + env(safe-area-inset-bottom));
@@ -990,7 +990,7 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   html,
   body,
   #root {
@@ -1046,6 +1046,10 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   }
 
   .cad-app .mobile-field-content [class*="grid-cols-"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .cad-app .mobile-field-content form [class*="grid-cols-"] {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
@@ -1088,5 +1092,11 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
   .cad-app > [role="dialog"] {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media (max-width: 639px) {
+  .cad-app .mobile-field-content [class*="grid-cols-"] {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }
