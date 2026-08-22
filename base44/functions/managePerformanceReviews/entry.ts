@@ -28,10 +28,19 @@ async function resolveOfficer(base44: any, officerId: unknown, officerEmail: unk
   return { officer, users };
 }
 
+const displayName = (user: any) => `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.full_name || user?.email || 'Supervisor';
+
+function chooseSupervisor(officer: any, users: any[], reviewer: any) {
+  const direct = (users || []).find((user: any) => String(user.id || '') === String(officer.supervisor_id || ''));
+  if (direct && direct.id !== officer.id) return direct;
+  if (reviewer?.id !== officer.id) return reviewer;
+  return (users || []).find((user: any) => user.id !== officer.id && (
+    user.role === 'admin' || rolesOf(user).has('supervisor') || rolesOf(user).has('full_access')
+  ));
+}
+
 async function createNotifications(base44: any, officer: any, users: any[], review: any) {
-  const recipients = new Set<string>([officer.email].filter(Boolean));
-  const supervisor = (users || []).find((user: any) => String(user.id || '') === String(officer.supervisor_id || ''));
-  if (supervisor?.email) recipients.add(supervisor.email);
+  const recipients = new Set<string>([officer.email, review.assigned_supervisor_email].filter(Boolean));
   for (const recipient of recipients) {
     const isOfficer = emailKey(recipient) === emailKey(officer.email);
     await base44.asServiceRole.entities.Notification.create({
@@ -75,12 +84,22 @@ Deno.serve(async (req) => {
     if (action === 'preview') return Response.json({ success: true, metrics });
     if (action !== 'create') return Response.json({ error: 'Unsupported action.' }, { status: 400 });
 
+    const assignedSupervisor = chooseSupervisor(officer, users || [], me);
+    if (!assignedSupervisor) return Response.json({ error: 'No supervisor is available to receive this review task.' }, { status: 409 });
     const payload = {
       ...reviewPayloadFromMetrics(metrics, body.review || {}),
       review_type: 'manual',
       review_date: dateOnly(),
       reviewer_email: me.email,
-      reviewer_name: `${me.first_name || ''} ${me.last_name || ''}`.trim() || me.full_name || me.email,
+      reviewer_name: displayName(me),
+      assigned_supervisor_id: assignedSupervisor.id,
+      assigned_supervisor_email: assignedSupervisor.email,
+      assigned_supervisor_name: displayName(assignedSupervisor),
+      supervisor_task_created_at: new Date().toISOString(),
+      supervisor_review_pending: true,
+      supervisor_review_completed: false,
+      officer_acknowledged: false,
+      officer_signature_obtained: false,
     };
     const review = await base44.asServiceRole.entities.PerformanceReview.create(payload);
     await createNotifications(base44, officer, users || [], review);
