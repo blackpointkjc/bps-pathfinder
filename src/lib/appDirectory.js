@@ -6,6 +6,9 @@ let pending = null;
 let officerCache = null;
 let officerCacheAt = 0;
 let officerPending = null;
+let supervisorOfficerCache = null;
+let supervisorOfficerCacheAt = 0;
+let supervisorOfficerPending = null;
 const TTL_MS = 15_000;
 
 const normalizedIdentity = value => String(value || '').trim().toLowerCase();
@@ -97,6 +100,8 @@ export function invalidateAppDirectory() {
   cacheAt = 0;
   officerCache = null;
   officerCacheAt = 0;
+  supervisorOfficerCache = null;
+  supervisorOfficerCacheAt = 0;
 }
 
 export async function listOfficerDirectory(sort = 'last_name', limit = 1000, force = false) {
@@ -114,6 +119,25 @@ export async function listOfficerDirectory(sort = 'last_name', limit = 1000, for
     }).finally(() => { officerPending = null; });
   }
   const officers = await officerPending;
+  return sortRows(officers, sort).slice(0, Number(limit) || 1000);
+}
+
+export async function listSupervisorDirectoryOfficers(sort = 'last_name', limit = 1000, force = false) {
+  const now = Date.now();
+  if (!force && supervisorOfficerCache && now - supervisorOfficerCacheAt < TTL_MS) {
+    return sortRows(supervisorOfficerCache, sort).slice(0, Number(limit) || 1000);
+  }
+  if (!supervisorOfficerPending) {
+    supervisorOfficerPending = base44.functions.invoke('getSupervisorScopedTasks', { peopleOnly: true }).then(result => {
+      let payload = result?.data || result || {};
+      if (!Array.isArray(payload.assignedPeople) && payload?.data && typeof payload.data === 'object') payload = payload.data;
+      if (payload.error) throw new Error(payload.error);
+      supervisorOfficerCache = Array.isArray(payload.assignedPeople) ? payload.assignedPeople : [];
+      supervisorOfficerCacheAt = Date.now();
+      return supervisorOfficerCache;
+    }).finally(() => { supervisorOfficerPending = null; });
+  }
+  const officers = await supervisorOfficerPending;
   return sortRows(officers, sort).slice(0, Number(limit) || 1000);
 }
 
