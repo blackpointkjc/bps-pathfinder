@@ -481,6 +481,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
   const availableCenters = allAllowedCenters
     .filter(center => center !== 'support' || allAllowedCenters.length === 1);
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
+  const activeUnreadSummary = centerUnreadSummary(activeCenter, unreadCounts);
   const mobileTitle = mobileSection === 'reports' ? 'REPORTS' : 'ALL TOOLS';
   const query = search.trim().toLowerCase();
   const desktopCenterPage = !mobile ? DESKTOP_CENTER_PAGE[activeCenter] : null;
@@ -546,10 +547,13 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
                 <Select value={activeCenter} onValueChange={setActiveCenter}>
                   <SelectTrigger
                     id="mobile-workspace-select"
-                    className="h-10 w-full border-[#315879] bg-gradient-to-r from-[#102c49] to-[#0c2238] pl-10 text-[11px] font-bold text-white shadow-inner focus:ring-cyan-900/40"
-                    aria-label="Select workspace"
+                    className="h-11 w-full min-w-0 border-[#315879] bg-gradient-to-r from-[#102c49] to-[#0c2238] pl-10 pr-3 text-left text-white shadow-inner focus:ring-cyan-900/40"
+                    aria-label={`Select workspace. Current workspace: ${center.label}${activeUnreadSummary ? `, ${activeUnreadSummary}` : ''}`}
                   >
-                    <SelectValue />
+                    <span className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+                      <span className="min-w-0 flex-1 truncate text-[12px] font-black">{center.label}</span>
+                      {activeUnreadSummary && <span className="max-w-[42%] shrink-0 truncate rounded-full border border-cyan-700/50 bg-cyan-950/70 px-2 py-1 text-[9px] font-bold text-cyan-200">{activeUnreadSummary}</span>}
+                    </span>
                   </SelectTrigger>
                   <SelectContent className="border-[#315879] bg-[#0b1928] text-white">
                     {availableCenters.map(key => {
@@ -677,7 +681,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
         </Link>
 
         {groups.map((group) => {
-          const groupOpen = mobile || Boolean(query) || openNavGroup === group.label;
+          const groupOpen = Boolean(query) || openNavGroup === group.label;
           return (
             <div key={`${activeCenter}:${group.label}`} className="mb-2">
               {(!collapsed || mobile) && (
@@ -714,17 +718,17 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
         {groups.length === 0 && mobile && query && <div className="px-3 py-8 text-center text-xs text-[#68829b]">No tools match your search.</div>}
       </nav>
 
-      <div className={`border-t border-[#1b3048] bg-[#06101b]/90 p-2.5 backdrop-blur ${mobile ? 'hidden' : ''}`}>
-        {(!collapsed || mobile) && <div className="mb-2 rounded-lg border border-[#25435e] bg-gradient-to-br from-[#0e2033] to-[#0a1726] px-3 py-2.5 shadow-inner">
-          <div className="text-[9px] tracking-widest text-[#597491]">{roleName(user)}</div>
-          <div className="text-[11px] font-bold leading-tight text-white break-words">{user?.rank || user?.full_name || user?.email || 'AUTHORIZED USER'}</div>
-          {user?.rank && user?.last_name && <div className="text-[10px] leading-tight text-[#9fb6cc] break-words">{user.last_name}</div>}
-          <div className="mt-1 text-[9px] text-emerald-400">● SECURE SESSION</div>
+      <div className={`border-t border-[#1b3048] bg-[#06101b]/95 backdrop-blur ${mobile ? 'mobile-tool-footer' : 'p-2.5'}`}>
+        {(!collapsed || mobile) && <div className={`${mobile ? 'mobile-account-card' : 'mb-2'} rounded-lg border border-[#25435e] bg-gradient-to-br from-[#0e2033] to-[#0a1726] px-3 py-2.5 shadow-inner`}>
+          <div className="truncate text-[9px] tracking-widest text-[#597491]">{roleName(user)}</div>
+          <div className="truncate text-[11px] font-bold leading-tight text-white">{user?.rank || user?.full_name || user?.email || 'AUTHORIZED USER'}</div>
+          {user?.rank && user?.last_name && <div className="truncate text-[10px] leading-tight text-[#9fb6cc]">{user.last_name}</div>}
+          <div className="secure-session mt-1 text-[9px] text-emerald-400">● SECURE SESSION</div>
         </div>}
-        <button onClick={() => onLogout?.()} className={`flex h-10 w-full items-center gap-3 rounded px-3 text-[#8399b0] hover:bg-red-950/30 hover:text-red-300 ${collapsed && !mobile ? 'justify-center px-0' : ''}`}>
+        <button onClick={() => onLogout?.()} className={`mobile-session-action flex h-10 w-full items-center gap-3 rounded px-3 text-[#8399b0] hover:bg-red-950/30 hover:text-red-300 ${collapsed && !mobile ? 'justify-center px-0' : ''}`} title="Sign out" aria-label="Sign out">
           <LogOut className="h-4 w-4" />{(!collapsed || mobile) && <span className="text-[11px] font-bold">SIGN OUT</span>}
         </button>
-        <button type="button" onClick={() => setShowDeleteAccountDialog(true)} className={`flex h-10 w-full items-center gap-3 rounded px-3 text-[#8399b0] hover:bg-red-950/30 hover:text-red-300 ${collapsed && !mobile ? 'justify-center px-0' : ''}`} title="Delete account">
+        <button type="button" onClick={() => setShowDeleteAccountDialog(true)} className={`mobile-session-action flex h-10 w-full items-center gap-3 rounded px-3 text-[#8399b0] hover:bg-red-950/30 hover:text-red-300 ${collapsed && !mobile ? 'justify-center px-0' : ''}`} title="Delete account" aria-label="Request account deletion">
           <Trash2 className="h-4 w-4" />{(!collapsed || mobile) && <span className="text-[11px] font-bold">DELETE ACCOUNT</span>}
         </button>
       </div>
@@ -1174,8 +1178,8 @@ export default function Layout({ children, currentPageName }) {
       <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onToggleCollapsed={() => setCollapsed(value => !value)} onLogout={() => logout(true)} />
     </aside>
 
-    <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] bg-[#06101b] lg:hidden">
-      <motion.section initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 18, opacity: 0 }} className="h-[100dvh] w-full overflow-hidden" role="dialog" aria-modal="true" aria-label={mobileSection === 'reports' ? 'Reports' : 'All tools'}>
+    <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-[2px] lg:hidden" onClick={() => { setMobileOpen(false); setMobileSection(null); }}>
+      <motion.section initial={{ x: '-100%', opacity: 0.7 }} animate={{ x: 0, opacity: 1 }} exit={{ x: '-100%', opacity: 0.7 }} transition={{ type: 'spring', damping: 28, stiffness: 280 }} className="pathfinder-mobile-drawer h-[100dvh] overflow-hidden border-r border-[#25445f] bg-[#06101b]" role="dialog" aria-modal="true" aria-label={mobileSection === 'reports' ? 'Reports' : 'All tools'} onClick={event => event.stopPropagation()}>
         <Sidebar mobile mobileSection={mobileSection} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => { setMobileOpen(false); setMobileSection(null); }} onLogout={() => logout(true)} />
       </motion.section>
     </motion.div>}</AnimatePresence>
