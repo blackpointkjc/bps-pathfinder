@@ -195,27 +195,44 @@ export default function ShiftReports() {
 
   const saveReportMutation = useMutation({
     mutationFn: async ({ data, isDraft }) => {
-      // Get officer's IP address
+      // IP capture must never block a report save.
       let ipAddress = 'Unknown';
+      const ipController = new AbortController();
+      const ipTimeout = setTimeout(() => ipController.abort(), 3000);
       try {
-        const ipResponse = await fetch('https://api.ipify.org?format=json');
+        const ipResponse = await fetch('https://api.ipify.org?format=json', { signal: ipController.signal });
         const ipData = await ipResponse.json();
         ipAddress = ipData.ip;
       } catch (error) {
         console.error('Failed to get IP address:', error);
+      } finally {
+        clearTimeout(ipTimeout);
       }
 
-      let locationToSubmit = data.location;
-      if (isAdmin && !data.location) {
-          locationToSubmit = "Admin - Remote Submission";
-      } else if (!isAdmin && !activeEntry?.location && !isDraft) {
-          locationToSubmit = "Unknown Location";
+      const activeSiteName = activeEntry?.location?.split(' - ')[0]?.trim() || "";
+      let locationToSubmit = String(data.location || activeSiteName).trim();
+      if (!locationToSubmit) {
+        locationToSubmit = isDraft
+          ? "Draft - Location TBD"
+          : (isAdmin ? "Admin - Remote Submission" : "Unknown Location");
       }
+
+      const { patrol_count, visitors_logged, doors_checked, ...restData } = data;
+      const saveData = {
+        ...restData,
+        location: locationToSubmit,
+        activities: isDraft && !String(data.activities || "").trim()
+          ? "Draft - Activities pending"
+          : data.activities,
+      };
+      if (patrol_count !== '' && patrol_count != null) saveData.patrol_count = Number(patrol_count);
+      if (visitors_logged !== '' && visitors_logged != null) saveData.visitors_logged = Number(visitors_logged);
+      if (doors_checked !== '' && doors_checked != null) saveData.doors_checked = Number(doors_checked);
 
       if (editingReport) {
         // Update existing report
         const updated = await base44.entities.ShiftReport.update(editingReport.id, {
-          ...data,
+          ...saveData,
           location: locationToSubmit,
           status: isDraft ? "draft" : "submitted",
           was_rejected: false,
@@ -242,7 +259,7 @@ export default function ShiftReports() {
       } else {
         // Create new report
         const report = await base44.entities.ShiftReport.create({
-          ...data,
+          ...saveData,
           location: locationToSubmit,
           status: isDraft ? "draft" : "submitted",
           officer_ip_address: ipAddress,
@@ -277,21 +294,22 @@ export default function ShiftReports() {
       if (context?.previousReports) {
         queryClient.setQueryData(['myShiftReports', user?.id], context.previousReports);
       }
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Failed to save report. Please try again.');
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['myShiftReports', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['myReportTodos'] });
-      
+
       if (!variables.isDraft) {
         setShowForm(false);
         setEditingReport(null);
         setEditingTodoId(null);
         setFormData({
           shift_date: format(new Date(), 'yyyy-MM-dd'),
-    linked_call_id: "",
-    linked_call_number: "",
-    linked_call_type: "",
-    linked_call_location: "",
+          linked_call_id: "",
+          linked_call_number: "",
+          linked_call_type: "",
+          linked_call_location: "",
           start_time: "",
           end_time: "",
           location: "",
@@ -305,18 +323,13 @@ export default function ShiftReports() {
           persons_of_interest: "",
           equipment_check: "",
           photo_url: "",
-          });
-          } else {
-          toast.success('Draft saved successfully.');
-          }
-          setSaving(false);
-          },
-          onError: (error) => {
-          console.error('Error saving shift report:', error);
-          setSaving(false);
-          toast.error(error?.message || 'Failed to save report. Please try again.');
-          },
-          });
+        });
+      } else {
+        toast.success('Draft saved successfully.');
+      }
+      setSaving(false);
+    },
+  });
 
           const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -346,9 +359,8 @@ export default function ShiftReports() {
   };
 
   const handleSaveAsDraft = () => {
-    // Basic validation for saving a draft
-    if (!formData.shift_date || !formData.activities) {
-      alert('Please fill in at least the Date and Activities before saving as draft.');
+    if (!formData.shift_date) {
+      toast.error('Please select the shift date before saving as draft.');
       return;
     }
     setSaving(true);
@@ -379,7 +391,7 @@ export default function ShiftReports() {
       patrol_count: report.patrol_count || "",
       visitors_logged: report.visitors_logged || "",
       doors_checked: report.doors_checked || "",
-      activities: report.activities,
+      activities: report.status === 'draft' && report.activities === 'Draft - Activities pending' ? '' : report.activities,
       incidents: report.incidents || "",
       vehicles_noted: report.vehicles_noted || "",
       persons_of_interest: report.persons_of_interest || "",
@@ -732,7 +744,6 @@ export default function ShiftReports() {
                     value={formData.location}
                     onValueChange={(value) => setFormData(prev => ({...prev, location: value}))}
                     required
-                    disabled={!isAdmin && !!activeEntry?.location}
                   >
                     <SelectTrigger id="location">
                       <SelectValue placeholder="Select location" />
