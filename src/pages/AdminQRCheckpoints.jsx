@@ -53,10 +53,13 @@ export default function AdminQRCheckpoints() {
 
   const { data: user } = useQuery({ queryKey: ['currentUser'], queryFn: () => base44.auth.me() });
 
-  const { data: checkpoints = [] } = useQuery({
+  const { data: checkpoints = [], isFetching: checkpointsLoading } = useQuery({
     queryKey: ['qrCheckpoints'],
-    queryFn: () => base44.entities.QRCheckpoint.list('-created_date'),
+    queryFn: () => base44.entities.QRCheckpoint.list('-created_date', 1000),
     initialData: [],
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 
   const { data: dutyRules = [] } = useQuery({
