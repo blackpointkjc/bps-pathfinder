@@ -43,6 +43,7 @@ export default function SupervisorPerformanceReview() {
 
   const assignedPeople = scopedTasks.assignedPeople || [];
   const pendingReviews = scopedTasks.reviews || [];
+  const awaitingOfficerReviews = scopedTasks.reviewFollowUps || [];
 
   useEffect(() => {
     if (!selectedReview?.id) return;
@@ -504,6 +505,27 @@ export default function SupervisorPerformanceReview() {
                   <p>No pending reviews</p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {!selectedReview && awaitingOfficerReviews.length > 0 && (
+          <Card className="border border-amber-300 bg-amber-50 shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-amber-950">Awaiting Officer Response ({awaitingOfficerReviews.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {awaitingOfficerReviews.map(review => (
+                <div key={review.id} className="rounded-lg border border-amber-200 bg-white p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-slate-900">{review.officer_name}</p>
+                      <p className="text-sm text-slate-600">{format(parseISO(review.review_period_start), 'MMM d')} - {format(parseISO(review.review_period_end), 'MMM d, yyyy')}</p>
+                    </div>
+                    <div className="rounded-full bg-amber-600 px-3 py-1 text-xs font-bold text-white">Awaiting self-rating & signature</div>
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}
