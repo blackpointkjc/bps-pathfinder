@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
     } else if (studentOnly) {
       users = directoryUsers.filter((u: any) => u.email === cleanEmail(me.email) || lowerRoles(u).has('trainer') || u.role === 'admin').map((u: any) => safeUser(u, false));
     } else {
-      users = (rawUsers || []).filter(isInternal).map((u: any) => safeUser(u, internalPrivileged));
+      users = directoryUsers.filter(isInternal).map((u: any) => safeUser(u, internalPrivileged));
     }
 
     let locations = rawLocations || [];
