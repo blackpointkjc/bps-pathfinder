@@ -74,24 +74,42 @@ export default function SignaturePad({ onSignatureComplete, onClose, officerName
   };
 
   const saveSignature = async () => {
-    if (!hasSignature) {
-      toast.error("Please sign before saving.");
+    if (!hasSignature || uploading) {
+      if (!hasSignature) toast.error("Please sign before saving.");
       return;
     }
+
+    const withTimeout = (promise, milliseconds, message) => Promise.race([
+      promise,
+      new Promise((_, reject) => window.setTimeout(() => reject(new Error(message)), milliseconds)),
+    ]);
 
     setUploading(true);
     try {
       const canvas = canvasRef.current;
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      const blob = await withTimeout(
+        new Promise((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Unable to prepare signature image.')), 'image/png')),
+        10000,
+        'The signature image took too long to prepare.'
+      );
       const file = new File([blob], `signature-${Date.now()}.png`, { type: 'image/png' });
-      
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      onSignatureComplete(file_url);
+      const upload = await withTimeout(
+        base44.integrations.Core.UploadFile({ file }),
+        30000,
+        'The signature upload timed out. Check your connection and try again.'
+      );
+      if (!upload?.file_url) throw new Error('The signature upload did not return a file.');
+      await withTimeout(
+        Promise.resolve(onSignatureComplete(upload.file_url)),
+        30000,
+        'The signed review took too long to submit. Please try again.'
+      );
     } catch (error) {
       console.error("Error saving signature:", error);
-      toast.error("Failed to save signature. Please try again.");
+      toast.error(error?.message || "Failed to save signature. Please try again.");
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   return (
