@@ -457,7 +457,7 @@ function MobileFieldNav({ currentPageName, unreadCounts, onMenu, onReports, acti
         ['Inbox', 'OfficerInbox', MessageCircle],
       ];
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-[45] flex border-t border-[#29445f] bg-[#07111f]/98 px-1 pt-1 shadow-[0_-10px_30px_rgba(0,0,0,.35)] backdrop-blur md:hidden" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
+    <nav className="fixed inset-x-0 bottom-0 z-[45] flex border-t border-[#29445f] bg-[#07111f]/98 px-1 pt-1 shadow-[0_-10px_30px_rgba(0,0,0,.35)] backdrop-blur lg:hidden" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom))' }}>
       {tabs.map(([label, page, Icon]) => {
         const active = currentPageName === page;
         const count = Number(unreadCounts[page]) || 0;
@@ -756,7 +756,7 @@ export default function Layout({ children, currentPageName }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSection, setMobileSection] = useState(null);
-  const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
+  const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches);
   const [activeAlert, setActiveAlert] = useState(null);
   const [propertyAlert, setPropertyAlert] = useState(null);
   const [propertyAlertSilenced, setPropertyAlertSilenced] = useState(false);
@@ -806,7 +806,7 @@ export default function Layout({ children, currentPageName }) {
   };
 
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 767px)');
+    const media = window.matchMedia('(max-width: 1023px)');
     const updateViewport = event => setIsMobileViewport(event.matches);
     setIsMobileViewport(media.matches);
     media.addEventListener?.('change', updateViewport);
@@ -1170,11 +1170,11 @@ export default function Layout({ children, currentPageName }) {
   const requireMicrosoftConnection = MICROSOFT_TOOL_PAGES.has(currentPageName);
 
   return <MicrosoftMailSetupGate user={user} enabled={requireMicrosoftConnection}><div className="fixed inset-0 flex overflow-hidden bg-[#050a12] text-white cad-app"><BackgroundLocationTracker user={user} /><NotificationMonitor user={user} /><OutlookNotificationMonitor user={user} /><TeamsNotificationMonitor user={user} /><GlobalMessageBanner user={user} /><WelcomeBriefing user={user} /><MandatoryReadGate user={user} /><ForcedOOSOverlay />
-    <aside className="relative hidden flex-col border-r border-[#1c3049] md:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
+    <aside className="relative hidden flex-col border-r border-[#1c3049] lg:flex" style={{ width: collapsed ? 64 : 260, transition: 'width .18s ease' }}>
       <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onToggleCollapsed={() => setCollapsed(value => !value)} onLogout={() => logout(true)} />
     </aside>
 
-    <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] bg-[#06101b] md:hidden">
+    <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] bg-[#06101b] lg:hidden">
       <motion.section initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 18, opacity: 0 }} className="h-[100dvh] w-full overflow-hidden" role="dialog" aria-modal="true" aria-label={mobileSection === 'reports' ? 'Reports' : 'All tools'}>
         <Sidebar mobile mobileSection={mobileSection} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => { setMobileOpen(false); setMobileSection(null); }} onLogout={() => logout(true)} />
       </motion.section>
@@ -1240,7 +1240,7 @@ export default function Layout({ children, currentPageName }) {
       <header className="flex min-h-14 shrink-0 items-center justify-between border-b border-[#1c3049] bg-[#08111f] px-2 pb-0 md:px-5" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         <div className="flex min-w-0 items-center gap-2 md:gap-3">
           {!ROOT_PAGES.has(currentPageName) && (
-            <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(createPageUrl(defaultPageForUser(user)))} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] md:hidden" aria-label="Go back"><ChevronLeft className="h-5 w-5" /></button>
+            <button onClick={() => window.history.length > 1 ? navigate(-1) : navigate(createPageUrl(defaultPageForUser(user)))} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#294867] text-[#a8c3dc] lg:hidden" aria-label="Go back"><ChevronLeft className="h-5 w-5" /></button>
           )}
           {COMMUNICATION_PAGES.has(currentPageName) && (
             <Link
@@ -1253,8 +1253,8 @@ export default function Layout({ children, currentPageName }) {
             </Link>
           )}
           <div className="min-w-0">
-            <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white md:tracking-[0.15em]"><span className="md:hidden">{pageLabel(currentPageName)}</span><span className="hidden md:inline">{centerLabel}</span></div>
-            <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="md:hidden">FIELD OPERATIONS</span><span className="hidden md:inline">UNIFIED OPERATIONS PLATFORM</span></div>
+            <div className="truncate text-[11px] font-black uppercase tracking-[0.12em] text-white lg:tracking-[0.15em]"><span className="lg:hidden">{pageLabel(currentPageName)}</span><span className="hidden lg:inline">{centerLabel}</span></div>
+            <div className="truncate text-[9px] tracking-widest text-[#607c98]"><span className="lg:hidden">FIELD OPERATIONS</span><span className="hidden lg:inline">UNIFIED OPERATIONS PLATFORM</span></div>
           </div>
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-[#7791aa]">
