@@ -9,6 +9,7 @@ import { format, parseISO } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 export default function SupervisorPerformanceReview() {
   const [selectedReview, setSelectedReview] = useState(null);
@@ -54,7 +55,7 @@ export default function SupervisorPerformanceReview() {
       setSelectedReview(null);
       setSignatureObtained(false);
       setSupervisorNotes("");
-      alert('✅ Review marked as completed!');
+      toast.success('Review marked as completed.');
     },
   });
 
@@ -156,8 +157,8 @@ export default function SupervisorPerformanceReview() {
           ${[
             { label: 'Punctuality', value: review.punctuality_rating },
             { label: 'Professionalism', value: review.professionalism_rating },
-            { label: 'Report Quality', value: review.report_quality_rating },
-            { label: 'Teamwork', value: review.teamwork_rating },
+            { label: 'Uniform & Appearance', value: review.uniform_appearance_rating },
+            { label: 'Communication', value: review.communication_rating },
             { label: 'Initiative', value: review.initiative_rating },
           ].map(r => `
             <div class="rating-row">
@@ -319,8 +320,8 @@ export default function SupervisorPerformanceReview() {
                 {[
                   { label: 'Punctuality', value: selectedReview.punctuality_rating },
                   { label: 'Professionalism', value: selectedReview.professionalism_rating },
-                  { label: 'Report Quality', value: selectedReview.report_quality_rating },
-                  { label: 'Teamwork', value: selectedReview.teamwork_rating },
+                  { label: 'Uniform & Appearance', value: selectedReview.uniform_appearance_rating },
+                  { label: 'Communication', value: selectedReview.communication_rating },
                   { label: 'Initiative', value: selectedReview.initiative_rating },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex justify-between items-center py-2 border-b">
