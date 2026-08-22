@@ -74,101 +74,6 @@ function chooseRotatingSupervisor(officer: any, users: any[], reviews: any[]) {
   return tied[randomIndex(tied.length)];
 }
 
-async function recoverOrphanedReviews(base44: any, me: any, aliases: Set<string>, allReviews: any[]) {
-  const notifications = await base44.asServiceRole.entities.Notification.list('-created_date', 1000).catch(() => []);
-  const orphaned = (notifications || []).filter((notice: any) =>
-    aliases.has(key(notice.recipient_email)) &&
-    notice.related_id &&
-    /performance review/i.test(String(notice.title || notice.source_name || '')) &&
-    !(allReviews || []).some((review: any) => String(review.id) === String(notice.related_id))
-  );
-
-  if (!orphaned.length) return [];
-  const users = await base44.asServiceRole.entities.User.list(undefined, 5000);
-  const recovered: any[] = [];
-
-  for (const notice of orphaned) {
-    const period = String(notice.message || '').match(/(\d{4}-\d{2}-\d{2})\s+through\s+(\d{4}-\d{2}-\d{2})/i);
-    if (!period) continue;
-    const [, start, end] = period;
-    const alreadyRecovered = [...(allReviews || []), ...recovered].find((review: any) =>
-      (String(review.officer_id || '') === String(me.id || '') || aliases.has(key(review.officer_email))) &&
-      String(review.review_period_start || '') === start &&
-      String(review.review_period_end || '') === end
-    );
-    if (alreadyRecovered) {
-      await base44.asServiceRole.entities.Notification.update(notice.id, { related_id: alreadyRecovered.id }).catch(() => null);
-      continue;
-    }
-
-    const supervisor = chooseRotatingSupervisor(me, users || [], [...(allReviews || []), ...recovered]);
-    const metrics = await buildPerformanceMetrics(base44, me, start, end);
-    const assignmentIssue = supervisor ? '' : `No active supervisor currently outranks ${me.rank || 'this officer'}.`;
-    const review = await base44.asServiceRole.entities.PerformanceReview.create({
-      ...reviewPayloadFromMetrics(metrics),
-      review_type: 'manual',
-      review_date: String(notice.created_date || new Date().toISOString()).slice(0, 10),
-      reviewer_email: supervisor?.email || 'performance-reviews@blackpointkjc.com',
-      reviewer_name: supervisor ? displayName(supervisor) : 'Black Point Review Administration',
-      ...(supervisor ? {
-        assigned_supervisor_id: supervisor.id,
-        assigned_supervisor_email: supervisor.email,
-        assigned_supervisor_name: displayName(supervisor),
-        supervisor_task_created_at: new Date().toISOString(),
-        assignment_round: [...(allReviews || []), ...recovered].filter((item: any) => String(item.assigned_supervisor_id || '') === String(supervisor.id)).length + 1,
-      } : {}),
-      workflow_stage: supervisor ? 'supervisor_pending' : 'higher_reviewer_required',
-      higher_reviewer_required: !supervisor,
-      assignment_issue: assignmentIssue,
-      supervisor_review_pending: Boolean(supervisor),
-      supervisor_review_completed: false,
-      officer_acknowledged: false,
-      officer_signature_obtained: false,
-      hr_approved: false,
-      supervisor_notes: supervisor
-        ? 'Recovered from the original Pathfinder performance-review notification after the underlying review record became unavailable.'
-        : `Review restored, but assignment is paused because no active supervisor outranks ${me.rank || 'the officer'}.`,
-    });
-    recovered.push(review);
-
-    const notificationWork: Promise<any>[] = [
-      base44.asServiceRole.entities.Notification.update(notice.id, {
-        related_id: review.id,
-        title: supervisor ? 'Performance Review Restored' : 'Performance Review Restored — Higher Reviewer Required',
-        message: supervisor
-          ? `Your performance review for ${start} through ${end} is restored and visible in Officer Center → Profile & Training → My Reviews & Feedback.`
-          : `Your performance review for ${start} through ${end} is restored. It cannot be assigned downward and is waiting for a reviewer above ${me.rank || 'your rank'}.`,
-        is_read: false,
-      }).catch(() => null),
-    ];
-    if (supervisor) {
-      notificationWork.push(base44.asServiceRole.entities.Notification.create({
-        recipient_email: supervisor.email,
-        type: 'training_reminder',
-        title: 'Recovered Performance Review Assigned',
-        message: `${metrics.officer_name}'s review for ${start} through ${end} was restored and assigned to you because your rank is above the officer's. Submit ratings in Supervisor Center.`,
-        priority: 'high',
-        related_id: review.id,
-        source_name: 'Performance Reviews',
-      }).catch(() => null));
-    } else {
-      for (const admin of (users || []).filter((user: any) => active(user) && user.email && key(user.email) !== key(me.email) && (user.role === 'admin' || rolesOf(user).has('hr') || rolesOf(user).has('full_access')))) {
-        notificationWork.push(base44.asServiceRole.entities.Notification.create({
-          recipient_email: admin.email,
-          type: 'training_reminder',
-          title: 'Restored Review Needs Higher-Ranking Reviewer',
-          message: `${metrics.officer_name}'s restored review cannot be assigned until an active reviewer above ${me.rank || 'the officer rank'} is available.`,
-          priority: 'high',
-          related_id: review.id,
-          source_name: 'Performance Reviews',
-        }).catch(() => null));
-      }
-    }
-    await Promise.all(notificationWork);
-  }
-  return recovered;
-}
-
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -189,9 +94,7 @@ Deno.serve(async (req) => {
     const owns = (review: any) => String(review.officer_id || '') === String(me.id || '') || aliases.has(key(review.officer_email));
 
     if (action === 'list') {
-      const recovered = await recoverOrphanedReviews(base44, me, aliases, all || []);
-      if (recovered.length) all = [...(all || []), ...recovered];
-      return Response.json({ success: true, reviews: (all || []).filter(owns), recovered_count: recovered.length });
+      return Response.json({ success: true, reviews: (all || []).filter(owns) });
     }
 
     const reviews = (all || []).filter(owns);
