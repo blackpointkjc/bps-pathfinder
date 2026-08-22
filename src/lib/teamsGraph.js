@@ -372,7 +372,8 @@ export async function listTeamsDirectChats(userId, { limit = 25 } = {}) {
   const identityByMicrosoftId = new Map((identities || []).filter(item => item.microsoft_user_id).map(item => [String(item.microsoft_user_id), item]));
   const meId = String(me?.id || '');
   const chats = [];
-  for (const chat of chatsPayload?.value || []) {
+  const requestedChats = (chatsPayload?.value || []).slice(0, Math.max(1, Number(limit) || 25));
+  for (const chat of requestedChats) {
     if (!chat?.id || !['oneOnOne', 'group'].includes(chat.chatType)) continue;
     const members = (await membersForChat(userId, chat)).filter(member => member?.userId || member?.user?.id || member?.id);
     const otherMembers = members.filter(member => String(member?.userId || member?.user?.id || member?.id || '') !== meId);
