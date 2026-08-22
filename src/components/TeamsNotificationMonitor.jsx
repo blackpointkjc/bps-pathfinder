@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { getTeamsChannelMessages } from '@/lib/teamsGraph';
+import { getTeamsChannelMessages, listTeamsDirectChats } from '@/lib/teamsGraph';
 
 const rolesFor = user => new Set([user?.role, ...(user?.additional_roles || [])].filter(Boolean).map(value => String(value).toLowerCase()));
 
@@ -35,6 +35,38 @@ export default function TeamsNotificationMonitor({ user }) {
       try {
         const currentPage = window.location.pathname.split('/').filter(Boolean).pop() || '';
         const now = Date.now();
+
+        // Direct-message unread monitoring must run globally, not only after the
+        // user opens Officer Inbox. Persist per-chat last-seen timestamps so an
+        // unread badge survives navigation, remounts, sign-out, and sign-in.
+        try {
+          const directResult = await listTeamsDirectChats(user.id, { limit: 25 });
+          const directChats = directResult?.chats || [];
+          const directSeenKey = `pathfinder-teams-chat-seen:${String(user.id)}`;
+          let directSeen = {};
+          try { directSeen = JSON.parse(localStorage.getItem(directSeenKey) || '{}') || {}; } catch {}
+          if (!Object.keys(directSeen).length && directChats.length) {
+            directSeen = Object.fromEntries(directChats.map(chat => [chat.id, chat.lastUpdatedDateTime || chat.createdDateTime || new Date().toISOString()]));
+            localStorage.setItem(directSeenKey, JSON.stringify(directSeen));
+          }
+          if (currentPage === 'OfficerInbox') {
+            directChats.forEach(chat => {
+              directSeen[chat.id] = chat.lastUpdatedDateTime || chat.createdDateTime || new Date().toISOString();
+            });
+            localStorage.setItem(directSeenKey, JSON.stringify(directSeen));
+            window.dispatchEvent(new CustomEvent('bps-unread-notification', { detail: { page: 'OfficerInbox', count: 0, absolute: true } }));
+          } else {
+            const directUnread = directChats.filter(chat => {
+              const changed = new Date(chat.lastUpdatedDateTime || chat.createdDateTime || 0).getTime();
+              const seen = new Date(directSeen[chat.id] || 0).getTime();
+              return Number.isFinite(changed) && changed > (Number.isFinite(seen) ? seen : 0);
+            }).length;
+            window.dispatchEvent(new CustomEvent('bps-unread-notification', { detail: { page: 'OfficerInbox', count: directUnread, absolute: true } }));
+          }
+        } catch (error) {
+          if (!/rate limit|429|too many requests/i.test(String(error?.message || ''))) console.warn('[Teams] Direct-message notification check failed:', error?.message);
+        }
+
         for (const target of targets) {
           const isActiveTarget = currentPage === target.page;
           const minimumGap = document.visibilityState === 'hidden' ? 120000 : isActiveTarget ? 20000 : 60000;
