@@ -78,7 +78,7 @@ export default function MaintenanceReports() {
     queryKey: ['activeLocations'], // Changed query key to reflect filtering
     queryFn: async () => {
       const allLocations = await listDirectoryLocations('site_name');
-      return allLocations.filter(loc => loc.active); // Filter for active locations
+      return allLocations.filter(loc => loc.active !== false); // Filter for active locations
     },
     initialData: [], // Provide initial empty array
   });
