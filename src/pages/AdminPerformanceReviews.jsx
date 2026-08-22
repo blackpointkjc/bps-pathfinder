@@ -28,6 +28,7 @@ const ratingFields = [
 
 const workflowLabel = (review) => {
   const stage = review.workflow_stage || (review.hr_approved ? 'approved' : review.officer_acknowledged ? 'hr_approval_pending' : review.supervisor_review_completed ? 'officer_pending' : 'supervisor_pending');
+  if (stage === 'higher_reviewer_required') return { stage, label: 'Higher-Ranking Reviewer Required', className: 'bg-red-800 text-white' };
   if (stage === 'officer_pending') return { stage, label: 'Officer Response', className: 'bg-amber-600 text-white' };
   if (stage === 'hr_approval_pending') return { stage, label: 'HR Approval Required', className: 'bg-red-700 text-white' };
   if (stage === 'approved') return { stage, label: 'Approved', className: 'bg-green-700 text-white' };
@@ -267,6 +268,12 @@ export default function AdminPerformanceReviews() {
                             <span>•</span>
                             <span>{format(parseISO(review.review_date), 'MMM d, yyyy')}</span>
                           </div>
+                          {workflowLabel(review).stage === 'higher_reviewer_required' && (
+                            <div className="mb-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-900">
+                              {review.assignment_issue || 'This review cannot be assigned until an active reviewer with a higher operational rank is available.'}
+                              <div className="mt-1 text-xs font-normal">It has not been sent to any equal- or lower-ranked supervisor.</div>
+                            </div>
+                          )}
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
                             {review.commendations_count > 0 && (
                               <Badge className="bg-green-600 text-white">
