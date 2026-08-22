@@ -245,22 +245,22 @@ export default function CallHistory() {
                                     ${isActive ? 'bg-blue-950/20 hover:bg-blue-950/40 border-l-2 border-l-blue-500' : 'bg-slate-900 hover:bg-slate-800/50 border-l-2 border-l-transparent'}
                                     ${isExpanded ? 'bg-slate-800/60' : ''}`}> 
                                 <div className="hidden w-8 flex-shrink-0 text-slate-600 md:block">{sorted.length - idx}</div>
-                                <div className="w-full text-slate-400 md:w-36 md:flex-shrink-0"><span className="mr-2 text-[8px] font-bold text-slate-600 md:hidden">DATE/TIME</span>{fmtDT(row.time_received || row.created_date)}</div>
+                                <div className="w-full text-slate-400 lg:w-36 lg:flex-shrink-0"><span className="mr-2 text-[8px] font-bold text-slate-600 lg:hidden">DATE/TIME</span>{fmtDT(row.time_received || row.created_date)}</div>
                                 <div className="min-w-0 w-full flex-1 md:pr-2">
                                     <span className={`text-white font-bold ${isActive ? 'text-blue-200' : ''}`}>{row.incident || '—'}</span>
                                     {isActive && <span className="ml-2 text-[8px] bg-blue-500/30 text-blue-300 border border-blue-500/40 px-1 py-0.5 rounded">ACTIVE</span>}
                                     {row._propertyCall && <span className="ml-2 text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.5 rounded">PROPERTY CALL</span>}
                                 </div>
-                                <div className="w-full break-words text-slate-400 md:w-56 md:flex-shrink-0 md:truncate md:pr-2">
+                                <div className="w-full break-words text-slate-400 md:w-56 lg:flex-shrink-0 md:truncate md:pr-2">
                                     <MapPin className="w-2.5 h-2.5 inline mr-1 text-slate-600" />{row.location || '—'}
                                 </div>
-                                <div className="w-full md:w-20 md:flex-shrink-0">
+                                <div className="w-full md:w-20 lg:flex-shrink-0">
                                     <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${agCls}`}>{row.agency || '—'}</span>
                                 </div>
-                                <div className="w-full md:w-24 md:flex-shrink-0">
+                                <div className="w-full md:w-24 lg:flex-shrink-0">
                                     <span className={`text-[9px] px-1.5 py-0.5 rounded border ${stCls}`}>{row.status || '—'}</span>
                                 </div>
-                                <div className="w-full text-left text-slate-500 md:w-16 md:flex-shrink-0 md:text-center">
+                                <div className="w-full text-left text-slate-500 md:w-16 lg:flex-shrink-0 md:text-center">
                                     {row.assigned_units?.length > 0 ? <span className="text-green-400">{row.assigned_units.length}U</span> : '—'}
                                 </div>
                                 <div className="absolute right-3 mt-0 w-8 flex-shrink-0 text-center text-slate-600 md:static">
