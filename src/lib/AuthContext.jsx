@@ -35,9 +35,36 @@ export const AuthProvider = ({ children }) => {
       let currentUser = await withTimeout(base44.auth.me(), 12000, 'Authentication request');
       if (requestId !== requestSequence.current) return;
 
-      // Microsoft/Outlook is a linked communication identity only. The
-      // authenticated Pathfinder user ID and primary email remain authoritative
-      // for schedules, time entries, reports, permissions, and performance data.
+      // Preserve the immutable Pathfinder user ID for authorization and joins,
+      // while treating the admin-managed work email and linked Microsoft email
+      // as aliases for the same person. This prevents schedules, reports, time
+      // entries, posts, and messages from splitting when Microsoft uses a
+      // different address.
+      try {
+        const [teamsLinks, outlookLinks] = await Promise.all([
+          base44.entities.MicrosoftTeamsIdentity.filter({ user_id: currentUser.id, active: true }, '-updated_at', 10).catch(() => []),
+          base44.entities.OutlookMailboxLink.filter({ user_id: currentUser.id, connected: true }, '-last_verified_at', 10).catch(() => []),
+        ]);
+        if (requestId !== requestSequence.current) return;
+        const teams = teamsLinks?.[0];
+        const outlook = outlookLinks?.[0];
+        const cleanEmail = value => String(value || '').trim().toLowerCase();
+        const authEmail = cleanEmail(currentUser.email);
+        const workEmail = cleanEmail(teams?.pathfinder_email || outlook?.pathfinder_email || authEmail);
+        const microsoftEmail = cleanEmail(teams?.microsoft_email || outlook?.outlook_email);
+        currentUser = {
+          ...currentUser,
+          email: workEmail || authEmail,
+          auth_email: authEmail,
+          work_email: workEmail || authEmail,
+          pathfinder_email: workEmail || authEmail,
+          microsoft_email: microsoftEmail,
+          outlook_email: cleanEmail(outlook?.outlook_email || teams?.microsoft_email),
+          email_aliases: [...new Set([authEmail, workEmail, microsoftEmail].filter(Boolean))],
+        };
+      } catch (linkError) {
+        console.warn('[AUTH] Linked Microsoft identity unavailable; using the authenticated Pathfinder identity.', linkError?.message);
+      }
 
       setUser(currentUser);
       setIsAuthenticated(true);
