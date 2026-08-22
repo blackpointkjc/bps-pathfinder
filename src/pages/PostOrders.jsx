@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,22 @@ import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function PostOrders() {
   const [selectedSite, setSelectedSite] = useState("");
+
+  const { data: user } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => base44.auth.me(),
+  });
+
+  const { data: activeEntry } = useQuery({
+    queryKey: ['postOrdersActiveEntry', user?.email],
+    queryFn: async () => {
+      if (!user?.email) return null;
+      const entries = await base44.entities.TimeEntry.filter({ officer_email: user.email }, '-clock_in', 20);
+      return (entries || []).find(entry => !entry.clock_out && entry.archived !== true) || null;
+    },
+    enabled: !!user?.email,
+    staleTime: 15000,
+  });
 
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
@@ -32,6 +48,13 @@ export default function PostOrders() {
     queryFn: () => listDirectoryUsers(),
     initialData: [],
   });
+
+  useEffect(() => {
+    if (selectedSite || !activeEntry?.location || !locations?.length) return;
+    const activeSiteName = String(activeEntry.location).split(':')[0].split(' - ')[0].trim().toLowerCase();
+    const matchedSite = locations.find(location => String(location.site_name || '').trim().toLowerCase() === activeSiteName);
+    if (matchedSite?.site_name) setSelectedSite(matchedSite.site_name);
+  }, [activeEntry?.location, locations, selectedSite]);
 
   const selectedPostOrder = postOrders?.find(po => po.site_name === selectedSite);
 
