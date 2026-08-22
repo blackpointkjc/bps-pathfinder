@@ -3058,7 +3058,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
 
 
 
-        <div className="space-y-3 print:hidden md:hidden">
+        <div className="space-y-3 print:hidden lg:hidden">
           {weekDays.map(day => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dayShifts = (weekDivisionalSchedules || [])
@@ -3382,7 +3382,7 @@ Return ONLY a JSON array of suggestion objects with this structure:
                     <tfoot><tr className="border-t-2 border-blue-700 bg-blue-950/40 font-black"><td colSpan="4" className="p-2 text-right text-blue-200">PAY PERIOD TOTALS</td><td className="p-2 text-center text-blue-200">{totals.scheduled.toFixed(1)}</td><td className="p-2 text-center text-emerald-300">{totals.regular.toFixed(1)}</td><td className="p-2 text-center text-red-300">{totals.ot.toFixed(1)}</td><td className="p-2 text-center text-white">{totals.actual.toFixed(1)}</td><td className="p-2 text-right text-amber-300">${totals.earned.toFixed(2)}</td></tr></tfoot>
                   </table>
                 </div>
-                <div className="space-y-3 p-3 md:hidden">
+                <div className="space-y-3 p-3 lg:hidden">
                   {rows.length===0 && <div className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">No scheduled or completed hours in this payroll period.</div>}
                   {rows.map((r)=><div key={r.email} className="rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm">
                     <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="font-black text-white">{r.name}</div><div className="text-xs text-slate-400">{r.rank || 'Officer'} · {r.unit ? `#${r.unit}` : 'No unit'}</div></div><div className="text-right text-xs font-black text-amber-300">${r.earned.toFixed(2)}</div></div>
