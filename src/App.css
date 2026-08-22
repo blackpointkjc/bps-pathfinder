@@ -249,7 +249,8 @@ body::-webkit-scrollbar-button,
   .cad-app .mobile-field-content th,
   .cad-app .mobile-field-content td {
     min-width: 0 !important;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
     white-space: normal;
   }
 
@@ -301,7 +302,7 @@ body::-webkit-scrollbar-button,
     width: auto !important;
   }
 
-  [role="dialog"],
+  [role="dialog"]:not(.pathfinder-mobile-drawer),
   [data-radix-dialog-content] {
     width: calc(100vw - 1rem) !important;
     max-width: calc(100vw - 1rem) !important;
@@ -309,6 +310,26 @@ body::-webkit-scrollbar-button,
     overflow-x: hidden;
     overflow-y: auto !important;
     overscroll-behavior: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pathfinder-mobile-drawer {
+    width: min(92vw, 420px) !important;
+    max-width: 420px !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+    touch-action: pan-y;
+  }
+
+  .pathfinder-mobile-drawer .mobile-tool-library,
+  .pathfinder-mobile-drawer nav {
+    min-height: 0;
+  }
+
+  .pathfinder-mobile-drawer nav {
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
   }
@@ -370,7 +391,8 @@ body::-webkit-scrollbar-button,
 
   .cad-app .mobile-field-content h1 {
     max-width: 100%;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
     line-height: 1.2;
   }
 
