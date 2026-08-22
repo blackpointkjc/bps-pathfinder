@@ -315,10 +315,30 @@ const ROOT_PAGES = new Set(['CommandDashboard', 'Dashboard', 'OfficerInbox']);
 const CENTER_UNREAD_PAGES = {
   // CAD message counts are shown on the in-workspace MSG control, not the side menu.
   cad: [],
-  officer: ['OfficerInbox', 'OfficerChat', 'Announcements'],
+  officer: ['OfficerInbox', 'OutlookMail', 'OfficerChat', 'Announcements'],
   supervisor: ['SupervisorChat'],
   admin: ['AdminAnnouncements'],
 };
+
+const UNREAD_PAGE_LABELS = {
+  OfficerInbox: 'Teams Messages',
+  OutlookMail: 'Outlook Mail',
+  OfficerChat: 'Officer Chat',
+  SupervisorChat: 'Supervisor Chat',
+  Announcements: 'Announcements',
+  AdminAnnouncements: 'Announcements',
+};
+
+function centerUnreadSummary(centerKey, unreadCounts = {}) {
+  const entries = (CENTER_UNREAD_PAGES[centerKey] || [])
+    .map(page => ({ page, count: Math.max(0, Number(unreadCounts[page]) || 0) }))
+    .filter(item => item.count > 0);
+  if (!entries.length) return '';
+  const total = entries.reduce((sum, item) => sum + item.count, 0);
+  if (entries.length === 1) return `${total > 99 ? '99+' : total} unread · ${UNREAD_PAGE_LABELS[entries[0].page] || pageLabel(entries[0].page)}`;
+  const sources = entries.map(item => `${UNREAD_PAGE_LABELS[item.page] || pageLabel(item.page)} ${item.count > 99 ? '99+' : item.count}`).join(', ');
+  return `${total > 99 ? '99+' : total} unread · ${sources}`;
+}
 
 const MICROSOFT_TOOL_PAGES = new Set(['OfficerInbox', 'OfficerChat', 'SupervisorChat']);
 const COMMUNICATION_PAGES = new Set(['OfficerInbox', 'OutlookMail', 'OfficerChat', 'SupervisorChat']);
@@ -533,10 +553,10 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
                   <SelectContent className="border-[#315879] bg-[#0b1928] text-white">
                     {availableCenters.map(key => {
                       const item = CENTER_CONFIG[key];
-                      const centerUnread = (CENTER_UNREAD_PAGES[key] || []).reduce((sum, page) => sum + (Number(unreadCounts[page]) || 0), 0);
+                      const unreadSummary = centerUnreadSummary(key, unreadCounts);
                       return (
                         <SelectItem key={key} value={key} className="focus:bg-[#15314f] focus:text-white">
-                          {item.label}{centerUnread ? ` — ${centerUnread > 99 ? '99+' : centerUnread} unread` : ''}
+                          {item.label}{unreadSummary ? ` — ${unreadSummary}` : ''}
                         </SelectItem>
                       );
                     })}
@@ -558,8 +578,8 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
                     <SelectContent className="border-[#315879] bg-[#0b1928] text-white">
                       {availableCenters.map(key => {
                         const item = CENTER_CONFIG[key];
-                        const centerUnread = (CENTER_UNREAD_PAGES[key] || []).reduce((sum, page) => sum + (Number(unreadCounts[page]) || 0), 0);
-                        return <SelectItem key={key} value={key} className="focus:bg-[#15314f] focus:text-white">{item.label}{centerUnread ? ` — ${centerUnread > 99 ? '99+' : centerUnread} unread` : ''}</SelectItem>;
+                        const unreadSummary = centerUnreadSummary(key, unreadCounts);
+                        return <SelectItem key={key} value={key} className="focus:bg-[#15314f] focus:text-white">{item.label}{unreadSummary ? ` — ${unreadSummary}` : ''}</SelectItem>;
                       })}
                     </SelectContent>
                   </Select>
@@ -643,6 +663,17 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
             {!!unreadCounts.SupervisorChat && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.SupervisorChat > 99 ? '99+' : unreadCounts.SupervisorChat}</span>}
           </Link>
         )}
+
+        <Link
+          to={createPageUrl('Announcements')}
+          onClick={() => onCloseMobile?.()}
+          className={`relative mb-2 flex min-h-10 items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-all ${currentPageName === 'Announcements' ? 'border-amber-500/60 bg-[#3a2d12] text-white shadow-lg shadow-black/20' : 'border-[#24415e] bg-[#0b1928] text-[#9bb2c9] hover:border-[#356187] hover:bg-[#102b47] hover:text-white'} ${collapsed && !mobile ? 'justify-center px-0' : ''}`}
+          title={collapsed && !mobile ? 'Announcements' : undefined}
+        >
+          <Bell className="h-4 w-4 shrink-0 text-amber-300" />
+          {(!collapsed || mobile) && <span className="min-w-0 flex-1 text-[11px] font-black leading-tight">ANNOUNCEMENTS</span>}
+          {!!unreadCounts.Announcements && <span className="ml-auto flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">{unreadCounts.Announcements > 99 ? '99+' : unreadCounts.Announcements}</span>}
+        </Link>
 
         {groups.map((group) => {
           const groupOpen = Boolean(query) || openNavGroup === group.label;
