@@ -93,7 +93,8 @@ Deno.serve(async (req) => {
       complaints: (complaints || []).filter((c:any) => isAssigned(c.officer_email) && ['pending','under_investigation'].includes(c.investigation_status)),
       writeups: (writeups || []).filter((w:any) => isAssigned(w.officer_email) && w.status === 'pending_approval'),
       reviews: (reviews || []).filter((r:any) => {
-        if (!r.supervisor_review_pending || r.supervisor_review_completed) return false;
+        const stage = String(r.workflow_stage || (r.supervisor_review_pending ? 'supervisor_pending' : ''));
+        if (stage !== 'supervisor_pending' || r.supervisor_review_completed) return false;
         if (me.role === 'admin') return true;
         if (String(r.assigned_supervisor_id || '') === String(me.id || '')) return true;
         return isAssigned(r.officer_email) || assigned.some((person:any) => String(person.id) === String(r.officer_id || ''));
