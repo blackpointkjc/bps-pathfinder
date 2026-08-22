@@ -63,7 +63,38 @@ export function matchTimeEntryToSchedule(entry, schedules = []) {
   return candidates[0]?.schedule || null;
 }
 
-export function calculatePunctuality(timeEntries = [], schedules = [], monthStart, monthEnd) {
+function incidentTimeWall(report) {
+  const date = String(report?.incident_date || '').slice(0, 10);
+  const time = String(report?.incident_time || '').match(/\b(\d{1,2}):(\d{2})\b/);
+  if (!date || !time) return null;
+  return wallClockMinute(date, `${String(Number(time[1])).padStart(2, '0')}:${time[2]}`);
+}
+
+function isOfficerAuthoredIncident(report, officer) {
+  const officerId = String(officer?.id || '');
+  const officerEmail = emailKey(officer?.email);
+  return Boolean(
+    (officerId && String(report?.created_by_id || '') === officerId) ||
+    (officerEmail && [report?.officer_email, report?.created_by, report?.created_by_email].some(value => emailKey(value) === officerEmail))
+  );
+}
+
+function hasQualifyingIncident(incidents, officer, windowStart, windowEnd) {
+  if (!Number.isFinite(windowStart) || !Number.isFinite(windowEnd) || windowEnd <= windowStart) return false;
+  return incidents.some(report => {
+    if (!isOfficerAuthoredIncident(report, officer) || ['draft', 'rejected'].includes(String(report?.status || '').toLowerCase())) return false;
+    const incidentWall = incidentTimeWall(report);
+    const submittedAt = report?.submitted_date || report?.submitted_at || report?.created_date;
+    const submittedDate = easternDateKey(submittedAt);
+    const submittedTime = easternTimeKey(submittedAt);
+    const submittedWall = wallClockMinute(submittedDate, submittedTime);
+    return incidentWall != null && submittedWall != null &&
+      incidentWall >= windowStart && incidentWall <= windowEnd &&
+      submittedWall >= windowStart && submittedWall <= windowEnd;
+  });
+}
+
+export function calculatePunctuality(timeEntries = [], schedules = [], monthStart, monthEnd, incidents = [], officer = null) {
   const details = [];
   let onTime = 0;
   let late = 0;
@@ -113,15 +144,44 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
     const actualWall = wallClockMinute(localDate, actual);
     const scheduledWall = wallClockMinute(schedule.shift_date, schedule.start_time);
     if (actualWall == null || scheduledWall == null) continue;
+    let scheduledEndWall = wallClockMinute(schedule.shift_date, schedule.end_time);
+    if (scheduledEndWall != null && scheduledEndWall <= scheduledWall) scheduledEndWall += 1440;
+
     const minutesLate = Math.max(0, actualWall - scheduledWall);
-    const status = minutesLate <= 5 ? 'on_time' : 'late';
+    const minutesEarly = Math.max(0, scheduledWall - actualWall);
+    let actualClockOut = '';
+    let lateClockOutMinutes = 0;
+    let actualOutWall = null;
+    if (entry.clock_out) {
+      actualClockOut = easternTimeKey(entry.clock_out);
+      actualOutWall = wallClockMinute(easternDateKey(entry.clock_out), actualClockOut);
+      lateClockOutMinutes = actualOutWall != null && scheduledEndWall != null ? Math.max(0, actualOutWall - scheduledEndWall) : 0;
+    }
+
+    const earlyIncidentException = minutesEarly > 10 && hasQualifyingIncident(incidents, officer, actualWall, scheduledWall);
+    const lateIncidentException = lateClockOutMinutes > 10 && hasQualifyingIncident(incidents, officer, scheduledEndWall, actualOutWall);
+    const earlyViolation = minutesEarly > 10 && !earlyIncidentException;
+    const lateClockOutViolation = lateClockOutMinutes > 10 && !lateIncidentException;
+    const arrivalViolation = minutesLate > 5;
+    const status = arrivalViolation
+      ? 'late'
+      : (earlyViolation || lateClockOutViolation ? 'time_window_violation' : 'on_time');
+
     if (status === 'on_time') onTime++; else late++;
     details.push({
       status,
       shift_date: schedule.shift_date,
       scheduled_start: schedule.start_time,
+      scheduled_end: schedule.end_time,
       actual_clock_in: actual,
+      actual_clock_out: actualClockOut,
       minutes_late: minutesLate,
+      minutes_early: minutesEarly,
+      late_clock_out_minutes: lateClockOutMinutes,
+      early_clock_in_violation: earlyViolation,
+      late_clock_out_violation: lateClockOutViolation,
+      early_incident_exception: earlyIncidentException,
+      late_incident_exception: lateIncidentException,
       location: schedule.location || '',
       schedule_id: schedule.id,
       time_entry_id: entry.id,
