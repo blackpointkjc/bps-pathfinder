@@ -32,8 +32,41 @@ export const AuthProvider = ({ children }) => {
   const checkUserAuth = useCallback(async (requestId) => {
     try {
       setIsLoadingAuth(true);
-      const currentUser = await withTimeout(base44.auth.me(), 12000, 'Authentication request');
+      let currentUser = await withTimeout(base44.auth.me(), 12000, 'Authentication request');
       if (requestId !== requestSequence.current) return;
+
+      // A verified Outlook link may use a different email from the original
+      // Pathfinder password account. Migrate those identities once, as an admin,
+      // before the profile is exposed to the rest of the app. The backend moves
+      // email-keyed history first and changes the User email last.
+      if (currentUser?.role === 'admin') {
+        const migrationKey = 'bps:microsoft-login-identity-migration:v1';
+        let alreadyAttempted = false;
+        try { alreadyAttempted = sessionStorage.getItem(migrationKey) === 'complete'; } catch {}
+        if (!alreadyAttempted) {
+          try {
+            const result = await base44.functions.invoke('migrateMicrosoftLoginIdentities', {});
+            const payload = result?.data || result || {};
+            if (payload.error) throw new Error(payload.error);
+            try {
+              sessionStorage.setItem(migrationKey, 'complete');
+              localStorage.setItem('bps:microsoft-login-identity-migration:last-result', JSON.stringify({
+                completed_at: new Date().toISOString(),
+                migrations: payload.migrations || [],
+                skipped: payload.skipped || [],
+              }));
+            } catch {}
+            if ((payload.migrations || []).length > 0) {
+              currentUser = await withTimeout(base44.auth.me(), 12000, 'Updated authentication request');
+            }
+          } catch (migrationError) {
+            // Authentication must remain available if the maintenance function is
+            // temporarily unavailable. The next new session will safely retry.
+            console.warn('[AUTH] Microsoft login identity migration did not complete:', migrationError?.message);
+          }
+        }
+      }
+
       setUser(currentUser);
       setIsAuthenticated(true);
       setAuthError(null);
