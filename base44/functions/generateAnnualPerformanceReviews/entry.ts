@@ -124,6 +124,7 @@ Deno.serve(async (req) => {
           supervisor_notes: 'Automatically generated from Pathfinder performance statistics for the completed annual review period. Supervisor and HR may add qualitative comments during the review meeting.',
         };
         const review = await base44.asServiceRole.entities.PerformanceReview.create(payload);
+        existingReviews.push(review);
         existingKeys.add(annualKey);
 
         const recipients = new Set([officer.email, supervisor?.email].filter(Boolean).map(String));
