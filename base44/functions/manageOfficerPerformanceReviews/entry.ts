@@ -137,11 +137,19 @@ Deno.serve(async (req) => {
     if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const aliases = await identity(base44, me);
-    let all = await base44.asServiceRole.entities.PerformanceReview.list('-review_date', 1000);
+    const action = String(body.action || 'list');
+    // Signing must be fast and deterministic. The immutable officer ID survives
+    // email/Microsoft migrations, so fetch only the requested review on acknowledge.
+    const aliases = action === 'list'
+      ? await identity(base44, me)
+      : new Set([me.email, me.work_email, me.microsoft_email, me.outlook_email].map(key).filter(Boolean));
+    let all = action === 'acknowledge' && body.review_id
+      ? [await base44.asServiceRole.entities.PerformanceReview.get(String(body.review_id))]
+      : await base44.asServiceRole.entities.PerformanceReview.list('-review_date', 1000);
+    all = (all || []).filter(Boolean);
     const owns = (review: any) => String(review.officer_id || '') === String(me.id || '') || aliases.has(key(review.officer_email));
 
-    if (String(body.action || 'list') === 'list') {
+    if (action === 'list') {
       const recovered = await recoverOrphanedReviews(base44, me, aliases, all || []);
       if (recovered.length) all = [...(all || []), ...recovered];
       return Response.json({ success: true, reviews: (all || []).filter(owns), recovered_count: recovered.length });
@@ -182,7 +190,7 @@ Deno.serve(async (req) => {
       workflow_stage: 'hr_approval_pending',
     });
 
-    const users = await base44.asServiceRole.entities.User.list(undefined, 5000);
+    const users = await base44.asServiceRole.entities.User.list(undefined, 1000);
     const hrRecipients = new Set<string>();
     if (review.reviewer_email) hrRecipients.add(key(review.reviewer_email));
     for (const user of users || []) {
