@@ -94,7 +94,7 @@ export default function WelcomeBriefing({ user }) {
           Promise.resolve([]),
           base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200).catch(() => []),
           base44.entities.Announcement.list('-created_date', 100).catch(() => []),
-          base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500).catch(() => []),
+          base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 5000).catch(() => []),
         ]);
         const second = await Promise.all([
           base44.entities.Notification.filter({ recipient_email: user.email }, '-created_date', 200).catch(() => []),
