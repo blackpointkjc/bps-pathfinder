@@ -529,7 +529,7 @@ export default function Dashboard({ embedded = false }) {
                 <div>
                   <p className="text-xs font-black uppercase tracking-widest text-amber-300">Action Required</p>
                   <h2 className="text-xl font-black text-white">Your performance review is ready</h2>
-                  <p className="mt-1 text-sm text-amber-100">Review Joseph Sherrill's feedback, complete your self-rating, and sign electronically.</p>
+                  <p className="mt-1 text-sm text-amber-100">Review {reviewResponseRequired.assigned_supervisor_name || 'your supervisor'}'s feedback, complete your self-rating, and sign electronically.</p>
                 </div>
               </div>
               <Link to={createPageUrl("OfficerPerformanceReviews")} className="flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-amber-400 px-5 font-black text-slate-950 hover:bg-amber-300">
