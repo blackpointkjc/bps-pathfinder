@@ -4,11 +4,36 @@ function lowerRoles(user: any) {
   return new Set((user?.additional_roles || []).map((r: string) => String(r).toLowerCase()));
 }
 
+const cleanEmail = (value: any) => String(value || '').trim().toLowerCase();
+
+function addEmailAliases(entry: any, teamsByUser: Map<string, any>, outlookByUser: Map<string, any>) {
+  const teams = teamsByUser.get(String(entry?.id || ''));
+  const outlook = outlookByUser.get(String(entry?.id || ''));
+  const workEmail = cleanEmail(entry?.email);
+  const pathfinderEmail = cleanEmail(teams?.pathfinder_email || outlook?.pathfinder_email || workEmail);
+  const microsoftEmail = cleanEmail(teams?.microsoft_email || outlook?.outlook_email);
+  const aliases = [...new Set([workEmail, pathfinderEmail, microsoftEmail].filter(Boolean))];
+  return {
+    ...entry,
+    email: workEmail || pathfinderEmail,
+    work_email: workEmail || pathfinderEmail,
+    pathfinder_email: pathfinderEmail || workEmail,
+    microsoft_email: microsoftEmail,
+    outlook_email: cleanEmail(outlook?.outlook_email || teams?.microsoft_email),
+    email_aliases: aliases,
+  };
+}
+
 function safeUser(entry: any, full = false) {
   if (full) return entry;
   return {
     id: entry.id,
     email: entry.email || '',
+    work_email: entry.work_email || entry.email || '',
+    pathfinder_email: entry.pathfinder_email || entry.email || '',
+    microsoft_email: entry.microsoft_email || '',
+    outlook_email: entry.outlook_email || entry.microsoft_email || '',
+    email_aliases: entry.email_aliases || [entry.email].filter(Boolean),
     first_name: entry.first_name || '',
     last_name: entry.last_name || '',
     full_name: entry.full_name || '',
@@ -54,11 +79,25 @@ Deno.serve(async (req) => {
     const clientOnly = !fullAccess && (roles.has('client') || me.user_type === 'client' || rank === 'client');
     const studentOnly = !fullAccess && roles.has('student');
 
-    const [rawUsers, rawLocations, rawDivisions] = await Promise.all([
+    const [rawUsers, rawLocations, rawDivisions, rawTeamsLinks, rawOutlookLinks] = await Promise.all([
       base44.asServiceRole.entities.User.list(undefined, 1000),
       base44.asServiceRole.entities.Location.list('site_name', 1000),
       base44.asServiceRole.entities.Division.list('division_name', 1000).catch(() => []),
+      base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 1000).catch(() => []),
+      base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 1000).catch(() => []),
     ]);
+
+    const teamsByUser = new Map<string, any>();
+    for (const link of rawTeamsLinks || []) {
+      if (link?.active === false || !link?.user_id || teamsByUser.has(String(link.user_id))) continue;
+      teamsByUser.set(String(link.user_id), link);
+    }
+    const outlookByUser = new Map<string, any>();
+    for (const link of rawOutlookLinks || []) {
+      if (link?.connected === false || !link?.user_id || outlookByUser.has(String(link.user_id))) continue;
+      outlookByUser.set(String(link.user_id), link);
+    }
+    const directoryUsers = (rawUsers || []).map((entry: any) => addEmailAliases(entry, teamsByUser, outlookByUser));
 
     const internalRoles = new Set(['cad_access','officer','supervisor','hr','accounting','trainer','full_access','support_staff']);
     const isInternal = (entry: any) => {
@@ -72,11 +111,11 @@ Deno.serve(async (req) => {
 
     let users: any[] = [];
     if (fullAccess || hrAccess) {
-      users = (rawUsers || []).map((u: any) => safeUser(u, true));
+      users = directoryUsers.map((u: any) => safeUser(u, true));
     } else if (clientOnly) {
-      users = (rawUsers || []).filter(isInternal).map((u: any) => safeUser(u, false));
+      users = directoryUsers.filter(isInternal).map((u: any) => safeUser(u, false));
     } else if (studentOnly) {
-      users = (rawUsers || []).filter((u: any) => u.email === me.email || lowerRoles(u).has('trainer') || u.role === 'admin').map((u: any) => safeUser(u, false));
+      users = directoryUsers.filter((u: any) => u.email === cleanEmail(me.email) || lowerRoles(u).has('trainer') || u.role === 'admin').map((u: any) => safeUser(u, false));
     } else {
       users = (rawUsers || []).filter(isInternal).map((u: any) => safeUser(u, internalPrivileged));
     }
