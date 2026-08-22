@@ -97,12 +97,15 @@ function renderSection(section) {
     <section class="report-section">
       <h2>${escapePrintHtml(section.title || 'Report Details')}</h2>
       <div class="field-grid">
-        ${fields.map(field => `
-          <div class="field ${field.wide ? 'field-wide' : ''}">
+        ${fields.map(field => {
+          const breakable = field.breakable === true || String(field.value ?? '').length > 500;
+          return `
+          <div class="field ${field.wide ? 'field-wide' : ''} ${breakable ? 'field-breakable' : ''}">
             <div class="field-label">${escapePrintHtml(field.label || '')}</div>
             <div class="field-value">${renderValue(field.value)}</div>
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
     </section>
   `;
@@ -163,12 +166,13 @@ export function openBlackPointReport({
     .meta-item:last-child { border-right: 0; }
     .meta-label, .field-label { color: #496176; font-size: 6.3pt; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
     .meta-value { margin-top: 1px; color: #0b1725; font-weight: 750; overflow-wrap: anywhere; }
-    .report-section { margin: 0 0 7px; break-inside: avoid; page-break-inside: avoid; }
-    .report-section h2 { margin: 0; padding: 4px 7px; color: #fff; background: #132a41; border-left: 5px solid #d51f2b; font-size: 7.4pt; letter-spacing: .09em; text-transform: uppercase; }
+    .report-section { margin: 0 0 7px; break-inside: auto; page-break-inside: auto; }
+    .report-section h2 { margin: 0; padding: 4px 7px; color: #fff; background: #132a41; border-left: 5px solid #d51f2b; font-size: 7.4pt; letter-spacing: .09em; text-transform: uppercase; break-after: avoid; page-break-after: avoid; }
     .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid #b8c7d5; border-top: 0; }
     .field { min-width: 0; padding: 5px 7px; border-right: 1px solid #d6e0e8; border-bottom: 1px solid #d6e0e8; break-inside: avoid; page-break-inside: avoid; }
     .field:nth-child(even) { border-right: 0; }
     .field-wide { grid-column: 1 / -1; border-right: 0; }
+    .field-breakable { break-inside: auto; page-break-inside: auto; }
     .field-value { margin-top: 2px; color: #0b1725; white-space: normal; overflow-wrap: anywhere; }
     .empty { color: #7b8c9b; font-style: italic; }
     .photos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
@@ -182,7 +186,7 @@ export function openBlackPointReport({
       html, body { background: #fff; }
       .no-print { display: none !important; }
       .page-shell { width: 100%; margin: 0; box-shadow: none; }
-      .report-section, .field, .signature, .photos img { break-inside: avoid; page-break-inside: avoid; }
+      .field:not(.field-breakable), .signature, .photos img { break-inside: avoid; page-break-inside: avoid; }
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
