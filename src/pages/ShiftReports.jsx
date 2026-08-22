@@ -186,12 +186,10 @@ export default function ShiftReports() {
     // For non-admins, it uses the active time entry's location.
     // For admins, if they have an active entry, it also pre-fills.
     // If admin has no active entry, formData.location remains empty, allowing manual selection.
-    if (activeEntry?.location && locations) {
-      const siteName = activeEntry.location.split(' - ')[0];
-      const matchingLocation = locations.find(loc => loc.site_name === siteName);
-      if (matchingLocation) {
-        setFormData(prev => ({ ...prev, location: matchingLocation.site_name }));
-      }
+    if (activeEntry?.location) {
+      const siteName = activeEntry.location.split(' - ')[0].trim();
+      const matchingLocation = locations?.find(loc => loc.site_name === siteName);
+      setFormData(prev => ({ ...prev, location: matchingLocation?.site_name || siteName }));
     }
   }, [activeEntry, locations]); // isAdmin is not needed here as logic applies to any user with activeEntry
 
