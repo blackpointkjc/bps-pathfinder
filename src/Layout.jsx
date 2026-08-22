@@ -479,9 +479,9 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
   // Support Clock lives inside Admin and HR. Do not waste desktop sidebar space
   // on a duplicate Support Center when the user already has another center.
   const availableCenters = allAllowedCenters
-    .filter(center => center !== 'support' || allAllowedCenters.length === 1)
-    .filter(center => !mobile || ['cad', 'officer', 'supervisor', 'admin'].includes(center));
+    .filter(center => center !== 'support' || allAllowedCenters.length === 1);
   const center = CENTER_CONFIG[activeCenter] || CENTER_CONFIG.cad;
+  const mobileTitle = mobileSection === 'reports' ? 'REPORTS' : 'ALL TOOLS';
   const query = search.trim().toLowerCase();
   const desktopCenterPage = !mobile ? DESKTOP_CENTER_PAGE[activeCenter] : null;
   const sourceGroups = desktopCenterPage ? [] : center.groups;
@@ -516,8 +516,8 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
       <div className="border-b border-[#1b3048] bg-[#091827]/90 px-3 py-4 backdrop-blur-xl">
         <div className={`flex items-center ${collapsed && !mobile ? 'justify-center' : 'gap-3'}`}>
           {(!collapsed || mobile) && <div className="min-w-0 flex-1">
-            <div className="text-[12px] font-black tracking-[0.16em] text-white">BPS PATHFINDER</div>
-            <div className="text-[9px] tracking-[0.16em] text-[#7290ad]">BLACK POINT PROTECTION</div>
+            <div className="text-[12px] font-black tracking-[0.16em] text-white">{mobile ? mobileTitle : 'BPS PATHFINDER'}</div>
+            <div className="text-[9px] tracking-[0.16em] text-[#7290ad]">{mobile ? 'AUTHORIZED MOBILE WORKSPACE' : 'BLACK POINT PROTECTION'}</div>
           </div>}
           {mobile && (
             <button type="button" onClick={onCloseMobile} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#31506d] bg-[#13263a] text-white" aria-label="Close menu">
@@ -677,7 +677,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
         </Link>
 
         {groups.map((group) => {
-          const groupOpen = Boolean(query) || openNavGroup === group.label;
+          const groupOpen = mobile || Boolean(query) || openNavGroup === group.label;
           return (
             <div key={`${activeCenter}:${group.label}`} className="mb-2">
               {(!collapsed || mobile) && (
@@ -714,7 +714,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
         {groups.length === 0 && mobile && query && <div className="px-3 py-8 text-center text-xs text-[#68829b]">No tools match your search.</div>}
       </nav>
 
-      <div className="border-t border-[#1b3048] bg-[#06101b]/90 p-2.5 backdrop-blur">
+      <div className={`border-t border-[#1b3048] bg-[#06101b]/90 p-2.5 backdrop-blur ${mobile ? 'hidden' : ''}`}>
         {(!collapsed || mobile) && <div className="mb-2 rounded-lg border border-[#25435e] bg-gradient-to-br from-[#0e2033] to-[#0a1726] px-3 py-2.5 shadow-inner">
           <div className="text-[9px] tracking-widest text-[#597491]">{roleName(user)}</div>
           <div className="text-[11px] font-bold leading-tight text-white break-words">{user?.rank || user?.full_name || user?.email || 'AUTHORIZED USER'}</div>
@@ -1148,19 +1148,6 @@ export default function Layout({ children, currentPageName }) {
     if (consolidatedTarget) return <Navigate to={consolidatedTarget} replace />;
   }
 
-  const mobilePageCenters = PAGE_TO_CENTERS[currentPageName] || [];
-  const allowedOnMobile = currentPageName === 'OfficerInbox' || currentPageName === 'OutlookMail' || mobilePageCenters.some(center => ['cad', 'officer', 'supervisor', 'admin'].includes(center));
-  if (isMobileViewport && !allowedOnMobile) {
-    return <div className="fixed inset-0 flex items-center justify-center bg-[#07111f] p-6 text-white">
-      <div className="w-full max-w-sm rounded-2xl border border-[#294867] bg-[#0c1a2a] p-6 text-center shadow-2xl">
-        <Shield className="mx-auto h-10 w-10 text-[#7ec1ff]" />
-        <h1 className="mt-4 text-lg font-black">DESKTOP ACCESS REQUIRED</h1>
-        <p className="mt-2 text-sm leading-relaxed text-[#9fb6cc]">This area is available only in the desktop web app for your assigned role. Mobile access includes CAD, Officer, Supervisor, and Admin Center operations when your account has permission.</p>
-        {canAccessPage(user, 'CommandDashboard') && <Link to={createPageUrl('CommandDashboard')} className="mt-5 block rounded-lg bg-blue-600 px-4 py-3 text-sm font-black text-white">OPEN CAD</Link>}
-      </div>
-    </div>;
-  }
-
   const criticalOutage = outages.some(item => item.severity === 'outage');
   const centerLabel = CENTER_CONFIG[activeCenter]?.label || 'CAD Center';
 
@@ -1171,10 +1158,10 @@ export default function Layout({ children, currentPageName }) {
       <Sidebar collapsed={collapsed} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onToggleCollapsed={() => setCollapsed(value => !value)} onLogout={() => logout(true)} />
     </aside>
 
-    <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/70 md:hidden" onClick={() => setMobileOpen(false)}>
-      <motion.aside initial={{ x: -360 }} animate={{ x: 0 }} exit={{ x: -360 }} className="h-full w-[min(92vw,360px)] border-r border-[#1c3049] shadow-2xl" onClick={event => event.stopPropagation()}>
+    <AnimatePresence>{mobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] bg-[#06101b] md:hidden">
+      <motion.section initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 18, opacity: 0 }} className="h-[100dvh] w-full overflow-hidden" role="dialog" aria-modal="true" aria-label={mobileSection === 'reports' ? 'Reports' : 'All tools'}>
         <Sidebar mobile mobileSection={mobileSection} user={user} activeCenter={activeCenter} setActiveCenter={switchCenter} currentPageName={currentPageName} search={search} setSearch={setSearch} unreadCounts={unreadCounts} onCloseMobile={() => { setMobileOpen(false); setMobileSection(null); }} onLogout={() => logout(true)} />
-      </motion.aside>
+      </motion.section>
     </motion.div>}</AnimatePresence>
 
     <AnimatePresence>{propertyAlert && (
