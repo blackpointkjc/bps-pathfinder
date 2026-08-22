@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { listOfficerDirectory, listDirectoryLocations } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, listDirectoryLocations, listSupervisorDirectoryOfficers } from '@/lib/appDirectory';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 export default function SupervisorWriteUps() {
@@ -43,13 +43,13 @@ export default function SupervisorWriteUps() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   // Re-introducing allUsers query as `getOfficerIdentifier` function requires it.
   const { data: allUsers = [] } = useQuery({
     queryKey: ['directoryUsers', 'supervisorWriteUps'],
-    queryFn: () => listOfficerDirectory('last_name', 1000, true),
+    queryFn: () => listSupervisorDirectoryOfficers('last_name', 1000),
     initialData: [],
     staleTime: 0,
     refetchOnMount: 'always',
