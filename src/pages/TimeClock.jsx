@@ -16,7 +16,7 @@ import { MapContainer, TileLayer, Marker, Circle, Polygon, useMap } from 'react-
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { subscribeLiveLocation, waitForLiveLocation } from '@/lib/liveLocationService';
-import { listDirectoryLocations } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, listDirectoryLocations } from '@/lib/appDirectory';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -175,7 +175,7 @@ export default function TimeClock() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const isAdmin = user?.role === 'admin';
