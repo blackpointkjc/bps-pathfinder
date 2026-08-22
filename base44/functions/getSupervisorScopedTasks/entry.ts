@@ -92,7 +92,12 @@ Deno.serve(async (req) => {
       assignedPeople,
       complaints: (complaints || []).filter((c:any) => isAssigned(c.officer_email) && ['pending','under_investigation'].includes(c.investigation_status)),
       writeups: (writeups || []).filter((w:any) => isAssigned(w.officer_email) && w.status === 'pending_approval'),
-      reviews: (reviews || []).filter((r:any) => isAssigned(r.officer_email) && r.supervisor_review_pending && !r.supervisor_review_completed),
+      reviews: (reviews || []).filter((r:any) => {
+        if (!r.supervisor_review_pending || r.supervisor_review_completed) return false;
+        if (me.role === 'admin') return true;
+        if (String(r.assigned_supervisor_id || '') === String(me.id || '')) return true;
+        return isAssigned(r.officer_email) || assigned.some((person:any) => String(person.id) === String(r.officer_id || ''));
+      }),
       inspections: (inspections || []).filter((i:any) => isAssigned(i.officer_email) && i.follow_up_required && !i.follow_up_completed),
     });
   } catch (error) {
