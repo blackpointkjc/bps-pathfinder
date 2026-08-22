@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { listOfficerDirectory } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, listSupervisorDirectoryOfficers } from '@/lib/appDirectory';
 import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
 
 export default function SupervisorComplaints() {
@@ -33,12 +33,12 @@ export default function SupervisorComplaints() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const { data: allUsers = [] } = useQuery({
     queryKey: ['directoryUsers', 'supervisorComplaints'],
-    queryFn: () => listOfficerDirectory('last_name', 1000, true),
+    queryFn: () => listSupervisorDirectoryOfficers('last_name', 1000),
     enabled: user?.role === 'admin' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access'),
     staleTime: 0,
     refetchOnMount: 'always',
