@@ -340,7 +340,7 @@ Provide:
         const newReportNumber = generateReportNumber();
         const newCallNumber = generateCallNumber();
         const report = await base44.entities.IncidentReport.create({
-          ...data,
+          ...dataToSave,
           severity: aiSeverity,
           report_number: newReportNumber,
           call_number: newCallNumber,
