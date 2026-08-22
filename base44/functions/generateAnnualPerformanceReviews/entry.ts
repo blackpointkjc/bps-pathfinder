@@ -37,6 +37,29 @@ function isOperational(user: any) {
     (roles.has('officer') || roles.has('supervisor') || user?.role === 'admin');
 }
 
+function chooseRotatingSupervisor(officer: any, users: any[], reviews: any[]) {
+  const eligible = (users || []).filter((user: any) =>
+    user?.employment_status !== 'terminated' && !user?.termination_date &&
+    String(user.id || '') !== String(officer.id || '') &&
+    (user.additional_roles || []).some((role: unknown) => String(role).toLowerCase() === 'supervisor')
+  );
+  if (!eligible.length) return null;
+  const stats = new Map(eligible.map((user: any) => [String(user.id), { count: 0, last: 0 }]));
+  for (const review of reviews || []) {
+    const state = stats.get(String(review.assigned_supervisor_id || ''));
+    if (!state) continue;
+    state.count += 1;
+    state.last = Math.max(state.last, new Date(review.supervisor_task_created_at || review.created_date || 0).getTime() || 0);
+  }
+  const minimum = Math.min(...eligible.map((user: any) => stats.get(String(user.id))?.count || 0));
+  const leastUsed = eligible.filter((user: any) => (stats.get(String(user.id))?.count || 0) === minimum);
+  const oldest = Math.min(...leastUsed.map((user: any) => stats.get(String(user.id))?.last || 0));
+  const tied = leastUsed.filter((user: any) => (stats.get(String(user.id))?.last || 0) === oldest);
+  const values = new Uint32Array(1);
+  crypto.getRandomValues(values);
+  return tied[values[0] % tied.length];
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -73,11 +96,8 @@ Deno.serve(async (req) => {
         const periodStart = validAnniversary(now.year - 1, hireMonth, hireDay);
         const periodEnd = dayBefore(dueDate);
         const metrics = await buildPerformanceMetrics(base44, officer, periodStart, periodEnd);
-        const directSupervisor = (users || []).find((user: any) => String(user.id || '') === String(officer.supervisor_id || ''));
-        const supervisor = directSupervisor || (users || []).find((user: any) => user.id !== officer.id && (
-          user.role === 'admin' || (user.additional_roles || []).some((role: unknown) => ['supervisor','full_access'].includes(String(role).toLowerCase()))
-        ));
-        if (!supervisor) throw new Error('No supervisor is available to receive this annual review task.');
+        const supervisor = chooseRotatingSupervisor(officer, users || [], existingReviews || []);
+        if (!supervisor) throw new Error('No other active user with the supervisor role is available to receive this annual review task.');
         const reviewerEmail = supervisor.email;
         const reviewerName = supervisor
           ? `${supervisor.first_name || ''} ${supervisor.last_name || ''}`.trim() || supervisor.full_name || supervisor.email
@@ -94,10 +114,13 @@ Deno.serve(async (req) => {
           assigned_supervisor_email: supervisor.email,
           assigned_supervisor_name: reviewerName,
           supervisor_task_created_at: new Date().toISOString(),
+          assignment_round: (existingReviews || []).filter((item: any) => String(item.assigned_supervisor_id || '') === String(supervisor.id)).length + 1,
+          workflow_stage: 'supervisor_pending',
           supervisor_review_pending: true,
           supervisor_review_completed: false,
           officer_acknowledged: false,
           officer_signature_obtained: false,
+          hr_approved: false,
           supervisor_notes: 'Automatically generated from Pathfinder performance statistics for the completed annual review period. Supervisor and HR may add qualitative comments during the review meeting.',
         };
         const review = await base44.asServiceRole.entities.PerformanceReview.create(payload);
