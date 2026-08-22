@@ -289,18 +289,29 @@ Provide:
         console.error('Failed to get IP address:', error);
       }
 
-      let locationToSubmit = data.location;
-      if (isAdmin && !data.location) {
-        locationToSubmit = isDraft ? "Draft - Location TBD" : "Admin - Remote Submission";
-      } else if (!data.location && isDraft) {
-        locationToSubmit = activeEntry?.location?.split(' - ')[0] || "Draft - Location TBD";
-      } else if (!isAdmin && !activeEntry?.location && !isDraft) {
-        locationToSubmit = "Unknown Location";
+      const activeSiteName = activeEntry?.location?.split(' - ')[0]?.trim() || "";
+      let locationToSubmit = String(data.location || activeSiteName).trim();
+      if (!locationToSubmit) {
+        locationToSubmit = isDraft
+          ? "Draft - Location TBD"
+          : (isAdmin ? "Admin - Remote Submission" : "Unknown Location");
       }
+
+      // Drafts must satisfy the entity schema even when the officer has only
+      // started the report. Placeholder values are removed when the draft is reopened.
+      const dataToSave = {
+        ...data,
+        location: locationToSubmit,
+        incident_time: isDraft ? (data.incident_time || "00:00") : data.incident_time,
+        incident_type: isDraft ? (data.incident_type || "other") : data.incident_type,
+        description: isDraft && !String(data.description || "").trim()
+          ? "Draft - Description pending"
+          : data.description,
+      };
 
       if (editingReportId) {
         const updated = await base44.entities.IncidentReport.update(editingReportId, {
-          ...data,
+          ...dataToSave,
           severity: aiSeverity,
           location: locationToSubmit,
           status: isDraft ? "draft" : "submitted",
@@ -390,7 +401,7 @@ Provide:
     onError: (error) => {
       console.error('Error saving incident report:', error);
       setSaving(false);
-      toast.error(error?.message || 'Failed to save report. Please try again.');
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Failed to save report. Please try again.');
     }
   });
 
@@ -463,7 +474,7 @@ Provide:
 
   const handleSaveAsDraft = () => {
     if (!formData.incident_date) {
-      alert('Please select the incident date before saving as draft.');
+      toast.error('Please select the incident date before saving as draft.');
       return;
     }
     setSaving(true);
@@ -494,7 +505,9 @@ Provide:
       location: report.location,
       specific_location: report.specific_location || "",
       incident_type: report.incident_type,
-      description: buildCallDescription(report.description, report.linked_call_number || ''),
+      description: report.status === 'draft' && report.description === 'Draft - Description pending'
+        ? ''
+        : buildCallDescription(report.description, report.linked_call_number || ''),
       suspect_description: report.suspect_description || "",
       suspect_vehicle: report.suspect_vehicle || "",
       persons_involved: report.persons_involved || "",
@@ -1008,7 +1021,6 @@ Provide:
                       value={formData.location}
                       onValueChange={(value) => setFormData({...formData, location: value})}
                       required
-                      disabled={!isAdmin && !!activeEntry?.location}
                     >
                       <SelectTrigger id="location">
                         <SelectValue placeholder="Select location" />
