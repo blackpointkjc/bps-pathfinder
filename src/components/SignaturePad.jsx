@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PenTool, RotateCcw, Check, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { toast } from "sonner";
 
 export default function SignaturePad({ onSignatureComplete, onClose, officerName }) {
   const canvasRef = useRef(null);
@@ -74,7 +75,7 @@ export default function SignaturePad({ onSignatureComplete, onClose, officerName
 
   const saveSignature = async () => {
     if (!hasSignature) {
-      alert("Please sign before saving.");
+      toast.error("Please sign before saving.");
       return;
     }
 
@@ -88,7 +89,7 @@ export default function SignaturePad({ onSignatureComplete, onClose, officerName
       onSignatureComplete(file_url);
     } catch (error) {
       console.error("Error saving signature:", error);
-      alert("Failed to save signature. Please try again.");
+      toast.error("Failed to save signature. Please try again.");
     }
     setUploading(false);
   };
