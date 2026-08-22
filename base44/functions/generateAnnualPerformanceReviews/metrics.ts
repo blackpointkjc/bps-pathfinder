@@ -150,9 +150,7 @@ async function safeList(base44: any, entityName: string, sort?: string, limit = 
   }
 }
 
-export async function buildPerformanceMetrics(base44: any, officer: any, start: string, end: string) {
-  if (!officer?.id || !start || !end || start > end) throw new Error('Officer and a valid review period are required.');
-
+export async function loadPerformanceMetricData(base44: any) {
   const [
     teams, outlook, timeEntries, schedules, incidents, commendations,
     complaints, inspections, writeUps,
@@ -167,6 +165,18 @@ export async function buildPerformanceMetrics(base44: any, officer: any, start: 
     safeList(base44, 'InspectionReport', '-inspection_date'),
     safeList(base44, 'WriteUpReport', '-report_date'),
   ]);
+
+  return { teams, outlook, timeEntries, schedules, incidents, commendations, complaints, inspections, writeUps };
+}
+
+export async function buildPerformanceMetrics(base44: any, officer: any, start: string, end: string, metricData: any = null) {
+  if (!officer?.id || !start || !end || start > end) throw new Error('Officer and a valid review period are required.');
+
+  const data = metricData || await loadPerformanceMetricData(base44);
+  const {
+    teams = [], outlook = [], timeEntries = [], schedules = [], incidents = [],
+    commendations = [], complaints = [], inspections = [], writeUps = [],
+  } = data;
 
   const aliases = identityEmails(officer, teams, outlook);
   const officerEntries = timeEntries.filter((row: any) => recordMatchesEmail(row, aliases) && row.archived !== true && row.clock_in && inPeriod(row.clock_in, start, end));
