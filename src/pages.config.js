@@ -152,6 +152,7 @@ import OfficerInbox from './pages/OfficerInbox';
 import OutlookMail from './pages/OutlookMail';
 import OfficerPerformance from './pages/OfficerPerformance';
 import OfficerProfile from './pages/OfficerProfile';
+import OfficerPerformanceReviews from './pages/OfficerPerformanceReviews';
 import OfficerRoster from './pages/OfficerRoster';
 import OfficerTraining from './pages/OfficerTraining';
 import OpenDoorReports from './pages/OpenDoorReports';
@@ -297,6 +298,7 @@ export const PAGES = {
     "OutlookMail": OutlookMail,
     "OfficerPerformance": OfficerPerformance,
     "OfficerProfile": OfficerProfile,
+    "OfficerPerformanceReviews": OfficerPerformanceReviews,
     "OfficerRoster": OfficerRoster,
     "OfficerTraining": OfficerTraining,
     "OpenDoorReports": OpenDoorReports,
