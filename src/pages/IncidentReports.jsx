@@ -18,7 +18,7 @@ import ReportAIEnhancer from "../components/ReportAIEnhancer";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import StructuredPeopleEditor from '@/components/reports/StructuredPeopleEditor';
 import { toast } from 'sonner';
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { directoryUserMatches, findDirectoryUser, getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { listActiveDispatchCalls } from '@/lib/reportCallLinking';
 import {
   formatReportClock,
@@ -103,7 +103,7 @@ export default function IncidentReports() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const isAdmin = user?.role === 'admin';
