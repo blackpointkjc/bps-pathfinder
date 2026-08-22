@@ -20,6 +20,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import { formatReportDateTime, openBlackPointReport } from '@/lib/reportPrint';
 
 export default function AdminConfidentialReports() {
   const [selectedReport, setSelectedReport] = useState(null);
@@ -150,6 +151,63 @@ export default function AdminConfidentialReports() {
   };
 
   const printReport = (report) => {
+    const creatorRef = report.created_by_id || report.created_by;
+    const creator = allUsers?.find(officer => String(officer.id) === String(creatorRef)
+      || String(officer.email || '').toLowerCase() === String(creatorRef || '').toLowerCase());
+    const officerName = report.anonymous ? "ANONYMOUS SUBMISSION" : getOfficerName(creatorRef);
+    const reportTypeLabels = {
+      workplace_concern: "Workplace Concern",
+      safety_issue: "Safety Issue",
+      policy_concern: "Policy Concern",
+      team_issue: "Team Issue",
+      management_concern: "Management Concern",
+      other: "Other"
+    };
+    const contactMethodLabels = {
+      email: "Email",
+      phone: "Phone Call",
+      in_person: "In-Person Meeting",
+      no_contact: "No Follow-Up Needed"
+    };
+    const timeZone = 'America/New_York';
+
+    openBlackPointReport({
+      title: 'Confidential Report',
+      subtitle: 'Restricted Internal Review Record',
+      reportNumber: report.report_number || report.id || '',
+      status: report.status || 'new',
+      timeZone,
+      meta: [
+        { label: 'Report Type', value: reportTypeLabels[report.report_type] || report.report_type },
+        { label: 'Submitted', value: formatReportDateTime(report.created_date, timeZone) },
+        { label: 'Identity', value: report.anonymous ? 'Anonymous' : 'Named submission' },
+      ],
+      sections: [
+        { title: 'Submission Details', fields: [
+          { label: 'Reporting Officer', value: officerName },
+          { label: 'Preferred Contact', value: contactMethodLabels[report.preferred_contact_method] || report.preferred_contact_method },
+          { label: 'Linked CAD Call', value: report.linked_call_number, wide: true },
+          { label: 'Concern', value: report.description, wide: true },
+        ] },
+        { title: 'Administrative Review', fields: [
+          { label: 'Reviewed By', value: report.reviewed_by },
+          { label: 'Reviewed Date', value: formatReportDateTime(report.reviewed_date, timeZone) },
+          { label: 'Administrative Notes', value: report.admin_notes, wide: true },
+        ] },
+      ],
+      officer: {
+        name: officerName,
+        signatureName: report.anonymous ? 'Anonymous authenticated submission' : officerName,
+        email: report.anonymous ? '' : creator?.email || '',
+        badge: report.anonymous ? '' : creator?.badge_number || '',
+        unit: report.anonymous ? '' : creator?.unit_number || '',
+      },
+      signedAt: report.created_date,
+      footerNote: 'Confidential — authorized personnel only.',
+    });
+  };
+
+  const legacyPrintReport = (report) => {
     const officerName = report.anonymous ? "ANONYMOUS SUBMISSION" : getOfficerName(report.created_by_id || report.created_by);
     const reportTypeLabels = {
       workplace_concern: "Workplace Concern",
