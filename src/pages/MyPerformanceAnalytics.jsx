@@ -212,7 +212,7 @@ export default function MyPerformanceAnalytics() {
         metric: 'On-Time Arrival',
         value: `${onTimeStats.rate}%`,
         severity: 'negative',
-        reason: `${onTimeStats.onTime} on time, ${onTimeStats.late} late, and ${onTimeStats.missed || 0} missed/no-clock-in across ${onTimeStats.total} elapsed scheduled shift${onTimeStats.total === 1 ? '' : 's'}.`,
+        reason: `${onTimeStats.onTime} compliant, ${onTimeStats.late} arrival/time-boundary violation${onTimeStats.late === 1 ? '' : 's'}, and ${onTimeStats.missed || 0} missed/no-clock-in across ${onTimeStats.total} elapsed scheduled shift${onTimeStats.total === 1 ? '' : 's'}.`,
         details: problemDetails
       });
     } else if (onTimeStats.total > 0) {
@@ -385,7 +385,7 @@ export default function MyPerformanceAnalytics() {
               <p className="text-2xl font-bold text-green-600 sm:text-3xl">{onTimeStats.total > 0 ? `${onTimeStats.rate}%` : '—'}</p>
               <p className="text-xs font-semibold text-slate-700">On-Time Arrival</p>
               <p className="mt-1 text-[11px] text-slate-600">
-                {onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.missed || 0} missed • ${onTimeStats.total} elapsed shifts` : 'No elapsed scheduled shifts yet'}
+                {onTimeStats.total > 0 ? `${onTimeStats.onTime} compliant • ${onTimeStats.late} time violations • ${onTimeStats.missed || 0} missed • ${onTimeStats.total} elapsed shifts` : 'No elapsed scheduled shifts yet'}
               </p>
             </CardContent>
           </Card>
@@ -679,7 +679,7 @@ export default function MyPerformanceAnalytics() {
                     <Pie
                       data={[
                         { name: 'On Time', value: onTimeStats.onTime },
-                        { name: 'Late / Missed', value: onTimeStats.late + (onTimeStats.missed || 0) },
+                        { name: 'Violation / Missed', value: onTimeStats.late + (onTimeStats.missed || 0) },
                       ]}
                       cx="50%"
                       cy="50%"
@@ -702,7 +702,7 @@ export default function MyPerformanceAnalytics() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-red-500 rounded" />
-                  <span>Late: {onTimeStats.late} • Missed: {onTimeStats.missed || 0}</span>
+                  <span>Time violations: {onTimeStats.late} • Missed: {onTimeStats.missed || 0}</span>
                 </div>
               </div>
             </CardContent>
