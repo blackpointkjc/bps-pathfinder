@@ -489,7 +489,7 @@ export default function DispatchCenter() {
                 ))}
             </div>
 
-            <div className="flex-none border-b border-[#1e2d4a] bg-[#08111d] p-2 md:hidden">
+            <div className="flex-none border-b border-[#1e2d4a] bg-[#08111d] p-2 lg:hidden">
                 <label className="mb-1 block text-[8px] font-black tracking-[0.18em] text-slate-500">MOBILE DISPATCH VIEW</label>
                 <select value={mobileView} onChange={e => setMobileView(e.target.value)} className="h-10 w-full rounded-lg border border-blue-700/50 bg-[#07101c] px-3 text-xs font-black text-blue-100 outline-none">
                     <option value="calls">ACTIVE CALLS</option>
@@ -656,7 +656,7 @@ export default function DispatchCenter() {
 
                         {/* MAP */}
                         {mobileView === 'map' && (
-                            <div className="flex min-h-0 flex-1 flex-col md:hidden">
+                            <div className="flex min-h-0 flex-1 flex-col lg:hidden">
                                 <div className="flex-none px-3 py-1 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                     <span className="text-[10px] font-bold text-emerald-400 tracking-widest">LIVE TACTICAL MAP</span>
