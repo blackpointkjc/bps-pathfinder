@@ -77,6 +77,8 @@ export default function DailyActivityReports() {
     refetchInterval: 30000,
   });
 
+  const currentSiteName = activeEntry?.location ? activeEntry.location.split(' - ')[0].trim() : '';
+
   const { data: reports } = useQuery({
     queryKey: ['myDailyActivityReports', user?.id],
     queryFn: () => base44.entities.DailyActivityReport.filter(
@@ -788,6 +790,9 @@ export default function DailyActivityReports() {
                       <SelectValue placeholder="Select location" />
                     </SelectTrigger>
                     <SelectContent>
+                      {currentSiteName && !locations?.some(loc => loc.site_name === currentSiteName) && (
+                        <SelectItem value={currentSiteName}>{currentSiteName}</SelectItem>
+                      )}
                       {locations?.map((loc) => (
                         <SelectItem key={loc.id} value={loc.site_name}>
                           {loc.site_name}
