@@ -803,13 +803,9 @@ export default function Layout({ children, currentPageName }) {
     } catch {
       setUnreadCounts({});
     }
-    if (user?.id) {
-      setUnreadCounts(current => {
-        const next = { ...current, OfficerInbox: 0 };
-        localStorage.setItem(unreadStorageKey, JSON.stringify(next));
-        return next;
-      });
-    }
+    // Keep persisted Teams unread counts until the Teams monitors publish a
+    // verified replacement. Resetting OfficerInbox here hid unread messages
+    // every time Layout remounted or the user signed back in.
   }, [unreadStorageKey, user?.id]);
 
   useEffect(() => {
