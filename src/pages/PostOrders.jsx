@@ -16,7 +16,7 @@ export default function PostOrders() {
     queryKey: ['activeLocations'],
     queryFn: async () => {
       const locs = await listDirectoryLocations('site_name');
-      return locs.filter(loc => loc.active);
+      return locs.filter(loc => loc.active !== false);
     },
     initialData: [],
   });
