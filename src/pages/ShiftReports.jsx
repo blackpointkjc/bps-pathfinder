@@ -71,6 +71,7 @@ export default function ShiftReports() {
 
   // For admins, allow submission from anywhere; for officers, an active entry is required.
   const canSubmit = isAdmin || !!activeEntry;
+  const currentSiteName = activeEntry?.location ? activeEntry.location.split(' - ')[0].trim() : '';
 
   const { data: reports } = useQuery({
     queryKey: ['myShiftReports', user?.id],
@@ -749,6 +750,9 @@ export default function ShiftReports() {
                       <SelectValue placeholder="Select location" />
                     </SelectTrigger>
                     <SelectContent>
+                      {currentSiteName && !locations?.some(loc => loc.site_name === currentSiteName) && (
+                        <SelectItem value={currentSiteName}>{currentSiteName}</SelectItem>
+                      )}
                       {locations?.map((loc) => (
                         <SelectItem key={loc.id} value={loc.site_name}>
                           {loc.site_name}
