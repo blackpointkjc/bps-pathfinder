@@ -192,7 +192,8 @@ export default function ClientTrespass() {
       senderName: 'Black Point Protection',
       senderAddress: site?.address || notice.location,
       officerName: getOfficerFullDisplay(notice.created_by_id || notice.created_by),
-      signatureName: '',
+      signatureName: getOfficerSignature(notice.created_by_id || notice.created_by),
+      timeZone: site?.time_zone || 'America/New_York',
       policeDepartment: resolvePoliceDepartment(site || { site_name: notice.location, division: 'Virginia' }),
     });
     return;
