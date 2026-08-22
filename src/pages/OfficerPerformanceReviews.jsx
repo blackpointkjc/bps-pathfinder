@@ -68,6 +68,9 @@ export default function OfficerPerformanceReviews() {
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
       setReviews(payload.reviews || []);
+      if (payload.recovered_count > 0) {
+        toast.success(`${payload.recovered_count} missing performance review${payload.recovered_count === 1 ? '' : 's'} restored.`);
+      }
     } catch (error) {
       toast.error(error?.response?.data?.error || error?.message || 'Unable to load performance reviews.');
     } finally {
@@ -111,7 +114,8 @@ export default function OfficerPerformanceReviews() {
     <div className="mx-auto max-w-5xl space-y-5">
       <div>
         <h1 className="flex items-center gap-3 text-3xl font-bold"><ClipboardCheck className="text-amber-400"/>My Reviews & Feedback</h1>
-        <p className="mt-1 text-slate-400">See where each review is in the cycle and complete your self-rating and signature when it reaches you.</p>
+        <p className="mt-1 text-slate-400">Officer Center → Profile & Training → My Reviews & Feedback</p>
+        <p className="mt-1 text-sm text-slate-500">See where each review is in the cycle and complete your self-rating and signature when it reaches you.</p>
       </div>
 
       {loading ? (
