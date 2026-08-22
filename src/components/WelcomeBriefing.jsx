@@ -7,6 +7,7 @@ import { createPageUrl } from '../utils';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { parseServerTimestamp } from '@/lib/easternTime';
 import { listDirectoryUsers } from '@/lib/appDirectory';
+import { getLocalReadAnnouncementIds } from '@/lib/announcementReadState';
 
 const normalized = value => String(value || '').trim().toLowerCase();
 const APP_UPDATE_TYPES = new Set(['app_update', 'system_update', 'release', 'release_notes', 'software_update', 'platform_update']);
@@ -119,7 +120,10 @@ export default function WelcomeBriefing({ user }) {
         const [schedules, vehicleAssignments, overrides, allUsers] = third;
         const [allUnits, allSchedules, timeEntries, dispatchCalls] = fourth;
         if (!active) return;
-        const receiptIds = new Set((receipts || []).map(item => item.announcement_id));
+        const receiptIds = getLocalReadAnnouncementIds(user.email);
+        (receipts || []).forEach(receipt => {
+          if (receipt?.announcement_id) receiptIds.add(String(receipt.announcement_id));
+        });
         const accountCreated = user.created_date ? new Date(user.created_date).getTime() : 0;
         // "Since you were away" must be based on when this user was last active,
         // not merely on an unread flag. On a first briefing for this device, keep
