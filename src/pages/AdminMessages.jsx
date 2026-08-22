@@ -207,7 +207,7 @@ export default function AdminMessages() {
   return (
     <div className="h-[calc(100vh-120px)] flex bg-white rounded-xl shadow-xl overflow-hidden mx-4 md:mx-8 my-4">
       {/* Conversations List */}
-      <div className={`w-full md:w-80 border-r border-slate-200 flex flex-col bg-slate-50 ${selectedConversation || showNewChat ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`w-full lg:w-80 border-r border-slate-200 flex flex-col bg-slate-50 ${selectedConversation || showNewChat ? 'hidden lg:flex' : 'flex'}`}>
         <div className="p-4 border-b border-slate-200 bg-gradient-to-r from-amber-50 to-orange-50">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -285,11 +285,11 @@ export default function AdminMessages() {
       </div>
 
       {/* Chat Area */}
-      <div className={`flex-1 flex flex-col ${!selectedConversation && !showNewChat ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 flex flex-col ${!selectedConversation && !showNewChat ? 'hidden lg:flex' : 'flex'}`}>
         {showNewChat ? (
           <>
             <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-3">
-              <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setShowNewChat(false)}>
+              <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setShowNewChat(false)}>
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="flex-1">
@@ -366,7 +366,7 @@ export default function AdminMessages() {
         ) : selectedConversation ? (
           <>
             <div className="p-4 border-b border-slate-200 bg-white flex items-center gap-3">
-              <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setSelectedConversation(null)}>
+              <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSelectedConversation(null)}>
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <Avatar className="h-10 w-10 bg-gradient-to-br from-amber-400 to-orange-500">
