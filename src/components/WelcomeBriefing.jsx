@@ -121,11 +121,24 @@ export default function WelcomeBriefing({ user }) {
         if (!active) return;
         const receiptIds = new Set((receipts || []).map(item => item.announcement_id));
         const accountCreated = user.created_date ? new Date(user.created_date).getTime() : 0;
-        const unseenAnnouncements = (announcements || []).filter(item => {
-          const created = new Date(item.created_date || 0).getTime();
-          return activeAnnouncement(item) && !receiptIds.has(item.id) && (!accountCreated || created >= accountCreated);
-        });
-        const unreadNotifications = (notifications || []).filter(item => item.is_read !== true && item.read !== true);
+        // "Since you were away" must be based on when this user was last active,
+        // not merely on an unread flag. On a first briefing for this device, keep
+        // the window to the last 24 hours so old records cannot flood the popup.
+        const briefingCutoff = offlineSince || Math.max(accountCreated || 0, now - 86400000);
+        const createdAfterCutoff = item => {
+          const created = parseServerTimestamp(item?.created_date)?.getTime() || 0;
+          return created > briefingCutoff;
+        };
+        const unseenAnnouncements = (announcements || []).filter(item => (
+          activeAnnouncement(item)
+          && !receiptIds.has(item.id)
+          && createdAfterCutoff(item)
+        ));
+        const unreadNotifications = (notifications || []).filter(item => (
+          item.is_read !== true
+          && item.read !== true
+          && createdAfterCutoff(item)
+        ));
         const appUpdates = unreadNotifications.filter(item => APP_UPDATE_TYPES.has(normalized(item.type)));
         const otherUpdates = unreadNotifications.filter(item => !APP_UPDATE_TYPES.has(normalized(item.type)));
         const dismissedPropertyPairs = new Set((propertyAlertReceipts || []).map(item => `${item.call_id}:${item.property_id}`));
