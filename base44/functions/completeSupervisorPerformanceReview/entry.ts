@@ -1,6 +1,17 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role: unknown) => String(role).toLowerCase()));
+const RANK_ORDER = ['colonel', 'lt colonel', 'major', 'captain', 'lieutenant', 'first sergeant', 'sergeant', 'corporal', 'senior officer', 'officer', 'unarmed officer'];
+const normalizeRank = (value: unknown) => {
+  const normalized = String(value || '').trim().toLowerCase().replace(/\./g, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+  return normalized === 'lieutenant colonel' ? 'lt colonel' : normalized;
+};
+const rankLevel = (user: any) => RANK_ORDER.indexOf(normalizeRank(user?.rank));
+const reviewerOutranks = (reviewer: any, officer: any) => {
+  const reviewerLevel = rankLevel(reviewer);
+  const officerLevel = rankLevel(officer);
+  return reviewerLevel >= 0 && officerLevel >= 0 && reviewerLevel < officerLevel;
+};
 const score = (value: unknown) => {
   const number = Number(value);
   return Number.isFinite(number) && number >= 1 && number <= 5 ? Math.round(number) : null;
@@ -29,9 +40,27 @@ Deno.serve(async (req) => {
     if (String(review.officer_id || '') === String(me.id || '')) {
       return Response.json({ error: 'You cannot submit the supervisor rating for your own performance review.' }, { status: 403 });
     }
-    if (me.role !== 'admin' && !roles.has('full_access') &&
-        String(review.assigned_supervisor_id || '') !== String(me.id || '')) {
-      return Response.json({ error: 'This review is assigned to another supervisor.' }, { status: 403 });
+    if (String(review.assigned_supervisor_id || '') !== String(me.id || '')) {
+      return Response.json({ error: 'Only the assigned higher-ranking reviewer may submit this review.' }, { status: 403 });
+    }
+
+    const users = await base44.asServiceRole.entities.User.list(undefined, 5000);
+    const officer = (users || []).find((user: any) => String(user.id || '') === String(review.officer_id || ''));
+    if (!officer) {
+      return Response.json({ error: 'The officer record for this review could not be verified.' }, { status: 409 });
+    }
+    if (!reviewerOutranks(me, officer)) {
+      const assignmentIssue = `The assigned reviewer (${me.rank || 'unknown rank'}) does not outrank the officer (${officer.rank || 'unknown rank'}).`;
+      await base44.asServiceRole.entities.PerformanceReview.update(review.id, {
+        workflow_stage: 'higher_reviewer_required',
+        higher_reviewer_required: true,
+        assignment_issue: assignmentIssue,
+        supervisor_review_pending: false,
+        assigned_supervisor_id: '',
+        assigned_supervisor_email: '',
+        assigned_supervisor_name: '',
+      }).catch(() => null);
+      return Response.json({ error: 'This review cannot be completed by an equal or lower-ranked reviewer. A higher-ranking reviewer is required.' }, { status: 409 });
     }
 
     const ratings = {
@@ -60,6 +89,8 @@ Deno.serve(async (req) => {
       supervisor_review_completed_by: me.email,
       supervisor_review_completed_date: now,
       workflow_stage: 'officer_pending',
+      higher_reviewer_required: false,
+      assignment_issue: '',
       officer_acknowledged: false,
       officer_signature_obtained: false,
     });
