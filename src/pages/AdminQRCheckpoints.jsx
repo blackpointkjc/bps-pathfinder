@@ -261,6 +261,7 @@ export default function AdminQRCheckpoints() {
             <table className="w-full text-sm">
               <thead className="border-b border-slate-700 bg-slate-800">
                 <tr>
+                  <th className="text-center p-3 font-semibold text-slate-200">QR Code</th>
                   <th className="text-left p-3 font-semibold text-slate-200">Checkpoint</th>
                   <th className="text-left p-3 font-semibold text-slate-200 hidden md:table-cell">Location</th>
                   <th className="text-left p-3 font-semibold text-slate-200 hidden lg:table-cell">Site</th>
@@ -273,6 +274,11 @@ export default function AdminQRCheckpoints() {
               <tbody className="divide-y divide-slate-800">
                 {filtered.map(cp => (
                   <tr key={cp.id} className="hover:bg-slate-800/80">
+                    <td className="p-3 text-center">
+                      <button type="button" onClick={() => openEdit(cp)} className="inline-flex rounded-md bg-white p-1.5 shadow" aria-label={`Open ${cp.checkpoint_name} QR code`}>
+                        <QRCodeSVG value={cp.qr_unique_id} size={56} />
+                      </button>
+                    </td>
                     <td className="p-3 font-medium text-white">{cp.checkpoint_name}</td>
                     <td className="p-3 text-slate-300 hidden md:table-cell">{cp.location_label}</td>
                     <td className="p-3 text-slate-300 hidden lg:table-cell">{cp.property_site}</td>
@@ -305,7 +311,7 @@ export default function AdminQRCheckpoints() {
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={7} className="p-8 text-center text-slate-400">No checkpoints found.</td></tr>
+                  <tr><td colSpan={8} className="p-8 text-center text-slate-400">No checkpoints found.</td></tr>
                 )}
               </tbody>
             </table>
