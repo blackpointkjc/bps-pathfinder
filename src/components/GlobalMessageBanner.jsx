@@ -454,7 +454,7 @@ export default function GlobalMessageBanner({ user }) {
     const announcementSource = SOURCES.find(source => source.kind === 'announcement');
     Promise.all([
       base44.entities.Announcement.list('-created_date', 100),
-      base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500),
+      base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 5000),
     ]).then(([announcements, receipts]) => {
       const seen = new Set((receipts || []).map(receipt => receipt.announcement_id));
       const accountCreated = user?.created_date ? new Date(user.created_date).getTime() : 0;
