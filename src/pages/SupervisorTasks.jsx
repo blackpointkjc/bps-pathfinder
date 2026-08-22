@@ -31,6 +31,8 @@ export default function SupervisorTasks() {
   const pendingComplaints = scopedTasks.complaints || [];
   const pendingWriteUps = scopedTasks.writeups || [];
   const pendingPerformanceReviews = scopedTasks.reviews || [];
+  const performanceReviewFollowUps = scopedTasks.reviewFollowUps || [];
+  const allActivePerformanceReviews = [...pendingPerformanceReviews, ...performanceReviewFollowUps];
   const followUpInspections = scopedTasks.inspections || [];
 
   if (user?.role !== 'admin' && !user?.additional_roles?.includes('supervisor') && !user?.additional_roles?.includes('full_access')) {
@@ -44,7 +46,7 @@ export default function SupervisorTasks() {
 
   const totalTasks = (pendingComplaints?.length || 0) + 
                      (pendingWriteUps?.length || 0) + 
-                     (pendingPerformanceReviews?.length || 0) + 
+                     (allActivePerformanceReviews?.length || 0) + 
                      (followUpInspections?.length || 0);
 
   return (
@@ -69,7 +71,7 @@ export default function SupervisorTasks() {
                   Performance Reviews
                 </div>
                 <Badge className="bg-purple-600 text-white">
-                  {pendingPerformanceReviews?.length || 0}
+                  {allActivePerformanceReviews?.length || 0}
                 </Badge>
               </CardTitle>
             </CardHeader>
@@ -77,18 +79,25 @@ export default function SupervisorTasks() {
               <p className="text-sm text-slate-600 mb-4">
                 Review performance evaluations with officers and obtain signatures
               </p>
-              {pendingPerformanceReviews && pendingPerformanceReviews.length > 0 ? (
+              {allActivePerformanceReviews.length > 0 ? (
                 <div className="space-y-2 mb-4">
-                  {pendingPerformanceReviews.slice(0, 3).map((review) => (
+                  {allActivePerformanceReviews.slice(0, 3).map((review) => {
+                    const waitingForOfficer = String(review.workflow_stage || '') === 'officer_pending';
+                    return (
                     <div key={review.id} className="p-3 bg-white rounded-lg border border-purple-200">
-                      <p className="font-semibold text-sm">{review.officer_name}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-semibold text-sm">{review.officer_name}</p>
+                        <Badge className={waitingForOfficer ? 'bg-amber-600 text-white' : 'bg-purple-600 text-white'}>
+                          {waitingForOfficer ? 'Awaiting Officer Signature' : 'Supervisor Rating Due'}
+                        </Badge>
+                      </div>
                       <p className="text-xs text-slate-500">
                         {format(parseISO(review.review_period_start), 'MMM d')} - {format(parseISO(review.review_period_end), 'MMM d, yyyy')}
                       </p>
                     </div>
-                  ))}
-                  {pendingPerformanceReviews.length > 3 && (
-                    <p className="text-xs text-slate-500">+ {pendingPerformanceReviews.length - 3} more</p>
+                  )})}
+                  {allActivePerformanceReviews.length > 3 && (
+                    <p className="text-xs text-slate-500">+ {allActivePerformanceReviews.length - 3} more</p>
                   )}
                 </div>
               ) : (
