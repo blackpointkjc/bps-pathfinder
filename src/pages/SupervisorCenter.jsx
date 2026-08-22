@@ -9,14 +9,13 @@ import SupervisorPerformanceReview from './SupervisorPerformanceReview';
 import SupervisorWriteUps from './SupervisorWriteUps';
 import SupervisorUseOfForce from './SupervisorUseOfForce';
 import SupervisorComplaints from './SupervisorComplaints';
-import DivisionDirectory from './DivisionDirectory';
 import SupervisorChat from './SupervisorChat';
 import RankStructure from './RankStructure';
 
 const SECTIONS = [
   { id: 'today', label: 'Today', description: 'Action items, daily code and call-outs', icon: ClipboardList },
   { id: 'oversight', label: 'Officer Oversight', description: 'Inspections, reviews, write-ups, force and complaints', icon: ClipboardCheck },
-  { id: 'people', label: 'People & Communication', description: 'Directory, supervisor chat and chain of command', icon: MessageCircle },
+  { id: 'people', label: 'People & Communication', description: 'Supervisor chat and chain of command', icon: MessageCircle },
 ];
 
 const TOOLS = {
@@ -33,7 +32,6 @@ const TOOLS = {
     { id: 'complaints', label: 'Complaints', component: SupervisorComplaints },
   ],
   people: [
-    { id: 'directory', label: 'Company Directory', component: DivisionDirectory },
     { id: 'chat', label: 'Supervisor Chat', component: SupervisorChat },
     { id: 'rank', label: 'Rank Structure', component: RankStructure },
   ],
