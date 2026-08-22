@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     }
 
     const [users, existingReviews] = await Promise.all([
-      base44.asServiceRole.entities.User.list(),
+      base44.asServiceRole.entities.User.list(undefined, 5000),
       base44.asServiceRole.entities.PerformanceReview.list('-review_date', 5000),
     ]);
     const existingKeys = new Set((existingReviews || []).map((review: any) => String(review.annual_review_key || '')).filter(Boolean));
