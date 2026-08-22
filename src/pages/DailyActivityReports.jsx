@@ -313,37 +313,33 @@ export default function DailyActivityReports() {
       queryClient.invalidateQueries({ queryKey: ['myDARTodos'] });
       setSaving(false);
       
-      if (!variables.isDraft) {
-        toast.success('Report submitted successfully!');
-        setShowForm(false);
-        setEditingReport(null);
-        setEditingTodoId(null);
-        setSignatureUrl("");
-        setShowSignaturePad(false);
-        setFormData({
-          report_date: format(new Date(), 'yyyy-MM-dd'),
-    linked_call_id: "",
-    linked_call_number: "",
-    linked_call_type: "",
-    linked_call_location: "",
-          start_time: "",
-          end_time: "",
-          location: "",
-          weather_conditions: "",
-          patrol_count: "",
-          visitors_logged: "",
-          doors_checked: "",
-          hourly_entries: "",
-          hourly_entries_array: [],
-          vehicles_noted: "",
-          persons_of_interest: "",
-          equipment_check: "",
-          incidents: "",
-          photo_urls: [],
-        });
-      } else {
-        toast.success('Draft saved!');
-      }
+      toast.success(variables.isDraft ? 'Draft saved!' : 'Report submitted successfully!');
+      setShowForm(false);
+      setEditingReport(null);
+      setEditingTodoId(null);
+      setSignatureUrl("");
+      setShowSignaturePad(false);
+      setFormData({
+        report_date: format(new Date(), 'yyyy-MM-dd'),
+        linked_call_id: "",
+        linked_call_number: "",
+        linked_call_type: "",
+        linked_call_location: "",
+        start_time: "",
+        end_time: "",
+        location: "",
+        weather_conditions: "",
+        patrol_count: "",
+        visitors_logged: "",
+        doors_checked: "",
+        hourly_entries: "",
+        hourly_entries_array: [],
+        vehicles_noted: "",
+        persons_of_interest: "",
+        equipment_check: "",
+        incidents: "",
+        photo_urls: [],
+      });
     },
     onError: (error) => {
       console.error('Error saving DAR:', error);
