@@ -26,7 +26,8 @@ export default function Schedule() {
     queryKey: ['myScheduleData', user?.email],
     queryFn: async () => {
       const result = await base44.functions.invoke('getMyScheduleData', {});
-      const payload = result?.data || result || {};
+      let payload = result?.data || result || {};
+      if (!Array.isArray(payload.schedules) && payload?.data && typeof payload.data === 'object') payload = payload.data;
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
