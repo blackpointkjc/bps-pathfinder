@@ -866,7 +866,9 @@ export default function Layout({ children, currentPageName }) {
         if (!active) return;
         const receiptIds = new Set((receipts || []).map(r => r.announcement_id));
         const accountCreated = user.created_date ? new Date(user.created_date).getTime() : 0;
+        const canSeeSupervisorAnnouncements = user.role === 'admin' || user.additional_roles?.includes('supervisor');
         const unreadAnnouncements = (announcements || []).filter(a => {
+          if (a.audience === 'supervisors' && !canSeeSupervisorAnnouncements) return false;
           const created = new Date(a.created_date || 0).getTime();
           if (!created || (accountCreated && created < accountCreated) || receiptIds.has(a.id)) return false;
           const days = (Date.now() - created) / 86400000;
