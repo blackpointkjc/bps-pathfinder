@@ -311,7 +311,7 @@ export default function ClientReports() {
         },
         signedAt: report.officer_signed_at || report.created_date,
         signatureUrl: report.officer_signature_url || report.signature_url || '',
-        footerNote: 'DCJS License 11-5175.',
+        footerNote: 'DCJS: 11-30423.',
       });
       return;
     }
