@@ -28,6 +28,7 @@ import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview'
 import { openTrespassNoticePrint, resolvePoliceDepartment } from '@/utils/trespassNoticePrint';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
+import { formatReportDateTime, resolveReportTimeZone } from '@/lib/reportPrint';
 
 export default function VATrespassNotices() {
   // Same implementation as TrespassingNotices.js but with VA-specific title
@@ -1095,7 +1096,7 @@ export default function VATrespassNotices() {
                               </p>
                               {notice.officer_ip_address && notice.created_date && (
                                 <p className="text-xs text-slate-400 mt-1">
-                                  IP: {notice.officer_ip_address} | Signed (Zulu): {new Date(notice.created_date).toISOString().replace('T', ' ').substring(0, 19)}Z
+                                  IP: {notice.officer_ip_address} | Signed: {formatReportDateTime(notice.created_date, resolveReportTimeZone(locations?.find(location => location.site_name === notice.location)))}
                                 </p>
                               )}
                             </div>
