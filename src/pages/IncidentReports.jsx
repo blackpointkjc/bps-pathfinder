@@ -1026,6 +1026,9 @@ Provide:
                         <SelectValue placeholder="Select location" />
                       </SelectTrigger>
                       <SelectContent>
+                        {currentSiteName && !locations?.some(loc => loc.site_name === currentSiteName) && (
+                          <SelectItem value={currentSiteName}>{currentSiteName}</SelectItem>
+                        )}
                         {locations?.map(loc => (
                           <SelectItem key={loc.id} value={loc.site_name}>
                             {loc.site_name}
