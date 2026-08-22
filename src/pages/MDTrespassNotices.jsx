@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
+import { openTrespassNoticePrint, resolvePoliceDepartment } from '@/utils/trespassNoticePrint';
 
 export default function MDTrespassNotices() {
   const [showForm, setShowForm] = useState(false);
@@ -303,12 +304,23 @@ export default function MDTrespassNotices() {
   };
 
   const printNotice = (notice) => {
-    const printWindow = window.open('', '', 'width=850,height=1100');
-    
     const siteLocation = locations?.find(loc => loc.site_name === notice.location);
-    const displayLocation = siteLocation ? `${siteLocation.site_name}: ${siteLocation.address}` : notice.location;
     const officer = allUsers?.find(u => String(u.id) === String(notice.created_by_id || notice.created_by) || String(u.email || '').toLowerCase() === String(notice.created_by || '').toLowerCase());
     const officerFullName = officer ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() : 'Officer';
+    openTrespassNoticePrint(notice, {
+      jurisdiction: 'MD',
+      locationRecord: siteLocation || { site_name: notice.location, division: 'Maryland' },
+      propertyName: siteLocation?.site_name || notice.location,
+      propertyAddress: siteLocation?.address || notice.location,
+      officerName: officerFullName,
+      signatureName: getOfficerSignature(notice.created_by_id || notice.created_by),
+      timeZone: siteLocation?.time_zone || 'America/New_York',
+      policeDepartment: resolvePoliceDepartment(siteLocation || { site_name: notice.location, division: 'Maryland' }),
+    });
+    return;
+
+    const printWindow = window.open('', '', 'width=850,height=1100');
+    const displayLocation = siteLocation ? `${siteLocation.site_name}: ${siteLocation.address}` : notice.location;
     
     printWindow.document.write(`
       <!DOCTYPE html>
