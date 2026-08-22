@@ -140,11 +140,18 @@ export default function IncidentReports() {
       // Admins see all reports (drafts and submitted)
       return allReports;
     } else {
-      // Officers see their own drafts, and submitted reports for their active site
+      // Officers always retain access to every report they authored, including
+      // submitted/approved reports after they clock out or move to another site.
+      // Current-site reports remain visible for operational continuity.
       const officerReports = allReports.filter(report => {
-        const isMyDraft = report.status === 'draft' && String(report.created_by_id || '') === String(user.id);
-        const isSubmittedAtMySite = report.status !== 'draft' && currentSiteName && report.location === currentSiteName;
-        return isMyDraft || isSubmittedAtMySite;
+        const userEmail = String(user.email || '').trim().toLowerCase();
+        const isMyReport = String(report.created_by_id || '') === String(user.id)
+          || String(report.primary_officer_id || '') === String(user.id)
+          || String(report.officer_email || report.created_by || '').trim().toLowerCase() === userEmail;
+        const reportSite = String(report.location || '').split(':')[0].split(' - ')[0].trim().toLowerCase();
+        const activeSite = String(currentSiteName || '').split(':')[0].split(' - ')[0].trim().toLowerCase();
+        const isSubmittedAtMySite = report.status !== 'draft' && activeSite && reportSite === activeSite;
+        return isMyReport || isSubmittedAtMySite;
       });
       return officerReports;
     }
