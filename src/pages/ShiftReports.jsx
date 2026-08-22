@@ -301,33 +301,30 @@ export default function ShiftReports() {
       queryClient.invalidateQueries({ queryKey: ['myShiftReports', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['myReportTodos'] });
 
-      if (!variables.isDraft) {
-        setShowForm(false);
-        setEditingReport(null);
-        setEditingTodoId(null);
-        setFormData({
-          shift_date: format(new Date(), 'yyyy-MM-dd'),
-          linked_call_id: "",
-          linked_call_number: "",
-          linked_call_type: "",
-          linked_call_location: "",
-          start_time: "",
-          end_time: "",
-          location: "",
-          weather_conditions: "",
-          patrol_count: "",
-          visitors_logged: "",
-          doors_checked: "",
-          activities: "",
-          incidents: "",
-          vehicles_noted: "",
-          persons_of_interest: "",
-          equipment_check: "",
-          photo_url: "",
-        });
-      } else {
-        toast.success('Draft saved successfully.');
-      }
+      if (variables.isDraft) toast.success('Draft saved successfully.');
+      setShowForm(false);
+      setEditingReport(null);
+      setEditingTodoId(null);
+      setFormData({
+        shift_date: format(new Date(), 'yyyy-MM-dd'),
+        linked_call_id: "",
+        linked_call_number: "",
+        linked_call_type: "",
+        linked_call_location: "",
+        start_time: "",
+        end_time: "",
+        location: "",
+        weather_conditions: "",
+        patrol_count: "",
+        visitors_logged: "",
+        doors_checked: "",
+        activities: "",
+        incidents: "",
+        vehicles_noted: "",
+        persons_of_interest: "",
+        equipment_check: "",
+        photo_url: "",
+      });
       setSaving(false);
     },
   });
