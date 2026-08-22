@@ -13,7 +13,12 @@ export async function getAppDirectory(force = false) {
   if (!force && cache && now - cacheAt < TTL_MS) return cache;
   if (pending) return pending;
   pending = base44.functions.invoke('getAppDirectory', {}).then(result => {
-    const payload = result?.data || result || {};
+    let payload = result?.data || result || {};
+    // Base44 function responses can be wrapped once more by different SDK builds.
+    // Unwrap that envelope so directory joins never silently become an empty list.
+    if (!Array.isArray(payload.users) && payload?.data && typeof payload.data === 'object') {
+      payload = payload.data;
+    }
     if (payload.error) throw new Error(payload.error);
     cache = {
       users: Array.isArray(payload.users) ? payload.users : [],
@@ -93,7 +98,24 @@ async function filterBucket(bucket, query = {}, sort, limit) {
   return rows;
 }
 
-export const listDirectoryUsers = (sort, limit) => listBucket('users', sort, limit);
+export const listDirectoryUsers = async (sort, limit) => {
+  let rows = [];
+  try {
+    rows = await listBucket('users', sort, limit);
+  } catch (error) {
+    console.warn('[Directory] Full user directory unavailable; retaining the signed-in identity.', error?.message || error);
+  }
+
+  // The authenticated user is the immutable fallback for every ID-based join.
+  // This protects reports, schedules, posts, chat, and performance views if a
+  // directory request is delayed or rate-limited while the page is mounting.
+  try {
+    const me = await base44.auth.me();
+    if (me?.id && !rows.some(row => String(row?.id) === String(me.id))) rows = [...rows, me];
+  } catch {}
+
+  return sortRows(rows, sort).slice(0, Number(limit) || 1000);
+};
 export const filterDirectoryUsers = (query, sort, limit) => filterBucket('users', query, sort, limit);
 export const listDirectoryLocations = (sort, limit) => listBucket('locations', sort, limit);
 export const filterDirectoryLocations = (query, sort, limit) => filterBucket('locations', query, sort, limit);
