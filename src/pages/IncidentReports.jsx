@@ -1565,7 +1565,7 @@ Provide:
                       </p>
                       {report.officer_ip_address && (
                         <p className="text-xs text-slate-400 mt-1">
-                          IP: {report.officer_ip_address} | Signed (Zulu): {new Date(report.created_date).toISOString().replace('T', ' ').substring(0, 19)}Z
+                          IP: {report.officer_ip_address} | Signed: {formatReportDateTime(report.created_date, resolveReportTimeZone(locations?.find(location => location.site_name === report.location)))}
                         </p>
                       )}
                     </div>
