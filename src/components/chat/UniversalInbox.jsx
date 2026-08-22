@@ -150,6 +150,13 @@ export default function UniversalInbox({ currentUser, users = [] }) {
     };
   }, [selectedChatId, currentUser?.id]);
 
+  const isChatUnread = chat => {
+    const seen = readSeenMap();
+    const changed = new Date(chat?.lastUpdatedDateTime || chat?.createdDateTime || 0).getTime();
+    const lastSeen = new Date(seen[chat?.id] || 0).getTime();
+    return Number.isFinite(changed) && changed > (Number.isFinite(lastSeen) ? lastSeen : 0);
+  };
+
   const visibleChats = chats.filter(chat => chatName(chat).toLowerCase().includes(search.toLowerCase()));
 
   const send = async () => {
@@ -224,10 +231,14 @@ export default function UniversalInbox({ currentUser, users = [] }) {
         {syncError && <div className="border-b border-red-800 bg-red-950/50 p-3 text-xs font-bold text-red-200">Microsoft Teams sync error: {syncError}</div>}
         <div className="flex-1 overflow-y-auto">
           {loadingChats && <div className="flex items-center justify-center gap-2 p-8 text-sm text-slate-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading Teams conversations…</div>}
-          {!loadingChats && visibleChats.map(chat => <button key={chat.id} onClick={() => { setSelectedChatId(chat.id); markChatSeen(chat); }} className={`flex w-full min-w-0 items-center gap-3 border-b border-slate-800 p-3 sm:p-4 text-left hover:bg-slate-800 ${selectedChatId === chat.id ? 'bg-slate-800' : ''}`}>
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600/30"><MessageCircle className="h-5 w-5 text-blue-300" /></div>
-            <div className="min-w-0 flex-1"><div className="truncate text-sm font-black">{chatName(chat)}</div><div className="truncate text-xs text-slate-500">{chat.chatType === 'group' ? 'Teams group chat' : 'Teams direct message'}</div></div>
-          </button>)}
+          {!loadingChats && visibleChats.map(chat => {
+            const unread = isChatUnread(chat);
+            return <button key={chat.id} onClick={() => { setSelectedChatId(chat.id); markChatSeen(chat); }} className={`flex w-full min-w-0 items-center gap-3 border-b border-slate-800 p-3 sm:p-4 text-left hover:bg-slate-800 ${selectedChatId === chat.id ? 'bg-slate-800' : ''}`}>
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-full bg-blue-600/30"><MessageCircle className="h-5 w-5 text-blue-300" />{unread && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-slate-950 bg-red-500" />}</div>
+              <div className="min-w-0 flex-1"><div className={`truncate text-sm ${unread ? 'font-black text-white' : 'font-bold text-slate-300'}`}>{chatName(chat)}</div><div className="truncate text-xs text-slate-500">{chat.chatType === 'group' ? 'Teams group chat' : 'Teams direct message'}</div></div>
+              {unread && <span className="rounded-full bg-red-500 px-2 py-1 text-[9px] font-black text-white">NEW</span>}
+            </button>;
+          })}
           {!loadingChats && !visibleChats.length && <div className="p-8 text-center text-sm text-slate-500">No Microsoft Teams conversations were returned for this account.</div>}
         </div>
       </aside>
