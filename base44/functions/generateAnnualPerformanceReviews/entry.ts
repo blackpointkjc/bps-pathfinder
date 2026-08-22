@@ -3,6 +3,20 @@ import { buildPerformanceMetrics, reviewPayloadFromMetrics } from './metrics.ts'
 
 const TIME_ZONE = 'America/New_York';
 const emailKey = (value: unknown) => String(value || '').trim().toLowerCase();
+const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role: unknown) => String(role).toLowerCase()));
+const active = (user: any) => user && user.employment_status !== 'terminated' && user.employment_status !== 'on_leave' && !user.termination_date;
+const RANK_ORDER = ['colonel', 'lt colonel', 'major', 'captain', 'lieutenant', 'first sergeant', 'sergeant', 'corporal', 'senior officer', 'officer', 'unarmed officer'];
+const normalizeRank = (value: unknown) => {
+  const normalized = String(value || '').trim().toLowerCase().replace(/\./g, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+  return normalized === 'lieutenant colonel' ? 'lt colonel' : normalized;
+};
+const rankLevel = (user: any) => RANK_ORDER.indexOf(normalizeRank(user?.rank));
+const reviewerOutranks = (reviewer: any, officer: any) => {
+  const reviewerLevel = rankLevel(reviewer);
+  const officerLevel = rankLevel(officer);
+  return reviewerLevel >= 0 && officerLevel >= 0 && reviewerLevel < officerLevel;
+};
+const displayName = (user: any) => `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.full_name || user?.email || 'Supervisor';
 
 function easternNow() {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -38,12 +52,17 @@ function isOperational(user: any) {
 }
 
 function chooseRotatingSupervisor(officer: any, users: any[], reviews: any[]) {
-  const eligible = (users || []).filter((user: any) =>
-    user?.employment_status !== 'terminated' && user?.employment_status !== 'on_leave' && !user?.termination_date &&
+  const higherRanked = (users || []).filter((user: any) =>
+    active(user) &&
     String(user.id || '') !== String(officer.id || '') &&
-    (user.additional_roles || []).some((role: unknown) => String(role).toLowerCase() === 'supervisor')
+    rolesOf(user).has('supervisor') &&
+    reviewerOutranks(user, officer)
   );
-  if (!eligible.length) return null;
+  if (!higherRanked.length) return null;
+  const directSupervisor = higherRanked.find((user: any) => String(user.id || '') === String(officer.supervisor_id || ''));
+  if (directSupervisor) return directSupervisor;
+  const closestLevel = Math.max(...higherRanked.map(rankLevel));
+  const eligible = higherRanked.filter((user: any) => rankLevel(user) === closestLevel);
   const stats = new Map(eligible.map((user: any) => [String(user.id), { count: 0, last: 0 }]));
   for (const review of reviews || []) {
     const state = stats.get(String(review.assigned_supervisor_id || ''));
@@ -97,46 +116,58 @@ Deno.serve(async (req) => {
         const periodEnd = dayBefore(dueDate);
         const metrics = await buildPerformanceMetrics(base44, officer, periodStart, periodEnd);
         const supervisor = chooseRotatingSupervisor(officer, users || [], existingReviews || []);
-        if (!supervisor) throw new Error('No other active user with the supervisor role is available to receive this annual review task.');
-        const reviewerEmail = supervisor.email;
-        const reviewerName = supervisor
-          ? `${supervisor.first_name || ''} ${supervisor.last_name || ''}`.trim() || supervisor.full_name || supervisor.email
-          : 'Black Point Annual Review System';
+        const assignmentIssue = supervisor ? '' : `No active supervisor currently outranks ${officer.rank || 'this officer'}.`;
+        const reviewerName = supervisor ? displayName(supervisor) : 'Black Point Review Administration';
         const payload = {
           ...reviewPayloadFromMetrics(metrics),
           review_type: 'annual_automatic',
           annual_review_key: annualKey,
           generated_year: now.year,
           review_date: now.date,
-          reviewer_email: reviewerEmail,
+          reviewer_email: supervisor?.email || 'performance-reviews@blackpointkjc.com',
           reviewer_name: reviewerName,
-          assigned_supervisor_id: supervisor.id,
-          assigned_supervisor_email: supervisor.email,
-          assigned_supervisor_name: reviewerName,
-          supervisor_task_created_at: new Date().toISOString(),
-          assignment_round: (existingReviews || []).filter((item: any) => String(item.assigned_supervisor_id || '') === String(supervisor.id)).length + 1,
-          workflow_stage: 'supervisor_pending',
-          supervisor_review_pending: true,
+          ...(supervisor ? {
+            assigned_supervisor_id: supervisor.id,
+            assigned_supervisor_email: supervisor.email,
+            assigned_supervisor_name: reviewerName,
+            supervisor_task_created_at: new Date().toISOString(),
+            assignment_round: (existingReviews || []).filter((item: any) => String(item.assigned_supervisor_id || '') === String(supervisor.id)).length + 1,
+          } : {}),
+          workflow_stage: supervisor ? 'supervisor_pending' : 'higher_reviewer_required',
+          higher_reviewer_required: !supervisor,
+          assignment_issue: assignmentIssue,
+          supervisor_review_pending: Boolean(supervisor),
           supervisor_review_completed: false,
           officer_acknowledged: false,
           officer_signature_obtained: false,
           hr_approved: false,
-          supervisor_notes: 'Automatically generated from Pathfinder performance statistics for the completed annual review period. Supervisor and HR may add qualitative comments during the review meeting.',
+          supervisor_notes: supervisor
+            ? 'Automatically generated from Pathfinder performance statistics for the completed annual review period. Supervisor and HR may add qualitative comments during the review meeting.'
+            : `Automatically generated from Pathfinder performance statistics. Assignment is paused because no active supervisor outranks ${officer.rank || 'the officer'}.`,
         };
         const review = await base44.asServiceRole.entities.PerformanceReview.create(payload);
         existingReviews.push(review);
         existingKeys.add(annualKey);
 
-        const recipients = new Set([officer.email, supervisor?.email].filter(Boolean).map(String));
+        const adminEmails = supervisor ? [] : (users || [])
+          .filter((user: any) => active(user) && user.email && (user.role === 'admin' || rolesOf(user).has('hr') || rolesOf(user).has('full_access')))
+          .map((user: any) => user.email);
+        const recipients = new Set([officer.email, supervisor?.email, ...adminEmails].filter(Boolean).map(String));
         for (const recipient of recipients) {
           const isOfficer = emailKey(recipient) === emailKey(officer.email);
           await base44.asServiceRole.entities.Notification.create({
             recipient_email: recipient,
             type: 'training_reminder',
-            title: isOfficer ? 'Annual Performance Review Available' : 'Annual Performance Review Requires Meeting',
-            message: isOfficer
-              ? `Your annual performance review for ${periodStart} through ${periodEnd} is available.`
-              : `${metrics.officer_name}'s annual performance review was generated from their performance statistics and is ready for the supervisor meeting.`,
+            title: !supervisor
+              ? (isOfficer ? 'Annual Review Awaiting Higher-Ranking Reviewer' : 'Annual Review Needs Higher-Ranking Reviewer')
+              : (isOfficer ? 'Annual Performance Review Available' : 'Annual Performance Review Requires Meeting'),
+            message: !supervisor
+              ? (isOfficer
+                ? `Your annual review for ${periodStart} through ${periodEnd} was generated, but it cannot be assigned downward. It is waiting for a reviewer above ${officer.rank || 'your rank'}.`
+                : `${metrics.officer_name}'s annual review cannot be assigned until an active reviewer above ${officer.rank || 'the officer rank'} is available.`)
+              : (isOfficer
+                ? `Your annual performance review for ${periodStart} through ${periodEnd} is available and was assigned up the chain of command.`
+                : `${metrics.officer_name}'s annual performance review was assigned to you because your rank is above the officer's.`),
             priority: 'high',
             related_id: review.id,
             source_name: 'Annual Performance Reviews',
