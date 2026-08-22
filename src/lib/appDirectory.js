@@ -68,6 +68,30 @@ export async function getAppDirectory(force = false) {
   return pending;
 }
 
+export async function getCurrentDirectoryUser(force = false) {
+  const authenticated = await base44.auth.me();
+  if (!authenticated?.id) return authenticated;
+  try {
+    const directory = await getAppDirectory(force);
+    const directoryUser = findDirectoryUser(directory?.users, authenticated.id);
+    if (!directoryUser) return authenticated;
+    return {
+      ...authenticated,
+      ...directoryUser,
+      id: authenticated.id,
+      auth_email: normalizedIdentity(authenticated.email),
+      email: primaryDirectoryEmail(directoryUser) || normalizedIdentity(authenticated.email),
+      email_aliases: [...new Set([
+        ...directoryUserEmails(directoryUser),
+        normalizedIdentity(authenticated.email),
+      ].filter(Boolean))],
+    };
+  } catch (error) {
+    console.warn('[Directory] Linked identity unavailable; using the authenticated user.', error?.message || error);
+    return authenticated;
+  }
+}
+
 export function invalidateAppDirectory() {
   cache = null;
   cacheAt = 0;
