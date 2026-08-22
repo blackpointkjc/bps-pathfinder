@@ -460,7 +460,7 @@ export default function AdminLocations({ embedded = false }) {
     );
   }
 
-  const activeLocations = locations?.filter(loc => loc.active) || [];
+  const activeLocations = locations?.filter(loc => loc.active !== false) || [];
   const inactiveLocations = locations?.filter(loc => !loc.active) || [];
 
   return (
