@@ -79,7 +79,7 @@ const AuthenticatedApp = () => {
         <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#0b1725] p-6 shadow-2xl sm:p-8">
           <div className="text-xs font-black uppercase tracking-[0.2em] text-blue-300">BPS Pathfinder</div>
           <h1 className="mt-2 text-2xl font-black">Secure Sign In</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-400">Use your verified Microsoft 365 account when it is linked to your Pathfinder profile, or continue with the standard Pathfinder sign-in.</p>
+          <p className="mt-2 text-sm leading-6 text-slate-400">Use Microsoft sign-in when your Microsoft email matches your Pathfinder login email. If the emails differ, use the standard Pathfinder sign-in; your linked Outlook and Teams tools will remain connected inside the app.</p>
           <button
             type="button"
             onClick={navigateToMicrosoftLogin}
@@ -94,7 +94,7 @@ const AuthenticatedApp = () => {
           >
             OTHER PATHFINDER SIGN IN
           </button>
-          <p className="mt-4 text-center text-xs leading-5 text-slate-500">Verified Microsoft links are aligned to the existing Pathfinder user ID so roles, reports, schedules, and history stay with one account.</p>
+          <p className="mt-4 text-center text-xs leading-5 text-slate-500">Pathfinder keeps your original user ID and login email authoritative so roles, reports, schedules, posts, messages, and history stay linked.</p>
         </div>
       </div>
     );
