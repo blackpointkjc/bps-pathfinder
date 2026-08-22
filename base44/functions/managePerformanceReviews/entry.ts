@@ -13,7 +13,7 @@ const rating = (value: unknown, fallback = 3) => {
 
 async function resolveOfficer(base44: any, officerId: unknown, officerEmail: unknown) {
   const [users, teams, outlook] = await Promise.all([
-    base44.asServiceRole.entities.User.list(),
+    base44.asServiceRole.entities.User.list(undefined, 5000),
     base44.asServiceRole.entities.MicrosoftTeamsIdentity.list('-updated_at', 2000).catch(() => []),
     base44.asServiceRole.entities.OutlookMailboxLink.list('-last_verified_at', 2000).catch(() => []),
   ]);
