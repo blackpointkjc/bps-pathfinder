@@ -485,7 +485,7 @@ export default function DailyActivityReports() {
       },
       signedAt: report.officer_signed_at || report.created_date,
       signatureUrl: report.signature_url || '',
-      footerNote: 'DCJS License 11-5175.',
+      footerNote: 'DCJS: 11-30423.',
     });
   };
 
