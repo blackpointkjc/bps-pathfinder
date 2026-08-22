@@ -32,14 +32,14 @@ function dayBefore(dateKey: string) {
 
 function isOperational(user: any) {
   const roles = new Set((user?.additional_roles || []).map((role: unknown) => String(role).toLowerCase()));
-  return user?.employment_status !== 'terminated' && !user?.termination_date &&
+  return user?.employment_status !== 'terminated' && user?.employment_status !== 'on_leave' && !user?.termination_date &&
     Boolean(user?.rank) &&
     (roles.has('officer') || roles.has('supervisor') || user?.role === 'admin');
 }
 
 function chooseRotatingSupervisor(officer: any, users: any[], reviews: any[]) {
   const eligible = (users || []).filter((user: any) =>
-    user?.employment_status !== 'terminated' && !user?.termination_date &&
+    user?.employment_status !== 'terminated' && user?.employment_status !== 'on_leave' && !user?.termination_date &&
     String(user.id || '') !== String(officer.id || '') &&
     (user.additional_roles || []).some((role: unknown) => String(role).toLowerCase() === 'supervisor')
   );
