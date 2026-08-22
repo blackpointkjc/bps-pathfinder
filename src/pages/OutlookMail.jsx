@@ -712,11 +712,11 @@ export default function OutlookMail() {
           </div>
         </section>
 
-        <section className={`${selected ? 'block' : 'hidden md:flex'} min-w-0 flex-col bg-[#07101b]`}>
+        <section className={`${selected ? 'block' : 'hidden lg:flex'} min-w-0 flex-col bg-[#07101b]`}>
           {selected ? (
             <>
               <div className="flex items-center gap-2 border-b border-[#1d344b] px-3 py-2 md:px-5">
-                <button type="button" onClick={() => setSelected(null)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#29435d] md:hidden"><ArrowLeft className="h-4 w-4" /></button>
+                <button type="button" onClick={() => setSelected(null)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#29435d] lg:hidden"><ArrowLeft className="h-4 w-4" /></button>
                 <button type="button" onClick={toggleRead} className="flex h-9 items-center gap-2 rounded-lg border border-[#29435d] px-3 text-xs font-bold hover:bg-[#102338]">{selected.isRead ? <Mail className="h-4 w-4" /> : <MailOpen className="h-4 w-4" />}{selected.isRead ? 'Unread' : 'Read'}</button>
                 <button type="button" onClick={() => setForwardOpen(true)} className="flex h-9 items-center gap-2 rounded-lg border border-[#29435d] px-3 text-xs font-bold hover:bg-[#102338]"><Forward className="h-4 w-4" /> Forward</button>
                 <button type="button" onClick={removeMessage} className="ml-auto flex h-9 items-center gap-2 rounded-lg border border-red-900/60 px-3 text-xs font-bold text-red-300 hover:bg-red-950/30"><Trash2 className="h-4 w-4" /> Delete</button>
