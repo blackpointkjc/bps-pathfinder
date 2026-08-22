@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { getCurrentDirectoryUser } from '@/lib/appDirectory';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -38,6 +38,12 @@ export default function SupervisorPerformanceReview() {
   const assignedPeople = scopedTasks.assignedPeople || [];
   const pendingReviews = scopedTasks.reviews || [];
 
+  useEffect(() => {
+    if (!selectedReview?.id) return;
+    const latest = pendingReviews.find(review => review.id === selectedReview.id);
+    if (latest) setSelectedReview(latest);
+  }, [pendingReviews, selectedReview?.id]);
+
   const completeReviewMutation = useMutation({
     mutationFn: async (reviewId) => {
       const response = await base44.functions.invoke('completeSupervisorPerformanceReview', {
@@ -57,6 +63,7 @@ export default function SupervisorPerformanceReview() {
       setSupervisorNotes("");
       toast.success('Review marked as completed.');
     },
+    onError: (error) => toast.error(error?.message || 'Unable to complete this performance review.'),
   });
 
   const printReview = (review) => {
