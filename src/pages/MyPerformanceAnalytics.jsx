@@ -39,15 +39,18 @@ export default function MyPerformanceAnalytics() {
     queryKey: ['myPerformanceData', user?.email],
     queryFn: async () => {
       const result = await base44.functions.invoke('getMyPerformanceData', {});
-      const payload = result?.data || result || {};
+      let payload = result?.data || result || {};
+      if (!Array.isArray(payload.timeEntries) && payload?.data && typeof payload.data === 'object') payload = payload.data;
       if (payload.error) throw new Error(payload.error);
       return payload;
     },
     enabled: !!user?.email,
-    staleTime: 0,
+    staleTime: 60000,
     refetchOnMount: 'always',
     refetchOnWindowFocus: 'always',
-    refetchInterval: 30000,
+    // This backend joins many performance sources in one call. Refresh on page
+    // entry/focus instead of re-running the full aggregation every 30 seconds.
+    refetchInterval: false,
   });
 
   const timeEntries = performanceData.timeEntries || [];
