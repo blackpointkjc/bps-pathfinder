@@ -814,6 +814,22 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   useEffect(() => {
+    const openTools = event => {
+      setMobileSection(event?.detail?.section || null);
+      setMobileOpen(true);
+    };
+    window.addEventListener('pathfinder:open-mobile-tools', openTools);
+    return () => window.removeEventListener('pathfinder:open-mobile-tools', openTools);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, [mobileOpen]);
+
+  useEffect(() => {
     if (user && hasFullAccess(user) && !sessionStorage.getItem('bps-ranks-normalized')) {
       sessionStorage.setItem('bps-ranks-normalized', '1');
       base44.functions.invoke('normalizeLegacyRanks', {}).catch(() => sessionStorage.removeItem('bps-ranks-normalized'));
