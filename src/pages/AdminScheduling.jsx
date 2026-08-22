@@ -27,6 +27,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import LocationHourCard from "../components/scheduling/LocationHourCard";
 import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { toast } from 'sonner';
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/857a5f1c1_UntitledProject3.png";
 
 export default function AdminScheduling() {
@@ -200,15 +201,10 @@ export default function AdminScheduling() {
         });
       }
 
-      // If marking as ready, publish the announcement and send every scheduled
-      // officer an individualized Black Point email containing only their shifts.
+      // Send one personalized notification and email per scheduled officer.
+      // Do not create a second company announcement for the same publication;
+      // that duplicate was responsible for the extra pale banner.
       if (isReady) {
-        await base44.entities.Announcement.create({
-          title: `📅 Week Schedule Ready: ${format(currentWeekStart, 'MMM d')} - ${format(addDays(currentWeekStart, 6), 'MMM d, yyyy')}`,
-          message: `The schedule for the week of ${format(currentWeekStart, 'MMMM d')} to ${format(addDays(currentWeekStart, 6), 'MMMM d, yyyy')} is now available. Please check your schedule in Black Point Portal and note any changes to your shifts.`,
-          priority: 'important'
-        });
-
         const withheldOfficers = new Set(weekStatus?.unpublished_officer_emails || []);
         const publishedShifts = (schedules || []).filter(shift =>
           shift.shift_date >= weekStartStr &&
@@ -234,7 +230,7 @@ export default function AdminScheduling() {
           return (end - start) / 60;
         };
 
-        for (const [officerEmail, officerShifts] of Object.entries(shiftsByOfficer)) {
+        await Promise.all(Object.entries(shiftsByOfficer).map(async ([officerEmail, officerShifts]) => {
           const officer = allUsers?.find(item => item.email === officerEmail);
           const officerName = [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || 'Officer';
           const sortedShifts = [...officerShifts].sort((a, b) =>
@@ -279,19 +275,18 @@ export default function AdminScheduling() {
               is_read: false
             })
           ]);
-        }
+        }));
       }
       
       return isReady;
     },
     onSuccess: (isReady) => {
-      queryClient.invalidateQueries({ queryKey: ['announcements'] });
-      alert(isReady ? 'Week schedule published. Each scheduled officer was sent an in-app alert and a Black Point schedule email.' : 'Week schedule hidden from officers and clients');
+      toast.success(isReady ? 'Week schedule published. Scheduled officers were sent one in-app alert and one Black Point schedule email.' : 'Week schedule hidden from officers and clients.');
     },
     onError: (error, _isReady, context) => {
       if (context?.queryKey) queryClient.setQueryData(context.queryKey, context.previous);
       console.error('Unable to update week publication status:', error);
-      alert('The schedule publication signal could not be saved. The checkbox was restored; please try again.');
+      toast.error('The schedule publication signal could not be saved. The checkbox was restored; please try again.');
     },
     onSettled: (_data, _error, _isReady, context) => {
       queryClient.invalidateQueries({ queryKey: context?.queryKey || ['scheduleWeekStatus'] });
