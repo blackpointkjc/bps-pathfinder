@@ -11,6 +11,21 @@ function stripHtml(value) {
   }
 }
 
+function escapeRegExp(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function stripRedundantSenderPrefix(value, senderName) {
+  const text = String(value || '').trim();
+  const name = String(senderName || '').trim();
+  if (!text || !name) return text;
+  const withoutRank = name.replace(/^(colonel|major|captain|lieutenant|sergeant|corporal|officer)\s+/i, '').trim();
+  const candidates = [...new Set([name, withoutRank].filter(Boolean))]
+    .sort((a, b) => b.length - a.length)
+    .map(escapeRegExp);
+  return text.replace(new RegExp(`^(?:${candidates.join('|')})\\s*:\\s*`, 'i'), '').trim();
+}
+
 export function parseTeamsChannelLink(value) {
   const raw = String(value || '').trim();
   if (!raw) throw new Error('Paste the Microsoft Teams channel link.');
@@ -102,12 +117,13 @@ export async function sendTeamChannelMessage(userId, text, config = null, config
 
 export function normalizeTeamsChannelMessage(item) {
   if (!item?.id) return null;
-  const message = stripHtml(item?.body?.content || '').trim();
+  const senderName = item?.from?.user?.displayName || item?.from?.application?.displayName || 'Microsoft Teams';
+  const message = stripRedundantSenderPrefix(stripHtml(item?.body?.content || ''), senderName);
   if (!message) return null;
   return {
     id: item.id,
     message,
-    sender_name: item?.from?.user?.displayName || item?.from?.application?.displayName || 'Microsoft Teams',
+    sender_name: senderName,
     sender_email: '',
     sender_photo_url: '',
     message_source: 'teams',
@@ -171,9 +187,9 @@ export async function syncTeamsChannelToEntity(userId, { config = null, configKe
   let imported = 0;
   for (const item of [...rows].reverse()) {
     if (!item?.id || knownIds.has(String(item.id))) continue;
-    const body = stripHtml(item?.body?.content || '').trim();
-    if (!body) continue;
     const senderName = item?.from?.user?.displayName || item?.from?.application?.displayName || 'Microsoft Teams';
+    const body = stripRedundantSenderPrefix(stripHtml(item?.body?.content || ''), senderName);
+    if (!body) continue;
     await entity.create({
       message: body,
       sender_name: senderName,
