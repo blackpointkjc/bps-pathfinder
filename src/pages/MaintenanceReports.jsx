@@ -14,6 +14,11 @@ import { Badge } from "@/components/ui/badge";
 import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
+import {
+  formatReportDateTime,
+  openBlackPointReport,
+  resolveReportTimeZone,
+} from '@/lib/reportPrint';
 
 export default function MaintenanceReports() {
   const [showForm, setShowForm] = useState(false);
@@ -258,6 +263,63 @@ export default function MaintenanceReports() {
   };
 
   const printReport = (report) => {
+    const locationRecord = locations?.find(location => location.site_name === report.location);
+    const timeZone = resolveReportTimeZone(locationRecord);
+    const creator = allUsers?.find(officer => String(officer.id) === String(report.created_by_id)
+      || String(officer.email || '').toLowerCase() === String(report.created_by_id || '').toLowerCase());
+    const officerName = creator
+      ? [creator.first_name, creator.last_name].filter(Boolean).join(' ') || creator.email
+      : getOfficerSignature(report.created_by_id);
+
+    openBlackPointReport({
+      title: 'Maintenance Report',
+      subtitle: 'Property Condition and Safety Documentation',
+      reportNumber: report.report_number || report.id || '',
+      status: report.status || report.priority || '',
+      timeZone,
+      meta: [
+        { label: 'Priority', value: String(report.priority || '').toUpperCase() },
+        { label: 'Reported', value: formatReportDateTime(report.report_date || report.created_date, timeZone) },
+        { label: 'Submitted', value: formatReportDateTime(report.created_date, timeZone) },
+      ],
+      sections: [
+        {
+          title: 'Location and Issue',
+          fields: [
+            { label: 'Site Location', value: report.location },
+            { label: 'Specific Location', value: report.specific_location },
+            { label: 'Issue Type', value: String(report.issue_type || '').replaceAll('_', ' ').toUpperCase() },
+            { label: 'Affected Area', value: report.affected_area },
+            { label: 'Description', value: report.description, wide: true },
+            { label: 'Linked CAD Call', value: report.linked_call_number, wide: true },
+          ],
+        },
+        {
+          title: 'Impact and Safety',
+          fields: [
+            { label: 'Safety Concern', value: report.safety_concern ? 'Yes' : 'No' },
+            { label: 'Immediate Attention Required', value: report.requires_immediate_attention ? 'Yes' : 'No' },
+            { label: 'Tenant / Area Affected', value: report.tenant_affected, wide: true },
+            { label: 'Administrative Notes', value: report.admin_notes, wide: true },
+          ],
+        },
+      ],
+      photos: report.photo_url ? [report.photo_url] : [],
+      officer: {
+        name: officerName,
+        signatureName: getOfficerSignature(report.created_by_id),
+        email: creator?.email || '',
+        badge: creator?.badge_number || '',
+        unit: creator?.unit_number || '',
+        ip: report.officer_ip_address || '',
+      },
+      signedAt: report.officer_signed_at || report.created_date,
+      signatureUrl: report.officer_signature_url || report.signature_url || '',
+      footerNote: 'DCJS License 11-5175.',
+    });
+  };
+
+  const legacyPrintReport = (report) => {
     const printWindow = window.open('', '', 'width=850,height=1100');
     
     const reportDate = report.report_date ? format(new Date(report.report_date), 'MMMM d, yyyy h:mm a') : '';
