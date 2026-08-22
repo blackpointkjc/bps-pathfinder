@@ -18,6 +18,7 @@ import {
   Shield,
   LayoutDashboard,
   ClipboardList,
+  ClipboardCheck,
   Briefcase,
   BookOpen,
   GraduationCap,
@@ -88,6 +89,24 @@ export default function Dashboard({ embedded = false }) {
   });
 
   const profile = directoryProfile || user;
+
+  const { data: myReviewData = { reviews: [] } } = useQuery({
+    queryKey: ['dashboardPerformanceReviews', user?.id],
+    queryFn: async () => {
+      const response = await base44.functions.invoke('manageOfficerPerformanceReviews', { action: 'list' });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
+    enabled: !!user?.id,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+  });
+  const myPerformanceReviews = myReviewData.reviews || [];
+  const reviewResponseRequired = myPerformanceReviews.find(review =>
+    String(review.workflow_stage || '') === 'officer_pending' && !review.officer_acknowledged
+  );
 
   const { data: activeEntry } = useQuery({
     queryKey: ['activeTimeEntry', user?.email],
@@ -232,6 +251,7 @@ export default function Dashboard({ embedded = false }) {
     { id: "time_clock", title: "Time Clock", description: "Clock in/out", icon: Clock, color: "from-blue-500 to-blue-600", url: createPageUrl("TimeClock"), category: "main" },
     { id: "schedule", title: "My Schedule", description: "View shifts", icon: Calendar, color: "from-violet-500 to-purple-600", url: createPageUrl("Schedule"), category: "main" },
     { id: "my_performance", title: "My Performance", description: "View analytics", icon: ClipboardList, color: "from-emerald-500 to-green-600", url: createPageUrl("MyPerformanceAnalytics"), category: "main" },
+    { id: "my_reviews", title: "Reviews & Feedback", description: reviewResponseRequired ? "Response required" : "View evaluations", icon: ClipboardCheck, color: reviewResponseRequired ? "from-amber-500 to-orange-600" : "from-indigo-500 to-violet-600", url: createPageUrl("OfficerPerformanceReviews"), category: "main" },
     { id: "open_shifts", title: "Open Shifts", description: "Bid on shifts", icon: Briefcase, color: "from-amber-500 to-orange-600", url: createPageUrl("OpenShifts"), category: "schedule" },
     { id: "time_requests", title: "Time Off", description: "Request PTO", icon: CalendarClock, color: "from-teal-500 to-cyan-600", url: createPageUrl("TimeRequests"), category: "schedule" },
     { id: "payroll_dates", title: "Payroll", description: "View pay schedule", icon: DollarSign, color: "from-emerald-500 to-green-600", url: createPageUrl("PayrollDates"), category: "schedule" },
@@ -497,6 +517,24 @@ export default function Dashboard({ embedded = false }) {
                 </div>
               )}
               <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs md:text-sm px-3 md:px-4 py-1.5 md:py-2 rounded-full font-bold">✓ Active</Badge>
+            </div>
+          </motion.div>
+        )}
+
+        {reviewResponseRequired && (
+          <motion.div variants={itemVariants} className="relative overflow-hidden rounded-2xl border-2 border-amber-400 bg-gradient-to-r from-amber-950/90 to-orange-950/70 p-5 shadow-xl shadow-amber-950/30">
+            <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl border border-amber-300/40 bg-amber-400/15 p-3"><ClipboardCheck className="h-7 w-7 text-amber-300" /></div>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-amber-300">Action Required</p>
+                  <h2 className="text-xl font-black text-white">Your performance review is ready</h2>
+                  <p className="mt-1 text-sm text-amber-100">Review Joseph Sherrill's feedback, complete your self-rating, and sign electronically.</p>
+                </div>
+              </div>
+              <Link to={createPageUrl("OfficerPerformanceReviews")} className="flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-amber-400 px-5 font-black text-slate-950 hover:bg-amber-300">
+                Open Review <ChevronRight className="ml-2 h-5 w-5" />
+              </Link>
             </div>
           </motion.div>
         )}
