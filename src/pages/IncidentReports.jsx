@@ -391,11 +391,10 @@ Provide:
       queryClient.invalidateQueries({ queryKey: ['allIncidentReports'] });
       queryClient.invalidateQueries({ queryKey: ['myReportTodos'] });
 
-      if (!variables.isDraft) {
-        resetForm();
-      } else {
+      if (variables.isDraft) {
         toast.success('Draft saved successfully.');
       }
+      resetForm();
       setSaving(false);
     },
     onError: (error) => {
