@@ -74,6 +74,12 @@ export default function AdminSupervisorReports() {
     enabled: user?.role === 'admin',
   });
 
+  const { data: incidentReports = [] } = useQuery({
+    queryKey: ['allIncidentReports', 'officerPerformance'],
+    queryFn: () => base44.entities.IncidentReport.list('-created_date'),
+    enabled: user?.role === 'admin',
+  });
+
   const { data: shiftBids } = useQuery({
     queryKey: ['allShiftBids'],
     queryFn: () => base44.entities.ShiftBid.list('-created_date'),
@@ -204,7 +210,7 @@ export default function AdminSupervisorReports() {
       format(parseISO(b.created_date), 'yyyy-MM-dd') <= endDate
     ) || [];
 
-    const punctuality = calculatePunctuality(officerTimeEntries, officerSchedules, startDate, endDate);
+    const punctuality = calculatePunctuality(officerTimeEntries, officerSchedules, startDate, endDate, incidentReports, officer);
 
     // Calculate hours worked
     let totalHours = 0;
