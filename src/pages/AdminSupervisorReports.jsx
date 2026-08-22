@@ -272,7 +272,7 @@ export default function AdminSupervisorReports() {
       writeUps: officerWriteUps,
       inspections: officerInspections,
     };
-  }, [selectedOfficer, startDate, endDate, timeEntries, schedules, shiftBids, trainingCompletions, writeUps, inspections, allUsers]);
+  }, [selectedOfficer, startDate, endDate, timeEntries, schedules, incidentReports, shiftBids, trainingCompletions, writeUps, inspections, allUsers]);
 
   if (user?.role !== 'admin') {
     return (
