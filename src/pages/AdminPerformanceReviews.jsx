@@ -387,10 +387,85 @@ export default function AdminPerformanceReviews() {
           </CardContent>
         </Card>
 
+        <Dialog open={!!finalizingReview} onOpenChange={(open) => { if (!open) setFinalizingReview(null); }}>
+          <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>HR Final Approval — {finalizingReview?.officer_name}</DialogTitle>
+            </DialogHeader>
+            {finalizingReview && <div className="space-y-5 py-3">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <p className="font-semibold text-blue-900">Completed cycle received by HR</p>
+                <p className="mt-1 text-sm text-blue-800">The assigned supervisor submitted ratings, and the officer submitted self-ratings, comments, and an electronic signature. HR may update the final ratings below before approval.</p>
+              </div>
+
+              <div className="space-y-3">
+                {ratingFields.map(({ key, label }) => (
+                  <div key={key} className="grid items-center gap-3 rounded-lg border p-3 md:grid-cols-[1fr_auto_auto]">
+                    <div>
+                      <p className={key === 'overall_rating' ? 'font-bold' : 'font-medium'}>{label}</p>
+                      <p className="text-xs text-slate-500">
+                        Supervisor: {finalizingReview[key] ?? '—'}/5 · Officer self-rating: {finalizingReview[`officer_${key}`] ?? '—'}/5
+                      </p>
+                    </div>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="5"
+                      value={finalRatings[key]}
+                      onChange={(event) => setFinalRatings(current => ({ ...current, [key]: Number(event.target.value) }))}
+                      className="w-20"
+                      aria-label={`Final ${label}`}
+                    />
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setFinalRatings(current => ({ ...current, [key]: star }))}
+                          className="rounded p-1 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          aria-label={`Set final ${label} to ${star}`}
+                        >
+                          <Star className={`h-5 w-5 ${star <= Number(finalRatings[key]) ? 'fill-amber-500 text-amber-500' : 'text-slate-300'}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {finalizingReview.officer_comments && <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <p className="font-semibold">Officer comments</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{finalizingReview.officer_comments}</p>
+              </div>}
+              {finalizingReview.officer_signature_url && <div className="rounded-lg border p-4">
+                <p className="mb-2 font-semibold">Officer electronic signature</p>
+                <img src={finalizingReview.officer_signature_url} alt="Officer signature" className="max-h-24 rounded bg-white p-2" />
+                <p className="mt-2 text-xs text-slate-500">{finalizingReview.officer_signed_at ? new Date(finalizingReview.officer_signed_at).toLocaleString() : ''}</p>
+              </div>}
+
+              <div className="space-y-2">
+                <Label>HR Approval Notes</Label>
+                <Textarea value={approvalNotes} onChange={(event) => setApprovalNotes(event.target.value)} placeholder="Final HR notes (optional)" rows={4}/>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setFinalizingReview(null)}>Cancel</Button>
+                <Button
+                  onClick={() => approveReviewMutation.mutate()}
+                  disabled={approveReviewMutation.isPending || Object.values(finalRatings).some(value => Number(value) < 1 || Number(value) > 5)}
+                  className="bg-green-700 hover:bg-green-800"
+                >
+                  {approveReviewMutation.isPending ? 'Approving…' : 'Approve & Publish Final Rating'}
+                </Button>
+              </div>
+            </div>}
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create Performance Review</DialogTitle>
+              <DialogTitle>Start Manual Performance Review</DialogTitle>
             </DialogHeader>
             <form onSubmit={(e) => { e.preventDefault(); createReviewMutation.mutate(formData); }} className="space-y-6 py-4">
               <div className="space-y-2">
@@ -469,12 +544,13 @@ export default function AdminPerformanceReviews() {
                           <div><p className="text-2xl font-bold text-rose-700">{reviewPreview?.punctuality?.violations ?? '—'}</p><p className="text-xs text-slate-600">Time Violations</p></div>
                         </div>
                       )}
-                      <p className="mt-3 text-xs text-blue-800">Ratings below are prefilled from these statistics. HR can adjust ratings and add the qualitative review before creating it.</p>
+                      <p className="mt-3 text-xs text-blue-800">These are objective starting values. The assigned supervisor submits the official supervisor ratings, the officer submits a self-rating, and HR publishes the final rating.</p>
                     </div>
                   )}
 
                   <div>
-                    <h3 className="font-semibold text-slate-900 mb-3">Performance Ratings (1-5)</h3>
+                    <h3 className="font-semibold text-slate-900 mb-1">Objective Starting Ratings (1-5)</h3>
+                    <p className="mb-3 text-sm text-slate-500">These values help the assigned supervisor begin the evaluation; they are not final.</p>
                     <div className="grid md:grid-cols-2 gap-4">
                       {[
                         { key: 'punctuality_rating', label: 'Punctuality' },
@@ -593,7 +669,7 @@ export default function AdminPerformanceReviews() {
                   disabled={createReviewMutation.isPending || !selectedOfficer || !formData.review_period_start || !formData.review_period_end}
                   className="bg-purple-600 hover:bg-purple-700"
                 >
-                  {createReviewMutation.isPending ? 'Creating...' : 'Create Review'}
+                  {createReviewMutation.isPending ? 'Starting...' : 'Start & Assign Supervisor'}
                 </Button>
               </div>
             </form>
