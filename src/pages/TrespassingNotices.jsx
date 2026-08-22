@@ -298,11 +298,8 @@ export default function TrespassingNotices() {
       // Outline suggested: queryClient.invalidateQueries({ queryKey: ['myReportTodos'] });
 
       // Reset form only if not a draft (as per outline)
-      if (!variables.isDraft) {
-        resetForm();
-      } else {
-        toast.success('Draft saved successfully.');
-      }
+      if (variables.isDraft) toast.success('Draft saved successfully.');
+      resetForm();
       setSaving(false); // Set saving to false
     },
     onError: (error) => {
