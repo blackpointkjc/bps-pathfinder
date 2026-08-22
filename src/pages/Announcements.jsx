@@ -6,6 +6,7 @@ import { Megaphone, Download, Eye, AtSign, CheckCircle } from "lucide-react";
 import PullToRefresh from "../components/PullToRefresh";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { getLocalReadAnnouncementIds, markAnnouncementsReadLocally } from "@/lib/announcementReadState";
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
 
@@ -32,10 +33,14 @@ export default function Announcements() {
     refetchOnWindowFocus: true,
   });
 
-  const readAnnouncementIds = React.useMemo(
-    () => new Set(announcementReceipts.map(receipt => String(receipt.announcement_id || ''))),
-    [announcementReceipts]
-  );
+  const readAnnouncementIds = React.useMemo(() => {
+    const readIds = getLocalReadAnnouncementIds(user?.email);
+    announcementReceipts.forEach(receipt => {
+      const announcementId = String(receipt.announcement_id || '');
+      if (announcementId) readIds.add(announcementId);
+    });
+    return readIds;
+  }, [announcementReceipts, user?.email]);
 
   const priorityConfig = {
     urgent: { color: "bg-red-100 text-red-800 border-red-300", icon: "🚨" },
@@ -71,7 +76,13 @@ export default function Announcements() {
       return;
     }
 
+    const unseenIds = unseen.map(announcement => String(announcement.id));
     unseen.forEach(announcement => pendingReceiptIdsRef.current.add(String(announcement.id)));
+    // Clear the badge immediately on this device. Server receipts below keep the
+    // same state durable across devices and future sessions.
+    markAnnouncementsReadLocally(user.email, unseenIds);
+    window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
+    window.dispatchEvent(new CustomEvent('bps-announcements-opened'));
     let active = true;
     Promise.allSettled(unseen.map(announcement => base44.entities.AnnouncementReceipt.create({
       announcement_id: String(announcement.id),
