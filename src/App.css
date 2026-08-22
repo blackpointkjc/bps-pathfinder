@@ -1,14 +1,11 @@
-/* Global CAD/RMS dark workspace corrections for legacy pages. */
+/* Global CAD/RMS dark workspace corrections for legacy neutral surfaces.
+   Semantic status colors are handled in index.css so alerts remain distinguishable. */
 html.bps-night-mode .cad-app main.night-workspace .bg-white,
 html.bps-night-mode .cad-app main.night-workspace [class*="bg-white"],
 html.bps-night-mode .cad-app main.night-workspace .bg-slate-50,
 html.bps-night-mode .cad-app main.night-workspace .bg-slate-100,
-html.bps-night-mode .cad-app main.night-workspace [class*="bg-blue-50"],
-html.bps-night-mode .cad-app main.night-workspace [class*="bg-green-50"],
-html.bps-night-mode .cad-app main.night-workspace [class*="bg-amber-50"],
-html.bps-night-mode .cad-app main.night-workspace [class*="bg-orange-50"],
-html.bps-night-mode .cad-app main.night-workspace [class*="bg-purple-50"],
-html.bps-night-mode .cad-app main.night-workspace [class*="bg-red-50"] {
+html.bps-night-mode .cad-app main.night-workspace .bg-gray-50,
+html.bps-night-mode .cad-app main.night-workspace .bg-gray-100 {
   background-color: #111d2b !important;
   background-image: none !important;
   border-color: #2b4158 !important;
