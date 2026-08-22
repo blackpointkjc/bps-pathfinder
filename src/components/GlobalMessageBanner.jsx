@@ -188,6 +188,7 @@ export default function GlobalMessageBanner({ user }) {
       if (isOwnRecord) return;
       if (source.direct && !visibleDirectMessage(record)) return;
       if (source.mention && normalized(record.recipient_email) !== normalized(user.email)) return;
+      if (source.kind === 'announcement' && record.audience === 'supervisors' && user.role !== 'admin' && !roles.has('supervisor')) return;
 
       const key = `${source.entity}:${record.id}`;
       if (knownIds.current.has(key)) return;
