@@ -22,7 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { listOfficerDirectory } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, listSupervisorDirectoryOfficers } from '@/lib/appDirectory';
 
 export default function SupervisorUseOfForce() {
   const [showDialog, setShowDialog] = useState(false);
@@ -44,13 +44,13 @@ export default function SupervisorUseOfForce() {
 
   const { data: user } = useQuery({
     queryKey: ["currentUser"],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
     retry: false,
   });
 
   const { data: officers = [], isLoading: officersLoading, error: officersError } = useQuery({
     queryKey: ["officerDirectory", "supervisorUseOfForce"],
-    queryFn: () => listOfficerDirectory('last_name', 1000, true),
+    queryFn: () => listSupervisorDirectoryOfficers('last_name', 1000),
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
