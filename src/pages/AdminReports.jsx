@@ -288,18 +288,22 @@ export default function AdminReports() {
     });
   };
 
-  const getOfficerEmail = (officerRef) => {
-    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
-    return officer?.email || '';
+  const resolveOfficer = (officerRef) => {
+    const ref = String(officerRef || '');
+    const emailRef = ref.toLowerCase();
+    return (allUsers || []).find(candidate => String(candidate?.id || '') === ref || String(candidate?.email || '').toLowerCase() === emailRef)
+      || (String(user?.id || '') === ref || String(user?.email || '').toLowerCase() === emailRef ? user : null);
   };
 
+  const getOfficerEmail = (officerRef) => resolveOfficer(officerRef)?.email || '';
+
   const getOfficerName = (officerRef) => {
-    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    const officer = resolveOfficer(officerRef);
     return officer ? `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.email : 'Unknown Officer';
   };
 
   const getOfficerSignature = (officerRef) => {
-    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    const officer = resolveOfficer(officerRef);
     if (officer?.rank && officer?.last_name && officer?.unit_number) {
       return `${officer.rank} ${officer.last_name} Unit ${officer.unit_number}`;
     }
@@ -312,8 +316,7 @@ export default function AdminReports() {
   const printReport = (report, type) => {
     const creatorRef = report.created_by_id || report.created_by;
     const officerName = getOfficerName(creatorRef);
-    const officer = allUsers?.find(item => String(item.id) === String(creatorRef)
-      || String(item.email || '').toLowerCase() === String(creatorRef || '').toLowerCase());
+    const officer = resolveOfficer(creatorRef);
     const locationRecord = locations?.find(location => location.site_name === report.location);
     const timeZone = resolveReportTimeZone(locationRecord, report.device_timezone || 'America/New_York');
     const zoneLabel = reportTimeZoneLabel(timeZone, report.created_date);
