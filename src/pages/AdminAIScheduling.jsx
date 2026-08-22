@@ -42,7 +42,7 @@ export default function AdminAIScheduling() {
     queryKey: ['activeLocations'],
     queryFn: async () => {
       const all = await listDirectoryLocations();
-      return all.filter(loc => loc.active);
+      return all.filter(loc => loc.active !== false);
     },
   });
 
