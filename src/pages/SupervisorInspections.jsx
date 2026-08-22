@@ -11,7 +11,7 @@ import { ClipboardCheck, Plus, UserCheck, CheckCircle, XCircle, Pencil } from "l
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { listOfficerDirectory, listDirectoryLocations } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, listDirectoryLocations, listSupervisorDirectoryOfficers } from '@/lib/appDirectory';
 
 export default function SupervisorInspections() {
   const [showForm, setShowForm] = useState(false);
@@ -35,7 +35,7 @@ export default function SupervisorInspections() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const { data: locations = [] } = useQuery({
@@ -49,7 +49,7 @@ export default function SupervisorInspections() {
 
   const { data: filteredUsers = [], isLoading: officersLoading, error: officersError } = useQuery({
     queryKey: ['officerDirectory', 'supervisorInspections'],
-    queryFn: () => listOfficerDirectory('last_name', 1000, true),
+    queryFn: () => listSupervisorDirectoryOfficers('last_name', 1000),
     enabled: hasSupervisorAccess,
     initialData: [],
     staleTime: 0,
