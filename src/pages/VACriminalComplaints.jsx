@@ -310,7 +310,8 @@ export default function VACriminalComplaints() {
       displayLocation,
       officerName: getOfficerFullDisplay(officerInfo?.email),
       complainantName: complainantPrintName,
-      signatureName: '',
+      signatureName: getOfficerFullDisplay(officerInfo?.email),
+      timeZone: siteLocation?.time_zone || 'America/New_York',
     });
     return;
   };
