@@ -16,6 +16,14 @@ import { openVirginiaSummonsPrint } from "@/utils/virginiaSummonsPrint";
 import { openVirginiaCriminalComplaintPrint } from "@/utils/virginiaCriminalComplaintPrint";
 import { openTrespassNoticePrint, resolvePoliceDepartment } from "@/utils/trespassNoticePrint";
 import {
+  formatReportClock,
+  formatReportDate,
+  formatReportDateTime,
+  openBlackPointReport,
+  reportTimeZoneLabel,
+  resolveReportTimeZone,
+} from '@/lib/reportPrint';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -194,6 +202,116 @@ export default function ClientReports() {
         complainantName: report.complainant_name || officerName,
         signatureName: officerSig,
         timeZone: locations.find(loc => loc.site_name === report.location)?.time_zone || 'America/New_York',
+      });
+      return;
+    }
+
+    const locationRecord = locations.find(location => location.site_name === report.location);
+    const timeZone = resolveReportTimeZone(locationRecord, report.device_timezone || 'America/New_York');
+    const zoneLabel = reportTimeZoneLabel(timeZone, report.created_date);
+    const officerRecord = (allUsersList || []).find(officer =>
+      String(officer.id) === String(report.created_by_id || report.created_by)
+      || String(officer.email || '').toLowerCase() === String(getReportOfficerEmail(report) || '').toLowerCase()
+    );
+    const configurations = {
+      shift: {
+        title: 'Shift Report',
+        subtitle: 'Officer Operations and Activity Summary',
+        reportNumber: report.report_number || report.id,
+        meta: [
+          { label: 'Shift Date', value: formatReportDate(report.shift_date, timeZone) },
+          { label: `Shift (${zoneLabel})`, value: `${formatReportClock(report.start_time)} – ${formatReportClock(report.end_time)}` },
+          { label: 'Submitted', value: formatReportDateTime(report.created_date, timeZone) },
+        ],
+        sections: [
+          { title: 'Assignment and Statistics', fields: [
+            { label: 'Location / Post', value: report.location, wide: true },
+            { label: 'Weather', value: report.weather_conditions },
+            { label: 'Patrols', value: report.patrol_count },
+            { label: 'Visitors Logged', value: report.visitors_logged },
+            { label: 'Doors Checked', value: report.doors_checked },
+          ] },
+          { title: 'Shift Activity', fields: [
+            { label: 'Activities', value: report.activities, wide: true },
+            { label: 'Incidents', value: report.incidents, wide: true },
+            { label: 'Vehicles Noted', value: report.vehicles_noted, wide: true },
+            { label: 'Persons of Interest', value: report.persons_of_interest, wide: true },
+            { label: 'Equipment Status', value: report.equipment_check, wide: true },
+          ] },
+        ],
+      },
+      daily_activity: {
+        title: 'Daily Activity Report',
+        subtitle: 'Officer Shift Activity and Patrol Record',
+        reportNumber: report.report_number || report.id,
+        meta: [
+          { label: 'Report Date', value: formatReportDate(report.report_date, timeZone) },
+          { label: `Shift (${zoneLabel})`, value: `${formatReportClock(report.start_time)} – ${formatReportClock(report.end_time)}` },
+          { label: 'Submitted', value: formatReportDateTime(report.created_date, timeZone) },
+        ],
+        sections: [
+          { title: 'Assignment and Statistics', fields: [
+            { label: 'Location / Post', value: report.location, wide: true },
+            { label: 'Weather', value: report.weather_conditions },
+            { label: 'Patrols', value: report.patrol_count },
+            { label: 'Visitors Logged', value: report.visitors_logged },
+            { label: 'Doors Checked', value: report.doors_checked },
+          ] },
+          { title: 'Hourly Activity Log', fields: [
+            { label: 'Activities and Observations', value: report.hourly_entries, wide: true },
+            { label: 'Incidents', value: report.incidents, wide: true },
+            { label: 'Vehicles Noted', value: report.vehicles_noted, wide: true },
+            { label: 'Persons of Interest', value: report.persons_of_interest, wide: true },
+            { label: 'Equipment Status', value: report.equipment_check, wide: true },
+          ] },
+        ],
+      },
+      incident: {
+        title: 'Incident Report',
+        subtitle: 'Security Incident Documentation',
+        reportNumber: report.report_number || report.id,
+        meta: [
+          { label: 'Incident Date', value: formatReportDate(report.incident_date, timeZone) },
+          { label: `Time Occurred (${zoneLabel})`, value: formatReportClock(report.incident_time) },
+          { label: 'Submitted', value: formatReportDateTime(report.created_date, timeZone) },
+        ],
+        sections: [
+          { title: 'Incident Information', fields: [
+            { label: 'Location', value: report.location },
+            { label: 'Specific Location', value: report.specific_location },
+            { label: 'Incident Type', value: String(report.incident_type || '').replaceAll('_', ' ').toUpperCase() },
+            { label: 'Severity', value: String(report.severity || '').toUpperCase() },
+          ] },
+          { title: 'Incident Narrative', fields: [
+            { label: 'Description', value: report.description, wide: true },
+            { label: 'Action Taken', value: report.action_taken, wide: true },
+            { label: 'Emergency Response', value: [
+              report.police_notified && 'Police',
+              report.ems_notified && 'EMS',
+              report.fire_notified && 'Fire',
+            ].filter(Boolean).join(', '), wide: true },
+          ] },
+        ],
+      },
+    };
+    const configuration = configurations[type];
+    if (configuration) {
+      openBlackPointReport({
+        ...configuration,
+        status: report.status || '',
+        timeZone,
+        photos: report.photo_urls || (report.photo_url ? [report.photo_url] : []),
+        officer: {
+          name: officerName,
+          signatureName: officerSig,
+          email: officerRecord?.email || getReportOfficerEmail(report),
+          badge: officerRecord?.badge_number || '',
+          unit: officerRecord?.unit_number || '',
+          ip: report.officer_ip_address || '',
+        },
+        signedAt: report.officer_signed_at || report.created_date,
+        signatureUrl: report.officer_signature_url || report.signature_url || '',
+        footerNote: 'DCJS License 11-5175.',
       });
       return;
     }
