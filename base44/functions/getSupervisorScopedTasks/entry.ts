@@ -99,6 +99,12 @@ Deno.serve(async (req) => {
         if (r.assigned_supervisor_id) return String(r.assigned_supervisor_id) === String(me.id || '');
         return isAssigned(r.officer_email) || assigned.some((person:any) => String(person.id) === String(r.officer_id || ''));
       }),
+      reviewFollowUps: (reviews || []).filter((r:any) => {
+        if (String(r.workflow_stage || '') !== 'officer_pending' || r.officer_acknowledged) return false;
+        if (me.role === 'admin') return true;
+        if (r.assigned_supervisor_id) return String(r.assigned_supervisor_id) === String(me.id || '');
+        return isAssigned(r.officer_email) || assigned.some((person:any) => String(person.id) === String(r.officer_id || ''));
+      }),
       inspections: (inspections || []).filter((i:any) => isAssigned(i.officer_email) && i.follow_up_required && !i.follow_up_completed),
     });
   } catch (error) {
