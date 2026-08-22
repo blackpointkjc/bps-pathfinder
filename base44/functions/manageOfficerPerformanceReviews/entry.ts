@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk';
 
 const key = (value: unknown) => String(value || '').trim().toLowerCase();
 const rolesOf = (user: any) => new Set((user?.additional_roles || []).map((role: unknown) => String(role).toLowerCase()));
-const active = (user: any) => user && user.employment_status !== 'terminated' && !user.termination_date;
+const active = (user: any) => user && user.employment_status !== 'terminated' && user.employment_status !== 'on_leave' && !user.termination_date;
 const ratingFields = [
   'punctuality_rating',
   'professionalism_rating',
