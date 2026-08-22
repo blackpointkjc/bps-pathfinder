@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       workflow_stage: 'hr_approval_pending',
     });
 
-    const users = await base44.asServiceRole.entities.User.list();
+    const users = await base44.asServiceRole.entities.User.list(undefined, 5000);
     const hrRecipients = new Set<string>();
     if (review.reviewer_email) hrRecipients.add(key(review.reviewer_email));
     for (const user of users || []) {
