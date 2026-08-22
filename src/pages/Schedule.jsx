@@ -8,7 +8,7 @@ import { Calendar, Clock, MapPin, FileText, ChevronLeft, ChevronRight, Info, Ext
 import { format, addDays, startOfDay, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import PullToRefresh from "../components/PullToRefresh";
-import { listOfficerDirectory } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, listOfficerDirectory } from '@/lib/appDirectory';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function Schedule() {
@@ -19,7 +19,7 @@ export default function Schedule() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const { data: scheduleData = {}, isLoading: schedulesLoading, error: scheduleError } = useQuery({
