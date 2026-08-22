@@ -1088,10 +1088,70 @@ html.bps-night-mode [data-radix-dialog-content] button[class*="bg-emerald-"] {
     overscroll-behavior: contain;
   }
 
-  /* The mobile tool library is a full-screen destination, not the desktop drawer. */
+  /* Compact tool library for phones and tablets; never reuse desktop drawer sizing. */
   .cad-app > [role="dialog"] {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mobile-tool-library {
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .mobile-tool-library > :first-child {
+    padding: .75rem 1rem !important;
+  }
+
+  .mobile-tool-library nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: .5rem;
+    padding: .75rem;
+  }
+
+  .mobile-tool-library nav > a {
+    min-height: 48px !important;
+    margin: 0 !important;
+    padding: .625rem .75rem !important;
+    border-radius: .75rem;
+  }
+
+  .mobile-tool-library nav > div {
+    grid-column: 1 / -1;
+    margin: .25rem 0 0 !important;
+  }
+
+  .mobile-tool-library nav > div > button {
+    min-height: 32px;
+    padding: .35rem .25rem !important;
+    pointer-events: none;
+  }
+
+  .mobile-tool-library nav > div > button svg {
+    display: none;
+  }
+
+  .mobile-tool-library nav > div > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .5rem;
+    padding: 0 !important;
+  }
+
+  .mobile-tool-library nav > div > div > a {
+    min-height: 48px !important;
+    margin: 0 !important;
+    padding: .625rem .75rem !important;
+    border: 1px solid #203b56 !important;
+    border-radius: .75rem;
+    background: #0b1928;
+  }
+
+  .mobile-tool-library nav a span {
+    font-size: .72rem !important;
+    line-height: 1rem !important;
   }
 }
 
