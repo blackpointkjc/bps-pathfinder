@@ -500,10 +500,10 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
       .filter(group => !group.fullAccessOnly || hasFullAccess(user))
       .find(group => group.items.some(([, page]) => page === currentPageName));
     const remembered = sessionStorage.getItem(`bps-open-nav-group:${activeCenter}`);
-    const next = groupForPage?.label || remembered || groups[0]?.label || '';
+    const next = mobileSection === 'reports' ? 'Reports' : (groupForPage?.label || remembered || groups[0]?.label || '');
     setOpenNavGroup(next);
     if (next) sessionStorage.setItem(`bps-open-nav-group:${activeCenter}`, next);
-  }, [activeCenter, currentPageName, user?.role, JSON.stringify(user?.additional_roles || [])]);
+  }, [activeCenter, currentPageName, mobileSection, user?.role, JSON.stringify(user?.additional_roles || [])]);
 
   const setNavGroup = (label, isOpen) => {
     const next = isOpen ? label : '';
