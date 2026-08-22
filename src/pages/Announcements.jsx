@@ -11,7 +11,7 @@ const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/pub
 
 export default function Announcements() {
   const queryClient = useQueryClient();
-  const markedRef = useRef(new Set());
+  const pendingReceiptIdsRef = useRef(new Set());
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
@@ -24,14 +24,17 @@ export default function Announcements() {
     enabled: !!user,
   });
 
-  const { data: announcementReceipts = [] } = useQuery({
+  const { data: announcementReceipts = [], isSuccess: receiptsLoaded } = useQuery({
     queryKey: ['announcementReceipts', user?.email],
-    queryFn: () => base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 500),
+    queryFn: () => base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 5000),
     enabled: !!user?.email,
     refetchInterval: 30000,
   });
 
-  const readAnnouncementIds = React.useMemo(() => new Set(announcementReceipts.map(r => r.announcement_id)), [announcementReceipts]);
+  const readAnnouncementIds = React.useMemo(
+    () => new Set(announcementReceipts.map(receipt => String(receipt.announcement_id || ''))),
+    [announcementReceipts]
+  );
 
   const priorityConfig = {
     urgent: { color: "bg-red-100 text-red-800 border-red-300", icon: "🚨" },
@@ -54,20 +57,46 @@ export default function Announcements() {
   // banners. Record all currently visible announcements as seen so the persistent
   // banner clears on every device after this page is opened.
   useEffect(() => {
-    if (!user?.email || !filteredAnnouncements.length) return;
-    const unseen = filteredAnnouncements.filter(a => !readAnnouncementIds.has(a.id) && !markedRef.current.has(a.id));
-    if (!unseen.length) return;
-    unseen.forEach(a => markedRef.current.add(a.id));
-    Promise.all(unseen.map(a => base44.entities.AnnouncementReceipt.create({
-      announcement_id: a.id,
+    if (!user?.email || !receiptsLoaded || !filteredAnnouncements.length) return;
+    const unseen = filteredAnnouncements.filter(announcement => {
+      const announcementId = String(announcement.id || '');
+      return announcementId
+        && !readAnnouncementIds.has(announcementId)
+        && !pendingReceiptIdsRef.current.has(announcementId);
+    });
+    if (!unseen.length) {
+      window.dispatchEvent(new CustomEvent('bps-announcements-opened'));
+      return;
+    }
+
+    unseen.forEach(announcement => pendingReceiptIdsRef.current.add(String(announcement.id)));
+    let active = true;
+    Promise.allSettled(unseen.map(announcement => base44.entities.AnnouncementReceipt.create({
+      announcement_id: String(announcement.id),
       user_email: user.email,
-      read_at: new Date().toISOString()
-    }).catch(() => null))).then(async () => {
-      await queryClient.invalidateQueries({ queryKey: ['announcementReceipts', user?.email] });
+      read_at: new Date().toISOString(),
+    }))).then(async results => {
+      unseen.forEach(announcement => pendingReceiptIdsRef.current.delete(String(announcement.id)));
+      if (!active) return;
+      const createdReceipts = results
+        .filter(result => result.status === 'fulfilled' && result.value)
+        .map(result => result.value);
+      if (createdReceipts.length) {
+        queryClient.setQueryData(['announcementReceipts', user.email], current => {
+          const byAnnouncement = new Map((current || []).map(receipt => [String(receipt.announcement_id || ''), receipt]));
+          createdReceipts.forEach(receipt => byAnnouncement.set(String(receipt.announcement_id || ''), receipt));
+          return Array.from(byAnnouncement.values());
+        });
+      }
+      await queryClient.invalidateQueries({ queryKey: ['announcementReceipts', user.email] });
       window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
       window.dispatchEvent(new CustomEvent('bps-announcements-opened'));
     });
-  }, [user?.email, filteredAnnouncements, readAnnouncementIds, queryClient]);
+
+    return () => {
+      active = false;
+    };
+  }, [user?.email, receiptsLoaded, filteredAnnouncements, readAnnouncementIds, queryClient]);
 
   const isPingedForMe = (announcement) => {
     return announcement.pinged_users && announcement.pinged_users.includes(user?.email);
