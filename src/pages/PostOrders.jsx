@@ -7,14 +7,14 @@ import { Shield, MapPin, Phone, Users, AlertTriangle, FileText, Clock, CheckCirc
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 
 export default function PostOrders() {
   const [selectedSite, setSelectedSite] = useState("");
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const { data: activeEntry } = useQuery({
