@@ -225,14 +225,14 @@ function CommandDashboardInner() {
     );
 
     return (
-        <div className="bg-slate-950 min-h-full flex flex-col">
+        <div className="command-dashboard min-h-full min-w-0 overflow-x-hidden bg-slate-950 flex flex-col">
             <OfficerDistressBanner currentUser={currentUser} isDispatchOrAdmin={isDispatchOrAdmin} />
             <ActiveBoloBanner />
 
             {/* ── SYSTEM HEADER BAR ── */}
-            <div className="flex-none bg-slate-900 border-b-2 border-gold/60 px-4 py-2 flex items-center gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5">
+            <div className="command-dashboard-system-bar flex-none bg-slate-900 border-b-2 border-gold/60 px-3 py-2 flex items-center gap-3">
+                <div className="command-dashboard-system-meta flex min-w-0 items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                         <span className="text-green-400 font-mono text-[10px] font-bold tracking-widest">SYSTEM ONLINE</span>
                     </div>
@@ -241,10 +241,10 @@ function CommandDashboardInner() {
                         REFRESHED {lastRefresh ? fmtTime(lastRefresh) : '—'}
                     </span>
                 </div>
-                <div className="flex-1" />
-                <div className="flex items-center gap-1.5">
+                <div className="command-dashboard-spacer flex-1" />
+                <div className="command-dashboard-actions flex items-center gap-1.5">
                     {/* Sync status */}
-                    <div className={`h-7 flex items-center gap-1.5 px-2 rounded border font-mono text-[10px] font-bold flex-shrink-0 ${
+                    <div className={`command-dashboard-sync h-9 flex items-center justify-center gap-1.5 px-2 rounded border font-mono text-[10px] font-bold flex-shrink-0 ${
                         syncStatus.state === 'syncing' ? 'bg-blue-900/30 border-blue-600/40 text-blue-300' :
                         syncStatus.state === 'error'   ? 'bg-red-900/30 border-red-600/40 text-red-300' :
                         syncStatus.state === 'ok'      ? 'bg-green-900/30 border-green-600/40 text-green-300' :
@@ -267,14 +267,14 @@ function CommandDashboardInner() {
                             params.set('call_number', selectedCall.agency_cad_number || selectedCall.bps_reference || selectedCall.call_id || selectedCall.id);
                         }
                         navigate(`${createPageUrl('BOLOAlerts')}?${params.toString()}`);
-                    }} className="h-7 flex items-center gap-1 px-2 bg-red-800 border border-red-600 text-white font-mono font-bold text-[10px] rounded hover:bg-red-700 transition-colors flex-shrink-0">
+                    }} className="command-dashboard-action h-9 flex min-w-0 items-center justify-center gap-1 px-2 bg-red-800 border border-red-600 text-white font-mono font-bold text-[10px] rounded hover:bg-red-700 transition-colors">
                         <FileWarning className="w-3 h-3" />NEW BOLO
                     </button>
                     <button onClick={() => navigate(createPageUrl('DispatchCenter'))}
-                        className="h-7 flex items-center gap-1 px-2 bg-gold text-black font-mono font-bold text-[10px] rounded hover:bg-yellow-400 transition-colors flex-shrink-0">
+                        className="command-dashboard-action h-9 flex min-w-0 items-center justify-center gap-1 px-2 bg-gold text-black font-mono font-bold text-[10px] rounded hover:bg-yellow-400 transition-colors">
                         <Zap className="w-3 h-3" />DISPATCH CTR
                     </button>
-                    <OfficerDistressButton currentUser={currentUser} />
+                    <OfficerDistressButton currentUser={currentUser} className="command-dashboard-distress" />
                 </div>
 
             </div>
@@ -290,7 +290,7 @@ function CommandDashboardInner() {
             )}
 
             {/* ── MASTER STATUS TILES ── */}
-            <div className="flex-none grid grid-cols-4 md:grid-cols-8 border-b border-slate-800">
+            <div className="command-dashboard-kpis flex-none grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 border-b border-slate-800">
                 {[
                     { label: 'ACTIVE CALLS', val: calls.length, color: 'text-gold', bg: 'bg-gold/10', border: 'border-r border-slate-800' },
                     { label: 'P1 CRITICAL', val: criticalCalls.length, color: criticalCalls.length > 0 ? 'text-red-400' : 'text-slate-500', bg: criticalCalls.length > 0 ? 'bg-red-950/40' : '', border: 'border-r border-slate-800', flash: criticalCalls.length > 0 },
@@ -301,8 +301,8 @@ function CommandDashboardInner() {
                     { label: 'ON SCENE', val: onSceneUnits.length, color: 'text-blue-400', bg: '', border: 'border-r border-slate-800' },
                     { label: 'BUSY', val: busyUnits.length, color: 'text-orange-400', bg: '', border: '' },
                 ].map(({ label, val, color, bg, border, flash }) => (
-                    <div key={label} className={`${bg} ${border} border-t-2 border-t-slate-700/60 px-3 py-3 flex flex-col items-center justify-center ${flash ? 'animate-pulse' : ''}`}>
-                        <span className={`text-3xl font-mono font-black leading-none ${color} drop-shadow-[0_0_10px_currentColor]`}>{val}</span>
+                    <div key={label} className={`command-dashboard-kpi ${bg} ${border} border-t-2 border-t-slate-700/60 px-2 py-2.5 flex min-w-0 flex-col items-center justify-center ${flash ? 'animate-pulse' : ''}`}>
+                        <span className={`text-2xl md:text-3xl font-mono font-black leading-none ${color} drop-shadow-[0_0_10px_currentColor]`}>{val}</span>
                         <span className="text-[9px] text-slate-500 font-mono font-bold tracking-widest mt-1 text-center">{label}</span>
                     </div>
                 ))}
