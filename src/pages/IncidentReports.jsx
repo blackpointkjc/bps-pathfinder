@@ -144,10 +144,10 @@ export default function IncidentReports() {
       // submitted/approved reports after they clock out or move to another site.
       // Current-site reports remain visible for operational continuity.
       const officerReports = allReports.filter(report => {
-        const userEmail = String(user.email || '').trim().toLowerCase();
         const isMyReport = String(report.created_by_id || '') === String(user.id)
           || String(report.primary_officer_id || '') === String(user.id)
-          || String(report.officer_email || report.created_by || '').trim().toLowerCase() === userEmail;
+          || directoryUserMatches(user, report.officer_email)
+          || directoryUserMatches(user, report.created_by);
         const reportSite = String(report.location || '').split(':')[0].split(' - ')[0].trim().toLowerCase();
         const activeSite = String(currentSiteName || '').split(':')[0].split(' - ')[0].trim().toLowerCase();
         const isSubmittedAtMySite = report.status !== 'draft' && activeSite && reportSite === activeSite;
@@ -157,7 +157,9 @@ export default function IncidentReports() {
     }
   }, [allReports, currentSiteName, isAdmin, user]);
 
-  const draftReports = reportsPotentiallyVisible.filter(r => r.status === 'draft' && String(r.created_by_id || '') === String(user?.id || '')) || [];
+  const draftReports = reportsPotentiallyVisible.filter(r => r.status === 'draft' && (
+    String(r.created_by_id || '') === String(user?.id || '') || directoryUserMatches(user, r.created_by || r.officer_email)
+  )) || [];
   const submittedReports = reportsPotentiallyVisible.filter(r => r.status !== 'draft') || [];
 
   const { data: locations } = useQuery({
@@ -552,7 +554,7 @@ Provide:
   };
 
   const getOfficerSignature = (officerRef) => {
-    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    const officer = findDirectoryUser([...(allUsers || []), user].filter(Boolean), officerRef);
     if (!officer) return String(officerRef || 'Unknown Officer');
     
     const rank = officer.rank || '';
@@ -569,12 +571,12 @@ Provide:
   };
 
   const getOfficerFullName = (officerRef) => {
-    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    const officer = findDirectoryUser([...(allUsers || []), user].filter(Boolean), officerRef);
     return officer?.full_name || [officer?.first_name, officer?.last_name].filter(Boolean).join(' ') || officer?.email || String(officerRef || 'Unknown Officer');
   };
 
   const getOfficerEmail = (officerRef) => {
-    const officer = allUsers?.find(u => String(u.id) === String(officerRef) || String(u.email || '').toLowerCase() === String(officerRef || '').toLowerCase());
+    const officer = findDirectoryUser([...(allUsers || []), user].filter(Boolean), officerRef);
     return officer?.email || '';
   };
 
