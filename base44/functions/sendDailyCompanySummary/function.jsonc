@@ -8,7 +8,7 @@
       "type": "scheduled",
       "schedule_mode": "recurring",
       "schedule_type": "cron",
-      "cron_expression": "0 * * * *",
+      "cron_expression": "* * * * *",
       "is_active": true,
       "function_args": {}
     }
