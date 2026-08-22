@@ -288,14 +288,12 @@ export default function AdminReports() {
     });
   };
 
-  const resolveOfficer = (officerRef) => {
-    const ref = String(officerRef || '');
-    const emailRef = ref.toLowerCase();
-    return (allUsers || []).find(candidate => String(candidate?.id || '') === ref || String(candidate?.email || '').toLowerCase() === emailRef)
-      || (String(user?.id || '') === ref || String(user?.email || '').toLowerCase() === emailRef ? user : null);
-  };
+  const resolveOfficer = (officerRef) => findDirectoryUser(
+    [...(allUsers || []), user].filter(Boolean),
+    officerRef
+  );
 
-  const getOfficerEmail = (officerRef) => resolveOfficer(officerRef)?.email || '';
+  const getOfficerEmail = (officerRef) => primaryDirectoryEmail(resolveOfficer(officerRef));
 
   const getOfficerName = (officerRef) => {
     const officer = resolveOfficer(officerRef);
