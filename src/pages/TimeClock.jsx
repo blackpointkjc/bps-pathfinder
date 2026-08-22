@@ -206,7 +206,8 @@ export default function TimeClock() {
     queryFn: async () => {
       if (!user?.email) return [];
       const result = await base44.functions.invoke('getMyTimeEntries', {});
-      const payload = result?.data || result || {};
+      let payload = result?.data || result || {};
+      if (!Array.isArray(payload.entries) && payload?.data && typeof payload.data === 'object') payload = payload.data;
       if (payload.error) throw new Error(payload.error);
       const entries = payload.entries || [];
       return entries.filter(entry => {
