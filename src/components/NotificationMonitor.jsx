@@ -2,26 +2,12 @@ import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
-import { createPageUrl } from "@/utils";
-import { Button } from "@/components/ui/button";
 import { parseISO } from "date-fns";
 
 export default function NotificationMonitor({ user }) {
   const { toast } = useToast();
-  const [lastScheduleCheck, setLastScheduleCheck] = useState(null);
   const [lastPTOStatusId, setLastPTOStatusId] = useState(null);
   const [audioEnabled] = useState(true);
-
-  // Monitor schedule week status (for new schedule published)
-  const { data: weekStatus } = useQuery({
-    queryKey: ['weekStatusNotify'],
-    queryFn: async () => {
-      const statuses = await base44.entities.ScheduleWeekStatus.list('-updated_date', 1);
-      return statuses[0] || null;
-    },
-    refetchInterval: 60000,
-    enabled: !!user,
-  });
 
   // Monitor PTO request status changes
   const { data: myPTORequests } = useQuery({
@@ -61,37 +47,9 @@ export default function NotificationMonitor({ user }) {
   // permission prompts and external notification banners are intentionally disabled.
   const showBrowserNotification = () => {};
 
-  // Monitor schedule publication changes. Track the version/state of the week record,
-  // not just its ID, because publishing updates the existing record in place.
-  useEffect(() => {
-    if (!weekStatus) return;
-    const statusKey = `${weekStatus.id}:${weekStatus.updated_date || weekStatus.marked_ready_date || ''}:${weekStatus.is_ready ? 'ready' : 'hidden'}`;
-    if (weekStatus.is_ready && lastScheduleCheck !== null && lastScheduleCheck !== statusKey) {
-      toast({
-        title: '📅 New Schedule Published',
-        description: `The schedule for week of ${weekStatus.week_start_date} is now available`,
-        duration: 15000,
-        className: 'bg-green-50 border-green-300',
-        action: (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => window.location.href = createPageUrl("Schedule")}
-            className="hover:bg-green-100"
-          >
-            View
-          </Button>
-        ),
-      });
-      playNotificationSound();
-      showBrowserNotification(
-        '📅 New Schedule Published',
-        `The schedule for week of ${weekStatus.week_start_date} is now available`,
-        '📅'
-      );
-    }
-    setLastScheduleCheck(statusKey);
-  }, [weekStatus, lastScheduleCheck, toast]);
+  // Schedule publication is delivered through the durable Notification record
+  // and the Black Point announcement banner. A second pale green toast here
+  // duplicated the same event and has intentionally been removed.
 
   // Monitor PTO status changes
   useEffect(() => {
