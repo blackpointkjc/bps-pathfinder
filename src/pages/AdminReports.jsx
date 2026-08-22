@@ -1,4 +1,4 @@
-import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { findDirectoryUser, getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers, primaryDirectoryEmail } from '@/lib/appDirectory';
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -52,7 +52,7 @@ export default function AdminReports() {
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => base44.auth.me(),
+    queryFn: () => getCurrentDirectoryUser(),
   });
 
   const { data: allUsers } = useQuery({
