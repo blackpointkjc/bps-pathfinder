@@ -17,6 +17,7 @@ import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview'
 import { openVirginiaCriminalComplaintPrint } from '@/utils/virginiaCriminalComplaintPrint';
 import { listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import ActiveCallLinkField from '@/components/reports/ActiveCallLinkField';
+import { formatReportDateTime, resolveReportTimeZone } from '@/lib/reportPrint';
 
 export default function VACriminalComplaints() {
   const [showForm, setShowForm] = useState(false);
@@ -822,7 +823,7 @@ export default function VACriminalComplaints() {
                     </p>
                     {complaint.officer_ip_address && complaint.created_date && (
                       <p className="text-xs text-slate-400 mt-1">
-                        IP: {complaint.officer_ip_address} | Signed (Zulu): {new Date(complaint.created_date).toISOString().replace('T', ' ').substring(0, 19)}Z
+                        IP: {complaint.officer_ip_address} | Signed: {formatReportDateTime(complaint.created_date, resolveReportTimeZone(locations?.find(location => location.site_name === complaint.location)))}
                       </p>
                     )}
                   </div>
