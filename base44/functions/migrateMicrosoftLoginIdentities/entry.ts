@@ -153,64 +153,16 @@ Deno.serve(async (req) => {
       if (!newestVerifiedByUser.has(key)) newestVerifiedByUser.set(key, link);
     }
 
-    const migrations: any[] = [];
-    const skipped: any[] = [];
-
-    for (const [userId, link] of newestVerifiedByUser.entries()) {
-      const user: any = usersById.get(userId);
-      if (!user) {
-        skipped.push({ user_id: userId, reason: 'Linked Pathfinder user no longer exists.' });
-        continue;
-      }
-
-      const oldEmail = lower(user.email);
-      const newEmail = lower(link.outlook_email);
-      if (!oldEmail || !newEmail || oldEmail === newEmail) continue;
-      if (lower(link.pathfinder_email) !== oldEmail) {
-        skipped.push({ user_id: userId, old_email: oldEmail, new_email: newEmail, reason: 'Link does not match the current Pathfinder email.' });
-        continue;
-      }
-
-      const collision: any = usersByEmail.get(newEmail);
-      if (collision && String(collision.id) !== userId) {
-        skipped.push({ user_id: userId, old_email: oldEmail, new_email: newEmail, reason: 'Another Pathfinder account already uses the Microsoft email.' });
-        continue;
-      }
-
-      const updatedRecords = await migrateEntityReferences(base44, oldEmail, newEmail);
-      await base44.asServiceRole.entities.User.update(userId, { email: newEmail });
-
-      // Keep every durable Microsoft directory row aligned and disable duplicates.
-      const userLinks = (links || []).filter((row: any) => String(row.user_id) === userId);
-      for (const row of userLinks) {
-        await base44.asServiceRole.entities.OutlookMailboxLink.update(row.id, {
-          pathfinder_email: newEmail,
-          connected: row.id === link.id,
-          disconnected_at: row.id === link.id ? null : new Date().toISOString(),
-        });
-      }
-
-      const teamRows = await base44.asServiceRole.entities.MicrosoftTeamsIdentity.filter({ user_id: userId }, '-updated_at', 100).catch(() => []);
-      for (let index = 0; index < (teamRows || []).length; index++) {
-        const row = teamRows[index];
-        await base44.asServiceRole.entities.MicrosoftTeamsIdentity.update(row.id, {
-          pathfinder_email: newEmail,
-          active: index === 0,
-          updated_at: new Date().toISOString(),
-        });
-      }
-
-      const oauthRows = await base44.asServiceRole.entities.MicrosoftOAuthCredential.filter({ user_id: userId }, '-updated_date', 100).catch(() => []);
-      for (const row of oauthRows || []) {
-        await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(row.id, { pathfinder_email: newEmail });
-      }
-
-      usersByEmail.delete(oldEmail);
-      usersByEmail.set(newEmail, { ...user, email: newEmail });
-      migrations.push({ user_id: userId, old_email: oldEmail, new_email: newEmail, updated_records: updatedRecords });
-    }
-
-    return Response.json({ success: true, migrations, skipped });
+    // Base44 provider identities cannot be safely merged by rewriting User.email.
+    // OutlookMailboxLink remains the communication alias while the Pathfinder
+    // user ID and primary email remain authoritative for all app records.
+    return Response.json({
+      success: true,
+      migrations: [],
+      skipped: [],
+      disabled: true,
+      message: 'Email-reference migration is disabled. Microsoft remains a linked communication identity.',
+    });
   } catch (error) {
     console.error('migrateMicrosoftLoginIdentities failed', error);
     return Response.json({ error: error?.message || 'Microsoft identity migration failed.' }, { status: 500 });
