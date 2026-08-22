@@ -120,7 +120,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
       await loadChats();
     };
     refresh();
-    const interval = window.setInterval(refresh, 120000);
+    const interval = window.setInterval(refresh, 30000);
     const onFocus = () => refresh();
     window.addEventListener('focus', onFocus);
     return () => {
@@ -133,9 +133,21 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   useEffect(() => {
     if (!selectedChatId) {
       setChatMessages([]);
-      return;
+      return undefined;
     }
-    loadChatMessages(selectedChatId);
+    let stopped = false;
+    const refreshMessages = async () => {
+      if (!stopped) await loadChatMessages(selectedChatId);
+    };
+    refreshMessages();
+    const interval = window.setInterval(refreshMessages, 15000);
+    const onFocus = () => refreshMessages();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      stopped = true;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [selectedChatId, currentUser?.id]);
 
   const visibleChats = chats.filter(chat => chatName(chat).toLowerCase().includes(search.toLowerCase()));
