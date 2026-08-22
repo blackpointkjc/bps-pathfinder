@@ -44,7 +44,8 @@ export default function Announcements() {
   };
 
   const filteredAnnouncements = announcements?.filter(announcement => {
-    if (announcement.audience === 'supervisors') return false;
+    const isSupervisor = user?.role === 'admin' || user?.additional_roles?.includes('supervisor');
+    if (announcement.audience === 'supervisors' && !isSupervisor) return false;
     const createdDate = new Date(announcement.created_date);
     const now = new Date();
     const daysDiff = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
