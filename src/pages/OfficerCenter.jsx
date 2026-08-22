@@ -24,6 +24,7 @@ import OfficerPayrollDates from './OfficerPayrollDates';
 import Announcements from './Announcements';
 import OfficerProfile from './OfficerProfile';
 import MyPerformanceAnalytics from './MyPerformanceAnalytics';
+import OfficerPerformanceReviews from './OfficerPerformanceReviews';
 import OfficerTraining from './OfficerTraining';
 import RankStructure from './RankStructure';
 import RankDuties from './RankDuties';
@@ -72,6 +73,7 @@ const TOOLS = {
   profile: [
     { id: 'profile', label: 'My Profile', component: OfficerProfile },
     { id: 'performance', label: 'My Performance', component: MyPerformanceAnalytics },
+    { id: 'reviews', label: 'My Reviews & Feedback', component: OfficerPerformanceReviews },
     { id: 'training', label: 'Training', component: OfficerTraining },
     { id: 'rank', label: 'Rank Structure', component: RankStructure },
     { id: 'duties', label: 'Rank Duties', component: RankDuties },
