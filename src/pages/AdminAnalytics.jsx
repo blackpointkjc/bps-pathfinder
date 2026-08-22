@@ -88,7 +88,9 @@ export default function AdminAnalytics() {
         timeEntries.filter(entry => emailKey(entry.officer_email) === key),
         schedules.filter(schedule => emailKey(schedule.officer_email) === key),
         currentMonthStart,
-        currentMonthEnd
+        currentMonthEnd,
+        incidentReports,
+        officer
       );
       return { name: `${officer.first_name || ''} ${officer.last_name || ''}`.trim() || officer.full_name || officer.email, email: officer.email, ...stats };
     }).filter(item => item.total > 0).sort((a, b) => (b.rate || 0) - (a.rate || 0));
@@ -219,7 +221,7 @@ export default function AdminAnalytics() {
     const officerReviews = allPerformanceReviews.filter(item => emailKey(item.officer_email) === key);
     const officerCommendations = allCommendations.filter(item => emailKey(item.officer_email) === key);
 
-    const punctuality = calculatePunctuality(officerTimeEntries, officerSchedules, currentMonthStart, currentMonthEnd);
+    const punctuality = calculatePunctuality(officerTimeEntries, officerSchedules, currentMonthStart, currentMonthEnd, incidentReports, officer);
     const training = calculateTrainingScore(officer, allTraining, officerCompletions, officerAssignments);
     const bidStanding = calculateBidStanding(officerBids, currentMonthStart, currentMonthEnd);
     const clientFeedback = calculateClientFeedback(officerFeedback, currentMonthStart, currentMonthEnd);
