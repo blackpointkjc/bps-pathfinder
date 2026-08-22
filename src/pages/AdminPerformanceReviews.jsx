@@ -269,7 +269,7 @@ export default function AdminPerformanceReviews() {
                                         );
                                         queryClient.invalidateQueries({ queryKey: ['allPerformanceReviews'] });
                                         queryClient.invalidateQueries({ queryKey: ['allUsers'] });
-                                        alert('✅ Pay adjustment approved and applied!');
+                                        toast.success('Pay adjustment approved and applied.');
                                       }
                                     }}
                                     className="bg-green-600 hover:bg-green-700 w-full"
@@ -304,7 +304,7 @@ export default function AdminPerformanceReviews() {
                             <Badge className="bg-amber-600 text-white mt-2">Pending Officer Acknowledgment</Badge>
                           )}
                           {review.officer_acknowledged && (
-                            <Badge className="bg-green-600 text-white mt-2">Acknowledged {format(parseISO(review.acknowledged_date), 'MMM d, yyyy')}</Badge>
+                            <Badge className="bg-green-600 text-white mt-2">Acknowledged {review.officer_acknowledged_at ? format(parseISO(review.officer_acknowledged_at), 'MMM d, yyyy') : 'electronically'}</Badge>
                           )}
                         </div>
                       </div>
