@@ -512,7 +512,7 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
   };
 
   return (
-    <div className="flex h-full flex-col border-r border-[#183049] bg-gradient-to-b from-[#071321] via-[#081522] to-[#050d17] shadow-[12px_0_40px_rgba(0,0,0,.25)]">
+    <div className={`flex h-full flex-col bg-gradient-to-b from-[#071321] via-[#081522] to-[#050d17] ${mobile ? 'mobile-tool-library' : 'border-r border-[#183049] shadow-[12px_0_40px_rgba(0,0,0,.25)]'}`}>
       <div className="border-b border-[#1b3048] bg-[#091827]/90 px-3 py-4 backdrop-blur-xl">
         <div className={`flex items-center ${collapsed && !mobile ? 'justify-center' : 'gap-3'}`}>
           {(!collapsed || mobile) && <div className="min-w-0 flex-1">
