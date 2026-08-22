@@ -443,6 +443,7 @@ export default function GlobalMessageBanner({ user }) {
         if (event?.type !== 'create' || normalized(event.data?.user_email) !== normalized(user.email)) return;
         const announcementId = event.data?.announcement_id;
         setBanners(current => current.filter(entry => !(entry.kind === 'announcement' && entry.recordId === announcementId)));
+        window.dispatchEvent(new CustomEvent('bps-unread-refresh'));
       });
       if (typeof unsubscribeReceipts === 'function') unsubscribers.push(unsubscribeReceipts);
     } catch (error) {
