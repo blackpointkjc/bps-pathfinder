@@ -18,7 +18,9 @@ export default function CertificationMonitor({ user }) {
     queryKey: ['certMonitorUser', user?.email],
     queryFn: () => base44.auth.me(),
     enabled: !!user?.email,
-    refetchInterval: 30000,
+    refetchInterval: 300000,
+    refetchOnWindowFocus: true,
+    refetchIntervalInBackground: false,
   });
 
   const currentUser = freshUser || user;
