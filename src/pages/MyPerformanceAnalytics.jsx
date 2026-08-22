@@ -108,8 +108,8 @@ export default function MyPerformanceAnalytics() {
   // Punctuality is calculated in Eastern Time and each punch is matched to the
   // correct scheduled shift window, not simply the first shift on the same date.
   const onTimeStats = React.useMemo(
-    () => calculatePunctuality(timeEntries, schedules, currentMonthStart, currentMonthEnd),
-    [timeEntries, schedules, currentMonthStart, currentMonthEnd]
+    () => calculatePunctuality(timeEntries, schedules, currentMonthStart, currentMonthEnd, performanceData.incidents || [], user),
+    [timeEntries, schedules, currentMonthStart, currentMonthEnd, performanceData.incidents, user]
   );
 
   // Calculate actual worked hours from completed time entries - MONTHLY RESET
@@ -199,10 +199,15 @@ export default function MyPerformanceAnalytics() {
 
     if (onTimeStats.total > 0 && (onTimeStats.late > 0 || onTimeStats.missed > 0)) {
       const problemDetails = onTimeStats.details
-        .filter(detail => detail.status === 'late' || detail.status === 'missed')
-        .map(detail => detail.status === 'missed'
-          ? `${format(parseISO(detail.shift_date), 'MMM d')}: scheduled ${detail.scheduled_start}${detail.location ? ` at ${detail.location.split(':')[0]}` : ''} — no clock-in was recorded.`
-          : `${format(parseISO(detail.shift_date), 'MMM d')}: scheduled ${detail.scheduled_start}, clocked in ${detail.actual_clock_in} (${detail.minutes_late} min late)${detail.location ? ` at ${detail.location.split(':')[0]}` : ''}`);
+        .filter(detail => ['late', 'missed', 'time_window_violation'].includes(detail.status))
+        .map(detail => {
+          if (detail.status === 'missed') return `${format(parseISO(detail.shift_date), 'MMM d')}: scheduled ${detail.scheduled_start}${detail.location ? ` at ${detail.location.split(':')[0]}` : ''} — no clock-in was recorded.`;
+          const issues = [];
+          if (detail.minutes_late > 5) issues.push(`${detail.minutes_late} min late arriving`);
+          if (detail.early_clock_in_violation) issues.push(`${detail.minutes_early} min early clock-in without a qualifying incident report`);
+          if (detail.late_clock_out_violation) issues.push(`${detail.late_clock_out_minutes} min late clock-out without a qualifying incident report`);
+          return `${format(parseISO(detail.shift_date), 'MMM d')}: ${issues.join('; ')}${detail.location ? ` at ${detail.location.split(':')[0]}` : ''}.`;
+        });
       factors.push({
         metric: 'On-Time Arrival',
         value: `${onTimeStats.rate}%`,
@@ -215,7 +220,7 @@ export default function MyPerformanceAnalytics() {
         metric: 'On-Time Arrival',
         value: '100%',
         severity: 'positive',
-        reason: `All ${onTimeStats.total} matched scheduled shift${onTimeStats.total === 1 ? '' : 's'} were on time within the 5-minute grace period.`
+        reason: `All ${onTimeStats.total} matched scheduled shift${onTimeStats.total === 1 ? '' : 's'} met the 5-minute arrival grace period and the 10-minute clock-in/clock-out boundaries.`
       });
     }
 
