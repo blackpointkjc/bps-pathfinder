@@ -35,7 +35,8 @@
   .cad-app main[data-page^="Admin"] h1 {
     font-size: 1.5rem !important;
     line-height: 1.2 !important;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
   }
 
   .cad-app main[data-page^="Admin"] h2 {
@@ -87,12 +88,9 @@
     gap: 0.75rem;
   }
 
-  .cad-app main[data-page^="Admin"] [class*="grid-cols-2"],
-  .cad-app main[data-page^="Admin"] [class*="grid-cols-3"],
-  .cad-app main[data-page^="Admin"] [class*="grid-cols-4"],
-  .cad-app main[data-page^="Admin"] [class*="grid-cols-5"],
-  .cad-app main[data-page^="Admin"] [class*="grid-cols-6"],
-  .cad-app main[data-page^="Admin"] [class*="grid-cols-7"] {
+  /* Keep page-authored phone/tablet grids intact. The former blanket
+     one-column rule made analytics and management pages unnecessarily tall. */
+  .cad-app main[data-page^="Admin"] form [class*="grid-cols-"] {
     grid-template-columns: minmax(0, 1fr) !important;
   }
 
@@ -143,7 +141,8 @@
   .cad-app main[data-page^="Admin"] label,
   .cad-app main[data-page^="Admin"] button,
   .cad-app main[data-page^="Admin"] a {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
   }
 
   .cad-app main[data-page^="Admin"] button,
