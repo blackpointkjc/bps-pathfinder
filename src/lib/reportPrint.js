@@ -132,6 +132,7 @@ export function openBlackPointReport({
   const signatureImage = safeImageUrl(signatureUrl);
   const signatureName = officer.signatureName || officer.name || officer.email || 'Officer';
   const cleanedPhotos = (photos || []).map(safeImageUrl).filter(Boolean);
+  const supplementalFooter = /dcjs|11-30423/i.test(String(footerNote || '')) ? '' : footerNote;
   const metaItems = [
     ...(reportNumber ? [{ label: 'Report Number', value: reportNumber }] : []),
     ...meta,
@@ -152,8 +153,8 @@ export function openBlackPointReport({
     .print-actions button { border: 0; border-radius: 6px; padding: 9px 13px; color: #fff; background: #0b1725; font-weight: 800; cursor: pointer; }
     .page-shell { width: 8.5in; max-width: 100%; margin: 18px auto; border-collapse: collapse; background: #fff; box-shadow: 0 16px 45px rgba(2, 9, 18, .22); }
     .page-shell > thead { display: table-header-group; }
-    .page-shell > thead > tr > td { padding: .28in .34in .12in; }
-    .page-shell > tbody > tr > td { padding: 0 .34in .3in; vertical-align: top; }
+    .page-shell > thead > tr > td { padding: .2in .28in .08in; }
+    .page-shell > tbody > tr > td { padding: 0 .28in .18in; vertical-align: top; }
     .brand-header { overflow: hidden; border: 1.5px solid #132a41; border-radius: 8px; }
     .brand-strip { height: 5px; background: linear-gradient(90deg, #56d8ee 0 28%, #d51f2b 28% 42%, #0b1725 42%); }
     .brand-main { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 10px 13px 9px; color: #fff; background: #0b1725; }
@@ -181,7 +182,8 @@ export function openBlackPointReport({
     .signature-mark { min-height: 23px; margin-top: 2px; padding: 2px 3px; border-bottom: 1px solid #0b1725; color: #0b1725; font-family: "Segoe Script", "Brush Script MT", cursive; font-size: 12pt; font-weight: 700; }
     .signature-mark img { max-width: 220px; max-height: 38px; object-fit: contain; }
     .signature-detail { margin-top: 3px; color: #496176; font-size: 6.5pt; }
-    .document-footer { margin-top: 7px; padding-top: 4px; border-top: 1px solid #b8c7d5; color: #496176; font-size: 6.2pt; text-align: center; }
+    .document-footer { margin-top: 5px; padding-top: 3px; border-top: 1px solid #b8c7d5; color: #496176; font-size: 6.2pt; text-align: center; }
+    p, .field-value { orphans: 2; widows: 2; }
     @media print {
       html, body { background: #fff; }
       .no-print { display: none !important; }
@@ -234,14 +236,33 @@ export function openBlackPointReport({
               <div class="signature-detail">Electronically signed through the authenticated Pathfinder account${officer.ip ? ` · IP ${escapePrintHtml(officer.ip)}` : ''}</div>
             </div>
           </section>
-          <div class="document-footer">Official Black Point Protection record. Times are displayed in ${escapePrintHtml(timeZone)} (${escapePrintHtml(zoneLabel)}).${footerNote ? ` ${escapePrintHtml(footerNote)}` : ''}</div>
+          <div class="document-footer"><strong>Black Point Protection · DCJS: 11-30423</strong> · Official Pathfinder record. Times are displayed in ${escapePrintHtml(timeZone)} (${escapePrintHtml(zoneLabel)}).${supplementalFooter ? ` ${escapePrintHtml(supplementalFooter)}` : ''}</div>
         </td>
       </tr>
     </tbody>
   </table>
   <script>
-    window.addEventListener('load', function () {
-      setTimeout(function () { window.print(); }, 400);
+    window.addEventListener('load', async function () {
+      const images = Array.from(document.images || []);
+      await Promise.all(images.map(function (img) {
+        if (img.complete) return Promise.resolve();
+        return new Promise(function (resolve) {
+          img.addEventListener('load', resolve, { once: true });
+          img.addEventListener('error', resolve, { once: true });
+        });
+      }));
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+      const shell = document.querySelector('.page-shell');
+      const oneLetterPage = 10.92 * 96;
+      const naturalHeight = shell ? shell.scrollHeight : 0;
+      // Compact a slight overflow onto one Letter page. Longer reports remain at
+      // normal size and flow to continuation pages with the repeated Black Point header.
+      if (shell && naturalHeight > oneLetterPage) {
+        const scale = oneLetterPage / naturalHeight;
+        if (scale >= 0.82) shell.style.zoom = String(Math.min(0.98, scale));
+      }
+      setTimeout(function () { window.print(); }, 150);
     });
   </script>
 </body>
