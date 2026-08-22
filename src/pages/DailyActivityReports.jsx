@@ -241,8 +241,8 @@ export default function DailyActivityReports() {
       } catch {}
 
       const gpsData = {};
-      if (Number.isFinite(Number(gpsLat))) gpsData.gps_latitude = Number(gpsLat);
-      if (Number.isFinite(Number(gpsLng))) gpsData.gps_longitude = Number(gpsLng);
+      if (gpsLat != null && gpsLat !== '' && Number.isFinite(Number(gpsLat))) gpsData.gps_latitude = Number(gpsLat);
+      if (gpsLng != null && gpsLng !== '' && Number.isFinite(Number(gpsLng))) gpsData.gps_longitude = Number(gpsLng);
 
       let locationToSubmit = data.location;
       if (!locationToSubmit && isAdmin) {
