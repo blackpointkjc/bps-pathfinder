@@ -103,7 +103,6 @@ export default function MicrosoftMailSetupGate({ user, children, enabled = true 
           }
           if (callback.success) {
             window.dispatchEvent(new CustomEvent('bps:outlook-connection-changed'));
-            await load({ force: true });
           }
         } catch (err) {
           if (active) setError(err?.message || 'Unable to complete Microsoft sign-in.');
