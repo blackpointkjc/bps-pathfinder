@@ -314,7 +314,7 @@ export default function AdminQRCheckpoints() {
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={8} className="p-8 text-center text-slate-400">No checkpoints found.</td></tr>
+                  <tr><td colSpan={8} className="p-8 text-center text-slate-400">{checkpointsLoading ? 'Loading QR checkpoints…' : 'No checkpoints found.'}</td></tr>
                 )}
               </tbody>
             </table>
