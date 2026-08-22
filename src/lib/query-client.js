@@ -18,7 +18,10 @@ export const queryClientInstance = new QueryClient({
 			// Base44 request budget and starving the CAD/GRAC call feed.
 			refetchInterval: false,
 			refetchIntervalInBackground: false,
-			staleTime: 30000,
+			// Many legacy pages provide initialData: [] only to keep rendering safe.
+			// Treat that placeholder as stale immediately so the page performs its
+			// first real fetch on mount instead of looking empty for 30 seconds.
+			staleTime: 0,
 			retry: 1,
 		},
 	},
