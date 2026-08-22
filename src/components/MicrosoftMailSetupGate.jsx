@@ -10,11 +10,39 @@ import {
   getMissingMicrosoftScopes,
 } from '@/lib/outlookGraph';
 
+const MICROSOFT_VERIFICATION_TTL_MS = 6 * 60 * 60 * 1000;
+
+function verificationKey(userId) {
+  return `bps:microsoft-verified:${String(userId || '').trim()}`;
+}
+
+function readVerifiedSession(userId) {
+  if (!userId || typeof window === 'undefined') return false;
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(verificationKey(userId)) || 'null');
+    return Boolean(saved?.connected && Date.now() - Number(saved?.verifiedAt || 0) < MICROSOFT_VERIFICATION_TTL_MS);
+  } catch {
+    return false;
+  }
+}
+
+function rememberVerifiedSession(userId) {
+  if (!userId || typeof window === 'undefined') return;
+  sessionStorage.setItem(verificationKey(userId), JSON.stringify({ connected: true, verifiedAt: Date.now() }));
+}
+
+function forgetVerifiedSession(userId) {
+  if (!userId || typeof window === 'undefined') return;
+  sessionStorage.removeItem(verificationKey(userId));
+}
+
 export default function MicrosoftMailSetupGate({ user, children, enabled = true }) {
-  const [status, setStatus] = useState({ loading: true, connected: false, configured: true });
+  const userId = user?.id;
+  const [status, setStatus] = useState(() => readVerifiedSession(userId)
+    ? { loading: false, connected: true, configured: true, sessionVerified: true }
+    : { loading: true, connected: false, configured: true });
   const [config, setConfig] = useState({ clientId: '', tenant: '' });
   const [error, setError] = useState('');
-  const userId = user?.id;
 
   const isCallback = useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -26,9 +54,13 @@ export default function MicrosoftMailSetupGate({ user, children, enabled = true 
     if (!enabled || !userId) return;
     let active = true;
 
-    const load = async () => {
+    const load = async ({ force = false } = {}) => {
+      if (!force && !isCallback && readVerifiedSession(userId)) {
+        setStatus({ loading: false, connected: true, configured: true, sessionVerified: true });
+        return;
+      }
       try {
-        setStatus(current => ({ ...current, loading: true, configured: true }));
+        setStatus(current => ({ ...current, loading: !current.connected, configured: true }));
         const currentConfig = await getMicrosoftMailConfig();
         if (!active) return;
         setConfig(currentConfig || { clientId: '', tenant: '' });
@@ -42,18 +74,21 @@ export default function MicrosoftMailSetupGate({ user, children, enabled = true 
         if (!active) return;
         const missingScopes = next.connected ? getMissingMicrosoftScopes(userId) : [];
         const fullyConnected = Boolean(next.connected && missingScopes.length === 0);
+        if (fullyConnected) rememberVerifiedSession(userId);
+        else forgetVerifiedSession(userId);
         setStatus({ ...next, connected: fullyConnected, missingScopes, loading: false, configured: true });
         if (fullyConnected) setError('');
         else if (next.connected && missingScopes.length) setError(`Microsoft permissions changed. Reconnect once to activate Teams sync. Missing: ${missingScopes.join(', ')}`);
       } catch (err) {
         if (!active) return;
+        forgetVerifiedSession(userId);
         setStatus({ loading: false, connected: false, configured: true });
         setError(err?.message || 'Unable to verify your Microsoft 365 connection.');
       }
     };
 
     load();
-    const onConnectionChanged = () => load();
+    const onConnectionChanged = () => load({ force: true });
     const onMicrosoftMessage = async event => {
       const sameOrigin = event.origin === window.location.origin;
       const productionOAuthOrigin = event.origin === getOutlookRedirectOrigin();
@@ -68,7 +103,7 @@ export default function MicrosoftMailSetupGate({ user, children, enabled = true 
           }
           if (callback.success) {
             window.dispatchEvent(new CustomEvent('bps:outlook-connection-changed'));
-            await load();
+            await load({ force: true });
           }
         } catch (err) {
           if (active) setError(err?.message || 'Unable to complete Microsoft sign-in.');
@@ -76,10 +111,15 @@ export default function MicrosoftMailSetupGate({ user, children, enabled = true 
         return;
       }
 
-      if (event.data?.type === 'bps:outlook-connected' && (!event.data.userId || event.data.userId === userId)) load();
+      if (event.data?.type === 'bps:outlook-connected' && (!event.data.userId || event.data.userId === userId)) load({ force: true });
     };
     const onStorage = event => {
-      if (event.key === `bps:outlook-token:${String(userId || '').trim()}` && event.newValue) load();
+      if (event.key !== `bps:outlook-token:${String(userId || '').trim()}`) return;
+      if (event.newValue) load({ force: true });
+      else {
+        forgetVerifiedSession(userId);
+        setStatus({ loading: false, connected: false, configured: true });
+      }
     };
     window.addEventListener('bps:outlook-connection-changed', onConnectionChanged);
     window.addEventListener('message', onMicrosoftMessage);
