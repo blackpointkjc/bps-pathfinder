@@ -129,6 +129,31 @@
       "type": "string",
       "description": "Additional supervisor notes"
     },
+    "workflow_stage": {
+      "type": "string",
+      "enum": [
+        "supervisor_pending",
+        "officer_pending",
+        "hr_approval_pending",
+        "approved"
+      ],
+      "default": "supervisor_pending",
+      "description": "Current step in the HR to supervisor to officer to HR review cycle"
+    },
+    "assignment_round": {
+      "type": "number",
+      "default": 1,
+      "description": "Supervisor assignment cycle sequence"
+    },
+    "supervisor_submitted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the assigned supervisor submitted ratings and feedback"
+    },
+    "supervisor_rating_comments": {
+      "type": "string",
+      "description": "Supervisor comments submitted with the ratings"
+    },
     "officer_acknowledged": {
       "type": "boolean",
       "default": false,
@@ -137,6 +162,37 @@
     "officer_comments": {
       "type": "string",
       "description": "Officer's comments on review"
+    },
+    "officer_punctuality_rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "officer_professionalism_rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "officer_uniform_appearance_rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "officer_communication_rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "officer_initiative_rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "officer_overall_rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Officer self-rating submitted before electronic signature"
     },
     "commendations_count": {
       "type": "number",
@@ -238,6 +294,30 @@
     "officer_acknowledged_by_id": {
       "type": "string",
       "description": "Immutable user ID of the officer who acknowledged the review"
+    },
+    "hr_approved": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether HR granted final approval"
+    },
+    "hr_approved_by": {
+      "type": "string",
+      "description": "HR user who granted final approval"
+    },
+    "hr_approved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When HR granted final approval"
+    },
+    "hr_approval_notes": {
+      "type": "string",
+      "description": "Final HR approval notes"
+    },
+    "final_rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Final overall rating approved by HR"
     }
   },
   "required": [
