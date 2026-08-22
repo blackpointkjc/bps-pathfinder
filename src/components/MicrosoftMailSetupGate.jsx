@@ -19,7 +19,7 @@ function verificationKey(userId) {
 function readVerifiedSession(userId) {
   if (!userId || typeof window === 'undefined') return false;
   try {
-    const saved = JSON.parse(sessionStorage.getItem(verificationKey(userId)) || 'null');
+    const saved = JSON.parse(localStorage.getItem(verificationKey(userId)) || 'null');
     return Boolean(saved?.connected && Date.now() - Number(saved?.verifiedAt || 0) < MICROSOFT_VERIFICATION_TTL_MS);
   } catch {
     return false;
@@ -28,12 +28,12 @@ function readVerifiedSession(userId) {
 
 function rememberVerifiedSession(userId) {
   if (!userId || typeof window === 'undefined') return;
-  sessionStorage.setItem(verificationKey(userId), JSON.stringify({ connected: true, verifiedAt: Date.now() }));
+  localStorage.setItem(verificationKey(userId), JSON.stringify({ connected: true, verifiedAt: Date.now() }));
 }
 
 function forgetVerifiedSession(userId) {
   if (!userId || typeof window === 'undefined') return;
-  sessionStorage.removeItem(verificationKey(userId));
+  localStorage.removeItem(verificationKey(userId));
 }
 
 export default function MicrosoftMailSetupGate({ user, children, enabled = true }) {
