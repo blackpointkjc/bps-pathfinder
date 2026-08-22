@@ -1,0 +1,16 @@
+{
+  "name": "generateAnnualPerformanceReviews",
+  "entrypoint": "entry.ts",
+  "automations": [
+    {
+      "name": "Generate annual officer performance reviews",
+      "description": "Checks daily at 8 AM Eastern and creates one idempotent review on or after each active officer's employment anniversary.",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "0 * * * *",
+      "is_active": true,
+      "function_args": {}
+    }
+  ]
+}
