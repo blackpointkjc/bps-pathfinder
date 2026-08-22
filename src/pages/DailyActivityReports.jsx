@@ -218,12 +218,16 @@ export default function DailyActivityReports() {
   const saveReportMutation = useMutation({
     mutationFn: async ({ data, isDraft }) => {
       let ipAddress = 'Unknown';
+      const ipController = new AbortController();
+      const ipTimeout = setTimeout(() => ipController.abort(), 3000);
       try {
-        const ipResponse = await fetch('https://api.ipify.org?format=json');
+        const ipResponse = await fetch('https://api.ipify.org?format=json', { signal: ipController.signal });
         const ipData = await ipResponse.json();
         ipAddress = ipData.ip;
       } catch (error) {
         console.error('Failed to get IP address:', error);
+      } finally {
+        clearTimeout(ipTimeout);
       }
 
       // Capture device timezone and GPS from the one app-wide location service.
@@ -235,6 +239,10 @@ export default function DailyActivityReports() {
         gpsLat = fix.latitude;
         gpsLng = fix.longitude;
       } catch {}
+
+      const gpsData = {};
+      if (Number.isFinite(Number(gpsLat))) gpsData.gps_latitude = Number(gpsLat);
+      if (Number.isFinite(Number(gpsLng))) gpsData.gps_longitude = Number(gpsLng);
 
       let locationToSubmit = data.location;
       if (!locationToSubmit && isAdmin) {
@@ -262,8 +270,7 @@ export default function DailyActivityReports() {
           officer_ip_address: ipAddress,
           signature_url: signatureUrl || data.signature_url || '',
           device_timezone: deviceTimezone,
-          gps_latitude: gpsLat,
-          gps_longitude: gpsLng,
+          ...gpsData,
           shift_id: activeEntry?.id || editingReport?.shift_id || '',
           officer_email: user?.email || editingReport?.officer_email || '',
         });
@@ -292,8 +299,7 @@ export default function DailyActivityReports() {
           officer_ip_address: ipAddress,
           signature_url: signatureUrl || '',
           device_timezone: deviceTimezone,
-          gps_latitude: gpsLat,
-          gps_longitude: gpsLng,
+          ...gpsData,
           shift_id: activeEntry?.id || '',
           officer_email: user?.email || '',
         });
@@ -340,7 +346,7 @@ export default function DailyActivityReports() {
     onError: (error) => {
       console.error('Error saving DAR:', error);
       setSaving(false);
-      toast.error('Failed to save report. Please try again.');
+      toast.error(error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Failed to save report. Please try again.');
     }
   });
 
@@ -364,7 +370,7 @@ export default function DailyActivityReports() {
 
   const handleSaveAsDraft = () => {
     if (!formData.report_date) {
-      alert('Please select a report date before saving as draft.');
+      toast.error('Please select a report date before saving as draft.');
       return;
     }
     setSaving(true);
@@ -777,7 +783,6 @@ export default function DailyActivityReports() {
                     value={formData.location}
                     onValueChange={(value) => setFormData(prev => ({...prev, location: value}))}
                     required
-                    disabled={!isAdmin && !!activeEntry?.location}
                   >
                     <SelectTrigger id="location">
                       <SelectValue placeholder="Select location" />
