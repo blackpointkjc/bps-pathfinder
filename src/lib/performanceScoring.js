@@ -84,13 +84,16 @@ function hasQualifyingIncident(incidents, officer, windowStart, windowEnd) {
   return incidents.some(report => {
     if (!isOfficerAuthoredIncident(report, officer) || ['draft', 'rejected'].includes(String(report?.status || '').toLowerCase())) return false;
     const incidentWall = incidentTimeWall(report);
-    const submittedAt = report?.submitted_date || report?.submitted_at || report?.created_date;
-    const submittedDate = easternDateKey(submittedAt);
-    const submittedTime = easternTimeKey(submittedAt);
-    const submittedWall = wallClockMinute(submittedDate, submittedTime);
-    return incidentWall != null && submittedWall != null &&
-      incidentWall >= windowStart && incidentWall <= windowEnd &&
-      submittedWall >= windowStart && submittedWall <= windowEnd;
+    if (incidentWall == null) return false;
+
+    // Overnight shifts are stored under the shift date. An incident entered as
+    // 02:10 for an Aug 19 20:00-02:00 shift occurred on the Aug 20 calendar day,
+    // even when the report keeps Aug 19 as its operational shift date. Accept the
+    // adjacent-day representation only when it lands inside this exact early/late
+    // punch window. Submitted/approved status is required; draft/rejected reports
+    // never excuse the violation.
+    return [incidentWall - 1440, incidentWall, incidentWall + 1440]
+      .some(candidate => candidate >= windowStart && candidate <= windowEnd);
   });
 }
 
