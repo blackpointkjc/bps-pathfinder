@@ -13,6 +13,7 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const me = await base44.auth.me();
     if (!me) return Response.json({ error:'Unauthorized' }, { status:401 });
+    const request = await req.json().catch(() => ({}));
     const roles = rolesOf(me);
     if (me.role !== 'admin' && !roles.has('supervisor') && !roles.has('full_access')) {
       return Response.json({ error:'Supervisor access required' }, { status:403 });
@@ -66,6 +67,20 @@ Deno.serve(async (req) => {
     }
     const emails = new Set([...aliasesByUser.values()].flatMap(set => [...set]));
     const isAssigned = (email:any) => emails.has(normalized(email));
+    const assignedPeople = assigned.map((u:any) => ({
+      id:u.id,
+      email:u.email,
+      work_email:u.email,
+      email_aliases:[...(aliasesByUser.get(String(u.id)) || new Set([normalized(u.email)].filter(Boolean)))],
+      first_name:u.first_name,
+      last_name:u.last_name,
+      rank:u.rank,
+      unit_number:u.unit_number,
+      platoon:u.platoon,
+      supervisor_id:u.supervisor_id,
+    }));
+    if (request?.peopleOnly) return Response.json({ assignedPeople });
+
     const [complaints, writeups, reviews, inspections] = await Promise.all([
       base44.asServiceRole.entities.Complaint.list('-complaint_date', 1000),
       base44.asServiceRole.entities.WriteUpReport.list('-report_date', 1000),
@@ -74,18 +89,7 @@ Deno.serve(async (req) => {
     ]);
 
     return Response.json({
-      assignedPeople: assigned.map((u:any) => ({
-        id:u.id,
-        email:u.email,
-        work_email:u.email,
-        email_aliases:[...(aliasesByUser.get(String(u.id)) || new Set([normalized(u.email)].filter(Boolean)))],
-        first_name:u.first_name,
-        last_name:u.last_name,
-        rank:u.rank,
-        unit_number:u.unit_number,
-        platoon:u.platoon,
-        supervisor_id:u.supervisor_id,
-      })),
+      assignedPeople,
       complaints: (complaints || []).filter((c:any) => isAssigned(c.officer_email) && ['pending','under_investigation'].includes(c.investigation_status)),
       writeups: (writeups || []).filter((w:any) => isAssigned(w.officer_email) && w.status === 'pending_approval'),
       reviews: (reviews || []).filter((r:any) => isAssigned(r.officer_email) && r.supervisor_review_pending && !r.supervisor_review_completed),
