@@ -124,7 +124,7 @@ export default function VACriminalComplaints() {
     queryKey: ['activeLocations', 'vaCriminalComplaints', user?.division || 'all'],
     queryFn: async () => {
       const allLocations = await listDirectoryLocations('site_name');
-      const activeLocations = allLocations.filter(loc => loc.active);
+      const activeLocations = allLocations.filter(loc => loc.active !== false);
       
       // Filter by division if user has one
       if (user?.division) {
