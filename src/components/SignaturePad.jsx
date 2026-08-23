@@ -2,7 +2,6 @@ import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PenTool, RotateCcw, Check, X } from "lucide-react";
-import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 
 export default function SignaturePad({ onSignatureComplete, onClose, officerName }) {
@@ -15,21 +14,23 @@ export default function SignaturePad({ onSignatureComplete, onClose, officerName
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Optimized for Zebra TC510K - high DPI canvas
+    // High-DPI canvas sized from the actual rendered pad. Keep drawing coordinates
+    // in CSS pixels so mouse, touch, and pen input line up on phones/tablets/desktops.
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * 2;
-    canvas.height = rect.height * 2;
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    canvas.width = Math.max(1, Math.round(rect.width * dpr));
+    canvas.height = Math.max(1, Math.round(rect.height * dpr));
     
     const ctx = canvas.getContext('2d');
-    ctx.scale(2, 2);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.lineWidth = 2;
     ctx.strokeStyle = '#1e40af';
     
-    // Add white background
+    // Add white background using CSS-pixel coordinates after the DPR transform.
     ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, rect.width, rect.height);
   }, []);
 
   const startDrawing = (e) => {
@@ -37,8 +38,9 @@ export default function SignaturePad({ onSignatureComplete, onClose, officerName
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
     
-    const x = (e.touches?.[0]?.clientX || e.clientX) - rect.left;
-    const y = (e.touches?.[0]?.clientY || e.clientY) - rect.top;
+    const point = e.touches?.[0] || e.changedTouches?.[0] || e;
+    const x = point.clientX - rect.left;
+    const y = point.clientY - rect.top;
     
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -54,8 +56,9 @@ export default function SignaturePad({ onSignatureComplete, onClose, officerName
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
     
-    const x = (e.touches?.[0]?.clientX || e.clientX) - rect.left;
-    const y = (e.touches?.[0]?.clientY || e.clientY) - rect.top;
+    const point = e.touches?.[0] || e.changedTouches?.[0] || e;
+    const x = point.clientX - rect.left;
+    const y = point.clientY - rect.top;
     
     ctx.lineTo(x, y);
     ctx.stroke();
@@ -68,8 +71,13 @@ export default function SignaturePad({ onSignatureComplete, onClose, officerName
   const clearSignature = () => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+    ctx.beginPath();
     setHasSignature(false);
   };
 
@@ -87,20 +95,13 @@ export default function SignaturePad({ onSignatureComplete, onClose, officerName
     setUploading(true);
     try {
       const canvas = canvasRef.current;
-      const blob = await withTimeout(
-        new Promise((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('Unable to prepare signature image.')), 'image/png')),
-        10000,
-        'The signature image took too long to prepare.'
-      );
-      const file = new File([blob], `signature-${Date.now()}.png`, { type: 'image/png' });
-      const upload = await withTimeout(
-        base44.integrations.Core.UploadFile({ file }),
-        30000,
-        'The signature upload timed out. Check your connection and try again.'
-      );
-      if (!upload?.file_url) throw new Error('The signature upload did not return a file.');
+      // Signatures are small PNG data URLs stored directly on the report record.
+      // This removes the UploadFile integration-credit dependency and makes captured
+      // signatures immediately available to every report print view.
+      const signatureDataUrl = canvas.toDataURL('image/png');
+      if (!signatureDataUrl?.startsWith('data:image/png')) throw new Error('Unable to prepare signature image.');
       await withTimeout(
-        Promise.resolve(onSignatureComplete(upload.file_url)),
+        Promise.resolve(onSignatureComplete(signatureDataUrl)),
         30000,
         'The signed review took too long to submit. Please try again.'
       );
