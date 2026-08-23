@@ -208,15 +208,14 @@ export default function MyPerformanceAnalytics() {
           if (detail.status === 'missed') return `${format(parseISO(detail.shift_date), 'MMM d')}: scheduled ${detail.scheduled_start}${detail.location ? ` at ${detail.location.split(':')[0]}` : ''} — no clock-in was recorded.`;
           const issues = [];
           if (detail.minutes_late > 5) issues.push(`${detail.minutes_late} min late arriving`);
-          if (detail.early_clock_in_violation) issues.push(`${detail.minutes_early} min early clock-in without a qualifying incident report`);
-          if (detail.late_clock_out_violation) issues.push(`${detail.late_clock_out_minutes} min late clock-out without a qualifying incident report`);
+
           return `${format(parseISO(detail.shift_date), 'MMM d')}: ${issues.join('; ')}${detail.location ? ` at ${detail.location.split(':')[0]}` : ''}.`;
         });
       factors.push({
         metric: 'On-Time Arrival',
         value: `${onTimeStats.rate}%`,
         severity: 'negative',
-        reason: `${onTimeStats.onTime} compliant, ${onTimeStats.late} arrival/time-boundary violation${onTimeStats.late === 1 ? '' : 's'}, and ${onTimeStats.missed || 0} missed/no-clock-in across ${onTimeStats.total} elapsed scheduled shift${onTimeStats.total === 1 ? '' : 's'}.`,
+        reason: `${onTimeStats.onTime} on-time arrival${onTimeStats.onTime === 1 ? '' : 's'}, ${onTimeStats.late} late arrival${onTimeStats.late === 1 ? '' : 's'}, and ${onTimeStats.missed || 0} missed/no-clock-in across ${onTimeStats.total} elapsed scheduled shift${onTimeStats.total === 1 ? '' : 's'}. Early clock-ins and late clock-outs are neutral for this metric.`, 
         details: problemDetails
       });
     } else if (onTimeStats.total > 0) {
@@ -224,7 +223,7 @@ export default function MyPerformanceAnalytics() {
         metric: 'On-Time Arrival',
         value: '100%',
         severity: 'positive',
-        reason: `All ${onTimeStats.total} matched scheduled shift${onTimeStats.total === 1 ? '' : 's'} met the 5-minute arrival grace period and the 10-minute clock-in/clock-out boundaries.`
+        reason: `All ${onTimeStats.total} matched scheduled shift${onTimeStats.total === 1 ? '' : 's'} met the 5-minute arrival grace period. Early clock-ins and late clock-outs do not reduce On-Time Arrival.`
       });
     }
 
