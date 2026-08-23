@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Bot, Loader2, FileText, MapPin, Calendar, ExternalLink, User, Radio } from 'lucide-react';
+import { Search, Bot, Loader2, FileText, MapPin, Calendar, ExternalLink, User, Radio, Car, ShieldAlert } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
@@ -33,22 +33,31 @@ export default function RecordsAssistant() {
   const [totalMatches, setTotalMatches] = useState(0);
   const [searching, setSearching] = useState(false);
   const [sourceFilter, setSourceFilter] = useState('all');
+  const [searchType, setSearchType] = useState('all');
+  const [warrantMatches, setWarrantMatches] = useState(0);
+  const [warrantStatusText, setWarrantStatusText] = useState('');
 
   const runSearch = async (event) => {
     event?.preventDefault();
     if (query.trim().length < 2) return;
     setSearching(true);
     try {
-      const response = await base44.functions.invoke('searchCompanyRecords', { query: query.trim() });
+      const response = await base44.functions.invoke('searchCompanyRecords', { query: query.trim(), search_type: searchType });
       const data = response?.data || response || {};
       if (data.error) throw new Error(data.error);
       const returnedResults = data.results || [];
       setResults(returnedResults);
       setSearchedSources(data.searched_sources || 0);
       setTotalMatches(data.total_matches || 0);
-      // If a person/record search returns a linked call, announce the call type
-      // so CAD users do not have to stop and read the result immediately.
-      announceRecordSearch(returnedResults);
+      setWarrantMatches(data.warrant_matches || 0);
+      setWarrantStatusText(data.warrant_status_text || '');
+      // Person searches also announce the Pathfinder warrant-record check. This is
+      // explicitly company-records data, not an external NCIC/state warrant query.
+      announceRecordSearch(returnedResults, {
+        searchType,
+        warrantMatches: data.warrant_matches || 0,
+        warrantStatusText: data.warrant_status_text || '',
+      });
       setSourceFilter('all');
     } catch (error) {
       toast.error(error?.message || 'Company record search failed');
@@ -73,25 +82,31 @@ export default function RecordsAssistant() {
 
         <Card className="border-slate-700 bg-[#111d2b]">
           <CardContent className="p-4">
+            <div className="mb-3 grid grid-cols-3 gap-2">
+              <button type="button" onClick={() => setSearchType('all')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'all' ? 'border-blue-500 bg-blue-500/15 text-blue-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><Search className="h-3.5 w-3.5" />ALL RECORDS</button>
+              <button type="button" onClick={() => setSearchType('person')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'person' ? 'border-cyan-500 bg-cyan-500/15 text-cyan-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><User className="h-3.5 w-3.5" />PEOPLE</button>
+              <button type="button" onClick={() => setSearchType('vehicle')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'vehicle' ? 'border-amber-500 bg-amber-500/15 text-amber-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><Car className="h-3.5 w-3.5" />MOTOR VEHICLES</button>
+            </div>
             <form onSubmit={runSearch} className="flex flex-col gap-3 sm:flex-row">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Example: John Smith, ABC-1234, 804-555-0123, 123 Main Street..." className="h-12 border-slate-600 bg-[#0b1522] pl-10 text-white" />
+                <Input value={query} onChange={e => setQuery(e.target.value)} placeholder={searchType === 'person' ? 'Name, DOB, ID or driver license…' : searchType === 'vehicle' ? 'Plate, VIN, year, make, model or color…' : 'Name, plate, phone, address, report or call number…'} className="h-12 border-slate-600 bg-[#0b1522] pl-10 text-white" />
               </div>
               <Button type="submit" disabled={searching || query.trim().length < 2} className="h-12 bg-blue-700 hover:bg-blue-600">
                 {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}SEARCH ALL RECORDS
               </Button>
             </form>
             <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
-              <span>Searches CAD calls, call history, BOLOs, incident reports, trespass notices, parking and moving violations, summonses, complaints, use-of-force, inspections, write-ups, daily activity, maintenance, open-door, QR patrol, and shift reports.</span>
+              <span>People search checks names, DOB/ID/license fields and structured parties. Motor Vehicle search checks plates, VINs, registration details, BOLO vehicles, parking/moving violations, summonses, incidents and fleet records.</span>
             </div>
           </CardContent>
         </Card>
 
-        {(results.length > 0 || totalMatches > 0) && (
+        {(results.length > 0 || totalMatches > 0 || warrantStatusText) && (
           <div className="flex flex-wrap items-center gap-2">
             <Badge className="bg-blue-500/15 text-blue-300">{totalMatches} MATCHES</Badge>
             <Badge variant="outline" className="border-slate-600 text-slate-300">{searchedSources} SOURCES SEARCHED</Badge>
+            {searchType === 'person' && warrantStatusText && <Badge variant="outline" className={warrantMatches > 0 ? 'border-red-600/60 text-red-300' : 'border-emerald-600/60 text-emerald-300'}><ShieldAlert className="mr-1 h-3 w-3" />{warrantStatusText.toUpperCase()}</Badge>
             <button onClick={() => setSourceFilter('all')} className={`rounded border px-2 py-1 text-xs ${sourceFilter === 'all' ? 'border-blue-500 bg-blue-500/15 text-blue-200' : 'border-slate-700 text-slate-400'}`}>All</button>
             {sources.map(source => <button key={source} onClick={() => setSourceFilter(source)} className={`rounded border px-2 py-1 text-xs ${sourceFilter === source ? 'border-blue-500 bg-blue-500/15 text-blue-200' : 'border-slate-700 text-slate-400'}`}>{source}</button>)}
           </div>
@@ -117,7 +132,10 @@ export default function RecordsAssistant() {
                       <h2 className="truncate text-lg font-bold text-white">{item.label || item.id}</h2>
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
                         {item.person && <span className="flex items-center gap-1"><User className="h-3 w-3" />{item.person}</span>}
-                        {item.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{item.location}</span>}
+                        {(item.vehicle_plate || item.vehicle_description) && <span className="flex items-center gap-1"><Car className="h-3 w-3" />{[item.vehicle_description, item.vehicle_plate ? `Plate ${item.vehicle_plate}${item.vehicle_state ? ` ${item.vehicle_state}` : ''}` : ''].filter(Boolean).join(' · ')}</span>}
+                        {item.vehicle_vin && <span className="font-mono">VIN {item.vehicle_vin}</span>}
+                        {item.warrant_issued && <span className="flex items-center gap-1 font-bold text-red-300"><ShieldAlert className="h-3 w-3" />WARRANT RECORD{item.warrant_number ? ` ${item.warrant_number}` : ''}</span>}
+                        {item.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{item.location}</span>
                         {item.date && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(item.date).toLocaleDateString()}</span>}
                       </div>
                       {item.linked_call_location && <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-cyan-300">Related CAD Location: {item.linked_call_location}</p>}
@@ -134,7 +152,10 @@ export default function RecordsAssistant() {
         </div>
 
         {!searching && query && results.length === 0 && totalMatches === 0 && (
-          <div className="rounded-xl border border-dashed border-slate-700 p-12 text-center text-slate-500">No company reports matched this search.</div>
+          <div className="rounded-xl border border-dashed border-slate-700 p-12 text-center text-slate-500">
+            <div className="font-bold text-slate-300">NO MATCHING {searchType === 'person' ? 'PERSON' : searchType === 'vehicle' ? 'MOTOR VEHICLE' : 'COMPANY'} RECORDS</div>
+            {searchType === 'person' && <div className="mt-2 text-sm text-emerald-400">No warrant records located in Pathfinder.</div>}
+          </div>
         )}
       </div>
     </div>
