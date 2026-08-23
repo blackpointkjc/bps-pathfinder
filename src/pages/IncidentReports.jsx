@@ -169,7 +169,15 @@ export default function IncidentReports() {
   const draftReports = reportsPotentiallyVisible.filter(r => r.status === 'draft' && (
     String(r.created_by_id || '') === String(user?.id || '') || directoryUserMatches(user, r.created_by || r.officer_email)
   )) || [];
-  const submittedReports = reportsPotentiallyVisible.filter(r => r.status !== 'draft') || [];
+  const submittedReports = React.useMemo(() => {
+    const submitted = (reportsPotentiallyVisible || []).filter(r => r.status !== 'draft');
+    if (isAdmin || !currentSiteName) return submitted;
+    const activeSite = String(currentSiteName).split(':')[0].split(' - ')[0].trim().toLowerCase();
+    return submitted.filter(report => {
+      const reportSite = String(report.location || '').split(':')[0].split(' - ')[0].trim().toLowerCase();
+      return reportSite === activeSite;
+    });
+  }, [reportsPotentiallyVisible, isAdmin, currentSiteName]);
 
   const { data: locations } = useQuery({
     queryKey: ['activeLocations'],
