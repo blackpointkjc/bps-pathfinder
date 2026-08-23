@@ -21,7 +21,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '../utils';
-import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
+import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers, invalidateAppDirectory } from '@/lib/appDirectory';
 
 export default function AdminUsers() {
   const navigate = useNavigate();
@@ -195,9 +195,11 @@ export default function AdminUsers() {
   const updateUserMutation = useMutation({
     mutationFn: ({ id, userData }) => base44.entities.User.update(id, userData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
-      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      invalidateAppDirectory();
+      queryClient.invalidateQueries({ predicate: query => {
+        const key = JSON.stringify(query.queryKey || []).toLowerCase();
+        return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('training');
+      }});
       setShowDialog(false);
       setEditingUser(null);
       alert('User updated successfully');
@@ -519,9 +521,12 @@ export default function AdminUsers() {
       await base44.entities.User.update(editingUser, { profile_photo_url: file_url });
       setEditFormData(prev => ({ ...prev, profile_photo_url: file_url }));
       setPhotoToCrop(null);
-      queryClient.invalidateQueries({ queryKey: ['portalUsers'] });
-      queryClient.invalidateQueries({ queryKey: ['trainingUsers'] });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      invalidateAppDirectory();
+      await queryClient.invalidateQueries({ predicate: query => {
+        const key = JSON.stringify(query.queryKey || []).toLowerCase();
+        return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('training');
+      }});
+      window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated', { detail: { userId: editingUser, profile_photo_url: file_url } }));
     } catch (error) {
       console.error('Profile photo upload failed:', error);
       alert('Unable to save the cropped profile photo.');
