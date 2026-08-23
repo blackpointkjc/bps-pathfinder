@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, MessageCircle, Plus, Search, Send, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTeamsDirectChatMessages, listTeamsDirectChats, sendTeamsDirectMessage } from '@/lib/teamsGraph';
@@ -27,6 +27,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
   const [sending, setSending] = useState(false);
   const [microsoftMe, setMicrosoftMe] = useState(null);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches);
+  const messagesEndRef = useRef(null);
 
   const activeUsers = useMemo(() => users.filter(user => !user.termination_date && user.id !== currentUser.id && user.email !== currentUser.email), [users, currentUser.id, currentUser.email]);
   const selected = chats.find(chat => chat.id === selectedChatId) || null;
@@ -95,20 +96,25 @@ export default function UniversalInbox({ currentUser, users = [] }) {
     }
   };
 
-  const loadChatMessages = async chatId => {
+  const scrollMessagesToBottom = (behavior = 'auto') => {
+    window.requestAnimationFrame(() => messagesEndRef.current?.scrollIntoView({ block: 'end', behavior }));
+  };
+
+  const loadChatMessages = async (chatId, { showLoading = false } = {}) => {
     if (!chatId || !currentUser?.id) {
       setChatMessages([]);
       return;
     }
-    setLoadingMessages(true);
+    if (showLoading) setLoadingMessages(true);
     try {
       const rows = await getTeamsDirectChatMessages(currentUser.id, chatId, { limit: 100 });
       setChatMessages(rows || []);
       setSyncError('');
+      scrollMessagesToBottom();
     } catch (error) {
       setSyncError(error?.message || 'Microsoft Teams message history could not be loaded.');
     } finally {
-      setLoadingMessages(false);
+      if (showLoading) setLoadingMessages(false);
     }
   };
 
@@ -151,11 +157,11 @@ export default function UniversalInbox({ currentUser, users = [] }) {
       return undefined;
     }
     let stopped = false;
-    const refreshMessages = async () => {
-      if (!stopped) await loadChatMessages(selectedChatId);
+    const refreshMessages = async (showLoading = false) => {
+      if (!stopped) await loadChatMessages(selectedChatId, { showLoading });
     };
-    refreshMessages();
-    const interval = window.setInterval(refreshMessages, 30000);
+    refreshMessages(true);
+    const interval = window.setInterval(() => refreshMessages(false), 30000);
     const onFocus = () => refreshMessages();
     window.addEventListener('focus', onFocus);
     return () => {
@@ -196,6 +202,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
         created_date: new Date().toISOString(),
       };
       setChatMessages(current => [...current.filter(item => item.id !== optimistic.id), optimistic]);
+      scrollMessagesToBottom('smooth');
       const seen = readSeenMap();
       seen[selected.id] = optimistic.created_date;
       writeSeenMap(seen);
@@ -268,6 +275,7 @@ export default function UniversalInbox({ currentUser, users = [] }) {
               return <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}><div className="max-w-[78%]"><div className={`mb-1 px-2 text-[10px] text-slate-500 ${mine ? 'text-right' : ''}`}>{mine ? 'You' : message.sender_name}</div><div className={`break-words rounded-2xl px-4 py-2 text-sm ${mine ? 'rounded-br-sm bg-blue-600' : 'rounded-bl-sm bg-slate-800'}`}>{messageBody(message)}</div><div className={`mt-1 px-2 text-[9px] text-slate-600 ${mine ? 'text-right' : ''}`}>{message.created_date ? new Date(message.created_date).toLocaleString() : ''}</div></div></div>;
             })}
             {!loadingMessages && !chatMessages.length && <div className="py-12 text-center text-sm text-slate-500">No messages were returned from this Teams conversation.</div>}
+            <div ref={messagesEndRef} aria-hidden="true" />
           </div>
           <div className="flex shrink-0 gap-2 border-t border-slate-700 p-2.5 sm:p-4"><input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} placeholder="Message in Microsoft Teams" className="min-w-0 flex-1 rounded-full border border-slate-600 bg-slate-800 px-4 py-2 text-sm outline-none focus:border-blue-400" /><button onClick={send} disabled={!text.trim() || sending} className="rounded-full bg-blue-600 p-3 disabled:opacity-40">{sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}</button></div>
         </> : <div className="m-auto text-center text-slate-500"><MessageCircle className="mx-auto mb-3 h-12 w-12" /><p>Select a Microsoft Teams conversation</p></div>}
