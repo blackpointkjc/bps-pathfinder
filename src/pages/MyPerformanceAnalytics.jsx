@@ -289,7 +289,7 @@ export default function MyPerformanceAnalytics() {
               <span className="flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Overall Performance Score</span>
               <span className="text-4xl font-black">{overallPerformance.score !== null ? `${overallPerformance.score}%` : '—'}</span>
             </CardTitle>
-            <p className="text-xs text-blue-100">Configured weights are 55% On-Time Arrival, 15% Job Duty, 15% Call-Out Attendance, and 3% each for Training, Bid Standing, Client Feedback, Supervisor Rating, and Recognition. Metrics with no real record are omitted and the remaining weights are normalized, so missing data never appears as a false 100%.</p>
+            <p className="text-xs text-blue-100">Performance uses actual attendance and documented evaluation records. DAR, incident-report, and QR requirements are not used as performance deductions. Metrics with no real record are omitted instead of being shown as a false score.</p>
           </CardHeader>
           <CardContent className="p-4">
             <p className="text-sm text-slate-600">
