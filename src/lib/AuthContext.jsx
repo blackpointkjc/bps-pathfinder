@@ -243,12 +243,32 @@ export const AuthProvider = ({ children }) => {
   }, [isAuthenticated, user?.id, user?.email]);
 
   const logout = useCallback(async (shouldRedirect = true) => {
-    // Before clearing the auth token, force any CAD officer Out of Service so
-    // logout can never leave a ghost Available unit on dispatch/status boards.
+    // Before clearing the auth token, force the signed-in CAD identity Out of
+    // Service. The backend is authoritative; the direct Unit/ActiveOfficer cleanup
+    // below is a last-resort fallback so a transient function failure cannot leave
+    // a ghost Available officer on dispatch after sign-out.
     try {
-      await base44.functions.invoke('enforceOfficerDutyStatus', { action: 'logout' });
+      const response = await base44.functions.invoke('enforceOfficerDutyStatus', { action: 'logout' });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
     } catch (error) {
-      console.warn('[AUTH] Unable to force Out of Service before logout:', error?.message);
+      console.warn('[AUTH] Duty-status logout function failed; applying client fallback:', error?.message);
+      try {
+        const now = new Date().toISOString();
+        const units = await base44.entities.Unit.list(undefined, 500).catch(() => []);
+        const mine = (units || []).filter(unit => String(unit.user_id || '') === String(user?.id || ''));
+        await Promise.all(mine.map(unit => base44.entities.Unit.update(unit.id, {
+          status: 'Out of Service',
+          assigned_call_ids: [],
+          last_update_at: now,
+        }).catch(() => null)));
+        const liveRows = user?.email
+          ? await base44.entities.ActiveOfficer.filter({ officer_email: user.email }).catch(() => [])
+          : [];
+        await Promise.all((liveRows || []).map(row => base44.entities.ActiveOfficer.delete(row.id).catch(() => null)));
+      } catch (fallbackError) {
+        console.warn('[AUTH] Duty-status logout fallback also failed:', fallbackError?.message);
+      }
     }
 
     setUser(null);
@@ -262,7 +282,7 @@ export const AuthProvider = ({ children }) => {
       // Just remove the token without redirect
       base44.auth.logout();
     }
-  }, []);
+  }, [user?.id, user?.email]);
 
   const navigateToLogin = useCallback(() => {
     try { sessionStorage.removeItem('bps:auth-provider'); } catch {}
