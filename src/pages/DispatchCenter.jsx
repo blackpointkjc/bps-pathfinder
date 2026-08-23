@@ -97,14 +97,17 @@ export default function DispatchCenter() {
         const localInterval = setInterval(() => {
             loadActiveCalls();
         }, 20000);
-        const unitsInterval = setInterval(loadUnits, 60000);
+        const unitsInterval = setInterval(loadUnits, 10000);
         const secondaryInterval = setInterval(loadMonitoredProperties, 120000);
+        const onStatusChanged = () => loadUnits();
+        window.addEventListener('bps-officer-status-changed', onStatusChanged);
 
         return () => {
             unsubscribeCalls?.();
             clearInterval(localInterval);
             clearInterval(unitsInterval);
             clearInterval(secondaryInterval);
+            window.removeEventListener('bps-officer-status-changed', onStatusChanged);
         };
     }, []);
 
