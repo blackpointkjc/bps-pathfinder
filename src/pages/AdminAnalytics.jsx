@@ -442,7 +442,7 @@ export default function AdminAnalytics() {
           <Card className="min-w-0 border border-slate-800 bg-slate-900 text-white shadow-lg">
             <CardContent className="p-4">
               <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
-              <p className="text-2xl font-bold text-green-600">{companyOnTimeStats.rate || 0}%</p>
+              <p className="text-2xl font-bold text-green-600">{companyOnTimeStats.rate != null ? `${companyOnTimeStats.rate}%` : '—'}</p>
               <p className="text-xs text-slate-400">On-Time Rate</p>
             </CardContent>
           </Card>
