@@ -463,6 +463,10 @@ export default function AdminPayroll() {
                 <div class="summary-value" style="color: #16a34a;">${grandTotalHoliday.toFixed(2)}</div>
               </div>
               <div>
+                <div class="summary-label">PTO Hours</div>
+                <div class="summary-value" style="color: #7c3aed;">${grandTotalPTO.toFixed(2)}</div>
+              </div>
+              <div>
                 <div class="summary-label">Expenses</div>
                 <div class="summary-value" style="color: #8b5cf6;">$${grandTotalExpenses.toFixed(2)}</div>
               </div>
@@ -488,10 +492,18 @@ export default function AdminPayroll() {
                     Reg: ${data.regularHours.toFixed(2)} @ $${(data.hourlyRate || 0).toFixed(2)}
                     ${data.overtimeHours > 0 ? `| OT: ${data.overtimeHours.toFixed(2)} @ $${(data.overtimeRate || 0).toFixed(2)}` : ''}
                     ${data.holidayHours > 0 ? `| Holiday: ${data.holidayHours.toFixed(2)}` : ''}
+                    ${data.ptoHours > 0 ? `| PTO: ${data.ptoHours.toFixed(2)} @ $${(data.hourlyRate || 0).toFixed(2)} straight time` : ''}
                   </div>
                 </div>
               </div>
               
+              ${data.ptoHours > 0 ? `
+              <div class="info-box" style="background:#f5f3ff;border:1px solid #c4b5fd;">
+                <div class="info-box-title" style="color:#6d28d9;">PTO: ${data.ptoHours.toFixed(2)}h @ $${(data.hourlyRate || 0).toFixed(2)}/hr straight time = $${(data.ptoPay || 0).toFixed(2)}</div>
+                <div style="font-size:7pt;color:#6b7280;margin-top:3px;">PTO is paid time only. It is excluded from worked-hour overtime calculations.</div>
+              </div>
+              ` : ''}
+
               ${data.holidayDetails && data.holidayDetails.length > 0 ? `
               <div class="info-box" style="background: #dcfce7; border: 1px solid #86efac;">
                 <div class="info-box-title" style="color: #16a34a;">🎉 Holiday: ${data.holidayHours.toFixed(2)}h @ $${(data.holidayRate || 0).toFixed(2)}/hr = $${(data.holidayPay || 0).toFixed(2)}</div>
@@ -519,7 +531,7 @@ export default function AdminPayroll() {
               </div>
 
               <div class="info-box" style="background: #dbeafe; border: 1px solid #93c5fd;">
-                <div class="info-box-title" style="color: #1e40af;">💰 Pay: $${(data.regularPay || 0).toFixed(2)}${data.overtimePay > 0 ? ` + $${data.overtimePay.toFixed(2)} OT` : ''}${data.holidayPay > 0 ? ` + $${data.holidayPay.toFixed(2)} Holiday` : ''}${(data.totalExpenses || 0) > 0 ? ` + $${data.totalExpenses.toFixed(2)} Exp` : ''} = $${(data.totalPay || 0).toFixed(2)}</div>
+                <div class="info-box-title" style="color: #1e40af;">💰 Pay: $${(data.regularPay || 0).toFixed(2)}${data.overtimePay > 0 ? ` + $${data.overtimePay.toFixed(2)} OT` : ''}${data.holidayPay > 0 ? ` + $${data.holidayPay.toFixed(2)} Holiday` : ''}${data.ptoPay > 0 ? ` + $${data.ptoPay.toFixed(2)} PTO` : ''}${(data.totalExpenses || 0) > 0 ? ` + $${data.totalExpenses.toFixed(2)} Exp` : ''} = $${(data.totalPay || 0).toFixed(2)}</div>
               </div>
 
               ${(data.expenses && data.expenses.length > 0) ? `
