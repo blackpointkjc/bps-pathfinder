@@ -511,7 +511,7 @@ export default function AdminAnalytics() {
               <BarChart3 className="h-5 w-5 text-cyan-400" />
               Officer Overall Performance — Current Month
             </CardTitle>
-            <p className="text-xs text-slate-400">Uses the same scoring engine as Officer My Performance. A metric with no real record is omitted and the remaining configured weights are normalized; missing data is never displayed as a made-up 100%.</p>
+            <p className="text-xs text-slate-400">Uses the same scoring engine as Officer My Performance. Job Duty includes DAR, required Incident Reports, and QR compliance. When there is no obligation, the count is shown as 0/0 and does not create a fake 100% score.</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -536,13 +536,13 @@ export default function AdminAnalytics() {
                   </div>
                   <div className="mt-3 grid gap-2 sm:grid-cols-3">
                     <div className="rounded-md border border-slate-700 bg-slate-900/70 px-2 py-2 text-xs text-slate-300">
-                      <span className="font-bold text-white">DAR:</span> {officer.jobDuty.dailyActivity.score != null ? `${officer.jobDuty.dailyActivity.score}%` : '—'} <span className="text-slate-500">({officer.jobDuty.dailyActivity.completed}/{officer.jobDuty.dailyActivity.required})</span>
+                      <span className="font-bold text-white">DAR:</span> <span className="text-slate-300">{officer.jobDuty.dailyActivity.completed}/{officer.jobDuty.dailyActivity.required}</span>{officer.jobDuty.dailyActivity.score != null && <span className="text-slate-500"> · {officer.jobDuty.dailyActivity.score}%</span>}
                     </div>
                     <div className="rounded-md border border-slate-700 bg-slate-900/70 px-2 py-2 text-xs text-slate-300">
-                      <span className="font-bold text-white">Incident:</span> {officer.jobDuty.incidentReports.score != null ? `${officer.jobDuty.incidentReports.score}%` : '—'} <span className="text-slate-500">({officer.jobDuty.incidentReports.completed}/{officer.jobDuty.incidentReports.required})</span>
+                      <span className="font-bold text-white">Incident:</span> <span className="text-slate-300">{officer.jobDuty.incidentReports.completed}/{officer.jobDuty.incidentReports.required}</span>{officer.jobDuty.incidentReports.score != null && <span className="text-slate-500"> · {officer.jobDuty.incidentReports.score}%</span>}
                     </div>
                     <div className="rounded-md border border-slate-700 bg-slate-900/70 px-2 py-2 text-xs text-slate-300">
-                      <span className="font-bold text-white">QR:</span> {officer.jobDuty.qrCompliance.score != null ? `${officer.jobDuty.qrCompliance.score}%` : '—'} <span className="text-slate-500">({officer.jobDuty.qrCompliance.completed}/{officer.jobDuty.qrCompliance.required})</span>
+                      <span className="font-bold text-white">QR:</span> <span className="text-slate-300">{officer.jobDuty.qrCompliance.completed}/{officer.jobDuty.qrCompliance.required}</span>{officer.jobDuty.qrCompliance.score != null && <span className="text-slate-500"> · {officer.jobDuty.qrCompliance.score}%</span>}
                     </div>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-400">
