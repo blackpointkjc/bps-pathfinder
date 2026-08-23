@@ -167,6 +167,20 @@ export default function MyPerformanceAnalytics() {
     recognition: recognitionStats,
   }), [onTimeStats, trainingStats, jobDuty, callOutAttendance, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
 
+  const categoryRatings = useMemo(() => [
+    { label: 'On-Time Arrival', score: onTimeStats.total > 0 ? onTimeStats.rate : null, detail: onTimeStats.total > 0 ? `${onTimeStats.onTime} on time • ${onTimeStats.late} late • ${onTimeStats.missed || 0} missed` : 'No elapsed scheduled shifts' },
+    { label: 'Job Duty / Performance', score: jobDuty.score, detail: `DAR ${jobDuty.dailyActivity.completed}/${jobDuty.dailyActivity.required} • Incident ${jobDuty.incidentReports.completed}/${jobDuty.incidentReports.required} • QR ${jobDuty.qrCompliance.completed}/${jobDuty.qrCompliance.required}` },
+    { label: 'Daily Activity Reports', score: jobDuty.dailyActivity.score, detail: jobDuty.dailyActivity.required > 0 ? `${jobDuty.dailyActivity.completed} complete • ${jobDuty.dailyActivity.missed} missing • ${jobDuty.dailyActivity.required} required` : 'No completed worked shifts in period' },
+    { label: 'Incident Reports', score: jobDuty.incidentReports.score, detail: jobDuty.incidentReports.required > 0 ? `${jobDuty.incidentReports.completed} complete • ${jobDuty.incidentReports.missed} missing • ${jobDuty.incidentReports.excluded || 0} excluded` : 'No configured incident-report obligation' },
+    { label: 'QR Compliance', score: jobDuty.qrCompliance.score, detail: jobDuty.qrCompliance.required > 0 ? `${jobDuty.qrCompliance.completed} complete • ${jobDuty.qrCompliance.missed} missed • ${jobDuty.qrCompliance.excludedInvalid || 0} excluded` : 'No configured QR obligation' },
+    { label: 'Call-Out Attendance', score: callOutAttendance.score, detail: callOutAttendance.score != null ? `${callOutAttendance.count} call-out${callOutAttendance.count === 1 ? '' : 's'} across ${callOutAttendance.scheduled} elapsed scheduled shifts` : 'No elapsed scheduled shifts' },
+    { label: 'Training Completion', score: trainingStats.total > 0 ? trainingStats.percentage : null, detail: trainingStats.total > 0 ? `${trainingStats.completed} complete • ${trainingStats.pending} pending • ${trainingStats.total} assigned` : 'No assigned training/compliance records' },
+    { label: 'Bid Standing', score: bidStats.score, detail: bidStats.score != null ? `${bidStats.accepted} assigned shift bid${bidStats.accepted === 1 ? '' : 's'}` : 'No assigned bid outcome to score' },
+    { label: 'Client Feedback', score: clientFeedbackStats.score, detail: clientFeedbackStats.score != null ? `${clientFeedbackStats.avgRating.toFixed(1)}/5 average • ${clientFeedbackStats.count} rating${clientFeedbackStats.count === 1 ? '' : 's'}` : 'No client ratings this month' },
+    { label: 'Supervisor Rating', score: supervisorRatingStats.score, detail: supervisorRatingStats.score != null ? `${supervisorRatingStats.avgRating.toFixed(1)}/5 average • ${supervisorRatingStats.count} review${supervisorRatingStats.count === 1 ? '' : 's'}` : 'No supervisor rating this month' },
+    { label: 'Recognition', score: recognitionStats.score, detail: recognitionStats.score != null ? `${recognitionStats.commendations.length} commendation${recognitionStats.commendations.length === 1 ? '' : 's'} • ${recognitionStats.positiveFeedback.length} positive client recognition` : 'No recognition record this month' },
+  ], [onTimeStats, jobDuty, callOutAttendance, trainingStats, bidStats, clientFeedbackStats, supervisorRatingStats, recognitionStats]);
+
   const performanceFactors = useMemo(() => {
     const factors = [];
 
@@ -328,87 +342,33 @@ export default function MyPerformanceAnalytics() {
           </CardContent>
         </Card>
 
-        {/* Quick Stats */}
-        <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4">
-          <Card className="border-none shadow-lg bg-gradient-to-br from-green-50 to-emerald-100">
-            <CardContent className="p-3 sm:p-4">
-              <CheckCircle2 className="w-6 h-6 text-green-600 mb-2" />
-              <p className="text-2xl font-bold text-green-600 sm:text-3xl">{onTimeStats.total > 0 ? `${onTimeStats.rate}%` : '—'}</p>
-              <p className="text-xs font-semibold text-slate-700">On-Time Arrival</p>
-              <p className="mt-1 text-[11px] text-slate-600">
-                {onTimeStats.total > 0 ? `${onTimeStats.onTime} compliant • ${onTimeStats.late} time violations • ${onTimeStats.missed || 0} missed • ${onTimeStats.total} elapsed shifts` : 'No elapsed scheduled shifts yet'}
-              </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Performance Category Ratings</h2>
+            <p className="text-sm text-slate-600">Every scoring category and Job Duty subcategory is shown below. A dash means there is no scoreable obligation or record for that category.</p>
+          </div>
+          <Card className="border border-blue-200 bg-blue-50 shadow-sm sm:min-w-48">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2"><Clock className="h-5 w-5 text-blue-600" /><span className="text-xs font-semibold text-slate-700">Hours This Month</span></div>
+              <p className="mt-1 text-2xl font-black text-blue-700">{hoursData.total}h</p>
             </CardContent>
           </Card>
-
-          <Card className="border-none shadow-lg bg-gradient-to-br from-blue-50 to-indigo-100">
-            <CardContent className="p-3 sm:p-4">
-              <Clock className="w-6 h-6 text-blue-600 mb-2" />
-              <p className="text-2xl font-bold text-blue-600 sm:text-3xl">{hoursData.total}h</p>
-              <p className="text-xs text-slate-600">Hours This Month</p>
-            </CardContent>
-          </Card>
-
-          {trainingStats.total > 0 && (
-            <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-violet-100">
-              <CardContent className="p-3 sm:p-4">
-                <Award className="w-6 h-6 text-purple-600 mb-2" />
-                <p className="text-2xl font-bold text-purple-600 sm:text-3xl">{trainingStats.percentage}%</p>
-                <p className="text-xs font-semibold text-slate-700">Training Completion</p>
-                <p className="mt-1 text-[11px] text-slate-600">{trainingStats.completed} complete • {trainingStats.pending} pending • {trainingStats.total} assigned</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {bidStats.score != null && (
-            <Card className="border-none shadow-lg bg-gradient-to-br from-amber-50 to-orange-100">
-              <CardContent className="p-3 sm:p-4">
-                <Star className="w-6 h-6 text-amber-600 mb-2" />
-                <p className="text-2xl font-bold text-amber-600 sm:text-3xl">{bidStats.score}%</p>
-                <p className="text-xs font-semibold text-slate-700">Bid Standing</p>
-                <p className="mt-1 text-[11px] text-slate-600">{bidStats.accepted} assigned shift bid{bidStats.accepted === 1 ? '' : 's'}</p>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-          {callOutAttendance.score != null && (
-            <Card className="border border-rose-200 bg-rose-50 shadow-sm">
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {categoryRatings.map(category => (
+            <Card key={category.label} className="min-w-0 border border-slate-200 bg-white shadow-sm">
               <CardContent className="p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Call-Out Attendance</p>
-                <p className="mt-1 text-2xl font-bold text-rose-900">{callOutAttendance.score}%</p>
-                <p className="text-xs text-slate-600">{callOutAttendance.count > 0 ? `${callOutAttendance.count} officer call-out${callOutAttendance.count === 1 ? '' : 's'} across ${callOutAttendance.scheduled} elapsed scheduled shifts` : `0 call-outs across ${callOutAttendance.scheduled} elapsed scheduled shifts`}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-700">{category.label}</p>
+                  <Badge className={category.score == null ? 'bg-slate-500 text-white' : category.score >= 90 ? 'bg-green-600 text-white' : category.score >= 75 ? 'bg-amber-600 text-white' : 'bg-red-600 text-white'}>
+                    {category.score == null ? '—' : `${category.score}%`}
+                  </Badge>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600">{category.detail}</p>
               </CardContent>
             </Card>
-          )}
-          {clientFeedbackStats.score != null && (
-            <Card className="border border-blue-200 bg-blue-50 shadow-sm">
-              <CardContent className="p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Client Feedback</p>
-                <p className="mt-1 text-2xl font-bold text-blue-900">{clientFeedbackStats.score}%</p>
-                <p className="text-xs text-slate-600">{clientFeedbackStats.avgRating.toFixed(1)}/5 average from {clientFeedbackStats.count} rating{clientFeedbackStats.count === 1 ? '' : 's'}</p>
-              </CardContent>
-            </Card>
-          )}
-          {supervisorRatingStats.score != null && (
-            <Card className="border border-violet-200 bg-violet-50 shadow-sm">
-              <CardContent className="p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">Supervisor Rating</p>
-                <p className="mt-1 text-2xl font-bold text-violet-900">{supervisorRatingStats.score}%</p>
-                <p className="text-xs text-slate-600">{supervisorRatingStats.avgRating.toFixed(1)}/5 average from {supervisorRatingStats.count} review{supervisorRatingStats.count === 1 ? '' : 's'}</p>
-              </CardContent>
-            </Card>
-          )}
-          {recognitionStats.score != null && (
-            <Card className="border border-emerald-200 bg-emerald-50 shadow-sm">
-              <CardContent className="p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Recognition</p>
-                <p className="mt-1 text-2xl font-bold text-emerald-900">{recognitionStats.score}%</p>
-                <p className="text-xs text-slate-600">{recognitionStats.commendations.length} commendation{recognitionStats.commendations.length === 1 ? '' : 's'} • {recognitionStats.positiveFeedback.length} positive client recognition</p>
-              </CardContent>
-            </Card>
-          )}
+          ))}
         </div>
 
         <Card className="overflow-hidden border border-slate-200 shadow-lg">
