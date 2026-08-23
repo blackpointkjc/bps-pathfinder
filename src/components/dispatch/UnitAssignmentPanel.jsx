@@ -8,6 +8,13 @@ import { Plus, X, Search } from 'lucide-react';
 import { announceVoice } from '@/utils/voiceAnnouncer';
 
 const isOperationalUnit = isOperationalOfficer;
+const displayUnitName = (unit) => {
+    const rank = String(unit?.rank || '').trim();
+    const last = String(unit?.last_name || '').trim();
+    if (rank && last) return `${rank} ${last}`;
+    return unit?.full_name || unit?.officer_name || (unit?.unit_number ? `Unit ${unit.unit_number}` : 'Field Unit');
+};
+const displayProperty = (unit) => String(unit?.current_location || unit?.assigned_location || unit?.location || 'No current property').split(':')[0].trim();
 
 export default function UnitAssignmentPanel({ call, units, onUpdate }) {
     const [searchTerm, setSearchTerm] = useState('');
@@ -38,7 +45,7 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
             const payload = result?.data || result || {};
             if (payload.error) throw new Error(payload.error);
 
-            const unitName = unit.unit_number || (unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name);
+            const unitName = displayUnitName(unit);
             const callNumber = call.agency_cad_number || call.bps_reference || call.call_id || 'reference pending';
             const incident = call.incident || 'call for service';
             const location = call.location || 'address unavailable';
@@ -63,7 +70,7 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
             const payload = result?.data || result || {};
             if (payload.error) throw new Error(payload.error);
 
-            const unitName = unit.unit_number || (unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name);
+            const unitName = displayUnitName(unit);
             toast.success(`${unitName} unassigned from call`);
             onUpdate();
         } catch (error) {
@@ -96,11 +103,13 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
                 {assignedUnits.length > 0 ? (
                     <div className="space-y-1">
                         {assignedUnits.map(unit => {
-                            const unitName = unit.unit_number || (unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name);
+                            const unitName = displayUnitName(unit);
                             return (
                                 <div key={unit.id} className="flex items-center justify-between rounded-xl border border-emerald-800/40 bg-emerald-950/15 p-2.5">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-white text-xs font-semibold truncate">{unitName}</p>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-xs font-black text-white">{unitName}</p>
+                                        <p className="mt-0.5 truncate text-[10px] text-slate-400">{displayProperty(unit)}</p>
+                                        {unit.unit_number && <p className="mt-0.5 text-[9px] font-bold text-blue-300">UNIT {unit.unit_number}</p>}
                                     </div>
                                     <Button
                                         variant="ghost"
@@ -141,18 +150,20 @@ export default function UnitAssignmentPanel({ call, units, onUpdate }) {
                         </div>
                     ) : (
                         availableUnits.map(unit => {
-                            const unitName = unit.unit_number || (unit.rank && unit.last_name ? `${unit.rank} ${unit.last_name}` : unit.full_name);
+                            const unitName = displayUnitName(unit);
                             const distance = call.latitude && call.longitude && unit.latitude && unit.longitude
                                 ? calculateDistance(call.latitude, call.longitude, unit.latitude, unit.longitude)
                                 : null;
                             
                             return (
                                 <div key={unit.id} className="flex items-center justify-between rounded-xl border border-slate-700 bg-[#101b29] p-2.5 transition-colors hover:border-blue-700/60 hover:bg-[#142236]">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-white text-xs font-semibold truncate">{unitName}</p>
-                                        {distance && (
-                                            <p className="text-[10px] text-slate-400">{(distance * 0.621371).toFixed(1)} mi</p>
-                                        )}
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-xs font-black text-white">{unitName}</p>
+                                        <p className="mt-0.5 truncate text-[10px] text-slate-400">{displayProperty(unit)}</p>
+                                        <div className="mt-1 flex flex-wrap items-center gap-x-2 text-[9px] font-bold text-blue-300">
+                                            {unit.unit_number && <span>UNIT {unit.unit_number}</span>}
+                                            {distance && <span className="text-slate-500">{(distance * 0.621371).toFixed(1)} mi</span>}
+                                        </div>
                                     </div>
                                     <Button
                                         size="sm"
