@@ -583,7 +583,7 @@ export default function AdminAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2 max-h-80 overflow-y-auto">
-                {companyOnTimeStats.byOfficer && companyOnTimeStats.byOfficer.length > 0 ? companyOnTimeStats.byOfficer.slice(0, 3).map((officer, idx) => (
+                {companyOnTimeStats.leaderboard && companyOnTimeStats.leaderboard.length > 0 ? companyOnTimeStats.leaderboard.map((officer, idx) => (
                   <div key={officer.email} className="flex items-center justify-between p-2 border border-slate-700 bg-slate-800 rounded-lg">
                     <div className="flex items-center gap-3">
                       <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
