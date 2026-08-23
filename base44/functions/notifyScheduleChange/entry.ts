@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk';
 
-const LOGO_URL = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/857a5f1c1_UntitledProject3.png';
+const LOGO_URL = 'https://bpspf.blackpointkjc.com/black-point-shield.webp';
 const PORTAL_SCHEDULE_URL = 'https://bpspf.blackpointkjc.com/Schedule';
 
 const safe = (value: unknown) => String(value ?? '')
