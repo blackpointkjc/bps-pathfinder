@@ -22,7 +22,9 @@
         "training_renewal_reminder",
         "missed_qr_checkpoints",
         "qr_patrol_report",
-        "schedule_changed"
+        "schedule_changed",
+        "call_assignment",
+        "call_unassignment"
       ],
       "description": "Type of notification"
     },
