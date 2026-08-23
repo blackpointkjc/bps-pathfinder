@@ -105,6 +105,7 @@ export default function OfficerPerformanceReviews() {
       setSigning(null);
       setComments('');
       setSelfRatings(emptyRatings());
+      window.dispatchEvent(new CustomEvent('pathfinder:performance-review-updated'));
       await load();
     } catch (error) {
       toast.error(error?.response?.data?.error || error?.message || 'Unable to submit your signed review.');
