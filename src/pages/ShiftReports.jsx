@@ -45,6 +45,8 @@ export default function ShiftReports() {
     patrol_count: "",
     visitors_logged: "",
     doors_checked: "",
+    starting_mileage: "",
+    ending_mileage: "",
     activities: "",
     incidents: "",
     vehicles_noted: "",
@@ -226,7 +228,7 @@ export default function ShiftReports() {
           : (isAdmin ? "Admin - Remote Submission" : "Unknown Location");
       }
 
-      const { patrol_count, visitors_logged, doors_checked, ...restData } = data;
+      const { patrol_count, visitors_logged, doors_checked, starting_mileage, ending_mileage, ...restData } = data;
       const saveData = {
         ...restData,
         location: locationToSubmit,
@@ -237,6 +239,8 @@ export default function ShiftReports() {
       if (patrol_count !== '' && patrol_count != null) saveData.patrol_count = Number(patrol_count);
       if (visitors_logged !== '' && visitors_logged != null) saveData.visitors_logged = Number(visitors_logged);
       if (doors_checked !== '' && doors_checked != null) saveData.doors_checked = Number(doors_checked);
+      if (starting_mileage !== '' && starting_mileage != null) saveData.starting_mileage = Number(starting_mileage);
+      if (ending_mileage !== '' && ending_mileage != null) saveData.ending_mileage = Number(ending_mileage);
 
       if (editingReport) {
         // Update existing report
@@ -326,6 +330,8 @@ export default function ShiftReports() {
         patrol_count: "",
         visitors_logged: "",
         doors_checked: "",
+    starting_mileage: "",
+    ending_mileage: "",
         activities: "",
         incidents: "",
         vehicles_noted: "",
@@ -397,6 +403,8 @@ export default function ShiftReports() {
       patrol_count: report.patrol_count || "",
       visitors_logged: report.visitors_logged || "",
       doors_checked: report.doors_checked || "",
+      starting_mileage: report.starting_mileage ?? "",
+      ending_mileage: report.ending_mileage ?? "",
       activities: report.status === 'draft' && report.activities === 'Draft - Activities pending' ? '' : report.activities,
       incidents: report.incidents || "",
       vehicles_noted: report.vehicles_noted || "",
@@ -722,6 +730,8 @@ export default function ShiftReports() {
                   patrol_count: "",
                   visitors_logged: "",
                   doors_checked: "",
+    starting_mileage: "",
+    ending_mileage: "",
                   activities: "",
                   incidents: "",
                   vehicles_noted: "",
@@ -855,15 +865,10 @@ export default function ShiftReports() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="doors_checked">Doors/Areas Checked</Label>
-                  <Input
-                    id="doors_checked"
-                    type="number"
-                    placeholder="Number of doors/areas checked"
-                    value={formData.doors_checked}
-                    onChange={(e) => setFormData({...formData, doors_checked: e.target.value})}
-                  />
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2"><Label htmlFor="doors_checked">Doors/Areas Checked</Label><Input id="doors_checked" type="number" placeholder="0" value={formData.doors_checked} onChange={(e) => setFormData({...formData, doors_checked: e.target.value})} /></div>
+                  <div className="space-y-2"><Label htmlFor="starting_mileage">Starting Mileage</Label><Input id="starting_mileage" type="number" min="0" step="1" placeholder="Start odometer" value={formData.starting_mileage} onChange={(e) => setFormData({...formData, starting_mileage: e.target.value})} /></div>
+                  <div className="space-y-2"><Label htmlFor="ending_mileage">Ending Mileage</Label><Input id="ending_mileage" type="number" min="0" step="1" placeholder="End odometer" value={formData.ending_mileage} onChange={(e) => setFormData({...formData, ending_mileage: e.target.value})} />{formData.starting_mileage !== '' && formData.ending_mileage !== '' && Number(formData.ending_mileage) >= Number(formData.starting_mileage) && <p className="text-xs font-semibold text-blue-300">Miles driven: {Number(formData.ending_mileage) - Number(formData.starting_mileage)}</p>}</div>
                 </div>
 
                 <div className="space-y-2">
