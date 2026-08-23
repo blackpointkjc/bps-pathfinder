@@ -52,19 +52,33 @@ Deno.serve(async (req) => {
             base44.asServiceRole.entities.User.update(user.id, updateData)
         ]);
 
-        // Keep any linked Unit record synchronized as well. Some CAD/map components
-        // still read Unit, so this prevents a stale second status from contradicting User.
-        const units = await base44.asServiceRole.entities.Unit.list(undefined, 500);
+        // Keep all CAD status sources synchronized. ActiveOfficer is the live source
+        // used by the canonical unit board, so leaving it stale would immediately
+        // overwrite an officer's self-selected status with an older value.
+        const [units, activeOfficers] = await Promise.all([
+            base44.asServiceRole.entities.Unit.list(undefined, 500).catch(() => []),
+            base44.asServiceRole.entities.ActiveOfficer.list(undefined, 1000).catch(() => []),
+        ]);
         const linkedUnits = (units || []).filter((unit: any) =>
             unit.user_id === user.id || String(unit.user_email || '').toLowerCase() === String(user.email || '').toLowerCase()
         );
-        await Promise.all(linkedUnits.map((unit: any) => base44.asServiceRole.entities.Unit.update(unit.id, {
-            status,
-            last_updated: now,
-            last_update_at: now,
-        })));
+        const linkedActive = (activeOfficers || []).filter((active: any) =>
+            String(active.officer_email || '').toLowerCase() === String(user.email || '').toLowerCase()
+        );
+        await Promise.all([
+            ...linkedUnits.map((unit: any) => base44.asServiceRole.entities.Unit.update(unit.id, {
+                status,
+                last_updated: now,
+                last_update_at: now,
+            }).catch(() => null)),
+            ...linkedActive.map((active: any) => base44.asServiceRole.entities.ActiveOfficer.update(active.id, {
+                status,
+                last_update: now,
+                ...(status === 'Available' || status === 'Out of Service' ? { current_call_info: '' } : {}),
+            }).catch(() => null)),
+        ]);
 
-        return Response.json({ success: true, status });
+        return Response.json({ success: true, status, active_records_updated: linkedActive.length, unit_records_updated: linkedUnits.length });
 
     } catch (error) {
         console.error('Error updating officer status:', error);
