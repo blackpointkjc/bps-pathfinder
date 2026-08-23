@@ -78,7 +78,11 @@ export default function AdminPTOLossReport() {
   });
 
   // Calculate PTO based on actual time entries for the selected date range
-  const calculatePTOFromTimeEntries = (officerEmail, startDateStr, endDateStr) => {
+  const calculatePTOFromTimeEntries = (officer, startDateStr, endDateStr) => {
+    const officerEmail = officer?.email || '';
+    const rank = String(officer?.rank || '').trim().toLowerCase();
+    const annualEntitlement = rank === 'colonel' || rank === 'lt colonel' || rank === 'lieutenant colonel' ? 180 : 40;
+    const accrualRate = annualEntitlement / 2040;
     if (!timeEntries || !callOuts) return { accrued: 0, callOutDays: 0, shifts: [] };
 
     const start = startDateStr ? new Date(startDateStr) : new Date(`${selectedYear}-01-01T00:00:00`);
@@ -138,8 +142,10 @@ export default function AdminPTOLossReport() {
       }
     });
 
-    // PTO accrual: 4 hours per full day worked (8+ hours)
-    const accrued = daysWorked * 4;
+    // PTO accrues proportionally by worked hours, using the same annual policy as
+    // calculatePTOForOfficer. Call-out dates marked affects_pto do not accrue.
+    const eligibleHours = Object.entries(dailyHours).reduce((sum, [date, hours]) => callOutDates.has(date) ? sum : sum + Number(hours || 0), 0);
+    const accrued = Math.min(annualEntitlement, eligibleHours * accrualRate);
 
     return {
       accrued,
@@ -169,10 +175,12 @@ export default function AdminPTOLossReport() {
       .filter(u => u.first_name && u.last_name && u.email)
       .filter(u => selectedOfficerEmail === "all" || u.email === selectedOfficerEmail)
       .map(u => {
-        const { accrued, callOutDays, daysWorked, shifts } = calculatePTOFromTimeEntries(u.email, start, end);
+        const { accrued, callOutDays, daysWorked, shifts } = calculatePTOFromTimeEntries(u, start, end);
         const used = u.pto_year_to_date_used || 0;
+        const rank = String(u.rank || '').trim().toLowerCase();
+        const annualEntitlement = rank === 'colonel' || rank === 'lt colonel' || rank === 'lieutenant colonel' ? 180 : 40;
         const actualBalance = accrued - used;
-        const cappedBalance = Math.min(actualBalance, 40);
+        const cappedBalance = Math.min(actualBalance, annualEntitlement);
         const hoursLost = Math.max(0, actualBalance - cappedBalance);
         
         return {
@@ -182,6 +190,7 @@ export default function AdminPTOLossReport() {
           used,
           actualBalance,
           cappedBalance,
+          annualEntitlement,
           hoursLost,
           division: u.division,
           subdivision: u.subdivision,
@@ -369,7 +378,7 @@ export default function AdminPTOLossReport() {
                 <td>${format(new Date(shift.clockOut), 'h:mm a')}</td>
                 <td>${shift.hours.toFixed(2)}</td>
                 <td>${shift.location || 'N/A'}</td>
-                <td>${shift.isCallOutDay ? '<strong style="color: #dc2626;">NO PTO (Call-Out)</strong>' : shift.hours >= 8 ? '<strong style="color: #22c55e;">+4 hrs PTO</strong>' : 'No PTO (&lt;8hrs)'}</td>
+                <td>${shift.isCallOutDay ? '<strong style="color: #dc2626;">NO PTO (Call-Out)</strong>' : '<strong style="color: #22c55e;">Accrues by worked hours</strong>'}</td>
               </tr>
             `).join('')}
           </tbody>
