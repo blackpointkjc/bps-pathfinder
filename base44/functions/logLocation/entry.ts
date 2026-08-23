@@ -31,7 +31,6 @@ Deno.serve(async (req) => {
       current_location: String(body.current_location || user.current_location || user.assigned_location || 'Signed In'),
       clock_in_time: String(body.clock_in_time || now),
       last_update: now,
-      status: String(body.status || user.status || 'Signed In'),
       user_role: String(body.user_role || user.role || 'user'),
       session_active: true,
       show_lights: body.show_lights === true,
@@ -52,6 +51,11 @@ Deno.serve(async (req) => {
       100,
     );
     const primary = records?.[0] || null;
+    // Location heartbeats do not own CAD status. Preserve the current live status
+    // unless the caller deliberately supplies one (for initial session creation).
+    // This prevents a stale Layout user object from overwriting On Patrol/Enroute/
+    // On Scene/Busy after updateOfficerStatus has already changed it.
+    liveData.status = String(body.status || primary?.status || user.status || 'Signed In');
     const activeOfficer = primary
       ? await base44.asServiceRole.entities.ActiveOfficer.update(primary.id, liveData)
       : await base44.asServiceRole.entities.ActiveOfficer.create(liveData);
