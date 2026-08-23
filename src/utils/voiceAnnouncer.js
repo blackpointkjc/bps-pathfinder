@@ -218,9 +218,16 @@ export function announceDistressSignalAsync({ unit, name }) {
   return announceVoiceAsync(`Emergency traffic. Officer distress signal. Signal 13. ${unit ? `Unit ${unit}.` : 'Unit unknown.'} ${name ? `Officer ${name}.` : ''} All available units respond.`, { dedupeMs: 15000, rate: 0.76, pitch: 0.62 });
 }
 
-export function announceRecordSearch(results = []) {
+export function announceRecordSearch(results = [], metadata = {}) {
+  const isPersonSearch = metadata.searchType === 'person';
+  const warrantText = isPersonSearch
+    ? (metadata.warrantMatches > 0
+      ? `${metadata.warrantMatches} warrant record${metadata.warrantMatches === 1 ? '' : 's'} located in Pathfinder.`
+      : 'No warrant records located in Pathfinder.')
+    : '';
+
   if (!results.length) {
-    announceVoice('CAD records response. No matching records located.', { dedupeMs: 3000, rate: 0.82, pitch: 0.68 });
+    announceVoice(`CAD records response. No matching records located.${warrantText ? ` ${warrantText}` : ''}`, { dedupeMs: 3000, rate: 0.82, pitch: 0.68 });
     return;
   }
   const linked = results.find(item => item.linked_call_number || item.call_number || item.call_type || item.incident_type || item.call_incident || item.linked_call_type);
@@ -228,8 +235,8 @@ export function announceRecordSearch(results = []) {
     const callType = linked.linked_call_type || linked.call_type || linked.incident_type || linked.call_incident || 'related call';
     const callNumber = linked.linked_call_number || linked.call_number || '';
     const location = linked.linked_call_location || linked.location || '';
-    announceVoice(`CAD records response. ${results.length} matches located. Related call, ${callType}${callNumber ? `. Call number ${callNumber}` : ''}${location ? `. Location ${location}` : ''}.`, { dedupeMs: 5000, rate: 0.82, pitch: 0.68 });
+    announceVoice(`CAD records response. ${results.length} matches located. Related call, ${callType}${callNumber ? `. Call number ${callNumber}` : ''}${location ? `. Location ${location}` : ''}.${warrantText ? ` ${warrantText}` : ''}`, { dedupeMs: 5000, rate: 0.82, pitch: 0.68 });
   } else {
-    announceVoice(`CAD records response. ${results.length} matching records located.`, { dedupeMs: 5000, rate: 0.82, pitch: 0.68 });
+    announceVoice(`CAD records response. ${results.length} matching records located.${warrantText ? ` ${warrantText}` : ''}`, { dedupeMs: 5000, rate: 0.82, pitch: 0.68 });
   }
 }
