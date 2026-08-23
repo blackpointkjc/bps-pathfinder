@@ -17,7 +17,6 @@ export default function SupervisorChat() {
   const messagesEndRef = useRef(null);
   const [teamsConfig, setTeamsConfig] = useState(null);
   const [teamsSyncError, setTeamsSyncError] = useState('');
-  const needsMicrosoftConnection = /connection required|authorization expired|reconnect/i.test(String(teamsSyncError || liveTeamsError?.message || '')); 
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -48,6 +47,8 @@ export default function SupervisorChat() {
     retry: false,
     staleTime: 60000,
   });
+
+  const needsMicrosoftConnection = /connection required|authorization expired|reconnect/i.test(String(teamsSyncError || liveTeamsError?.message || ''));
 
   useEffect(() => {
     if (!user?.id) return undefined;
