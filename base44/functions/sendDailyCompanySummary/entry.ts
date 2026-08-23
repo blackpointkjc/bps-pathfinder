@@ -455,7 +455,9 @@ Deno.serve(async (req) => {
 
     const [
       users, metricData, reportTodos, trainingAssignments, trainingModules,
-      trainingCompletions, certificationAlerts, dailyReports,
+      trainingCompletions, certificationAlerts, dailyReports, shiftBids,
+      qrScans, qrCheckpoints, callOuts, dutyRules, locations, clientFeedback,
+      performanceReviews, propertyAlerts,
     ] = await Promise.all([
       safeList(base44, 'User', 'last_name'),
       loadPerformanceMetricData(base44),
@@ -465,6 +467,15 @@ Deno.serve(async (req) => {
       safeList(base44, 'TrainingCompletion', '-completed_date'),
       safeList(base44, 'CertificationAlert', 'expiration_date'),
       safeList(base44, 'DailyActivityReport', '-report_date'),
+      safeList(base44, 'ShiftBid', '-created_date'),
+      safeList(base44, 'QRScanEvent', '-scanned_at'),
+      safeList(base44, 'QRCheckpoint', 'property_site'),
+      safeList(base44, 'CallOut', '-call_out_date'),
+      safeList(base44, 'JobDutyRule', 'property_site'),
+      safeList(base44, 'Location', 'site_name'),
+      safeList(base44, 'ClientFeedback', '-feedback_date'),
+      safeList(base44, 'PerformanceReview', '-review_date'),
+      safeList(base44, 'PropertyAlert', '-created_date'),
     ]);
 
     const recipients = (users || []).filter(isInternalActiveUser);
