@@ -23,7 +23,6 @@ import AdminComplaints from './AdminComplaints';
 import AdminCommendations from './AdminCommendations';
 import AdminClientFeedback from './AdminClientFeedback';
 import AdminAnnouncements from './AdminAnnouncements';
-import AdminNotifications from './AdminNotifications';
 import AdminSpecialRequests from './AdminSpecialRequests';
 import AdminDocuments from './AdminDocuments';
 import AdminQRCheckpoints from './AdminQRCheckpoints';
@@ -37,7 +36,7 @@ const SECTIONS = [
   { id: 'schedule', label: 'Scheduling & Fleet', description: 'Scheduling, bids, fleet and availability', icon: Calendar },
   { id: 'people', label: 'Personnel & Sites', description: 'Users, locations, equipment and chain', icon: Users },
   { id: 'reports', label: 'Reports & Quality', description: 'All operational review and quality tools', icon: ClipboardList },
-  { id: 'communications', label: 'Communications', description: 'Announcements, notifications, requests and documents', icon: MessageCircle },
+  { id: 'communications', label: 'Communications', description: 'Announcements, requests and documents', icon: MessageCircle },
   { id: 'system', label: 'System & Support', description: 'QR patrol, portal settings and support clock', icon: Settings },
 ];
 
@@ -73,7 +72,6 @@ const TOOLS = {
   ],
   communications: [
     { id: 'announcements', label: 'Announcements', component: AdminAnnouncements },
-    { id: 'notifications', label: 'Notifications', component: AdminNotifications },
     { id: 'requests', label: 'Special Requests', component: AdminSpecialRequests },
     { id: 'documents', label: 'Documents', component: AdminDocuments },
   ],
