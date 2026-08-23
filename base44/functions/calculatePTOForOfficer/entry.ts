@@ -38,22 +38,24 @@ Deno.serve(async (req) => {
     const normalizedRank = String(officer.rank || '').trim().toLowerCase();
     const annualEntitlement = normalizedRank === 'colonel' || normalizedRank === 'lt colonel' || normalizedRank === 'lieutenant colonel' ? 180 : 40;
 
-    // PTO is a calendar-year accrual. Bonus/grant records are tracked separately
-    // from leave usage so an HR award adds to available PTO instead of being counted
-    // as PTO that the officer used.
-    const allRequests = await base44.asServiceRole.entities.TimeOffRequest.list();
-    const isBonusRecord = (r: any) => /^PTO Bonus\b|^Admin PTO Grant\b/i.test(String(r.admin_notes || ''));
-    const ownedCurrentYear = allRequests.filter(r => {
-      const requestOwner = String(r.created_by || r.requested_by_email || '').trim().toLowerCase();
+    // Leave requests and balance adjustments are separate ledgers. Only actual
+    // approved paid leave counts as PTO used. Bonuses/grants never count as earned accrual.
+    const [allRequests, allAdjustments] = await Promise.all([
+      base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000),
+      base44.asServiceRole.entities.PTOAdjustment.list('-granted_at', 5000),
+    ]);
+    const ownedCurrentYear = (allRequests || []).filter((r: any) => {
+      const requestOwner = String(r.requested_by_email || '').trim().toLowerCase();
       const requestDate = new Date(r.start_date || r.created_date || 0);
       return requestOwner === String(officer_email).trim().toLowerCase() &&
         r.status === 'approved' &&
         r.request_type === 'paid' &&
         requestDate.getFullYear() === currentYear;
     });
-    const approvedPaidRequests = ownedCurrentYear.filter(r => !isBonusRecord(r));
-    const bonusRecords = ownedCurrentYear.filter(isBonusRecord);
-    const bonusHours = bonusRecords.reduce((sum, req) => sum + Number(req.hours_requested || 0), 0);
+    const approvedPaidRequests = ownedCurrentYear;
+    const bonusHours = (allAdjustments || [])
+      .filter((entry: any) => String(entry.officer_email || '').trim().toLowerCase() === String(officer_email).trim().toLowerCase() && entry.active !== false)
+      .reduce((sum: number, entry: any) => sum + Number(entry.hours || 0), 0);
 
     // Build list of date ranges where officer was actually on paid leave.
     const ptoDateRanges = approvedPaidRequests.map(req => ({
@@ -95,18 +97,9 @@ Deno.serve(async (req) => {
     const accrualRate = annualEntitlement / 2040;
     const ptoAccruedFromWork = Math.min(annualEntitlement, totalHoursWorked * accrualRate);
 
-    // Historical sick-leave conversion is preserved as a legacy credit, but the
-    // calendar-year PTO total may never exceed the rank entitlement.
-    let sickLeaveBonus = 0;
-    const conversionDate = new Date('2025-01-03');
-    if (now >= conversionDate && !officer.sick_leave_converted) {
-      sickLeaveBonus = 15;
-      await base44.asServiceRole.entities.User.update(officer.id, { sick_leave_converted: true });
-    } else if (officer.sick_leave_converted) {
-      sickLeaveBonus = 15;
-    }
-
-    const totalPtoAccrued = Math.min(annualEntitlement, ptoAccruedFromWork + sickLeaveBonus);
+    // Earned PTO comes only from worked hours. There is no sick-leave conversion
+    // or sick-time credit in the PTO accrual calculation.
+    const totalPtoAccrued = Math.min(annualEntitlement, ptoAccruedFromWork);
 
     // Calculate used PTO
     const ptoUsed = approvedPaidRequests.reduce((sum, req) => sum + (req.hours_requested || 0), 0);
@@ -132,7 +125,6 @@ Deno.serve(async (req) => {
       current_year: currentYear,
       bonus_hours: bonusHours,
       pto_from_work: ptoAccruedFromWork,
-      sick_leave_bonus: sickLeaveBonus,
       total_pto_accrued: totalPtoAccrued,
       pto_used: ptoUsed,
       pto_balance: ptoBalance
