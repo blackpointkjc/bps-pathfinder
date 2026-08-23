@@ -19,7 +19,8 @@ import RequiredAIReportReview from '@/components/reports/RequiredAIReportReview'
 import StructuredPeopleEditor from '@/components/reports/StructuredPeopleEditor';
 import { toast } from 'sonner';
 import { directoryUserMatches, findDirectoryUser, getCurrentDirectoryUser, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
-import { listActiveDispatchCalls } from '@/lib/reportCallLinking';
+import { listAllDispatchCallsForLinking } from '@/lib/reportCallLinking';
+import CallLinkCombobox from '@/components/reports/CallLinkCombobox';
 import {
   formatReportClock,
   formatReportDate,
@@ -197,11 +198,11 @@ export default function IncidentReports() {
     setFormData(prev => ({ ...prev, linked_bolo_id: bolo.id, linked_bolo_number: bolo.bolo_number || bolo.id }));
   };
 
-  const { data: activeDispatchCalls } = useQuery({
-    queryKey: ['activeDispatchCallsForReports'],
-    queryFn: () => listActiveDispatchCalls(500),
+  const { data: activeDispatchCalls = [] } = useQuery({
+    queryKey: ['dispatchCallsForIncidentReports'],
+    queryFn: () => listAllDispatchCallsForLinking(1000),
     initialData: [],
-    refetchInterval: 10000,
+    refetchInterval: 15000,
     refetchOnWindowFocus: true,
   });
 
@@ -1086,21 +1087,21 @@ Provide:
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2 md:col-span-2">
-                    <Label>Link to Active Call for Service</Label>
-                    <Select value={formData.linked_call_id || 'none'} onValueChange={selectDispatchCall}>
-                      <SelectTrigger><SelectValue placeholder="Select an active CAD call" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No linked call</SelectItem>
-                        {activeDispatchCalls.map(call => (
-                          <SelectItem key={call.id} value={call.id}>
-                            {call.call_id || call.id.slice(-8)} — {call.incident} — {call.location}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Link to Call for Service (active + history)</Label>
+                    <CallLinkCombobox
+                      calls={activeDispatchCalls}
+                      value={formData.linked_call_id || ''}
+                      onSelect={selectDispatchCall}
+                      placeholder="Search active or cleared calls by CAD number…"
+                    />
                     {formData.linked_call_id && (
-                      <div className="rounded-md border bg-slate-50 p-3 text-sm">
-                        <strong>CAD:</strong> {formData.linked_call_number} · <strong>Primary:</strong> {formData.primary_officer_name || 'Assigned unit pending'}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="rounded-md border bg-slate-50 p-3 text-sm">
+                          <strong>CAD:</strong> {formData.linked_call_number} · <strong>Primary:</strong> {formData.primary_officer_name || 'Assigned unit pending'}
+                        </div>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => selectDispatchCall('none')} className="h-8 px-2 text-xs text-slate-500 hover:text-red-500">
+                          Clear
+                        </Button>
                       </div>
                     )}
                   </div>

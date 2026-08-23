@@ -36,6 +36,27 @@ export async function listActiveDispatchCalls(limit = 500) {
   return [...deduped.values()].sort((a, b) => new Date(b.time_received || b.created_date || 0) - new Date(a.time_received || a.created_date || 0));
 }
 
+// Returns ALL dispatch calls (active + cleared/history), deduped by stable key
+// and sorted most-recent first. Used by report call-linking so officers can link
+// reports to calls that have already moved to history, and search them by CAD number.
+export async function listAllDispatchCallsForLinking(limit = 1000) {
+  const calls = await base44.entities.DispatchCall.list('-time_received', limit);
+  const deduped = new Map();
+  for (const call of calls || []) {
+    const descriptionKey = [call.incident, call.location, call.time_received].filter(Boolean).join('|').toLowerCase();
+    const key = call.external_call_id || call.original_call_id || call.agency_cad_number || call.bps_reference || call.call_id || descriptionKey || call.id;
+    const existing = deduped.get(key);
+    if (!existing) {
+      deduped.set(key, call);
+      continue;
+    }
+    const existingTs = new Date(existing.updated_date || existing.time_received || existing.created_date || 0).getTime();
+    const candidateTs = new Date(call.updated_date || call.time_received || call.created_date || 0).getTime();
+    if (candidateTs > existingTs) deduped.set(key, call);
+  }
+  return [...deduped.values()].sort((a, b) => new Date(b.time_received || b.created_date || 0) - new Date(a.time_received || a.created_date || 0));
+}
+
 export function applyDispatchCallToForm(prev, call) {
   if (!call) return prev;
   return {
