@@ -116,8 +116,12 @@ Deno.serve(async (req) => {
     const allowed = user.role === 'admin' || user.role === 'dispatch' || roles.has('full_access') || roles.has('cad_access') || roles.has('officer') || roles.has('supervisor') || roles.has('dispatch');
     if (!allowed) return Response.json({ error: 'Records access required' }, { status: 403 });
 
-    const canBypassRls = user.role === 'admin' || roles.has('full_access');
-    const entityClient = canBypassRls ? base44.asServiceRole.entities : base44.entities;
+    const privileged = user.role === 'admin' || roles.has('full_access');
+    const operationalRecordsAccess = privileged || user.role === 'dispatch' || Boolean(user.dispatch_role) || roles.has('cad_access') || roles.has('dispatch') || roles.has('supervisor');
+    // Records AI is an authorized operational search tool. CAD/dispatch users need a
+    // server-side read path or RLS can make legitimate searches look empty. Sensitive
+    // personnel/disciplinary sources remain admin/full-access only below.
+    const entityClient = operationalRecordsAccess ? base44.asServiceRole.entities : base44.entities;
     const body = await req.json();
 
     if (body?.action === 'get' && body?.entity && body?.id) {
@@ -133,7 +137,10 @@ Deno.serve(async (req) => {
     if (query.length < 2) return Response.json({ results: [], searched_sources: 0, total_matches: 0, search_type: searchType, warrant_matches: 0 });
     const terms = query.split(/\s+/).filter(Boolean);
 
-    const settled = await Promise.allSettled(SOURCES.map(async ([entityName, sourceLabel, page]) => {
+    const restrictedEntities = new Set(['ConfidentialReport', 'Complaint', 'WriteUpReport', 'InspectionReport', 'UseOfForceReport']);
+    const searchableSources = privileged ? SOURCES : SOURCES.filter(([entityName]) => !restrictedEntities.has(entityName));
+
+    const settled = await Promise.allSettled(searchableSources.map(async ([entityName, sourceLabel, page]) => {
       const entity = (entityClient as any)[entityName];
       if (!entity?.list) return [];
       const rows = await entity.list('-created_date', 1000);
