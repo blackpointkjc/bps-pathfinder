@@ -108,6 +108,12 @@ export default function IncidentReports() {
   });
 
   const isAdmin = user?.role === 'admin';
+  const userRoles = new Set((user?.additional_roles || []).map(role => String(role).trim().toLowerCase()));
+  const isDispatcher = String(user?.role || '').trim().toLowerCase() === 'dispatch'
+    || user?.dispatch_role === true
+    || userRoles.has('dispatch')
+    || userRoles.has('cad_access')
+    || userRoles.has('full_access');
 
   const { data: activeEntry } = useQuery({
     queryKey: ['activeTimeEntry', user?.email],
@@ -123,7 +129,9 @@ export default function IncidentReports() {
     enabled: !!user?.email,
   });
 
-  const canSubmit = isAdmin || !!activeEntry;
+  // Dispatchers document calls from the dispatch desk and are not required to be
+  // clocked into a property before they can create or revise an Incident Report.
+  const canSubmit = isAdmin || isDispatcher || !!activeEntry;
   const currentSiteName = activeEntry?.location ? activeEntry.location.split(' - ')[0] : null;
 
   const { data: allReports, isLoading: reportsLoading } = useQuery({
@@ -312,7 +320,7 @@ Provide:
       if (!locationToSubmit) {
         locationToSubmit = isDraft
           ? "Draft - Location TBD"
-          : (isAdmin ? "Admin - Remote Submission" : "Unknown Location");
+          : ((isAdmin || isDispatcher) ? "Dispatch - Remote Submission" : "Unknown Location");
       }
 
       // Drafts must satisfy the entity schema even when the officer has only
