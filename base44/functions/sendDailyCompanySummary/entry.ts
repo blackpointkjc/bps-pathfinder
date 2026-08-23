@@ -449,38 +449,53 @@ Deno.serve(async (req) => {
     const dateLabel = new Intl.DateTimeFormat('en-US', {
       timeZone: TIME_ZONE, month: 'long', day: 'numeric', year: 'numeric',
     }).format(new Date());
-    const summary = summaryContent(dateLabel, companyOverall, recipients, rankings, missing);
+
+    // missingRows / totalMissing are for the admin preview and the internal
+    // audit-log record only -- they are never sent to recipients as a group.
+    const missingRows = recipients
+      .map(user => ({ user, items: [...(missing.get(String(user.id)) || [])] }))
+      .filter(row => row.items.length > 0);
+    const totalMissing = missingRows.reduce((sum, row) => sum + row.items.length, 0);
 
     if (action === 'preview') {
+      // Admin-only diagnostic view (auth-gated above), never broadcast. Shows
+      // the full company picture so an admin can verify the job is healthy.
       return json({
         success: true,
         preview: true,
-        subject: summary.subject,
         company_overall: companyOverall,
         rankings: rankings.map((row, index) => ({ position: index + 1, name: rankedName(row.user) })),
-        missing_items: summary.missingRows.map(({ user, items }) => ({ name: rankedName(user), items })),
+        missing_items: missingRows.map(({ user, items }) => ({ name: rankedName(user), items })),
         recipient_count: recipients.length,
         email_recipient_count: new Set(recipients.map(user => resolvedDeliveryEmail(user, metricData.outlook, metricData.teams)).filter(Boolean)).size,
         integration_credits_used: 0,
       });
     }
 
-    const notificationsCreated = await createNotifications(base44, recipients, deliveryId, summary.subject, summary.message);
-    const emailRecipients = [...new Set(recipients
-      .map(user => resolvedDeliveryEmail(user, metricData.outlook, metricData.teams))
-      .filter(Boolean))];
-    const html = blackPointEmail(summary.subject, summary.content, 'Open Company Analytics', PORTAL_URL);
+    const notificationsCreated = await createNotifications(
+      base44, recipients, deliveryId,
+      () => `Your Daily Summary — ${dateLabel}`,
+      user => personalMissingMessage([...(missing.get(String(user.id)) || [])]),
+    );
 
-    let emailResult: any = { sent: false };
+    const deliveries = recipients.map(user => {
+      const to = resolvedDeliveryEmail(user, metricData.outlook, metricData.teams);
+      if (!to) return null;
+      const items = [...(missing.get(String(user.id)) || [])];
+      const { subject, content } = personalSummaryEmail(dateLabel, user, items);
+      return { to, subject, html: blackPointEmail(subject, content, 'Open Pathfinder', PORTAL_URL) };
+    }).filter(Boolean) as { to: string; subject: string; html: string }[];
+
+    let emailResult: any = { sent: false, sentCount: 0, failedCount: 0, total: deliveries.length };
     let emailError = '';
     try {
-      emailResult = await sendGraphEmail(base44, credentials, emailRecipients, summary.subject, html);
+      emailResult = await sendPersonalizedGraphEmails(base44, credentials, deliveries);
     } catch (error) {
       emailError = error?.message || String(error);
       console.error('Daily company email failed:', emailError);
     }
 
-    const status = emailResult.sent ? 'completed' : 'partial';
+    const status = emailResult.sent && !emailResult.failedCount ? 'completed' : 'partial';
     await base44.asServiceRole.entities.AuditLog.create({
       entity_type: 'DailyCompanySummary',
       entity_id: deliveryId,
@@ -491,28 +506,35 @@ Deno.serve(async (req) => {
       after_value: JSON.stringify({
         status,
         recipient_count: recipients.length,
-        email_recipient_count: emailRecipients.length,
+        email_recipient_count: deliveries.length,
+        email_sent_count: emailResult.sentCount || 0,
+        email_failed_count: emailResult.failedCount || 0,
         notifications_created: notificationsCreated,
         email_sent: Boolean(emailResult.sent),
         email_sender: emailResult.sender || '',
         email_error: emailError,
+        // Internal record only -- never included in any recipient-facing
+        // email or notification.
+        company_overall_internal: companyOverall,
         integration_credits_used: 0,
       }),
       field_changed: 'delivery_status',
       timestamp: new Date().toISOString(),
-      description: `Daily company summary ${status}: ${recipients.length} active recipients; ${summary.totalMissing} missing items listed.`,
+      description: `Daily individual summaries ${status}: ${recipients.length} recipients, ${deliveries.length} emails attempted (${emailResult.sentCount || 0} sent), ${notificationsCreated} notifications created. Internal-only company overall: ${companyOverall == null ? 'n/a' : companyOverall + '%'}.`,
     });
 
     return json({
       success: Boolean(emailResult.sent),
-      partial: !emailResult.sent,
+      partial: status === 'partial',
       date: now.date,
       delivery_id: deliveryId,
       company_overall: companyOverall,
       ranking_count: rankings.length,
-      missing_item_count: summary.totalMissing,
+      missing_item_count: totalMissing,
       recipient_count: recipients.length,
-      email_recipient_count: emailRecipients.length,
+      email_recipient_count: deliveries.length,
+      email_sent_count: emailResult.sentCount || 0,
+      email_failed_count: emailResult.failedCount || 0,
       notifications_created: notificationsCreated,
       email_sent: Boolean(emailResult.sent),
       email_sender: emailResult.sender || '',
