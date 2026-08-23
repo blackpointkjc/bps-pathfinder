@@ -13,6 +13,44 @@ Deno.serve(async (req) => {
     const roles = normalizeRoles(user);
     const hasHR = user.role === 'admin' || roles.has('hr') || roles.has('full_access');
 
+    if (action === 'ensure_admin_grants') {
+      if (!hasHR) return Response.json({ error: 'HR access required' }, { status: 403 });
+      const year = new Date().getFullYear();
+      const grantMarker = `Admin PTO Grant · ${year} · 80 Hours`;
+      const [users, requests] = await Promise.all([
+        base44.asServiceRole.entities.User.list(),
+        base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000),
+      ]);
+      const existing = new Set((requests || [])
+        .filter((entry: any) => String(entry.admin_notes || '') === grantMarker)
+        .map((entry: any) => String(entry.requested_by_email || entry.created_by || '').trim().toLowerCase()));
+      const today = new Date().toISOString().slice(0, 10);
+      let granted = 0;
+      for (const admin of (users || []).filter((entry: any) => entry.role === 'admin' && entry.email)) {
+        const email = String(admin.email).trim().toLowerCase();
+        if (existing.has(email)) continue;
+        await base44.asServiceRole.entities.TimeOffRequest.create({
+          start_date: today,
+          end_date: today,
+          reason: 'Annual administrative PTO grant',
+          request_type: 'paid',
+          hours_requested: 80,
+          pto_balance_at_request: Number(admin.pto_balance_hours || 0),
+          status: 'approved',
+          requested_by_email: email,
+          requested_by_name: [admin.first_name, admin.last_name].filter(Boolean).join(' ') || email,
+          reviewed_by: user.email,
+          reviewed_date: new Date().toISOString(),
+          admin_notes: grantMarker,
+        });
+        await base44.asServiceRole.entities.User.update(admin.id, {
+          pto_balance_hours: Number(admin.pto_balance_hours || 0) + 80,
+        });
+        granted += 1;
+      }
+      return Response.json({ success: true, granted, year });
+    }
+
     if (action === 'list') {
       const requests = await base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 5000);
       const visibleRequests = (requests || []).filter((entry: any) => entry.reason !== 'PTO workflow verification record');
@@ -110,6 +148,36 @@ Deno.serve(async (req) => {
         admin_notes: admin_notes || `Approved PTO was cancelled by HR. ${hours.toFixed(1)} hours were returned to the officer's PTO balance.`,
       });
       return Response.json({ success: true, removed_from_hr: true, restored_hours: request.request_type === 'paid' ? hours : 0 });
+    }
+
+    if (action === 'bonus') {
+      const { officer_email, hours, reason = '' } = body;
+      if (!officer_email || !hours || Number(hours) <= 0) {
+        return Response.json({ error: 'Officer and positive bonus hours are required' }, { status: 400 });
+      }
+      const users = await base44.asServiceRole.entities.User.list();
+      const officer = (users || []).find((entry: any) => String(entry.email || '').toLowerCase() === String(officer_email).toLowerCase());
+      if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
+      const amount = Number(hours);
+      const today = new Date().toISOString().slice(0, 10);
+      await base44.asServiceRole.entities.User.update(officer.id, {
+        pto_balance_hours: Number(officer.pto_balance_hours || 0) + amount,
+      });
+      const record = await base44.asServiceRole.entities.TimeOffRequest.create({
+        start_date: today,
+        end_date: today,
+        reason: reason || 'PTO bonus awarded by HR',
+        request_type: 'paid',
+        hours_requested: amount,
+        pto_balance_at_request: Number(officer.pto_balance_hours || 0),
+        status: 'approved',
+        requested_by_email: officer_email,
+        requested_by_name: [officer.first_name, officer.last_name].filter(Boolean).join(' ') || officer_email,
+        reviewed_by: user.email,
+        reviewed_date: new Date().toISOString(),
+        admin_notes: `PTO Bonus · ${new Date().getFullYear()} · Awarded by ${user.email}`,
+      });
+      return Response.json({ success: true, request: record, hours_added: amount, balance: Number(officer.pto_balance_hours || 0) + amount });
     }
 
     if (action === 'manual') {
