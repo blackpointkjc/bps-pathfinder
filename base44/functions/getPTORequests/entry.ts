@@ -26,29 +26,36 @@ Deno.serve(async (req) => {
         .map((entry: any) => String(entry.requested_by_email || entry.created_by || '').trim().toLowerCase()));
       const today = new Date().toISOString().slice(0, 10);
       let granted = 0;
+      let synchronized = 0;
       for (const admin of (users || []).filter((entry: any) => entry.role === 'admin' && entry.email)) {
         const email = String(admin.email).trim().toLowerCase();
-        if (existing.has(email)) continue;
-        await base44.asServiceRole.entities.TimeOffRequest.create({
-          start_date: today,
-          end_date: today,
-          reason: 'Annual administrative PTO grant',
-          request_type: 'paid',
-          hours_requested: 80,
-          pto_balance_at_request: Number(admin.pto_balance_hours || 0),
-          status: 'approved',
-          requested_by_email: email,
-          requested_by_name: [admin.first_name, admin.last_name].filter(Boolean).join(' ') || email,
-          reviewed_by: user.email,
-          reviewed_date: new Date().toISOString(),
-          admin_notes: grantMarker,
-        });
-        await base44.asServiceRole.entities.User.update(admin.id, {
-          pto_balance_hours: Number(admin.pto_balance_hours || 0) + 80,
-        });
-        granted += 1;
+        if (!existing.has(email)) {
+          await base44.asServiceRole.entities.TimeOffRequest.create({
+            start_date: today,
+            end_date: today,
+            reason: 'Annual administrative PTO grant',
+            request_type: 'paid',
+            hours_requested: 80,
+            pto_balance_at_request: Number(admin.pto_balance_hours || 0),
+            status: 'approved',
+            requested_by_email: email,
+            requested_by_name: [admin.first_name, admin.last_name].filter(Boolean).join(' ') || email,
+            reviewed_by: user.email,
+            reviewed_date: new Date().toISOString(),
+            admin_notes: grantMarker,
+          });
+          existing.add(email);
+          granted += 1;
+        }
+
+        const adminBonusHours = (requests || [])
+          .filter((entry: any) => String(entry.requested_by_email || '').trim().toLowerCase() === email && entry.status === 'approved' && /^PTO Bonus\b|^Admin PTO Grant\b/i.test(String(entry.admin_notes || '')))
+          .reduce((sum: number, entry: any) => sum + Number(entry.hours_requested || 0), 0) + (granted > 0 && !(requests || []).some((entry: any) => String(entry.requested_by_email || '').trim().toLowerCase() === email && String(entry.admin_notes || '') === grantMarker) ? 80 : 0);
+        const desiredBalance = Math.max(0, Number(admin.pto_year_to_date_accrued || 0) + adminBonusHours - Number(admin.pto_year_to_date_used || 0));
+        await base44.asServiceRole.entities.User.update(admin.id, { pto_balance_hours: desiredBalance });
+        synchronized += 1;
       }
-      return Response.json({ success: true, granted, year });
+      return Response.json({ success: true, granted, synchronized, year });
     }
 
     if (action === 'list') {
