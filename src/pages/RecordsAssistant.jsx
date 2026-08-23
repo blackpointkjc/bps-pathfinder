@@ -4,11 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Bot, Loader2, FileText, MapPin, Calendar, ExternalLink, User, Radio, Car, ShieldAlert } from 'lucide-react';
+import { Search, Bot, Loader2, FileText, MapPin, Calendar, ExternalLink, User, Radio, Car, ShieldAlert, Volume2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
-import { announceRecordSearch } from '@/utils/voiceAnnouncer';
+import { announceRecordSearch, announceVoice, setVoiceEnabled } from '@/utils/voiceAnnouncer';
 
 const SOURCE_COLORS = {
   'CAD / Dispatch Calls': 'border-cyan-500/40 text-cyan-300',
@@ -36,13 +36,19 @@ export default function RecordsAssistant() {
   const [searchType, setSearchType] = useState('all');
   const [warrantMatches, setWarrantMatches] = useState(0);
   const [warrantStatusText, setWarrantStatusText] = useState('');
+  const [personName, setPersonName] = useState('');
+  const [courtLevel, setCourtLevel] = useState('All Court Levels');
+  const [courtName, setCourtName] = useState('');
+  const [caseNumber, setCaseNumber] = useState('');
 
   const runSearch = async (event) => {
     event?.preventDefault();
-    if (query.trim().length < 2) return;
+    const effectiveQuery = searchType === 'person' ? (personName.trim() || query.trim()) : query.trim();
+    if (effectiveQuery.length < 2) return;
+    if (searchType === 'person' && effectiveQuery !== query.trim()) setQuery(effectiveQuery);
     setSearching(true);
     try {
-      const response = await base44.functions.invoke('searchCompanyRecords', { query: query.trim(), search_type: searchType });
+      const response = await base44.functions.invoke('searchCompanyRecords', { query: effectiveQuery, search_type: searchType });
       const data = response?.data || response || {};
       if (data.error) throw new Error(data.error);
       const returnedResults = data.results || [];
@@ -74,10 +80,11 @@ export default function RecordsAssistant() {
       <div className="mx-auto max-w-7xl space-y-5">
         <div className="flex items-start gap-3">
           <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-3"><Bot className="h-7 w-7 text-blue-300" /></div>
-          <div>
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-black tracking-wide">RECORDS AI SEARCH</h1>
             <p className="text-sm text-slate-400">Search every company report for a person, vehicle, address, phone number, report number, or call number.</p>
           </div>
+          <Button type="button" variant="outline" onClick={() => { setVoiceEnabled(true); announceVoice('Records A I audio enabled.', { force: true, dedupeMs: 0 }); }} className="shrink-0 border-cyan-600/50 text-cyan-200"><Volume2 className="mr-2 h-4 w-4" />AUDIO ON / TEST</Button>
         </div>
 
         <Card className="border-slate-700 bg-[#111d2b]">
@@ -87,12 +94,23 @@ export default function RecordsAssistant() {
               <button type="button" onClick={() => setSearchType('person')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'person' ? 'border-cyan-500 bg-cyan-500/15 text-cyan-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><User className="h-3.5 w-3.5" />PEOPLE</button>
               <button type="button" onClick={() => setSearchType('vehicle')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-black ${searchType === 'vehicle' ? 'border-amber-500 bg-amber-500/15 text-amber-200' : 'border-slate-700 bg-slate-900/40 text-slate-400 hover:text-white'}`}><Car className="h-3.5 w-3.5" />MOTOR VEHICLES</button>
             </div>
+            {searchType === 'person' && (
+              <div className="mb-4 rounded-xl border border-slate-700 bg-slate-950/40 p-3">
+                <div className="mb-2 text-xs font-black uppercase tracking-wider text-cyan-300">Person / Virginia Court Search Criteria</div>
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                  <div><label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Defendant / Person Name</label><Input value={personName} onChange={e => setPersonName(e.target.value)} placeholder="First Middle Last" /></div>
+                  <div><label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Court Level</label><select value={courtLevel} onChange={e => setCourtLevel(e.target.value)} className="h-10 w-full rounded-md border border-slate-600 bg-[#0b1522] px-3 text-sm text-white"><option>All Court Levels</option><option>General District Court</option><option>J&DR Court</option><option>Circuit Court</option></select></div>
+                  <div><label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Court / Locality</label><Input value={courtName} onChange={e => setCourtName(e.target.value)} placeholder="Optional court/locality" /></div>
+                  <div><label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Case Number</label><Input value={caseNumber} onChange={e => setCaseNumber(e.target.value)} placeholder="Optional case number" /></div>
+                </div>
+              </div>
+            )}
             <form onSubmit={runSearch} className="flex flex-col gap-3 sm:flex-row">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <Input value={query} onChange={e => setQuery(e.target.value)} placeholder={searchType === 'person' ? 'Name, DOB, ID or driver license…' : searchType === 'vehicle' ? 'Plate, VIN, year, make, model or color…' : 'Name, plate, phone, address, report or call number…'} className="h-12 border-slate-600 bg-[#0b1522] pl-10 text-white" />
               </div>
-              <Button type="submit" disabled={searching || query.trim().length < 2} className="h-12 bg-blue-700 hover:bg-blue-600">
+              <Button type="submit" disabled={searching || (searchType === 'person' ? (personName.trim() || query.trim()).length < 2 : query.trim().length < 2)} className="h-12 bg-blue-700 hover:bg-blue-600">
                 {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}SEARCH ALL RECORDS
               </Button>
             </form>
@@ -107,7 +125,8 @@ export default function RecordsAssistant() {
             <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="flex items-center gap-2 text-sm font-black text-cyan-200"><ShieldAlert className="h-4 w-4" />Official Virginia Court Record Verification</div>
-                <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">Pathfinder searches its own company records here. For an official Virginia public court case search, open OCIS 2.0 and complete the court system's required Terms acceptance and search manually. Pathfinder does not label an OCIS result as a warrant unless that information is actually present in an authorized Pathfinder record.</p>
+                <p className="mt-1 max-w-3xl text-xs leading-relaxed text-slate-400">Pathfinder searches its own company records using the person name above. The official OCIS fields shown here mirror the information you may use for the Virginia court lookup, but the court's Terms prohibit automated scripting/data mining, so Pathfinder cannot silently scrape OCIS results. Open the official system to accept its Terms and complete that lookup.</p>
+                {(courtLevel !== 'All Court Levels' || courtName || caseNumber) && <p className="mt-2 text-[11px] font-semibold text-cyan-300">Prepared criteria: {courtLevel}{courtName ? ` • ${courtName}` : ''}{caseNumber ? ` • Case ${caseNumber}` : ''}</p>}
               </div>
               <Button type="button" variant="outline" onClick={() => window.open('https://eapps.courts.state.va.us/ocis/', '_blank', 'noopener,noreferrer')} className="shrink-0 border-cyan-600/60 text-cyan-200 hover:bg-cyan-950">
                 OPEN VIRGINIA OCIS <ExternalLink className="ml-2 h-3.5 w-3.5" />
