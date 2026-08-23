@@ -22,14 +22,22 @@ Deno.serve(async (req) => {
     // always linked to a signed-in officer (e.g. a spare unit record), so
     // this is best-effort and never blocks the assignment itself.
     const resolveUnitOfficer = async () => {
-      try {
-        const unitRecord = await base44.asServiceRole.entities.Unit.get(unit_id);
-        if (!unitRecord?.user_id) return null;
+      // Live CAD roster rows use the User id. Older/spare-unit workflows may pass
+      // a Unit id. Support both so assignment notifications and voice alerts are
+      // never lost just because the caller used the live roster identifier.
+      const directUser = await base44.asServiceRole.entities.User.get(unit_id).catch(() => null);
+      if (directUser?.email) return directUser;
+      const unitRecord = await base44.asServiceRole.entities.Unit.get(unit_id).catch(() => null);
+      if (!unitRecord) return null;
+      if (unitRecord.user_id) {
         const officer = await base44.asServiceRole.entities.User.get(unitRecord.user_id).catch(() => null);
-        return officer?.email ? officer : null;
-      } catch {
-        return null;
+        if (officer?.email) return officer;
       }
+      if (unitRecord.user_email) {
+        const matches = await base44.asServiceRole.entities.User.filter({ email: unitRecord.user_email }, '-updated_date', 1).catch(() => []);
+        if (matches?.[0]?.email) return matches[0];
+      }
+      return null;
     };
 
     if (action === 'assign') {
