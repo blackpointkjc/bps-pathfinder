@@ -202,7 +202,30 @@ Deno.serve(async (req) => {
       });
       const newBalance = Number(officer.pto_balance_hours || 0) + amount;
       await base44.asServiceRole.entities.User.update(officer.id, { pto_balance_hours: newBalance });
-      return Response.json({ success: true, adjustment: record, hours_added: amount, balance: newBalance });
+
+      let openedShifts = 0;
+      if (remove_shifts && start_date && end_date) {
+        const schedules = await base44.asServiceRole.entities.Schedule.list('-shift_date', 5000);
+        const affected = (schedules || []).filter((shift: any) =>
+          String(shift.officer_email || '').toLowerCase() === String(officer.email || officer_email).toLowerCase() &&
+          shift.shift_date >= start_date && shift.shift_date <= end_date &&
+          !shift.archived && !shift.is_open
+        );
+        for (const shift of affected) {
+          await base44.asServiceRole.entities.Schedule.update(shift.id, { officer_email: 'OPEN', is_open: true });
+          openedShifts += 1;
+        }
+      }
+
+      await base44.asServiceRole.entities.Notification.create({
+        recipient_email: String(officer.email || officer_email).toLowerCase(),
+        type: 'schedule_changed',
+        title: 'PTO Hours Added',
+        message: `${amount.toFixed(1)} PTO hours were added to your balance by HR.${openedShifts ? ` ${openedShifts} scheduled shift${openedShifts === 1 ? '' : 's'} moved to Open Shifts.` : ''}`,
+        priority: 'normal',
+        source_name: 'Human Resources',
+      });
+      return Response.json({ success: true, adjustment: record, hours_added: amount, balance: newBalance, opened_shifts: openedShifts });
     }
 
     return Response.json({ error: 'Unsupported PTO action' }, { status: 400 });
