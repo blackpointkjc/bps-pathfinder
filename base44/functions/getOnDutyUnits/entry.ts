@@ -155,6 +155,7 @@ Deno.serve(async (req) => {
           last_name: user.last_name || '',
           full_name: user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' '),
           rank: user.rank || '',
+          profile_photo_url: user.profile_photo_url || '',
           unit_number: active?.unit_number || user.unit_number || '',
           status: resolvedStatus,
           additional_roles: user.additional_roles || [],
