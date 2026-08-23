@@ -211,7 +211,6 @@ export default function BackgroundLocationTracker({ user }) {
           heading: Number.isFinite(position.coords.heading) ? position.coords.heading : 0,
           speed: position.coords.speed ? position.coords.speed * 2.237 : 0,
           accuracy: accuracy,
-          status: user?.status || 'Signed In',
           user_role: user?.role || 'user',
           session_active: true,
         });
@@ -349,7 +348,6 @@ export default function BackgroundLocationTracker({ user }) {
               speed: Number.isFinite(Number(fix.speed)) ? Number(fix.speed) : 0,
               accuracy: fix.accuracy,
             } : { heartbeat_only: true }),
-            status: user?.status || 'Signed In',
             user_role: user?.role || 'user',
             session_active: true,
           });
