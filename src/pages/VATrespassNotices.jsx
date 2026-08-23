@@ -617,11 +617,11 @@ export default function VATrespassNotices() {
               </div>
               <div>
                 <div class="sig-label">ISSUING OFFICER:</div>
-                ${notice.signature_url 
-                  ? `<div style="min-height: 40px; margin: 8px 0; padding: 5px;"><img src="${notice.signature_url}" alt="Officer Signature" style="max-height: 60px; max-width: 100%;" /></div>`
+                ${(notice.officer_signature_url || notice.signature_url)
+                  ? `<div style="min-height: 40px; margin: 8px 0; padding: 5px;"><img src="${notice.officer_signature_url || notice.signature_url}" alt="Officer Signature" style="max-height: 60px; max-width: 100%;" /></div>`
                   : `<div class="sig-line"></div>`
                 }
-                ${notice.signature_url
+                ${(notice.officer_signature_url || notice.signature_url)
                   ? `<div style="font-size: 8pt; text-align: center;">${officerFullName}<br/>${notice.created_date ? `Signed (Zulu): ${signedDateZulu}` : ''}</div>`
                   : `<div style="font-size: 8pt; text-align: center;">Date: ____________________</div>`
                 }
