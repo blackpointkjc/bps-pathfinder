@@ -4,10 +4,6 @@ import { buildPerformanceMetrics, easternDateKey, loadPerformanceMetricData } fr
 
 const TIME_ZONE = 'America/New_York';
 const PORTAL_URL = 'https://bpspf.blackpointkjc.com/AdminAnalytics';
-const CLIENT_ID = '5cf1a58f-17d1-46d4-a7fd-ff5fcd7624eb';
-const TENANT_ID = '07f32330-fc73-4d73-a835-e9c47ba798c7';
-const TOKEN_URL = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`;
-const GRAPH_SEND = 'https://graph.microsoft.com/v1.0/me/sendMail';
 
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -279,43 +275,6 @@ function personalSummaryEmail(dateLabel: string, user: any, items: string[], com
   return { subject, content, message };
 }
 
-async function refreshMicrosoftToken(base44: any, credential: any) {
-  const requestedScope = String(credential.scope || '').trim();
-  const scope = requestedScope.includes('offline_access') ? requestedScope : `${requestedScope} offline_access`.trim();
-  const body = new URLSearchParams({
-    client_id: CLIENT_ID,
-    grant_type: 'refresh_token',
-    refresh_token: String(credential.refresh_token || ''),
-    scope,
-  });
-  const response = await fetch(TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/x-www-form-urlencoded',
-      Origin: 'https://bpspf.blackpointkjc.com',
-    },
-    body,
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || !payload?.access_token) {
-    const message = payload?.error_description || payload?.error || 'Microsoft authorization could not be refreshed.';
-    await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
-      last_error: String(message).slice(0, 1000),
-      last_refreshed_at: new Date().toISOString(),
-    }).catch(() => null);
-    throw new Error(message);
-  }
-
-  await base44.asServiceRole.entities.MicrosoftOAuthCredential.update(credential.id, {
-    refresh_token: payload.refresh_token || credential.refresh_token,
-    scope: payload.scope || scope,
-    active: true,
-    last_error: '',
-    last_refreshed_at: new Date().toISOString(),
-  });
-  return payload.access_token;
-}
-
 // Sends one INDIVIDUAL Base44-managed email per recipient (no bcc, no shared
 // body). The actual mailbox is Base44's managed no-reply/system sender; the
 // signed-in administrator's Microsoft/Outlook identity is never used here.
@@ -474,7 +433,6 @@ Deno.serve(async (req) => {
         missing_items: missingRows.map(({ user, items }) => ({ name: rankedName(user), items })),
         recipient_count: recipients.length,
         email_recipient_count: new Set(recipients.map(user => resolvedDeliveryEmail(user, metricData.outlook, metricData.teams)).filter(Boolean)).size,
-        integration_credits_used: 0,
       });
     }
 
@@ -527,7 +485,6 @@ Deno.serve(async (req) => {
         // Internal record only -- never included in any recipient-facing
         // email or notification.
         company_overall_internal: companyOverall,
-        integration_credits_used: 0,
       }),
       field_changed: 'delivery_status',
       timestamp: new Date().toISOString(),
@@ -552,10 +509,9 @@ Deno.serve(async (req) => {
       email_error: emailError,
       email_transport: 'base44_managed',
       in_app_delivered: notificationsCreated > 0,
-      integration_credits_used: 0,
     }, emailResult.sent ? 200 : 207);
   } catch (error) {
     console.error('sendDailyCompanySummary failed', error);
-    return json({ error: error?.message || 'Unable to prepare the daily company summary', integration_credits_used: 0 }, 500);
+    return json({ error: error?.message || 'Unable to prepare the daily company summary' }, 500);
   }
 });
