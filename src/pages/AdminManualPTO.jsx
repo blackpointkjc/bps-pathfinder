@@ -97,10 +97,10 @@ export default function AdminManualPTO() {
         </div>
 
         <Card className="border-slate-800 bg-[#0d1725] text-slate-100">
-          <CardContent className="grid gap-3 p-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-slate-800 bg-[#101b29] p-4"><div className="text-xs font-bold uppercase tracking-wider text-slate-500">Officers</div><div className="mt-2 text-3xl font-black text-white">{activeUsers.length}</div></div>
-            <div className="rounded-xl border border-slate-800 bg-[#101b29] p-4"><div className="text-xs font-bold uppercase tracking-wider text-slate-500">Colonel / Lt Colonel</div><div className="mt-2 text-3xl font-black text-violet-300">180h</div><div className="text-xs text-slate-500">Annual earned PTO target</div></div>
-            <div className="rounded-xl border border-slate-800 bg-[#101b29] p-4"><div className="text-xs font-bold uppercase tracking-wider text-slate-500">Other Ranks</div><div className="mt-2 text-3xl font-black text-blue-300">40h</div><div className="text-xs text-slate-500">Annual earned PTO target</div></div>
+          <CardContent className="grid min-w-0 grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="min-w-0 rounded-xl border border-slate-800 bg-[#101b29] p-4"><div className="text-xs font-bold uppercase tracking-wider text-slate-500">Officers</div><div className="mt-2 text-3xl font-black text-white">{activeUsers.length}</div></div>
+            <div className="min-w-0 rounded-xl border border-slate-800 bg-[#101b29] p-4"><div className="text-xs font-bold uppercase tracking-wider text-slate-500">Colonel / Lt Colonel</div><div className="mt-2 text-3xl font-black text-violet-300">180h</div><div className="text-xs text-slate-500">Annual earned PTO target</div></div>
+            <div className="min-w-0 rounded-xl border border-slate-800 bg-[#101b29] p-4"><div className="text-xs font-bold uppercase tracking-wider text-slate-500">Other Ranks</div><div className="mt-2 text-3xl font-black text-blue-300">40h</div><div className="text-xs text-slate-500">Annual earned PTO target</div></div>
           </CardContent>
         </Card>
 
