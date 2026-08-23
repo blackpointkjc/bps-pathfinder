@@ -39,7 +39,7 @@ export default function AccountingProfit() {
     enabled: isAccountingRole,
     staleTime: 0,
     refetchOnMount: 'always',
-    refetchInterval: 60000,
+    refetchInterval: 5000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
@@ -51,6 +51,7 @@ export default function AccountingProfit() {
   const companyExpenses = accountingData.companyExpenses || [];
   const allUsers = accountingData.users || [];
   const timeOffRequests = accountingData.timeOffRequests || [];
+  const ptoUsage = accountingData.ptoUsage || [];
   const invoices = accountingData.invoices || [];
   const schedules = accountingData.schedules || [];
 
@@ -104,8 +105,8 @@ export default function AccountingProfit() {
     return status === 'paid' && isDateInRange(expenseDate);
   });
 
-  const filteredPTO = timeOffRequests.filter(pto =>
-    pto.status === 'approved' && pto.request_type === 'paid' && isDateInRange(pto.start_date)
+  const filteredPTO = ptoUsage.filter(usage =>
+    usage.status === 'active' && isDateInRange(usage.usage_date)
   );
 
   // Sent and paid invoices are earned revenue for the selected service period.
@@ -118,10 +119,10 @@ export default function AccountingProfit() {
     return isDateInRange(invoice.paid_date || invoice.invoice_date || invoice.created_date);
   });
 
-  const ptoCost = filteredPTO.reduce((sum, pto) => {
-    const employeeEmail = pto.requested_by_email || pto.created_by;
-    const officer = allUsers.find(o => o.email === employeeEmail);
-    return sum + ((Number(pto.hours_requested) || 0) * (Number(officer?.hourly_rate) || 0));
+  const ptoCost = filteredPTO.reduce((sum, usage) => {
+    const employeeEmail = String(usage.officer_email || '').toLowerCase();
+    const officer = allUsers.find(o => String(o.email || '').toLowerCase() === employeeEmail);
+    return sum + ((Number(usage.hours) || 0) * (Number(officer?.hourly_rate) || 0));
   }, 0);
 
   const invoiceRevenueBySite = filteredInvoices.reduce((summary, invoice) => {
