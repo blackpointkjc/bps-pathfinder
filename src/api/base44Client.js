@@ -28,7 +28,7 @@ if (base44.integrations?.Core?.InvokeLLM) {
 if (base44.integrations?.Core?.UploadFile) {
   base44.integrations.Core.UploadFile = async ({ file } = {}) => {
     if (!file) throw new Error('A file is required.');
-    if (Number(file.size || 0) > 8 * 1024 * 1024) throw new Error('Files larger than 8 MB must be reduced before upload.');
+    if (Number(file.size || 0) > 5 * 1024 * 1024) throw new Error('Files larger than 5 MB must be reduced before upload.');
     const data_url = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result || ''));
