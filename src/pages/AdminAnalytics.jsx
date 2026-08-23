@@ -13,10 +13,15 @@ import { format, parseISO, differenceInMinutes, startOfMonth, endOfMonth } from 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer } from '@/lib/directoryUtils';
-import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateJobDutyCompliance, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
+import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
 import { toast } from 'sonner';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
+const isPunctualityLeaderboardOfficer = (officer) => {
+  const roles = new Set((officer?.additional_roles || []).map(role => String(role).trim().toLowerCase()));
+  if (officer?.is_supervisor === true || roles.has('supervisor')) return false;
+  return roles.has('officer') || String(officer?.role || '').trim().toLowerCase() === 'officer';
+};
 
 function breakMinutes(entry) {
   return (entry?.break_periods || []).reduce((total, period) => {
@@ -106,7 +111,7 @@ export default function AdminAnalytics() {
   const currentMonthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
 
   const companyOnTimeStats = useMemo(() => {
-    const byOfficer = filteredUsers.map(officer => {
+    const byOfficer = filteredUsers.filter(isPunctualityLeaderboardOfficer).map(officer => {
       const key = emailKey(officer.email);
       const stats = calculatePunctuality(
         timeEntries.filter(entry => emailKey(entry.officer_email) === key),
@@ -240,7 +245,6 @@ export default function AdminAnalytics() {
     const officerBids = allBids.filter(item => emailKey(item.officer_email) === key);
     const officerCompletions = trainingCompletions.filter(item => emailKey(item.officer_email) === key);
     const officerAssignments = trainingAssignments.filter(item => emailKey(item.officer_email) === key);
-    const officerScans = allQrScans.filter(item => emailKey(item.officer_email) === key);
     const officerFeedback = allClientFeedback.filter(item => emailKey(item.officer_email) === key);
     const officerReviews = allPerformanceReviews.filter(item => emailKey(item.officer_email) === key);
     const officerCommendations = allCommendations.filter(item => emailKey(item.officer_email) === key);
@@ -251,24 +255,9 @@ export default function AdminAnalytics() {
     const clientFeedback = calculateClientFeedback(officerFeedback, currentMonthStart, currentMonthEnd);
     const supervisorRating = calculateSupervisorRating(officerReviews, currentMonthStart, currentMonthEnd);
     const recognition = calculateRecognition(officerCommendations, officerFeedback, currentMonthStart, currentMonthEnd);
-    const jobDuty = calculateJobDutyCompliance({
-      officer,
-      timeEntries: officerTimeEntries,
-      dailyReports: allDailyActivityReports,
-      incidentReports,
-      dispatchCalls,
-      callOuts: allCallOuts,
-      qrScans: allQrScans,
-      allTimeEntries: timeEntries,
-      qrCheckpoints: allQrCheckpoints,
-      dutyRules: allDutyRules,
-      locations: allLocations,
-      monthStart: currentMonthStart,
-      monthEnd: currentMonthEnd,
-    });
     const officerCallOuts = allCallOuts.filter(item => emailKey(item.officer_email) === key);
     const callOutAttendance = calculateCallOutAttendance(officerCallOuts, officerSchedules, currentMonthStart, currentMonthEnd);
-    const overall = buildOverallPerformance({ punctuality, trainingScore: training.total > 0 ? training.percentage : null, jobDuty, callOutAttendance, bidStanding, clientFeedback, supervisorRating, recognition });
+    const overall = buildOverallPerformance({ punctuality, trainingScore: training.total > 0 ? training.percentage : null, jobDuty: null, callOutAttendance, bidStanding, clientFeedback, supervisorRating, recognition });
 
     return {
       email: officer.email,
@@ -280,10 +269,9 @@ export default function AdminAnalytics() {
       clientFeedback,
       supervisorRating,
       recognition,
-      jobDuty,
       callOutAttendance,
     };
-  }).sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1)), [filteredUsers, timeEntries, schedules, allBids, trainingCompletions, trainingAssignments, allTraining, allQrScans, allQrCheckpoints, allClientFeedback, allPerformanceReviews, allCommendations, allDailyActivityReports, incidentReports, dispatchCalls, allCallOuts, allDutyRules, allLocations, currentMonthStart, currentMonthEnd]);
+  }).sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1)), [filteredUsers, timeEntries, schedules, allBids, trainingCompletions, trainingAssignments, allTraining, allClientFeedback, allPerformanceReviews, allCommendations, incidentReports, allCallOuts, currentMonthStart, currentMonthEnd]);
 
   const companyOverallScore = useMemo(() => {
     const scored = overallByOfficer.filter(item => item.overall.score != null);
@@ -524,28 +512,12 @@ export default function AdminAnalytics() {
                     {officer.overall.categories.length === 0 && <span className="text-xs text-slate-500">No scoreable records this month.</span>}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-400">
-                    {officer.jobDuty.score != null && (
-                      <span>Job Duty: {officer.jobDuty.score}%{officer.jobDuty.dailyActivity.required > 0 ? ` • DAR ${officer.jobDuty.dailyActivity.completed}/${officer.jobDuty.dailyActivity.required}` : ''}{officer.jobDuty.incidentReports.required > 0 ? ` • Incident ${officer.jobDuty.incidentReports.completed}/${officer.jobDuty.incidentReports.required}` : ''}{officer.jobDuty.qrCompliance.required > 0 ? ` • QR ${officer.jobDuty.qrCompliance.completed}/${officer.jobDuty.qrCompliance.required}` : ''}</span>
-                    )}
                     {officer.callOutAttendance.score != null && <span>Call-Out Attendance: {officer.callOutAttendance.score}% ({officer.callOutAttendance.count} call-out{officer.callOutAttendance.count === 1 ? '' : 's'})</span>}
                     {officer.bidStanding.score != null && <span>Bid Standing: {officer.bidStanding.score}% ({officer.bidStanding.accepted} assigned bid{officer.bidStanding.accepted === 1 ? '' : 's'})</span>}
                     {officer.clientFeedback.score != null && <span>Client Feedback: {officer.clientFeedback.score}% ({officer.clientFeedback.avgRating.toFixed(1)}/5)</span>}
                     {officer.recognition.score != null && <span>Recognition: {officer.recognition.count} record{officer.recognition.count === 1 ? '' : 's'}</span>}
                     {officer.supervisorRating.score != null && <span>Supervisor Rating: {officer.supervisorRating.score}%</span>}
                   </div>
-                  {officer.jobDuty.score != null && officer.jobDuty.score < 100 && (
-                    <div className="mt-3 rounded-lg border border-red-900/60 bg-red-950/20 p-2 text-xs text-red-200">
-                      <p className="mb-1 font-bold">Job Duty reasons:</p>
-                      {officer.jobDuty.shifts.flatMap(shift => {
-                        const rows = [];
-                        if (shift.daily_activity.required && !shift.daily_activity.completed) rows.push(`${shift.shift_date} ${shift.property}: DAR missing`);
-                        shift.incidents.items.filter(item => item.status === 'missing').forEach(item => rows.push(`${shift.shift_date} ${shift.property}: Incident Report missing for ${item.call_type || 'property call'} ${item.call_number || item.call_id}`));
-                        if (shift.qr.missed > 0) rows.push(`${shift.shift_date} ${shift.property}: QR ${shift.qr.completed}/${shift.qr.required}, ${shift.qr.missed} missed`);
-                        (shift.qr.excluded_items || []).forEach(item => rows.push(`${shift.shift_date} ${shift.property}: QR scan at ${item.checkpoint_name || 'checkpoint'} by ${item.officer_email || 'another user'} excluded — scanner was not clocked in at this property`));
-                        return rows;
-                      }).slice(0, 8).map((reason, index) => <p key={index}>• {reason}</p>)}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -588,7 +560,7 @@ export default function AdminAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2 max-h-80 overflow-y-auto">
-                {companyOnTimeStats.byOfficer && companyOnTimeStats.byOfficer.length > 0 ? companyOnTimeStats.byOfficer.slice(0, 10).map((officer, idx) => (
+                {companyOnTimeStats.byOfficer && companyOnTimeStats.byOfficer.length > 0 ? companyOnTimeStats.byOfficer.slice(0, 3).map((officer, idx) => (
                   <div key={officer.email} className="flex items-center justify-between p-2 border border-slate-700 bg-slate-800 rounded-lg">
                     <div className="flex items-center gap-3">
                       <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
@@ -601,7 +573,7 @@ export default function AdminAnalytics() {
                     </Badge>
                   </div>
                 )) : (
-                  <p className="text-center text-slate-300 py-4">No time entries for current month</p>
+                  <p className="text-center text-slate-300 py-4">No eligible non-supervisor officers have elapsed scheduled shifts this month.</p>
                 )}
               </div>
             </CardContent>
