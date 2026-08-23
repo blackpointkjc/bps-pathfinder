@@ -59,6 +59,14 @@
       "type": "number",
       "description": "Number of doors checked"
     },
+    "starting_mileage": {
+      "type": "number",
+      "description": "Vehicle odometer reading at the start of the shift"
+    },
+    "ending_mileage": {
+      "type": "number",
+      "description": "Vehicle odometer reading at the end of the shift"
+    },
     "hourly_entries": {
       "type": "string",
       "description": "Hourly time-stamped activity entries"
