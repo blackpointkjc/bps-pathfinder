@@ -585,7 +585,7 @@ export default function AdminLocations({ embedded = false }) {
                           {(location.contract_start_date || location.contract_end_date) && (
                             <p className="text-xs text-slate-600 mt-2">
                               <Calendar className="w-3 h-3 inline mr-1" />
-                              Contract: {location.contract_start_date ? format(new Date(location.contract_start_date), 'MMM d, yyyy') : 'N/A'} - {location.contract_end_date ? format(new Date(location.contract_end_date), 'MMM d, yyyy') : 'N/A'}
+                              Contract: {location.contract_start_date ? format(parseISO(location.contract_start_date), 'MMM d, yyyy') : 'N/A'} - {location.contract_end_date ? format(parseISO(location.contract_end_date), 'MMM d, yyyy') : 'N/A'}
                             </p>
                           )}
                           {location.latitude && location.longitude && (
@@ -715,7 +715,7 @@ export default function AdminLocations({ embedded = false }) {
                           {(location.contract_start_date || location.contract_end_date) && (
                             <p className="text-xs text-slate-600 mt-2">
                               <Calendar className="w-3 h-3 inline mr-1" />
-                              Contract: {location.contract_start_date ? format(new Date(location.contract_start_date), 'MMM d, yyyy') : 'N/A'} - {location.contract_end_date ? format(new Date(location.contract_end_date), 'MMM d, yyyy') : 'N/A'}
+                              Contract: {location.contract_start_date ? format(parseISO(location.contract_start_date), 'MMM d, yyyy') : 'N/A'} - {location.contract_end_date ? format(parseISO(location.contract_end_date), 'MMM d, yyyy') : 'N/A'}
                             </p>
                           )}
                           {location.max_hours_per_week && (
