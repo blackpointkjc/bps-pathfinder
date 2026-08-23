@@ -11,7 +11,8 @@ import { Shield, FileWarning, ClipboardCheck, Check, X, AlertCircle, Users, Prin
 import { format, parseISO, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { getRankLastNameByEmail } from "@/utils/officerDisplay";
-import { calculatePunctuality } from '@/lib/performanceScoring';
+import { calculatePunctuality, calculateBidStanding } from '@/lib/performanceScoring';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -161,8 +162,8 @@ export default function AdminSupervisorReports() {
   const pendingWriteUps = writeUps?.filter(w => w.status === 'pending_approval') || [];
   const approvedWriteUps = writeUps?.filter(w => w.status === 'approved') || [];
 
-  // Get active officers - include everyone except terminated
-  const activeOfficers = allUsers?.filter(u => !u.termination_date).sort((a, b) => {
+  // Officer analytics and selectors must contain actual operational officers only.
+  const activeOfficers = allUsers?.filter(isOperationalOfficer).sort((a, b) => {
     const unitA = a.unit_number;
     const unitB = b.unit_number;
     if (unitA && unitB) {
@@ -232,10 +233,12 @@ export default function AdminSupervisorReports() {
       scheduledHours += Math.max(0, (endMinutes - startMinutes) / 60);
     });
 
-    // Bid stats
-    const acceptedBids = officerBids.filter(b => b.status === 'accepted').length;
-    const rejectedBids = officerBids.filter(b => b.status === 'rejected').length;
-    const pendingBids = officerBids.filter(b => b.status === 'pending').length;
+    // Bid standing uses the same rule as My Performance: only an assigned/accepted
+    // bid is scoreable. Pending or management non-selection does not count as success.
+    const bidStanding = calculateBidStanding(officerBids, startDate, endDate);
+    const acceptedBids = bidStanding.accepted;
+    const rejectedBids = bidStanding.rejected;
+    const pendingBids = bidStanding.pending;
 
     // Training stats
     const officerTraining = trainingCompletions?.filter(tc => tc.officer_email === selectedOfficer) || [];
@@ -267,7 +270,7 @@ export default function AdminSupervisorReports() {
       shiftsWorked: officerTimeEntries.length,
       shiftsScheduled: officerSchedules.length,
       bids: { accepted: acceptedBids, rejected: rejectedBids, pending: pendingBids, total: officerBids.length },
-      bidAcceptanceRate: (acceptedBids + pendingBids + rejectedBids) > 0 ? Math.round(((acceptedBids + pendingBids) / (acceptedBids + pendingBids + rejectedBids)) * 100) : 0,
+      bidAcceptanceRate: bidStanding.score,
       trainingCompleted: completedTraining,
       writeUps: officerWriteUps,
       inspections: officerInspections,
@@ -468,7 +471,7 @@ export default function AdminSupervisorReports() {
               <div class="stat-label">Training Completed</div>
             </div>
             <div class="stat-box">
-              <div class="stat-value">${officerPerformance.bidAcceptanceRate}%</div>
+              <div class="stat-value">${officerPerformance.bidAcceptanceRate != null ? `${officerPerformance.bidAcceptanceRate}%` : '—'}</div>
               <div class="stat-label">Bid Standing</div>
             </div>
           </div>
@@ -945,7 +948,7 @@ export default function AdminSupervisorReports() {
                         <p className="text-xs text-slate-600">Shifts Worked</p>
                       </div>
                       <div className="p-4 bg-purple-50 rounded-lg border border-purple-200 text-center">
-                        <p className="text-3xl font-bold text-purple-600">{officerPerformance.bidAcceptanceRate}%</p>
+                        <p className="text-3xl font-bold text-purple-600">{officerPerformance.bidAcceptanceRate != null ? `${officerPerformance.bidAcceptanceRate}%` : '—'}</p>
                         <p className="text-xs text-slate-600">Bid Standing</p>
                       </div>
                     </div>
