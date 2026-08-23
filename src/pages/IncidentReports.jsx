@@ -711,7 +711,7 @@ Provide:
       return date.toISOString().replace('T', ' ').substring(0, 19) + 'Z';
     };
     
-    const incidentDate = report.incident_date ? format(new Date(report.incident_date), 'MMMM d, yyyy') : '';
+    const incidentDate = report.incident_date ? formatReportDate(report.incident_date, 'America/New_York') : '';
     const incidentTimeZulu = report.incident_time ? report.incident_time + 'Z' : '';
     const discoveredTimeZulu = report.discovered_time ? report.discovered_time + 'Z' : '';
     const submittedZulu = report.created_date ? toZulu(report.created_date) : 'N/A';
@@ -1441,7 +1441,7 @@ Provide:
                     <div>
                       <Badge className="bg-amber-600 text-white mb-2">DRAFT</Badge>
                       <p className="font-semibold text-slate-900">
-                        {report.incident_date ? format(new Date(report.incident_date), 'MMMM d, yyyy') : 'Date N/A'} at {report.location}
+                        {report.incident_date ? formatReportDate(report.incident_date, 'America/New_York') : 'Date N/A'} at {report.location}
                       </p>
                       <p className="text-sm text-slate-600 mt-1">{report.incident_type.replace(/_/g, ' ')}</p>
                     </div>
@@ -1538,7 +1538,7 @@ Provide:
                           </div>
                         </div>
                         <p className="font-semibold text-slate-900 mb-1">
-                          Date of Incident: {report.incident_date ? format(new Date(report.incident_date), 'MMMM d, yyyy') : 'Date N/A'}
+                          Date of Incident: {report.incident_date ? formatReportDate(report.incident_date, 'America/New_York') : 'Date N/A'}
                         </p>
                         <p className="text-sm text-slate-600">
                           Time of Incident: {report.incident_time || 'N/A'}
