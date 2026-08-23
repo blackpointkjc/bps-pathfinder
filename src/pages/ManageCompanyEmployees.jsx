@@ -332,32 +332,33 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     setPhotoToCrop(file);
   };
 
-  const saveCroppedEmployeePhoto = async ({ file, dataUrl }) => {
-    if (!editingUser) return;
+  const saveCroppedEmployeePhoto = async ({ dataUrl }) => {
+    if (!editingUser || !dataUrl) return;
     setUploadingPhoto(true);
     setPhotoPreview(dataUrl);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      if (!file_url) throw new Error('The uploaded image did not return a file URL.');
+      // The cropper already returns a compressed image data URL. Saving that value
+      // through the authorized HR backend avoids a second UploadFile permission step
+      // that was causing otherwise-valid cropped photos to fail.
       const result = await base44.functions.invoke('updateUser', {
         userId: editingUser,
-        updates: { profile_photo_url: file_url },
+        updates: { profile_photo_url: dataUrl },
       });
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.details || payload.error);
-      setEditFormData(prev => ({ ...prev, profile_photo_url: file_url }));
+      setEditFormData(prev => ({ ...prev, profile_photo_url: dataUrl }));
+      setSelectedUser(prev => prev ? { ...prev, profile_photo_url: dataUrl } : prev);
       setPhotoToCrop(null);
       invalidateAppDirectory();
-      await Promise.all([
-        queryClient.invalidateQueries({ predicate: query => {
-          const key = JSON.stringify(query.queryKey || []).toLowerCase();
-          return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank');
-        }}),
-      ]);
-      window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated', { detail: { userId: editingUser, profile_photo_url: file_url } }));
+      await queryClient.invalidateQueries({ predicate: query => {
+        const key = JSON.stringify(query.queryKey || []).toLowerCase();
+        return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank');
+      }});
+      window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated', { detail: { userId: editingUser, profile_photo_url: dataUrl } }));
+      alert('Officer photo updated successfully.');
     } catch (error) {
-      console.error('Profile photo upload failed:', error);
-      alert('Unable to save the cropped profile photo.');
+      console.error('Profile photo save failed:', error);
+      alert(`Unable to save the cropped profile photo: ${error?.message || 'Unknown error'}`);
     } finally {
       setPhotoPreview(null);
       setUploadingPhoto(false);
