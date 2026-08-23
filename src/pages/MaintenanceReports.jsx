@@ -357,7 +357,7 @@ export default function MaintenanceReports() {
           
           .report-container { border: 3px solid #64748b; border-radius: 8px; overflow: hidden; }
           .header { background: linear-gradient(135deg, #475569 0%, #64748b 100%); color: white; padding: 20px; text-align: center; }
-          .logo { width: 60px; height: 60px; object-fit: contain; margin: 0 auto 10px; background: white; border-radius: 8px; padding: 5px; }
+          .logo { width: 60px; height: 60px; object-fit: contain; margin: 0 auto 10px; background: transparent; padding: 0; }
           .title { font-size: 20pt; font-weight: bold; letter-spacing: 1px; margin-bottom: 5px; }
           .subtitle { font-size: 12pt; font-weight: 500; opacity: 0.95; }
           .dcjs { font-size: 8pt; margin-top: 8px; opacity: 0.9; }

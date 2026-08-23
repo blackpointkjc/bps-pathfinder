@@ -535,7 +535,7 @@ export default function AccountingInvoices() {
                                   margin-bottom: 30px;
                                 }
                                 .company-info { flex: 1; display:flex; gap:15px; align-items:center; }
-                                .company-logo { width:72px; height:72px; object-fit:contain; background:#fff; border-radius:10px; padding:4px; }
+                                .company-logo { width:72px; height:72px; object-fit:contain; background:transparent; padding:0; }
                                 .company-copy { flex:1; }
                                 .company-name {
                                   font-size: 24px;

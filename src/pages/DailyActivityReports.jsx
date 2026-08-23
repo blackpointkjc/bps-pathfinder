@@ -554,7 +554,7 @@ export default function DailyActivityReports() {
           
           .report-container { border: 2px solid #1e40af; border-radius: 4px; overflow: hidden; }
           .header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 10px; text-align: center; }
-          .logo { width: 35px; height: 35px; object-fit: contain; margin: 0 auto 4px; background: white; border-radius: 4px; padding: 2px; }
+          .logo { width: 35px; height: 35px; object-fit: contain; margin: 0 auto 4px; background: transparent; padding: 0; }
           .title { font-size: 13pt; font-weight: bold; letter-spacing: 0.5px; margin-bottom: 2px; }
           .subtitle { font-size: 8.5pt; font-weight: 500; opacity: 0.95; }
           .dcjs { font-size: 6pt; margin-top: 3px; opacity: 0.9; }
