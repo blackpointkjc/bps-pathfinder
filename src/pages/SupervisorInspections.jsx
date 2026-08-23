@@ -59,9 +59,13 @@ export default function SupervisorInspections() {
 
   const { data: inspections = [], isLoading: inspectionsLoading, error: inspectionsError } = useQuery({
     queryKey: ['inspectionReports'],
-    queryFn: () => base44.entities.InspectionReport.list('-created_date'),
+    queryFn: () => base44.entities.InspectionReport.list('-created_date', 500),
     enabled: hasSupervisorAccess,
     initialData: [],
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    retry: 3,
+    retryDelay: attempt => Math.min(1500 * (attempt + 1), 5000),
   });
 
   const saveInspectionMutation = useMutation({
