@@ -135,7 +135,7 @@ export default function RecordsAssistant() {
                         {(item.vehicle_plate || item.vehicle_description) && <span className="flex items-center gap-1"><Car className="h-3 w-3" />{[item.vehicle_description, item.vehicle_plate ? `Plate ${item.vehicle_plate}${item.vehicle_state ? ` ${item.vehicle_state}` : ''}` : ''].filter(Boolean).join(' · ')}</span>}
                         {item.vehicle_vin && <span className="font-mono">VIN {item.vehicle_vin}</span>}
                         {item.warrant_issued && <span className="flex items-center gap-1 font-bold text-red-300"><ShieldAlert className="h-3 w-3" />WARRANT RECORD{item.warrant_number ? ` ${item.warrant_number}` : ''}</span>}
-                        {item.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{item.location}</span>
+                        {item.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{item.location}</span>}
                         {item.date && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(item.date).toLocaleDateString()}</span>}
                       </div>
                       {item.linked_call_location && <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-cyan-300">Related CAD Location: {item.linked_call_location}</p>}
