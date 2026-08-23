@@ -487,15 +487,85 @@ Deno.serve(async (req) => {
     });
 
     const rankingCandidates = recipients.filter(isOperationalUser);
-    const metricResults = await Promise.all(rankingCandidates.map(async user => {
+
+    // Build the same durable property-call feed used by Company Analytics. PropertyAlert
+    // preserves the monitored property and original call id after the live CAD row ages out.
+    const alertByCall = new Map<string, any>();
+    for (const alert of propertyAlerts || []) {
+      if (!alert?.callId) continue;
+      const callId = String(alert.callId);
+      const prior = alertByCall.get(callId);
+      const stamp = new Date(alert.created_date || 0).getTime();
+      const priorStamp = new Date(prior?.created_date || 0).getTime();
+      if (!prior || stamp >= priorStamp) alertByCall.set(callId, alert);
+    }
+    const dispatchCalls = [...alertByCall.entries()].map(([callId, alert]) => ({
+      id: callId,
+      original_call_id: callId,
+      call_id: callId,
+      property_id: alert.propertyId || '',
+      property_site: alert.propertyName || '',
+      incident: alert.callIncident || 'Property call',
+      location: alert.callLocation || alert.propertyName || '',
+      time_received: alert.callTime || alert.time_received || alert.created_date,
+      status: alert.acknowledged ? 'Closed' : 'Pending',
+    }));
+
+    // IMPORTANT: Daily email rankings must use the exact current Pathfinder scoring
+    // engine used by AdminAnalytics/MyPerformanceAnalytics. Do not use the older
+    // performance-review metric builder here; that produced values such as 56% that
+    // could disagree with the live app.
+    const metricResults = rankingCandidates.map(user => {
       try {
-        const metrics = await buildPerformanceMetrics(base44, user, now.monthStart, now.monthEnd, metricData);
-        return { user, metrics, score: metrics.performance_score != null && Number.isFinite(Number(metrics.performance_score)) ? Number(metrics.performance_score) : null };
+        const key = emailKey(user.email);
+        const officerTimeEntries = (metricData.timeEntries || []).filter((item: any) => emailKey(item.officer_email) === key);
+        const officerSchedules = (metricData.schedules || []).filter((item: any) => emailKey(item.officer_email) === key);
+        const officerBids = (shiftBids || []).filter((item: any) => emailKey(item.officer_email) === key);
+        const officerCompletions = (trainingCompletions || []).filter((item: any) => emailKey(item.officer_email) === key);
+        const officerAssignments = (trainingAssignments || []).filter((item: any) => emailKey(item.officer_email) === key);
+        const officerFeedback = (clientFeedback || []).filter((item: any) => emailKey(item.officer_email) === key);
+        const officerReviews = (performanceReviews || []).filter((item: any) => emailKey(item.officer_email) === key);
+        const officerCommendations = (metricData.commendations || []).filter((item: any) => emailKey(item.officer_email) === key);
+        const officerCallOuts = (callOuts || []).filter((item: any) => emailKey(item.officer_email) === key);
+
+        const punctuality = calculatePunctuality(officerTimeEntries, officerSchedules, now.monthStart, now.monthEnd, metricData.incidents || [], user);
+        const training = calculateTrainingScore(user, (trainingModules || []).filter((item: any) => item.active !== false), officerCompletions, officerAssignments);
+        const bidStanding = calculateBidStanding(officerBids, now.monthStart, now.monthEnd);
+        const clientFeedbackScore = calculateClientFeedback(officerFeedback, now.monthStart, now.monthEnd);
+        const supervisorRating = calculateSupervisorRating(officerReviews, now.monthStart, now.monthEnd);
+        const recognition = calculateRecognition(officerCommendations, officerFeedback, now.monthStart, now.monthEnd);
+        const callOutAttendance = calculateCallOutAttendance(officerCallOuts, officerSchedules, now.monthStart, now.monthEnd);
+        const jobDuty = calculateJobDutyCompliance({
+          officer: user,
+          timeEntries: officerTimeEntries,
+          dailyReports,
+          incidentReports: metricData.incidents || [],
+          dispatchCalls,
+          callOuts,
+          qrScans,
+          allTimeEntries: metricData.timeEntries || [],
+          qrCheckpoints,
+          dutyRules,
+          locations,
+          monthStart: now.monthStart,
+          monthEnd: now.monthEnd,
+        });
+        const overall = buildOverallPerformance({
+          punctuality,
+          trainingScore: training.total > 0 ? training.percentage : null,
+          jobDuty,
+          callOutAttendance,
+          bidStanding,
+          clientFeedback: clientFeedbackScore,
+          supervisorRating,
+          recognition,
+        });
+        return { user, metrics: { punctuality, training, jobDuty, callOutAttendance, bidStanding, clientFeedback: clientFeedbackScore, supervisorRating, recognition, overall }, score: overall.score };
       } catch (error) {
         console.warn('Daily ranking skipped for', user?.email, error?.message || error);
         return { user, metrics: null, score: null };
       }
-    }));
+    });
     const rankings = metricResults.sort((a, b) =>
       (b.score ?? -1) - (a.score ?? -1) || rankedName(a.user).localeCompare(rankedName(b.user))
     );
@@ -505,7 +575,7 @@ Deno.serve(async (req) => {
       : null;
     const punctualityRows = metricResults.filter(row => row.metrics?.punctuality?.total > 0);
     const companyPunctualityTotal = punctualityRows.reduce((sum, row) => sum + Number(row.metrics.punctuality.total || 0), 0);
-    const companyPunctualityOnTime = punctualityRows.reduce((sum, row) => sum + Number(row.metrics.punctuality.on_time || 0), 0);
+    const companyPunctualityOnTime = punctualityRows.reduce((sum, row) => sum + Number(row.metrics.punctuality.onTime || 0), 0);
     const companyOnTime = companyPunctualityTotal > 0 ? Math.round((companyPunctualityOnTime / companyPunctualityTotal) * 100) : null;
 
     const dateLabel = new Intl.DateTimeFormat('en-US', {
