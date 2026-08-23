@@ -378,8 +378,11 @@ export default function Navigation() {
         unitStatusRef.current = newStatus;
         try {
             const stamp = new Date().toISOString();
-            await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
+            const response = await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
+            const payload = response?.data || response || {};
+            if (payload.error) throw new Error(payload.error);
             setCurrentUser(prev => prev ? { ...prev, status: newStatus, last_updated: stamp, status_since: stamp } : prev);
+            window.dispatchEvent(new CustomEvent('bps-officer-status-changed', { detail: { officer_id: currentUser?.id, email: currentUser?.email, status: newStatus } }));
             fetchOtherUnits();
         } catch (e) {
             console.warn('[NAV] direct status update failed:', e?.message);
