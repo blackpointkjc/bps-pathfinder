@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectValue, SelectTrigger } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ProfilePhotoCropper from "../components/ProfilePhotoCropper";
-import { listDirectoryUsers, listDirectoryLocations, listDirectoryDivisions } from '@/lib/appDirectory';
+import { listDirectoryUsers, listDirectoryLocations, listDirectoryDivisions, invalidateAppDirectory } from '@/lib/appDirectory';
 import { isInternalMember } from '@/lib/directoryUtils';
 
 const FIREARM_COURSE_PREFIXES = ["07", "08", "09", "10"];
@@ -131,10 +131,11 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       return base44.entities.User.update(id, profileUpdates);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
-      queryClient.invalidateQueries({ queryKey: ['allUsers'] });
-      queryClient.invalidateQueries({ queryKey: ['trainingComplianceMatrix'] });
+      invalidateAppDirectory();
+      queryClient.invalidateQueries({ predicate: query => {
+        const key = JSON.stringify(query.queryKey || []).toLowerCase();
+        return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank') || key.includes('trainingcompliancematrix');
+      }});
       setShowDialog(false);
       setEditingUser(null);
       alert('User updated successfully');
@@ -340,7 +341,14 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
       await base44.entities.User.update(editingUser, { profile_photo_url: file_url });
       setEditFormData(prev => ({ ...prev, profile_photo_url: file_url }));
       setPhotoToCrop(null);
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+      invalidateAppDirectory();
+      await Promise.all([
+        queryClient.invalidateQueries({ predicate: query => {
+          const key = JSON.stringify(query.queryKey || []).toLowerCase();
+          return key.includes('user') || key.includes('directory') || key.includes('officer') || key.includes('supervisor') || key.includes('chat') || key.includes('personnel') || key.includes('rank');
+        }}),
+      ]);
+      window.dispatchEvent(new CustomEvent('bps-personnel-photo-updated', { detail: { userId: editingUser, profile_photo_url: file_url } }));
     } catch (error) {
       console.error('Profile photo upload failed:', error);
       alert('Unable to save the cropped profile photo.');
