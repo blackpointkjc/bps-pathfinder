@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 export default function AdminManualPTO() {
   const [showDialog, setShowDialog] = useState(false);
   const [entryMode, setEntryMode] = useState('bonus');
-  const [formData, setFormData] = useState({ officer_email: '', hours: '', reason: '', start_date: '', end_date: '', remove_shifts: false });
+  const [formData, setFormData] = useState({ officer_email: '', hours: '', reason: '', start_date: '', end_date: '', remove_shifts: false, call_out_date: '', use_pto: false });
   const queryClient = useQueryClient();
 
   const { data: user } = useQuery({
@@ -44,13 +44,15 @@ export default function AdminManualPTO() {
       if (!officer?.email) throw new Error('Select an officer');
       if (!Number.isFinite(hours) || hours <= 0) throw new Error('Enter positive PTO hours');
       const response = await base44.functions.invoke('getPTORequests', {
-        action: entryMode === 'bonus' ? 'bonus' : 'manual',
+        action: entryMode === 'bonus' ? 'bonus' : entryMode === 'callout' ? 'record_callout' : 'manual',
         officer_email: officer.email,
         hours,
         reason: formData.reason.trim(),
         start_date: formData.start_date,
         end_date: formData.end_date,
         remove_shifts: entryMode === 'manual' && formData.remove_shifts,
+        call_out_date: formData.call_out_date,
+        use_pto: entryMode === 'callout' && formData.use_pto,
       });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
@@ -65,9 +67,13 @@ export default function AdminManualPTO() {
         queryClient.invalidateQueries({ queryKey: ['hrUsers'] }),
       ]);
       window.dispatchEvent(new CustomEvent('bps-directory-user-updated', { detail: { reason: 'pto-adjustment' } }));
-      toast.success(`${Number(payload.hours_added || formData.hours).toFixed(1)} PTO hours added to ${officer?.rank || 'Officer'} ${officer?.last_name || ''}`.trim());
+      if (entryMode === 'callout') {
+        toast.success(formData.use_pto ? `${Number(payload.pto_used || formData.hours).toFixed(1)} PTO hours applied to the call-out` : 'Call-out recorded as unpaid');
+      } else {
+        toast.success(`${Number(payload.hours_added || formData.hours).toFixed(1)} PTO hours added to ${officer?.rank || 'Officer'} ${officer?.last_name || ''}`.trim());
+      }
       setShowDialog(false);
-      setFormData({ officer_email: '', hours: '', reason: '', start_date: '', end_date: '', remove_shifts: false });
+      setFormData({ officer_email: '', hours: '', reason: '', start_date: '', end_date: '', remove_shifts: false, call_out_date: '', use_pto: false });
     },
     onError: error => toast.error(error?.message || 'Unable to add PTO hours'),
   });
@@ -93,6 +99,7 @@ export default function AdminManualPTO() {
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => openAdjustment('bonus')} className="bg-violet-600 hover:bg-violet-500"><Gift className="mr-2 h-4 w-4"/>Add PTO Bonus</Button>
             <Button onClick={() => openAdjustment('manual')} className="bg-blue-600 hover:bg-blue-500"><Plus className="mr-2 h-4 w-4"/>Add PTO Hours</Button>
+            <Button onClick={() => openAdjustment('callout')} className="bg-amber-600 hover:bg-amber-500">Record Call-Out</Button>
           </div>
         </div>
 
@@ -106,7 +113,7 @@ export default function AdminManualPTO() {
 
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
           <DialogContent className="max-w-xl border-slate-700 bg-[#0d1725] text-slate-100">
-            <DialogHeader><DialogTitle>{entryMode === 'bonus' ? 'Add PTO Bonus' : 'Add PTO Hours'}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{entryMode === 'bonus' ? 'Add PTO Bonus' : entryMode === 'callout' ? 'Record Officer Call-Out' : 'Add PTO Hours'}</DialogTitle></DialogHeader>
             <form onSubmit={e => { e.preventDefault(); addPTOMutation.mutate(); }} className="space-y-5">
               <div className="space-y-2">
                 <Label>Select Officer *</Label>
@@ -122,7 +129,12 @@ export default function AdminManualPTO() {
                 <div className="rounded-xl border border-slate-700 bg-[#101b29] p-3"><div className="text-[10px] font-black uppercase text-slate-500">Used YTD</div><div className="mt-1 text-2xl font-black text-amber-300">{Number(officer.pto_year_to_date_used || 0).toFixed(1)}h</div></div>
               </div>}
 
-              <div className="space-y-2"><Label>{entryMode === 'bonus' ? 'Bonus Hours' : 'PTO Hours'} *</Label><Input type="number" min="0.5" step="0.5" value={formData.hours} onChange={e => setFormData(current => ({ ...current, hours: e.target.value }))} className="border-slate-700 bg-[#08111d]" placeholder="8" required/></div>
+              <div className="space-y-2"><Label>{entryMode === 'bonus' ? 'Bonus Hours' : entryMode === 'callout' ? 'Call-Out Hours' : 'PTO Hours'} *</Label><Input type="number" min="0.5" step="0.5" value={formData.hours} onChange={e => setFormData(current => ({ ...current, hours: e.target.value }))} className="border-slate-700 bg-[#08111d]" placeholder="8" required/></div>
+              {entryMode === 'callout' && <div className="space-y-3 rounded-xl border border-slate-700 bg-[#101b29] p-4">
+                <div className="space-y-2"><Label>Call-Out Date *</Label><Input type="date" value={formData.call_out_date} onChange={e => setFormData(current => ({ ...current, call_out_date: e.target.value }))} className="border-slate-700 bg-[#08111d]" required/></div>
+                <label className="flex cursor-pointer items-center gap-3 text-sm font-bold text-slate-200"><input type="checkbox" checked={formData.use_pto} onChange={e => setFormData(current => ({ ...current, use_pto: e.target.checked }))} className="h-4 w-4"/>Use PTO for this call-out</label>
+                <div className="text-xs text-slate-400">If unchecked, the call-out is recorded as unpaid and no PTO is deducted. If checked, these hours are deducted from Available PTO and appear in payroll as straight-time PTO.</div>
+              </div>
               {entryMode === 'manual' && <div className="space-y-3 rounded-xl border border-slate-700 bg-[#101b29] p-4">
                 <label className="flex cursor-pointer items-center gap-3 text-sm font-bold text-slate-200"><input type="checkbox" checked={formData.remove_shifts} onChange={e => setFormData(current => ({ ...current, remove_shifts: e.target.checked }))} className="h-4 w-4"/>Remove scheduled shifts and place them in Open Shifts</label>
                 {formData.remove_shifts && <div className="grid gap-3 sm:grid-cols-2">
@@ -130,7 +142,7 @@ export default function AdminManualPTO() {
                   <div className="space-y-2"><Label>End Date *</Label><Input type="date" value={formData.end_date} onChange={e => setFormData(current => ({ ...current, end_date: e.target.value }))} className="border-slate-700 bg-[#08111d]" required/></div>
                 </div>}
               </div>}
-              <div className="space-y-2"><Label>Reason</Label><Input value={formData.reason} onChange={e => setFormData(current => ({ ...current, reason: e.target.value }))} className="border-slate-700 bg-[#08111d]" placeholder={entryMode === 'bonus' ? 'Officer of the Day, recognition, etc.' : 'Balance correction or approved adjustment'}/></div>
+              <div className="space-y-2"><Label>Reason</Label><Input value={formData.reason} onChange={e => setFormData(current => ({ ...current, reason: e.target.value }))} className="border-slate-700 bg-[#08111d]" placeholder={entryMode === 'bonus' ? 'Officer of the Day, recognition, etc.' : entryMode === 'callout' ? 'Call-out reason or HR note' : 'Balance correction or approved adjustment'}/></div>
               <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button><Button type="submit" disabled={addPTOMutation.isPending} className="bg-blue-600 hover:bg-blue-500">{addPTOMutation.isPending ? 'Saving…' : entryMode === 'bonus' ? 'Add Bonus PTO' : 'Add PTO Hours'}</Button></div>
             </form>
           </DialogContent>
