@@ -16,7 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getCurrentDirectoryUser, listDirectoryLocations, listSupervisorDirectoryOfficers } from '@/lib/appDirectory';
-import { hasOfficerAdditionalRole } from '@/lib/directoryUtils';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 
 export default function SupervisorWriteUps() {
   const [showForm, setShowForm] = useState(false);
@@ -56,7 +56,7 @@ export default function SupervisorWriteUps() {
     refetchOnWindowFocus: false,
   });
 
-  const filteredUsers = allUsers.filter(hasOfficerAdditionalRole);
+  const filteredUsers = allUsers.filter(isOperationalOfficer);
 
   const { data: locations = [] } = useQuery({
     queryKey: ['directoryLocations', 'supervisorWriteUps'],
