@@ -13,7 +13,7 @@ import ActiveBoloBanner from '@/components/bolo/ActiveBoloBanner';
 import CADUnitStatusBoard from '@/components/dispatch/CADUnitStatusBoard';
 import { useDashboardData } from '@/lib/DashboardDataContext';
 import { isOperationalOfficer } from '@/lib/directoryUtils';
-import { Zap, MapPin, Users, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
+import { MapPin, Users, Shield, AlertTriangle, Radio, ChevronRight, RotateCcw, CheckCheck, WifiOff, CircleX, FileWarning } from 'lucide-react';
 import { formatEasternTime, parseServerTimestamp } from '@/lib/easternTime';
 
 const PRIORITY_CONFIG = {
@@ -506,7 +506,6 @@ function CommandDashboardInner() {
                         <PanelHeader accent="gold">QUICK ACCESS</PanelHeader>
                         <div className="p-2 grid grid-cols-2 gap-1.5">
                             {[
-                                { label: 'DISPATCH CTR', icon: Zap, page: 'DispatchCenter', color: 'border-gold/40 text-gold hover:bg-gold/10' },
                                 { label: 'BOLO / ALERTS', icon: FileWarning, page: 'BOLOAlerts', color: 'border-red-500/40 text-red-400 hover:bg-red-500/10' },
                                 { label: 'LIVE MAP', icon: MapPin, page: 'Navigation', color: 'border-blue-500/40 text-blue-400 hover:bg-blue-500/10' },
                                 ...(isAdmin ? [
