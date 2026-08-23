@@ -99,8 +99,14 @@ export default function AdminPayroll() {
   const { data: ptoUsage = [] } = useQuery({
     queryKey: ['payrollPtoUsage', selectedOfficer, startDate, endDate],
     queryFn: async () => {
-      const rows = await base44.entities.PTOUsage.list('-usage_date', 5000);
-      return rows.filter(row => row.status === 'active' && row.usage_date >= startDate && row.usage_date <= endDate && (selectedOfficer === 'all' || row.officer_email === selectedOfficer));
+      const response = await base44.functions.invoke('getPayrollPTOUsage', {
+        start_date: startDate,
+        end_date: endDate,
+        officer_email: selectedOfficer,
+      });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload.usage || [];
     },
     enabled: (user?.role === 'admin' || user?.additional_roles?.includes('accounting')) && !!startDate && !!endDate,
     refetchInterval: 10000,
