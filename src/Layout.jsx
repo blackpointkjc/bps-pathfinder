@@ -720,10 +720,19 @@ function Sidebar({ collapsed, mobile, mobileSection, user, activeCenter, setActi
 
       <div className={`border-t border-[#1b3048] bg-[#06101b]/95 backdrop-blur ${mobile ? 'mobile-tool-footer' : 'p-2.5'}`}>
         {(!collapsed || mobile) && <div className={`${mobile ? 'mobile-account-card' : 'mb-2'} rounded-lg border border-[#25435e] bg-gradient-to-br from-[#0e2033] to-[#0a1726] px-3 py-2.5 shadow-inner`}>
-          <div className="truncate text-[9px] tracking-widest text-[#597491]">{roleName(user)}</div>
-          <div className="truncate text-[11px] font-bold leading-tight text-white">{user?.rank || user?.full_name || user?.email || 'AUTHORIZED USER'}</div>
-          {user?.rank && user?.last_name && <div className="truncate text-[10px] leading-tight text-[#9fb6cc]">{user.last_name}</div>}
-          <div className="secure-session mt-1 text-[9px] text-emerald-400">● SECURE SESSION</div>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#3d6281] bg-[#13263a] shadow-inner">
+              {user?.profile_photo_url
+                ? <img src={user.profile_photo_url} alt="User profile" className="h-full w-full object-cover" />
+                : <div className="flex h-full w-full items-center justify-center text-[#7895b2]"><UserCheck className="h-4 w-4" /></div>}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-[9px] tracking-widest text-[#597491]">{roleName(user)}</div>
+              <div className="truncate text-[11px] font-bold leading-tight text-white">{user?.rank || user?.full_name || user?.email || 'AUTHORIZED USER'}</div>
+              {user?.rank && user?.last_name && <div className="truncate text-[10px] leading-tight text-[#9fb6cc]">{user.last_name}</div>}
+              <div className="secure-session mt-1 text-[9px] text-emerald-400">● SECURE SESSION</div>
+            </div>
+          </div>
         </div>}
         <button onClick={() => onLogout?.()} className={`mobile-session-action flex h-10 w-full items-center gap-3 rounded px-3 text-[#8399b0] hover:bg-red-950/30 hover:text-red-300 ${collapsed && !mobile ? 'justify-center px-0' : ''}`} title="Sign out" aria-label="Sign out">
           <LogOut className="h-4 w-4" />{(!collapsed || mobile) && <span className="text-[11px] font-bold">SIGN OUT</span>}
