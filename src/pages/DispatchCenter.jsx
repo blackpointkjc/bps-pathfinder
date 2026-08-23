@@ -470,7 +470,7 @@ export default function DispatchCenter() {
             </div>
 
             {/* ══ QUEUE CONTROLS ══ */}
-            <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} flex-none flex-wrap items-center gap-2 border-b border-[#1e2d4a] bg-[#0a0e1a] px-2 py-1.5 md:flex md:flex-nowrap md:px-3`}>
+            <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} flex-none flex-wrap items-center gap-2 border-b border-[#1e2d4a] bg-[#0a0e1a] px-2 py-1.5 lg:flex lg:flex-nowrap lg:px-3`}>
                 <div className="relative w-full min-w-0 sm:w-auto sm:min-w-52 md:w-56">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500" />
                     <input id="cad-queue-search" value={queueSearch} onChange={e => setQueueSearch(e.target.value)} placeholder="Search CAD, incident, address...  [/]"
@@ -498,10 +498,10 @@ export default function DispatchCenter() {
                     <PriorCallsView currentUser={currentUser} units={units} />
                 </div>
             ) : (
-                <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
+                <div className="flex-1 min-h-0 flex flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
 
                     {/* ═══ LEFT: ACTIVE CALLS TABLE ═══ */}
-                    <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 flex-col border-b border-[#1e2d4a] md:flex md:min-h-0 md:w-[350px] md:flex-none md:border-b-0 md:border-r xl:w-[380px]`}> 
+                    <div className={`${mobileView === 'calls' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 flex-col border-b border-[#1e2d4a] lg:flex lg:min-h-0 lg:w-[350px] lg:flex-none lg:border-b-0 lg:border-r xl:w-[380px]`}> 
                         {/* Police Calls */}
                         <div className="flex-none px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />
@@ -548,11 +548,11 @@ export default function DispatchCenter() {
                     </div>
 
                     {/* ═══ CENTER: MAP + CALL DETAIL ═══ */}
-                    <div className={`${mobileView === 'detail' || mobileView === 'map' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 min-w-0 flex-col border-b border-[#1e2d4a] md:flex md:min-h-0 md:border-b-0 md:border-r`}> 
+                    <div className={`${mobileView === 'detail' || mobileView === 'map' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 min-w-0 flex-col border-b border-[#1e2d4a] lg:flex lg:min-h-0 lg:border-b-0 lg:border-r`}> 
                         {/* Call Detail */}
-                        <div className={`${mobileView === 'map' ? 'hidden' : 'block'} flex-none border-b border-[#1e2d4a] md:block`} style={{minHeight: 0}}>
+                        <div className={`${mobileView === 'map' ? 'hidden' : 'flex'} min-h-0 flex-1 flex-col border-b border-[#1e2d4a] lg:flex`}> 
                             {selectedCall ? (
-                                <div className="overflow-auto" style={{maxHeight: '340px'}}>
+                                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                                     <div className="px-3 md:px-4 py-2 bg-[#0d1220] border-b border-[#1e2d4a] flex flex-wrap items-center gap-2 md:gap-3">
                                         <span className="text-[#f5a623] font-bold text-xs">
                                             {selectedCall.official_cad_verified ? `AGENCY CAD #${selectedCall.agency_cad_number || selectedCall.call_id}` : `BPS REF ${selectedCall.bps_reference || selectedCall.call_id || 'ASSIGNING…'}`}
@@ -653,7 +653,7 @@ export default function DispatchCenter() {
                     </div>
 
                     {/* ═══ RIGHT: UNITS / ASSIGNMENT ═══ */}
-                    <div className={`${mobileView === 'assignment' || mobileView === 'units' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 flex-col bg-[#08111b] md:flex md:w-[320px] md:flex-none xl:w-[360px]`}>
+                    <div className={`${mobileView === 'assignment' || mobileView === 'units' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 flex-col bg-[#08111b] lg:flex lg:w-[320px] lg:flex-none xl:w-[360px]`}>
                         {selectedCall ? (
                             <div className="flex min-h-0 flex-1 flex-col">
                                 <div className="flex flex-none items-center gap-2 border-b border-[#1e2d4a] bg-[#0d1220] px-3 py-2">
