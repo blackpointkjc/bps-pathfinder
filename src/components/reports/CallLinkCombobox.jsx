@@ -12,7 +12,7 @@ export default function CallLinkCombobox({ calls = [], value, onSelect, placehol
 
   const selected = calls.find(c => c.id === value) || null;
   const q = query.trim().toLowerCase();
-  const haystack = (call) => [callDisplayNumber(call), call.bps_reference, call.agency_cad_number, call.call_id, call.incident, call.location, call.cross_street, call.landmark].filter(Boolean).join(' ').toLowerCase();
+  const haystack = (call) => [callDisplayNumber(call), call.bps_reference, call.agency_cad_number, call.call_id, call.incident, call.location, call.cross_street, call.landmark, call.property_name].filter(Boolean).join(' ').toLowerCase();
   const filtered = q ? calls.filter(c => haystack(c).includes(q)) : calls;
   const active = filtered.filter(isActiveDispatchCall);
   const history = filtered.filter(c => !isActiveDispatchCall(c));
@@ -23,7 +23,7 @@ export default function CallLinkCombobox({ calls = [], value, onSelect, placehol
     setQuery('');
   };
 
-  const label = (call) => `${callDisplayNumber(call) || 'No CAD #'} — ${cleanIncident(call) || 'Incident pending'} — ${call.location || 'Location pending'}`;
+  const label = (call) => `${callDisplayNumber(call) || 'No CAD #'} — ${cleanIncident(call) || 'Incident pending'} — ${call.property_name ? `${call.property_name} · ` : ''}${call.location || 'Location pending'}`;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -50,6 +50,7 @@ export default function CallLinkCombobox({ calls = [], value, onSelect, placehol
                 {active.slice(0, 200).map(call => (
                   <CommandItem key={call.id} value={call.id} onSelect={() => handleSelect(call.id)} className="gap-2">
                     <span className="rounded bg-emerald-700 px-1.5 py-0.5 text-[10px] font-bold text-white">ACTIVE</span>
+                    {call.property_name && <span className="rounded bg-blue-700 px-1.5 py-0.5 text-[10px] font-bold text-white">PROPERTY</span>}
                     <span className="min-w-0 flex-1 truncate">{label(call)}</span>
                     {value === call.id && <Check className="h-4 w-4 shrink-0" />}
                   </CommandItem>
@@ -63,6 +64,7 @@ export default function CallLinkCombobox({ calls = [], value, onSelect, placehol
                   {history.slice(0, 200).map(call => (
                     <CommandItem key={call.id} value={call.id} onSelect={() => handleSelect(call.id)} className="gap-2">
                       <span className="rounded bg-slate-600 px-1.5 py-0.5 text-[10px] font-bold text-white">HISTORY</span>
+                      {call.property_name && <span className="rounded bg-blue-700 px-1.5 py-0.5 text-[10px] font-bold text-white">PROPERTY</span>}
                       <span className="min-w-0 flex-1 truncate">{label(call)}</span>
                       {value === call.id && <Check className="h-4 w-4 shrink-0" />}
                     </CommandItem>
