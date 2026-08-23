@@ -236,7 +236,7 @@ function CommandDashboardInner() {
     const isDispatchOrAdmin  = isAdmin || currentUser?.is_supervisor || currentUser?.dispatch_role;
     const currentRoles = new Set((currentUser?.additional_roles || []).map(r => String(r).trim().toLowerCase()));
     const operationalRank = ['colonel','lt colonel','lieutenant colonel','major','captain','lieutenant','first sergeant','sergeant','corporal','senior officer','officer','unarmed officer'].includes(String(currentUser?.rank || '').trim().toLowerCase());
-    const hasFieldStatusAccess = currentRoles.has('officer') || currentRoles.has('cad_access') || operationalRank;
+    const hasFieldStatusAccess = isAdmin || currentUser?.is_supervisor || currentRoles.has('full_access') || currentRoles.has('supervisor') || currentRoles.has('officer') || currentRoles.has('cad_access') || operationalRank;
     const hasDispatchAccess = currentUser?.role === 'dispatch' || currentRoles.has('dispatch') || !!currentUser?.dispatch_role;
     // Only a pure dispatcher gets the reduced Dispatch/Available/OOS set. Command
     // staff and field officers keep the full officer status set even when they also
@@ -336,21 +336,28 @@ function CommandDashboardInner() {
 
             {/* ── MY STATUS BAR ── */}
             {currentUser && (
-                <div className="flex-none flex items-center gap-2 px-3 py-1.5 bg-slate-900/80 border-b border-slate-800">
-                    <span className="text-slate-500 font-mono text-[10px] tracking-widest flex-shrink-0">
+                <div className="flex-none flex items-center gap-2 px-3 py-2 bg-slate-900/80 border-b border-slate-800 overflow-x-auto">
+                    {currentUser.profile_photo_url ? (
+                        <img src={currentUser.profile_photo_url} alt="" className="h-8 w-8 flex-shrink-0 rounded-full border border-gold/50 object-cover" />
+                    ) : (
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-[10px] font-black text-slate-300">
+                            {(currentUser.first_name?.[0] || '')}{(currentUser.last_name?.[0] || '')}
+                        </div>
+                    )}
+                    <span className="text-slate-400 font-mono text-[10px] tracking-widest flex-shrink-0">
                         {currentUser.rank && currentUser.last_name
                           ? `${normalizeRank(currentUser.rank)} ${currentUser.last_name}`.toUpperCase()
                           : currentUser.unit_number
                             ? `UNIT-${currentUser.unit_number}`
                             : currentUser.full_name?.toUpperCase()} STATUS:
                     </span>
-                    <div className="flex items-center gap-1 flex-wrap">
+                    <div className="flex min-w-max items-center gap-1.5">
                         {myStatuses.map(s => {
                             const cfg = UNIT_STATUS_COLORS[s];
                             const isActive = currentUser.status === s;
                             return (
                                 <button key={s} onClick={() => handleStatusChange(s)}
-                                    className={`px-2.5 py-0.5 rounded font-mono text-[10px] font-bold border transition-all ${
+                                    className={`h-7 whitespace-nowrap px-2.5 rounded-md font-mono text-[10px] font-bold border transition-all ${
                                         isActive ? `${cfg.badge} ring-1 ring-offset-1 ring-offset-slate-900 ring-current` : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-500'
                                     }`}>
                                     {s.toUpperCase()}
@@ -532,7 +539,7 @@ function CommandDashboardInner() {
                             </div>
                             <div className="px-3 py-1.5 space-y-1">
                                 {unassigned.slice(0, 4).map(call => (
-                                    <div key={call.id} onClick={() => navigate(createPageUrl('DispatchCenter'))}
+                                    <div key={call.id} onClick={() => openCallOnMap(call)}
                                         className="flex items-start gap-1.5 cursor-pointer hover:bg-yellow-950/30 px-1 py-0.5 rounded">
                                         <span className="text-yellow-600 font-mono text-[9px] mt-0.5">►</span>
                                         <div className="min-w-0">
