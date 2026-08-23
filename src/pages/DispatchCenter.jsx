@@ -389,7 +389,7 @@ export default function DispatchCenter() {
                     <span className="text-green-400 text-[10px]">ONLINE</span>
                 </div>
                 <div className="flex-1" />
-                <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto">
+                <div className="flex w-full flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 sm:w-auto sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <button onClick={() => setShowCreateDialog(true)}
                         className="flex h-7 items-center gap-1 rounded-md border border-red-500 bg-red-700 px-2.5 text-[9px] font-bold text-white hover:bg-red-600">
                         <Plus className="w-3 h-3" /> NEW CALL
@@ -459,15 +459,14 @@ export default function DispatchCenter() {
                 ))}
             </div>
 
-            <div className="flex-none border-b border-[#1e2d4a] bg-[#08111d] p-2 lg:hidden">
-                <label className="mb-1 block text-[8px] font-black tracking-[0.18em] text-slate-500">MOBILE DISPATCH VIEW</label>
-                <select value={mobileView} onChange={e => setMobileView(e.target.value)} className="h-10 w-full rounded-lg border border-blue-700/50 bg-[#07101c] px-3 text-xs font-black text-blue-100 outline-none">
-                    <option value="calls">ACTIVE CALLS</option>
-                    <option value="detail">CALL DETAIL / CAD LOG</option>
-                    <option value="assignment">UNIT ASSIGNMENT</option>
-                    <option value="units">UNIT STATUS BOARD</option>
-                    <option value="map">LIVE MAP</option>
-                </select>
+            <div className="flex-none border-b border-[#1e2d4a] bg-[#08111d] px-2 py-2 lg:hidden">
+                <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {[
+                        ['calls','CALLS'], ['detail','DETAIL'], ['assignment','ASSIGN'], ['units','UNITS'], ['map','MAP']
+                    ].map(([value,label]) => (
+                        <button key={value} onClick={() => setMobileView(value)} className={`h-9 min-w-[74px] flex-1 rounded-lg border px-2 text-[9px] font-black tracking-wide ${mobileView === value ? 'border-blue-500 bg-blue-500/15 text-blue-200 shadow-[0_0_0_1px_rgba(59,130,246,.15)]' : 'border-slate-700 bg-[#0b1320] text-slate-500'}`}>{label}</button>
+                    ))}
+                </div>
             </div>
 
             {/* ══ QUEUE CONTROLS ══ */}
@@ -654,7 +653,7 @@ export default function DispatchCenter() {
                     </div>
 
                     {/* ═══ RIGHT: UNITS ═══ */}
-                    <div className={`${mobileView === 'assignment' || mobileView === 'units' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 flex-col bg-[#08111b] md:flex md:min-h-0 md:w-64 md:flex-none xl:w-72`}> 
+                    <div className={`${mobileView === 'assignment' || mobileView === 'units' ? 'flex' : 'hidden'} min-h-0 w-full flex-1 flex-col bg-[#08111b] md:flex md:min-h-0 md:w-[300px] md:flex-none xl:w-[330px]`}> 
                         {/* Unit Assignment */}
                         <div className={`${mobileView === 'units' ? 'hidden' : 'block'} flex-none border-b border-[#1e2d4a] md:block`}>
                             <div className="px-3 py-1.5 bg-[#0d1220] border-b border-[#1e2d4a] flex items-center gap-2">
