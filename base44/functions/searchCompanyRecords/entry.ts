@@ -49,7 +49,9 @@ function personText(record: any) {
   const witnesses = Array.isArray(record?.witnesses) ? record.witnesses : [];
   return compact([
     record.subject_name, record.subject_dob, record.subject_id, record.subject_address,
-    record.person_name, record.suspect_name, record.employee_name, record.officer_name,
+    record.person_name, record.name, record.full_name, record.first_name, record.middle_name, record.last_name,
+    record.suspect_name, record.employee_name, record.officer_name, record.driver_name, record.owner_name, record.contact_name,
+    record.defendant_name, record.accused_name,
     record.violator_name, record.violator_dob, record.violator_dl_number,
     record.vehicle_owner, record.caller_name, record.caller_phone,
     record.accused_first_name, record.accused_middle_name, record.accused_last_name,
@@ -79,8 +81,10 @@ function vehicleText(record: any) {
 
 function personName(record: any) {
   const party = Array.isArray(record?.parties) ? record.parties.find((p: any) => p?.name) : null;
-  return record.subject_name || record.person_name || record.suspect_name || record.employee_name ||
-    record.officer_name || record.violator_name ||
+  return record.subject_name || record.person_name || record.name || record.full_name ||
+    (record.first_name || record.last_name ? compact([record.first_name, record.middle_name, record.last_name]) : '') ||
+    record.suspect_name || record.employee_name || record.officer_name || record.driver_name || record.owner_name || record.contact_name ||
+    record.defendant_name || record.accused_name || record.violator_name ||
     (record.accused_first_name || record.accused_last_name ? compact([record.accused_first_name, record.accused_middle_name, record.accused_last_name]) : '') ||
     (record.defendant_name_first || record.defendant_name_last ? compact([record.defendant_name_first, record.defendant_name_middle, record.defendant_name_last]) : '') ||
     party?.name || '';
@@ -135,7 +139,14 @@ Deno.serve(async (req) => {
       const rows = await entity.list('-created_date', 1000);
       return (rows || []).filter((record: any) => {
         const allText = normalizeSearchText(JSON.stringify(record));
-        const scoped = normalizeSearchText(searchType === 'person' ? personText(record) : searchType === 'vehicle' ? vehicleText(record) : allText);
+        // Structured fields are preferred for display, but searches must not miss a
+        // real person/vehicle merely because an older report stored the value in a
+        // narrative, legacy field, or differently named nested object.
+        const scoped = searchType === 'person'
+          ? normalizeSearchText(`${personText(record)} ${allText}`)
+          : searchType === 'vehicle'
+            ? normalizeSearchText(`${vehicleText(record)} ${allText}`)
+            : allText;
         return scoped && matchesTerms(scoped, terms);
       }).slice(0, 100).map((record: any) => {
         const vehicle = vehicleDisplay(record);
