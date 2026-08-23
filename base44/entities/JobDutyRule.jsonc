@@ -10,6 +10,11 @@
       "type": "boolean",
       "default": true
     },
+    "effective_date": {
+      "type": "string",
+      "format": "date",
+      "description": "First calendar date this rule may affect officer performance. Blank means informational/not yet scoreable."
+    },
     "daily_activity_report_required": {
       "type": "boolean",
       "default": true
