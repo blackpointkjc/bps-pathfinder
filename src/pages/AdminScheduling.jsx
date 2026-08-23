@@ -28,7 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import LocationHourCard from "../components/scheduling/LocationHourCard";
 import { listDirectoryDivisions, listDirectoryLocations, listDirectoryUsers } from '@/lib/appDirectory';
 import { toast } from 'sonner';
-const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/857a5f1c1_UntitledProject3.png";
+const LOGO_URL = "/black-point-shield.svg";
 
 export default function AdminScheduling() {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);

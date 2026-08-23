@@ -175,7 +175,7 @@ function AdminCertificationAlertsContent({ embedded = false }) {
   };
 
   const handlePrintAlerts = () => {
-    const PRINT_LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/633448562_UntitledProject.png";
+    const PRINT_LOGO_URL = "/black-point-shield.svg";
 
     const printWindow = window.open('', '_blank');
 
