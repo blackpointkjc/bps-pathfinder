@@ -1,10 +1,13 @@
 import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ClipboardCheck, LockKeyhole } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 
 export default function PerformanceReviewTaskGate({ user }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { data = { reviews: [] }, refetch } = useQuery({
     queryKey: ['requiredOfficerPerformanceReviewGate', user?.id],
     queryFn: async () => {
@@ -31,7 +34,11 @@ export default function PerformanceReviewTaskGate({ user }) {
   ), [data.reviews]);
 
   const reviewUrl = createPageUrl('OfficerPerformanceReviews');
-  const onReviewPage = String(window.location.pathname || '').toLowerCase().includes('officerperformancereviews');
+  const pathname = String(location.pathname || '').toLowerCase();
+  const params = new URLSearchParams(location.search || '');
+  const onDedicatedReviewPage = pathname.includes('officerperformancereviews');
+  const onEmbeddedReviewPage = pathname.includes('officercenter') && params.get('tool') === 'reviews';
+  const onReviewPage = onDedicatedReviewPage || onEmbeddedReviewPage;
   if (!requiredReview || onReviewPage) return null;
 
   return (
@@ -62,7 +69,7 @@ export default function PerformanceReviewTaskGate({ user }) {
             <div className="rounded-xl border border-slate-800 bg-black/20 p-3"><div className="text-[10px] font-black uppercase tracking-wider text-slate-500">Review Period</div><div className="mt-1 font-bold text-slate-200">{requiredReview.review_period_start || '—'} – {requiredReview.review_period_end || '—'}</div></div>
             <div className="rounded-xl border border-slate-800 bg-black/20 p-3"><div className="text-[10px] font-black uppercase tracking-wider text-slate-500">Supervisor</div><div className="mt-1 font-bold text-slate-200">{requiredReview.assigned_supervisor_name || requiredReview.reviewer_name || 'Assigned Supervisor'}</div></div>
           </div>
-          <button type="button" onClick={() => { window.location.href = reviewUrl; }} className="flex min-h-12 w-full items-center justify-center rounded-xl bg-blue-600 px-5 text-sm font-black text-white hover:bg-blue-500">OPEN REQUIRED PERFORMANCE REVIEW</button>
+          <button type="button" onClick={() => navigate(reviewUrl)} className="flex min-h-12 w-full items-center justify-center rounded-xl bg-blue-600 px-5 text-sm font-black text-white hover:bg-blue-500">OPEN REQUIRED PERFORMANCE REVIEW</button>
         </div>
       </div>
     </div>
