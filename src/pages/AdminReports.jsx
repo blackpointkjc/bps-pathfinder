@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Check, Printer, FileText, AlertTriangle, UserX, Eye, Car, X, Mail } from "lucide-react";
+import { Shield, Check, Printer, FileText, AlertTriangle, UserX, Eye, Car, X, Mail, ClipboardList } from "lucide-react";
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -79,6 +79,7 @@ export default function AdminReports() {
         base44.entities.CriminalComplaint.list('-created_date'),
       ]);
       const allSummons = await base44.entities.Summons.list('-created_date');
+      const allDispatcherLogs = await base44.entities.DispatcherShiftReport.list('-created_date');
 
       const filterData = (reportList, dateField, reviewStatuses, archiveStatuses) => {
         const review = [];
@@ -111,6 +112,7 @@ export default function AdminReports() {
       const parkingData = filterData(allParking, 'violation_date', ['issued'], ['approved']);
       const criminalData = filterData(allCriminal, 'offense_date', ['submitted'], ['approved']);
       const summonsData = filterData(allSummons, 'offense_date', ['issued'], ['appeared', 'paid', 'dismissed', 'failed_to_appear']);
+      const dispatcherData = filterData(allDispatcherLogs, 'shift_date', ['submitted'], ['approved']);
 
       return {
         shift: shiftData.review,
@@ -120,6 +122,7 @@ export default function AdminReports() {
         parking: parkingData.review,
         criminal: criminalData.review,
         summons: summonsData.review,
+        dispatcher_log: dispatcherData.review,
 
         shiftArchive: shiftData.archive,
         darArchive: darData.archive,
@@ -128,6 +131,7 @@ export default function AdminReports() {
         parkingArchive: parkingData.archive,
         criminalArchive: criminalData.archive,
         summonsArchive: summonsData.archive,
+        dispatcher_logArchive: dispatcherData.archive,
       };
     },
     enabled: user?.role === 'admin',
@@ -143,16 +147,17 @@ export default function AdminReports() {
         parking: base44.entities.ParkingViolation,
         criminal: base44.entities.CriminalComplaint,
         summons: base44.entities.Summons,
+        dispatcher_log: base44.entities.DispatcherShiftReport,
       };
 
       const updateData = {};
-      if (['shift', 'daily_activity', 'incident', 'trespass', 'parking', 'criminal'].includes(type)) {
+      if (['shift', 'daily_activity', 'incident', 'trespass', 'parking', 'criminal', 'dispatcher_log'].includes(type)) {
         updateData.status = 'approved';
       } else if (type === 'summons') {
         updateData.status = 'appeared';
       }
 
-      if (['shift', 'daily_activity', 'incident', 'trespass', 'parking'].includes(type)) {
+      if (['shift', 'daily_activity', 'incident', 'trespass', 'parking', 'dispatcher_log'].includes(type)) {
         updateData.admin_notes = null;
       }
       
@@ -219,6 +224,9 @@ export default function AdminReports() {
       queryClient.invalidateQueries({ queryKey: ['allReportsForReview'] });
       alert('Report approved successfully!');
     },
+    onError: (error) => {
+      alert('Failed to approve report: ' + (error?.message || 'Unknown error'));
+    },
   });
 
   const rejectReportMutation = useMutation({
@@ -231,6 +239,7 @@ export default function AdminReports() {
         parking: base44.entities.ParkingViolation,
         criminal: base44.entities.CriminalComplaint,
         summons: base44.entities.Summons,
+        dispatcher_log: base44.entities.DispatcherShiftReport,
       };
 
       const report = await entityMap[type].update(id, {
@@ -239,21 +248,25 @@ export default function AdminReports() {
         was_rejected: true
       });
 
-      // Create a todo for the officer
-      await base44.entities.ReportTodo.create({
-        officer_email: getOfficerEmail(report.created_by_id || report.created_by),
-        officer_name: getOfficerName(report.created_by_id || report.created_by),
-        report_type: type === 'shift' ? 'shift_report' : 
-                     type === 'daily_activity' ? 'daily_activity_report' :
-                     type === 'incident' ? 'incident_report' :
-                     type === 'trespass' ? 'trespass_notice' : 
-                     type === 'parking' ? 'parking_violation' :
-                     type === 'criminal' ? 'criminal_complaint' : 'summons',
-        report_id: id,
-        admin_feedback: reason,
-        created_by_admin: user.email,
-        completed: false
-      });
+      // Create a todo for the officer (skip only if the author can't be resolved)
+      const officerEmail = getOfficerEmail(report.created_by_id || report.created_by);
+      if (officerEmail) {
+        await base44.entities.ReportTodo.create({
+          officer_email: officerEmail,
+          officer_name: getOfficerName(report.created_by_id || report.created_by),
+          report_type: type === 'shift' ? 'shift_report' : 
+                       type === 'daily_activity' ? 'daily_activity_report' :
+                       type === 'incident' ? 'incident_report' :
+                       type === 'trespass' ? 'trespass_notice' : 
+                       type === 'parking' ? 'parking_violation' :
+                       type === 'criminal' ? 'criminal_complaint' :
+                       type === 'dispatcher_log' ? 'dispatcher_shift_log' : 'summons',
+          report_id: id,
+          admin_feedback: reason,
+          created_by_admin: user.email,
+          completed: false
+        });
+      }
 
       return report;
     },
@@ -262,6 +275,9 @@ export default function AdminReports() {
       setRejectingReport(null);
       setRejectReason("");
       alert('Report sent back for revision!');
+    },
+    onError: (error) => {
+      alert('Failed to send report back: ' + (error?.message || 'Unknown error'));
     },
   });
 
@@ -470,6 +486,30 @@ export default function AdminReports() {
             { label: 'License Plate', value: report.license_plate },
             { label: 'State', value: report.license_state },
           ] },
+        ],
+      },
+      dispatcher_log: {
+        title: 'Dispatcher Shift Log',
+        subtitle: 'Dispatch Operations Summary',
+        reportNumber: report.id,
+        meta: [
+          { label: 'Shift Date', value: formatReportDate(report.shift_date, timeZone) },
+          { label: `Shift (${zoneLabel})`, value: `${formatReportClock(report.shift_start)} – ${formatReportClock(report.shift_end)}` },
+          { label: 'Submitted', value: formatReportDateTime(report.created_date, timeZone) },
+        ],
+        sections: [
+          { title: 'Dispatcher', fields: [
+            { label: 'Dispatcher', value: report.dispatcher_name, wide: true },
+            { label: 'Shift Summary', value: report.summary, wide: true },
+          ] },
+          ...(report.dispatch_log?.length ? [{
+            title: 'Dispatched Calls',
+            fields: (report.dispatch_log || []).map(entry => ({
+              label: entry.call_number || 'Unlinked',
+              value: [entry.incident_type, entry.location, entry.notes].filter(Boolean).join(' — '),
+              wide: true,
+            })),
+          }] : []),
         ],
       },
     };
@@ -1188,7 +1228,7 @@ export default function AdminReports() {
             <strong>Officer:</strong> {getOfficerName(report.created_by_id || report.created_by)}
           </p>
           <p className="text-sm text-slate-600 mb-2">
-            <strong>Location:</strong> {report.location}
+            <strong>Location:</strong> {report.location || '—'}
           </p>
           {report.shift_date && <p className="text-sm"><strong>Date:</strong> {format(new Date(report.shift_date), 'MMM d, yyyy')}</p>}
           {report.report_date && <p className="text-sm"><strong>Date:</strong> {format(new Date(report.report_date), 'MMM d, yyyy')}</p>}
@@ -1210,6 +1250,7 @@ export default function AdminReports() {
     parking: reports?.parkingArchive || [],
     criminal: reports?.criminalArchive || [],
     summons: reports?.summonsArchive || [],
+    dispatcher_log: reports?.dispatcher_logArchive || [],
   };
 
   const archiveTypes = [
@@ -1220,6 +1261,7 @@ export default function AdminReports() {
     { value: 'parking', label: 'Parking Violations', icon: Car },
     { value: 'criminal', label: 'Criminal Complaints', icon: Shield },
     { value: 'summons', label: 'VA Summons', icon: FileText },
+    { value: 'dispatcher_log', label: 'Dispatcher Shift Logs', icon: ClipboardList },
   ];
 
   return (
@@ -1272,7 +1314,7 @@ export default function AdminReports() {
 
         <div className="space-y-6">
           {(!reports?.shift?.length && !reports?.daily_activity?.length && !reports?.incident?.length && 
-            !reports?.trespass?.length && !reports?.parking?.length && !reports?.criminal?.length && !reports?.summons?.length) && (
+            !reports?.trespass?.length && !reports?.parking?.length && !reports?.criminal?.length && !reports?.summons?.length && !reports?.dispatcher_log?.length) && (
             <Card className="border-none shadow-lg">
               <CardContent className="p-12 text-center">
                 <FileText className="w-16 h-16 mx-auto mb-4 text-slate-300" />
@@ -1358,6 +1400,17 @@ export default function AdminReports() {
               </div>
             </div>
           )}
+
+          {reports?.dispatcher_log?.length > 0 && (
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 mb-4">Dispatcher Shift Logs ({reports.dispatcher_log.length})</h2>
+              <div className="space-y-4">
+                {reports.dispatcher_log.map(report => (
+                  <ReportCard key={report.id} report={report} type="dispatcher_log" icon={ClipboardList} title="Dispatcher Shift Log" />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <Card className="border-none shadow-lg">
@@ -1433,6 +1486,7 @@ export default function AdminReports() {
               {viewReportType === 'parking' && 'Parking Violation'}
               {viewReportType === 'criminal' && 'Criminal Complaint'}
               {viewReportType === 'summons' && 'VA Summons'}
+              {viewReportType === 'dispatcher_log' && 'Dispatcher Shift Log'}
             </MobileResponsiveDialogTitle>
           </MobileResponsiveDialogHeader>
           {viewingReport && (
@@ -1585,6 +1639,58 @@ export default function AdminReports() {
                     <p className="text-sm text-slate-500 mb-1">Description</p>
                     <p className="whitespace-pre-wrap">{viewingReport.description}</p>
                   </div>
+                </>
+              )}
+
+              {/* Dispatcher Shift Log Details */}
+              {viewReportType === 'dispatcher_log' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-slate-500">Dispatcher</p>
+                      <p className="font-medium">{viewingReport.dispatcher_name || getOfficerName(viewingReport.created_by_id || viewingReport.created_by)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500">Shift Date</p>
+                      <p className="font-medium">{viewingReport.shift_date ? format(new Date(viewingReport.shift_date), 'MMM d, yyyy') : '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500">Shift Hours</p>
+                      <p className="font-medium">{[viewingReport.shift_start, viewingReport.shift_end].filter(Boolean).join(' – ') || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500">Calls Logged</p>
+                      <p className="font-medium">{(viewingReport.dispatch_log || []).length}</p>
+                    </div>
+                  </div>
+                  {viewingReport.summary && (
+                    <div>
+                      <p className="text-sm text-slate-500 mb-1">Shift Summary</p>
+                      <p className="whitespace-pre-wrap">{viewingReport.summary}</p>
+                    </div>
+                  )}
+                  {(viewingReport.dispatch_log || []).length > 0 && (
+                    <div>
+                      <p className="text-sm text-slate-500 mb-2">Dispatched Calls</p>
+                      <div className="space-y-2">
+                        {viewingReport.dispatch_log.map((entry, idx) => (
+                          <div key={idx} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="font-semibold text-slate-900">{entry.call_number || 'Unlinked'}</div>
+                              {entry.call_status && <Badge className="bg-slate-200 text-slate-700">{entry.call_status}</Badge>}
+                            </div>
+                            <div className="text-sm text-slate-600">{entry.incident_type}{entry.location ? ` — ${entry.location}` : ''}</div>
+                            {entry.assigned_units?.length > 0 && (
+                              <div className="text-xs text-slate-500 mt-1">
+                                Assigned: {entry.assigned_units.map((u) => u.label || u.unit_id).join(', ')}
+                              </div>
+                            )}
+                            {entry.notes && <div className="text-sm text-slate-600 whitespace-pre-wrap mt-1">{entry.notes}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 

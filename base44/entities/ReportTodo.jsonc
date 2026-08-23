@@ -14,9 +14,13 @@
       "type": "string",
       "enum": [
         "shift_report",
+        "daily_activity_report",
         "incident_report",
         "trespass_notice",
-        "parking_violation"
+        "parking_violation",
+        "criminal_complaint",
+        "summons",
+        "dispatcher_shift_log"
       ],
       "description": "Type of report to revise"
     },

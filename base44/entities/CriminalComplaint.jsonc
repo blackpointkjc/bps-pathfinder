@@ -230,12 +230,23 @@
       "enum": [
         "draft",
         "submitted",
+        "rejected",
+        "approved",
         "filed",
         "warrant_issued",
         "arrested",
         "closed"
       ],
       "default": "draft"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Admin feedback for revisions"
+    },
+    "was_rejected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this complaint was previously rejected"
     },
     "photo_url": {
       "type": "string",

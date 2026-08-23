@@ -374,6 +374,12 @@ export default function DispatcherShiftReports({ embedded = false }) {
                           </div>
                         </div>
                         {r.summary && <p className="mt-3 line-clamp-2 text-sm text-slate-400">{r.summary}</p>}
+                        {r.status === 'rejected' && r.admin_notes && (
+                          <div className="mt-3 rounded-lg border border-red-700/60 bg-red-950/30 p-3">
+                            <div className="text-xs font-bold uppercase tracking-wider text-red-300">Admin Feedback — needs revision</div>
+                            <p className="mt-1 whitespace-pre-wrap text-sm text-red-100">{r.admin_notes}</p>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

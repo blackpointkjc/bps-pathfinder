@@ -369,9 +369,19 @@
         "appeared",
         "failed_to_appear",
         "paid",
-        "dismissed"
+        "dismissed",
+        "rejected"
       ],
       "default": "issued"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Admin feedback for revisions"
+    },
+    "was_rejected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this summons was previously rejected"
     },
     "officer_ip_address": {
       "type": "string",
