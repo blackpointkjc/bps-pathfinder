@@ -42,6 +42,12 @@ export default function OfficerChat() {
   });
 
   useEffect(() => {
+    const onMicrosoftConnected = () => refetchTeamsHistory();
+    window.addEventListener('bps:outlook-connection-changed', onMicrosoftConnected);
+    return () => window.removeEventListener('bps:outlook-connection-changed', onMicrosoftConnected);
+  }, [refetchTeamsHistory]);
+
+  useEffect(() => {
     if (!user?.id) return undefined;
     let cancelled = false;
     const sync = async () => {
