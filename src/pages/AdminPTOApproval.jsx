@@ -59,7 +59,7 @@ export default function AdminPTOApproval() {
 
   const pendingRequests = allPTORequests.filter(request => String(request.status || '').toLowerCase() === 'pending');
   const reviewedRequests = allPTORequests
-    .filter(request => ['approved', 'denied'].includes(String(request.status || '').toLowerCase()))
+    .filter(request => ['approved', 'denied', 'cancelled'].includes(String(request.status || '').toLowerCase()))
     .sort((a, b) => new Date(b.reviewed_date || b.updated_date || b.created_date || 0) - new Date(a.reviewed_date || a.updated_date || a.created_date || 0));
 
   const getAdminName = (email) => {
@@ -111,6 +111,24 @@ export default function AdminPTOApproval() {
       setSelectedRequest(null);
       setAdminNotes("");
     },
+  });
+
+  const cancelPendingMutation = useMutation({
+    mutationFn: async (request) => {
+      const response = await base44.functions.invoke('getPTORequests', {
+        action: 'cancel_pending',
+        request_id: request.id,
+        admin_notes: 'Pending PTO request cancelled by HR.',
+      });
+      const payload = response?.data || response || {};
+      if (payload.error) throw new Error(payload.error);
+      return payload;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allPTORequestsForHR'] });
+      toast.success('Pending PTO request cancelled');
+    },
+    onError: error => toast.error(error?.message || 'Unable to cancel pending PTO request'),
   });
 
   const removeApprovedMutation = useMutation({
@@ -236,6 +254,21 @@ export default function AdminPTOApproval() {
                       >
                         <X className="w-4 h-4 mr-1" />
                         Deny
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={cancelPendingMutation.isPending}
+                        onClick={async () => {
+                          if (await confirmInApp(`Cancel ${resolveOfficer(request).name}'s pending PTO request for ${format(new Date(request.start_date), 'MMM d')} - ${format(new Date(request.end_date), 'MMM d, yyyy')}? No PTO hours have been deducted.`)) {
+                            cancelPendingMutation.mutate(request);
+                          }
+                        }}
+                        className="border-slate-400 text-slate-700 hover:bg-slate-100"
+                      >
+                        <RotateCcw className="w-4 h-4 mr-1" />
+                        Cancel Request
                       </Button>
                     </div>
                   </div>
