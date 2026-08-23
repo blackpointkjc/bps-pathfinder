@@ -12,7 +12,7 @@ import {
 import { format, parseISO, differenceInMinutes, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import MissingReportsCheck from "../components/MissingReportsCheck";
-import { isOperationalOfficer, isInternalMember } from '@/lib/directoryUtils';
+import { isOperationalOfficer } from '@/lib/directoryUtils';
 import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateJobDutyCompliance, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
 import { toast } from 'sonner';
 
@@ -94,15 +94,13 @@ export default function AdminAnalytics() {
 
   const filteredUsers = useMemo(() => {
     if (!allUsers) return [];
-    const workEmails = new Set([
-      ...timeEntries.map(row => emailKey(row.officer_email)),
-      ...schedules.map(row => emailKey(row.officer_email)),
-      ...trainingCompletions.map(row => emailKey(row.officer_email)),
-    ].filter(Boolean));
-    const active = allUsers.filter(userRow => isOperationalOfficer(userRow) || (isInternalMember(userRow) && workEmails.has(emailKey(userRow.email))));
+    // Company officer rankings must contain actual operational officers only.
+    // A dispatch/HR/accounting/support account is not promoted into the officer
+    // leaderboard merely because an old time, schedule, or training row exists.
+    const active = allUsers.filter(isOperationalOfficer);
     if (selectedDivision === 'all') return active;
     return active.filter(u => String(u.division || '') === String(selectedDivision));
-  }, [allUsers, timeEntries, schedules, trainingCompletions, selectedDivision]);
+  }, [allUsers, selectedDivision]);
 
   const currentMonthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
   const currentMonthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
@@ -502,7 +500,7 @@ export default function AdminAnalytics() {
               <BarChart3 className="h-5 w-5 text-cyan-400" />
               Officer Overall Performance — Current Month
             </CardTitle>
-            <p className="text-xs text-slate-400">Uses the same scoring engine as Officer My Performance. Training, Bid Standing, Client Feedback, Supervisor Rating, and Recognition are neutral/full credit when no scoreable record exists.</p>
+            <p className="text-xs text-slate-400">Uses the same scoring engine as Officer My Performance. A metric with no real record is omitted and the remaining configured weights are normalized; missing data is never displayed as a made-up 100%.</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
