@@ -130,11 +130,13 @@ export default function AdminManualPTO() {
               </div>}
 
               <div className="space-y-2"><Label>{entryMode === 'bonus' ? 'Bonus Hours' : entryMode === 'callout' ? 'Call-Out Hours' : 'PTO Hours'} *</Label><Input type="number" min="0.5" step="0.5" value={formData.hours} onChange={e => setFormData(current => ({ ...current, hours: e.target.value }))} className="border-slate-700 bg-[#08111d]" placeholder="8" required/></div>
-              {entryMode === 'callout' && <div className="space-y-3 rounded-xl border border-slate-700 bg-[#101b29] p-4">
-                <div className="space-y-2"><Label>Call-Out Date *</Label><Input type="date" value={formData.call_out_date} onChange={e => setFormData(current => ({ ...current, call_out_date: e.target.value }))} className="border-slate-700 bg-[#08111d]" required/></div>
-                <label className="flex cursor-pointer items-center gap-3 text-sm font-bold text-slate-200"><input type="checkbox" checked={formData.use_pto} onChange={e => setFormData(current => ({ ...current, use_pto: e.target.checked }))} className="h-4 w-4"/>Use PTO for this call-out</label>
-                <div className="text-xs text-slate-400">If unchecked, the call-out is recorded as unpaid and no PTO is deducted. If checked, these hours are deducted from Available PTO and appear in payroll as straight-time PTO.</div>
-              </div>
+              {entryMode === 'callout' && (
+                <div className="space-y-3 rounded-xl border border-slate-700 bg-[#101b29] p-4">
+                  <div className="space-y-2"><Label>Call-Out Date *</Label><Input type="date" value={formData.call_out_date} onChange={e => setFormData(current => ({ ...current, call_out_date: e.target.value }))} className="border-slate-700 bg-[#08111d]" required/></div>
+                  <label className="flex cursor-pointer items-center gap-3 text-sm font-bold text-slate-200"><input type="checkbox" checked={formData.use_pto} onChange={e => setFormData(current => ({ ...current, use_pto: e.target.checked }))} className="h-4 w-4"/>Use PTO for this call-out</label>
+                  <div className="text-xs text-slate-400">If unchecked, the call-out is recorded as unpaid and no PTO is deducted. If checked, these hours are deducted from Available PTO and appear in payroll as straight-time PTO.</div>
+                </div>
+              )}
               {entryMode === 'manual' && <div className="space-y-3 rounded-xl border border-slate-700 bg-[#101b29] p-4">
                 <label className="flex cursor-pointer items-center gap-3 text-sm font-bold text-slate-200"><input type="checkbox" checked={formData.remove_shifts} onChange={e => setFormData(current => ({ ...current, remove_shifts: e.target.checked }))} className="h-4 w-4"/>Remove scheduled shifts and place them in Open Shifts</label>
                 {formData.remove_shifts && <div className="grid gap-3 sm:grid-cols-2">
