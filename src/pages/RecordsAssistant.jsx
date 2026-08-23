@@ -113,11 +113,13 @@ export default function RecordsAssistant() {
               </div>
             )}
             <form onSubmit={runSearch} className="flex flex-col gap-3 sm:flex-row">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <Input value={query} onChange={e => setQuery(e.target.value)} placeholder={searchType === 'person' ? 'Name, DOB, ID or driver license…' : searchType === 'vehicle' ? 'Plate, VIN, year, make, model or color…' : 'Name, plate, phone, address, report or call number…'} className="h-12 border-slate-600 bg-[#0b1522] pl-10 text-white" />
-              </div>
-              <Button type="submit" disabled={searching || (searchType === 'person' ? (personName.trim() || query.trim()).length < 2 : query.trim().length < 2)} className="h-12 bg-blue-700 hover:bg-blue-600">
+              {searchType !== 'person' && (
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <Input value={query} onChange={e => setQuery(e.target.value)} placeholder={searchType === 'vehicle' ? 'Plate, VIN, year, make, model or color…' : 'Name, plate, phone, address, report or call number…'} className="h-12 border-slate-600 bg-[#0b1522] pl-10 text-white" />
+                </div>
+              )}
+              <Button type="submit" disabled={searching || (searchType === 'person' ? personName.trim().length < 2 : query.trim().length < 2)} className={`${searchType === 'person' ? 'w-full' : ''} h-12 bg-blue-700 hover:bg-blue-600`}>
                 {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}{searchType === 'person' ? 'SEARCH PATHFINDER PERSON RECORDS' : searchType === 'vehicle' ? 'SEARCH VEHICLE RECORDS' : 'SEARCH COMPANY RECORDS'}
               </Button>
             </form>
