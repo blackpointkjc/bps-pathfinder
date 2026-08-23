@@ -58,7 +58,7 @@ export default function MicrosoftMailSetupGate({ user, children, enabled = true 
   }, [userId]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!enabled || !userId) return;
     let active = true;
 
     const load = async ({ force = false } = {}) => {
@@ -137,6 +137,25 @@ export default function MicrosoftMailSetupGate({ user, children, enabled = true 
       window.removeEventListener('storage', onStorage);
     };
   }, [enabled, userId, user?.email, isCallback]);
+
+  // CAD Center can embed Teams tools while the outer route is not itself a
+  // Microsoft-only page. Keep the OAuth callback listener alive in that case so a
+  // Connect Microsoft 365 button inside chat can actually complete the popup flow.
+  useEffect(() => {
+    if (enabled || !userId) return undefined;
+    const onMicrosoftMessage = async event => {
+      const productionOAuthOrigin = event.origin === getOutlookRedirectOrigin();
+      if (!productionOAuthOrigin || event.data?.type !== 'bps:outlook-oauth-callback') return;
+      try {
+        const callback = await handleOutlookOAuthMessage(userId, event.data);
+        if (callback?.success) window.dispatchEvent(new CustomEvent('bps:outlook-connection-changed'));
+      } catch (err) {
+        console.warn('[Microsoft] embedded OAuth callback failed:', err?.message);
+      }
+    };
+    window.addEventListener('message', onMicrosoftMessage);
+    return () => window.removeEventListener('message', onMicrosoftMessage);
+  }, [enabled, userId]);
 
   const connect = async () => {
     try {
