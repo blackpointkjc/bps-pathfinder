@@ -93,24 +93,41 @@ export default function OfficerPerformanceReviews() {
   };
 
   const saveSignature = async (signatureUrl) => {
+    if (!signing?.id || submittingReviewId) return;
+    const reviewId = signing.id;
+    setSubmittingReviewId(reviewId);
     try {
       const response = await base44.functions.invoke('manageOfficerPerformanceReviews', {
         action: 'acknowledge',
-        review_id: signing.id,
+        review_id: reviewId,
         signature_url: signatureUrl,
         officer_comments: comments,
         ratings: selfRatings,
       });
       const payload = response?.data || response || {};
       if (payload.error) throw new Error(payload.error);
-      toast.success('Your self-rating and signature were sent to HR for final approval.');
+      const updated = payload.review || {
+        ...signing,
+        ...Object.fromEntries(ratingFields.map(({ key }) => [`officer_${key}`, selfRatings[key]])),
+        officer_acknowledged: true,
+        officer_comments: comments.trim(),
+        officer_signature_url: signatureUrl,
+        officer_signed_at: new Date().toISOString(),
+        workflow_stage: 'hr_approval_pending',
+      };
+      setReviews(current => current.map(review => String(review.id) === String(reviewId) ? { ...review, ...updated } : review));
       setSigning(null);
       setComments('');
       setSelfRatings(emptyRatings());
-      window.dispatchEvent(new CustomEvent('pathfinder:performance-review-updated'));
-      await load();
+      toast.success('Your self-rating and signature were sent to HR for final approval.');
+      window.dispatchEvent(new CustomEvent('pathfinder:performance-review-response-closed', { detail: { reviewId } }));
+      window.dispatchEvent(new CustomEvent('pathfinder:performance-review-updated', { detail: { reviewId } }));
     } catch (error) {
-      toast.error(error?.response?.data?.error || error?.message || 'Unable to submit your signed review.');
+      const message = error?.response?.data?.error || error?.message || 'Unable to submit your signed review.';
+      toast.error(message);
+      throw new Error(message);
+    } finally {
+      setSubmittingReviewId(null);
     }
   };
 
