@@ -619,6 +619,43 @@ export function calculateJobDutyCompliance({
   };
 }
 
+export function calculateDarCompliance({ officer = null, timeEntries = [], dailyReports = [], monthStart, monthEnd } = {}) {
+  const officerEmail = emailKey(officer?.email);
+  const completedShifts = timeEntries.filter(entry => {
+    if (!entry?.clock_in || !entry?.clock_out || entry?.archived === true) return false;
+    if (officerEmail && emailKey(entry.officer_email) !== officerEmail) return false;
+    const date = easternDateKey(entry.clock_in);
+    return date && (!monthStart || date >= monthStart) && (!monthEnd || date <= monthEnd);
+  });
+  const officerReports = dailyReports.filter(report => {
+    if (String(report?.status || '').toLowerCase() === 'draft') return false;
+    return !officer || emailKey(report.officer_email || report.created_by || report.created_by_email) === officerEmail || String(report.created_by_id || '') === String(officer?.id || '');
+  });
+  const usedReportIds = new Set();
+  const details = completedShifts.map(entry => {
+    const date = easternDateKey(entry.clock_in);
+    const site = siteKey(entry.location);
+    const report = officerReports.find(row => {
+      const id = String(row?.id || '');
+      if (id && usedReportIds.has(id)) return false;
+      if (row?.shift_id && String(row.shift_id) === String(entry.id)) return true;
+      return !row?.shift_id && String(row?.report_date || '') === date && siteKey(row?.location) === site;
+    });
+    if (report?.id) usedReportIds.add(String(report.id));
+    return {
+      shift_id: entry.id,
+      shift_date: date,
+      property: String(entry.location || '').split(' - ')[0].split(':')[0] || 'Assigned post',
+      completed: Boolean(report),
+      report_id: report?.id || null,
+    };
+  });
+  const required = details.length;
+  const completed = details.filter(item => item.completed).length;
+  const missed = Math.max(0, required - completed);
+  return { required, completed, missed, score: required ? Math.round((completed / required) * 100) : null, details };
+}
+
 export function calculateCallOutAttendance(callOuts = [], schedules = [], monthStart, monthEnd) {
   const today = easternDateKey(new Date());
   const nowTime = easternTimeKey(new Date());
@@ -650,6 +687,7 @@ export function buildOverallPerformance({ punctuality, trainingScore = null, job
   // weights, so missing data is neutral without inventing performance records.
   const configured = [
     { label: 'On-Time Arrival', score: punctuality?.rate != null && punctuality.total > 0 ? boundedMetricScore(punctuality.rate) : null, baseWeight: 55 },
+    { label: 'Daily Activity Reports', score: jobDuty?.score != null ? boundedMetricScore(jobDuty.score) : null, baseWeight: 15 },
     { label: 'Call-Out Attendance', score: callOutAttendance?.score != null ? boundedMetricScore(callOutAttendance.score) : null, baseWeight: 15 },
     { label: 'Training Completion', score: boundedMetricScore(trainingScore), baseWeight: 3 },
     { label: 'Bid Standing', score: boundedMetricScore(bidStanding?.score), baseWeight: 3 },
@@ -660,7 +698,7 @@ export function buildOverallPerformance({ punctuality, trainingScore = null, job
 
   // Require at least one core operational metric before producing an overall grade.
   // Optional 3% categories alone can never manufacture a company/officer ranking.
-  const coreScoreable = configured.slice(0, 2).filter(item => item.score != null);
+  const coreScoreable = configured.slice(0, 3).filter(item => item.score != null);
   if (!coreScoreable.length) {
     return { score: null, categories: [], omitted: configured.filter(item => item.score == null).map(item => item.label) };
   }
