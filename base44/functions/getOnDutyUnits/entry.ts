@@ -4,6 +4,8 @@ function roleSet(user: any) {
   return new Set((user?.additional_roles || []).map((r: string) => String(r).toLowerCase()));
 }
 
+const lower = (value: unknown) => String(value || '').trim().toLowerCase();
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
