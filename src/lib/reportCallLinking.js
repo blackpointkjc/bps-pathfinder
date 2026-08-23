@@ -6,7 +6,7 @@ const TERMINAL_CALL_STATUSES = new Set([
 ]);
 
 export function isActiveDispatchCall(call) {
-  if (!call) return false;
+  if (!call || call._archived) return false;
   const status = String(call.status || '').trim().toLowerCase();
   if (TERMINAL_CALL_STATUSES.has(status)) return false;
   if (call.cleared === true || call.cancelled === true || call.canceled === true || call.resolved === true) return false;
@@ -41,9 +41,10 @@ export async function listActiveDispatchCalls(limit = 500) {
 // reports to calls that have already aged out of the live CAD queue, and search
 // them by any part of the CAD number (e.g. the last 5 digits of the BPS reference).
 export async function listAllDispatchCallsForLinking(limit = 1000) {
-  const [activeCalls, historyCalls] = await Promise.all([
+  const [activeCalls, historyCalls, propertyAlerts] = await Promise.all([
     base44.entities.DispatchCall.list('-time_received', limit).catch(() => []),
     base44.entities.CallHistory.list('-archived_date', limit).catch(() => []),
+    base44.entities.PropertyAlert.list('-created_date', limit).catch(() => []),
   ]);
 
   // Archived calls live in CallHistory with a different shape. Normalize them so
@@ -79,7 +80,24 @@ export async function listAllDispatchCallsForLinking(limit = 1000) {
     };
   };
 
-  const merged = [...(activeCalls || []), ...(historyCalls || []).map(mapHistory)];
+  const propertyByCall = new Map();
+  for (const alert of propertyAlerts || []) {
+    const key = String(alert.callId || '');
+    if (!key || propertyByCall.has(key)) continue;
+    propertyByCall.set(key, {
+      property_id: alert.propertyId || '',
+      property_name: alert.propertyName || '',
+      property_call_location: alert.callLocation || '',
+      property_call_incident: alert.callIncident || '',
+    });
+  }
+
+  const merged = [...(activeCalls || []), ...(historyCalls || []).map(mapHistory)].map(call => {
+    const property = propertyByCall.get(String(call.id || ''))
+      || propertyByCall.get(String(call.original_call_id || ''))
+      || null;
+    return property ? { ...call, ...property } : call;
+  });
   const deduped = new Map();
   for (const call of merged) {
     const descriptionKey = [call.incident, call.location, call.time_received].filter(Boolean).join('|').toLowerCase();
