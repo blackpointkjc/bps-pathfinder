@@ -417,6 +417,8 @@ export default function DailyActivityReports() {
       patrol_count: report.patrol_count || "",
       visitors_logged: report.visitors_logged || "",
       doors_checked: report.doors_checked || "",
+      starting_mileage: report.starting_mileage ?? "",
+      ending_mileage: report.ending_mileage ?? "",
       hourly_entries: report.hourly_entries,
       hourly_entries_array: entriesArray,
       vehicles_noted: report.vehicles_noted || "",
