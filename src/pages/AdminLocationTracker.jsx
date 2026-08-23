@@ -106,18 +106,21 @@ export default function AdminLocationTracker() {
     refetchOnMount: 'always',
   });
 
-  const { data: activeOfficerLocations = [] } = useQuery({
+  const { data: activeOfficerPayload = {} } = useQuery({
     queryKey: ['activeOfficerLocations'],
     queryFn: async () => {
       const result = await base44.functions.invoke('getOnDutyUnits', {});
       const payload = result?.data || result || {};
       if (payload.error) throw new Error(payload.error);
-      return payload.units || [];
+      return payload;
     },
     refetchInterval: 5000,
     refetchOnWindowFocus: false,
     enabled: hasAccess && !!allUsers,
   });
+
+  const activeOfficerLocations = activeOfficerPayload.units || [];
+  const clockedInWithoutSession = activeOfficerPayload.clocked_in_without_session || [];
 
   useEffect(() => {
     if (!hasAccess) return undefined;
@@ -237,6 +240,25 @@ export default function AdminLocationTracker() {
         else if (hasGps) results.staleLocation.push(item);
         else results.withoutLocation.push(item);
       }
+
+      // A person who is still clocked in but no longer has a fresh Pathfinder
+      // session is a tracking exception and must appear under No Location rather
+      // than disappearing from the check entirely.
+      for (const row of clockedInWithoutSession || []) {
+        const profile = freshUsers.find(u => String(u.email || '').toLowerCase() === String(row.officer_email || '').toLowerCase());
+        if (profile && !isOperationallyVisibleUser(profile)) continue;
+        results.total += 1;
+        results.withoutLocation.push({
+          name: row.officer_name || (profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : '') || row.officer_email,
+          email: row.officer_email,
+          location: row.current_location || 'Clocked in',
+          role: row.rank || profile?.rank || profile?.role || 'officer',
+          lastUpdate: null,
+          minutesSinceUpdate: null,
+          trackingState: 'CLOCKED IN • LOGGED OUT / NO ACTIVE SESSION',
+          clockInTime: row.clock_in_time || null,
+        });
+      }
       setLocationCheckResults(results);
       setLastAutoCheck(new Date());
       queryClient.invalidateQueries({ queryKey: ['activeOfficerLocations'] });
@@ -266,7 +288,7 @@ export default function AdminLocationTracker() {
         clearInterval(interval);
       };
     }
-  }, [viewMode, hasAccess, allUsers, activeOfficerLocations]);  
+  }, [viewMode, hasAccess, allUsers, activeOfficerLocations, clockedInWithoutSession]);  
 
   const officersWithLocation = currentlyActiveOfficers?.filter(o => Number.isFinite(Number(o.latitude)) && Number.isFinite(Number(o.longitude))) || [];
   const filteredOfficersForDropdown = allUsers?.filter(u => !!u.email && isOperationallyVisibleUser(u)).sort((a, b) => {
