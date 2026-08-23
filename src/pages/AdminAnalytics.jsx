@@ -13,7 +13,7 @@ import { format, parseISO, differenceInMinutes, startOfMonth, endOfMonth } from 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import MissingReportsCheck from "../components/MissingReportsCheck";
 import { isOperationalOfficer } from '@/lib/directoryUtils';
-import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
+import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, calculateJobDutyCompliance, buildOverallPerformance } from '@/lib/performanceScoring';
 import { toast } from 'sonner';
 
 const emailKey = (value) => String(value || '').trim().toLowerCase();
@@ -257,7 +257,22 @@ export default function AdminAnalytics() {
     const recognition = calculateRecognition(officerCommendations, officerFeedback, currentMonthStart, currentMonthEnd);
     const officerCallOuts = allCallOuts.filter(item => emailKey(item.officer_email) === key);
     const callOutAttendance = calculateCallOutAttendance(officerCallOuts, officerSchedules, currentMonthStart, currentMonthEnd);
-    const overall = buildOverallPerformance({ punctuality, trainingScore: training.total > 0 ? training.percentage : null, jobDuty: null, callOutAttendance, bidStanding, clientFeedback, supervisorRating, recognition });
+    const jobDuty = calculateJobDutyCompliance({
+      officer,
+      timeEntries: officerTimeEntries,
+      dailyReports: allDailyActivityReports,
+      incidentReports,
+      dispatchCalls,
+      callOuts: allCallOuts,
+      qrScans: allQrScans,
+      allTimeEntries: timeEntries,
+      qrCheckpoints: allQrCheckpoints,
+      dutyRules: allDutyRules,
+      locations: allLocations,
+      monthStart: currentMonthStart,
+      monthEnd: currentMonthEnd,
+    });
+    const overall = buildOverallPerformance({ punctuality, trainingScore: training.total > 0 ? training.percentage : null, jobDuty, callOutAttendance, bidStanding, clientFeedback, supervisorRating, recognition });
 
     return {
       email: officer.email,
@@ -270,8 +285,9 @@ export default function AdminAnalytics() {
       supervisorRating,
       recognition,
       callOutAttendance,
+      jobDuty,
     };
-  }).sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1)), [filteredUsers, timeEntries, schedules, allBids, trainingCompletions, trainingAssignments, allTraining, allClientFeedback, allPerformanceReviews, allCommendations, incidentReports, allCallOuts, currentMonthStart, currentMonthEnd]);
+  }).sort((a, b) => (b.overall.score ?? -1) - (a.overall.score ?? -1)), [filteredUsers, timeEntries, schedules, allBids, trainingCompletions, trainingAssignments, allTraining, allClientFeedback, allPerformanceReviews, allCommendations, incidentReports, dispatchCalls, allCallOuts, allDailyActivityReports, allQrScans, allQrCheckpoints, allDutyRules, allLocations, currentMonthStart, currentMonthEnd]);
 
   const companyOverallScore = useMemo(() => {
     const scored = overallByOfficer.filter(item => item.overall.score != null);
