@@ -691,7 +691,7 @@ export function buildOverallPerformance({ punctuality, trainingScore = null, job
   // weights, so missing data is neutral without inventing performance records.
   const configured = [
     { label: 'On-Time Arrival', score: punctuality?.rate != null && punctuality.total > 0 ? boundedMetricScore(punctuality.rate) : null, baseWeight: 55 },
-    { label: 'Daily Activity Reports', score: jobDuty?.score != null ? boundedMetricScore(jobDuty.score) : null, baseWeight: 15 },
+    { label: 'Job Duty / Performance', score: jobDuty?.score != null ? boundedMetricScore(jobDuty.score) : null, baseWeight: 15 },
     { label: 'Call-Out Attendance', score: callOutAttendance?.score != null ? boundedMetricScore(callOutAttendance.score) : null, baseWeight: 15 },
     { label: 'Training Completion', score: boundedMetricScore(trainingScore), baseWeight: 3 },
     { label: 'Bid Standing', score: boundedMetricScore(bidStanding?.score), baseWeight: 3 },
