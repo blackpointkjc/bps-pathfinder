@@ -55,10 +55,17 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
       }
     };
     sync();
-    const timer = setInterval(sync, 15000);
+    const timer = setInterval(sync, 10000);
     const onFocus = () => sync();
+    const onStatusChanged = () => sync();
     window.addEventListener('focus', onFocus);
-    return () => { active = false; clearInterval(timer); window.removeEventListener('focus', onFocus); };
+    window.addEventListener('bps-officer-status-changed', onStatusChanged);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('bps-officer-status-changed', onStatusChanged);
+    };
   }, []);
 
   const sourceUnits = canonicalUnits.length ? canonicalUnits : units;
