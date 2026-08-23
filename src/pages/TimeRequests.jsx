@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarClock, Plus } from "lucide-react";
+import { CalendarClock, Plus, Clock3, CheckCircle2, History } from "lucide-react";
 import { format } from "date-fns";
 import StatusBadge from "../components/dashboard/StatusBadge";
+import { toast } from 'sonner';
 
 export default function TimeRequests() {
   const [showForm, setShowForm] = useState(false);
@@ -17,12 +18,21 @@ export default function TimeRequests() {
   const [reason, setReason] = useState("");
   const [requestType, setRequestType] = useState("paid");
   const queryClient = useQueryClient();
+  const recalculatedForRef = useRef('');
 
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => base44.auth.me(),
     refetchInterval: 30000,
   });
+
+  useEffect(() => {
+    if (!user?.email || recalculatedForRef.current === user.email) return;
+    recalculatedForRef.current = user.email;
+    base44.functions.invoke('calculatePTOForOfficer', { officer_email: user.email })
+      .then(() => queryClient.invalidateQueries({ queryKey: ['currentUser'] }))
+      .catch(error => console.warn('[PTO] accrual refresh failed:', error?.message));
+  }, [user?.email, queryClient]);
 
   const { data: requests = [], error: requestsError } = useQuery({
     queryKey: ['timeOffRequests', user?.email],
@@ -81,7 +91,7 @@ export default function TimeRequests() {
     const hoursRequested = calculateRequestedHours();
     
     if (requestType === 'paid' && hoursRequested > (user?.pto_balance_hours || 0)) {
-      alert(`Insufficient PTO balance. You have ${(user?.pto_balance_hours || 0).toFixed(1)} hours available, but requested ${hoursRequested} hours.`);
+      toast.error(`Insufficient PTO balance: ${(user?.pto_balance_hours || 0).toFixed(1)} hours available, ${hoursRequested} requested.`);
       return;
     }
     
@@ -98,55 +108,37 @@ export default function TimeRequests() {
 
   const ptoBalance = user?.pto_balance_hours || 0;
   const ptoYearToDate = user?.pto_year_to_date_accrued || 0;
+  const annualEntitlement = useMemo(() => {
+    const rank = String(user?.rank || '').trim().toLowerCase();
+    return rank === 'colonel' || rank === 'lt colonel' || rank === 'lieutenant colonel' ? 180 : 40;
+  }, [user?.rank]);
+  const usedYtd = Number(user?.pto_year_to_date_used || 0);
+  const accruedPercent = annualEntitlement > 0 ? Math.min(100, Math.round((ptoYearToDate / annualEntitlement) * 100)) : 0;
 
   return (
-    <div className="min-h-screen overflow-x-hidden p-3 sm:p-4 md:p-5">
-      <div className="mx-auto w-full min-w-0 space-y-4" style={{ maxWidth: '1100px' }}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="min-h-screen overflow-x-hidden bg-[#07101a] p-3 text-slate-100 sm:p-4 md:p-6">
+      <div className="mx-auto w-full min-w-0 space-y-4" style={{ maxWidth: '1180px' }}>
+        <div className="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-gradient-to-r from-[#0d1725] to-[#0a1320] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Time Off Requests</h1>
-            <p className="text-slate-600">Submit and track your time-off requests</p>
+            <div className="text-[10px] font-black uppercase tracking-[.16em] text-blue-300">Leave Management</div>
+            <h1 className="mt-1 text-2xl font-black text-white sm:text-3xl">Time Off</h1>
           </div>
-          <Button
-            onClick={() => setShowForm(!showForm)}
-            className="w-full bg-blue-600 hover:bg-blue-700 sm:w-auto"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Request
+          <Button onClick={() => setShowForm(!showForm)} className="w-full rounded-xl bg-blue-600 hover:bg-blue-500 sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />New Request
           </Button>
         </div>
 
-        <Card className="border-none shadow-lg bg-gradient-to-r from-green-50 to-emerald-100">
-          <CardContent className="p-4 sm:p-5">
-            <div className="grid gap-4 sm:grid-cols-3 sm:items-center">
-              <div>
-                <p className="text-sm text-slate-600 font-medium">PTO Balance</p>
-                <p className="text-3xl font-bold text-emerald-900 sm:text-4xl">{ptoBalance.toFixed(1)} hrs</p>
-                <p className="text-xs text-slate-600 mt-1">
-                  Earn up to 40 hrs/year (rate: 0.0196 hrs per hour worked)
-                </p>
-                </div>
-              <div className="sm:text-center">
-                <p className="text-sm text-slate-600 font-medium">Year to Date</p>
-                <p className="text-2xl font-bold text-slate-900">{ptoYearToDate.toFixed(1)} hrs</p>
-                <p className="text-xs text-slate-600 mt-1">Total Accrued</p>
-              </div>
-              <div className="sm:text-center">
-                <p className="text-sm text-slate-600 font-medium">Used This Year</p>
-                <p className="text-2xl font-bold text-orange-900">{(user?.pto_year_to_date_used || 0).toFixed(1)} hrs</p>
-                <p className="text-xs text-slate-600 mt-1">Total Used</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Card className="border border-emerald-900/60 bg-[#0d1725] text-white shadow-lg"><CardContent className="p-4"><CheckCircle2 className="h-5 w-5 text-emerald-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Available PTO</div><div className="mt-1 text-3xl font-black text-emerald-300">{ptoBalance.toFixed(1)}h</div></CardContent></Card>
+          <Card className="border border-blue-900/60 bg-[#0d1725] text-white shadow-lg"><CardContent className="p-4"><Clock3 className="h-5 w-5 text-blue-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Accrued YTD</div><div className="mt-1 text-3xl font-black text-blue-300">{ptoYearToDate.toFixed(1)}h</div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full bg-blue-500" style={{ width: `${accruedPercent}%` }} /></div></CardContent></Card>
+          <Card className="border border-amber-900/60 bg-[#0d1725] text-white shadow-lg"><CardContent className="p-4"><History className="h-5 w-5 text-amber-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Used YTD</div><div className="mt-1 text-3xl font-black text-amber-300">{usedYtd.toFixed(1)}h</div></CardContent></Card>
+          <Card className="border border-violet-900/60 bg-[#0d1725] text-white shadow-lg"><CardContent className="p-4"><CalendarClock className="h-5 w-5 text-violet-400" /><div className="mt-3 text-[10px] font-black uppercase tracking-wider text-slate-500">Annual PTO</div><div className="mt-1 text-3xl font-black text-violet-300">{annualEntitlement}h</div></CardContent></Card>
+        </div>
 
         {showForm && (
-          <Card className="border-none shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
-              <CardTitle className="flex items-center gap-2">
-                <CalendarClock className="w-5 h-5 text-blue-600" />
-                New Time Off Request
-              </CardTitle>
+          <Card className="overflow-hidden border border-slate-800 bg-[#0d1725] text-slate-100 shadow-xl">
+            <CardHeader className="border-b border-slate-800 bg-[#101b29]">
+              <CardTitle className="flex items-center gap-2 text-white"><CalendarClock className="h-5 w-5 text-blue-400" />New Time Off Request</CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-5">
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -174,15 +166,9 @@ export default function TimeRequests() {
                 </div>
                 
                 {startDate && endDate && (
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-sm font-medium text-blue-900">
-                      Request Summary: {calculateBusinessDays(startDate, endDate)} business days = {calculateRequestedHours()} hours
-                    </p>
-                    {requestType === 'paid' && (
-                      <p className="text-xs text-blue-700 mt-1">
-                        Remaining balance after approval: {(ptoBalance - calculateRequestedHours()).toFixed(1)} hours
-                      </p>
-                    )}
+                  <div className="rounded-xl border border-blue-900/50 bg-blue-950/20 p-3 text-sm text-blue-100">
+                    {calculateBusinessDays(startDate, endDate)} business days · {calculateRequestedHours()} hours
+                    {requestType === 'paid' && <span className="ml-2 text-blue-300">· {(ptoBalance - calculateRequestedHours()).toFixed(1)}h remaining</span>}
                   </div>
                 )}
                 
@@ -192,7 +178,7 @@ export default function TimeRequests() {
                     id="request_type"
                     value={requestType}
                     onChange={(e) => setRequestType(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md"
+                    className="h-10 w-full rounded-lg border border-slate-700 bg-[#08111d] px-3 text-slate-100"
                     required
                   >
                     <option value="paid">Paid Time Off (PTO)</option>
@@ -203,7 +189,7 @@ export default function TimeRequests() {
                   <Label htmlFor="reason">Reason *</Label>
                   <Textarea
                     id="reason"
-                    placeholder="Please provide a reason for your time off request..."
+                    placeholder="Reason for request"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     required
@@ -237,23 +223,21 @@ export default function TimeRequests() {
           </Card>
         )}
 
-        <Card className="border-none shadow-lg">
-          <CardHeader>
-            <CardTitle>Your Requests</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <Card className="border border-slate-800 bg-[#0d1725] text-slate-100 shadow-lg">
+          <CardHeader className="border-b border-slate-800"><CardTitle className="text-white">Request History</CardTitle></CardHeader>
+          <CardContent className="p-4">
             <div className="space-y-3">
               {requests?.map((request) => (
-                <div key={request.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div key={request.id} className="rounded-xl border border-slate-800 bg-[#101b29] p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <p className="font-semibold text-slate-900">
+                        <p className="font-semibold text-white">
                           {format(new Date(request.start_date), 'MMM d, yyyy')} - {format(new Date(request.end_date), 'MMM d, yyyy')}
                         </p>
                         <StatusBadge status={request.status} />
                       </div>
-                      <p className="text-sm text-slate-600 mb-2">{request.reason}</p>
+                      <p className="mb-2 text-sm text-slate-300">{request.reason}</p>
                       <div className="flex flex-wrap gap-4 text-xs text-slate-500">
                         <span>Type: <strong className={request.request_type === 'paid' ? 'text-green-600' : 'text-orange-600'}>{request.request_type === 'paid' ? 'PAID' : 'UNPAID'}</strong></span>
                         <span>Hours: <strong>{request.hours_requested || 0}h</strong></span>
@@ -273,10 +257,7 @@ export default function TimeRequests() {
                     </div>
                   )}
                   {request.admin_notes && String(request.status || '').toLowerCase() !== 'cancelled' && (
-                    <div className="mt-3 p-3 bg-white rounded border border-slate-200">
-                      <p className="text-xs text-slate-500 mb-1">Admin Notes:</p>
-                      <p className="text-sm text-slate-700">{request.admin_notes}</p>
-                    </div>
+                    <div className="mt-3 rounded-lg border border-slate-700 bg-[#08111d] p-3"><p className="mb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">Admin Notes</p><p className="text-sm text-slate-300">{request.admin_notes}</p></div>
                   )}
                 </div>
               ))}
