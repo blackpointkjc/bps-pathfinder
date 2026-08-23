@@ -237,8 +237,16 @@ export default function Navigation() {
             const shift = candidates.find(s => s.shift_date === today) || candidates[0];
             if (!shift?.partner_officer_email) return user;
 
-            const partnerRows = await base44.entities.User.filter({ email: shift.partner_officer_email }).catch(() => []);
-            const partner = partnerRows?.[0] || null;
+            let partner = null;
+            try {
+                const partnerRows = await base44.entities.User.filter({ email: shift.partner_officer_email });
+                partner = partnerRows?.[0] || null;
+            } catch (partnerLookupError) {
+                // Do not let a failed partner lookup silently look like "no partner" --
+                // fall back to the scheduled partner's email so the assignment still
+                // shows, but make the degraded lookup visible in the console.
+                console.error('[NAV] partner lookup failed, falling back to scheduled partner email:', partnerLookupError);
+            }
             const pairKey = [String(user.email).toLowerCase(), String(shift.partner_officer_email).toLowerCase()].sort().join('|');
             const unionId = `TEAM-${shift.shift_date}-${pairKey}`;
             const isLead = String(user.email).toLowerCase() === pairKey.split('|')[0];
@@ -257,7 +265,11 @@ export default function Navigation() {
                 scheduled_shift_id: shift.id,
             };
 
-            const ownUnits = await base44.entities.Unit.filter({ user_id: user.id }).catch(() => []);
+            // Do not swallow this failure into an empty array: a failed fetch would
+            // then look identical to "no existing unit" and create a duplicate Unit
+            // row on every sync retry. Let a real failure fall through to the outer
+            // catch instead, which aborts the sync without touching CAD unit data.
+            const ownUnits = await base44.entities.Unit.filter({ user_id: user.id });
             const unitPayload = {
                 unit_id: user.unit_number || user.id,
                 label: `${user.rank || 'Officer'} ${user.last_name || user.first_name || ''}`.trim(),
@@ -293,7 +305,8 @@ export default function Navigation() {
 
             return { ...user, ...partnership };
         } catch (e) {
-            console.warn('[NAV] scheduled CAD partnership sync failed:', e?.message);
+            console.error('[NAV] scheduled CAD partnership sync failed:', e);
+            toast.error('Could not sync your CAD partner/unit assignment. It will retry automatically.');
             return user;
         }
     };
