@@ -31,6 +31,8 @@ Deno.serve(async (req) => {
                         await base44.asServiceRole.entities.CallHistory.create({
                             original_call_id: call.id,
                             call_id: call.call_id,
+                            bps_reference: call.bps_reference || (call.call_id && call.call_id.startsWith('BPS-') ? call.call_id : ''),
+                            agency_cad_number: call.agency_cad_number || '',
                             external_call_id: call.external_call_id,
                             time_received: call.time_received || call.created_date,
                             incident: call.incident,

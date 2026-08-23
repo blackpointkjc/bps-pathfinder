@@ -12,7 +12,7 @@ export default function CallLinkCombobox({ calls = [], value, onSelect, placehol
 
   const selected = calls.find(c => c.id === value) || null;
   const q = query.trim().toLowerCase();
-  const haystack = (call) => [callDisplayNumber(call), call.incident, call.location, call.cross_street, call.landmark].filter(Boolean).join(' ').toLowerCase();
+  const haystack = (call) => [callDisplayNumber(call), call.bps_reference, call.agency_cad_number, call.call_id, call.incident, call.location, call.cross_street, call.landmark].filter(Boolean).join(' ').toLowerCase();
   const filtered = q ? calls.filter(c => haystack(c).includes(q)) : calls;
   const active = filtered.filter(isActiveDispatchCall);
   const history = filtered.filter(c => !isActiveDispatchCall(c));

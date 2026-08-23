@@ -10,6 +10,14 @@
       "type": "string",
       "description": "Visible/upstream CAD or BPS call identifier"
     },
+    "bps_reference": {
+      "type": "string",
+      "description": "Internal Black Point Security call reference preserved for report linking search"
+    },
+    "agency_cad_number": {
+      "type": "string",
+      "description": "Official agency CAD number preserved for report linking search"
+    },
     "external_call_id": {
       "type": "string",
       "description": "Optional upstream external call identifier"

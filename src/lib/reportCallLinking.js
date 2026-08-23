@@ -36,15 +36,54 @@ export async function listActiveDispatchCalls(limit = 500) {
   return [...deduped.values()].sort((a, b) => new Date(b.time_received || b.created_date || 0) - new Date(a.time_received || a.created_date || 0));
 }
 
-// Returns ALL dispatch calls (active + cleared/history), deduped by stable key
+// Returns ALL dispatch calls (active + archived history), deduped by stable key
 // and sorted most-recent first. Used by report call-linking so officers can link
-// reports to calls that have already moved to history, and search them by CAD number.
+// reports to calls that have already aged out of the live CAD queue, and search
+// them by any part of the CAD number (e.g. the last 5 digits of the BPS reference).
 export async function listAllDispatchCallsForLinking(limit = 1000) {
-  const calls = await base44.entities.DispatchCall.list('-time_received', limit);
+  const [activeCalls, historyCalls] = await Promise.all([
+    base44.entities.DispatchCall.list('-time_received', limit).catch(() => []),
+    base44.entities.CallHistory.list('-archived_date', limit).catch(() => []),
+  ]);
+
+  // Archived calls live in CallHistory with a different shape. Normalize them so
+  // the combobox and form helpers can treat them like DispatchCall records. The
+  // original DispatchCall id is retained so report links reference the source call.
+  const mapHistory = (h) => {
+    const callId = h?.call_id || '';
+    const bpsRef = h?.bps_reference || (callId.startsWith('BPS-') ? callId : '');
+    return {
+      id: h?.original_call_id || h?.id,
+      original_call_id: h?.original_call_id,
+      call_id: callId,
+      bps_reference: bpsRef,
+      agency_cad_number: '',
+      external_call_id: h?.external_call_id,
+      incident: h?.incident,
+      location: h?.location,
+      cross_street: h?.cross_street,
+      agency: h?.agency,
+      status: h?.status || 'Cleared',
+      priority: h?.priority,
+      zone: h?.zone,
+      latitude: h?.latitude,
+      longitude: h?.longitude,
+      description: h?.description,
+      ai_summary: h?.ai_summary,
+      time_received: h?.time_received,
+      time_cleared: h?.time_cleared,
+      time_closed: h?.time_closed,
+      updated_date: h?.archived_date || h?.updated_date,
+      created_date: h?.archived_date || h?.created_date,
+      _archived: true,
+    };
+  };
+
+  const merged = [...(activeCalls || []), ...(historyCalls || []).map(mapHistory)];
   const deduped = new Map();
-  for (const call of calls || []) {
+  for (const call of merged) {
     const descriptionKey = [call.incident, call.location, call.time_received].filter(Boolean).join('|').toLowerCase();
-    const key = call.external_call_id || call.original_call_id || call.agency_cad_number || call.bps_reference || call.call_id || descriptionKey || call.id;
+    const key = call.external_call_id || call.original_call_id || call.bps_reference || call.agency_cad_number || call.call_id || descriptionKey || call.id;
     const existing = deduped.get(key);
     if (!existing) {
       deduped.set(key, call);
