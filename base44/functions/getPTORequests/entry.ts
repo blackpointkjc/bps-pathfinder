@@ -84,10 +84,25 @@ Deno.serve(async (req) => {
         const officer = (users || []).find((entry: any) => String(entry.email).toLowerCase() === String(officerEmail).toLowerCase());
         if (officer?.id && request.request_type === 'paid') {
           const hours = Number(request.hours_requested || 0);
-          await base44.asServiceRole.entities.User.update(officer.id, {
-            pto_balance_hours: Math.max(0, Number(officer.pto_balance_hours || 0) - hours),
-            pto_year_to_date_used: Number(officer.pto_year_to_date_used || 0) + hours,
-          });
+          const existingUsage = await base44.asServiceRole.entities.PTOUsage.list('-recorded_at', 5000);
+          const alreadyRecorded = (existingUsage || []).some((usage: any) => usage.status === 'active' && usage.source_type === 'time_off_request' && String(usage.source_id || '') === String(request.id));
+          if (!alreadyRecorded && hours > 0) {
+            await base44.asServiceRole.entities.PTOUsage.create({
+              officer_email: String(officerEmail).toLowerCase(),
+              usage_date: request.start_date,
+              hours,
+              source_type: 'time_off_request',
+              source_id: request.id,
+              reason: request.reason || 'Approved PTO',
+              recorded_by: user.email,
+              recorded_at: new Date().toISOString(),
+              status: 'active',
+            });
+            await base44.asServiceRole.entities.User.update(officer.id, {
+              pto_balance_hours: Math.max(0, Number(officer.pto_balance_hours || 0) - hours),
+              pto_year_to_date_used: Number(officer.pto_year_to_date_used || 0) + hours,
+            });
+          }
         }
         const schedules = await base44.asServiceRole.entities.Schedule.list('-shift_date', 5000);
         const affected = (schedules || []).filter((shift: any) =>
@@ -132,6 +147,10 @@ Deno.serve(async (req) => {
       if (request.request_type === 'paid' && officerEmail && hours > 0) {
         const officer = (users || []).find((entry: any) => String(entry.email || '').toLowerCase() === String(officerEmail).toLowerCase());
         if (!officer?.id) return Response.json({ error: 'Officer account not found; hours were not changed' }, { status: 404 });
+        const usages = await base44.asServiceRole.entities.PTOUsage.list('-recorded_at', 5000);
+        for (const usage of (usages || []).filter((row: any) => row.status === 'active' && row.source_type === 'time_off_request' && String(row.source_id || '') === String(request.id))) {
+          await base44.asServiceRole.entities.PTOUsage.update(usage.id, { status: 'reversed' });
+        }
         await base44.asServiceRole.entities.User.update(officer.id, {
           pto_balance_hours: Number(officer.pto_balance_hours || 0) + hours,
           pto_year_to_date_used: Math.max(0, Number(officer.pto_year_to_date_used || 0) - hours),
@@ -146,6 +165,55 @@ Deno.serve(async (req) => {
         admin_notes: admin_notes || `Approved PTO was cancelled by HR. ${hours.toFixed(1)} hours were returned to the officer's PTO balance.`,
       });
       return Response.json({ success: true, removed_from_hr: true, restored_hours: request.request_type === 'paid' ? hours : 0 });
+    }
+
+    if (action === 'record_callout') {
+      const { officer_email, call_out_date, hours, use_pto = false, reason = '' } = body;
+      const amount = Number(hours || 0);
+      if (!officer_email || !call_out_date || !Number.isFinite(amount) || amount <= 0) {
+        return Response.json({ error: 'Officer, call-out date, and positive hours are required' }, { status: 400 });
+      }
+      const users = await base44.asServiceRole.entities.User.list();
+      const officer = (users || []).find((entry: any) => String(entry.email || '').toLowerCase() === String(officer_email).toLowerCase());
+      if (!officer?.id) return Response.json({ error: 'Officer not found' }, { status: 404 });
+      const callout = await base44.asServiceRole.entities.CallOut.create({
+        officer_email: String(officer.email || officer_email).toLowerCase(),
+        officer_name: [officer.first_name, officer.last_name].filter(Boolean).join(' ') || officer_email,
+        call_out_type: 'called_out',
+        call_out_date,
+        reason: reason || (use_pto ? 'Call-out covered with PTO' : 'Call-out - unpaid'),
+        supervisor_email: user.email,
+        supervisor_name: [user.first_name, user.last_name].filter(Boolean).join(' ') || user.email,
+        affects_pto: true,
+        admin_notified: true,
+      });
+      if (use_pto) {
+        if (Number(officer.pto_balance_hours || 0) < amount) return Response.json({ error: `Officer only has ${Number(officer.pto_balance_hours || 0).toFixed(1)} PTO hours available` }, { status: 400 });
+        await base44.asServiceRole.entities.PTOUsage.create({
+          officer_email: String(officer.email || officer_email).toLowerCase(),
+          usage_date: call_out_date,
+          hours: amount,
+          source_type: 'call_out',
+          source_id: callout.id,
+          reason: reason || 'Call-out covered with PTO',
+          recorded_by: user.email,
+          recorded_at: new Date().toISOString(),
+          status: 'active',
+        });
+        await base44.asServiceRole.entities.User.update(officer.id, {
+          pto_balance_hours: Math.max(0, Number(officer.pto_balance_hours || 0) - amount),
+          pto_year_to_date_used: Number(officer.pto_year_to_date_used || 0) + amount,
+        });
+      }
+      await base44.asServiceRole.entities.Notification.create({
+        recipient_email: String(officer.email || officer_email).toLowerCase(),
+        type: 'schedule_changed',
+        title: use_pto ? 'Call-Out Recorded with PTO' : 'Call-Out Recorded',
+        message: use_pto ? `${amount.toFixed(1)} PTO hours were applied to your ${call_out_date} call-out.` : `Your ${call_out_date} call-out was recorded as unpaid; no PTO hours were used.`,
+        priority: 'normal',
+        source_name: 'Human Resources',
+      });
+      return Response.json({ success: true, callout_id: callout.id, pto_used: use_pto ? amount : 0 });
     }
 
     if (action === 'bonus') {
