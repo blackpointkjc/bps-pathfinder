@@ -174,60 +174,20 @@ export default function DispatchCenter() {
 
     const loadUnits = async () => {
         try {
-            // User profiles are authoritative for assignment IDs; live Unit rows
-            // provide the current radio/unit status. Load both so the dialog does
-            // not go empty when either collection is briefly delayed or restricted.
-            const [allUsers, liveUnitRows] = await Promise.all([
-                listDirectoryUsers('-last_updated', 500).catch(() => []),
-                base44.entities.Unit.list('-last_update_at', 500).catch(() => []),
-            ]);
-            const usersById = new Map((allUsers || []).map(user => [String(user.id), user]));
-            const currentUnitByUser = new Map();
-            for (const unit of liveUnitRows || []) {
-                const userId = String(unit.user_id || '');
-                if (!userId || currentUnitByUser.has(userId)) continue;
-                currentUnitByUser.set(userId, unit);
-            }
-
-            const assignableByUser = new Map();
-            for (const user of (allUsers || []).filter(isOperationalOfficer)) {
-                const live = currentUnitByUser.get(String(user.id));
-                assignableByUser.set(String(user.id), {
-                    ...user,
-                    id: user.id,
-                    status: live?.status || user.status || 'Available',
-                    unit_number: live?.unit_id || live?.unit_number || user.unit_number,
-                    label: live?.label || user.unit_number || user.full_name,
-                });
-            }
-
-            // Fallback for active officers represented by Unit rows before their
-            // profile query is visible to this client session.
-            for (const unit of liveUnitRows || []) {
-                const userId = String(unit.user_id || '');
-                const profile = usersById.get(userId);
-                const userQueryAvailable = (allUsers || []).length > 0;
-                if (!userId || assignableByUser.has(userId) || unit.status === 'Out of Service') continue;
-                if (userQueryAvailable && (!profile || !isOperationalOfficer(profile))) continue;
-                assignableByUser.set(userId, {
-                    ...(profile || {}),
-                    id: userId,
-                    status: unit.status || profile?.status || 'Available',
-                    unit_number: unit.unit_id || unit.unit_number || profile?.unit_number,
-                    label: unit.label || profile?.full_name || 'Active Unit',
-                    rank: unit.rank || profile?.rank,
-                    last_name: unit.last_name || profile?.last_name,
-                    full_name: profile?.full_name || unit.label,
-                });
-            }
-
-            const eligibleUnits = [...assignableByUser.values()]
-                .filter(unit => unit.status !== 'Out of Service')
+            // One canonical status feed is shared by Dispatch Center, Command, and
+            // the Unit Status Board. Only officers with a fresh signed-in CAD session
+            // may be assignable as Available/Enroute/On Scene/Busy/Distress.
+            const response = await base44.functions.invoke('getOnDutyUnits', {});
+            const payload = response?.data || response || {};
+            if (payload.error) throw new Error(payload.error);
+            const eligibleUnits = (payload.users || [])
+                .filter(isOperationalOfficer)
+                .filter(unit => unit.status !== 'Out of Service' && unit.session_active === true)
+                .map(unit => ({ ...unit, label: unit.unit_number || unit.full_name || unit.email }))
                 .sort((a, b) => String(a.unit_number || a.label || '').localeCompare(String(b.unit_number || b.label || '')));
-            console.log('📋 Dispatch loaded active assignable users:', eligibleUnits.length);
             setUnits(eligibleUnits);
         } catch (error) {
-            console.error('Error loading units:', error);
+            console.error('Error loading canonical CAD units:', error);
             setUnits([]);
         }
     };
