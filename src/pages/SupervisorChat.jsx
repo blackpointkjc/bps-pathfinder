@@ -65,16 +65,6 @@ export default function SupervisorChat() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  const { data: supervisorUpdates = [] } = useQuery({
-    queryKey: ['supervisorUpdates'],
-    queryFn: async () => {
-      const rows = await base44.entities.Announcement.filter({ audience: 'supervisors' }, '-created_date', 20);
-      return rows || [];
-    },
-    enabled: user?.role === 'supervisor' || user?.additional_roles?.includes('supervisor') || user?.additional_roles?.includes('full_access') || user?.role === 'admin',
-    refetchInterval: 30000,
-  });
-
   const { data: allUsers = [] } = useQuery({
     queryKey: ['chatDirectory'],
     queryFn: async () => {
@@ -226,8 +216,18 @@ export default function SupervisorChat() {
       const key = teamsId ? `teams:${teamsId}` : `local:${msg?.id || fallback}`;
       if (!merged.has(key)) merged.set(key, msg);
     };
-    (localMessages || []).slice().reverse().forEach(add);
-    (liveTeamsMessages || []).forEach(add);
+    const isHumanChat = (msg) => {
+      const sender = String(msg?.sender_name || '').trim().toLowerCase();
+      const body = String(msg?.message || '').trim().toLowerCase();
+      // Supervisor Chat is for supervisor-to-supervisor conversation only. Legacy
+      // CAD logout/status automation and announcement-style system records remain
+      // in their proper audit/announcement channels but are hidden from chat.
+      if (sender === 'pathfinder cad system' || sender === 'pathfinder system' || sender === 'system') return false;
+      if (body.startsWith('auto status alert:') || body.startsWith('announcement:')) return false;
+      return Boolean(String(msg?.message || '').trim());
+    };
+    (localMessages || []).slice().reverse().filter(isHumanChat).forEach(add);
+    (liveTeamsMessages || []).filter(isHumanChat).forEach(add);
     return [...merged.values()].sort((a, b) => new Date(a.created_date || a.teams_created_at || 0) - new Date(b.created_date || b.teams_created_at || 0));
   })();
 
@@ -246,18 +246,16 @@ export default function SupervisorChat() {
   }
 
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)]">
-        <Card className="border-none shadow-xl h-full flex flex-col">
-          <CardHeader className="border-b bg-gradient-to-r from-green-50 to-emerald-50 flex-shrink-0">
+    <div className="min-h-screen bg-[#07101a] p-3 text-slate-100 md:p-6">
+      <div className="mx-auto h-[calc(100dvh-5rem)] max-w-5xl">
+        <Card className="flex h-full flex-col overflow-hidden border border-slate-800 bg-[#0d1623] shadow-2xl">
+          <CardHeader className="flex-shrink-0 border-b border-slate-800 bg-gradient-to-r from-[#101b29] to-[#0b1722] text-white">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
-                <UserCheck className="w-6 h-6 text-green-600" />
+                <UserCheck className="h-6 w-6 text-emerald-400" />
                 Supervisor Chat
-                <Shield className="w-4 h-4 text-green-500 ml-2" />
-                <span className="text-sm font-normal text-green-600">
-                  Private - Supervisors Only
-                </span>
+                <Shield className="ml-2 h-4 w-4 text-emerald-400" />
+                <span className="text-sm font-normal text-emerald-300">Private · Supervisors Only</span>
               </CardTitle>
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-slate-500" />
@@ -268,25 +266,9 @@ export default function SupervisorChat() {
             </div>
           </CardHeader>
 
-          <div className="border-b bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800">Pathfinder Private Supervisor Chat {teamsConfig?.enabled ? '· Microsoft Teams mirror: (Supervisors Chat)' : ''}</div>
+          <div className="flex items-center gap-2 border-b border-slate-800 bg-[#0a1320] px-4 py-2 text-[11px] font-bold text-slate-400"><span className="h-2 w-2 rounded-full bg-emerald-400" />Pathfinder private chat is active{teamsConfig?.enabled ? ' · Teams mirror connected' : ' · Teams mirror optional'}</div>
           {(teamsSyncError || liveTeamsError) && (
-            <div className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-900">
-              Pathfinder chat is active. Microsoft Teams sync is unavailable on this session: {teamsSyncError || liveTeamsError?.message}
-            </div>
-          )}
-
-          {!!supervisorUpdates.length && (
-            <div className="border-b border-amber-200 bg-amber-50 p-3">
-              <div className="mb-2 text-[10px] font-black uppercase tracking-[.14em] text-amber-800">Supervisor Updates</div>
-              <div className="space-y-2">
-                {supervisorUpdates.slice(0, 3).map(update => (
-                  <div key={update.id} className="rounded-lg border border-amber-200 bg-white px-3 py-2">
-                    <div className="text-xs font-black text-slate-900">{update.title}</div>
-                    <div className="mt-1 line-clamp-2 text-xs text-slate-600">{update.message}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <div className="border-b border-slate-800 bg-[#101725] px-4 py-2 text-[10px] text-slate-500">Microsoft Teams mirror is currently unavailable. Pathfinder chat continues normally.</div>
           )}
 
           <ScrollArea className="flex-1 p-6">
