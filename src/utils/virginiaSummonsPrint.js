@@ -38,12 +38,8 @@ export function buildVirginiaSummonsHtml(s, options = {}) {
     body { font-size: 6.45pt; line-height: 1.08; }
     .toolbar { position: fixed; left: 10px; top: 10px; z-index: 20; }
     .toolbar button { border: 0; border-radius: 5px; background: #1d4ed8; color: #fff; font-weight: 700; padding: 8px 13px; cursor: pointer; }
-    .sheet { page: summons; width: 10.40in; height: 7.60in; margin: 0 auto; display: grid; grid-template-columns: 1.86in minmax(0, 1fr); gap: .10in; break-inside: avoid; overflow: hidden; }
-    .waiver, .summons { border: 1.5px solid #000; }
-    .waiver { padding: 5px; font-size: 5.55pt; text-align: justify; }
-    .waiver h2 { text-align: center; font-size: 6.5pt; margin: 0 0 2px; }
-    .waiver p { margin: 0 0 3px; }
-    .sig { margin-top: 7px; border-top: 1px solid #000; padding-top: 2px; text-align: center; }
+    .sheet { page: summons; width: 10.40in; height: 7.60in; margin: 0 auto; display: block; break-inside: avoid; overflow: hidden; }
+    .summons { border: 1.5px solid #000; width: 100%; height: 100%; }
     .summons { position: relative; display: grid; grid-template-rows: auto auto 1fr auto; }
     .top { min-height: .44in; display: grid; grid-template-columns: .65in 1fr 1.15in; align-items: start; border-bottom: 1px solid #000; }
     .copy-no { font-size: 13pt; padding: 6px 5px; }
@@ -52,7 +48,7 @@ export function buildVirginiaSummonsHtml(s, options = {}) {
     .title span { display: block; font-size: 6pt; font-weight: 700; }
     .case { padding: 3px 4px; text-align: right; }
     .case .value { min-height: 14px; border-bottom: 1px solid #000; font-size: 8pt; }
-    .bodygrid { display: grid; grid-template-columns: 3.15in minmax(0, 1fr); min-height: 5.42in; }
+    .bodygrid { display: grid; grid-template-columns: 3.30in minmax(0, 1fr); min-height: 6.08in; }
     .left, .right { border-right: 1px solid #000; }
     .right { border-right: 0; }
     .notice { padding: 3px 5px; border-bottom: 1px solid #000; font-size: 6.2pt; }
@@ -82,11 +78,6 @@ export function buildVirginiaSummonsHtml(s, options = {}) {
     .commercial td { padding: 1px 2px; vertical-align: top; }
     .defsig { padding: 4px; border-top: 1px solid #000; }
     .defsig .line { height: 18px; border-bottom: 1px solid #000; }
-    .instructions { border-top: 1.5px solid #000; display: grid; grid-template-columns: 2.15in 1fr; min-height: .92in; }
-    .juvenile { padding: 4px; border-right: 1px solid #000; }
-    .prepay { padding: 4px 6px; }
-    .prepay h3 { margin: 0 0 3px; font-size: 7.5pt; text-align: center; }
-    .prepay ol { margin: 0; padding-left: 15px; font-size: 5.35pt; line-height: 1.18; }
     .bottom { display: flex; justify-content: space-between; align-items: end; padding: 3px 5px; font-size: 5.2pt; font-weight: 700; }
     @media print { .toolbar { display: none !important; } .sheet { margin: 0 auto; } body { padding-bottom: 0 !important; } }
   </style>
@@ -94,27 +85,10 @@ export function buildVirginiaSummonsHtml(s, options = {}) {
 <body class="bps-summons-print" data-no-company-footer="true">
   <div class="toolbar"><button onclick="window.close()">← Back to App</button></div>
   <main class="sheet">
-    <aside class="waiver">
-      <h2>WAIVER OF A TRIAL<br />(PLEA OF GUILTY)<br />BY SIGNING BELOW, I CERTIFY THAT I</h2>
-      <p>HAVE READ THE NOTICE AND I AM ENTERING MY WRITTEN PLEA. I UNDERSTAND THAT I WAIVE A TRIAL, A HEARING, AND MY RIGHT TO APPEAR BEFORE THE COURT.</p>
-      <p>I UNDERSTAND THE CHARGE, THE POSSIBLE PENALTIES, AND THAT A RECORD OF MY PLEA MAY BE MADE. I ALSO UNDERSTAND THAT PAYMENT MUST BE RECEIVED BY THE COURT AS DIRECTED.</p>
-      <p>I HAVE READ AND UNDERSTAND ALL INSTRUCTIONS ON THIS SUMMONS AND AGREE TO COMPLY WITH THE COURT'S REQUIREMENTS.</p>
-      <div class="sig">SIGNATURE</div>
-      <div class="sig">DATE</div>
-      <p style="margin-top:8px;font-weight:bold;">IF ACCUSED IS A JUVENILE</p>
-      <p>Parent or legal guardian signature may be required by the court.</p>
-      <div class="sig">SIGNATURE OF PARENT/GUARDIAN</div>
-      <div class="sig">DATE</div>
-      <div class="sig">NOTARY PUBLIC / CLERK / MAGISTRATE</div>
-      <div class="sig">CITY/COUNTY &nbsp;&nbsp;&nbsp; STATE</div>
-      <div class="sig">MY COMMISSION EXPIRES</div>
-      <p style="margin-top:8px;font-size:6pt;font-weight:bold;">FOR THE EXACT PREPAY TOTAL, CONTACT THE CLERK OF THE COURT LISTED ON THIS SUMMONS.</p>
-    </aside>
-
     <section class="summons">
       <header class="top">
         <div class="copy-no">001</div>
-        <div class="title"><strong>VIRGINIA UNIFORM SUMMONS</strong><span>DEPARTMENT OF STATE POLICE</span></div>
+        <div class="title"><strong>VIRGINIA UNIFORM SUMMONS</strong><span>BLACK POINT</span></div>
         <div class="case"><div class="label">CASE NO.</div><div class="value">${esc(caseNumber)}</div></div>
       </header>
 
@@ -145,9 +119,8 @@ export function buildVirginiaSummonsHtml(s, options = {}) {
             <p style="margin-top:5px;"><strong>I PROMISE TO APPEAR AT THE TIME AND PLACE SHOWN ABOVE.</strong> SIGNING THIS SUMMONS IS NOT AN ADMISSION OF GUILT.</p>
           </div>
           <div class="appearance">
-            YOU MUST APPEAR AT TRIAL (JUVENILES MUST APPEAR WITH PARENT/LEGAL GUARDIAN)
+            YOU MUST APPEAR AT THE TIME AND PLACE SHOWN ABOVE UNLESS OTHERWISE DIRECTED BY THE COURT.
             <div class="line"></div>
-            YOU MAY AVOID COMING TO COURT ONLY IF THIS BLOCK IS CHECKED AND ALL INSTRUCTIONS ARE FOLLOWED.
           </div>
           <div class="defsig">
             <div class="line"></div><div class="label">SIGNATURE</div>
@@ -182,17 +155,7 @@ export function buildVirginiaSummonsHtml(s, options = {}) {
         </div>
       </div>
 
-      <div class="instructions">
-        <div class="juvenile">
-          <strong>IF ACCUSED IS A JUVENILE</strong><br />A copy of this summons must be delivered to the parent or legal guardian as required.
-          <div style="margin-top:8px;border-top:1px solid #000;padding-top:2px;">SIGNATURE OF PARENT/GUARDIAN &nbsp;&nbsp;&nbsp; DATE</div>
-        </div>
-        <div class="prepay">
-          <h3>PRETRIAL WAIVER AND PREPAYMENT INSTRUCTIONS</h3>
-          <ol><li>Contact the clerk of the court listed on this summons to confirm whether the charge is prepayable and obtain the exact prepay total.</li><li>Do not estimate the amount due. Follow the court clerk's payment instructions.</li><li>If prepayable, the court must receive payment before the trial date.</li><li>Juveniles and certain offenses may require a court appearance.</li></ol>
-        </div>
-      </div>
-      <footer class="bottom"><span>CONTACT THE COURT CLERK FOR THE EXACT PREPAY TOTAL.</span><span>DEFENDANT'S COPY</span><span>KEEP THIS SUMMONS FOR YOUR RECORDS.</span></footer>
+      <footer class="bottom"><span>BLACK POINT</span><span>DEFENDANT'S COPY</span><span>KEEP THIS SUMMONS FOR YOUR RECORDS.</span></footer>
     </section>
 
   </main>
