@@ -534,6 +534,17 @@ export default function AdminAnalytics() {
                     ))}
                     {officer.overall.categories.length === 0 && <span className="text-xs text-slate-500">No scoreable records this month.</span>}
                   </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    <div className="rounded-md border border-slate-700 bg-slate-900/70 px-2 py-2 text-xs text-slate-300">
+                      <span className="font-bold text-white">DAR:</span> {officer.jobDuty.dailyActivity.score != null ? `${officer.jobDuty.dailyActivity.score}%` : '—'} <span className="text-slate-500">({officer.jobDuty.dailyActivity.completed}/{officer.jobDuty.dailyActivity.required})</span>
+                    </div>
+                    <div className="rounded-md border border-slate-700 bg-slate-900/70 px-2 py-2 text-xs text-slate-300">
+                      <span className="font-bold text-white">Incident:</span> {officer.jobDuty.incidentReports.score != null ? `${officer.jobDuty.incidentReports.score}%` : '—'} <span className="text-slate-500">({officer.jobDuty.incidentReports.completed}/{officer.jobDuty.incidentReports.required})</span>
+                    </div>
+                    <div className="rounded-md border border-slate-700 bg-slate-900/70 px-2 py-2 text-xs text-slate-300">
+                      <span className="font-bold text-white">QR:</span> {officer.jobDuty.qrCompliance.score != null ? `${officer.jobDuty.qrCompliance.score}%` : '—'} <span className="text-slate-500">({officer.jobDuty.qrCompliance.completed}/{officer.jobDuty.qrCompliance.required})</span>
+                    </div>
+                  </div>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-400">
                     {officer.callOutAttendance.score != null && <span>Call-Out Attendance: {officer.callOutAttendance.score}% ({officer.callOutAttendance.count} call-out{officer.callOutAttendance.count === 1 ? '' : 's'})</span>}
                     {officer.bidStanding.score != null && <span>Bid Standing: {officer.bidStanding.score}% ({officer.bidStanding.accepted} assigned bid{officer.bidStanding.accepted === 1 ? '' : 's'})</span>}
