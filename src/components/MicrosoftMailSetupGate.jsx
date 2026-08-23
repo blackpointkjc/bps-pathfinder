@@ -58,7 +58,7 @@ export default function MicrosoftMailSetupGate({ user, children, enabled = true 
   }, [userId]);
 
   useEffect(() => {
-    if (!enabled || !userId) return;
+    if (!userId) return;
     let active = true;
 
     const load = async ({ force = false } = {}) => {
