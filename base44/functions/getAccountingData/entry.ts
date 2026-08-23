@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Accounting access required' }, { status: 403 });
     }
 
-    const [users, timeEntries, payrollEntries, configs, periods, invoices, locations, expenseReports, companyExpenses, timeOffRequests, w2Forms, schedules] = await Promise.all([
+    const [users, timeEntries, payrollEntries, configs, periods, invoices, locations, expenseReports, companyExpenses, timeOffRequests, ptoUsage, w2Forms, schedules] = await Promise.all([
       base44.asServiceRole.entities.User.list(undefined, 1000),
       base44.asServiceRole.entities.TimeEntry.list('-clock_in', 3000),
       base44.asServiceRole.entities.PayrollEntry.list('-created_date', 2000),
@@ -21,6 +21,7 @@ Deno.serve(async (req) => {
       base44.asServiceRole.entities.ExpenseReport.list('-created_date', 2000),
       base44.asServiceRole.entities.CompanyExpense.list('-expense_date', 2000),
       base44.asServiceRole.entities.TimeOffRequest.list('-created_date', 2000),
+      base44.asServiceRole.entities.PTOUsage.list('-usage_date', 5000),
       base44.asServiceRole.entities.W2Form.list('-tax_year', 2000),
       base44.asServiceRole.entities.Schedule.list('-shift_date', 5000),
     ]);
@@ -34,7 +35,7 @@ Deno.serve(async (req) => {
       users: users || [], clients, timeEntries: timeEntries || [], payrollEntries: payrollEntries || [],
       config: configs?.[0] || null, payrollPeriods: periods || [], invoices: invoices || [],
       locations: locations || [], expenseReports: expenseReports || [], companyExpenses: companyExpenses || [],
-      timeOffRequests: timeOffRequests || [], w2Forms: w2Forms || [], schedules: schedules || [],
+      timeOffRequests: timeOffRequests || [], ptoUsage: ptoUsage || [], w2Forms: w2Forms || [], schedules: schedules || [],
     });
   } catch (error) {
     console.error('getAccountingData failed', error);
