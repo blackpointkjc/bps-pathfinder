@@ -728,9 +728,10 @@ export default function AdminAnalytics() {
                   <div className="rounded-xl border border-slate-700 bg-slate-900/80 p-4 text-sm leading-relaxed text-slate-300">
                     <p className="font-bold text-white">This sends one Black Point HTML email and one in-app notification to every active internal company member.</p>
                     <ul className="mt-3 space-y-2 text-xs text-slate-400">
-                      <li>• Company aggregate performance only</li>
-                      <li>• Company ranking positions and names, without individual scores</li>
-                      <li>• Each person’s exact missing reports, training, and certification items</li>
+                      <li>• Company-wide aggregate performance snapshot only</li>
+                      <li>• Active operational team count as a company total</li>
+                      <li>• The recipient’s complete personal list of missing DARs, report corrections, training, modules, and certification items</li>
+                      <li>• No other officer’s name, individual score, ranking position, or missing items are shown</li>
                       <li>• Microsoft 365 delivery with zero Base44 integration credits</li>
                     </ul>
                   </div>
