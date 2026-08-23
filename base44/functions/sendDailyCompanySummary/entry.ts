@@ -511,7 +511,7 @@ Deno.serve(async (req) => {
     const companySnapshot = { overall: companyOverall, onTime: companyOnTime, activeOperational: rankingCandidates.length, totalMissing };
     const notificationsCreated = await createNotifications(
       base44, recipients, deliveryId,
-      () => `Black Point Daily Brief — ${dateLabel}`
+      () => `Black Point Daily Brief — ${dateLabel}`,
       user => {
         const items = [...(missing.get(String(user.id)) || [])];
         return `Company overall: ${companySnapshot.overall == null ? 'not yet scored' : `${companySnapshot.overall}%`} • Company on-time: ${companySnapshot.onTime == null ? 'not yet scored' : `${companySnapshot.onTime}%`} • Active operational team members: ${companySnapshot.activeOperational} • Company missing requirements: ${companySnapshot.totalMissing}\n\n${personalMissingMessage(items)}`;
