@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { 
-  BarChart3, Clock, CheckCircle2, Award, Calendar, Star, AlertTriangle,
+  BarChart3, Clock, CheckCircle2, Calendar, Star, AlertTriangle,
   MapPin, ChevronRight, GraduationCap, UserX
 } from "lucide-react";
 import { format, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
