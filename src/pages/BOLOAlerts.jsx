@@ -66,8 +66,8 @@ export default function BOLOAlerts() {
   };
 
   const roles = new Set((user?.additional_roles || []).map(role => String(role).toLowerCase()));
-  const canCreate = Boolean(user && (user.role === 'admin' || user.role === 'dispatch' || roles.has('officer') || roles.has('full_access')));
-  const isManager = Boolean(user && (user.role === 'admin' || user.role === 'dispatch' || roles.has('supervisor') || roles.has('full_access') || roles.has('dispatch')));
+  const canCreate = Boolean(user && (user.role === 'admin' || user.role === 'dispatch' || user.dispatch_role === true || roles.has('officer') || roles.has('full_access') || roles.has('dispatch') || roles.has('cad_access')));
+  const isManager = Boolean(user && (user.role === 'admin' || user.role === 'dispatch' || user.dispatch_role === true || roles.has('supervisor') || roles.has('full_access') || roles.has('dispatch')));
 
   const activeCount = bolos.filter(b => b.status === 'active').length;
   const draftCount = bolos.filter(b => b.status === 'draft' && (isManager || b.issued_by_id === user?.id || b.created_by_id === user?.id)).length;
