@@ -93,8 +93,6 @@ export default function AdminPTOApproval() {
     };
   };
 
-  const getOfficerName = (requestOrEmail) => resolveOfficer(requestOrEmail).name;
-
   const updateRequestMutation = useMutation({
     mutationFn: async ({ id, status, notes }) => {
       const response = await base44.functions.invoke('getPTORequests', {
