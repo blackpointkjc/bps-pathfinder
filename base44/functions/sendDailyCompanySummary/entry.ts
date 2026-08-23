@@ -232,18 +232,24 @@ function personalMissingMessage(items: string[]) {
   return `You have ${items.length} outstanding item${items.length === 1 ? '' : 's'} that need your attention:\n${items.map(item => `• ${item}`).join('\n')}`;
 }
 
-function personalSummaryEmail(dateLabel: string, user: any, items: string[]) {
-  const subject = `Your Daily Summary — ${dateLabel}`;
+function personalSummaryEmail(dateLabel: string, user: any, items: string[], company: { overall: number | null; activeOperational: number }) {
+  const subject = `Black Point Daily Company Summary — ${dateLabel}`;
   const hasItems = items.length > 0;
   const content = `
-    <h2>Your Daily Summary</h2>
+    <h2>Black Point Daily Company Summary</h2>
     <p>Hi ${escapeHtml(rankedName(user))},</p>
+    <div style="margin:16px 0;padding:16px;border:1px solid #243449;border-radius:12px;background:#0f1b2b;">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;">Company Snapshot</div>
+      <div style="margin-top:10px;font-size:15px;color:#e2e8f0;"><strong>Company Overall Performance:</strong> ${company.overall == null ? 'Not enough scoreable data yet' : `${company.overall}%`}</div>
+      <div style="margin-top:6px;font-size:15px;color:#e2e8f0;"><strong>Active Operational Team Members:</strong> ${company.activeOperational}</div>
+    </div>
+    <h3 style="margin-top:20px;">Your Required Items</h3>
     ${hasItems
-      ? `<p>You have <strong>${items.length}</strong> outstanding item${items.length === 1 ? '' : 's'} that need your attention:</p><ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
+      ? `<p>You have <strong>${items.length}</strong> outstanding item${items.length === 1 ? '' : 's'} that need your attention. The full list is below:</p><ul>${items.map(item => `<li style="margin:7px 0;">${escapeHtml(item)}</li>`).join('')}</ul>`
       : '<p>You have no outstanding items today. Thank you for staying current.</p>'}
-    <p style="color:#64748b;font-size:12px;">This is your individual summary only. It does not include other team members' information, company rankings, or performance percentages.</p>
+    <p style="color:#64748b;font-size:12px;">Company information above is aggregate only. Your required-items section contains only your own records. No other employee’s missing items, individual score, or personnel details are included.</p>
   `;
-  const message = personalMissingMessage(items);
+  const message = `Company overall: ${company.overall == null ? 'not yet scored' : `${company.overall}%`} • Active operational team members: ${company.activeOperational}\n\n${personalMissingMessage(items)}`;
   return { subject, content, message };
 }
 
@@ -472,17 +478,21 @@ Deno.serve(async (req) => {
       });
     }
 
+    const companySnapshot = { overall: companyOverall, activeOperational: rankingCandidates.length };
     const notificationsCreated = await createNotifications(
       base44, recipients, deliveryId,
-      () => `Your Daily Summary — ${dateLabel}`,
-      user => personalMissingMessage([...(missing.get(String(user.id)) || [])]),
+      () => `Black Point Daily Company Summary — ${dateLabel}`,
+      user => {
+        const items = [...(missing.get(String(user.id)) || [])];
+        return `Company overall: ${companySnapshot.overall == null ? 'not yet scored' : `${companySnapshot.overall}%`} • Active operational team members: ${companySnapshot.activeOperational}\n\n${personalMissingMessage(items)}`;
+      },
     );
 
     const deliveries = recipients.map(user => {
       const to = resolvedDeliveryEmail(user, metricData.outlook, metricData.teams);
       if (!to) return null;
       const items = [...(missing.get(String(user.id)) || [])];
-      const { subject, content } = personalSummaryEmail(dateLabel, user, items);
+      const { subject, content } = personalSummaryEmail(dateLabel, user, items, companySnapshot);
       return { to, subject, html: blackPointEmail(subject, content, 'Open Pathfinder', PORTAL_URL) };
     }).filter(Boolean) as { to: string; subject: string; html: string }[];
 
