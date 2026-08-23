@@ -15,8 +15,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { calculatePunctuality, calculateBidStanding, calculateTrainingScore, calculateCallOutAttendance, calculateClientFeedback, calculateSupervisorRating, calculateRecognition, buildOverallPerformance } from '@/lib/performanceScoring';
 
-const emailKey = (value) => String(value || '').trim().toLowerCase();
-
 function breakMinutes(entry) {
   return (entry?.break_periods || []).reduce((total, period) => {
     const start = period?.start ? new Date(period.start).getTime() : NaN;
