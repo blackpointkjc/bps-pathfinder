@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ClipboardCheck, LockKeyhole } from 'lucide-react';
@@ -8,6 +8,7 @@ import { createPageUrl } from '@/utils';
 export default function PerformanceReviewTaskGate({ user }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [responseInProgress, setResponseInProgress] = useState(false);
   const { data = { reviews: [] }, refetch } = useQuery({
     queryKey: ['requiredOfficerPerformanceReviewGate', user?.id],
     queryFn: async () => {
@@ -17,16 +18,27 @@ export default function PerformanceReviewTaskGate({ user }) {
       return payload;
     },
     enabled: !!user?.id,
-    refetchInterval: 15000,
-    refetchOnWindowFocus: true,
+    refetchInterval: responseInProgress ? false : 15000,
+    refetchOnWindowFocus: !responseInProgress,
     staleTime: 0,
     retry: false,
   });
 
   useEffect(() => {
-    const handler = () => refetch();
-    window.addEventListener('pathfinder:performance-review-updated', handler);
-    return () => window.removeEventListener('pathfinder:performance-review-updated', handler);
+    const updated = () => refetch();
+    const opened = () => setResponseInProgress(true);
+    const closed = () => {
+      setResponseInProgress(false);
+      window.setTimeout(() => refetch(), 250);
+    };
+    window.addEventListener('pathfinder:performance-review-updated', updated);
+    window.addEventListener('pathfinder:performance-review-response-open', opened);
+    window.addEventListener('pathfinder:performance-review-response-closed', closed);
+    return () => {
+      window.removeEventListener('pathfinder:performance-review-updated', updated);
+      window.removeEventListener('pathfinder:performance-review-response-open', opened);
+      window.removeEventListener('pathfinder:performance-review-response-closed', closed);
+    };
   }, [refetch]);
 
   const requiredReview = useMemo(() => (data.reviews || []).find(review =>
@@ -39,7 +51,7 @@ export default function PerformanceReviewTaskGate({ user }) {
   const onDedicatedReviewPage = pathname.includes('officerperformancereviews');
   const onEmbeddedReviewPage = pathname.includes('officercenter') && params.get('tool') === 'reviews';
   const onReviewPage = onDedicatedReviewPage || onEmbeddedReviewPage;
-  if (!requiredReview || onReviewPage) return null;
+  if (!requiredReview || onReviewPage || responseInProgress) return null;
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-[#020711]/95 p-4 backdrop-blur-md">
