@@ -110,37 +110,40 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-[#08111b]">
-      <div className="flex items-center gap-2 border-b border-[#1e2d4a] bg-[#0d1220] px-3 py-2">
-        <span className="h-2 w-2 rounded-full bg-blue-400" />
-        <span className="text-[10px] font-black tracking-[0.18em] text-blue-300">UNIT STATUS BOARD</span>
-        <span className="ml-auto rounded border border-slate-600 bg-slate-800 px-2 py-0.5 text-[9px] font-bold text-slate-300">{statusUnits.length}</span>
+      <div className="flex items-center gap-2 border-b border-[#1e2d4a] bg-gradient-to-r from-[#0e1726] to-[#0a1220] px-3 py-2.5">
+        <span className="h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,.8)]" />
+        <div className="min-w-0">
+          <div className="text-[10px] font-black tracking-[0.18em] text-blue-200">UNIT STATUS</div>
+          <div className="text-[8px] text-slate-500">Live CAD roster</div>
+        </div>
+        <span className="ml-auto rounded-full border border-blue-700/50 bg-blue-950/50 px-2.5 py-1 text-[9px] font-black text-blue-200">{statusUnits.length}</span>
       </div>
 
-      <div className="grid grid-cols-7 border-b border-[#1e2d4a] bg-[#080d18]">
+      <div className="flex overflow-x-auto border-b border-[#1e2d4a] bg-[#080d18] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {STATUS_ORDER.slice(1).map(status => {
           const meta = STATUS_META[status];
           return (
             <button key={status} onClick={() => setFilter(filter === status ? 'All' : status)}
-              className={`border-r border-[#1e2d4a] px-1 py-2 last:border-r-0 ${filter === status ? 'bg-slate-800/80' : 'hover:bg-slate-900/70'}`}>
+              className={`min-w-[58px] flex-1 border-r border-[#1e2d4a] px-1.5 py-2.5 last:border-r-0 ${filter === status ? 'bg-blue-950/40 ring-inset ring-1 ring-blue-700/40' : 'hover:bg-slate-900/70'}`}>
               <div className={`text-base font-black ${
                 status === 'Available' ? 'text-green-400' :
+                status === 'On Patrol' ? 'text-indigo-400' :
                 status === 'Enroute' ? 'text-yellow-400' :
                 status === 'On Scene' ? 'text-blue-400' :
                 status === 'Busy' ? 'text-orange-400' :
                 status === 'Distress' ? 'text-red-400' : 'text-slate-400'
               }`}>{counts[status] || 0}</div>
-              <div className="text-[7px] font-bold tracking-widest text-slate-600">{meta.short}</div>
+              <div className="mt-0.5 text-[7px] font-black tracking-widest text-slate-500">{meta.short}</div>
             </button>
           );
         })}
       </div>
 
-      <div className="flex flex-col gap-1.5 border-b border-[#1e2d4a] bg-[#0b1320] px-2 py-1.5 sm:flex-row sm:items-center sm:gap-2">
-        <span className="text-[8px] font-black tracking-widest text-slate-500">FILTER STATUS:</span>
-        <select value={filter} onChange={e => setFilter(e.target.value)} className="w-full min-w-0 rounded border border-blue-700/50 bg-[#07101c] px-2 py-1.5 text-[10px] font-bold text-blue-200 outline-none sm:w-auto sm:min-w-32 sm:py-1 sm:text-[9px]">
+      <div className="flex items-center gap-2 border-b border-[#1e2d4a] bg-[#0b1320] px-2.5 py-2">
+        <select value={filter} onChange={e => setFilter(e.target.value)} className="h-8 min-w-0 flex-1 rounded-lg border border-blue-700/50 bg-[#07101c] px-2 text-[9px] font-black tracking-wide text-blue-100 outline-none">
           {STATUS_ORDER.map(status => <option key={status} value={status}>{status.toUpperCase()}</option>)}
         </select>
-        <span className="text-[8px] text-slate-600 sm:ml-auto">SHOWING {filtered.length} OF {statusUnits.length}</span>
+        <span className="whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[8px] font-bold text-slate-500">{filtered.length}/{statusUnits.length}</span>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -152,11 +155,15 @@ export default function CADUnitStatusBoard({ units = [], compact = false, curren
           const isDistress = unit.status === 'Distress';
           const busy = pendingId === officerId;
           return (
-            <div key={unit.id || unit.email} className={`flex items-center gap-2 border-b border-[#172536] px-3 ${compact ? 'py-1.5' : 'py-2'} ${isDistress ? 'bg-red-950/30' : 'hover:bg-[#111827]'}`}>
-              <span className={`h-2 w-2 flex-none rounded-full ${meta.dot} ${isDistress ? 'animate-pulse' : ''}`} />
+            <div key={unit.id || unit.email} className={`mx-2 my-1 flex items-center gap-2.5 rounded-xl border px-2.5 ${compact ? 'py-2' : 'py-2.5'} ${isDistress ? 'border-red-700/50 bg-red-950/30' : 'border-slate-800 bg-[#0d1623] hover:border-blue-800/50 hover:bg-[#111c2b]'}`}>
+              {unit.profile_photo_url ? (
+                <img src={unit.profile_photo_url} alt="" className="h-8 w-8 flex-none rounded-full border border-slate-700 object-cover" />
+              ) : (
+                <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-[9px] font-black text-slate-300">{String(unit.last_name || unit.full_name || '?').slice(0,1).toUpperCase()}</div>
+              )}
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[10px] font-black text-white" title={displayName(unit)}>{displayName(unit)}</div>
-                {(unit.unit_number || unit.current_call_info) && <div className="truncate text-[8px] text-slate-500">{unit.unit_number ? `UNIT-${unit.unit_number}` : ''}{unit.unit_number && unit.current_call_info ? ' · ' : ''}{unit.current_call_info || ''}</div>}
+                <div className="flex items-center gap-1.5"><span className={`h-1.5 w-1.5 flex-none rounded-full ${meta.dot} ${isDistress ? 'animate-pulse' : ''}`} /><div className="truncate text-[10px] font-black text-white" title={displayName(unit)}>{displayName(unit)}</div></div>
+                {(unit.unit_number || unit.current_call_info) && <div className="mt-0.5 truncate text-[8px] text-slate-500">{unit.unit_number ? `UNIT-${unit.unit_number}` : ''}{unit.unit_number && unit.current_call_info ? ' · ' : ''}{unit.current_call_info || ''}</div>}
               </div>
               <span className={`flex-none rounded border px-1.5 py-0.5 text-[8px] font-bold ${meta.badge}`}>{meta.short}</span>
               {canManageDistress && (
