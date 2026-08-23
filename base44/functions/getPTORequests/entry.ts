@@ -172,6 +172,14 @@ Deno.serve(async (req) => {
       });
       const newBalance = Number(officer.pto_balance_hours || 0) + amount;
       await base44.asServiceRole.entities.User.update(officer.id, { pto_balance_hours: newBalance });
+      await base44.asServiceRole.entities.Notification.create({
+        recipient_email: String(officer.email || officer_email).toLowerCase(),
+        type: 'schedule_changed',
+        title: 'Bonus PTO Added',
+        message: `${amount.toFixed(1)} bonus PTO hours were added to your available PTO balance by HR.${reason ? ` Reason: ${reason}` : ''}`,
+        priority: 'normal',
+        source_name: 'Human Resources',
+      });
       return Response.json({ success: true, adjustment: record, hours_added: amount, balance: newBalance });
     }
 
