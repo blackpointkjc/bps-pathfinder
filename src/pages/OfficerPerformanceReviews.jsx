@@ -61,6 +61,7 @@ export default function OfficerPerformanceReviews() {
   const [signing, setSigning] = useState(null);
   const [comments, setComments] = useState('');
   const [selfRatings, setSelfRatings] = useState(emptyRatings);
+  const [submittingReviewId, setSubmittingReviewId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -88,6 +89,7 @@ export default function OfficerPerformanceReviews() {
       key,
       Number(review[`officer_${key}`]) || 0,
     ])));
+    window.dispatchEvent(new CustomEvent('pathfinder:performance-review-response-open', { detail: { reviewId: review.id } }));
   };
 
   const saveSignature = async (signatureUrl) => {
