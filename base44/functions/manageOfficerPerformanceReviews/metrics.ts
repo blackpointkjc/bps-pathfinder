@@ -252,10 +252,18 @@ export async function buildPerformanceMetrics(base44: any, officer: any, start: 
   const uniformScores = periodInspections.map((row: any) => inspectionScore(row.uniform_appearance)).filter((value: any) => value != null);
   const professionalScores = periodInspections.map((row: any) => inspectionScore(row.professionalism)).filter((value: any) => value != null);
   const average = (values: number[]) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
-  const conductScore = clamp(80 + periodCommendations.length * 5 - sustainedComplaints * 15 - periodWriteUps.length * 12);
-  const professionalismScore = average(professionalScores as number[]) == null ? conductScore : clamp((average(professionalScores as number[])! + conductScore) / 2);
+  const hasConductEvidence = periodCommendations.length > 0 || periodComplaints.length > 0 || periodWriteUps.length > 0;
+  const conductScore = hasConductEvidence
+    ? clamp(100 + periodCommendations.length * 5 - sustainedComplaints * 15 - periodWriteUps.length * 12)
+    : null;
+  const inspectionProfessionalism = average(professionalScores as number[]);
+  const professionalismScore = inspectionProfessionalism == null
+    ? conductScore
+    : (conductScore == null ? inspectionProfessionalism : clamp((inspectionProfessionalism + conductScore) / 2));
   const uniformScore = average(uniformScores as number[]);
-  const initiativeScore = clamp(75 + periodCommendations.length * 6 - periodWriteUps.length * 10);
+  const initiativeScore = (periodCommendations.length > 0 || periodWriteUps.length > 0)
+    ? clamp(100 + periodCommendations.length * 6 - periodWriteUps.length * 10)
+    : null;
 
   const suggestedRatings = {
     punctuality_rating: ratingFromScore(onTimePercentage),
@@ -264,9 +272,10 @@ export async function buildPerformanceMetrics(base44: any, officer: any, start: 
     communication_rating: 3,
     initiative_rating: ratingFromScore(initiativeScore),
   };
-  const ratingValues = Object.values(suggestedRatings) as number[];
-  const overallRating = round(ratingValues.reduce((sum, value) => sum + value, 0) / ratingValues.length, 1);
-  const performanceScore = Math.round(overallRating * 20);
+  const evidenceScores = [onTimePercentage, professionalismScore, uniformScore, initiativeScore]
+    .filter((value): value is number => value != null && Number.isFinite(value));
+  const performanceScore = evidenceScores.length ? Math.round(average(evidenceScores)!) : null;
+  const overallRating = performanceScore == null ? 3 : round(performanceScore / 20, 1);
   const payRange = payRangeForRank(officer.rank);
   const currentRate = Number(officer.hourly_rate || 0);
 
