@@ -8,7 +8,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { 
   BarChart3, Clock, CheckCircle2, Award, Calendar, Star, AlertTriangle,
-  Bell, MapPin, ChevronRight, GraduationCap, UserX
+  MapPin, ChevronRight, GraduationCap, UserX
 } from "lucide-react";
 import { format, parseISO, addDays, startOfWeek, isToday, isTomorrow, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
@@ -60,7 +60,6 @@ export default function MyPerformanceAnalytics() {
   const trainingCompletions = performanceData.trainingCompletions || [];
   const allTraining = performanceData.trainingModules || [];
   const myAssignments = performanceData.trainingAssignments || [];
-  const notifications = performanceData.notifications || [];
   const myCallOuts = performanceData.callOuts || [];
   const myComplaints = performanceData.complaints || [];
   const myCommendations = performanceData.commendations || [];
@@ -88,26 +87,6 @@ export default function MyPerformanceAnalytics() {
       return shiftDate >= today && shiftDate >= weekStart && shiftDate <= weekEnd;
     }).sort((a, b) => a.shift_date.localeCompare(b.shift_date));
   }, [schedules]);
-
-  // Recent important notifications
-  const recentNotifications = React.useMemo(() => {
-    if (!notifications || !user?.email) return [];
-    const myEmail = user.email.trim().toLowerCase();
-    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    return notifications
-      .filter(n => {
-        const recipient = String(n.recipient_email || '').trim().toLowerCase();
-        const isMine = recipient === myEmail;
-        const isCompanyWide = ['all', 'company', 'company-wide', 'company_wide', '*'].includes(recipient)
-          || n.type === 'company_broadcast'
-          || n.audience === 'company';
-        const createdAt = new Date(n.created_date || n.created_at || 0).getTime();
-        const withinSevenDays = Number.isFinite(createdAt) && createdAt >= sevenDaysAgo;
-        return !n.is_read && isMine && !isCompanyWide && withinSevenDays;
-      })
-      .sort((a, b) => new Date(b.created_date || b.created_at || 0) - new Date(a.created_date || a.created_at || 0))
-      .slice(0, 5);
-  }, [notifications, user?.email]);
 
   // Punctuality is calculated in Eastern Time and each punch is matched to the
   // correct scheduled shift window, not simply the first shift on the same date.
@@ -190,7 +169,7 @@ export default function MyPerformanceAnalytics() {
   const overallPerformance = useMemo(() => buildOverallPerformance({
     punctuality: onTimeStats,
     trainingScore: trainingStats.total > 0 ? trainingStats.percentage : null,
-    jobDuty: jobDutyStats,
+    jobDuty: null,
     callOutAttendance,
     bidStanding: bidStats,
     clientFeedback: clientFeedbackStats,
@@ -286,32 +265,6 @@ export default function MyPerformanceAnalytics() {
     }
     if (recognitionStats.count > 0) {
       factors.push({ metric: 'Recognition', value: 'Positive', severity: 'positive', reason: `${recognitionStats.count} commendation/positive client recognition record${recognitionStats.count === 1 ? '' : 's'} this month. Recognition contributes positively to the overall score; having none does not lower it.`, details: [...recognitionStats.commendations.map(item => `${item.commendation_type?.replaceAll('_', ' ') || 'Commendation'}: ${item.description}`), ...recognitionStats.positiveFeedback.map(item => `Client feedback ${Number(item.rating || 0).toFixed(1)}/5 at ${String(item.location || '').split(':')[0]}`)] });
-    }
-
-    if (jobDutyStats.score != null) {
-      const dutyDetails = [];
-      jobDutyStats.shifts.forEach(shift => {
-        if (shift.daily_activity.required && !shift.daily_activity.completed) dutyDetails.push(`${shift.shift_date} • ${shift.property}: Daily Activity Report missing for this worked shift.`);
-        shift.incidents.items.filter(item => item.status === 'missing').forEach(item => dutyDetails.push(`${shift.shift_date} • ${shift.property}: Incident Report missing for call ${item.call_number || item.call_id} (${item.call_type || 'call for service'}).`));
-        shift.incidents.items.filter(item => item.status === 'excluded_reassignment').forEach(item => dutyDetails.push(`${shift.shift_date} • ${shift.property}: Call ${item.call_number || item.call_id} excluded — ${item.reason}.`));
-        if (shift.qr.missed > 0) {
-          dutyDetails.push(`${shift.shift_date} • ${shift.property}: ${shift.qr.completed}/${shift.qr.required} required QR scans completed; ${shift.qr.missed} missed.`);
-          (shift.qr.missed_obligations || []).slice(0, 8).forEach(item => dutyDetails.push(`${shift.shift_date} • ${shift.property}: ${item.checkpoint_name} missed in QR round ${item.round} (${new Date(item.window_start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}–${new Date(item.window_end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}).`));
-        }
-        (shift.qr.excluded_items || []).slice(0, 8).forEach(item => dutyDetails.push(`${shift.shift_date} • ${shift.property}: ${item.checkpoint_name || 'QR scan'} by ${item.officer_email || 'another user'} did not count because the scanner was not clocked in at this property.`));
-      });
-      const dutySummary = [
-        jobDutyStats.dailyActivity.required > 0 ? `DAR ${jobDutyStats.dailyActivity.completed}/${jobDutyStats.dailyActivity.required}` : null,
-        jobDutyStats.incidentReports.required > 0 ? `Incident Reports ${jobDutyStats.incidentReports.completed}/${jobDutyStats.incidentReports.required}` : null,
-        jobDutyStats.qrCompliance.required > 0 ? `QR ${jobDutyStats.qrCompliance.completed}/${jobDutyStats.qrCompliance.required}` : null,
-      ].filter(Boolean).join(' • ');
-      factors.push({
-        metric: 'Job Duty Compliance',
-        value: `${jobDutyStats.score}%`,
-        severity: jobDutyStats.score === 100 ? 'positive' : 'negative',
-        reason: dutySummary || 'No job-duty requirement is currently scoreable.',
-        details: dutyDetails.length ? dutyDetails : ['All required job duties were completed for evaluated shifts.']
-      });
     }
 
     return factors;
