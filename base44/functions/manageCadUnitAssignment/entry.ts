@@ -64,15 +64,17 @@ Deno.serve(async (req) => {
         if (officer?.email) {
           const incident = call.incident || 'Call for service';
           const location = call.location || 'Address unavailable';
+          const callNumber = call.agency_cad_number || call.bps_reference || call.call_id || 'reference pending';
           const priorityText = call.priority ? ` Priority ${call.priority}.` : '';
+          const unitLabel = officer.unit_number ? `Unit ${officer.unit_number}. ` : '';
           await base44.asServiceRole.entities.Notification.create({
             recipient_email: String(officer.email).trim().toLowerCase(),
             type: 'call_assignment',
-            title: 'Assigned to Call',
-            message: `You have been assigned to ${incident} at ${location}.${priorityText}`,
+            title: `Dispatch Assignment · ${callNumber}`,
+            message: `${unitLabel}Assigned to ${callNumber}. ${incident} at ${location}.${priorityText}`,
             is_read: false,
             related_id: call_id,
-            priority: call.priority === 'high' || call.priority === 'emergency' ? 'critical' : 'high',
+            priority: call.priority === 'high' || call.priority === 'emergency' || call.priority === 'critical' ? 'critical' : 'high',
             source_name: 'Dispatch',
           }).catch((error: any) => console.error('manageCadUnitAssignment: failed to notify assigned officer', error?.message || error));
         }
