@@ -92,6 +92,12 @@ export default function OfficerPerformanceReviews() {
     window.dispatchEvent(new CustomEvent('pathfinder:performance-review-response-open', { detail: { reviewId: review.id } }));
   };
 
+  const closeResponse = () => {
+    const reviewId = signing?.id || null;
+    setSigning(null);
+    if (reviewId) window.dispatchEvent(new CustomEvent('pathfinder:performance-review-response-closed', { detail: { reviewId } }));
+  };
+
   const saveSignature = async (signatureUrl) => {
     if (!signing?.id || submittingReviewId) return;
     const reviewId = signing.id;
@@ -211,11 +217,11 @@ export default function OfficerPerformanceReviews() {
         </div>
         <Textarea value={comments} onChange={event => setComments(event.target.value)} placeholder="Officer comments (optional)" className="mb-4 border-slate-600 bg-slate-800"/>
         {ratingFields.every(({ key }) => selfRatings[key] >= 1 && selfRatings[key] <= 5) ? (
-          <SignaturePad officerName={signing.officer_name} onSignatureComplete={saveSignature} onClose={() => setSigning(null)}/>
+          <SignaturePad officerName={signing.officer_name} onSignatureComplete={saveSignature} onClose={closeResponse}/>
         ) : (
           <div className="space-y-3 rounded-lg border border-amber-700 bg-amber-950/30 p-4">
             <p className="font-semibold text-amber-300">Select a rating for all six categories before signing.</p>
-            <Button variant="outline" onClick={() => setSigning(null)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={closeResponse}>Cancel</Button>
           </div>
         )}
       </div>
