@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { AlertTriangle } from 'lucide-react';
@@ -39,7 +39,29 @@ function isDispatchOrAdmin(user) {
 export default function CADUnitStatusBoard({ units = [], compact = false, currentUser = null }) {
   const [filter, setFilter] = useState('All');
   const [pendingId, setPendingId] = useState(null);
-  const statusUnits = useMemo(() => (units || []).filter(u => u?.status), [units]);
+  const [canonicalUnits, setCanonicalUnits] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    const sync = async () => {
+      try {
+        const response = await base44.functions.invoke('getOnDutyUnits', {});
+        const payload = response?.data || response || {};
+        if (!active || payload.error) return;
+        setCanonicalUnits(Array.isArray(payload.users) ? payload.users : []);
+      } catch {
+        // Keep rendering the parent feed if the canonical refresh is temporarily unavailable.
+      }
+    };
+    sync();
+    const timer = setInterval(sync, 15000);
+    const onFocus = () => sync();
+    window.addEventListener('focus', onFocus);
+    return () => { active = false; clearInterval(timer); window.removeEventListener('focus', onFocus); };
+  }, []);
+
+  const sourceUnits = canonicalUnits.length ? canonicalUnits : units;
+  const statusUnits = useMemo(() => (sourceUnits || []).filter(u => u?.status), [sourceUnits]);
   const counts = useMemo(() => Object.fromEntries(STATUS_ORDER.slice(1).map(status => [status, statusUnits.filter(u => u.status === status).length])), [statusUnits]);
   const filtered = filter === 'All' ? statusUnits : statusUnits.filter(u => u.status === filter);
   const canManageDistress = isDispatchOrAdmin(currentUser);
