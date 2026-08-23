@@ -316,62 +316,33 @@ async function refreshMicrosoftToken(base44: any, credential: any) {
   return payload.access_token;
 }
 
-// Sends one INDIVIDUAL Graph email per recipient (no bcc, no shared body) so
-// no recipient's message can ever contain another recipient's content.
-async function sendPersonalizedGraphEmails(base44: any, credentials: any[], deliveries: { to: string; subject: string; html: string }[]) {
-  const usable = (credentials || []).filter(row =>
-    row?.active !== false && row?.refresh_token && String(row?.scope || '').toLowerCase().includes('mail.send')
-  );
-  if (!usable.length) throw new Error('No active Microsoft mailbox with Mail.Send is available.');
-
-  let accessToken: string | null = null;
-  let credential: any = null;
-  let lastError: any = null;
-  for (const candidate of usable) {
-    try {
-      accessToken = await refreshMicrosoftToken(base44, candidate);
-      credential = candidate;
-      break;
-    } catch (error) {
-      lastError = error;
-      console.warn('Daily summary mailbox failed:', candidate?.microsoft_email || candidate?.pathfinder_email, error?.message || error);
-    }
-  }
-  if (!accessToken) throw lastError || new Error('Microsoft email delivery failed.');
-
+// Sends one INDIVIDUAL Base44-managed email per recipient (no bcc, no shared
+// body). The actual mailbox is Base44's managed no-reply/system sender; the
+// signed-in administrator's Microsoft/Outlook identity is never used here.
+async function sendPersonalizedBase44Emails(base44: any, deliveries: { to: string; subject: string; html: string }[]) {
   let sentCount = 0;
   let failedCount = 0;
-  const CONCURRENCY = 8;
+  const CONCURRENCY = 6;
   for (let index = 0; index < deliveries.length; index += CONCURRENCY) {
     const batch = deliveries.slice(index, index + CONCURRENCY);
     await Promise.all(batch.map(async delivery => {
       try {
-        const response = await fetch(GRAPH_SEND, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
-          body: JSON.stringify({
-            message: {
-              subject: delivery.subject,
-              body: { contentType: 'HTML', content: delivery.html },
-              toRecipients: [{ emailAddress: { address: delivery.to } }],
-            },
-            saveToSentItems: false,
-          }),
+        await base44.integrations.Core.SendEmail({
+          to: delivery.to,
+          subject: delivery.subject,
+          body: delivery.html,
+          from_name: 'Black Point Protection',
         });
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          throw new Error(payload?.error?.message || `Microsoft Graph send failed (${response.status}).`);
-        }
         sentCount += 1;
       } catch (error) {
         failedCount += 1;
-        console.warn('Daily summary personal email failed:', delivery.to, (error as any)?.message || error);
+        console.warn('Daily summary Base44 email failed:', delivery.to, (error as any)?.message || error);
       }
     }));
   }
   return {
     sent: sentCount > 0,
-    sender: emailKey(credential?.microsoft_email || credential?.pathfinder_email),
+    sender: 'Base44 managed no-reply',
     total: deliveries.length,
     sentCount,
     failedCount,
@@ -439,7 +410,7 @@ Deno.serve(async (req) => {
 
     const [
       users, metricData, reportTodos, trainingAssignments, trainingModules,
-      trainingCompletions, certificationAlerts, dailyReports, credentials,
+      trainingCompletions, certificationAlerts, dailyReports,
     ] = await Promise.all([
       safeList(base44, 'User', 'last_name'),
       loadPerformanceMetricData(base44),
@@ -449,7 +420,6 @@ Deno.serve(async (req) => {
       safeList(base44, 'TrainingCompletion', '-completed_date'),
       safeList(base44, 'CertificationAlert', 'expiration_date'),
       safeList(base44, 'DailyActivityReport', '-report_date'),
-      safeList(base44, 'MicrosoftOAuthCredential', '-last_refreshed_at', 100),
     ]);
 
     const recipients = (users || []).filter(isInternalActiveUser);
@@ -528,16 +498,11 @@ Deno.serve(async (req) => {
 
     let emailResult: any = { sent: false, sentCount: 0, failedCount: 0, total: deliveries.length };
     let emailError = '';
-    let requiresMicrosoftReconnect = false;
     try {
-      emailResult = await sendPersonalizedGraphEmails(base44, credentials, deliveries);
+      emailResult = await sendPersonalizedBase44Emails(base44, deliveries);
     } catch (error) {
-      const rawEmailError = error?.message || String(error);
-      requiresMicrosoftReconnect = /AADSTS700084|fixed, limited lifetime|new sign in request|authorization expired|refresh token.*expired/i.test(rawEmailError);
-      emailError = requiresMicrosoftReconnect
-        ? 'Microsoft 365 sign-in expired. Reconnect the Black Point Microsoft account, then send the company email again.'
-        : rawEmailError;
-      console.error('Daily company email failed:', rawEmailError);
+      emailError = error?.message || String(error);
+      console.error('Daily company Base44 email failed:', emailError);
     }
 
     const status = emailResult.sent && !emailResult.failedCount ? 'completed' : 'partial';
@@ -558,7 +523,7 @@ Deno.serve(async (req) => {
         email_sent: Boolean(emailResult.sent),
         email_sender: emailResult.sender || '',
         email_error: emailError,
-        requires_microsoft_reconnect: requiresMicrosoftReconnect,
+        email_transport: 'base44_managed',
         // Internal record only -- never included in any recipient-facing
         // email or notification.
         company_overall_internal: companyOverall,
@@ -585,7 +550,7 @@ Deno.serve(async (req) => {
       email_sent: Boolean(emailResult.sent),
       email_sender: emailResult.sender || '',
       email_error: emailError,
-      requires_microsoft_reconnect: requiresMicrosoftReconnect,
+      email_transport: 'base44_managed',
       in_app_delivered: notificationsCreated > 0,
       integration_credits_used: 0,
     }, emailResult.sent ? 200 : 207);
