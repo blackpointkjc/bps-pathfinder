@@ -41,77 +41,12 @@ export async function listActiveDispatchCalls(limit = 500) {
 // reports to calls that have already aged out of the live CAD queue, and search
 // them by any part of the CAD number (e.g. the last 5 digits of the BPS reference).
 export async function listAllDispatchCallsForLinking(limit = 1000) {
-  const [activeCalls, historyCalls, propertyAlerts] = await Promise.all([
-    base44.entities.DispatchCall.list('-time_received', limit).catch(() => []),
-    base44.entities.CallHistory.list('-archived_date', limit).catch(() => []),
-    base44.entities.PropertyAlert.list('-created_date', limit).catch(() => []),
-  ]);
-
-  // Archived calls live in CallHistory with a different shape. Normalize them so
-  // the combobox and form helpers can treat them like DispatchCall records. The
-  // original DispatchCall id is retained so report links reference the source call.
-  const mapHistory = (h) => {
-    const callId = h?.call_id || '';
-    const bpsRef = h?.bps_reference || (callId.startsWith('BPS-') ? callId : '');
-    return {
-      id: h?.original_call_id || h?.id,
-      original_call_id: h?.original_call_id,
-      call_id: callId,
-      bps_reference: bpsRef,
-      agency_cad_number: '',
-      external_call_id: h?.external_call_id,
-      incident: h?.incident,
-      location: h?.location,
-      cross_street: h?.cross_street,
-      agency: h?.agency,
-      status: h?.status || 'Cleared',
-      priority: h?.priority,
-      zone: h?.zone,
-      latitude: h?.latitude,
-      longitude: h?.longitude,
-      description: h?.description,
-      ai_summary: h?.ai_summary,
-      time_received: h?.time_received,
-      time_cleared: h?.time_cleared,
-      time_closed: h?.time_closed,
-      updated_date: h?.archived_date || h?.updated_date,
-      created_date: h?.archived_date || h?.created_date,
-      _archived: true,
-    };
-  };
-
-  const propertyByCall = new Map();
-  for (const alert of propertyAlerts || []) {
-    const key = String(alert.callId || '');
-    if (!key || propertyByCall.has(key)) continue;
-    propertyByCall.set(key, {
-      property_id: alert.propertyId || '',
-      property_name: alert.propertyName || '',
-      property_call_location: alert.callLocation || '',
-      property_call_incident: alert.callIncident || '',
-    });
-  }
-
-  const merged = [...(activeCalls || []), ...(historyCalls || []).map(mapHistory)].map(call => {
-    const property = propertyByCall.get(String(call.id || ''))
-      || propertyByCall.get(String(call.original_call_id || ''))
-      || null;
-    return property ? { ...call, ...property } : call;
-  });
-  const deduped = new Map();
-  for (const call of merged) {
-    const descriptionKey = [call.incident, call.location, call.time_received].filter(Boolean).join('|').toLowerCase();
-    const key = call.external_call_id || call.original_call_id || call.bps_reference || call.agency_cad_number || call.call_id || descriptionKey || call.id;
-    const existing = deduped.get(key);
-    if (!existing) {
-      deduped.set(key, call);
-      continue;
-    }
-    const existingTs = new Date(existing.updated_date || existing.time_received || existing.created_date || 0).getTime();
-    const candidateTs = new Date(call.updated_date || call.time_received || call.created_date || 0).getTime();
-    if (candidateTs > existingTs) deduped.set(key, call);
-  }
-  return [...deduped.values()].sort((a, b) => new Date(b.time_received || b.created_date || 0) - new Date(a.time_received || a.created_date || 0));
+  // Use one server-side operational feed so dispatch/officer report forms are not
+  // dependent on browser RLS for DispatchCall, CallHistory, or PropertyAlert.
+  const response = await base44.functions.invoke('getDispatchCallLinkFeed', { limit });
+  const payload = response?.data || response || {};
+  if (payload.error) throw new Error(payload.error);
+  return Array.isArray(payload.calls) ? payload.calls : [];
 }
 
 export function applyDispatchCallToForm(prev, call) {
