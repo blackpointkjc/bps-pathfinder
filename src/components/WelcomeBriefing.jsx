@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Bell, CalendarClock, Car, CheckCircle2, ChevronRight, MapPin, Megaphone, MessageCircle, Radio, Shield, Sparkles, Siren, Users } from 'lucide-react';
@@ -58,6 +58,8 @@ export default function WelcomeBriefing({ user }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [brief, setBrief] = useState({ messages: [], mentions: [], announcements: [], updates: [], appUpdates: [], propertyAlerts: [], liveUser: null, unit: null, shift: null, vehicle: null, override: null, allUsers: [], allUnits: [], todaySchedules: [], activeTimeEntries: [], todayVehicleAssignments: [] });
+  const [dataErrors, setDataErrors] = useState([]);
+  const loadRef = useRef(() => {});
   const userKey = normalized(user?.email || user?.id);
   const storageKey = userKey ? `bps-last-active:${userKey}` : '';
   const sessionKey = userKey ? `bps-welcome-session:${userKey}` : '';
@@ -87,33 +89,39 @@ export default function WelcomeBriefing({ user }) {
     setOfflineSince(savedActive);
     let active = true;
     const load = async () => {
+      const failedSources = [];
+      const track = label => error => {
+        failedSources.push(label);
+        console.error(`Welcome briefing: "${label}" failed to load`, error);
+        return [];
+      };
       try {
         const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
         // Keep each burst below the Base44 per-user request threshold. This
         // briefing used to launch sixteen reads simultaneously during sign-in.
         const first = await Promise.all([
           Promise.resolve([]),
-          base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200).catch(() => []),
-          base44.entities.Announcement.list('-created_date', 100).catch(() => []),
-          base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 5000).catch(() => []),
+          base44.entities.ChatMention.filter({ recipient_email: user.email, read: false }, '-created_date', 200).catch(track('Teams mentions')),
+          base44.entities.Announcement.list('-created_date', 100).catch(track('Announcements')),
+          base44.entities.AnnouncementReceipt.filter({ user_email: user.email }, '-read_at', 5000).catch(track('Announcement read status')),
         ]);
         const second = await Promise.all([
-          base44.entities.Notification.filter({ recipient_email: user.email }, '-created_date', 200).catch(() => []),
-          base44.entities.PropertyAlert.list('-created_date', 300).catch(() => []),
-          base44.entities.PropertyAlertReceipt.filter({ user_email: normalized(user.email) }, '-dismissed_at', 500).catch(() => []),
-          base44.entities.Unit.filter({ user_id: user.id }).catch(() => []),
+          base44.entities.Notification.filter({ recipient_email: user.email }, '-created_date', 200).catch(track('Notifications')),
+          base44.entities.PropertyAlert.list('-created_date', 300).catch(track('Property alerts')),
+          base44.entities.PropertyAlertReceipt.filter({ user_email: normalized(user.email) }, '-dismissed_at', 500).catch(track('Property alert dismissals')),
+          base44.entities.Unit.filter({ user_id: user.id }).catch(track('Your unit status')),
         ]);
         const third = await Promise.all([
-          base44.entities.Schedule.filter({ officer_email: user.email, shift_date: today }).catch(() => []),
-          base44.entities.VehicleAssignment.filter({ assignment_date: today }).catch(() => []),
-          base44.entities.OfficerStatusOverride.filter({ officer_id: user.id, active: true }).catch(() => []),
-          listDirectoryUsers('last_name', 1000).catch(() => []),
+          base44.entities.Schedule.filter({ officer_email: user.email, shift_date: today }).catch(track('Your schedule')),
+          base44.entities.VehicleAssignment.filter({ assignment_date: today }).catch(track('Vehicle assignments')),
+          base44.entities.OfficerStatusOverride.filter({ officer_id: user.id, active: true }).catch(track('Status overrides')),
+          listDirectoryUsers('last_name', 1000).catch(track('Personnel directory')),
         ]);
         const fourth = await Promise.all([
-          base44.entities.Unit.list('-last_update_at', 500).catch(() => []),
-          base44.entities.Schedule.filter({ shift_date: today }).catch(() => []),
-          base44.entities.TimeEntry.list('-clock_in', 1000).catch(() => []),
-          base44.entities.DispatchCall.list('-created_date', 500).catch(() => []),
+          base44.entities.Unit.list('-last_update_at', 500).catch(track('Unit roster')),
+          base44.entities.Schedule.filter({ shift_date: today }).catch(track("Today's staffing schedule")),
+          base44.entities.TimeEntry.list('-clock_in', 1000).catch(track('Time clock records')),
+          base44.entities.DispatchCall.list('-created_date', 500).catch(track('Dispatch calls')),
         ]);
         const [messages, mentions, announcements, receipts] = first;
         const [notifications, propertyAlerts, propertyAlertReceipts, units] = second;
@@ -167,8 +175,10 @@ export default function WelcomeBriefing({ user }) {
         const override = overrides?.[0] || null;
         const activeTimeEntries = (timeEntries || []).filter(entry => entry.clock_in && !entry.clock_out);
         setBrief({ messages: messages || [], mentions: mentions || [], announcements: unseenAnnouncements, updates: otherUpdates, appUpdates, propertyAlerts: offlineAlerts, liveUser, unit, shift, vehicle, override, allUsers: allUsers || [], allUnits: allUnits || [], todaySchedules: allSchedules || [], activeTimeEntries, todayVehicleAssignments: vehicleAssignments || [] });
+        setDataErrors(failedSources);
       } catch (error) {
-        console.warn('Welcome briefing unavailable:', error?.message);
+        console.error('Welcome briefing unavailable:', error);
+        setDataErrors(prev => Array.from(new Set([...prev, ...failedSources, 'Briefing summary'])));
       } finally {
         if (active) {
           setLoading(false);
@@ -176,6 +186,7 @@ export default function WelcomeBriefing({ user }) {
         }
       }
     };
+    loadRef.current = load;
     load();
     return () => { active = false; };
   }, [user?.id, user?.email, user?.status, sessionKey, storageKey, lastShownKey, lastStatusKey]);
@@ -289,6 +300,15 @@ export default function WelcomeBriefing({ user }) {
                 <div className="flex min-h-52 items-center justify-center"><div className="text-center"><div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent"/><p className="mt-3 text-xs font-bold tracking-widest text-slate-500">BUILDING YOUR BRIEFING…</p></div></div>
               ) : (
                 <>
+                  {dataErrors.length > 0 && (
+                    <div className="mb-3 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-700/60 bg-amber-950/25 p-3">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-300" />
+                      <div className="min-w-0 flex-1 text-[11px] font-bold leading-5 text-amber-200">
+                        Some briefing data could not be loaded and may be showing as empty or incomplete: {dataErrors.join(', ')}.
+                      </div>
+                      <button type="button" onClick={() => loadRef.current?.()} className="shrink-0 rounded-lg border border-amber-500/60 bg-amber-900/40 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-amber-100 hover:bg-amber-900/70">Retry</button>
+                    </div>
+                  )}
                   <div className="rounded-2xl border border-cyan-900/60 bg-gradient-to-r from-cyan-950/20 to-blue-950/20 p-3 sm:p-4">
                     <div className="flex flex-wrap items-center gap-2"><Radio className="h-4 w-4 text-cyan-300"/><div className="text-xs font-black uppercase tracking-[.16em] text-cyan-200">Duty Status Snapshot</div><span className={`ml-auto rounded-full border px-2.5 py-1 text-[10px] font-black ${status === 'Available' ? 'border-emerald-700/60 bg-emerald-950/50 text-emerald-300' : status === 'Out of Service' ? 'border-slate-700 bg-slate-900 text-slate-300' : 'border-blue-700/60 bg-blue-950/50 text-blue-300'}`}>{String(status).toUpperCase()}</span></div>
                     <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
