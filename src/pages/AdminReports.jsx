@@ -1247,29 +1247,21 @@ export default function AdminReports() {
           )}
         </section>
 
-        <Card className="border-none shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-50">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-slate-600" />
-              Archived Reports
+        <Card className="border-slate-700/70 bg-[#0c1725] text-slate-100 shadow-lg">
+          <CardHeader className="border-b border-slate-800 bg-[#111d2b]">
+            <CardTitle className="flex items-center gap-2 text-white">
+              <FileText className="h-5 w-5 text-slate-400" />
+              Reviewed Report Archive
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-5">
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Report Type</Label>
-                <Select value={selectedArchiveType} onValueChange={setSelectedArchiveType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {archiveTypes.map(type => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label} ({archiveData[type.value].length})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex flex-wrap gap-2">
+                {archiveTypes.map(type => (
+                  <button key={type.value} onClick={() => setSelectedArchiveType(type.value)} className={`rounded-lg border px-3 py-2 text-xs font-bold ${selectedArchiveType === type.value ? 'border-emerald-500 bg-emerald-500/15 text-emerald-200' : 'border-slate-700 bg-slate-900/50 text-slate-400 hover:text-white'}`}>
+                    {type.label} ({archiveData[type.value].length})
+                  </button>
+                ))}
               </div>
 
               <div className="space-y-3">
