@@ -247,6 +247,17 @@ export default function DispatcherShiftReports({ embedded = false }) {
   return (
     <div className={`min-h-full ${embedded ? '' : 'p-4 md:p-8'}`}>
       <div className="mx-auto max-w-5xl space-y-6">
+        {embedded && !showForm && (
+          <div className="flex flex-col gap-3 rounded-xl border border-blue-900/60 bg-[#0a1625] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-sm font-black text-white">Dispatcher Shift Log</div>
+              <div className="mt-1 text-xs text-slate-400">Start a new dispatch log, attach CAD calls as you handle them, save a draft, then submit it for review.</div>
+            </div>
+            <Button onClick={startNew} className="w-full bg-blue-600 hover:bg-blue-500 sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" /> Start New Dispatch Log
+            </Button>
+          </div>
+        )}
         {!embedded && (
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3">
@@ -317,13 +328,18 @@ export default function DispatcherShiftReports({ embedded = false }) {
                   )}
                 </div>
 
-                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+                  <Button type="button" variant="ghost" onClick={() => { setShowForm(false); setEditing(null); setFormData(emptyForm()); }} disabled={saving || saveMutation.isPending} className="text-slate-400 hover:text-white">
+                    Cancel / Back to Logs
+                  </Button>
+                  <div className="flex flex-col gap-2 sm:flex-row">
                   <Button type="button" variant="outline" onClick={handleDraft} disabled={saving || saveMutation.isPending} className="border-slate-600 bg-slate-900 text-slate-200 hover:bg-slate-800">
                     {saving && saveMutation.isPending ? 'Saving…' : 'Save Draft'}
                   </Button>
                   <Button type="submit" disabled={saving || saveMutation.isPending} className="bg-blue-600 hover:bg-blue-700">
                     {saving && saveMutation.isPending ? 'Submitting…' : 'Submit Shift Log'}
                   </Button>
+                  </div>
                 </div>
               </form>
             </CardContent>
