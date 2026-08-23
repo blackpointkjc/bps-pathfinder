@@ -93,6 +93,7 @@ function CommandDashboardInner() {
     const [syncStatus, setSyncStatus]           = useState({ state: 'idle', lastSync: null, added: 0, updated: 0, total: 0, error: null });
     const [selectedCall, setSelectedCall] = useState(null);
     const [agencyFilter, setAgencyFilter] = useState('ALL');
+    const [canonicalStatusUsers, setCanonicalStatusUsers] = useState([]);
     const [, setTick]                           = useState(0);
 
     const soundEnabledRef        = useRef(!isDispatchAlertMuted());
@@ -111,6 +112,20 @@ function CommandDashboardInner() {
             soundEnabledRef.current = val;
         }).catch(() => {});
 
+    }, []);
+
+    useEffect(() => {
+        let active = true;
+        const syncUnitStatus = async () => {
+            try {
+                const response = await base44.functions.invoke('getOnDutyUnits', {});
+                const payload = response?.data || response || {};
+                if (active && !payload.error) setCanonicalStatusUsers(Array.isArray(payload.users) ? payload.users : []);
+            } catch {}
+        };
+        syncUnitStatus();
+        const timer = setInterval(syncUnitStatus, 15000);
+        return () => { active = false; clearInterval(timer); };
     }, []);
 
     // Backend automation "Ingest gractivecalls.com" syncs calls every 5 min with geocoding.
@@ -203,7 +218,7 @@ function CommandDashboardInner() {
         return getRef(b) - getRef(a);
     });
 
-    const cadOfficerUnits = users.filter(isOperationalOfficer);
+    const cadOfficerUnits = (canonicalStatusUsers.length ? canonicalStatusUsers : users).filter(isOperationalOfficer);
     // Dispatchers who mark themselves "Dispatch" are running the board, not working
     // the street — pull them off the unit status board so only field units appear.
     const statusUnits    = cadOfficerUnits.filter(u => Boolean(u.status) && u.status !== 'Dispatch');
