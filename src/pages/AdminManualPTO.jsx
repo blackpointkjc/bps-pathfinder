@@ -78,7 +78,7 @@ export default function AdminManualPTO() {
 
   const openAdjustment = mode => {
     setEntryMode(mode);
-    setFormData({ officer_email: '', hours: '', reason: '' });
+    setFormData({ officer_email: '', hours: '', reason: '', start_date: '', end_date: '', remove_shifts: false });
     setShowDialog(true);
   };
 
