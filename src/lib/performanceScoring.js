@@ -413,8 +413,8 @@ export function calculateJobDutyCompliance({
     const shiftStartMs = new Date(entry.clock_in).getTime();
     const isActiveShift = !entry.clock_out;
     const shiftEndMs = entry.clock_out ? new Date(entry.clock_out).getTime() : Date.now();
-    const ruleEffectiveDate = String(rule?.effective_date || '').slice(0, 10);
-    const ruleIsEffective = Boolean(rule && ruleEffectiveDate && shiftDate >= ruleEffectiveDate);
+    const ruleEffectiveDate = String(rule?.effective_date || rule?.created_date || '').slice(0, 10);
+    const ruleIsEffective = Boolean(rule && (!ruleEffectiveDate || shiftDate >= ruleEffectiveDate));
     const detail = {
       shift_id: entry.id,
       shift_date: shiftDate,
