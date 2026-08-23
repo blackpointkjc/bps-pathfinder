@@ -74,11 +74,31 @@ Deno.serve(async (req) => {
             ...linkedActive.map((active: any) => base44.asServiceRole.entities.ActiveOfficer.update(active.id, {
                 status,
                 last_update: now,
+                session_active: status !== 'Out of Service',
                 ...(status === 'Available' || status === 'Out of Service' ? { current_call_info: '' } : {}),
             }).catch(() => null)),
         ]);
 
-        return Response.json({ success: true, status, active_records_updated: linkedActive.length, unit_records_updated: linkedUnits.length });
+        // If the officer is signed in but their ActiveOfficer row was lost/expired,
+        // changing CAD status must recreate the live session instead of letting the
+        // Unit Status Board immediately resolve them back to OOS.
+        let createdActive = null;
+        if (!linkedActive.length && status !== 'Out of Service') {
+            createdActive = await base44.asServiceRole.entities.ActiveOfficer.create({
+                officer_email: user.email,
+                officer_name: user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email,
+                unit_number: user.unit_number || '',
+                current_location: user.current_location || user.assigned_location || 'Signed In',
+                clock_in_time: now,
+                last_update: now,
+                status,
+                user_role: user.role || 'user',
+                session_active: true,
+                current_call_info: user.current_call_info || '',
+            });
+        }
+
+        return Response.json({ success: true, status, active_records_updated: linkedActive.length + (createdActive ? 1 : 0), active_record_created: Boolean(createdActive), unit_records_updated: linkedUnits.length });
 
     } catch (error) {
         console.error('Error updating officer status:', error);
