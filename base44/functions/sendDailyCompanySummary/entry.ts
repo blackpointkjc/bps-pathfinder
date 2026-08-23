@@ -304,7 +304,14 @@ async function managementGraphAccess(base44: any) {
   const scope = String(credential.scope || 'Mail.Send Mail.Send.Shared User.Read offline_access');
   const tokenResponse = await fetch(MICROSOFT_TOKEN_URL, {
     method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      // Microsoft marks this Entra app as a SPA. SPA refresh-token redemption
+      // requires a cross-origin token request with the registered Pathfinder
+      // origin present. Without Origin, Entra returns AADSTS9002327 even when the
+      // same credential works correctly in OutlookMail in the browser.
+      Origin: 'https://bpspf.blackpointkjc.com',
+    },
     body: new URLSearchParams({
       client_id: PATHFINDER_MICROSOFT_CLIENT_ID,
       grant_type: 'refresh_token',
