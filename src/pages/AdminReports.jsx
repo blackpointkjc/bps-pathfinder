@@ -1163,19 +1163,39 @@ export default function AdminReports() {
     { value: 'dispatcher_log', label: 'Dispatcher Shift Logs', icon: ClipboardList },
   ];
 
+  const reviewTypes = archiveTypes.map(type => ({ ...type, rows: reports?.[type.value] || [] }));
+  const pendingQueue = reviewTypes
+    .flatMap(type => type.rows.map(report => ({ ...type, report })))
+    .sort((a, b) => {
+      const dateOf = row => row.report.shift_date || row.report.report_date || row.report.incident_date || row.report.notice_date || row.report.violation_date || row.report.complaint_date || row.report.offense_date || row.report.created_date || '';
+      return String(dateOf(b)).localeCompare(String(dateOf(a)));
+    });
+  const visibleReviewQueue = selectedReviewType === 'all' ? pendingQueue : pendingQueue.filter(item => item.value === selectedReviewType);
+  const pendingTotal = pendingQueue.length;
+
   return (
-    <div className="p-4 md:p-8 min-h-screen">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Report Review</h1>
-          <p className="text-slate-600">Review and approve officer reports</p>
+    <div className="min-h-screen bg-[#07111d] p-4 text-slate-100 md:p-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="rounded-2xl border border-slate-700/70 bg-gradient-to-r from-[#0d1a2a] to-[#111827] p-5 shadow-xl">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-400">Reports & Quality</div>
+              <h1 className="mt-1 text-3xl font-black tracking-tight text-white">Report Review</h1>
+              <p className="mt-1 text-sm text-slate-400">One review queue for submitted reports. Open the report, approve it, or return it to the author for correction.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3"><div className="text-2xl font-black text-amber-300">{pendingTotal}</div><div className="text-[9px] font-bold uppercase tracking-wider text-amber-100/60">Pending Review</div></div>
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3"><div className="text-2xl font-black text-emerald-300">{Object.values(archiveData).reduce((sum, rows) => sum + rows.length, 0)}</div><div className="text-[9px] font-bold uppercase tracking-wider text-emerald-100/60">Approved / Archived</div></div>
+              <div className="hidden rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 sm:block"><div className="text-2xl font-black text-blue-300">{reviewTypes.filter(type => type.rows.length).length}</div><div className="text-[9px] font-bold uppercase tracking-wider text-blue-100/60">Types Waiting</div></div>
+            </div>
+          </div>
         </div>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="grid md:grid-cols-3 gap-4 mb-4">
+        <Card className="border-slate-700/70 bg-[#0c1725] text-slate-100 shadow-lg">
+          <CardContent className="p-4 md:p-5">
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label>Start Date</Label>
+                <Label className="text-slate-300">Archive Start Date</Label>
                 <Input
                   type="date"
                   value={startDate}
@@ -1183,7 +1203,7 @@ export default function AdminReports() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>End Date</Label>
+                <Label className="text-slate-300">Archive End Date</Label>
                 <Input
                   type="date"
                   value={endDate}
@@ -1191,7 +1211,7 @@ export default function AdminReports() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Location</Label>
+                <Label className="text-slate-300">Property Filter</Label>
                 <Select value={selectedLocation} onValueChange={setSelectedLocation}>
                   <SelectTrigger>
                     <SelectValue />
@@ -1207,110 +1227,25 @@ export default function AdminReports() {
                 </Select>
               </div>
             </div>
-
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          {(!reports?.shift?.length && !reports?.daily_activity?.length && !reports?.incident?.length && 
-            !reports?.trespass?.length && !reports?.parking?.length && !reports?.criminal?.length && !reports?.summons?.length && !reports?.dispatcher_log?.length) && (
-            <Card className="border-none shadow-lg">
-              <CardContent className="p-12 text-center">
-                <FileText className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                <h3 className="text-xl font-semibold text-slate-600 mb-2">No Reports Pending Review</h3>
-                <p className="text-slate-500">All reports have been reviewed or there are no reports in the selected date range and location.</p>
-              </CardContent>
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => setSelectedReviewType('all')} className={`rounded-lg border px-3 py-2 text-xs font-bold ${selectedReviewType === 'all' ? 'border-cyan-500 bg-cyan-500/15 text-cyan-200' : 'border-slate-700 bg-slate-900/50 text-slate-400 hover:text-white'}`}>All Pending ({pendingTotal})</button>
+            {reviewTypes.map(type => <button key={type.value} onClick={() => setSelectedReviewType(type.value)} className={`rounded-lg border px-3 py-2 text-xs font-bold ${selectedReviewType === type.value ? 'border-blue-500 bg-blue-500/15 text-blue-200' : 'border-slate-700 bg-slate-900/50 text-slate-400 hover:text-white'}`}>{type.label} ({type.rows.length})</button>)}
+          </div>
+
+          {visibleReviewQueue.length === 0 ? (
+            <Card className="border-dashed border-slate-700 bg-[#0b1522] text-slate-300">
+              <CardContent className="p-12 text-center"><FileText className="mx-auto mb-3 h-12 w-12 text-slate-600" /><h3 className="text-lg font-bold text-white">No reports waiting in this queue</h3><p className="mt-1 text-sm text-slate-500">Submitted reports will appear here until they are approved or returned for revision.</p></CardContent>
             </Card>
-          )}
-
-          {reports?.shift?.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Shift Reports ({reports.shift.length})</h2>
-              <div className="space-y-4">
-                {reports.shift.map(report => (
-                  <ReportCard key={report.id} report={report} type="shift" icon={FileText} title="Shift Report" />
-                ))}
-              </div>
+          ) : (
+            <div className="space-y-3">
+              {visibleReviewQueue.map(({ report, value, icon, label }) => <ReportCard key={`${value}-${report.id}`} report={report} type={value} icon={icon} title={label.replace(/s$/, '')} />)}
             </div>
           )}
-
-          {reports?.daily_activity?.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Daily Activity Reports ({reports.daily_activity.length})</h2>
-              <div className="space-y-4">
-                {reports.daily_activity.map(report => (
-                  <ReportCard key={report.id} report={report} type="daily_activity" icon={FileText} title="Daily Activity Report" />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {reports?.incident?.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Incident Reports ({reports.incident.length})</h2>
-              <div className="space-y-4">
-                {reports.incident.map(report => (
-                  <ReportCard key={report.id} report={report} type="incident" icon={AlertTriangle} title="Incident Report" />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {reports?.trespass?.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Trespass Notices ({reports.trespass.length})</h2>
-              <div className="space-y-4">
-                {reports.trespass.map(report => (
-                  <ReportCard key={report.id} report={report} type="trespass" icon={UserX} title="Trespass Notice" />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {reports?.parking?.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Parking Violations ({reports.parking.length})</h2>
-              <div className="space-y-4">
-                {reports.parking.map(report => (
-                  <ReportCard key={report.id} report={report} type="parking" icon={Car} title="Parking Violation" />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {reports?.criminal?.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Criminal Complaints ({reports.criminal.length})</h2>
-              <div className="space-y-4">
-                {reports.criminal.map(report => (
-                  <ReportCard key={report.id} report={report} type="criminal" icon={Shield} title="Criminal Complaint" />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {reports?.summons?.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">VA Summons ({reports.summons.length})</h2>
-              <div className="space-y-4">
-                {reports.summons.map(report => (
-                  <ReportCard key={report.id} report={report} type="summons" icon={FileText} title="VA Summons" />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {reports?.dispatcher_log?.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 mb-4">Dispatcher Shift Logs ({reports.dispatcher_log.length})</h2>
-              <div className="space-y-4">
-                {reports.dispatcher_log.map(report => (
-                  <ReportCard key={report.id} report={report} type="dispatcher_log" icon={ClipboardList} title="Dispatcher Shift Log" />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        </section>
 
         <Card className="border-none shadow-lg">
           <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-50">
