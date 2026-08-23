@@ -125,8 +125,14 @@ function CommandDashboardInner() {
             } catch {}
         };
         syncUnitStatus();
-        const timer = setInterval(syncUnitStatus, 15000);
-        return () => { active = false; clearInterval(timer); };
+        const timer = setInterval(syncUnitStatus, 10000);
+        const onStatusChanged = () => syncUnitStatus();
+        window.addEventListener('bps-officer-status-changed', onStatusChanged);
+        return () => {
+            active = false;
+            clearInterval(timer);
+            window.removeEventListener('bps-officer-status-changed', onStatusChanged);
+        };
     }, []);
 
     // Backend automation "Ingest gractivecalls.com" syncs calls every 5 min with geocoding.
@@ -140,8 +146,11 @@ function CommandDashboardInner() {
     const handleStatusChange = async (newStatus) => {
         const previousStatus = currentUser?.status;
         try {
-            await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
+            const response = await base44.functions.invoke('updateOfficerStatus', { status: newStatus });
+            const payload = response?.data || response || {};
+            if (payload.error) throw new Error(payload.error);
             setCurrentUser(prev => ({ ...prev, status: newStatus }));
+            window.dispatchEvent(new CustomEvent('bps-officer-status-changed', { detail: { officer_id: currentUser?.id, email: currentUser?.email, status: newStatus } }));
         } catch (e) {
             console.warn('[CAD] status persist failed:', e?.message);
             setCurrentUser(prev => ({ ...prev, status: previousStatus || 'Out of Service' }));
