@@ -143,7 +143,7 @@ export default function AdminManualPTO() {
                 </div>}
               </div>}
               <div className="space-y-2"><Label>Reason</Label><Input value={formData.reason} onChange={e => setFormData(current => ({ ...current, reason: e.target.value }))} className="border-slate-700 bg-[#08111d]" placeholder={entryMode === 'bonus' ? 'Officer of the Day, recognition, etc.' : entryMode === 'callout' ? 'Call-out reason or HR note' : 'Balance correction or approved adjustment'}/></div>
-              <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button><Button type="submit" disabled={addPTOMutation.isPending} className="bg-blue-600 hover:bg-blue-500">{addPTOMutation.isPending ? 'Saving…' : entryMode === 'bonus' ? 'Add Bonus PTO' : 'Add PTO Hours'}</Button></div>
+              <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button><Button type="submit" disabled={addPTOMutation.isPending} className="bg-blue-600 hover:bg-blue-500">{addPTOMutation.isPending ? 'Saving…' : entryMode === 'bonus' ? 'Add Bonus PTO' : entryMode === 'callout' ? 'Record Call-Out' : 'Add PTO Hours'}</Button></div>
             </form>
           </DialogContent>
         </Dialog>
