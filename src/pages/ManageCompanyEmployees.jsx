@@ -338,7 +338,13 @@ export default function ManageCompanyEmployees({ portalContext = 'shared' }) {
     setPhotoPreview(dataUrl);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      await base44.entities.User.update(editingUser, { profile_photo_url: file_url });
+      if (!file_url) throw new Error('The uploaded image did not return a file URL.');
+      const result = await base44.functions.invoke('updateUser', {
+        userId: editingUser,
+        updates: { profile_photo_url: file_url },
+      });
+      const payload = result?.data || result || {};
+      if (payload.error) throw new Error(payload.details || payload.error);
       setEditFormData(prev => ({ ...prev, profile_photo_url: file_url }));
       setPhotoToCrop(null);
       invalidateAppDirectory();
