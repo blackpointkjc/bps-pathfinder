@@ -395,7 +395,7 @@ function CommandDashboardInner() {
             )}
 
             {/* ── MAIN GRID ── */}
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 min-h-0">
+            <div className="flex-1 grid min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_350px]">
 
                 {/* ── CALL QUEUE (3 cols) ── */}
                 <div className="lg:col-span-3 flex flex-col border-r border-slate-800 min-h-0">
@@ -512,15 +512,15 @@ function CommandDashboardInner() {
                 </div>
 
                 {/* ── RIGHT COLUMN ── */}
-                <div className="flex flex-col border-t border-slate-800 lg:border-t-0 min-h-0">
+                <div className="flex min-h-0 flex-col border-t border-slate-800 bg-[#07101b] lg:border-l lg:border-t-0">
 
-                    <div className="flex flex-col" style={{ maxHeight: '50%' }}>
+                    <div className="flex min-h-[260px] flex-col lg:max-h-[54%]">
                         <CADUnitStatusBoard units={statusUnits} compact currentUser={currentUser} />
                     </div>
 
-                    <div className="border-t border-slate-800">
-                        <PanelHeader accent="gold">QUICK ACCESS</PanelHeader>
-                        <div className="p-2 grid grid-cols-2 gap-1.5">
+                    <div className="border-t border-slate-800 bg-[#0a1220]">
+                        <div className="flex items-center gap-2 px-3 pb-1 pt-3"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" /><span className="text-[9px] font-black tracking-[0.18em] text-slate-400">QUICK ACCESS</span></div>
+                        <div className="grid grid-cols-2 gap-2 p-3 pt-2">
                             {[
                                 { label: 'BOLO / ALERTS', icon: FileWarning, page: 'BOLOAlerts', color: 'border-red-500/40 text-red-400 hover:bg-red-500/10' },
                                 { label: 'LIVE MAP', icon: MapPin, page: 'Navigation', color: 'border-blue-500/40 text-blue-400 hover:bg-blue-500/10' },
@@ -533,8 +533,8 @@ function CommandDashboardInner() {
                                 ]),
                             ].map(({ label, icon: Icon, page, color }) => (
                                 <button key={page} onClick={() => navigate(createPageUrl(page))}
-                                    className={`flex items-center gap-1.5 px-2 py-2 rounded border bg-transparent font-mono text-[10px] font-bold transition-all ${color}`}>
-                                    <Icon className="w-3 h-3 flex-shrink-0" />{label}
+                                    className={`group flex min-h-12 items-center gap-2 rounded-xl border bg-[#0d1725] px-3 py-2 text-left font-mono text-[9px] font-black tracking-wide transition-all hover:-translate-y-0.5 hover:shadow-lg ${color}`}>
+                                    <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-black/20"><Icon className="h-3.5 w-3.5" /></span><span className="leading-tight">{label}</span>
                                 </button>
                             ))}
                         </div>
