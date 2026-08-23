@@ -145,8 +145,14 @@ export default function DispatchCenter() {
             const user = await base44.auth.me();
             setCurrentUser(user);
             
-            // Check if user has dispatch access (admin or dispatch role)
-            const hasDispatchAccess = user.role === 'admin' || user.role === 'dispatch' || user.dispatch_role === true;
+            // Check every supported dispatch/CAD access path consistently.
+            const roles = new Set((user.additional_roles || []).map(role => String(role).trim().toLowerCase()));
+            const hasDispatchAccess = user.role === 'admin'
+                || String(user.role || '').trim().toLowerCase() === 'dispatch'
+                || user.dispatch_role === true
+                || roles.has('dispatch')
+                || roles.has('cad_access')
+                || roles.has('full_access');
             
             if (!hasDispatchAccess) {
                 toast.error('Unauthorized - Dispatch access required');
