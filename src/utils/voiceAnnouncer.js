@@ -227,7 +227,7 @@ export function announceRecordSearch(results = [], metadata = {}) {
     : '';
 
   if (!results.length) {
-    announceVoice(`CAD records response. No matching records located.${warrantText ? ` ${warrantText}` : ''}`, { dedupeMs: 3000, rate: 0.82, pitch: 0.68 });
+    announceVoice(`CAD records response. No matching records located.${warrantText ? ` ${warrantText}` : ''}`, { dedupeMs: 3000, rate: 0.82, pitch: 0.68, force: true });
     return;
   }
   const linked = results.find(item => item.linked_call_number || item.call_number || item.call_type || item.incident_type || item.call_incident || item.linked_call_type);
@@ -235,8 +235,8 @@ export function announceRecordSearch(results = [], metadata = {}) {
     const callType = linked.linked_call_type || linked.call_type || linked.incident_type || linked.call_incident || 'related call';
     const callNumber = linked.linked_call_number || linked.call_number || '';
     const location = linked.linked_call_location || linked.location || '';
-    announceVoice(`CAD records response. ${results.length} matches located. Related call, ${callType}${callNumber ? `. Call number ${callNumber}` : ''}${location ? `. Location ${location}` : ''}.${warrantText ? ` ${warrantText}` : ''}`, { dedupeMs: 5000, rate: 0.82, pitch: 0.68 });
+    announceVoice(`CAD records response. ${results.length} matches located. Related call, ${callType}${callNumber ? `. Call number ${callNumber}` : ''}${location ? `. Location ${location}` : ''}.${warrantText ? ` ${warrantText}` : ''}`, { dedupeMs: 5000, rate: 0.82, pitch: 0.68, force: true });
   } else {
-    announceVoice(`CAD records response. ${results.length} matching records located.${warrantText ? ` ${warrantText}` : ''}`, { dedupeMs: 5000, rate: 0.82, pitch: 0.68 });
+    announceVoice(`CAD records response. ${results.length} matching records located.${warrantText ? ` ${warrantText}` : ''}`, { dedupeMs: 5000, rate: 0.82, pitch: 0.68, force: true });
   }
 }
