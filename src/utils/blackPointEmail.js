@@ -1,4 +1,4 @@
-const LOGO_URL = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/69503da793f3e1140bbd4426/857a5f1c1_UntitledProject3.png';
+const LOGO_URL = 'https://bpspf.blackpointkjc.com/black-point-shield.svg';
 const PORTAL_URL = 'https://bpspf.blackpointkjc.com/';
 const TEMPLATE_MARKER = 'BLACK_POINT_STANDARD_EMAIL';
 
@@ -104,7 +104,7 @@ export function buildBlackPointEmail({
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:640px;background-color:#151515;border:1px solid #caa72d;border-radius:14px;overflow:hidden;">
           <tr>
             <td align="center" style="padding:30px 24px 20px;background-color:#050505;">
-              <img src="${LOGO_URL}" alt="Black Point" width="210" style="display:block;width:210px;max-width:75%;height:auto;border:0;">
+              <img src="${LOGO_URL}" alt="Black Point" width="118" style="display:block;width:118px;max-width:38vw;height:auto;border:0;background:transparent;">
             </td>
           </tr>
           <tr><td style="height:5px;line-height:5px;font-size:0;background-color:#d4af37;">&nbsp;</td></tr>
