@@ -432,7 +432,7 @@ Deno.serve(async (req) => {
     const metricResults = await Promise.all(rankingCandidates.map(async user => {
       try {
         const metrics = await buildPerformanceMetrics(base44, user, now.monthStart, now.monthEnd, metricData);
-        return { user, score: Number.isFinite(Number(metrics.performance_score)) ? Number(metrics.performance_score) : null };
+        return { user, score: metrics.performance_score != null && Number.isFinite(Number(metrics.performance_score)) ? Number(metrics.performance_score) : null };
       } catch (error) {
         console.warn('Daily ranking skipped for', user?.email, error?.message || error);
         return { user, score: null };
