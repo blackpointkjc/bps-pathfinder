@@ -161,14 +161,15 @@ export function calculatePunctuality(timeEntries = [], schedules = [], monthStar
       lateClockOutMinutes = actualOutWall != null && scheduledEndWall != null ? Math.max(0, actualOutWall - scheduledEndWall) : 0;
     }
 
-    const earlyIncidentException = minutesEarly > 10 && hasQualifyingIncident(incidents, officer, actualWall, scheduledWall);
-    const lateIncidentException = lateClockOutMinutes > 10 && hasQualifyingIncident(incidents, officer, scheduledEndWall, actualOutWall);
-    const earlyViolation = minutesEarly > 10 && !earlyIncidentException;
-    const lateClockOutViolation = lateClockOutMinutes > 10 && !lateIncidentException;
+    // This metric is specifically On-Time Arrival. Clocking in early or staying
+    // past scheduled end is not an arrival failure and must never lower it.
+    // Those facts remain available below for audit/display but are neutral here.
+    const earlyIncidentException = false;
+    const lateIncidentException = false;
+    const earlyViolation = false;
+    const lateClockOutViolation = false;
     const arrivalViolation = minutesLate > 5;
-    const status = arrivalViolation
-      ? 'late'
-      : (earlyViolation || lateClockOutViolation ? 'time_window_violation' : 'on_time');
+    const status = arrivalViolation ? 'late' : 'on_time';
 
     if (status === 'on_time') onTime++; else late++;
     details.push({
