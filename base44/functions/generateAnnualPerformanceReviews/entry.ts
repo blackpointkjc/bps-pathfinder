@@ -82,6 +82,12 @@ function chooseRotatingSupervisor(officer: any, users: any[], reviews: any[]) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const caller = await base44.auth.me();
+    if (!caller) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const callerRoles = new Set((caller.additional_roles || []).map((r: string) => String(r).toLowerCase()));
+    if (caller.role !== 'admin' && !callerRoles.has('full_access') && !callerRoles.has('hr')) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
     const now = easternNow();
     if (now.hour !== 8) {
       return Response.json({ success: true, skipped: true, reason: 'Outside the 8 AM Eastern annual-review window' });

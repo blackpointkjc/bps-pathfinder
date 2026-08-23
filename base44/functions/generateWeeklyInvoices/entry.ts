@@ -34,6 +34,12 @@ const rateFor = (entry: any, location: any, schedules: any[]) => {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+    const caller = await base44.auth.me();
+    if (!caller) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const callerRoles = new Set((caller.additional_roles || []).map((r: string) => String(r).toLowerCase()));
+    if (caller.role !== 'admin' && !callerRoles.has('full_access') && !callerRoles.has('accounting')) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
     const now = new Date();
     const easternParts = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/New_York',
