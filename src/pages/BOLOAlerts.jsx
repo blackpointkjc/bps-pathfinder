@@ -70,12 +70,14 @@ export default function BOLOAlerts() {
   const isManager = Boolean(user && (user.role === 'admin' || user.role === 'dispatch' || roles.has('supervisor') || roles.has('full_access') || roles.has('dispatch')));
 
   const activeCount = bolos.filter(b => b.status === 'active').length;
-  const historyCount = bolos.length - activeCount;
+  const draftCount = bolos.filter(b => b.status === 'draft' && (isManager || b.issued_by_id === user?.id || b.created_by_id === user?.id)).length;
+  const historyCount = bolos.filter(b => !['active', 'draft'].includes(b.status)).length;
   const criticalCount = bolos.filter(b => b.status === 'active' && b.priority === 'critical').length;
 
   const filtered = useMemo(() => bolos.filter(b => {
     if (view === 'active' && b.status !== 'active') return false;
-    if (view === 'history' && b.status === 'active') return false;
+    if (view === 'drafts' && (b.status !== 'draft' || (!isManager && b.issued_by_id !== user?.id && b.created_by_id !== user?.id))) return false;
+    if (view === 'history' && ['active', 'draft'].includes(b.status)) return false;
     if (typeFilter !== 'all' && b.alert_type !== typeFilter) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -83,7 +85,7 @@ export default function BOLOAlerts() {
       if (!haystack.includes(q)) return false;
     }
     return true;
-  }), [bolos, view, typeFilter, search]);
+  }), [bolos, view, typeFilter, search, isManager, user?.id]);
 
   const canEditRecord = bolo => isManager || bolo.issued_by_id === user?.id || bolo.created_by_id === user?.id;
 
@@ -126,14 +128,16 @@ export default function BOLOAlerts() {
         </div>
       </div>
 
-      <div className="grid flex-none grid-cols-1 border-b border-[#24354c] bg-[#08111c] sm:grid-cols-3">
+      <div className="grid flex-none grid-cols-2 border-b border-[#24354c] bg-[#08111c] sm:grid-cols-4">
         <div className="border-r border-[#24354c] px-4 py-2"><div className="text-xl font-black text-green-400">{activeCount}</div><div className="text-[8px] tracking-widest text-slate-500">ACTIVE BOLOS</div></div>
+        <div className="border-r border-[#24354c] px-4 py-2"><div className="text-xl font-black text-amber-300">{draftCount}</div><div className="text-[8px] tracking-widest text-slate-500">SAVED DRAFTS</div></div>
         <div className="border-r border-[#24354c] px-4 py-2"><div className="text-xl font-black text-red-400">{criticalCount}</div><div className="text-[8px] tracking-widest text-slate-500">CRITICAL / OFFICER SAFETY</div></div>
         <div className="px-4 py-2"><div className="text-xl font-black text-blue-300">{historyCount}</div><div className="text-[8px] tracking-widest text-slate-500">PAST / RESOLVED</div></div>
       </div>
 
       <div className="flex flex-none flex-wrap items-center gap-2 border-b border-[#24354c] bg-[#0b1320] px-3 py-2">
         <button onClick={() => setView('active')} className={`flex items-center gap-1.5 rounded border px-3 py-1 text-[9px] font-black ${view === 'active' ? 'border-green-500/60 bg-green-950/40 text-green-300' : 'border-slate-700 text-slate-500'}`}><Radio className="h-3 w-3" />ACTIVE ({activeCount})</button>
+        <button onClick={() => setView('drafts')} className={`flex items-center gap-1.5 rounded border px-3 py-1 text-[9px] font-black ${view === 'drafts' ? 'border-amber-500/60 bg-amber-950/40 text-amber-200' : 'border-slate-700 text-slate-500'}`}><Edit2 className="h-3 w-3" />DRAFTS ({draftCount})</button>
         <button onClick={() => setView('history')} className={`flex items-center gap-1.5 rounded border px-3 py-1 text-[9px] font-black ${view === 'history' ? 'border-blue-500/60 bg-blue-950/40 text-blue-300' : 'border-slate-700 text-slate-500'}`}><History className="h-3 w-3" />PAST / RESOLVED ({historyCount})</button>
         <div className="h-5 w-px bg-slate-700" />
         <button onClick={() => setTypeFilter('all')} className={`rounded px-2 py-1 text-[9px] ${typeFilter === 'all' ? 'bg-slate-700 text-white' : 'text-slate-500'}`}>ALL TYPES</button>
@@ -151,7 +155,7 @@ export default function BOLOAlerts() {
           const party = primaryParty(bolo);
           const vehicle = primaryVehicle(bolo);
           const subject = party?.name ? titleCase(party.name) : vehicle ? [vehicle.year,titleCase(vehicle.color),titleCase(vehicle.make),titleCase(vehicle.model)].filter(Boolean).join(' ') : 'GENERAL INFORMATION';
-          return <div key={bolo.id} onClick={() => setModal({ mode: 'view', bolo })} className={`grid cursor-pointer grid-cols-1 gap-2 border-b border-[#18283a] px-3 py-3 hover:bg-[#0d1826] md:grid-cols-12 md:gap-0 ${bolo.priority === 'critical' && bolo.status === 'active' ? 'border-l-2 border-l-red-500 bg-red-950/10' : ''}`}>
+          return <div key={bolo.id} onClick={() => setModal({ mode: bolo.status === 'draft' ? 'edit' : 'view', bolo })} className={`grid cursor-pointer grid-cols-1 gap-2 border-b border-[#18283a] px-3 py-3 hover:bg-[#0d1826] md:grid-cols-12 md:gap-0 ${bolo.priority === 'critical' && bolo.status === 'active' ? 'border-l-2 border-l-red-500 bg-red-950/10' : bolo.status === 'draft' ? 'border-l-2 border-l-amber-500 bg-amber-950/10' : ''}`}>
             <div className="md:col-span-2"><div className="text-[10px] font-black text-[#f5c451]">{bolo.bolo_number || 'BOLO-PENDING'}</div><div className={`mt-1 inline-flex rounded border px-1.5 py-0.5 text-[8px] font-black ${PRIORITY_STYLE[bolo.priority] || PRIORITY_STYLE.medium}`}>{(bolo.priority || 'medium').toUpperCase()}</div></div>
             <div className="md:col-span-3"><div className="flex items-center gap-1 text-[9px] font-bold text-slate-500"><Icon className="h-3 w-3" />{cfg.label}</div><div className="mt-1 text-[11px] font-black text-white">{subject}</div>{vehicle?.plate && <div className="mt-1 inline-block rounded border border-yellow-500/50 bg-yellow-950/50 px-1.5 py-0.5 text-[9px] font-black text-yellow-300">PLATE {String(vehicle.plate).toUpperCase()}</div>}{(bolo.parties?.length || 0) > 1 && <div className="mt-1 text-[8px] text-blue-400">+{bolo.parties.length - 1} additional party</div>}{(bolo.vehicles?.length || 0) > 1 && <div className="mt-1 text-[8px] text-yellow-500">+{bolo.vehicles.length - 1} additional vehicle</div>}</div>
             <div className="md:col-span-3"><div className="text-[11px] font-black text-white">{titleCase(bolo.title)}</div><div className="mt-1 line-clamp-1 text-[9px] text-slate-400">{bolo.description || 'No narrative entered'}</div><div className="mt-1 text-[9px] text-blue-300">LAST: {titleCase(bolo.last_known_location || 'UNKNOWN')}</div>{bolo.linked_call_number && <div className="mt-1 text-[8px] text-cyan-400">CAD: {bolo.linked_call_number}</div>}</div>
